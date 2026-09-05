@@ -26,7 +26,6 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.rag.entities.dataset_reference import SegmentRef
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.base import ResponseModel
 from fields.segment_fields import (
@@ -43,10 +42,11 @@ from libs.login import current_account_with_tenant
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+from services.entities.knowledge_entities.segments import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.knowledge.resource_scope import SegmentRef
 from services.summary_index_service import SummaryIndexService
 
 
@@ -418,7 +418,7 @@ class DatasetSegmentApi(DatasetApiResource):
         document_id: UUID,
         segment_id: UUID,
     ):
-        _, current_tenant_id = current_account_with_tenant()
+        current_account, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         # check dataset
         dataset = session.scalar(
@@ -452,7 +452,9 @@ class DatasetSegmentApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
-        updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset, session)
+        updated_segment = SegmentService.update_segment(
+            payload.segment, segment, document, dataset, session, actor_id=current_account.id
+        )
         summary = SummaryIndexService.get_segment_summary(
             segment_id=updated_segment.id, dataset_id=dataset_id_str, session=session
         )
@@ -568,7 +570,7 @@ class ChildChunkApi(DatasetApiResource):
         document_id: UUID,
         segment_id: UUID,
     ):
-        _, current_tenant_id = current_account_with_tenant()
+        current_account, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         dataset_id_str = str(dataset_id)
         # check dataset
@@ -605,7 +607,9 @@ class ChildChunkApi(DatasetApiResource):
                 raise ProviderNotInitializeError(ex.description)
 
         try:
-            child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
+            child_chunk = SegmentService.create_child_chunk(
+                payload.content, segment, document, dataset, session, actor_id=current_account.id
+            )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
 
@@ -791,7 +795,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         segment_id: UUID,
         child_chunk_id: UUID,
     ):
-        current_account_with_tenant()
+        current_account, _ = current_account_with_tenant()
         """Update child chunk."""
         dataset_id_str = str(dataset_id)
         # check dataset
@@ -818,7 +822,13 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         try:
             child_chunk = SegmentService.update_child_chunk(
-                payload.content, child_chunk, segment, document, dataset, session
+                payload.content,
+                child_chunk,
+                segment,
+                document,
+                dataset,
+                session,
+                actor_id=current_account.id,
             )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))

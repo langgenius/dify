@@ -12,6 +12,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.rag.entities.extraction import StoredDocumentExtractionInput
 from core.rag.extractor import notion_extractor
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.base import TypeBase
@@ -470,7 +471,8 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
         session_maker, document = persisted_document
 
-        extractor.update_last_edited_time(document)
+        snapshot = StoredDocumentExtractionInput.model_validate(document)
+        extractor.update_last_edited_time(snapshot)
 
         # Closing the writer session rolls back an uncommitted update before the independent read below.
         notion_extractor.db.session.close()
@@ -481,6 +483,27 @@ class TestNotionMetadataAndCredentialMethods:
                 "source": "notion",
                 "last_edited_time": "2026-01-01T00:00:00.000Z",
             }
+
+    def test_last_edited_time_update_rejects_a_foreign_owner_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        persisted_document: tuple[sessionmaker[Session], DocumentModel],
+    ):
+        session_maker, document = persisted_document
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id=document.tenant_id,
+            notion_access_token="token",
+        )
+        monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
+        snapshot = StoredDocumentExtractionInput.model_validate(document).model_copy(update={"tenant_id": "foreign"})
+        extractor.update_last_edited_time(snapshot)
+        with session_maker() as session:
+            stored = session.get(DocumentModel, document.id)
+            assert stored is not None
+            assert stored.data_source_info_dict["last_edited_time"] == "2025-01-01T00:00:00.000Z"
 
     def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture):
         extractor_page = notion_extractor.NotionExtractor(

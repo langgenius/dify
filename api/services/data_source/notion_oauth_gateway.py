@@ -2,12 +2,13 @@
 
 import urllib.parse
 from collections.abc import Mapping
-from typing import Any, Literal, TypedDict, override
+from typing import Any, TypedDict, override
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
 from core.helper.ssrf_proxy import MaxRetriesExceededError, SSRFProxy
+from core.rag.extractor.entity.datasource_type import NotionPageType
 from core.tools.errors import ToolSSRFError
 from services.data_source.oauth_service import DataSourceOAuthError, DataSourceProviderGateway
 from services.entities.data_source.oauth import DataSourceOAuthAuthorization
@@ -18,7 +19,7 @@ class _NotionPageSummary(TypedDict):
     page_name: str
     page_icon: dict[str, str] | None
     parent_id: str
-    type: Literal["page", "database"]
+    type: NotionPageType
 
 
 class _NotionSourceInfo(TypedDict):
@@ -147,7 +148,7 @@ class NotionDataSourceGateway(DataSourceProviderGateway):
                         "page_name": page_name,
                         "page_icon": icon,
                         "parent_id": parent_id,
-                        "type": "page",
+                        "type": NotionPageType.PAGE,
                     }
                 )
             )
@@ -180,19 +181,19 @@ class NotionDataSourceGateway(DataSourceProviderGateway):
                         "page_name": page_name,
                         "page_icon": icon,
                         "parent_id": parent_id,
-                        "type": "database",
+                        "type": NotionPageType.DATABASE,
                     }
                 )
             )
         return pages
 
     def notion_page_search(self, access_token: str) -> list[dict[str, Any]]:
-        return self._search(access_token, object_type="page")
+        return self._search(access_token, object_type=NotionPageType.PAGE)
 
     def notion_database_search(self, access_token: str) -> list[dict[str, Any]]:
-        return self._search(access_token, object_type="database")
+        return self._search(access_token, object_type=NotionPageType.DATABASE)
 
-    def _search(self, access_token: str, *, object_type: str) -> list[dict[str, Any]]:
+    def _search(self, access_token: str, *, object_type: NotionPageType) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         next_cursor: str | None = None
         has_more = True

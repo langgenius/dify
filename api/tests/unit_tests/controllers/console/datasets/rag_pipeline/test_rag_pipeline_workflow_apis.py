@@ -53,6 +53,9 @@ from models.enums import CreatorUserRole
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 
+pytestmark = pytest.mark.usefixtures("pipeline_application")
+
+
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
 DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"

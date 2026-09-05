@@ -7,6 +7,7 @@ from machinery.context import RequestContext
 from services.entities.data_source.oauth import DataSourceBindingSummary
 
 type BindingMutationResult = Literal["updated", "not_found", "already_enabled", "already_disabled"]
+type BindingAction = Literal["enable", "disable"]
 
 _SUPPORTED_PROVIDERS = frozenset({"notion"})
 
@@ -49,13 +50,8 @@ class DataSourceBindingApplicationService:
             if binding.provider in _SUPPORTED_PROVIDERS
         )
 
-    def enable(self, context: RequestContext, binding_id: str) -> None:
-        self._change_state(context, binding_id, disabled=False)
-
-    def disable(self, context: RequestContext, binding_id: str) -> None:
-        self._change_state(context, binding_id, disabled=True)
-
-    def _change_state(self, context: RequestContext, binding_id: str, *, disabled: bool) -> None:
+    def change_state(self, context: RequestContext, binding_id: str, action: BindingAction) -> None:
+        disabled = action == "disable"
         result = self._bindings.change_disabled_state(
             workspace_id=context.active_workspace_id,
             binding_id=binding_id,

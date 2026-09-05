@@ -2,52 +2,33 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from core.rag.entities.dataset_reference import DatasetRef, DocumentRef
 from machinery.context import RequestContext
-from services.entities.knowledge_entities.records import DatasetRecord, DocumentRecord
-from services.knowledge.adapters import CeleryDocumentSyncDispatcher
-from services.knowledge.application import (
-    DatasetAccessDeniedError,
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccessDeniedError
+from services.knowledge.document_sync import (
     DocumentSyncApplicationService,
     SyncDocumentNotFoundError,
+    SyncDocumentRecord,
     SyncDocumentSourceError,
 )
+from services.knowledge.document_sync_adapters import CeleryDocumentSyncDispatcher
+from services.knowledge.resource_scope import DatasetRef, DocumentRef
 
 
 def _context() -> RequestContext:
     return RequestContext("request-1", None, "account-1", "workspace-1")
 
 
-def _dataset() -> DatasetRecord:
-    return DatasetRecord(
+def _dataset() -> AccessibleDataset:
+    return AccessibleDataset(
         id="dataset-1",
         workspace_id="workspace-1",
-        maintainer_id="account-1",
-        permission="only_me",
-        data_source_type="notion_import",
-        indexing_technique="high_quality",
-        embedding_model=None,
-        embedding_model_provider=None,
     )
 
 
-def _document(*, data_source_type: str = "notion_import") -> DocumentRecord:
-    return DocumentRecord(
+def _document(*, data_source_type: str = "notion_import") -> SyncDocumentRecord:
+    return SyncDocumentRecord(
         id="document-1",
-        workspace_id="workspace-1",
-        dataset_id="dataset-1",
-        name="Document",
         data_source_type=data_source_type,
-        data_source_info={"notion_page_id": "page-1"},
-        enabled=True,
-        archived=False,
-        indexing_status="completed",
-        batch="batch-1",
-        doc_form="text_model",
-        doc_language="English",
-        dataset_process_rule_id=None,
-        need_summary=False,
-        doc_metadata=None,
     )
 
 
@@ -56,7 +37,7 @@ class DatasetAccessStub:
     error: Exception | None = None
     calls: list[str] = field(default_factory=list)
 
-    def require_accessible(self, context: RequestContext, dataset_id: str) -> DatasetRecord:
+    def require_accessible(self, context: RequestContext, dataset_id: str) -> AccessibleDataset:
         assert context == _context()
         self.calls.append(dataset_id)
         if self.error is not None:
@@ -66,7 +47,7 @@ class DatasetAccessStub:
 
 @dataclass
 class DocumentReaderStub:
-    document: DocumentRecord | None = field(default_factory=_document)
+    document: SyncDocumentRecord | None = field(default_factory=_document)
     active_refs: tuple[DocumentRef, ...] = ()
     list_calls: list[DatasetRef] = field(default_factory=list)
     get_calls: list[DocumentRef] = field(default_factory=list)
@@ -75,7 +56,7 @@ class DocumentReaderStub:
         self.list_calls.append(dataset_ref)
         return self.active_refs
 
-    def get_by_ref(self, document_ref: DocumentRef) -> DocumentRecord | None:
+    def get_sync_document(self, document_ref: DocumentRef) -> SyncDocumentRecord | None:
         self.get_calls.append(document_ref)
         return self.document
 
@@ -135,7 +116,7 @@ def test_sync_document_validates_owner_chain_and_source_before_dispatch() -> Non
     ],
 )
 def test_sync_document_rejects_invalid_document_before_dispatch(
-    document: DocumentRecord | None, error: type[Exception]
+    document: SyncDocumentRecord | None, error: type[Exception]
 ) -> None:
     dispatcher = DispatcherRecorder()
     service = DocumentSyncApplicationService(

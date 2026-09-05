@@ -346,7 +346,7 @@ class TestDatasourceProviderService:
 
     def test_should_fetch_by_credential_id_when_provided(self, service, sqlite_session, mock_user):
         """When credential_id is passed, the credential_id filter path (line 113) is taken."""
-        p = make_provider(credential_id="cred-id", provider="other-provider", plugin_id="other-plugin")
+        p = make_provider(credential_id="cred-id")
         persist(sqlite_session, p)
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
@@ -354,6 +354,58 @@ class TestDatasourceProviderService:
         ):
             result = service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id")
         assert result == {"k": "v"}
+
+    @pytest.mark.parametrize("concurrent_update", [False, True])
+    def test_refresh_closes_read_session_and_preserves_concurrent_credentials(
+        self,
+        service: DatasourceProviderService,
+        sqlite_session: Session,
+        mock_user: Account,
+        monkeypatch: pytest.MonkeyPatch,
+        concurrent_update: bool,
+    ) -> None:
+        import time
+
+        from sqlalchemy import update
+
+        row = make_provider(auth_type="oauth2", expires_at=0, encrypted_credentials={"token": "old"})
+        persist(sqlite_session, row)
+        opened: list[Session] = []
+
+        class ObservedSession(Session):
+            def __init__(self, bind: Engine) -> None:
+                super().__init__(bind)
+                opened.append(self)
+
+        def refresh(**_kwargs: object) -> tuple[dict[str, str], int]:
+            assert opened
+            assert all(not session.in_transaction() for session in opened)
+            if concurrent_update:
+                with Session(sqlite_session.get_bind()) as session, session.begin():
+                    session.execute(
+                        update(DatasourceProvider)
+                        .where(DatasourceProvider.id == row.id)
+                        .values(encrypted_credentials={"token": "concurrent"}, expires_at=int(time.time()) + 3600)
+                    )
+            return {"token": "refreshed"}, int(time.time()) + 3600
+
+        monkeypatch.setattr(service_module, "Session", ObservedSession)
+        monkeypatch.setattr(service_module, "get_current_user", lambda: mock_user)
+        monkeypatch.setattr(service, "_refresh_datasource_credentials", refresh)
+        monkeypatch.setattr(
+            service,
+            "decrypt_datasource_provider_credentials",
+            lambda **kwargs: dict(kwargs["datasource_provider"].encrypted_credentials),
+        )
+        result = service.get_datasource_credentials("t1", "prov", "org/plug")
+        assert result == {"token": "concurrent" if concurrent_update else "refreshed"}
+        assert all(not session.in_transaction() for session in opened)
+
+    def test_selected_credential_must_belong_to_the_requested_provider(
+        self, service: DatasourceProviderService, sqlite_session: Session
+    ) -> None:
+        persist(sqlite_session, make_provider(provider="other-provider", plugin_id="other-plugin"))
+        assert service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id") == {}
 
     # -----------------------------------------------------------------------
     # get_all_datasource_credentials_by_provider (lines 176-228)
@@ -567,7 +619,9 @@ class TestDatasourceProviderService:
                 enabled=True,
             ),
         )
-        with patch.object(service, "get_oauth_encrypter", return_value=(self._enc, None)):
+        with patch(
+            "services.data_source.credential_adapters.create_provider_encrypter", return_value=(self._enc, None)
+        ):
             result = service.get_oauth_client("t1", make_id())
         assert result == {"k": "dec"}
 
@@ -582,7 +636,7 @@ class TestDatasourceProviderService:
         )
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
-            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=True),
+            patch("services.data_source.credential_adapters.PluginService.is_plugin_verified", return_value=True),
         ):
             result = service.get_oauth_client("t1", make_id())
         assert result == {"k": "sys"}
@@ -591,7 +645,7 @@ class TestDatasourceProviderService:
         """Neither tenant nor system credentials → raises ValueError."""
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
-            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
+            patch("services.data_source.credential_adapters.PluginService.is_plugin_verified", return_value=False),
         ):
             with pytest.raises(ValueError, match="Please configure oauth client params"):
                 service.get_oauth_client("t1", make_id())

@@ -3,7 +3,8 @@ import json
 from collections.abc import Callable
 from contextlib import ExitStack
 from inspect import unwrap
-from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 from flask import Flask
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets import (
@@ -34,22 +36,40 @@ from controllers.console.datasets.datasets import (
     DatasetUseCheckApi,
     IndexingEstimatePayload,
     _get_retrieval_methods_by_vector_type,
+    _new_estimate_sources,
 )
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
-from core.entities.knowledge_entities import IndexingEstimate
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+)
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.entities.dataset_reference import DatasetRef
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.extractor.entity.datasource_type import NotionPageType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermission, DatasetQuery, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.entities.knowledge_entities.indexing_estimate import (
+    NotionEstimateSource,
+    UploadFileEstimateSource,
+    WebsiteEstimateSource,
+)
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.indexing.estimate import (
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
+from services.knowledge.resource_scope import DatasetRef
 
 
 @pytest.fixture(autouse=True)
@@ -84,6 +104,138 @@ def dataset_model_property_defaults():
             )
         )
         yield getters
+
+
+def test_new_estimate_sources_maps_each_supported_transport_shape() -> None:
+    upload_sources = _new_estimate_sources(
+        {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1", "file-2"]}}
+    )
+    notion_sources = _new_estimate_sources(
+        {
+            "data_source_type": "notion_import",
+            "notion_info_list": [
+                {
+                    "workspace_id": "notion-workspace",
+                    "credential_id": "credential-1",
+                    "pages": [{"page_id": "page-1", "type": "page"}],
+                }
+            ],
+        }
+    )
+    website_sources = _new_estimate_sources(
+        {
+            "data_source_type": "website_crawl",
+            "website_info_list": {
+                "provider": "firecrawl",
+                "job_id": "job-1",
+                "urls": ["https://example.com/a", "https://example.com/b"],
+                "only_main_content": True,
+            },
+        }
+    )
+
+    assert upload_sources == (UploadFileEstimateSource("file-1"), UploadFileEstimateSource("file-2"))
+    assert notion_sources == (NotionEstimateSource("notion-workspace", "page-1", NotionPageType.PAGE, "credential-1"),)
+    assert website_sources == (
+        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com/a", only_main_content=True),
+        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com/b", only_main_content=True),
+    )
+
+
+@pytest.mark.parametrize(("value", "expected"), [("false", False), ("true", True), (False, False), (True, True)])
+def test_website_estimate_parses_boolean_values(value: str | bool, expected: bool) -> None:
+    sources = _new_estimate_sources(
+        {
+            "data_source_type": "website_crawl",
+            "website_info_list": {
+                "provider": "firecrawl",
+                "job_id": "job-1",
+                "urls": ["https://example.com"],
+                "only_main_content": value,
+            },
+        }
+    )
+    assert sources == (WebsiteEstimateSource("firecrawl", "job-1", "https://example.com", only_main_content=expected),)
+
+
+@pytest.mark.parametrize("values", [{"only_main_content": "invalid"}, {"urls": [42]}])
+def test_website_estimate_rejects_invalid_field_types(values: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        _new_estimate_sources(
+            {
+                "data_source_type": "website_crawl",
+                "website_info_list": {
+                    "provider": "firecrawl",
+                    "job_id": "job-1",
+                    "urls": ["https://example.com"],
+                    **values,
+                },
+            }
+        )
+
+
+def test_new_estimate_sources_deduplicates_upload_ids_without_reordering() -> None:
+    sources = _new_estimate_sources(
+        {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-2", "file-1", "file-2"]}}
+    )
+
+    assert sources == (UploadFileEstimateSource("file-2"), UploadFileEstimateSource("file-1"))
+
+
+@pytest.mark.parametrize(
+    "info_list",
+    [
+        {"data_source_type": "upload_file", "file_info_list": {}},
+        {"data_source_type": "notion_import", "notion_info_list": [{"workspace_id": "workspace"}]},
+        {
+            "data_source_type": "notion_import",
+            "notion_info_list": [
+                {
+                    "workspace_id": "workspace",
+                    "credential_id": "credential",
+                    "pages": [{"page_id": "page", "type": "unknown"}],
+                }
+            ],
+        },
+        {"data_source_type": "unsupported"},
+    ],
+)
+def test_new_estimate_sources_rejects_malformed_transport_shapes(info_list: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        _new_estimate_sources(info_list)
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_http_error"),
+    [
+        (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+        (EstimateSourceNotFoundError("source-1"), NotFoundError),
+        (DatasetNotFoundError(), NotFoundError),
+        (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError),
+        (UnsupportedEstimateSourceError("unsupported"), InvalidArgumentError),
+        (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+        (IndexingEstimateExecutionError(), IndexingEstimateError),
+    ],
+)
+def test_new_source_estimate_maps_application_errors(
+    error: Exception,
+    expected_http_error: type[Exception],
+) -> None:
+    estimates = MagicMock()
+    estimates.estimate_new_sources.side_effect = error
+    registry = SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
+    api = DatasetIndexingEstimateApi()
+    method = unwrap(api.post)
+    payload = IndexingEstimatePayload(
+        info_list={"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1"]}},
+        process_rule={"mode": "automatic"},
+        indexing_technique="economy",
+    )
+    context = RequestContext("request-1", None, "account-1", "workspace-1")
+
+    with patch("controllers.console.datasets.datasets.application_services", return_value=registry):
+        with pytest.raises(expected_http_error):
+            method(api, payload, context)
 
 
 def make_dataset(**overrides) -> Dataset:
@@ -1069,159 +1221,6 @@ class TestDatasetQueryApi(_UsesSQLiteSession):
         assert status == 200
         assert response["has_more"] is True
         assert len(response["data"]) == 20
-
-
-class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):
-    def _upload_file(self, *, tenant_id: str = "tenant-1", file_id: str = "file-1") -> UploadFile:
-        upload_file = UploadFile(
-            tenant_id=tenant_id,
-            storage_type=StorageType.LOCAL,
-            key="key",
-            name="name.txt",
-            size=1,
-            extension="txt",
-            mime_type="text/plain",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="user-1",
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            used=False,
-        )
-        upload_file.id = file_id
-        return upload_file
-
-    def _base_payload(self):
-        return {
-            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1"]}},
-            "process_rule": {"chunk_size": 100},
-            "indexing_technique": "high_quality",
-            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
-            "doc_language": "English",
-            "dataset_id": None,
-        }
-
-    def test_post_success_upload_file(self, app: Flask):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        payload = self._base_payload()
-        mock_file = self._upload_file()
-        session = self.session
-        session.add(mock_file)
-        session.flush()
-
-        mock_response = IndexingEstimate(total_segments=100, preview=[])
-
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch("controllers.console.datasets.datasets.IndexingRunner.indexing_estimate", return_value=mock_response),
-        ):
-            response, status = method(
-                api,
-                IndexingEstimatePayload(**payload),
-                session,
-                "tenant-1",
-            )
-        assert status == 200
-        assert response == {
-            "tokens": 0,
-            "total_price": 0,
-            "currency": "USD",
-            "total_segments": 100,
-            "preview": [],
-        }
-
-    def test_post_file_not_found(self, app: Flask):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        payload = self._base_payload()
-        session = self.session
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-        ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    IndexingEstimatePayload(**payload),
-                    session,
-                    "tenant-1",
-                )
-
-    def test_post_llm_bad_request_error(self, app: Flask):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        mock_file = self._upload_file()
-        payload = self._base_payload()
-        session = self.session
-        session.add(mock_file)
-        session.flush()
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=LLMBadRequestError(),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api,
-                    IndexingEstimatePayload(**payload),
-                    session,
-                    "tenant-1",
-                )
-
-    def test_post_provider_token_not_init(self, app: Flask):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        mock_file = self._upload_file()
-        payload = self._base_payload()
-        session = self.session
-        session.add(mock_file)
-        session.flush()
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=ProviderTokenNotInitError("token missing"),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api,
-                    IndexingEstimatePayload(**payload),
-                    session,
-                    "tenant-1",
-                )
-
-    def test_post_generic_exception(self, app: Flask):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        mock_file = self._upload_file()
-        payload = self._base_payload()
-        session = self.session
-        session.add(mock_file)
-        session.flush()
-        with (
-            app.test_request_context("/"),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate", side_effect=Exception("boom")
-            ),
-        ):
-            with pytest.raises(IndexingEstimateError):
-                method(
-                    api,
-                    IndexingEstimatePayload(**payload),
-                    session,
-                    "tenant-1",
-                )
 
 
 class TestDatasetRelatedAppListApi(_UsesSQLiteSession):

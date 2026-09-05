@@ -24,8 +24,8 @@ from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
+from core.rag.entities.extraction import ExtractSetting, NotionInfo, UploadFileExtractionInput, WebsiteInfo
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -415,7 +415,10 @@ class IndexingRunner:
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
-                    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+                    stmt = select(UploadFile).where(
+                        UploadFile.id == upload_file_id,
+                        UploadFile.tenant_id == tenant_id,
+                    )
                     image_file = session.scalar(stmt)
                     if image_file is None:
                         continue
@@ -464,7 +467,7 @@ class IndexingRunner:
                 if file_detail:
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.FILE,
-                        upload_file=file_detail,
+                        upload_file=UploadFileExtractionInput.model_validate(file_detail),
                         document_model=dataset_document.doc_form,
                     )
                     text_docs = index_processor.extract(

@@ -47,7 +47,6 @@ from controllers.service_api.dataset.document import (
     InvalidMetadataError,
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
-from core.rag.entities.dataset_reference import DatasetRef
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models.account import Account
@@ -65,6 +64,7 @@ from models.model import ApiToken, UploadFile
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.knowledge.resource_scope import DatasetRef
 
 
 def _document_data_source_info() -> dict[str, str]:

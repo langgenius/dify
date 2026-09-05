@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 import core.rag.extractor.extract_processor as processor_module
+from core.rag.entities.extraction import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
 from extensions.storage.storage_type import StorageType

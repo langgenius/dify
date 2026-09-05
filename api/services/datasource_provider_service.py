@@ -17,14 +17,25 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
-from core.plugin.plugin_service import PluginService
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.provider_entities import FormType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
+from repositories.data_source.credential_repository import (
+    datasource_credential_record,
+    read_oauth_client_config,
+    read_provider_credentials,
+    update_datasource_credentials_if_unchanged,
+)
+from services.data_source.credential_adapters import (
+    datasource_secret_variables,
+    refresh_datasource_credential,
+    resolve_datasource_oauth_client,
+    transform_secret_fields,
+)
+from services.data_source.credential_gateway import DatasourceCredentialError, credential_needs_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +67,7 @@ class DatasourceProviderService:
     @staticmethod
     def _should_refresh_credentials(datasource_provider: DatasourceProvider, now: int | None = None) -> bool:
         current_time = int(time.time()) if now is None else now
-        if datasource_provider.expires_at == -1:
-            return False
-        return (datasource_provider.expires_at - 60) < current_time
+        return credential_needs_refresh(datasource_provider.expires_at, now=current_time)
 
     def _refresh_datasource_credentials(
         self,
@@ -90,17 +99,13 @@ class DatasourceProviderService:
             plugin_id=plugin_id,
             provider=provider,
         )
-        redirect_uri = (
-            f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
-        )
         system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
         try:
-            refreshed_credentials = OAuthHandler().refresh_credentials(
-                tenant_id=tenant_id,
-                user_id=current_user.id,
-                plugin_id=datasource_provider_id.plugin_id,
-                provider=provider_name,
-                redirect_uri=redirect_uri,
+            refreshed_credentials = refresh_datasource_credential(
+                OAuthHandler(),
+                workspace_id=tenant_id,
+                actor_id=current_user.id,
+                provider_id=datasource_provider_id,
                 system_credentials=system_credentials or {},
                 credentials=decrypted_credentials,
             )
@@ -167,11 +172,9 @@ class DatasourceProviderService:
             provider_id=f"{plugin_id}/{provider}",
             credential_type=CredentialType.of(datasource_provider.auth_type),
         )
-        decrypted_credentials = encrypted_credentials.copy()
-        for key, value in decrypted_credentials.items():
-            if key in credential_secret_variables:
-                decrypted_credentials[key] = encrypter.decrypt_token(tenant_id, value)
-        return decrypted_credentials
+        return transform_secret_fields(
+            tenant_id, encrypted_credentials, credential_secret_variables, encrypter.decrypt_token
+        )
 
     def encrypt_datasource_provider_credentials(
         self,
@@ -186,11 +189,9 @@ class DatasourceProviderService:
             provider_id=f"{plugin_id}/{provider}",
             credential_type=CredentialType.of(datasource_provider.auth_type),
         )
-        encrypted_credentials = dict(raw_credentials)
-        for key, value in encrypted_credentials.items():
-            if key in provider_credential_secret_variables:
-                encrypted_credentials[key] = encrypter.encrypt_token(tenant_id, value)
-        return encrypted_credentials
+        return transform_secret_fields(
+            tenant_id, raw_credentials, provider_credential_secret_variables, encrypter.encrypt_token
+        )
 
     def get_datasource_credentials(
         self,
@@ -205,44 +206,56 @@ class DatasourceProviderService:
         If the stored credential is expired or about to expire, this method refreshes
         it through plugin-daemon and persists the refreshed credential before returning.
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            if credential_id:
-                datasource_provider = session.scalar(
-                    select(DatasourceProvider)
-                    .where(DatasourceProvider.tenant_id == tenant_id, DatasourceProvider.id == credential_id)
-                    .limit(1)
-                )
-            else:
-                datasource_provider = session.scalar(
-                    select(DatasourceProvider)
-                    .where(
-                        DatasourceProvider.tenant_id == tenant_id,
-                        DatasourceProvider.provider == provider,
-                        DatasourceProvider.plugin_id == plugin_id,
-                    )
-                    .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
-                    .limit(1)
-                )
-            if not datasource_provider:
-                return {}
-            if self._should_refresh_credentials(datasource_provider):
-                current_user = get_current_user()
-                encrypted_credentials, expires_at = self._refresh_datasource_credentials(
-                    tenant_id=tenant_id,
-                    provider=provider,
-                    plugin_id=plugin_id,
-                    datasource_provider=datasource_provider,
-                    current_user=current_user,
-                )
-                datasource_provider.encrypted_credentials = encrypted_credentials
-                datasource_provider.expires_at = expires_at
-
-            return self.decrypt_datasource_provider_credentials(
-                tenant_id=tenant_id,
-                datasource_provider=datasource_provider,
-                plugin_id=plugin_id,
+        with Session(db.engine) as session:
+            providers = read_provider_credentials(
+                session,
+                workspace_id=tenant_id,
                 provider=provider,
+                plugin_id=plugin_id,
+                credential_id=credential_id,
+                first_only=True,
             )
+        if not providers:
+            return {}
+        return self._resolve_provider_credentials(providers[0])
+
+    def _resolve_provider_credentials(self, datasource_provider: DatasourceProvider) -> dict[str, Any]:
+        """Refresh a detached credential and conditionally persist it in a separate transaction."""
+        record = datasource_credential_record(datasource_provider)
+        if self._should_refresh_credentials(datasource_provider):
+            encrypted, expires_at = self._refresh_datasource_credentials(
+                tenant_id=record.workspace_id,
+                provider=record.provider,
+                plugin_id=record.plugin_id,
+                datasource_provider=datasource_provider,
+                current_user=get_current_user(),
+            )
+            with Session(db.engine) as session, session.begin():
+                saved = update_datasource_credentials_if_unchanged(
+                    session, record=record, encrypted_credentials=encrypted, expires_at=expires_at
+                )
+            if saved:
+                datasource_provider.encrypted_credentials = encrypted
+                datasource_provider.expires_at = expires_at
+            else:
+                with Session(db.engine) as session:
+                    latest = read_provider_credentials(
+                        session,
+                        workspace_id=record.workspace_id,
+                        provider=record.provider,
+                        plugin_id=record.plugin_id,
+                        credential_id=record.id,
+                        first_only=True,
+                    )
+                if not latest or self._should_refresh_credentials(latest[0]):
+                    raise ValueError("Credential changed while it was being refreshed")
+                datasource_provider = latest[0]
+        return self.decrypt_datasource_provider_credentials(
+            tenant_id=record.workspace_id,
+            datasource_provider=datasource_provider,
+            plugin_id=record.plugin_id,
+            provider=record.provider,
+        )
 
     def get_all_datasource_credentials_by_provider(
         self,
@@ -256,54 +269,21 @@ class DatasourceProviderService:
         Expired credentials are refreshed independently. A failed credential refresh is
         logged and skipped so one broken authorization does not block other credentials.
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            datasource_providers = session.scalars(
-                select(DatasourceProvider)
-                .where(
-                    DatasourceProvider.tenant_id == tenant_id,
-                    DatasourceProvider.provider == provider,
-                    DatasourceProvider.plugin_id == plugin_id,
+        with Session(db.engine) as session:
+            datasource_providers = read_provider_credentials(
+                session, workspace_id=tenant_id, provider=provider, plugin_id=plugin_id
+            )
+        credentials = []
+        for datasource_provider in datasource_providers:
+            try:
+                credentials.append(self._resolve_provider_credentials(datasource_provider))
+            except Exception:
+                logger.exception(
+                    "Skipping datasource credentials for provider %s after refresh or decrypt failure",
+                    provider,
+                    extra={"tenant_id": tenant_id, "plugin_id": plugin_id, "credential_id": datasource_provider.id},
                 )
-                .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
-            ).all()
-            if not datasource_providers:
-                return []
-            current_user = get_current_user()
-            real_credentials_list = []
-            for datasource_provider in datasource_providers:
-                try:
-                    if self._should_refresh_credentials(datasource_provider):
-                        encrypted_credentials, expires_at = self._refresh_datasource_credentials(
-                            tenant_id=tenant_id,
-                            provider=provider,
-                            plugin_id=plugin_id,
-                            datasource_provider=datasource_provider,
-                            current_user=current_user,
-                        )
-                        datasource_provider.encrypted_credentials = encrypted_credentials
-                        datasource_provider.expires_at = expires_at
-                    real_credentials = self.decrypt_datasource_provider_credentials(
-                        tenant_id=tenant_id,
-                        datasource_provider=datasource_provider,
-                        plugin_id=plugin_id,
-                        provider=provider,
-                    )
-                    real_credentials_list.append(real_credentials)
-                except Exception:
-                    logger.exception(
-                        "Skipping datasource credentials for provider %s after refresh or decrypt failure",
-                        provider,
-                        extra={
-                            "tenant_id": tenant_id,
-                            "plugin_id": plugin_id,
-                            "provider": provider,
-                            "credential_id": getattr(datasource_provider, "id", None),
-                            "credential_name": getattr(datasource_provider, "name", None),
-                            "expires_at": getattr(datasource_provider, "expires_at", None),
-                        },
-                    )
-
-            return real_credentials_list
+        return credentials
 
     def update_datasource_provider_name(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, name: str, credential_id: str
@@ -516,42 +496,24 @@ class DatasourceProviderService:
         """
         get oauth client
         """
-        provider = datasource_provider_id.provider_name
-        plugin_id = datasource_provider_id.plugin_id
-        with Session(db.engine).no_autoflush as session:
-            # get tenant oauth client params
-            tenant_oauth_client_params = session.scalar(
-                select(DatasourceOauthTenantParamConfig)
-                .where(
-                    DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
-                    DatasourceOauthTenantParamConfig.provider == provider,
-                    DatasourceOauthTenantParamConfig.plugin_id == plugin_id,
-                    DatasourceOauthTenantParamConfig.enabled.is_(True),
-                )
-                .limit(1)
+        with Session(db.engine) as session:
+            config = read_oauth_client_config(
+                session,
+                workspace_id=tenant_id,
+                provider=datasource_provider_id.provider_name,
+                plugin_id=datasource_provider_id.plugin_id,
             )
-            if tenant_oauth_client_params:
-                encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
-
-            provider_controller = self.provider_manager.fetch_datasource_provider(
-                tenant_id=tenant_id, provider_id=str(datasource_provider_id)
+        try:
+            return resolve_datasource_oauth_client(
+                config,
+                workspace_id=tenant_id,
+                provider_id=datasource_provider_id,
+                provider_manager=self.provider_manager,
             )
-            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
-            if is_verified:
-                # fallback to system oauth client params
-                oauth_client_params = session.scalar(
-                    select(DatasourceOauthParamConfig)
-                    .where(
-                        DatasourceOauthParamConfig.provider == provider,
-                        DatasourceOauthParamConfig.plugin_id == plugin_id,
-                    )
-                    .limit(1)
-                )
-                if oauth_client_params:
-                    return oauth_client_params.system_credentials
-
-            raise ValueError(f"Please configure oauth client params(system/tenant) for {plugin_id}/{provider}")
+        except DatasourceCredentialError as error:
+            raise ValueError(
+                f"Please configure oauth client params(system/tenant) for {datasource_provider_id}"
+            ) from error
 
     @staticmethod
     def generate_next_datasource_provider_name(
@@ -800,25 +762,12 @@ class DatasourceProviderService:
         :param credential_form_schemas:
         :return:
         """
-        datasource_provider = self.provider_manager.fetch_datasource_provider(
-            tenant_id=tenant_id, provider_id=provider_id
-        )
-        credential_form_schemas = []
-        if credential_type == CredentialType.API_KEY:
-            credential_form_schemas = list(datasource_provider.declaration.credentials_schema)
-        elif credential_type == CredentialType.OAUTH2:
-            if not datasource_provider.declaration.oauth_schema:
-                raise ValueError("Datasource provider oauth schema not found")
-            credential_form_schemas = list(datasource_provider.declaration.oauth_schema.credentials_schema)
-        else:
+        if credential_type not in (CredentialType.API_KEY, CredentialType.OAUTH2):
             raise ValueError(f"Invalid credential type: {credential_type}")
-
-        secret_input_form_variables = []
-        for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT:
-                secret_input_form_variables.append(credential_form_schema.name)
-
-        return secret_input_form_variables
+        try:
+            return list(datasource_secret_variables(self.provider_manager, tenant_id, provider_id, credential_type))
+        except DatasourceCredentialError as error:
+            raise ValueError(str(error)) from error
 
     def list_datasource_credentials(
         self,

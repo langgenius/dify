@@ -5,6 +5,7 @@ import pytest
 
 from machinery.context import RequestContext
 from services.data_source.binding_application_service import (
+    BindingAction,
     BindingMutationResult,
     DataSourceBindingApplicationService,
     DataSourceBindingNotFoundError,
@@ -58,18 +59,18 @@ def test_list_integrations_returns_secret_free_records() -> None:
     assert service.list_integrations(_context()) == (binding,)
 
 
-@pytest.mark.parametrize(("operation", "disabled"), [("enable", False), ("disable", True)])
-def test_change_state_passes_stable_context(operation: str, disabled: bool) -> None:
+@pytest.mark.parametrize(("action", "disabled"), [("enable", False), ("disable", True)])
+def test_change_state_passes_stable_context(action: BindingAction, disabled: bool) -> None:
     store = InMemoryBindingStore()
     service = DataSourceBindingApplicationService(bindings=store)
 
-    getattr(service, operation)(_context(), "binding-1")
+    service.change_state(_context(), "binding-1", action)
 
     assert store.changes == [("workspace-1", "binding-1", disabled)]
 
 
 @pytest.mark.parametrize(
-    ("operation", "result", "error", "message"),
+    ("action", "result", "error", "message"),
     [
         ("enable", "not_found", DataSourceBindingNotFoundError, "Data source binding not found"),
         ("enable", "already_enabled", DataSourceBindingStateError, "Data source is already enabled"),
@@ -77,7 +78,7 @@ def test_change_state_passes_stable_context(operation: str, disabled: bool) -> N
     ],
 )
 def test_change_state_translates_repository_outcomes(
-    operation: str,
+    action: BindingAction,
     result: BindingMutationResult,
     error: type[Exception],
     message: str,
@@ -85,4 +86,4 @@ def test_change_state_translates_repository_outcomes(
     service = DataSourceBindingApplicationService(bindings=InMemoryBindingStore(mutation_result=result))
 
     with pytest.raises(error, match=message):
-        getattr(service, operation)(_context(), "binding-1")
+        service.change_state(_context(), "binding-1", action)

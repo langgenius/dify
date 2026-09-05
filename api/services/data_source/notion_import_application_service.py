@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from core.rag.entities.dataset_reference import DatasetRef
+from core.rag.extractor.entity.datasource_type import NotionPageType
 from machinery.context import RequestContext
 from services.entities.data_source.notion_import import (
     NotionImportPage,
@@ -10,15 +10,16 @@ from services.entities.data_source.notion_import import (
     NotionImportWorkspace,
     NotionWorkspace,
 )
-from services.entities.knowledge_entities.records import DatasetRecord
-
-
-class NotionDatasetAccess(Protocol):
-    def require_accessible(self, context: RequestContext, dataset_id: str) -> DatasetRecord: ...
+from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.resource_scope import DatasetRef
 
 
 class NotionDocumentBindingReader(Protocol):
     def list_bound_notion_page_ids(self, dataset_ref: DatasetRef) -> frozenset[str]: ...
+
+
+class NotionDatasetReader(Protocol):
+    def is_notion_dataset(self, dataset_ref: DatasetRef) -> bool: ...
 
 
 class NotionSourceGateway(Protocol):
@@ -37,7 +38,7 @@ class NotionSourceGateway(Protocol):
         actor_id: str,
         credential_id: str,
         page_id: str,
-        page_type: str,
+        page_type: NotionPageType,
     ) -> str: ...
 
 
@@ -50,15 +51,22 @@ class DatasetIsNotNotionSourceError(NotionImportError):
         super().__init__("Dataset is not notion type")
 
 
+class NotionImportCredentialUnavailableError(NotionImportError):
+    def __init__(self) -> None:
+        super().__init__("Notion credential is unavailable")
+
+
 class NotionImportApplicationService:
     def __init__(
         self,
         *,
-        dataset_access: NotionDatasetAccess,
+        dataset_access: DatasetAccess,
+        datasets: NotionDatasetReader,
         documents: NotionDocumentBindingReader,
         source: NotionSourceGateway,
     ) -> None:
         self._dataset_access = dataset_access
+        self._datasets = datasets
         self._documents = documents
         self._source = source
 
@@ -72,11 +80,10 @@ class NotionImportApplicationService:
         bound_page_ids: frozenset[str] = frozenset()
         if dataset_id is not None:
             dataset = self._dataset_access.require_accessible(context, dataset_id)
-            if dataset.data_source_type != "notion_import":
+            dataset_ref = DatasetRef(dataset.workspace_id, dataset.id)
+            if not self._datasets.is_notion_dataset(dataset_ref):
                 raise DatasetIsNotNotionSourceError()
-            bound_page_ids = self._documents.list_bound_notion_page_ids(
-                DatasetRef(context.active_workspace_id, dataset.id)
-            )
+            bound_page_ids = self._documents.list_bound_notion_page_ids(dataset_ref)
 
         workspaces = self._source.list_authorized_pages(
             workspace_id=context.active_workspace_id,
@@ -111,7 +118,7 @@ class NotionImportApplicationService:
         *,
         credential_id: str,
         page_id: str,
-        page_type: str,
+        page_type: NotionPageType,
     ) -> str:
         return self._source.preview_page(
             workspace_id=context.active_workspace_id,

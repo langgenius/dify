@@ -19,7 +19,6 @@ from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
-from core.rag.entities.dataset_reference import DatasetRef, SegmentRef
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -49,7 +48,6 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
-    SegmentAttachmentBinding,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -64,24 +62,23 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from repositories.knowledge.segment_repository import query_child_chunks
 from services import dataset_api_key_service
 from services.dataset_ref_service import DatasetRefService
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.feature_entities import FeatureModel
-from services.entities.knowledge_entities.indexing_estimate import normalize_indexing_estimate_args
 from services.entities.knowledge_entities.knowledge_entities import (
-    ChildChunkUpdateArgs,
     KnowledgeConfig,
     RerankingModel,
     RetrievalModel,
-    SegmentUpdateArgs,
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     RagPipelineDatasetCreateEntity,
 )
+from services.entities.knowledge_entities.segments import SegmentUpdateArgs
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
@@ -90,6 +87,8 @@ from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 from services.file_service import FileService
+from services.knowledge.resource_scope import DatasetRef, SegmentRef
+from services.knowledge.segments.application import validate_segment_values
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_service import TagService
 from services.vector_service import VectorService
@@ -100,9 +99,7 @@ from tasks.deal_dataset_index_update_task import deal_dataset_index_update_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
-from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 from tasks.document_indexing_update_task import document_indexing_update_task
-from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
@@ -3060,10 +3057,6 @@ class DocumentService:
                 if not isinstance(knowledge_config.process_rule.rules.segmentation.max_tokens, int):
                     raise ValueError("Process rule segmentation max_tokens is invalid")
 
-    @classmethod
-    def estimate_args_validate(cls, args: dict[str, Any]):
-        args["process_rule"] = normalize_indexing_estimate_args(args)
-
     @staticmethod
     def batch_update_document_status(
         dataset: Dataset,
@@ -3263,102 +3256,9 @@ class DocumentService:
 class SegmentService:
     @classmethod
     def segment_create_args_validate(cls, args: dict[str, Any], document: Document):
-        if document.doc_form == IndexStructureType.QA_INDEX:
-            if "answer" not in args or not args["answer"]:
-                raise ValueError("Answer is required")
-            if not args["answer"].strip():
-                raise ValueError("Answer is empty")
-        if "content" not in args or not args["content"] or not args["content"].strip():
-            raise ValueError("Content is empty")
-
-        if args.get("attachment_ids"):
-            if not isinstance(args["attachment_ids"], list):
-                raise ValueError("Attachment IDs is invalid")
-            single_chunk_attachment_limit = dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT
-            if len(args["attachment_ids"]) > single_chunk_attachment_limit:
-                raise ValueError(f"Exceeded maximum attachment limit of {single_chunk_attachment_limit}")
-
-    @classmethod
-    def create_segment(cls, args: dict[str, Any], document: Document, dataset: Dataset, session: Session):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-
-        content = args["content"]
-        doc_id = str(uuid.uuid4())
-        segment_hash = helper.generate_text_hash(content)
-        tokens = 0
-        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
-                provider=dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=dataset.embedding_model,
-            )
-            # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
-        lock_name = f"add_segment_lock_document_id_{document.id}"
-        try:
-            with redis_client.lock(lock_name, timeout=600):
-                max_position = session.scalar(
-                    select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document.id)
-                )
-                segment_document = DocumentSegment(
-                    tenant_id=current_user.current_tenant_id,
-                    dataset_id=document.dataset_id,
-                    document_id=document.id,
-                    index_node_id=doc_id,
-                    index_node_hash=segment_hash,
-                    position=max_position + 1 if max_position else 1,
-                    content=content,
-                    word_count=len(content),
-                    tokens=tokens,
-                    status=SegmentStatus.COMPLETED,
-                    indexing_at=naive_utc_now(),
-                    completed_at=naive_utc_now(),
-                    created_by=current_user.id,
-                )
-                if document.doc_form == IndexStructureType.QA_INDEX:
-                    segment_document.word_count += len(args["answer"])
-                    segment_document.answer = args["answer"]
-
-            session.add(segment_document)
-            # update document word count
-            assert document.word_count is not None
-            document.word_count += segment_document.word_count
-            session.add(document)
-            session.commit()
-
-            if args["attachment_ids"]:
-                for attachment_id in args["attachment_ids"]:
-                    binding = SegmentAttachmentBinding(
-                        tenant_id=current_user.current_tenant_id,
-                        dataset_id=document.dataset_id,
-                        document_id=document.id,
-                        segment_id=segment_document.id,
-                        attachment_id=attachment_id,
-                    )
-                    session.add(binding)
-                session.commit()
-
-            # save vector index
-            try:
-                keywords = args.get("keywords")
-                keywords_list = [keywords] if keywords is not None else None
-                VectorService.create_segments_vector(
-                    keywords_list, [segment_document], dataset, document.doc_form, session=session
-                )
-            except Exception as e:
-                logger.exception("create segment index failed")
-                segment_document.enabled = False
-                segment_document.disabled_at = naive_utc_now()
-                segment_document.status = SegmentStatus.ERROR
-                segment_document.error = str(e)
-                session.commit()
-            segment = session.get(DocumentSegment, segment_document.id)
-            return segment
-        except LockNotOwnedError:
-            pass
+        validate_segment_values(
+            args, doc_form=document.doc_form, attachment_limit=dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT
+        )
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset, session: Session):
@@ -3457,9 +3357,9 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
         session: Session,
+        *,
+        actor_id: str,
     ):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
 
         indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
@@ -3471,7 +3371,7 @@ class SegmentService:
                 if not action:
                     segment.enabled = action
                     segment.disabled_at = naive_utc_now()
-                    segment.disabled_by = current_user.id
+                    segment.disabled_by = actor_id
                     session.add(segment)
                     session.commit()
                     # Set cache to prevent indexing the same segment multiple times
@@ -3578,9 +3478,9 @@ class SegmentService:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
                 if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                    model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
+                    model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
                     embedding_model = model_manager.get_model_instance(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=dataset.tenant_id,
                         provider=dataset.embedding_model_provider,
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
@@ -3599,7 +3499,7 @@ class SegmentService:
                 segment.status = SegmentStatus.COMPLETED
                 segment.indexing_at = naive_utc_now()
                 segment.completed_at = naive_utc_now()
-                segment.updated_by = current_user.id
+                segment.updated_by = actor_id
                 segment.updated_at = naive_utc_now()
                 segment.enabled = True
                 segment.disabled_at = None
@@ -3772,132 +3672,6 @@ class SegmentService:
         session.commit()
 
     @classmethod
-    def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset, session: Session):
-        assert current_user is not None
-        # Check if segment_ids is not empty to avoid WHERE false condition
-        if not segment_ids or len(segment_ids) == 0:
-            return
-        segments_info = session.execute(
-            select(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count).where(
-                DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.tenant_id == current_user.current_tenant_id,
-            )
-        ).all()
-
-        if not segments_info:
-            return
-
-        index_node_ids = [info[0] for info in segments_info]
-        segment_db_ids = [info[1] for info in segments_info]
-        total_words = sum(info[2] for info in segments_info if info[2] is not None)
-
-        # Get child chunk IDs before parent segments are deleted
-        child_node_ids = []
-        if index_node_ids:
-            child_node_ids = [
-                nid
-                for nid in session.scalars(
-                    select(ChildChunk.index_node_id).where(
-                        ChildChunk.segment_id.in_(segment_db_ids),
-                        ChildChunk.dataset_id == dataset.id,
-                    )
-                ).all()
-                if nid
-            ]
-
-        # Start async cleanup with both parent and child node IDs
-        if index_node_ids or child_node_ids:
-            delete_segment_from_index_task.delay(
-                index_node_ids, dataset.id, document.id, segment_db_ids, child_node_ids
-            )
-
-        if document.word_count is None:
-            document.word_count = 0
-        else:
-            document.word_count = max(0, document.word_count - total_words)
-
-        session.add(document)
-
-        # Delete database records
-        session.execute(
-            delete(DocumentSegment).where(
-                DocumentSegment.id.in_(segment_db_ids),
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.tenant_id == current_user.current_tenant_id,
-            )
-        )
-        session.commit()
-
-    @classmethod
-    def update_segments_status(
-        cls,
-        segment_ids: list,
-        action: Literal["enable", "disable"],
-        dataset: Dataset,
-        document: Document,
-        session: Session,
-    ):
-        assert current_user is not None
-
-        # Check if segment_ids is not empty to avoid WHERE false condition
-        if not segment_ids or len(segment_ids) == 0:
-            return
-        match action:
-            case "enable":
-                segments = session.scalars(
-                    select(DocumentSegment).where(
-                        DocumentSegment.id.in_(segment_ids),
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.document_id == document.id,
-                        DocumentSegment.enabled == False,
-                    )
-                ).all()
-                if not segments:
-                    return
-                real_deal_segment_ids = []
-                for segment in segments:
-                    indexing_cache_key = f"segment_{segment.id}_indexing"
-                    cache_result = redis_client.get(indexing_cache_key)
-                    if cache_result is not None:
-                        continue
-                    segment.enabled = True
-                    segment.disabled_at = None
-                    segment.disabled_by = None
-                    session.add(segment)
-                    real_deal_segment_ids.append(segment.id)
-                session.commit()
-
-                enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
-            case "disable":
-                segments = session.scalars(
-                    select(DocumentSegment).where(
-                        DocumentSegment.id.in_(segment_ids),
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.document_id == document.id,
-                        DocumentSegment.enabled == True,
-                    )
-                ).all()
-                if not segments:
-                    return
-                real_deal_segment_ids = []
-                for segment in segments:
-                    indexing_cache_key = f"segment_{segment.id}_indexing"
-                    cache_result = redis_client.get(indexing_cache_key)
-                    if cache_result is not None:
-                        continue
-                    segment.enabled = False
-                    segment.disabled_at = naive_utc_now()
-                    segment.disabled_by = current_user.id
-                    session.add(segment)
-                    real_deal_segment_ids.append(segment.id)
-                session.commit()
-
-                disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
-
-    @classmethod
     def create_child_chunk(
         cls,
         content: str,
@@ -3905,8 +3679,9 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
         session: Session,
+        *,
+        actor_id: str,
     ) -> ChildChunk:
-        assert isinstance(current_user, Account)
 
         lock_name = f"add_child_lock_{segment.id}"
         with redis_client.lock(lock_name, timeout=20):
@@ -3914,15 +3689,14 @@ class SegmentService:
             index_node_hash = helper.generate_text_hash(content)
             max_position = session.scalar(
                 select(func.max(ChildChunk.position)).where(
-                    ChildChunk.tenant_id == current_user.current_tenant_id,
+                    ChildChunk.tenant_id == dataset.tenant_id,
                     ChildChunk.dataset_id == dataset.id,
                     ChildChunk.document_id == document.id,
                     ChildChunk.segment_id == segment.id,
                 )
             )
-            assert current_user.current_tenant_id
             child_chunk = ChildChunk(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
                 segment_id=segment.id,
@@ -3932,7 +3706,7 @@ class SegmentService:
                 content=content,
                 word_count=len(content),
                 type=SegmentType.CUSTOMIZED,
-                created_by=current_user.id,
+                created_by=actor_id,
             )
             session.add(child_chunk)
             # save vector index
@@ -3947,86 +3721,6 @@ class SegmentService:
             return child_chunk
 
     @classmethod
-    def update_child_chunks(
-        cls,
-        child_chunks_update_args: list[ChildChunkUpdateArgs],
-        segment: DocumentSegment,
-        document: Document,
-        dataset: Dataset,
-        session: Session,
-    ) -> list[ChildChunk]:
-        assert isinstance(current_user, Account)
-        child_chunks = session.scalars(
-            select(ChildChunk).where(
-                ChildChunk.dataset_id == dataset.id,
-                ChildChunk.document_id == document.id,
-                ChildChunk.segment_id == segment.id,
-            )
-        ).all()
-        child_chunks_map = {chunk.id: chunk for chunk in child_chunks}
-
-        new_child_chunks, update_child_chunks, delete_child_chunks, new_child_chunks_args = [], [], [], []
-
-        for child_chunk_update_args in child_chunks_update_args:
-            if child_chunk_update_args.id:
-                child_chunk = child_chunks_map.pop(child_chunk_update_args.id, None)
-                if child_chunk:
-                    if child_chunk.content != child_chunk_update_args.content:
-                        child_chunk.content = child_chunk_update_args.content
-                        child_chunk.word_count = len(child_chunk.content)
-                        child_chunk.updated_by = current_user.id
-                        child_chunk.updated_at = naive_utc_now()
-                        child_chunk.type = SegmentType.CUSTOMIZED
-                        update_child_chunks.append(child_chunk)
-            else:
-                new_child_chunks_args.append(child_chunk_update_args)
-        if child_chunks_map:
-            delete_child_chunks = list(child_chunks_map.values())
-        try:
-            if update_child_chunks:
-                session.bulk_save_objects(update_child_chunks)
-
-            if delete_child_chunks:
-                for child_chunk in delete_child_chunks:
-                    session.delete(child_chunk)
-            if new_child_chunks_args:
-                child_chunk_count = len(child_chunks)
-                for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
-                    assert current_user.current_tenant_id
-                    index_node_id = str(uuid.uuid4())
-                    index_node_hash = helper.generate_text_hash(args.content)
-                    child_chunk = ChildChunk(
-                        tenant_id=current_user.current_tenant_id,
-                        dataset_id=dataset.id,
-                        document_id=document.id,
-                        segment_id=segment.id,
-                        position=position,
-                        index_node_id=index_node_id,
-                        index_node_hash=index_node_hash,
-                        content=args.content,
-                        word_count=len(args.content),
-                        type=SegmentType.CUSTOMIZED,
-                        created_by=current_user.id,
-                    )
-
-                    session.add(child_chunk)
-                    session.flush()
-                    new_child_chunks.append(child_chunk)
-            VectorService.update_child_chunk_vector(
-                new_child_chunks,
-                update_child_chunks,
-                delete_child_chunks,
-                dataset,
-                session=session,
-            )
-            session.commit()
-        except Exception as e:
-            logger.exception("update child chunk index failed")
-            session.rollback()
-            raise ChildChunkIndexingError(str(e))
-        return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
-
-    @classmethod
     def update_child_chunk(
         cls,
         content: str,
@@ -4035,13 +3729,14 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
         session: Session,
+        *,
+        actor_id: str,
     ) -> ChildChunk:
-        assert current_user is not None
 
         try:
             child_chunk.content = content
             child_chunk.word_count = len(content)
-            child_chunk.updated_by = current_user.id
+            child_chunk.updated_by = actor_id
             child_chunk.updated_at = naive_utc_now()
             child_chunk.type = SegmentType.CUSTOMIZED
             session.add(child_chunk)
@@ -4078,20 +3773,14 @@ class SegmentService:
     ):
         assert isinstance(current_user, Account)
 
-        query = (
-            select(ChildChunk)
-            .filter_by(
-                tenant_id=current_user.current_tenant_id,
-                dataset_id=dataset_id,
-                document_id=document_id,
-                segment_id=segment_id,
-            )
-            .order_by(ChildChunk.position.asc())
+        assert current_user.current_tenant_id is not None
+        return query_child_chunks(
+            session,
+            DatasetRef(current_user.current_tenant_id, dataset_id).document(document_id).segment(segment_id),
+            page=page,
+            limit=limit,
+            keyword=keyword,
         )
-        if keyword:
-            escaped_keyword = helper.escape_like_pattern(keyword)
-            query = query.where(ChildChunk.content.ilike(f"%{escaped_keyword}%", escape="\\"))
-        return paginate_query(query, session=session, page=page, per_page=limit, max_per_page=100)
 
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str, session: Session) -> ChildChunk | None:

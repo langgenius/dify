@@ -184,9 +184,10 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
                 # Direct execution without creating another thread
                 # Since we're already in a thread pool, no need for nested threading
-                from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-                pipeline_generator = PipelineGenerator()
+                from extensions.ext_application_services import application_services
+
+                pipeline_generator = application_services().knowledge.pipeline_generator
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
                     session=session,

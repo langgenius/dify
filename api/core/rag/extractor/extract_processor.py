@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.file import remote_fetcher
+from core.rag.entities.extraction import ExtractSetting, UploadFileExtractionInput
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
@@ -59,7 +59,9 @@ class ExtractProcessor:
         cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
     ) -> list[Document] | str:
         extract_setting = ExtractSetting(
-            datasource_type=DatasourceType.FILE, upload_file=upload_file, document_model="text_model"
+            datasource_type=DatasourceType.FILE,
+            upload_file=UploadFileExtractionInput.model_validate(upload_file),
+            document_model="text_model",
         )
         if return_text:
             delimiter = "\n"

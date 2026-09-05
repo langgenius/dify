@@ -17,8 +17,10 @@ from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.oauth import OAuthHandler
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.application_services.knowledge import KnowledgeServices, build_knowledge_services
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
@@ -36,6 +38,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
@@ -114,10 +117,14 @@ from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.data_source.binding_application_service import DataSourceBindingApplicationService
-from services.data_source.credential_gateway import (
-    ActorAwareDatasourceCredentialGateway,
+from services.data_source.credential_adapters import (
     OAuthDatasourceCredentialRefresher,
     PluginDatasourceCredentialCodec,
+    PluginDatasourceOAuthClientResolver,
+)
+from services.data_source.credential_gateway import (
+    ActorAwareDatasourceCredentialGateway,
+    TrustedStoredDatasourceCredentialGateway,
 )
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportApplicationService
@@ -131,12 +138,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
-from services.knowledge.adapters import CeleryDocumentSyncDispatcher, IndexingRunnerEstimateGateway
-from services.knowledge.application import (
-    DatasetAccessService,
-    DocumentSyncApplicationService,
-    IndexingEstimateApplicationService,
-)
+from services.knowledge.dataset_access import DatasetAccessService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
@@ -225,12 +227,6 @@ class DataSourceServices:
         if service is None:
             raise InvalidDataSourceOAuthProviderError("Invalid provider")
         return service
-
-
-@dataclass(frozen=True, slots=True)
-class KnowledgeServices:
-    document_sync: DocumentSyncApplicationService
-    indexing_estimates: IndexingEstimateApplicationService
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,6 +322,7 @@ def build_application_services(
     workspace_member_repository = WorkspaceMemberQueryRepository(session_factory=database_client)
     datasets = SQLAlchemyDatasetRepository(session_factory=database_client)
     documents = SQLAlchemyDocumentRepository(session_factory=database_client)
+    uploads = SQLAlchemyKnowledgeUploadRepository(session_factory=database_client)
     dataset_access = DatasetAccessService(
         datasets=datasets,
         workspace_roles=workspace_member_repository,
@@ -333,18 +330,40 @@ def build_application_services(
     )
     datasource_credentials = SQLAlchemyDatasourceCredentialRepository(session_factory=database_client)
     datasource_provider_manager = PluginDatasourceManager()
+    datasource_credential_codec = PluginDatasourceCredentialCodec(provider_manager=datasource_provider_manager)
+    datasource_oauth_clients = PluginDatasourceOAuthClientResolver(
+        configs=datasource_credentials,
+        provider_manager=datasource_provider_manager,
+    )
+    credential_refresher = OAuthDatasourceCredentialRefresher(
+        oauth_clients=datasource_oauth_clients,
+        oauth_handler=OAuthHandler(),
+    )
     credential_gateway = ActorAwareDatasourceCredentialGateway(
         credentials=datasource_credentials,
-        codec=PluginDatasourceCredentialCodec(provider_manager=datasource_provider_manager),
-        refresher=OAuthDatasourceCredentialRefresher(
-            session_factory=database_client,
-            provider_manager=datasource_provider_manager,
-        ),
+        codec=datasource_credential_codec,
+        refresher=credential_refresher,
+    )
+    trusted_credential_gateway = TrustedStoredDatasourceCredentialGateway(
+        credentials=datasource_credentials,
+        codec=datasource_credential_codec,
+        refresher=credential_refresher,
     )
     notion_imports = NotionImportApplicationService(
         dataset_access=dataset_access,
+        datasets=datasets,
         documents=documents,
         source=PluginNotionSourceGateway(credentials=credential_gateway),
+    )
+    knowledge = build_knowledge_services(
+        database_client=database_client,
+        dataset_access=dataset_access,
+        datasets=datasets,
+        documents=documents,
+        uploads=uploads,
+        actor_credentials=credential_gateway,
+        stored_credentials=trusted_credential_gateway,
+        redis=redis,
     )
     file_service = FileService(session_factory=database_client)
     passwords = DefaultAccountPasswordHasher()
@@ -509,21 +528,7 @@ def build_application_services(
             bindings=DataSourceBindingApplicationService(bindings=data_source_oauth_bindings),
             notion_imports=notion_imports,
         ),
-        knowledge=KnowledgeServices(
-            document_sync=DocumentSyncApplicationService(
-                dataset_access=dataset_access,
-                documents=documents,
-                dispatcher=CeleryDocumentSyncDispatcher(),
-            ),
-            indexing_estimates=IndexingEstimateApplicationService(
-                dataset_access=dataset_access,
-                documents=documents,
-                gateway=IndexingRunnerEstimateGateway(
-                    session_factory=database_client,
-                    credentials=credential_gateway,
-                ),
-            ),
-        ),
+        knowledge=knowledge,
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),

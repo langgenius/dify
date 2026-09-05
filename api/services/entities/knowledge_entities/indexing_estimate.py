@@ -6,8 +6,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from core.rag.entities.processing_entities import PreProcessingRuleKey
-from services.entities.knowledge_entities.records import DatasetRecord, DocumentRecord
+from core.rag.entities import PreProcessingRuleKey
+from core.rag.extractor.entity.datasource_type import NotionPageType
 
 
 class EstimateValidationError(ValueError):
@@ -93,11 +93,6 @@ _ProcessRule = Annotated[
 ]
 
 
-class _EstimateArgs(BaseModel):
-    info_list: dict[str, object]
-    process_rule: _ProcessRule
-
-
 class _ProcessRuleEnvelope(BaseModel):
     process_rule: _ProcessRule
 
@@ -126,16 +121,6 @@ def normalize_process_rule(process_rule: Mapping[str, object]) -> dict[str, obje
     return result
 
 
-def normalize_indexing_estimate_args(args: Mapping[str, object]) -> dict[str, object]:
-    """Compatibility validator for the existing generic estimate transport."""
-
-    try:
-        validated = _EstimateArgs.model_validate(args)
-    except ValidationError as error:
-        raise EstimateValidationError(_validation_message(error)) from error
-    return normalize_process_rule(validated.process_rule.model_dump(exclude_none=True))
-
-
 @dataclass(frozen=True, slots=True)
 class UploadFileEstimateSource:
     file_id: str
@@ -146,7 +131,7 @@ class UploadFileEstimateSource:
 class NotionEstimateSource:
     workspace_id: str
     page_id: str
-    page_type: str
+    page_type: NotionPageType
     credential_id: str
     source_type: Literal["notion_import"] = field(default="notion_import", init=False)
 
@@ -172,12 +157,3 @@ class NewSourcesEstimateCommand:
     doc_language: str = "English"
     dataset_id: str | None = None
     indexing_technique: str = "economy"
-
-
-@dataclass(frozen=True, slots=True)
-class ExistingDocumentsEstimateCommand:
-    dataset: DatasetRecord
-    documents: tuple[DocumentRecord, ...]
-
-
-type EstimateCommand = NewSourcesEstimateCommand | ExistingDocumentsEstimateCommand

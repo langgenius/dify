@@ -1,5 +1,4 @@
 import types
-from unittest.mock import Mock
 
 import pytest
 from redis.exceptions import LockNotOwnedError
@@ -142,60 +141,6 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
 # ---------------------------------------------------------------------------
 # 2. Single-segment creation (add_segment)
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("sqlite_session", [(Account, Tenant, Dataset, Document, DocumentSegment)], indirect=True)
-def test_add_segment_ignores_lock_not_owned(
-    monkeypatch: pytest.MonkeyPatch,
-    fake_current_user,
-    fake_lock,
-    sqlite_session: Session,
-):
-    # Arrange
-    dataset = Dataset(
-        id=DATASET_ID,
-        tenant_id=TENANT_ID,
-        name="Test Dataset",
-        description="",
-        created_by=USER_ID,
-        indexing_technique=IndexTechniqueType.ECONOMY,
-    )
-    document = Document(
-        id=DOCUMENT_ID,
-        tenant_id=TENANT_ID,
-        dataset_id=DATASET_ID,
-        position=1,
-        data_source_type="upload_file",
-        data_source_info="{}",
-        batch="batch-1",
-        name="Test Document",
-        created_from="web",
-        created_by=USER_ID,
-        word_count=0,
-        doc_form=IndexStructureType.QA_INDEX,
-    )
-    sqlite_session.add_all([fake_current_user._current_tenant, fake_current_user, dataset, document])
-    sqlite_session.commit()
-
-    # Minimal args required by add_segment
-    args = {
-        "content": "question text",
-        "answer": "answer text",
-        "keywords": ["k1", "k2"],
-    }
-
-    monkeypatch.setattr("services.dataset_service.VectorService", Mock())
-
-    # Act
-    result = SegmentService.create_segment(args=args, document=document, dataset=dataset, session=sqlite_session)
-
-    # Assert
-    # Under LockNotOwnedError except, add_segment should swallow the error and return None.
-    assert result is None
-    assert not sqlite_session.in_transaction()
-    assert sqlite_session.scalar(select(func.count(DocumentSegment.id))) == 0
-    sqlite_session.refresh(document)
-    assert document.word_count == 0
 
 
 # ---------------------------------------------------------------------------

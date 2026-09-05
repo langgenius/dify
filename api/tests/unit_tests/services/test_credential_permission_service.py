@@ -202,7 +202,7 @@ class TestApplyVisibilityFilter:
         visible_ids = {subscription.id for subscription in sqlite_session.scalars(query)}
         assert visible_ids == {team_subscription.id, owned_subscription.id, shared_subscription.id}
 
-    def test_actor_entry_point_scopes_partial_permissions_by_tenant(
+    def test_partial_permissions_are_scoped_by_tenant(
         self,
         sqlite_session: Session,
         tenant_id: str,
@@ -228,14 +228,14 @@ class TestApplyVisibilityFilter:
         )
         sqlite_session.commit()
 
-        query = CredentialPermissionService.apply_visibility_filter_for_actor(
+        query = CredentialPermissionService.apply_visibility_filter(
             select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id),
             tenant_id=tenant_id,
             model_id_column=TriggerSubscription.id,
             model_user_id_column=TriggerSubscription.user_id,
             model_visibility_column=TriggerSubscription.visibility,
             credential_type=CredentialType.TRIGGER_SUBSCRIPTION,
-            actor_id=user_id,
+            user=_user(user_id, is_admin=False),
         )
 
         assert sqlite_session.scalars(query).all() == []

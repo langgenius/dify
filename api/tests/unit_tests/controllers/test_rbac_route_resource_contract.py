@@ -18,15 +18,7 @@ ACCEPTED_PATH_ARGS = {
     "DATASET": ("dataset_id", "pipeline_id", "resource_id"),
 }
 
-# Known violations tracked separately: DatasetDocumentSegmentBatchImportApi binds one class
-# to both the dataset-scoped import route and the job-scoped status route, so every method
-# on it is reachable at a path carrying only a job id. Its permission points are genuinely
-# per-dataset, so it needs the route split rather than resource_required=False. Remove
-# these entries with that fix.
-KNOWN_VIOLATIONS = {
-    ("console/datasets/datasets_segments.py", "DatasetDocumentSegmentBatchImportApi", "post"),
-    ("console/datasets/datasets_segments.py", "DatasetDocumentSegmentBatchImportApi", "get"),
-}
+KNOWN_VIOLATIONS: set[tuple[str, str, str]] = set()
 
 
 def _decorator_name(node: ast.Call) -> str:

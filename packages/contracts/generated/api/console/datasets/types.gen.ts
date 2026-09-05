@@ -88,10 +88,6 @@ export type SegmentBatchImportStatusResponse = {
   job_status: string
 }
 
-export type BatchImportPayload = {
-  upload_file_id: string
-}
-
 export type ExternalDatasetCreatePayload = {
   description?: string | null
   external_knowledge_api_id: string
@@ -191,9 +187,7 @@ export type DatasetMetadataBuiltInFieldsResponse = {
 export type NotionEstimatePayload = {
   doc_form?: string
   doc_language?: string
-  notion_info_list: Array<{
-    [key: string]: unknown
-  }>
+  notion_info_list: Array<NotionEstimateWorkspacePayload>
   process_rule: {
     [key: string]: unknown
   }
@@ -441,6 +435,10 @@ export type ConsoleSegmentListResponse = {
   page: number
   total: number
   total_pages: number
+}
+
+export type BatchImportPayload = {
+  upload_file_id: string
 }
 
 export type SegmentUpdatePayload = {
@@ -713,6 +711,12 @@ export type DatasetMetadataBuiltInFieldResponse = {
   type: string
 }
 
+export type NotionEstimateWorkspacePayload = {
+  credential_id: string
+  pages: Array<NotionEstimatePagePayload>
+  workspace_id: string
+}
+
 export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
 export type Rule = {
@@ -929,6 +933,11 @@ export type WeightModel = {
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
 }
 
+export type NotionEstimatePagePayload = {
+  page_id: string
+  type: NotionPageType
+}
+
 export type PreProcessingRule = {
   enabled: boolean
   id: PreProcessingRuleKey
@@ -1063,6 +1072,8 @@ export type WeightVectorSetting = {
   embedding_provider_name: string
   vector_weight: number
 }
+
+export type NotionPageType = 'database' | 'page'
 
 export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 
@@ -1210,22 +1221,6 @@ export type GetDatasetsBatchImportStatusByJobIdResponses = {
 
 export type GetDatasetsBatchImportStatusByJobIdResponse =
   GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
-
-export type PostDatasetsBatchImportStatusByJobIdData = {
-  body: BatchImportPayload
-  path: {
-    job_id: string
-  }
-  query?: never
-  url: '/datasets/batch_import_status/{job_id}'
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponse =
-  PostDatasetsBatchImportStatusByJobIdResponses[keyof PostDatasetsBatchImportStatusByJobIdResponses]
 
 export type PostDatasetsExternalData = {
   body: ExternalDatasetCreatePayload
@@ -2029,23 +2024,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
   GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import'
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
-  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
   body: BatchImportPayload

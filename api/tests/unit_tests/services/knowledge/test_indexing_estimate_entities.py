@@ -2,14 +2,8 @@ import pytest
 
 from services.entities.knowledge_entities.indexing_estimate import (
     EstimateValidationError,
-    normalize_indexing_estimate_args,
     normalize_process_rule,
 )
-
-
-def test_normalize_indexing_estimate_args_requires_info_list() -> None:
-    with pytest.raises(EstimateValidationError, match="Field required"):
-        normalize_indexing_estimate_args({})
 
 
 def test_normalize_process_rule_sets_empty_rules_for_automatic_mode() -> None:
@@ -57,7 +51,9 @@ def test_normalize_process_rule_deduplicates_custom_rules() -> None:
         }
     )
 
-    assert normalized["rules"]["pre_processing_rules"] == [{"id": "remove_stopwords", "enabled": False}]
+    rules = normalized["rules"]
+    assert isinstance(rules, dict)
+    assert rules["pre_processing_rules"] == [{"id": "remove_stopwords", "enabled": False}]
 
 
 def test_normalize_process_rule_drops_hierarchical_fields_from_custom_mode() -> None:
@@ -106,8 +102,10 @@ def test_normalize_process_rule_preserves_hierarchical_fields() -> None:
         }
     )
 
-    assert normalized["rules"]["parent_mode"] == "full-doc"
-    assert normalized["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
+    rules = normalized["rules"]
+    assert isinstance(rules, dict)
+    assert rules["parent_mode"] == "full-doc"
+    assert rules["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
 
 
 def test_normalize_process_rule_defaults_hierarchical_parent_mode() -> None:
@@ -122,5 +120,7 @@ def test_normalize_process_rule_defaults_hierarchical_parent_mode() -> None:
         }
     )
 
-    assert normalized["rules"]["parent_mode"] == "paragraph"
-    assert normalized["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
+    rules = normalized["rules"]
+    assert isinstance(rules, dict)
+    assert rules["parent_mode"] == "paragraph"
+    assert rules["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}

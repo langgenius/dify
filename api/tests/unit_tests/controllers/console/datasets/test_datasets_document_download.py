@@ -156,9 +156,9 @@ def _wire_common_success_mocks(
         upload_file_id=upload_file_id,
     )
     monkeypatch.setattr(
-        module.DatasetRefService,
-        "get_document_by_ref",
-        lambda *_args, **_kwargs: document if document.tenant_id == "tenant-123" else None,
+        module.DocumentService,
+        "get_documents_by_ids",
+        lambda *_args, **_kwargs: [document] if document.tenant_id == "tenant-123" else [],
     )
 
     # Mock UploadFile lookup via FileService batch helper.

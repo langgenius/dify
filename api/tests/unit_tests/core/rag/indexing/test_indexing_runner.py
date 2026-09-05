@@ -1833,12 +1833,26 @@ class TestIndexingRunnerEstimate:
             used=True,
         )
         image_file.id = "image-1"
-        session.add(image_file)
+        foreign_image_file = UploadFile(
+            tenant_id=str(uuid.uuid4()),
+            storage_type=StorageType.LOCAL,
+            key="image_files/tenant-2/foreign.png",
+            name="foreign.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-id",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        foreign_image_file.id = "image-2"
+        session.add_all([image_file, foreign_image_file])
         session.commit()
         phase_events.clear()
 
         with (
-            patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1"]),
+            patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1", "image-2"]),
             patch("core.indexing_runner.storage") as mock_storage,
         ):
             result = runner.indexing_estimate(
@@ -1856,6 +1870,7 @@ class TestIndexingRunnerEstimate:
         assert result.total_segments == 1
         mock_storage.delete.assert_called_once_with(image_file.key)
         assert session.get(UploadFile, image_file.id) is None
+        assert session.get(UploadFile, foreign_image_file.id) is not None
         assert phase_events == ["commit", "summary"]
 
 

@@ -25,6 +25,12 @@ class InvalidActionError(BaseHTTPException):
     code = 400
 
 
+class DatasetAccessDeniedRequestError(BaseHTTPException):
+    error_code = "dataset_access_denied"
+    description = "Dataset access denied."
+    code = 403
+
+
 class DocumentAlreadyFinishedError(BaseHTTPException):
     error_code = "document_already_finished"
     description = "The document has been processed. Please refresh the page or go to the document details."

@@ -7,6 +7,7 @@ root_packages =
     controllers
     extensions
     factories
+    fields
     libs
     machinery
     models
@@ -16,7 +17,7 @@ root_packages =
 include_external_packages = True
 
 [importlinter:contract:backend-layers]
-name = Backend modules follow the transport, application, domain, and shared-library layers
+name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
 type = layers
 layers =
     controllers
@@ -52,7 +53,6 @@ ignore_imports =
     core.app.apps.pipeline.pipeline_generator -> services.datasource_provider_service
     core.app.apps.pipeline.pipeline_generator -> services.feature_service
     core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
-    core.app.apps.pipeline.pipeline_runner -> services.dataset_ref_service
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
@@ -175,13 +175,22 @@ forbidden_modules =
 name = Dataset application services and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
+    core.rag.entities.extraction
+    services.entities.knowledge_entities.segments
     services.data_source.binding_application_service
+    services.data_source.credential_gateway
     services.data_source.notion_import_application_service
     services.entities.data_source.credential
     services.entities.data_source.notion_import
     services.entities.knowledge_entities.indexing_estimate
-    services.knowledge.application
+    services.knowledge.dataset_access
+    services.knowledge.document_sync
+    services.knowledge.indexing.errors
+    services.knowledge.indexing.estimate
+    services.knowledge.resource_scope
+    services.knowledge.segments.application
 forbidden_modules =
+    fields
     configs
     controllers
     extensions
@@ -193,25 +202,76 @@ forbidden_modules =
     werkzeug
     services.dataset_service
     services.datasource_provider_service
+    services.knowledge.indexing.adapters
+    services.knowledge.segments.adapters
+    services.knowledge.segments.indexing
     core.datasource.datasource_manager
-    core.indexing_runner
     core.rag.extractor.notion_extractor
 
-[importlinter:contract:dataset-reference-boundary]
-name = Dataset owner references do not depend on web application layers
+[importlinter:contract:knowledge-repository-boundary]
+name = Knowledge persistence adapters only depend on their consumer-owned application contracts
 type = forbidden
 source_modules =
-    core.rag.entities.dataset_reference
+    repositories.knowledge
 forbidden_modules =
     controllers
     extensions
     flask
-    models
-    repositories
     services
-    sqlalchemy
     tasks
     werkzeug
+allow_indirect_imports = True
+ignore_imports =
+    repositories.knowledge.dataset_repository -> services.knowledge.segments.application
+    repositories.knowledge.dataset_repository -> services.knowledge.dataset_access
+    repositories.knowledge.dataset_repository -> services.knowledge.indexing.estimate
+    repositories.knowledge.dataset_repository -> services.knowledge.resource_scope
+    repositories.knowledge.document_repository -> services.knowledge.document_sync
+    repositories.knowledge.document_repository -> services.knowledge.indexing.estimate
+    repositories.knowledge.document_repository -> services.knowledge.resource_scope
+    repositories.knowledge.segment_repository -> services.knowledge.resource_scope
+    repositories.knowledge.segment_repository -> services.knowledge.segments.application
+    repositories.knowledge.segment_repository -> services.entities.knowledge_entities.segments
+
+[importlinter:contract:datasource-credential-repository-boundary]
+name = Data source credential persistence does not depend on SQLAlchemy service helpers
+type = forbidden
+source_modules =
+    repositories.credential_permission_repository
+    repositories.data_source.credential_repository
+forbidden_modules =
+    services.credential_permission_service
+allow_indirect_imports = True
+
+[importlinter:contract:dataset-ref-service-boundary]
+name = Dataset reference helpers do not own persistence
+type = forbidden
+source_modules =
+    services.dataset_ref_service
+forbidden_modules =
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:credential-permission-query-policy-boundary]
+name = Credential permission service delegates its persistence policy
+type = forbidden
+source_modules =
+    services.credential_permission_service
+forbidden_modules =
+    models.credential_permission
+    models.enums
+allow_indirect_imports = True
+
+[importlinter:contract:pipeline-document-lookup-boundary]
+name = Pipeline core depends on its document store port
+type = forbidden
+source_modules =
+    core.app.apps.pipeline.pipeline_generator
+    core.app.apps.pipeline.pipeline_runner
+forbidden_modules =
+    repositories
+allow_indirect_imports = True
 
 [importlinter:contract:init-validation-service-boundary]
 name = Initialization validation application service is framework and persistence neutral
@@ -550,3 +610,13 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:knowledge-segment-presentation-boundary]
+name = Segment application and infrastructure do not serialize HTTP responses
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    services.knowledge.segments
+forbidden_modules =
+    controllers
+    fields

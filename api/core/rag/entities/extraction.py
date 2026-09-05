@@ -1,7 +1,24 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.dataset import Document
-from models.model import UploadFile
+
+class UploadFileExtractionInput(BaseModel):
+    """Detached values required to extract one tenant-owned upload."""
+
+    id: str
+    tenant_id: str
+    key: str
+    created_by: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StoredDocumentExtractionInput(BaseModel):
+    """Detached document values needed to record a source's last edited time."""
+
+    id: str
+    tenant_id: str
+    dataset_id: str
+    data_source_info_dict: dict[str, object] | None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotionInfo(BaseModel):
@@ -13,18 +30,15 @@ class NotionInfo(BaseModel):
     notion_workspace_id: str | None = ""
     notion_obj_id: str
     notion_page_type: str
-    document: Document | None = None
+    document: StoredDocumentExtractionInput | None = None
     tenant_id: str
     notion_access_token: str | None = Field(default=None, exclude=True, repr=False)
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class WebsiteInfo(BaseModel):
     """
     website import info.
     """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     provider: str
     job_id: str
@@ -40,8 +54,7 @@ class ExtractSetting(BaseModel):
     """
 
     datasource_type: str
-    upload_file: UploadFile | None = None
+    upload_file: UploadFileExtractionInput | None = None
     notion_info: NotionInfo | None = None
     website_info: WebsiteInfo | None = None
     document_model: str | None = None
-    model_config = ConfigDict(arbitrary_types_allowed=True)

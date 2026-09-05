@@ -2,42 +2,47 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from core.rag.entities.dataset_reference import DatasetRef
+from core.rag.extractor.entity.datasource_type import NotionPageType
 from machinery.context import RequestContext
 from services.data_source.notion_import_application_service import (
     DatasetIsNotNotionSourceError,
     NotionImportApplicationService,
 )
 from services.entities.data_source.notion_import import AuthorizedNotionPage, NotionWorkspace
-from services.entities.knowledge_entities.records import DatasetRecord
+from services.knowledge.dataset_access import AccessibleDataset
+from services.knowledge.resource_scope import DatasetRef
 
 
 def _context() -> RequestContext:
     return RequestContext("request-1", None, "account-1", "workspace-1")
 
 
-def _dataset(*, data_source_type: str = "notion_import") -> DatasetRecord:
-    return DatasetRecord(
+def _dataset() -> AccessibleDataset:
+    return AccessibleDataset(
         id="dataset-1",
         workspace_id="workspace-1",
-        maintainer_id="account-1",
-        permission="only_me",
-        data_source_type=data_source_type,
-        indexing_technique="high_quality",
-        embedding_model=None,
-        embedding_model_provider=None,
     )
 
 
 @dataclass
 class DatasetAccessStub:
-    dataset: DatasetRecord = field(default_factory=_dataset)
+    dataset: AccessibleDataset = field(default_factory=_dataset)
     calls: list[str] = field(default_factory=list)
 
-    def require_accessible(self, context: RequestContext, dataset_id: str) -> DatasetRecord:
+    def require_accessible(self, context: RequestContext, dataset_id: str) -> AccessibleDataset:
         assert context == _context()
         self.calls.append(dataset_id)
         return self.dataset
+
+
+@dataclass
+class NotionDatasetReaderStub:
+    is_notion: bool = True
+    refs: list[DatasetRef] = field(default_factory=list)
+
+    def is_notion_dataset(self, dataset_ref: DatasetRef) -> bool:
+        self.refs.append(dataset_ref)
+        return self.is_notion
 
 
 @dataclass
@@ -69,7 +74,7 @@ class NotionSourceStub:
         actor_id: str,
         credential_id: str,
         page_id: str,
-        page_type: str,
+        page_type: NotionPageType,
     ) -> str:
         self.preview_calls.append((workspace_id, actor_id, credential_id, page_id, page_type))
         return "preview"
@@ -78,19 +83,21 @@ class NotionSourceStub:
 def _service(
     *,
     access: DatasetAccessStub | None = None,
+    datasets: NotionDatasetReaderStub | None = None,
     documents: DocumentBindingReaderStub | None = None,
     source: NotionSourceStub | None = None,
 ) -> NotionImportApplicationService:
     return NotionImportApplicationService(
         dataset_access=access or DatasetAccessStub(),
+        datasets=datasets or NotionDatasetReaderStub(),
         documents=documents or DocumentBindingReaderStub(),
         source=source or NotionSourceStub(),
     )
 
 
-def test_list_pages_preserves_workspace_groups_and_marks_bound_pages() -> None:
-    page_1 = AuthorizedNotionPage("page-1", "One", None, None, "page")
-    page_2 = AuthorizedNotionPage("page-2", "Two", None, "page-1", "page")
+def test_list_pages_preserves_workspaces_and_marks_bound_pages() -> None:
+    page_1 = AuthorizedNotionPage("page-1", "One", None, None, NotionPageType.PAGE)
+    page_2 = AuthorizedNotionPage("page-2", "Two", None, "page-1", NotionPageType.PAGE)
     source = NotionSourceStub(
         workspaces=(
             NotionWorkspace("notion-workspace-1", "First", None, (page_1,)),
@@ -124,14 +131,15 @@ def test_list_pages_without_dataset_does_not_read_document_bindings() -> None:
 
 
 def test_list_pages_rejects_non_notion_dataset_before_external_call() -> None:
-    access = DatasetAccessStub(dataset=_dataset(data_source_type="upload_file"))
+    datasets = NotionDatasetReaderStub(is_notion=False)
     source = NotionSourceStub()
 
     with pytest.raises(DatasetIsNotNotionSourceError):
-        _service(access=access, source=source).list_pages(
+        _service(datasets=datasets, source=source).list_pages(
             _context(), credential_id="credential-1", dataset_id="dataset-1"
         )
 
+    assert datasets.refs == [DatasetRef("workspace-1", "dataset-1")]
     assert source.list_calls == []
 
 
@@ -139,7 +147,7 @@ def test_preview_passes_explicit_actor_and_workspace() -> None:
     source = NotionSourceStub()
 
     content = _service(source=source).preview_page(
-        _context(), credential_id="credential-1", page_id="page-1", page_type="page"
+        _context(), credential_id="credential-1", page_id="page-1", page_type=NotionPageType.PAGE
     )
 
     assert content == "preview"

@@ -2,8 +2,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator
 
-from core.rag.entities import Rule
-from core.rag.entities.metadata_entities import MetadataFilteringCondition
+from core.rag.entities import MetadataFilteringCondition, Rule
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from libs.helper import UUIDStr
@@ -248,24 +247,6 @@ class SegmentCreateArgs(BaseModel):
     answer: str | None = Field(default=None, description="Answer content for QA mode.")
     keywords: list[str] | None = Field(default=None, description="Keywords for the chunk.")
     attachment_ids: list[str] | None = Field(default=None, description="Attachment file IDs.")
-
-
-class SegmentUpdateArgs(BaseModel):
-    content: str | None = Field(default=None, description="Updated chunk text content.")
-    answer: str | None = Field(default=None, description="Updated answer content for QA mode.")
-    keywords: list[str] | None = Field(default=None, description="Updated keywords for the chunk.")
-    regenerate_child_chunks: bool = Field(
-        default=False,
-        description="Whether to regenerate child chunks after updating a parent chunk.",
-    )
-    enabled: bool | None = Field(default=None, description="Whether the chunk is enabled.")
-    attachment_ids: list[str] | None = Field(default=None, description="Attachment file IDs.")
-    summary: str | None = Field(default=None, description="Summary content for summary index.")
-
-
-class ChildChunkUpdateArgs(BaseModel):
-    id: str | None = Field(default=None, description="Existing child chunk ID. Omit to create a new child chunk.")
-    content: str = Field(description="Child chunk text content.")
 
 
 class MetadataArgs(BaseModel):

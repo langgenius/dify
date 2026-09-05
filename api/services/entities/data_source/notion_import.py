@@ -3,6 +3,8 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from core.rag.extractor.entity.datasource_type import NotionPageType
+
 
 @dataclass(frozen=True, slots=True)
 class NotionPageIcon:
@@ -17,7 +19,7 @@ class AuthorizedNotionPage:
     page_name: str
     page_icon: NotionPageIcon | None
     parent_id: str | None
-    page_type: str
+    page_type: NotionPageType
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +28,7 @@ class NotionImportPage:
     page_name: str
     page_icon: NotionPageIcon | None
     parent_id: str | None
-    page_type: str
+    page_type: NotionPageType
     is_bound: bool
 
 

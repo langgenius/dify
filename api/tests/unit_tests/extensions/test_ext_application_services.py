@@ -49,13 +49,19 @@ from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.data_source.binding_application_service import DataSourceBindingApplicationService
+from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportApplicationService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.entities.mail_entities import InnerMailMessage
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
-from services.knowledge.application import DocumentSyncApplicationService, IndexingEstimateApplicationService
+from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.document_sync import DocumentSyncApplicationService
+from services.knowledge.indexing.adapters.estimate import IndexingRunnerEstimateAdapter, SQLAlchemyProcessRuleReader
+from services.knowledge.indexing.adapters.sources import NotionSourceResolver
+from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
+from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
@@ -507,19 +513,24 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
     assert isinstance(services.data_sources.notion_imports, NotionImportApplicationService)
     assert isinstance(services.knowledge.document_sync, DocumentSyncApplicationService)
     assert isinstance(services.knowledge.indexing_estimates, IndexingEstimateApplicationService)
+    assert isinstance(services.knowledge.segments, DatasetSegmentApplicationService)
     assert services.data_sources.bindings._bindings is services.data_sources.oauth["notion"]._bindings
     assert services.data_sources.notion_imports._dataset_access is services.knowledge.document_sync._dataset_access
     assert services.data_sources.notion_imports._dataset_access is services.knowledge.indexing_estimates._dataset_access
     assert services.data_sources.notion_imports._documents is services.knowledge.document_sync._documents
     assert services.data_sources.notion_imports._documents is services.knowledge.indexing_estimates._documents
-    assert (
-        services.data_sources.notion_imports._source._credentials
-        is services.knowledge.indexing_estimates._gateway._credentials
-    )
-    assert (
-        services.workspace_member_queries._members
-        is services.data_sources.notion_imports._dataset_access._workspace_roles
-    )
+    notion_source = services.data_sources.notion_imports._source
+    estimate_service = services.knowledge.indexing_estimates
+    dataset_access = services.data_sources.notion_imports._dataset_access
+    assert isinstance(notion_source, PluginNotionSourceGateway)
+    assert isinstance(estimate_service._runner, IndexingRunnerEstimateAdapter)
+    assert isinstance(estimate_service._process_rules, SQLAlchemyProcessRuleReader)
+    assert isinstance(dataset_access, DatasetAccessService)
+    notion_resolver = estimate_service._notion
+    assert isinstance(notion_resolver, NotionSourceResolver)
+    assert notion_source._credentials is notion_resolver._actor_credentials
+    assert notion_resolver._stored_credentials is not notion_resolver._actor_credentials
+    assert services.workspace_member_queries._members is dataset_access._workspace_roles
 
 
 @pytest.mark.parametrize(

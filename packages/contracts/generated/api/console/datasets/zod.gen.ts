@@ -44,13 +44,6 @@ export const zSegmentBatchImportStatusResponse = z.object({
 })
 
 /**
- * BatchImportPayload
- */
-export const zBatchImportPayload = z.object({
-  upload_file_id: z.string(),
-})
-
-/**
  * ExternalDatasetCreatePayload
  *
  * Validated fields required to create an external dataset binding.
@@ -93,16 +86,6 @@ export const zIndexingEstimatePayload = z.object({
   doc_language: z.string().optional().default('English'),
   indexing_technique: z.string(),
   info_list: z.record(z.string(), z.unknown()),
-  process_rule: z.record(z.string(), z.unknown()),
-})
-
-/**
- * NotionEstimatePayload
- */
-export const zNotionEstimatePayload = z.object({
-  doc_form: z.string().optional().default('text_model'),
-  doc_language: z.string().optional().default('English'),
-  notion_info_list: z.array(z.record(z.string(), z.unknown())),
   process_rule: z.record(z.string(), z.unknown()),
 })
 
@@ -207,6 +190,13 @@ export const zSegmentCreatePayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
   content: z.string(),
   keywords: z.array(z.string()).nullish(),
+})
+
+/**
+ * BatchImportPayload
+ */
+export const zBatchImportPayload = z.object({
+  upload_file_id: z.string(),
 })
 
 /**
@@ -1244,6 +1234,38 @@ export const zHitTestingPayload = z.object({
   retrieval_model: zRetrievalModel.nullish(),
 })
 
+/**
+ * NotionPageType
+ */
+export const zNotionPageType = z.enum(['database', 'page'])
+
+/**
+ * NotionEstimatePagePayload
+ */
+export const zNotionEstimatePagePayload = z.object({
+  page_id: z.string().min(1),
+  type: zNotionPageType,
+})
+
+/**
+ * NotionEstimateWorkspacePayload
+ */
+export const zNotionEstimateWorkspacePayload = z.object({
+  credential_id: z.string().min(1),
+  pages: z.array(zNotionEstimatePagePayload).min(1),
+  workspace_id: z.string().min(1),
+})
+
+/**
+ * NotionEstimatePayload
+ */
+export const zNotionEstimatePayload = z.object({
+  doc_form: z.string().optional().default('text_model'),
+  doc_language: z.string().optional().default('English'),
+  notion_info_list: z.array(zNotionEstimateWorkspacePayload).min(1),
+  process_rule: z.record(z.string(), z.unknown()),
+})
+
 export const zPreProcessingRuleKey = z.enum([
   'remove_extra_spaces',
   'remove_stopwords',
@@ -1519,17 +1541,6 @@ export const zGetDatasetsBatchImportStatusByJobIdPath = z.object({
  * Batch import status
  */
 export const zGetDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
-
-export const zPostDatasetsBatchImportStatusByJobIdBody = zBatchImportPayload
-
-export const zPostDatasetsBatchImportStatusByJobIdPath = z.object({
-  job_id: z.uuid(),
-})
-
-/**
- * Batch import started
- */
-export const zPostDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 
@@ -1995,17 +2006,6 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.objec
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
   zConsoleSegmentListResponse
-
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath = z.object({
-  dataset_id: z.uuid(),
-  document_id: z.uuid(),
-})
-
-/**
- * Batch import status
- */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
-  zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportBody =
   zBatchImportPayload

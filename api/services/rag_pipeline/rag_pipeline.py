@@ -1067,7 +1067,16 @@ class RagPipelineService:
                         if dataset:
                             dataset_ref = DatasetRefService.create_dataset_ref(dataset)
                             document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id.value)
-                            document = DatasetRefService.get_document_by_ref(document_ref, session=self._session)
+                            from services.dataset_service import DocumentService
+
+                            document = next(
+                                iter(
+                                    DocumentService.get_documents_by_ids(
+                                        document_ref.dataset, [document_ref.document_id], self._session
+                                    )
+                                ),
+                                None,
+                            )
                             if document:
                                 document.indexing_status = IndexingStatus.ERROR
                                 document.error = error
@@ -1497,7 +1506,9 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(self, dataset: Dataset, document: Document, user: Account | EndUser):
+    def retry_error_document(
+        self, dataset: Dataset, document: Document, user: Account | EndUser, *, generator: PipelineGenerator
+    ):
         """
         Retry error document
         """
@@ -1513,7 +1524,7 @@ class RagPipelineService:
         workflow = self.get_published_workflow(pipeline)
         if not workflow:
             raise ValueError("Workflow not found")
-        PipelineGenerator().generate(
+        generator.generate(
             session=self._session,
             pipeline=pipeline,
             workflow=workflow,

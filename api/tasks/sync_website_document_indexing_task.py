@@ -27,6 +27,8 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
 
     Usage: sync_website_document_indexing_task.delay(dataset_id, document_id)
     """
+    from services.dataset_service import DocumentService
+
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -36,7 +38,9 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         tenant_id = dataset.tenant_id
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
-        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+        document = next(
+            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+        )
         if document is None:
             logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             return
@@ -107,7 +111,10 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             redis_client.delete(sync_indexing_cache_key)
         except Exception as ex:
             session.rollback()
-            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+            document = next(
+                iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)),
+                None,
+            )
             if document:
                 document.indexing_status = IndexingStatus.ERROR
                 document.error = str(ex)

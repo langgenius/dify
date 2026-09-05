@@ -140,7 +140,7 @@ def test_public_operations_translate_malformed_page_payload(
             return httpx.Response(200, json={"object": "user", "type": "bot", "bot": {}})
         if request.url.path == "/v1/search":
             payload = json.loads(request.content)
-            results = [{}] if payload["filter"]["value"] == "page" else []
+            results: list[dict[str, object]] = [{}] if payload["filter"]["value"] == "page" else []
             return httpx.Response(200, json={"results": results, "has_more": False})
         raise AssertionError(f"Unexpected Notion request: {request.url}")
 

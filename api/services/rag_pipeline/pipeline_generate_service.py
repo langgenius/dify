@@ -6,12 +6,13 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.rag.entities.dataset_reference import DocumentRef
 from models.dataset import Pipeline
 from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.dataset_ref_service import DatasetRefService
+from services.dataset_service import DocumentService
+from services.knowledge.resource_scope import DocumentRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
@@ -26,6 +27,7 @@ class PipelineGenerateService:
         streaming: bool = True,
         *,
         session: Session,
+        generator: PipelineGenerator,
     ):
         """
         Pipeline Content Generate
@@ -46,7 +48,7 @@ class PipelineGenerateService:
                 document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, original_document_id)
                 cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
-                PipelineGenerator().generate(
+                generator.generate(
                     session=session,
                     pipeline=pipeline,
                     workflow=workflow,
@@ -72,11 +74,19 @@ class PipelineGenerateService:
 
     @classmethod
     def generate_single_iteration(
-        cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
+        cls,
+        pipeline: Pipeline,
+        user: Account,
+        node_id: str,
+        args: Any,
+        session: Session,
+        streaming: bool = True,
+        *,
+        generator: PipelineGenerator,
     ):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_iteration_generate(
+            generator.single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,
@@ -89,11 +99,19 @@ class PipelineGenerateService:
 
     @classmethod
     def generate_single_loop(
-        cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
+        cls,
+        pipeline: Pipeline,
+        user: Account,
+        node_id: str,
+        args: Any,
+        session: Session,
+        streaming: bool = True,
+        *,
+        generator: PipelineGenerator,
     ):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_loop_generate(
+            generator.single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,
                 node_id=node_id,
@@ -131,7 +149,9 @@ class PipelineGenerateService:
     @classmethod
     def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
         """Set a document in the owner-bound dataset to waiting."""
-        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+        document = next(
+            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+        )
         if document is None:
             raise ValueError("Pipeline document not found")
         document.indexing_status = IndexingStatus.WAITING

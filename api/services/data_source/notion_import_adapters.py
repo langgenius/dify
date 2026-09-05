@@ -1,12 +1,16 @@
 """Notion plugin and extractor adapter for import use cases."""
 
+import logging
 from collections.abc import Callable, Mapping
 from typing import Protocol, cast
 
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.rag.extractor.entity.datasource_type import NotionPageType
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.models.document import Document as ExtractedDocument
+from services.data_source.credential_gateway import ActorDatasourceCredentialResolver, DatasourceCredentialError
+from services.data_source.notion_import_application_service import NotionImportCredentialUnavailableError
 from services.entities.data_source.notion_import import (
     AuthorizedNotionPage,
     NotionWorkspace,
@@ -16,18 +20,7 @@ from services.entities.data_source.notion_import import (
 _NOTION_PROVIDER = "notion_datasource"
 _NOTION_PLUGIN = "langgenius/notion_datasource"
 _NOTION_RUNTIME_PROVIDER = f"{_NOTION_PLUGIN}/{_NOTION_PROVIDER}"
-
-
-class _CredentialResolver(Protocol):
-    def resolve(
-        self,
-        *,
-        workspace_id: str,
-        actor_id: str,
-        credential_id: str,
-        provider: str,
-        plugin_id: str,
-    ) -> dict[str, object]: ...
+logger = logging.getLogger(__name__)
 
 
 class _RuntimeLoader(Protocol):
@@ -45,20 +38,11 @@ class _NotionPageExtractor(Protocol):
     def extract(self) -> list[ExtractedDocument]: ...
 
 
-class NotionSourceAdapterError(Exception):
-    """Base class for Notion adapter failures."""
-
-
-class NotionCredentialDataError(NotionSourceAdapterError):
-    def __init__(self) -> None:
-        super().__init__("Notion credential does not contain an integration secret")
-
-
 class PluginNotionSourceGateway:
     def __init__(
         self,
         *,
-        credentials: _CredentialResolver,
+        credentials: ActorDatasourceCredentialResolver,
         runtime_loader: _RuntimeLoader | None = None,
         extractor_factory: Callable[..., _NotionPageExtractor] = NotionExtractor,
     ) -> None:
@@ -89,33 +73,40 @@ class PluginNotionSourceGateway:
         )
         runtime.runtime.credentials = dict(credentials)
 
-        grouped: dict[tuple[str | None, str | None, str | None], list[AuthorizedNotionPage]] = {}
+        workspaces: dict[str | None, tuple[str | None, str | None, list[AuthorizedNotionPage]]] = {}
         for message in runtime.get_online_document_pages(
             user_id=actor_id,
             datasource_parameters={},
             provider_type=runtime.datasource_provider_type(),
         ):
             for workspace in message.result:
-                key = (workspace.workspace_id, workspace.workspace_name, workspace.workspace_icon)
-                pages = grouped.setdefault(key, [])
-                pages.extend(
-                    AuthorizedNotionPage(
-                        page_id=page.page_id,
-                        page_name=page.page_name,
-                        page_icon=notion_page_icon(page.page_icon),
-                        parent_id=page.parent_id,
-                        page_type=page.type,
+                workspace_info = workspaces.get(workspace.workspace_id)
+                if workspace_info is None:
+                    workspace_info = (workspace.workspace_name, workspace.workspace_icon, [])
+                    workspaces[workspace.workspace_id] = workspace_info
+                for page in workspace.pages:
+                    try:
+                        page_type = NotionPageType(page.type)
+                    except (TypeError, ValueError):
+                        logger.warning("Skipping unsupported Notion page type %r for page %s", page.type, page.page_id)
+                        continue
+                    workspace_info[2].append(
+                        AuthorizedNotionPage(
+                            page_id=page.page_id,
+                            page_name=page.page_name,
+                            page_icon=notion_page_icon(page.page_icon),
+                            parent_id=page.parent_id,
+                            page_type=page_type,
+                        )
                     )
-                    for page in workspace.pages
-                )
         return tuple(
             NotionWorkspace(
-                workspace_id=key[0],
-                workspace_name=key[1],
-                workspace_icon=key[2],
+                workspace_id=workspace_id,
+                workspace_name=workspace_name,
+                workspace_icon=workspace_icon,
                 pages=tuple(pages),
             )
-            for key, pages in grouped.items()
+            for workspace_id, (workspace_name, workspace_icon, pages) in workspaces.items()
         )
 
     def preview_page(
@@ -125,16 +116,16 @@ class PluginNotionSourceGateway:
         actor_id: str,
         credential_id: str,
         page_id: str,
-        page_type: str,
+        page_type: NotionPageType,
     ) -> str:
         credentials = self._resolve_credentials(workspace_id, actor_id, credential_id)
         integration_secret = credentials.get("integration_secret")
         if not isinstance(integration_secret, str) or not integration_secret:
-            raise NotionCredentialDataError()
+            raise NotionImportCredentialUnavailableError()
         extractor = self._extractor_factory(
             notion_workspace_id="",
             notion_obj_id=page_id,
-            notion_page_type=page_type,
+            notion_page_type=page_type.value,
             notion_access_token=integration_secret,
             tenant_id=workspace_id,
         )
@@ -146,10 +137,13 @@ class PluginNotionSourceGateway:
         actor_id: str,
         credential_id: str,
     ) -> Mapping[str, object]:
-        return self._credentials.resolve(
-            workspace_id=workspace_id,
-            actor_id=actor_id,
-            credential_id=credential_id,
-            provider=_NOTION_PROVIDER,
-            plugin_id=_NOTION_PLUGIN,
-        )
+        try:
+            return self._credentials.resolve(
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                credential_id=credential_id,
+                provider=_NOTION_PROVIDER,
+                plugin_id=_NOTION_PLUGIN,
+            )
+        except DatasourceCredentialError as error:
+            raise NotionImportCredentialUnavailableError() from error

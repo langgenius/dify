@@ -18,25 +18,49 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
+from controllers.console.app.error import (
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.console.datasets.error import (
+    ArchivedDocumentImmutableError,
+    DatasetAccessDeniedRequestError,
+    DocumentAlreadyFinishedError,
+    DocumentIndexingError,
+    IndexingEstimateError,
+    InvalidActionError,
+    InvalidMetadataError,
+)
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    check_knowledge_rate_limit,
+    cloud_edition_billing_rate_limit_check,
+    cloud_edition_billing_resource_check,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import (
-    LLMBadRequestError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
-from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.entities import Rule
-from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
@@ -54,7 +78,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import paginate_query
-from models import Account, Document, DocumentSegment, UploadFile
+from machinery.context import RequestContext
+from models import Account, Document, DocumentSegment
 from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
@@ -62,32 +87,19 @@ from services.dataset_service import DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.indexing.estimate import (
+    EstimateDocumentAlreadyFinishedError,
+    EstimateDocumentNotFoundError,
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
-
-from ..app.error import (
-    ProviderModelCurrentlyNotSupportError,
-    ProviderNotInitializeError,
-    ProviderQuotaExceededError,
-)
-from ..datasets.error import (
-    ArchivedDocumentImmutableError,
-    DocumentAlreadyFinishedError,
-    DocumentIndexingError,
-    IndexingEstimateError,
-    InvalidActionError,
-    InvalidMetadataError,
-)
-from ..wraps import (
-    account_initialization_required,
-    check_knowledge_rate_limit,
-    cloud_edition_billing_rate_limit_check,
-    cloud_edition_billing_resource_check,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +193,20 @@ class IndexingEstimateResponse(IndexingEstimate):
     tokens: int
     total_price: float | int
     currency: str
+
+
+def _serialize_indexing_estimate(estimate: IndexingEstimate) -> tuple[dict[str, object], int]:
+    return (
+        IndexingEstimateResponse(
+            tokens=0,
+            total_price=0,
+            currency="USD",
+            total_segments=estimate.total_segments,
+            preview=estimate.preview,
+            qa_preview=estimate.qa_preview,
+        ).model_dump(mode="json", exclude_none=True),
+        200,
+    )
 
 
 class DocumentDetailResponse(ResponseModel):
@@ -310,7 +336,9 @@ class DocumentResource(Resource):
 
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
-        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+        document = next(
+            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+        )
 
         if not document:
             raise NotFound("Document not found.")
@@ -714,89 +742,35 @@ class DocumentIndexingEstimateApi(DocumentResource):
     )
     @console_ns.response(404, "Document not found")
     @console_ns.response(400, "Document already finished")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
-        dataset_id_str = str(dataset_id)
-        document_id_str = str(document_id)
-        document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
-
-        if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.ERROR}:
-            raise DocumentAlreadyFinishedError()
-
-        data_process_rule = document.get_dataset_process_rule(session=session)
-        data_process_rule_dict: Mapping[str, Any] = data_process_rule.to_dict() if data_process_rule else {}
-
-        if document.data_source_type == "upload_file":
-            data_source_info = document.data_source_info_dict
-            if data_source_info and "upload_file_id" in data_source_info:
-                file_id = data_source_info["upload_file_id"]
-
-                file = session.scalar(
-                    select(UploadFile)
-                    .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
-                    .limit(1)
-                )
-
-                # raise error if file not found
-                if not file:
-                    raise NotFound("File not found.")
-
-                extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
-                )
-
-                indexing_runner = IndexingRunner()
-
-                try:
-                    estimate_response = indexing_runner.indexing_estimate(
-                        tenant_id=current_tenant_id,
-                        extract_settings=[extract_setting],
-                        tmp_processing_rule=data_process_rule_dict,
-                        doc_form=document.doc_form,
-                        doc_language="English",
-                        dataset_id=dataset_id_str,
-                        session=session,
-                    )
-                    return (
-                        # TODO: why using zero here? the same for the below endpoint
-                        IndexingEstimateResponse(
-                            tokens=0,
-                            total_price=0,
-                            currency="USD",
-                            total_segments=estimate_response.total_segments,
-                            preview=estimate_response.preview,
-                            qa_preview=estimate_response.qa_preview,
-                        ).model_dump(mode="json", exclude_none=True),
-                        200,
-                    )
-                except LLMBadRequestError:
-                    raise ProviderNotInitializeError(
-                        "No Embedding Model available. Please configure a valid provider "
-                        "in the Settings -> Model Provider."
-                    )
-                except ProviderTokenNotInitError as ex:
-                    raise ProviderNotInitializeError(ex.description)
-                except PluginDaemonClientSideError as ex:
-                    raise ProviderNotInitializeError(ex.description)
-                except Exception as e:
-                    raise IndexingEstimateError(str(e))
-
-        return (
-            IndexingEstimateResponse(
-                tokens=0,
-                total_price=0,
-                currency="USD",
-                total_segments=0,
-                preview=[],
-            ).model_dump(mode="json", exclude_none=True),
-            200,
-        )
+    @console_account_admission(
+        rbac_resource_scope=RBACResourceScope.DATASET,
+        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+    )
+    def get(self, request_context: RequestContext, dataset_id: UUID, document_id: UUID):
+        try:
+            estimate = application_services().knowledge.indexing_estimates.estimate_document(
+                request_context,
+                dataset_id=str(dataset_id),
+                document_id=str(document_id),
+            )
+        except (
+            DatasetNotFoundError,
+            EstimateDocumentNotFoundError,
+            EstimateSourceNotFoundError,
+            IndexingEstimateCredentialUnavailableError,
+        ) as error:
+            raise NotFoundError(description=str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise DatasetAccessDeniedRequestError(description=str(error)) from error
+        except EstimateDocumentAlreadyFinishedError as error:
+            raise DocumentAlreadyFinishedError() from error
+        except UnsupportedEstimateSourceError as error:
+            raise InvalidArgumentError(description=str(error)) from error
+        except IndexingEstimateProviderUnavailableError as error:
+            raise ProviderNotInitializeError(str(error)) from error
+        except IndexingEstimateExecutionError as error:
+            raise IndexingEstimateError(str(error)) from error
+        return _serialize_indexing_estimate(estimate)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
@@ -806,122 +780,35 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         "Indexing estimate calculated successfully",
         console_ns.models[IndexingEstimateResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, batch: str):
-        dataset_id_str = str(dataset_id)
-        documents = self.get_batch_documents(session, dataset_id_str, batch, current_user)
-        if not documents:
-            return (
-                IndexingEstimateResponse(
-                    tokens=0,
-                    total_price=0,
-                    currency="USD",
-                    total_segments=0,
-                    preview=[],
-                ).model_dump(mode="json", exclude_none=True),
-                200,
+    @console_account_admission(
+        rbac_resource_scope=RBACResourceScope.DATASET,
+        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+    )
+    def get(self, request_context: RequestContext, dataset_id: UUID, batch: str):
+        try:
+            estimate = application_services().knowledge.indexing_estimates.estimate_batch(
+                request_context,
+                dataset_id=str(dataset_id),
+                batch=batch,
             )
-        data_process_rule = documents[0].get_dataset_process_rule(session=session)
-        data_process_rule_dict: Mapping[str, Any] = data_process_rule.to_dict() if data_process_rule else {}
-        extract_settings = []
-        for document in documents:
-            if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.ERROR}:
-                raise DocumentAlreadyFinishedError()
-            data_source_info = document.data_source_info_dict
-            match document.data_source_type:
-                case "upload_file":
-                    if not data_source_info:
-                        continue
-                    file_id = data_source_info["upload_file_id"]
-                    file_detail = session.scalar(
-                        select(UploadFile)
-                        .where(UploadFile.tenant_id == current_tenant_id, UploadFile.id == file_id)
-                        .limit(1)
-                    )
-
-                    if file_detail is None:
-                        raise NotFound("File not found.")
-
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE, upload_file=file_detail, document_model=document.doc_form
-                    )
-                    extract_settings.append(extract_setting)
-                case "notion_import":
-                    if not data_source_info:
-                        continue
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION,
-                        notion_info=NotionInfo.model_validate(
-                            {
-                                "credential_id": data_source_info.get("credential_id"),
-                                "notion_workspace_id": data_source_info["notion_workspace_id"],
-                                "notion_obj_id": data_source_info["notion_page_id"],
-                                "notion_page_type": data_source_info["type"],
-                                "tenant_id": current_tenant_id,
-                            }
-                        ),
-                        document_model=document.doc_form,
-                    )
-                    extract_settings.append(extract_setting)
-                case "website_crawl":
-                    if not data_source_info:
-                        continue
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.WEBSITE,
-                        website_info=WebsiteInfo.model_validate(
-                            {
-                                "provider": data_source_info["provider"],
-                                "job_id": data_source_info["job_id"],
-                                "url": data_source_info["url"],
-                                "tenant_id": current_tenant_id,
-                                "mode": data_source_info["mode"],
-                                "only_main_content": data_source_info["only_main_content"],
-                            }
-                        ),
-                        document_model=document.doc_form,
-                    )
-                    extract_settings.append(extract_setting)
-
-                case _:
-                    raise ValueError("Data source type not support")
-            indexing_runner = IndexingRunner()
-            try:
-                response = indexing_runner.indexing_estimate(
-                    tenant_id=current_tenant_id,
-                    extract_settings=extract_settings,
-                    tmp_processing_rule=data_process_rule_dict,
-                    doc_form=document.doc_form,
-                    doc_language="English",
-                    dataset_id=dataset_id_str,
-                    session=session,
-                )
-                return (
-                    IndexingEstimateResponse(
-                        tokens=0,
-                        total_price=0,
-                        currency="USD",
-                        total_segments=response.total_segments,
-                        preview=response.preview,
-                        qa_preview=response.qa_preview,
-                    ).model_dump(mode="json", exclude_none=True),
-                    200,
-                )
-            except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
-            except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
-            except PluginDaemonClientSideError as ex:
-                raise ProviderNotInitializeError(ex.description)
-            except Exception as e:
-                raise IndexingEstimateError(str(e))
+        except (
+            DatasetNotFoundError,
+            EstimateDocumentNotFoundError,
+            EstimateSourceNotFoundError,
+            IndexingEstimateCredentialUnavailableError,
+        ) as error:
+            raise NotFoundError(description=str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise DatasetAccessDeniedRequestError(description=str(error)) from error
+        except EstimateDocumentAlreadyFinishedError as error:
+            raise DocumentAlreadyFinishedError() from error
+        except UnsupportedEstimateSourceError as error:
+            raise InvalidArgumentError(description=str(error)) from error
+        except IndexingEstimateProviderUnavailableError as error:
+            raise ProviderNotInitializeError(str(error)) from error
+        except IndexingEstimateExecutionError as error:
+            raise IndexingEstimateError(str(error)) from error
+        return _serialize_indexing_estimate(estimate)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")

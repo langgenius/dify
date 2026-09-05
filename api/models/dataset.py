@@ -7,7 +7,7 @@ import os
 import pickle
 import re
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, ClassVar, TypedDict, cast, override
@@ -24,7 +24,6 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
-from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
 
 from .account import Account
@@ -230,6 +229,38 @@ class Dataset(Base):
 
     def get_dataset_keyword_table(self, *, session: Session) -> "DatasetKeywordTable | None":
         return session.scalar(select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == self.id))
+
+    def save_keyword_table(
+        self,
+        *,
+        session: Session,
+        storage_type: str,
+        data: str,
+        keywords: Mapping[str, Sequence[str]],
+    ) -> None:
+        """Persist a table payload and segment keywords in the caller's transaction."""
+        row = self.get_dataset_keyword_table(session=session)
+        if row is None:
+            row = DatasetKeywordTable(
+                dataset_id=self.id,
+                data_source_type=storage_type,
+                keyword_table=data if storage_type == "database" else "",
+            )
+            session.add(row)
+        elif storage_type == "database":
+            row.keyword_table = data
+        if keywords:
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.tenant_id == self.tenant_id,
+                    DocumentSegment.dataset_id == self.id,
+                    DocumentSegment.index_node_id.in_(keywords),
+                )
+            )
+            for segment in segments:
+                assert segment.index_node_id is not None
+                segment.keywords = list(keywords[segment.index_node_id])
+        session.flush()
 
     @property
     def index_struct_dict(self):
@@ -983,7 +1014,14 @@ class DocumentSegment(TypeBase):
                 rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode and (include_full_doc or rules.parent_mode != ParentMode.FULL_DOC):
                     child_chunks = session.scalars(
-                        select(ChildChunk).where(ChildChunk.segment_id == self.id).order_by(ChildChunk.position.asc())
+                        select(ChildChunk)
+                        .where(
+                            ChildChunk.segment_id == self.id,
+                            ChildChunk.tenant_id == self.tenant_id,
+                            ChildChunk.dataset_id == self.dataset_id,
+                            ChildChunk.document_id == self.document_id,
+                        )
+                        .order_by(ChildChunk.position.asc())
                     ).all()
                     return child_chunks or []
         return []
@@ -1072,6 +1110,7 @@ class DocumentSegment(TypeBase):
                 SegmentAttachmentBinding.dataset_id == self.dataset_id,
                 SegmentAttachmentBinding.document_id == self.document_id,
                 SegmentAttachmentBinding.segment_id == self.id,
+                UploadFile.tenant_id == self.tenant_id,
             )
         ).all()
         if not attachments_with_bindings:
@@ -1266,39 +1305,24 @@ class DatasetKeywordTable(TypeBase):
         String(255), nullable=False, server_default=sa.text("'database'"), default="database"
     )
 
-    def get_keyword_table_dict(self, *, session: Session) -> dict[str, set[Any]] | None:
-        class SetDecoder(json.JSONDecoder):
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                def object_hook(dct: Any) -> Any:
-                    if isinstance(dct, dict):
-                        result: dict[str, Any] = {}
-                        items = cast(dict[str, Any], dct).items()
-                        for keyword, node_idxs in items:
-                            if isinstance(node_idxs, list):
-                                result[keyword] = set(node_idxs)
-                            else:
-                                result[keyword] = node_idxs
-                        return result
-                    return dct
+    def get_keyword_table_dict(self, *, session: Session) -> dict[str, Any] | None:
+        from core.rag.datasource.keyword.jieba.keyword_table import load_keyword_table
 
-                super().__init__(object_hook=object_hook, *args, **kwargs)
-
-        # get dataset
         dataset = session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
-        if not dataset:
+        if dataset is None:
             return None
-        if self.data_source_type == "database":
-            return json.loads(self.keyword_table, cls=SetDecoder) if self.keyword_table else None
-        else:
-            file_key = "keyword_files/" + dataset.tenant_id + "/" + self.dataset_id + ".txt"
-            try:
-                keyword_table_text = storage.load_once(file_key)
-                if keyword_table_text:
-                    return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
-                return None
-            except Exception:
-                logger.exception("Failed to load keyword table from file: %s", file_key)
-                return None
+        try:
+            return load_keyword_table(
+                tenant_id=dataset.tenant_id,
+                dataset_id=self.dataset_id,
+                storage_type=self.data_source_type,
+                data=self.keyword_table,
+            )
+        except Exception:
+            if self.data_source_type == "database":
+                raise
+            logger.exception("Failed to load keyword table for dataset %s", self.dataset_id)
+            return None
 
 
 class Embedding(TypeBase):

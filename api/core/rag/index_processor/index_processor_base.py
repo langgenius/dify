@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
 from core.file import remote_fetcher
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.entities.extraction import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
 from core.rag.splitter.fixed_text_splitter import (
@@ -147,7 +147,12 @@ class BaseIndexProcessor(ABC):
         return character_splitter
 
     def _get_content_files(
-        self, document: Document, current_user: Account | None = None, *, session: Session
+        self,
+        document: Document,
+        current_user: Account | None = None,
+        *,
+        tenant_id: str,
+        session: Session,
     ) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
@@ -185,7 +190,12 @@ class BaseIndexProcessor(ABC):
             if match:
                 if current_user:
                     tool_file_id = match.group(1)
-                    upload_file_id = self._download_tool_file(tool_file_id, current_user, session=session)
+                    upload_file_id = self._download_tool_file(
+                        tool_file_id,
+                        current_user,
+                        tenant_id=tenant_id,
+                        session=session,
+                    )
                     if upload_file_id:
                         upload_file_id_list.append(upload_file_id)
                 continue
@@ -199,7 +209,12 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids))).all()
+        upload_files = session.scalars(
+            select(UploadFile).where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id.in_(unique_upload_file_ids),
+            )
+        ).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -305,13 +320,22 @@ class BaseIndexProcessor(ABC):
             logging.warning("Unexpected error downloading image from %s", image_url, exc_info=True)
             return None
 
-    def _download_tool_file(self, tool_file_id: str, current_user: Account, *, session: Session) -> str | None:
+    def _download_tool_file(
+        self,
+        tool_file_id: str,
+        current_user: Account,
+        *,
+        tenant_id: str,
+        session: Session,
+    ) -> str | None:
         """
         Download the tool file from the ID.
         """
         from services.file_service import FileService
 
-        tool_file = session.get(ToolFile, tool_file_id)
+        tool_file = session.scalar(
+            select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id).limit(1)
+        )
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

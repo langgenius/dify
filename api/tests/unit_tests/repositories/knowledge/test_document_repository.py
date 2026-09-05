@@ -3,11 +3,11 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.entities.dataset_reference import DatasetRef
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.knowledge.resource_scope import DatasetRef
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -78,16 +78,40 @@ def test_document_queries_enforce_the_complete_owner_chain(
     repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     document_ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
 
-    record = repository.get_by_ref(document_ref)
+    record = repository.get_estimate_document(document_ref)
 
     assert record is not None
     assert record.workspace_id == "workspace-1"
     assert record.data_source_info == {"notion_page_id": "page-document-1"}
-    assert repository.get_by_ref(DatasetRef("workspace-2", "dataset-1").document("document-1")) is None
-    assert repository.get_by_id_for_workspace(workspace_id="workspace-2", document_id="document-1") is None
+    assert repository.get_estimate_document(DatasetRef("workspace-2", "dataset-1").document("document-1")) is None
 
 
-def test_active_notion_queries_exclude_other_sources_and_inactive_documents(
+def test_pipeline_document_store_owns_sessions_and_scopes_updates(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_dataset("dataset-1", "workspace-1"))
+        session.add(_document("document-1"))
+
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    assert repository.exists(workspace_id="workspace-1", dataset_id="dataset-1", document_id="document-1")
+    assert not repository.exists(workspace_id="workspace-2", dataset_id="dataset-1", document_id="document-1")
+    repository.mark_failed(
+        workspace_id="workspace-2", dataset_id="dataset-1", document_id="document-1", error="foreign"
+    )
+    with sqlite_session_factory() as session:
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.indexing_status == IndexingStatus.COMPLETED
+    repository.mark_failed(workspace_id="workspace-1", dataset_id="dataset-1", document_id="document-1", error="failed")
+    with sqlite_session_factory() as session:
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.indexing_status == IndexingStatus.ERROR
+        assert document.error == "failed"
+
+
+def test_active_notion_sync_excludes_archived_while_binding_includes_it(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory.begin() as session:
@@ -105,7 +129,7 @@ def test_active_notion_queries_exclude_other_sources_and_inactive_documents(
     dataset_ref = DatasetRef("workspace-1", "dataset-1")
 
     assert repository.list_active_notion_refs(dataset_ref) == (dataset_ref.document("notion"),)
-    assert repository.list_bound_notion_page_ids(dataset_ref) == frozenset({"page-notion"})
+    assert repository.list_bound_notion_page_ids(dataset_ref) == frozenset({"page-notion", "page-archived"})
 
 
 def test_document_records_normalize_invalid_mapping_data_and_ignore_invalid_notion_page_ids(
@@ -117,7 +141,6 @@ def test_document_records_normalize_invalid_mapping_data_and_ignore_invalid_noti
     missing_info.data_source_info = None
     invalid_page_id = _document("invalid-page-id")
     invalid_page_id.data_source_info = json.dumps({"notion_page_id": 42})
-    invalid_page_id.doc_metadata = {"rank": 1}
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         session.add_all([invalid_json, missing_info, invalid_page_id])
@@ -125,19 +148,16 @@ def test_document_records_normalize_invalid_mapping_data_and_ignore_invalid_noti
     repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     dataset_ref = DatasetRef("workspace-1", "dataset-1")
 
-    invalid_record = repository.get_by_ref(dataset_ref.document("invalid-json"))
-    missing_record = repository.get_by_ref(dataset_ref.document("missing-info"))
+    invalid_record = repository.get_estimate_document(dataset_ref.document("invalid-json"))
+    missing_record = repository.get_estimate_document(dataset_ref.document("missing-info"))
     assert invalid_record is not None
     assert invalid_record.data_source_info == {}
     assert missing_record is not None
     assert missing_record.data_source_info is None
-    metadata_record = repository.get_by_ref(dataset_ref.document("invalid-page-id"))
-    assert metadata_record is not None
-    assert metadata_record.doc_metadata == {"rank": 1}
     assert repository.list_bound_notion_page_ids(dataset_ref) == frozenset()
 
 
-def test_batch_and_available_queries_keep_explicit_state_semantics(
+def test_batch_query_is_scoped_and_keeps_explicit_state_semantics(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory.begin() as session:
@@ -163,23 +183,9 @@ def test_batch_and_available_queries_keep_explicit_state_semantics(
     repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     dataset_ref = DatasetRef("workspace-1", "dataset-1")
 
-    assert repository.list_by_refs(dataset_ref, []) == ()
-    assert repository.list_available_by_refs(dataset_ref, []) == ()
-    assert {record.id for record in repository.list_by_batch(dataset_ref, "batch-1")} == {
+    assert {record.id for record in repository.list_estimate_documents_by_batch(dataset_ref, "batch-1")} == {
         "available",
         "waiting",
         "disabled",
         "archived",
     }
-    assert [record.id for record in repository.list_by_refs(dataset_ref, ["waiting", "available", "missing"])] == [
-        "waiting",
-        "available",
-    ]
-    assert [
-        record.id
-        for record in repository.list_available_by_refs(
-            dataset_ref,
-            ["waiting", "disabled", "archived", "available"],
-        )
-    ] == ["available"]
-    assert {record.id for record in repository.list_working_by_dataset(dataset_ref)} == {"available", "other-batch"}

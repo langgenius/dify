@@ -10,13 +10,17 @@ from core.datasource.entities.datasource_entities import (
     OnlineDocumentPage,
     OnlineDocumentPagesMessage,
 )
+from core.rag.extractor.entity.datasource_type import NotionPageType
 from core.rag.models.document import Document
-from services.data_source.notion_import_adapters import NotionCredentialDataError, PluginNotionSourceGateway
+from services.data_source.credential_gateway import DatasourceCredentialError, DatasourceCredentialNotFoundError
+from services.data_source.notion_import_adapters import PluginNotionSourceGateway
+from services.data_source.notion_import_application_service import NotionImportCredentialUnavailableError
 
 
 @dataclass
 class RecordingCredentialResolver:
     credentials: dict[str, object]
+    error: DatasourceCredentialError | None = None
     calls: list[tuple[str, str, str, str, str]] = field(default_factory=list)
 
     def resolve(
@@ -29,6 +33,8 @@ class RecordingCredentialResolver:
         plugin_id: str,
     ) -> dict[str, object]:
         self.calls.append((workspace_id, actor_id, credential_id, provider, plugin_id))
+        if self.error is not None:
+            raise self.error
         return self.credentials
 
 
@@ -79,42 +85,23 @@ class StaticExtractor:
 class RecordingExtractorFactory:
     calls: list[dict[str, object]] = field(default_factory=list)
 
-    def __call__(
-        self,
-        notion_workspace_id: str,
-        notion_obj_id: str,
-        notion_page_type: str,
-        tenant_id: str,
-        document_model: object | None = None,
-        notion_access_token: str | None = None,
-        credential_id: str | None = None,
-    ) -> StaticExtractor:
-        self.calls.append(
-            {
-                "notion_workspace_id": notion_workspace_id,
-                "notion_obj_id": notion_obj_id,
-                "notion_page_type": notion_page_type,
-                "tenant_id": tenant_id,
-                "document_model": document_model,
-                "notion_access_token": notion_access_token,
-                "credential_id": credential_id,
-            }
-        )
+    def __call__(self, **kwargs: object) -> StaticExtractor:
+        self.calls.append(kwargs)
         return StaticExtractor([Document(page_content="one"), Document(page_content="two")])
 
 
-def _page(page_id: str, *, with_icon: bool = True) -> OnlineDocumentPage:
+def _page(page_id: str, *, with_icon: bool = True, page_type: str = "page") -> OnlineDocumentPage:
     return OnlineDocumentPage(
         page_id=page_id,
         page_name=f"Page {page_id}",
         page_icon={"type": "emoji", "emoji": "📄"} if with_icon else None,
-        type="page",
+        type=page_type,
         last_edited_time="2026-01-01T00:00:00Z",
         parent_id=None,
     )
 
 
-def test_list_authorized_pages_preserves_and_merges_workspace_groups() -> None:
+def test_list_authorized_pages_groups_paginated_results_by_workspace() -> None:
     runtime = RecordingDatasourceRuntime(
         messages=(
             OnlineDocumentPagesMessage(
@@ -158,6 +145,7 @@ def test_list_authorized_pages_preserves_and_merges_workspace_groups() -> None:
 
     assert [workspace.workspace_id for workspace in workspaces] == ["w1", "w2"]
     assert [page.page_id for page in workspaces[0].pages] == ["p1", "p3"]
+    assert [page.page_id for page in workspaces[1].pages] == ["p2"]
     assert workspaces[0].pages[0].page_icon is not None
     assert workspaces[0].pages[0].page_icon.emoji == "📄"
     assert workspaces[1].pages[0].page_icon is None
@@ -174,6 +162,34 @@ def test_list_authorized_pages_preserves_and_merges_workspace_groups() -> None:
     ]
 
 
+def test_list_authorized_pages_skips_unknown_page_types() -> None:
+    runtime = RecordingDatasourceRuntime(
+        messages=(
+            OnlineDocumentPagesMessage(
+                result=[
+                    OnlineDocumentInfo(
+                        workspace_id="w1",
+                        workspace_name="One",
+                        workspace_icon=None,
+                        total=2,
+                        pages=[_page("known"), _page("unknown", page_type="collection")],
+                    )
+                ]
+            ),
+        )
+    )
+    gateway = PluginNotionSourceGateway(
+        credentials=RecordingCredentialResolver({"integration_secret": "secret"}),
+        runtime_loader=StaticRuntimeLoader(runtime),
+    )
+
+    workspaces = gateway.list_authorized_pages(
+        workspace_id="workspace-1", actor_id="actor-1", credential_id="credential-1"
+    )
+
+    assert [page.page_id for page in workspaces[0].pages] == ["known"]
+
+
 def test_preview_requires_secret_and_passes_it_only_to_extractor() -> None:
     factory = RecordingExtractorFactory()
     gateway = PluginNotionSourceGateway(
@@ -187,11 +203,15 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor() -> None:
         actor_id="actor-1",
         credential_id="credential-1",
         page_id="page-1",
-        page_type="page",
+        page_type=NotionPageType.PAGE,
     )
 
     assert content == "one\ntwo"
-    assert factory.calls[0]["notion_access_token"] == "secret"
+    extractor_args = factory.calls[0]
+    assert extractor_args["notion_obj_id"] == "page-1"
+    assert extractor_args["notion_page_type"] == "page"
+    assert extractor_args["notion_access_token"] == "secret"
+    assert extractor_args["tenant_id"] == "workspace-1"
 
 
 def test_preview_fails_closed_when_secret_is_missing() -> None:
@@ -200,11 +220,25 @@ def test_preview_fails_closed_when_secret_is_missing() -> None:
         runtime_loader=StaticRuntimeLoader(RecordingDatasourceRuntime(())),
     )
 
-    with pytest.raises(NotionCredentialDataError):
+    with pytest.raises(NotionImportCredentialUnavailableError):
         gateway.preview_page(
             workspace_id="workspace-1",
             actor_id="actor-1",
             credential_id="credential-1",
             page_id="page-1",
-            page_type="page",
+            page_type=NotionPageType.PAGE,
+        )
+
+
+def test_gateway_translates_credential_infrastructure_failure() -> None:
+    gateway = PluginNotionSourceGateway(
+        credentials=RecordingCredentialResolver({}, error=DatasourceCredentialNotFoundError()),
+        runtime_loader=StaticRuntimeLoader(RecordingDatasourceRuntime(())),
+    )
+
+    with pytest.raises(NotionImportCredentialUnavailableError):
+        gateway.list_authorized_pages(
+            workspace_id="workspace-1",
+            actor_id="actor-1",
+            credential_id="credential-1",
         )

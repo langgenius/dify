@@ -3,10 +3,11 @@ from dataclasses import dataclass
 import pytest
 
 from machinery.context import RequestContext
-from services.entities.knowledge_entities.records import DatasetAccessSnapshot, DatasetRecord
-from services.knowledge.application import (
+from services.knowledge.dataset_access import (
     DatasetAccessDeniedError,
+    DatasetAccessRecord,
     DatasetAccessService,
+    DatasetAccessSnapshot,
     DatasetNotFoundError,
 )
 
@@ -27,15 +28,11 @@ def _snapshot(
     partial_access: bool = False,
 ) -> DatasetAccessSnapshot:
     return DatasetAccessSnapshot(
-        dataset=DatasetRecord(
+        dataset=DatasetAccessRecord(
             id="dataset-1",
             workspace_id="workspace-1",
             maintainer_id=maintainer_id,
             permission=permission,
-            data_source_type="notion_import",
-            indexing_technique="economy",
-            embedding_model=None,
-            embedding_model_provider=None,
         ),
         actor_has_partial_access=partial_access,
     )

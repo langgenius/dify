@@ -1749,20 +1749,6 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
         check_quota.assert_not_called()
 
 
-class TestDocumentServiceEstimateValidation:
-    """Keep only the compatibility contract owned by the legacy service."""
-
-    def test_estimate_args_validate_delegates_to_shared_normalizer(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {"mode": "automatic", "rules": {"ignored": True}},
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert args["process_rule"]["rules"] == {}
-
-
 class TestDocumentServiceSaveDocumentAdditionalBranches:
     """Additional unit tests for dataset bootstrap and process-rule branches."""
 

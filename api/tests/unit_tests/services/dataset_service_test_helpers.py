@@ -39,7 +39,6 @@ from services.dataset_service import (
     SegmentService,
 )
 from services.entities.knowledge_entities.knowledge_entities import (
-    ChildChunkUpdateArgs,
     DataSource,
     FileInfo,
     InfoList,
@@ -50,7 +49,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     ProcessRule,
     RerankingModel,
     RetrievalModel,
-    SegmentUpdateArgs,
     WebsiteInfo,
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -66,6 +64,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     RetrievalSetting as RagPipelineRetrievalSetting,
 )
+from services.entities.knowledge_entities.segments import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
