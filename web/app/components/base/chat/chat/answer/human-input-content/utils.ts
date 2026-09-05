@@ -176,6 +176,7 @@ const localeMap: Record<string, string> = {
   'zh-Hans': 'zh-cn',
   'ja-JP': 'ja',
   'nl-NL': 'nl',
+  'sv-SE': 'sv',
 }
 
 export const getRelativeTime = (utcTimestamp: string | number, locale: Locale = 'en-US') => {
