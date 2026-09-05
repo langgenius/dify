@@ -51,11 +51,11 @@ def _create_node_execution(
         error=None,
         elapsed_time=0.0,
         execution_metadata="{}",
-        created_at=now + timedelta(seconds=created_at_offset_seconds),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=created_by,
         finished_at=None,
     )
+    node_execution.created_at = now + timedelta(seconds=created_at_offset_seconds)
     session.add(node_execution)
     session.flush()
     return node_execution
@@ -63,10 +63,8 @@ def _create_node_execution(
 
 class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
     def test_load_full_process_data_returns_inline_mapping(self, db_session_with_containers: Session) -> None:
-        execution = WorkflowNodeExecutionModel(
-            process_data='{"request": "inline"}',
-            offload_data=[],
-        )
+        execution = WorkflowNodeExecutionModel(process_data='{"request": "inline"}')
+        execution.offload_data = []
         engine = db_session_with_containers.get_bind()
         assert isinstance(engine, Engine)
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
@@ -78,7 +76,8 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
         db_session_with_containers: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        execution = WorkflowNodeExecutionModel(process_data="{}", offload_data=[])
+        execution = WorkflowNodeExecutionModel(process_data="{}")
+        execution.offload_data = []
         monkeypatch.setattr(
             WorkflowNodeExecutionModel,
             "load_full_process_data",

@@ -213,7 +213,7 @@ def _persist_workflow(database: Database, *, workflow_id: str) -> Workflow:
         type=WorkflowType.CHAT,
         version="1",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
     )
     database.session.add(workflow)

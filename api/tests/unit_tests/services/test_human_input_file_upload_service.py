@@ -153,9 +153,9 @@ def _create_waiting_form(
                 status=WorkflowExecutionStatus.RUNNING,
                 created_by_role=created_by_role,
                 created_by=created_by,
-                created_at=now,
             )
             workflow_run.id = workflow_run_id
+            workflow_run.created_at = now
             session.add(workflow_run)
         session.add(
             HumanInputForm(

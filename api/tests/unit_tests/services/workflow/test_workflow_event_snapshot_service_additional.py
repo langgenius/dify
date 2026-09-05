@@ -33,7 +33,7 @@ from services.workflow_event_snapshot_service import BufferState, MessageContext
 
 
 def _build_workflow_run(status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -51,8 +51,9 @@ def _build_workflow_run(status: WorkflowExecutionStatus = WorkflowExecutionStatu
         total_steps=2,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
