@@ -2123,17 +2123,15 @@ class AppAnnotationHitHistory(TypeBase):
     annotation_question: Mapped[str] = mapped_column(LongText, nullable=False)
     annotation_content: Mapped[str] = mapped_column(LongText, nullable=False)
 
-    @property
-    def account(self):
-        return db.session.scalar(
+    def account(self, session: Session) -> Account | None:
+        return session.scalar(
             select(Account)
             .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
             .where(MessageAnnotation.id == self.annotation_id)
         )
 
-    @property
-    def annotation_create_account(self):
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+    def annotation_create_account(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.account_id))
 
 
 class AppAnnotationSetting(TypeBase):
