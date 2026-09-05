@@ -333,6 +333,16 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                         "trace_instance": TencentDataTrace,
                     }
 
+                case TracingProviderEnum.OTEL:
+                    from core.ops.unified_trace.otel import OTelTracingConfig, UnifiedOTelTrace
+
+                    return {
+                        "config_class": OTelTracingConfig,
+                        "secret_keys": ["headers"],
+                        "other_keys": ["endpoint", "service_name", "resource_attributes"],
+                        "trace_instance": UnifiedOTelTrace,
+                    }
+
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
         except ImportError:
@@ -386,15 +396,19 @@ class OpsTraceManager:
         # Encrypt necessary keys
         for key in secret_keys:
             if key in tracing_config:
-                if "*" in tracing_config[key]:
+                value = tracing_config[key]
+                if not isinstance(value, str):
+                    # Structured secrets (e.g. OTel headers dict) are serialized before encryption
+                    value = json.dumps(value, default=str, ensure_ascii=False)
+                if "*" in value:
                     # If the key contains '*', retain the original value from the current config
                     if current_trace_config:
-                        new_config[key] = current_trace_config.get(key, tracing_config[key])
+                        new_config[key] = current_trace_config.get(key, value)
                     else:
-                        new_config[key] = tracing_config[key]
+                        new_config[key] = value
                 else:
                     # Otherwise, encrypt the key
-                    new_config[key] = encrypt_token(tenant_id, tracing_config[key])
+                    new_config[key] = encrypt_token(tenant_id, value)
 
         for key in other_keys:
             new_config[key] = tracing_config.get(key, "")

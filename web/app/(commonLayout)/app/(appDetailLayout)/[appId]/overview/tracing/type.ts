@@ -9,6 +9,7 @@ export enum TracingProvider {
   mlflow = 'mlflow',
   databricks = 'databricks',
   tencent = 'tencent',
+  otel = 'otel',
 }
 
 export type ArizeConfig = {
@@ -76,4 +77,11 @@ export type TencentConfig = {
   token: string
   endpoint: string
   service_name: string
+}
+
+export type OTelConfig = {
+  endpoint: string
+  headers: string
+  service_name: string
+  resource_attributes: string
 }

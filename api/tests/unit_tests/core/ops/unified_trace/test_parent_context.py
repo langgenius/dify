@@ -52,6 +52,24 @@ def test_parent_destination_uses_non_secret_provider_scope() -> None:
         scope=destination_scope("langsmith", "https://smith.example", "project-a"),
         unified=True,
     )
+
+
+def test_parent_destination_uses_service_name_for_otel_scope() -> None:
+    destination = parent_destination_from_config(
+        "otel",
+        {
+            "headers": "encrypted-secret",
+            "endpoint": "http://collector:4318/v1/traces",
+            "service_name": "my-test-app",
+        },
+        unified=True,
+    )
+
+    assert destination == ParentDestination(
+        provider="otel",
+        scope=destination_scope("otel", "http://collector:4318/v1/traces", "my-test-app"),
+        unified=True,
+    )
     assert "secret" not in destination.scope
 
 

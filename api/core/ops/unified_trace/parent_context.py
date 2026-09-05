@@ -94,13 +94,13 @@ def parent_destination_from_config(
 ) -> ParentDestination:
     """Build destination compatibility from non-secret persisted fields."""
     endpoint = tracing_config.get("endpoint")
-    project = tracing_config.get("project")
+    scope_key = tracing_config.get("project") or tracing_config.get("service_name")
     return ParentDestination(
         provider=provider,
         scope=destination_scope(
             provider,
             endpoint if isinstance(endpoint, str) else "",
-            project if isinstance(project, str) else "",
+            scope_key if isinstance(scope_key, str) else "",
         ),
         unified=unified,
     )
