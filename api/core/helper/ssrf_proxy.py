@@ -244,8 +244,15 @@ def make_request(
                 server_header = response.headers.get("server", "").lower()
                 via_header = response.headers.get("via", "").lower()
 
-                # Squid typically identifies itself in Server or Via headers
-                if "squid" in server_header or "squid" in via_header:
+                # Issue #41434: a ``Via: 1.1 squid`` header alone only means
+                # Squid successfully forwarded the request to the upstream
+                # server — the response itself came from the target. Only the
+                # Squid-generated error page (Squid's own ACL denials) has the
+                # ``Server: squid/...`` signature. Trusting ``Via`` alone turns
+                # every upstream 401/403 (e.g. an internal API that returns
+                # Unauthorized) into a false-positive SSRF block, which makes the
+                # API layer fail with the wrong remediation hint.
+                if "squid" in server_header:
                     # The deny ACL is usually ``to_private_networks`` (RFC1918 +
                     # loopback / link-local / CGN / IPv6 ULA, etc.). We don't know
                     # which specific ACL tripped from Squid's response alone, but

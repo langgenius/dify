@@ -320,7 +320,6 @@ class ModelProviderModelApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
@@ -328,12 +327,25 @@ class ModelProviderModelApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    @model_validate(ParserDeleteModels)
-    def delete(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
-
+    def delete(
+        self,
+        current_tenant_id: str,
+        provider: str,
+        # Issue #41570 / #40773: the frontend used to send ``model`` and
+        # ``model_type`` in the JSON body, but the OpenAPI schema exposes
+        # them only on ``ParserPostModels`` (the create/update payload), so
+        # Pydantic validation rejected the request as missing-fields and
+        # surfaced as a generic 500. Accept them as query params on the
+        # DELETE route instead — the provider is already in the URL path
+        # and the model identifier naturally travels with the verb.
+        model: str | None = None,
+        model_type: ModelType | None = None,
+    ):
+        if not model or not model_type:
+            raise ValueError("`model` and `model_type` query parameters are required for DELETE")
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
-            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
+            tenant_id=current_tenant_id, provider=provider, model=model, model_type=model_type
         )
 
         return "", 204
