@@ -33,6 +33,7 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.workflow_tool_container_handler import (
     WorkflowToolContainerHandler,
+    WorkflowToolEventListenerFactory,
     WorkflowToolNestedContainerHandler,
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
@@ -119,6 +120,7 @@ class WorkflowEntry:
         workflow_tool_source_repository: WorkflowToolSourceRepository,
         command_channel: CommandChannel | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        workflow_tool_event_listener_factory: WorkflowToolEventListenerFactory | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -135,6 +137,7 @@ class WorkflowEntry:
         :param variable_pool: variable pool
         :param graph_runtime_state: pre-created graph runtime state
         :param workflow_tool_source_repository: loads pinned Workflow Tool sources
+        :param workflow_tool_event_listener_factory: persists source-node events independently of UI delivery
         :param command_channel: command channel for external control (optional, defaults to InMemoryChannel)
         :param response_stream_filter: pre-restored filter for resumed runs (optional, defaults to a fresh
             ResponseStreamFilter for runs with no prior pause)
@@ -177,6 +180,7 @@ class WorkflowEntry:
                     WorkflowToolContainerHandler,
                     source_repository=workflow_tool_source_repository,
                     hidden_event_listener=limits_layer.on_event,
+                    event_listener_factory=workflow_tool_event_listener_factory,
                 ),
             ),
         )

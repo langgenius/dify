@@ -33,6 +33,10 @@ class WorkflowExecutionRepository(Protocol):
 
 
 class WorkflowNodeExecutionRepository(Protocol):
+    def for_workflow_tool(self, app_id: str) -> "WorkflowNodeExecutionRepository":
+        """Scope hidden Workflow Tool executions to their source app in the same tenant."""
+        ...
+
     def save(self, execution: WorkflowNodeExecution): ...
 
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...

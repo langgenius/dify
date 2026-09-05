@@ -43,7 +43,6 @@ from controllers.service_api.app.workflow import (
     WorkflowRunPayload,
     WorkflowRunResponse,
     WorkflowTaskStopApi,
-    send_abort_command,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -475,9 +474,6 @@ class TestWorkflowStopMechanism:
         from core.app.apps.base_app_queue_manager import AppQueueManager
 
         assert hasattr(AppQueueManager, "set_stop_flag_no_user_check")
-
-    def test_abort_command_sender_is_callable(self):
-        assert callable(send_abort_command)
 
 
 class TestWorkflowRunRepository:

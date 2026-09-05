@@ -91,6 +91,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
         session_store: WorkflowAgentWorkspaceStore,
+        human_input_run_context: DifyRunContext | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -106,6 +107,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._human_input_run_context = human_input_run_context
 
     @classmethod
     @override
@@ -659,6 +661,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         ask_human form shares the same delivery/debug/console behavior: a
         submission actor is only attributed for debugger/explore surfaces.
         """
+        dify_ctx = self._human_input_run_context or dify_ctx
         invoke_source = dify_ctx.invoke_from.value
         return HumanInputFormRepositoryImpl(
             tenant_id=dify_ctx.tenant_id,

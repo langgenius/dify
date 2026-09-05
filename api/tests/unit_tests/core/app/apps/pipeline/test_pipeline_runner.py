@@ -25,6 +25,7 @@ import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.engine_events import GraphRunFailedEvent
+from graphon.runtime import RuntimeState, VariablePool
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DataSourceType, DocumentCreatedFrom, EndUserType
 from models.model import EndUser
@@ -184,6 +185,28 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
 
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+
+
+def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner):
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "parentId": "stale-owner",
+                    "data": {"type": "start", "title": "Start", "variables": [], "container_id": ""},
+                },
+                {"id": "end", "data": {"type": "end", "title": "Output", "outputs": []}},
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    runtime_state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0.0)
+
+    graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=runtime_state)
+
+    assert graph.root_node.id == "start"
+    assert set(graph.nodes) == {"start", "end"}
 
 
 def test_update_document_status_on_failure(runner, sqlite_session: Session):

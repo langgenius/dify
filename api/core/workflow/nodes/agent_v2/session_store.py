@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -18,7 +18,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from services.agent.workspace_service import (
     AgentWorkspaceNotFoundError,
     AgentWorkspaceService,
@@ -201,10 +201,32 @@ class WorkflowAgentWorkspaceStore:
 
         retired: list[str] = []
         with session_factory.create_session() as session:
+            # Workflow Tools keep source-app caller records, but the outer run
+            # owns their lifetime. Require the persisted caller/binding/run chain
+            # before including another app's workspace in this cleanup.
+            child_caller = (
+                select(WorkflowNodeExecutionModel.id)
+                .join(
+                    AgentWorkspaceBinding,
+                    AgentWorkspaceBinding.id == WorkflowNodeExecutionModel.agent_workspace_binding_id,
+                )
+                .join(WorkflowRun, WorkflowRun.id == WorkflowNodeExecutionModel.workflow_run_id)
+                .where(
+                    WorkflowRun.id == workflow_run_id,
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.app_id == AgentWorkspace.app_id,
+                    AgentWorkspaceBinding.tenant_id == tenant_id,
+                    AgentWorkspaceBinding.app_id == AgentWorkspace.app_id,
+                    AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
+                )
+                .exists()
+            )
             workspaces = session.scalars(
                 select(AgentWorkspace).where(
                     AgentWorkspace.tenant_id == tenant_id,
-                    AgentWorkspace.app_id == app_id,
+                    or_(AgentWorkspace.app_id == app_id, child_caller),
                     AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
                     AgentWorkspace.owner_id == workflow_run_id,
                     AgentWorkspace.status.in_((AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)),

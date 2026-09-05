@@ -89,6 +89,7 @@ from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph import Graph
+from graphon.graph.scoping import resolve_container_id
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
@@ -119,33 +120,6 @@ class WorkflowBasedAppRunner:
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
-    @staticmethod
-    def _normalize_container_ownership(graph_config: Mapping[str, Any]) -> dict[str, Any]:
-        """Copy ReactFlow's direct parent ownership into Graphon's node data."""
-        normalized_graph_config = dict(graph_config)
-        nodes = graph_config.get("nodes")
-        if not isinstance(nodes, list):
-            return normalized_graph_config
-
-        normalized_nodes: list[Any] = []
-        for node in nodes:
-            if not isinstance(node, Mapping):
-                normalized_nodes.append(node)
-                continue
-
-            parent_id = node.get("parentId")
-            data = node.get("data")
-            if not isinstance(parent_id, str) or not isinstance(data, Mapping):
-                normalized_nodes.append(node)
-                continue
-
-            normalized_node = dict(node)
-            normalized_node["data"] = {**data, "container_id": parent_id}
-            normalized_nodes.append(normalized_node)
-
-        normalized_graph_config["nodes"] = normalized_nodes
-        return normalized_graph_config
-
     def _init_graph(
         self,
         graph_config: Mapping[str, Any],
@@ -171,8 +145,6 @@ class WorkflowBasedAppRunner:
 
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
-
-        graph_config = self._normalize_container_ownership(graph_config)
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
@@ -252,7 +224,6 @@ class WorkflowBasedAppRunner:
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
                 app_type=app_type,
@@ -264,7 +235,6 @@ class WorkflowBasedAppRunner:
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
                 app_type=app_type,
@@ -283,7 +253,6 @@ class WorkflowBasedAppRunner:
         node_id: str,
         user_inputs: dict[str, Any],
         graph_runtime_state: RuntimeState,
-        node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
@@ -298,7 +267,6 @@ class WorkflowBasedAppRunner:
             node_id: The node ID to execute
             user_inputs: User inputs for the node
             graph_runtime_state: The graph runtime state
-            node_type_filter_key: The key to filter nodes ('iteration_id' or 'loop_id')
             node_type_label: Label for error messages ('iteration' or 'loop')
 
         Returns:
@@ -320,28 +288,25 @@ class WorkflowBasedAppRunner:
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
 
-        graph_config = self._normalize_container_ownership(graph_config)
-
         # filter nodes only in the specified node type (iteration or loop)
         all_node_configs = graph_config.get("nodes", [])
-        main_node_config = next((n for n in all_node_configs if n.get("id") == node_id), None)
-        start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
-        node_ids = {
-            node.get("id")
-            for node in all_node_configs
-            if node.get("id") == node_id
-            or node.get("data", {}).get(node_type_filter_key, "") == node_id
-            or node.get("data", {}).get("container_id", "") == node_id
-            or (start_node_id and node.get("id") == start_node_id)
-        }
+        nodes_by_id = {node["id"]: node for node in all_node_configs}
+        container_ids = {node["id"]: resolve_container_id(node, nodes_by_id=nodes_by_id) for node in all_node_configs}
+        node_ids = {node_id}
         while (
             descendant_node_ids := {
-                node.get("id") for node in all_node_configs if node.get("data", {}).get("container_id", "") in node_ids
+                node.get("id") for node in all_node_configs if container_ids[node["id"]] in node_ids
             }
             - node_ids
         ):
             node_ids.update(descendant_node_ids)
-        node_configs = [node for node in all_node_configs if node.get("id") in node_ids]
+        # Preserve ownership resolved with the complete ancestry before removing it
+        # from the debug subtree. Nested legacy IDs can otherwise become ambiguous.
+        node_configs = [
+            {**node, "data": {**node.get("data", {}), "container_id": container_ids[node["id"]]}}
+            for node in all_node_configs
+            if node.get("id") in node_ids
+        ]
 
         graph_config["nodes"] = node_configs
 
@@ -438,7 +403,11 @@ class WorkflowBasedAppRunner:
 
         # init graph after constructor-time context has been loaded
         graph = Graph.init(
-            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=node_id,
+            container_id=container_ids[node_id],
+            skip_validation=True,
         )
 
         if not graph:

@@ -10,7 +10,7 @@ from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models.agent import (
     AgentConfigVersionKind,
     AgentHomeSnapshot,
@@ -19,8 +19,8 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.agent_app_sandbox_service import WorkflowAgentSandboxService
 
@@ -417,3 +417,48 @@ def test_retire_workflow_run_returns_existing_retired_workspace(sqlite_session: 
     sqlite_session.expire(workspace)
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert workspace_ids == [workspace.id]
+
+
+@pytest.mark.parametrize("caller_app", ["app-1", "unrelated-app"])
+def test_retire_workflow_tool_workspace_follows_persisted_run_owner(sqlite_session: Session, caller_app: str) -> None:
+    run = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+    )
+    workspace = _workspace_row(app_id="source-app")
+    binding = _binding_row()
+    binding.app_id = "source-app"
+    execution = _execution_row(binding_id=binding.id)
+    execution.app_id = "source-app"
+    execution.workflow_id = "source-workflow"
+    execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    unlinked_workspace = _workspace_row(
+        workspace_id="unlinked-workspace", app_id="source-app", owner_scope_key="unlinked"
+    )
+    sqlite_session.add_all([run, workspace, binding, execution, unlinked_workspace])
+    sqlite_session.commit()
+
+    result = WorkflowAgentWorkspaceStore().retire_workflow_run(
+        tenant_id="tenant-1", app_id=caller_app, workflow_run_id=run.id
+    )
+
+    sqlite_session.expire_all()
+    assert unlinked_workspace.status is AgentWorkingResourceStatus.ACTIVE
+    if caller_app == "app-1":
+        assert result == [workspace.id]
+        assert workspace.status is AgentWorkingResourceStatus.RETIRED
+        assert binding.status is AgentWorkingResourceStatus.RETIRED
+    else:
+        assert result == []
+        assert workspace.status is AgentWorkingResourceStatus.ACTIVE
+        assert binding.status is AgentWorkingResourceStatus.ACTIVE

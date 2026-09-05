@@ -12,6 +12,7 @@ _TENANT_ID = "11111111-1111-1111-1111-111111111111"
 _OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 _APP_ID = "33333333-3333-3333-3333-333333333333"
 _PUBLISHED_WORKFLOW_ID = "44444444-4444-4444-4444-444444444444"
+_LATEST_WORKFLOW_ID = "77777777-7777-7777-7777-777777777777"
 _DRAFT_WORKFLOW_ID = "55555555-5555-5555-5555-555555555555"
 _ACCOUNT_ID = "66666666-6666-6666-6666-666666666666"
 _PUBLISHED_VERSION = "published-version"
@@ -21,6 +22,10 @@ _GRAPH: dict[str, object] = {
     "edges": list[object](),
 }
 _FEATURES: dict[str, object] = {"file_upload": {"enabled": False}}
+_LATEST_GRAPH: dict[str, object] = {
+    "nodes": [{"id": "latest-start", "data": {"type": "start", "variables": list[object]()}}],
+    "edges": list[object](),
+}
 
 
 def _persist_source(session_factory: sessionmaker[Session]) -> None:
@@ -39,40 +44,35 @@ def _persist_source(session_factory: sessionmaker[Session]) -> None:
         max_active_requests=None,
         created_by=_ACCOUNT_ID,
     )
-    published = Workflow(
-        id=_PUBLISHED_WORKFLOW_ID,
-        tenant_id=_TENANT_ID,
-        app_id=_APP_ID,
-        type=WorkflowType.WORKFLOW,
-        kind=WorkflowKind.STANDARD,
-        version=_PUBLISHED_VERSION,
-        graph=json.dumps(_GRAPH),
-        features=json.dumps(_FEATURES),
-        created_by=_ACCOUNT_ID,
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
-    draft = Workflow(
-        id=_DRAFT_WORKFLOW_ID,
-        tenant_id=_TENANT_ID,
-        app_id=_APP_ID,
-        type=WorkflowType.WORKFLOW,
-        kind=WorkflowKind.STANDARD,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(_GRAPH),
-        features=json.dumps(_FEATURES),
-        created_by=_ACCOUNT_ID,
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
-    app.workflow_id = published.id
+    workflows = [
+        Workflow(
+            id=workflow_id,
+            tenant_id=_TENANT_ID,
+            app_id=_APP_ID,
+            type=WorkflowType.WORKFLOW,
+            kind=WorkflowKind.STANDARD,
+            version=version,
+            graph=json.dumps(graph),
+            features=json.dumps(_FEATURES),
+            created_by=_ACCOUNT_ID,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        for workflow_id, version, graph in (
+            (_PUBLISHED_WORKFLOW_ID, _PUBLISHED_VERSION, _GRAPH),
+            (_LATEST_WORKFLOW_ID, "latest-published-version", _LATEST_GRAPH),
+            (_DRAFT_WORKFLOW_ID, Workflow.VERSION_DRAFT, _GRAPH),
+        )
+    ]
+    app.workflow_id = _LATEST_WORKFLOW_ID
     with session_factory.begin() as session:
-        session.add_all((app, published, draft))
+        session.add_all((app, *workflows))
 
 
-def test_get_source_projects_pinned_workflow(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_get_source_projects_pinned_workflow_after_a_new_version_is_published(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     _persist_source(sqlite_session_factory)
     repository = SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory)
 

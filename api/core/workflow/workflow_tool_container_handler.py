@@ -54,6 +54,8 @@ _RESERVED_TOOL_OUTPUTS = frozenset(("text", "json", "files"))
 _FAILURE_SELECTOR_PREFIX = "__workflow_tool_container__"
 _HIDDEN_CHILD_EVENT_KEY = "__dify_workflow_tool_child__"
 
+type WorkflowToolEventListenerFactory = Callable[[WorkflowToolSource], Callable[[NodeEvent], None]]
+
 
 @final
 class WorkflowToolNestedContainerHandler:
@@ -81,7 +83,7 @@ class WorkflowToolNestedContainerHandler:
 
     def should_emit(self, *, event: NodeEvent) -> bool:
         should_emit = self._handler.should_emit(event=event)
-        if should_emit and event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY) is True:
+        if should_emit and _HIDDEN_CHILD_EVENT_KEY in event.node_run_result.process_data:
             if self._hidden_event_listener is not None:
                 self._hidden_event_listener(event)
             return False
@@ -106,10 +108,13 @@ class WorkflowToolContainerHandler:
         *,
         source_repository: WorkflowToolSourceRepository,
         hidden_event_listener: Callable[[NodeEvent], None] | None = None,
+        event_listener_factory: WorkflowToolEventListenerFactory | None = None,
     ) -> None:
         self._frame_registry = frame_registry
         self._source_repository = source_repository
         self._hidden_event_listener = hidden_event_listener
+        self._event_listener_factory = event_listener_factory
+        self._event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
 
     def restore_frame(self, frame_state: ContainerFrameState) -> None:
         if not isinstance(frame_state, CustomContainerFrameState):
@@ -173,15 +178,31 @@ class WorkflowToolContainerHandler:
         child_frame.scheduler.enqueue_node(child_frame.graph.root_node.id)
 
     def prepare_frame_event(self, *, frame: ExecutionFrame, event: NodeEvent) -> None:
-        is_direct_workflow_tool_child = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY) is not True
+        source_frame_id = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
+        is_direct_workflow_tool_child = source_frame_id is None
+        if (is_direct_workflow_tool_child or source_frame_id == frame.frame_id) and (
+            listener := self._event_listeners.get(frame.frame_id)
+        ) is not None:
+            # Persistence sees source node IDs/containers before presentation remaps
+            # Human Input to the calling Tool and suppresses child events.
+            persisted_event = event.model_copy(deep=True)
+            persisted_event.node_run_result.process_data = {
+                key: value
+                for key, value in persisted_event.node_run_result.process_data.items()
+                if key != _HIDDEN_CHILD_EVENT_KEY
+            }
+            if persisted_event.container_id == frame.container_id:
+                persisted_event.container_id = ""
+            listener(persisted_event)
         if is_direct_workflow_tool_child and isinstance(event, NodeRunFailedEvent):
             # Graphon increments immediately after container preparation; only the outer Tool failure belongs here.
             frame.state.graph_execution.exceptions_count -= 1
         if isinstance(event, NodeRunPauseRequestedEvent) and isinstance(event.reason, HitlRequired):
             event.reason = event.reason.model_copy(update={"node_id": frame.container_id})
+        # Preserve source ownership in the engine's derived retry/exception events.
         event.node_run_result.process_data = {
             **event.node_run_result.process_data,
-            _HIDDEN_CHILD_EVENT_KEY: True,
+            _HIDDEN_CHILD_EVENT_KEY: source_frame_id or frame.frame_id,
         }
 
     def should_emit(self, *, event: NodeEvent) -> bool:
@@ -232,6 +253,7 @@ class WorkflowToolContainerHandler:
         parent_frame.state.enqueue_ready_task(ResumeTask(invocation_id=run_state.invocation_id, result=result))
         self._root_runtime_state().pop_container_frame(frame.frame_id)
         self._frame_registry.remove(frame.frame_id)
+        self._event_listeners.pop(frame.frame_id, None)
 
     def _create_frame(
         self,
@@ -296,6 +318,8 @@ class WorkflowToolContainerHandler:
             node_factory=node_factory,
             root_node_id=root_node_id,
         )
+        if self._event_listener_factory is not None:
+            self._event_listeners[frame_id] = self._event_listener_factory(source)
         return self._frame_registry.create(
             frame_id=frame_id,
             container_id=run_state.node_id,
