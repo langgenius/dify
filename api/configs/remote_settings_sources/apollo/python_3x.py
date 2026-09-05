@@ -21,9 +21,9 @@ urllib.request.install_opener(opener)
 logger = logging.getLogger(__name__)
 
 
-def http_request(url: str, timeout: int | float, headers: Mapping[str, str] = {}) -> tuple[int, str | None]:
+def http_request(url: str, timeout: int | float, headers: Mapping[str, str] | None = None) -> tuple[int, str | None]:
     try:
-        request = urllib.request.Request(url, headers=dict(headers))
+        request = urllib.request.Request(url, headers=dict(headers) if headers else {})
         res = urllib.request.urlopen(request, timeout=timeout)
         body = res.read().decode("utf-8")
         return res.code, body
