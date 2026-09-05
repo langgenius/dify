@@ -83,7 +83,7 @@ def _tool_yaml() -> dict[str, Any]:
 def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch: pytest.MonkeyPatch):
     yaml_payloads = [_provider_yaml(), _tool_yaml()]
 
-    def _load_yaml(*args, **kwargs):
+    def _load_yaml[**P](*args: P.args, **kwargs: P.kwargs):
         return yaml_payloads.pop(0)
 
     monkeypatch.setattr("core.tools.builtin_tool.provider.load_yaml_file_cached", _load_yaml)

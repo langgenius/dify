@@ -30,7 +30,7 @@ class TestExternalDataFetch:
                 # This approach is robust regardless of thread scheduling order
                 from unittest.mock import MagicMock
 
-                def factory_side_effect(*args, **kwargs):
+                def factory_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
                     variable = kwargs.get("variable")
                     mock_instance = MagicMock()
                     if variable == "var1":

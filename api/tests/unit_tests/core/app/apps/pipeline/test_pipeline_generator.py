@@ -149,7 +149,7 @@ def _persist_worker_records(session: Session) -> None:
     session.commit()
 
 
-def _dummy_preserve(*args, **kwargs):
+def _dummy_preserve[**P](*args: P.args, **kwargs: P.kwargs):
     return contextlib.nullcontext()
 
 
