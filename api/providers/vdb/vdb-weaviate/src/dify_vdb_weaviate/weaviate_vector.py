@@ -278,20 +278,28 @@ class WeaviateVector(BaseVector):
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
     @override
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
+        """Return the canonical Weaviate object IDs for the given documents.
+
+        Issue #41714: the pre-fix code generated UUID v5 from each
+        document's ``page_content`` (``uuid5(URL_NAMESPACE, page_content)``),
+        while the cleanup path (``index_processor.clean`` →
+        ``vector.delete_by_ids``) was passing the segment's
+        ``index_node_id`` from the database — a random UUID v4. The two
+        never matched, so ``delete_by_id`` silently no-op'd on every
+        Weaviate vector store and the cleanup task reported success while
+        leaving the objects in place as orphans.
+
+        Use the same source as the rest of the VDB stack
+        (``VectorBase._get_uuids``): the ``doc_id`` stored in each
+        document's metadata, which is the same identifier the cleanup
+        path already passes through ``delete_by_ids``. Insert and delete
+        therefore agree on the Weaviate object ID, and the deduplication
+        property previously claimed by the UUID5 path is already provided
+        by the upstream ``_filter_duplicate_texts`` step on the same
+        ``doc_id``.
         """
-        Generates deterministic UUIDs for documents based on their content.
-
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
-        """
-        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-
-        uuids = []
-        for doc in documents:
-            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
-            uuids.append(str(uuid_val))
-
-        return uuids
+        return [doc.metadata["doc_id"] for doc in texts if doc.metadata and "doc_id" in doc.metadata]
 
     @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
