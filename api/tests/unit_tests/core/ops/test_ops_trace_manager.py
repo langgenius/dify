@@ -5,24 +5,33 @@ from __future__ import annotations
 import json
 import queue
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 from uuid import UUID
 
 import pytest
 from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import core.ops.ops_trace_manager as module
+from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
-from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
+from models.model import (
+    App,
+    AppMode,
+    AppModelConfig,
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageFile,
+    TraceAppConfig,
+)
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.unit_tests.config_override import apply_config_overrides
@@ -143,12 +152,20 @@ class RecordingDispatcher:
 
 
 @pytest.fixture
-def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
-    with (
-        patch.object(module.db, "session", sqlite_session),
-        patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
-    ):
-        yield sqlite_session
+def database(
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> Iterator[Session]:
+    database_sessions = scoped_session(sqlite_session_factory)
+    try:
+        with (
+            patch.object(module.db, "session", database_sessions),
+            patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
+        ):
+            yield sqlite_session
+    finally:
+        database_sessions.remove()
 
 
 @pytest.fixture
@@ -259,37 +276,6 @@ def _conversation_message(
     session.add_all([conversation, message])
     session.commit()
     return conversation, message
-
-
-def _message_data(**overrides):
-    created_at = datetime(2025, 2, 20, 12, 0, 0)
-    data = {
-        "id": "message-1",
-        "app_id": "app-id",
-        "conversation_id": "conversation-1",
-        "created_at": created_at,
-        "updated_at": created_at + timedelta(seconds=3),
-        "message": "hello",
-        "provider_response_latency": 1,
-        "message_tokens": 5,
-        "answer_tokens": 7,
-        "answer": "world",
-        "error": "",
-        "status": "complete",
-        "model_provider": "provider",
-        "model_id": "model",
-        "from_end_user_id": "end-user-1",
-        "from_account_id": None,
-        "agent_based": False,
-        "workflow_run_id": "run-1",
-        "from_source": "console",
-        "message_metadata": json.dumps({"usage": {"time_to_first_token": 1, "time_to_generate": 2}}),
-        "agent_thoughts": [],
-        "query": "query",
-        "inputs": "inputs",
-    }
-    data.update(overrides)
-    return SimpleNamespace(**data, to_dict=lambda: data)
 
 
 def test_encrypt_decrypt_obfuscate_and_cache(
@@ -482,7 +468,6 @@ def test_update_and_get_app_tracing_config_persist_state(trace_environment: None
 
 
 def test_message_trace_reads_real_conversation_app_and_message_file(
-    monkeypatch: pytest.MonkeyPatch,
     trace_environment: None,
     database: Session,
 ) -> None:
@@ -498,7 +483,6 @@ def test_message_trace_reads_real_conversation_app_and_message_file(
     )
     database.add(file)
     database.commit()
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
     result = TraceTask(
         trace_type=TraceTaskName.MESSAGE_TRACE,
         message_id=message.id,
@@ -510,9 +494,10 @@ def test_message_trace_reads_real_conversation_app_and_message_file(
 
 
 def test_workflow_log_enriches_moderation_and_suggested_question_traces(
-    monkeypatch: pytest.MonkeyPatch,
     database: Session,
 ) -> None:
+    app = _app(database)
+    _, message = _conversation_message(database, app)
     log = WorkflowAppLog(
         tenant_id="tenant-1",
         app_id="app-id",
@@ -524,11 +509,15 @@ def test_workflow_log_enriches_moderation_and_suggested_question_traces(
     )
     database.add(log)
     database.commit()
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
-    task = TraceTask(trace_type=TraceTaskName.MODERATION_TRACE, message_id="message-1")
-    moderation = SimpleNamespace(action="block", preset_response="no", query="q", flagged=True)
+    task = TraceTask(trace_type=TraceTaskName.MODERATION_TRACE, message_id=message.id)
+    moderation = ModerationInputsResult(
+        action=ModerationAction.DIRECT_OUTPUT,
+        preset_response="no",
+        query="q",
+        flagged=True,
+    )
     result = task.moderation_trace(
-        "message-1",
+        message.id,
         {"start": 1, "end": 2},
         moderation_result=moderation,
         inputs={"source": "payload"},
@@ -536,22 +525,21 @@ def test_workflow_log_enriches_moderation_and_suggested_question_traces(
     assert result.message_id == log.id
     assert result.flagged is True
     assert result.inputs == {"source": "payload"}
-    suggested = task.suggested_question_trace("message-1", {"start": 1, "end": 2}, suggested_question=["q1"])
+    suggested = task.suggested_question_trace(message.id, {"start": 1, "end": 2}, suggested_question=["q1"])
     assert suggested.message_id == log.id
     assert suggested.suggested_question == ["q1"]
 
 
 def test_dataset_retrieval_trace_serializes_documents(
-    monkeypatch: pytest.MonkeyPatch,
     trace_environment: None,
     database: Session,
 ) -> None:
-    _app(database)
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
+    app = _app(database)
+    _, message = _conversation_message(database, app)
     document = RetrievalDocument(page_content="value")
 
     result = TraceTask(trace_type=TraceTaskName.DATASET_RETRIEVAL_TRACE).dataset_retrieval_trace(
-        "message-1",
+        message.id,
         {"start": 1, "end": 2},
         documents=[document],
     )
@@ -613,25 +601,29 @@ def test_workflow_trace_reads_real_workflow_log_from_owned_session(
     assert result.completion_tokens == 7
 
 
-def test_tool_trace_reads_real_message_file(monkeypatch: pytest.MonkeyPatch, database: Session) -> None:
+def test_tool_trace_reads_real_message_file(database: Session) -> None:
+    app = _app(database)
+    _, message = _conversation_message(database, app)
     file = MessageFile(
-        message_id="message-1",
+        message_id=message.id,
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.REMOTE_URL,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         url="tool/file",
     )
-    database.add(file)
-    database.commit()
-    thought = SimpleNamespace(
-        tools=["tool-a"],
-        created_at=datetime(2025, 2, 20, 12, 1),
-        tool_meta={"tool-a": {"tool_config": {}, "time_cost": 5, "error": "", "tool_parameters": {}}},
+    thought = MessageAgentThought(
+        message_id=message.id,
+        position=1,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        tool="tool-a",
+        tool_meta_str=json.dumps({"tool-a": {"tool_config": {}, "time_cost": 5, "error": "", "tool_parameters": {}}}),
     )
-    monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data(agent_thoughts=[thought]))
+    database.add_all([file, thought])
+    database.commit()
     result = TraceTask(trace_type=TraceTaskName.TOOL_TRACE).tool_trace(
-        "message-1", {"start": 1, "end": 2}, tool_name="tool-a", tool_inputs={}, tool_outputs="result"
+        message.id, {"start": 1, "end": 2}, tool_name="tool-a", tool_inputs={}, tool_outputs="result"
     )
     assert result.tool_name == "tool-a"
     assert result.time_cost == 5
@@ -667,7 +659,7 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert OpsTraceManager.get_trace_config_project_url({}, "dummy") == "https://project.fake"
     task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="message-1")
     assert task.conversation_trace(foo="bar") == {"foo": "bar"}
-    assert task._extract_streaming_metrics(_message_data(message_metadata="invalid")) == {}
+    assert task._extract_streaming_metrics(Message(message_metadata="invalid")) == {}
     assert task.generate_name_trace("conversation", {"start": 1, "end": 2}, tenant_id=None) == {}
     generated = task.generate_name_trace(
         "conversation",
