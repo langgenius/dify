@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
+import dateutil.parser
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
@@ -93,7 +94,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
-from models.enums import CreatorUserRole, DatasetQuerySource
+from models.enums import CreatorUserRole, DatasetMetadataType, DatasetQuerySource
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 
@@ -1585,7 +1586,10 @@ class DatasetRetrieval:
         # get all metadata field
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = session.scalars(metadata_stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        all_metadata_fields = [
+            {"name": metadata_field.name, "type": metadata_field.type} for metadata_field in metadata_fields
+        ]
+        metadata_field_types = {metadata_field.name: metadata_field.type for metadata_field in metadata_fields}
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1622,18 +1626,50 @@ class DatasetRetrieval:
             if "metadata_map" in result_text_json:
                 metadata_map = result_text_json["metadata_map"]
                 for item in metadata_map:
-                    if item.get("metadata_field_name") in all_metadata_fields:
-                        automatic_metadata_filters.append(
-                            {
-                                "metadata_name": item.get("metadata_field_name"),
-                                "value": item.get("metadata_field_value"),
-                                "condition": item.get("comparison_operator"),
-                            }
-                        )
+                    metadata_name = item.get("metadata_field_name")
+                    if metadata_name not in metadata_field_types:
+                        continue
+                    condition = item.get("comparison_operator")
+                    value = self._normalize_metadata_filter_value(
+                        metadata_field_types[metadata_name], item.get("metadata_field_value")
+                    )
+                    if value is None and condition not in ("empty", "not empty"):
+                        # A value the model could not express in the stored representation would
+                        # otherwise be compared against a column of another type and fail the query.
+                        continue
+                    automatic_metadata_filters.append(
+                        {
+                            "metadata_name": metadata_name,
+                            "value": value,
+                            "condition": condition,
+                        }
+                    )
         except Exception as e:
             logger.warning(e, exc_info=True)
             return None
         return automatic_metadata_filters
+
+    @staticmethod
+    def _normalize_metadata_filter_value(metadata_type: str, value: Any) -> Any:
+        """Convert a model-produced filter value into the representation stored in ``doc_metadata``.
+
+        ``time`` metadata is persisted as a Unix timestamp, but models answer date questions with a
+        human-readable date such as ``2024-01-01``. Comparing that string against the numeric value
+        makes the query fail, so parse it back into a timestamp. Values that cannot be parsed return
+        ``None`` so the caller can drop the filter instead of building a comparison that errors out.
+        """
+        if metadata_type != DatasetMetadataType.TIME or value is None:
+            return value
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int | float):
+            return value
+
+        try:
+            return dateutil.parser.parse(str(value)).timestamp()
+        except (ValueError, OverflowError):
+            logger.warning("Cannot interpret %r as a time metadata value, ignoring the filter", value)
+            return None
 
     @classmethod
     def process_metadata_filter_func(
@@ -1780,7 +1816,11 @@ class DatasetRetrieval:
         )
 
     def _get_prompt_template(
-        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list[str], query: str
+        self,
+        model_config: ModelConfigWithCredentialsEntity,
+        mode: str,
+        metadata_fields: list[dict[str, str]],
+        query: str,
     ):
         model_mode = ModelMode(mode)
         input_text = query
