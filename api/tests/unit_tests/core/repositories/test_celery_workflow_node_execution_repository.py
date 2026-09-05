@@ -76,6 +76,44 @@ def sample_workflow_node_execution():
 class TestCeleryWorkflowNodeExecutionRepository:
     """Test cases for CeleryWorkflowNodeExecutionRepository."""
 
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_workflow_tool_scope_keeps_async_backend_and_isolates_same_app_history(
+        self, mock_task, sqlite_session_factory, mock_end_user, sample_workflow_node_execution
+    ):
+        caller = CeleryWorkflowNodeExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_end_user,
+            app_id="caller-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        source = caller.for_workflow_tool("caller-app")
+        root_node = sample_workflow_node_execution
+        source_node = root_node.model_copy(update={"id": "source-exec", "node_execution_id": "source-exec"})
+        caller.save_synchronously(root_node)
+        source.save_synchronously(source_node)
+        source_node.status = WorkflowNodeExecutionStatus.SUCCEEDED
+        source_node.outputs = {"answer": "ok"}
+        source.save(source_node)
+        source.save_execution_data(source_node)
+
+        assert [node.id for node in caller.get_by_workflow_execution(root_node.workflow_execution_id)] == [root_node.id]
+        assert [node.id for node in source.get_by_workflow_execution(root_node.workflow_execution_id)] == [
+            source_node.id
+        ]
+        restored_source = caller.for_workflow_tool("caller-app")
+        assert [node.id for node in restored_source.get_by_workflow_execution(root_node.workflow_execution_id)] == [
+            source_node.id
+        ]
+        mock_task.delay.assert_called_once_with(
+            execution_data=source_node.model_dump(),
+            tenant_id=RESOURCE_TENANT_ID,
+            app_id="caller-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value,
+            creator_user_id=mock_end_user.id,
+            creator_user_role="end_user",
+        )
+
     def test_init_with_sessionmaker(self, mock_session_factory, mock_account):
         """Test repository initialization with sessionmaker."""
         app_id = "test-app-id"

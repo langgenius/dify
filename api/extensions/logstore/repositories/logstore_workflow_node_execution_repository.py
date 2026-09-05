@@ -139,6 +139,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
+        self._session_factory = session_factory
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -155,6 +157,16 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Keep the migration switch on the typed application config so callers
         # and tests share the same validated source.
         self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
+
+    @override
+    def for_workflow_tool(self, app_id: str) -> "LogstoreWorkflowNodeExecutionRepository":
+        return LogstoreWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        )
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
         logger.debug(
@@ -353,6 +365,13 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Escape parameters to prevent SQL injection
         escaped_workflow_execution_id = escape_identifier(workflow_execution_id)
         escaped_tenant_id = escape_identifier(self._tenant_id)
+        # Legacy root records may omit their origin; exclude only new hidden tool records.
+        tool_origin = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value
+        origin_filter = (
+            f"triggered_from='{tool_origin}'"
+            if self._triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+            else f"(triggered_from IS NULL OR triggered_from!='{tool_origin}')"
+        )
 
         # Build ORDER BY clause for outer query
         order_clause = ""
@@ -381,6 +400,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 FROM {AliyunLogStore.workflow_node_execution_logstore}
                 WHERE workflow_run_id='{escaped_workflow_execution_id}'
                   AND tenant_id='{escaped_tenant_id}'
+                  AND {origin_filter}
                   {app_id_filter}
             ) t
             WHERE rn = 1
