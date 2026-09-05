@@ -187,6 +187,19 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
+        persistence_layer = WorkflowPersistenceLayer(
+            application_generate_entity=self.application_generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=self._workflow.id,
+                workflow_type=WorkflowType(self._workflow.type),
+                version=self._workflow.version,
+                graph_data=self._workflow.graph_dict,
+            ),
+            workflow_execution_repository=self._workflow_execution_repository,
+            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            trace_manager=self.application_generate_entity.trace_manager,
+        )
+
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
@@ -200,21 +213,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_tool_event_listener_factory=persistence_layer.create_workflow_tool_event_listener,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
-        )
-
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=self._workflow.id,
-                workflow_type=WorkflowType(self._workflow.type),
-                version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
         )
 
         workflow_entry.graph_engine.add_layer(persistence_layer)

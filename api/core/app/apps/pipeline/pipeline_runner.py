@@ -208,6 +208,19 @@ class PipelineRunner(WorkflowBasedAppRunner):
             )
 
         # RUN WORKFLOW
+        persistence_layer = WorkflowPersistenceLayer(
+            application_generate_entity=self.application_generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=workflow.id,
+                workflow_type=WorkflowType(workflow.type),
+                version=workflow.version,
+                graph_data=workflow.graph_dict,
+            ),
+            workflow_execution_repository=self._workflow_execution_repository,
+            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            trace_manager=self.application_generate_entity.trace_manager,
+        )
+
         workflow_entry = WorkflowEntry(
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
@@ -221,22 +234,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph_runtime_state=graph_runtime_state,
             variable_pool=variable_pool,
             workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_tool_event_listener_factory=persistence_layer.create_workflow_tool_event_listener,
         )
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
-
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=workflow.id,
-                workflow_type=WorkflowType(workflow.type),
-                version=workflow.version,
-                graph_data=workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
-        )
 
         workflow_entry.graph_engine.add_layer(persistence_layer)
 
@@ -280,7 +281,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
-        graph_config = self._normalize_container_ownership(graph_config)
         # nodes = graph_config.get("nodes", [])
         # edges = graph_config.get("edges", [])
         # real_run_nodes = []

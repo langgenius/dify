@@ -694,7 +694,9 @@ def test_keeps_latest_execution_per_node_by_index(session_for: SessionFor) -> No
     newer = _execution(node_id="agent-1", outputs={"text": "new"}, index=5)
     other_tenant = _execution(node_id="agent-1", outputs={"text": "other tenant"}, index=99, tenant_id="tenant-2")
     other_run = _execution(node_id="agent-1", outputs={"text": "other run"}, index=100, workflow_run_id="run-2")
-    session = session_for(workflow_run=run, executions=[older, newer, other_tenant, other_run])
+    recursive_tool = _execution(node_id="agent-1", outputs={"text": "recursive child"}, index=101)
+    recursive_tool.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    session = session_for(workflow_run=run, executions=[older, newer, other_tenant, other_run, recursive_tool])
     snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.node_outputs[0].outputs[0].value_preview == "new"
 

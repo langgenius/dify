@@ -693,9 +693,6 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 "inputs_for_log": dict(inputs_for_log),
             }
         )
-        if encoded is None:
-            raise ToolRuntimeResolutionError("failed to serialize Workflow Tool inputs")
-
         return WorkflowToolContainerPayload.model_validate(
             {
                 "source_app_id": str(tool.workflow_app_id),

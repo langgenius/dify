@@ -654,6 +654,7 @@ class DifyNodeFactory(NodeFactory):
                 "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentWorkspaceStore(),
+                "human_input_run_context": self.human_input_run_context,
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,
