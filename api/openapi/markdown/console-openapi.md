@@ -10447,12 +10447,6 @@ Update a plugin endpoint
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ParserDeleteModels](#parserdeletemodels)<br> |
-
 #### Responses
 
 | Code | Description |

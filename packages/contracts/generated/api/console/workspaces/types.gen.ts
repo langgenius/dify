@@ -283,11 +283,6 @@ export type ValidationResultResponse = {
   result: 'error' | 'success'
 }
 
-export type ParserDeleteModels = {
-  model: string
-  model_type: ModelType
-}
-
 export type ProviderModelListResponse = {
   data: Array<ModelWithProviderEntityResponse>
 }
@@ -345,6 +340,11 @@ export type ParserValidate = {
   credentials: {
     [key: string]: unknown
   }
+  model: string
+  model_type: ModelType
+}
+
+export type ParserDeleteModels = {
   model: string
   model_type: ModelType
 }
@@ -1454,8 +1454,6 @@ export type ModelProviderPluginSummaryResponse = {
   version: string
 }
 
-export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-
 export type ModelWithProviderEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
@@ -1478,6 +1476,8 @@ export type LoadBalancingPayload = {
   }> | null
   enabled?: boolean | null
 }
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type CredentialConfiguration = {
   credential_id: string
@@ -3588,7 +3588,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResp
   PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses[keyof PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
-  body: ParserDeleteModels
+  body?: never
   path: {
     provider: string
   }
