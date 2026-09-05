@@ -7,6 +7,7 @@ import click
 from pydantic import TypeAdapter
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -54,26 +55,27 @@ def setup_system_tool_oauth_client(provider, client_params):
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(ToolOAuthSystemClient).where(
-                ToolOAuthSystemClient.provider == provider_name,
-                ToolOAuthSystemClient.plugin_id == plugin_id,
-            )
-        ),
-    ).rowcount
-    if deleted_count > 0:
-        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+    with Session(db.engine) as session:
+        deleted_count = cast(
+            CursorResult,
+            session.execute(
+                delete(ToolOAuthSystemClient).where(
+                    ToolOAuthSystemClient.provider == provider_name,
+                    ToolOAuthSystemClient.plugin_id == plugin_id,
+                )
+            ),
+        ).rowcount
+        if deleted_count > 0:
+            click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
-    oauth_client = ToolOAuthSystemClient(
-        provider=provider_name,
-        plugin_id=plugin_id,
-        encrypted_oauth_params=oauth_client_params,
-    )
-    db.session.add(oauth_client)
-    db.session.commit()
-    click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+        oauth_client = ToolOAuthSystemClient(
+            provider=provider_name,
+            plugin_id=plugin_id,
+            encrypted_oauth_params=oauth_client_params,
+        )
+        session.add(oauth_client)
+        session.commit()
+        click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
 
 
 @click.command("setup-system-trigger-oauth-client", help="Setup system trigger oauth client.")
@@ -104,26 +106,27 @@ def setup_system_trigger_oauth_client(provider, client_params):
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(TriggerOAuthSystemClient).where(
-                TriggerOAuthSystemClient.provider == provider_name,
-                TriggerOAuthSystemClient.plugin_id == plugin_id,
-            )
-        ),
-    ).rowcount
-    if deleted_count > 0:
-        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+    with Session(db.engine) as session:
+        deleted_count = cast(
+            CursorResult,
+            session.execute(
+                delete(TriggerOAuthSystemClient).where(
+                    TriggerOAuthSystemClient.provider == provider_name,
+                    TriggerOAuthSystemClient.plugin_id == plugin_id,
+                )
+            ),
+        ).rowcount
+        if deleted_count > 0:
+            click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
-    oauth_client = TriggerOAuthSystemClient(
-        provider=provider_name,
-        plugin_id=plugin_id,
-        encrypted_oauth_params=oauth_client_params,
-    )
-    db.session.add(oauth_client)
-    db.session.commit()
-    click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+        oauth_client = TriggerOAuthSystemClient(
+            provider=provider_name,
+            plugin_id=plugin_id,
+            encrypted_oauth_params=oauth_client_params,
+        )
+        session.add(oauth_client)
+        session.commit()
+        click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
 
 
 @click.command("setup-datasource-oauth-client", help="Setup datasource oauth client.")
@@ -147,30 +150,31 @@ def setup_datasource_oauth_client(provider, client_params):
         return
 
     click.echo(click.style(f"Ready to delete existing oauth client params: {provider_name}", fg="yellow"))
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(DatasourceOauthParamConfig).where(
-                DatasourceOauthParamConfig.provider == provider_name,
-                DatasourceOauthParamConfig.plugin_id == plugin_id,
-            )
-        ),
-    ).rowcount
-    if deleted_count > 0:
-        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+    with Session(db.engine) as session:
+        deleted_count = cast(
+            CursorResult,
+            session.execute(
+                delete(DatasourceOauthParamConfig).where(
+                    DatasourceOauthParamConfig.provider == provider_name,
+                    DatasourceOauthParamConfig.plugin_id == plugin_id,
+                )
+            ),
+        ).rowcount
+        if deleted_count > 0:
+            click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
-    click.echo(click.style(f"Ready to setup datasource oauth client: {provider_name}", fg="yellow"))
-    oauth_client = DatasourceOauthParamConfig(
-        provider=provider_name,
-        plugin_id=plugin_id,
-        system_credentials=client_params_dict,
-    )
-    db.session.add(oauth_client)
-    db.session.commit()
-    click.echo(click.style(f"provider: {provider_name}", fg="green"))
-    click.echo(click.style(f"plugin_id: {plugin_id}", fg="green"))
-    click.echo(click.style(f"params: {json.dumps(client_params_dict, indent=2, ensure_ascii=False)}", fg="green"))
-    click.echo(click.style(f"Datasource oauth client setup successfully. id: {oauth_client.id}", fg="green"))
+        click.echo(click.style(f"Ready to setup datasource oauth client: {provider_name}", fg="yellow"))
+        oauth_client = DatasourceOauthParamConfig(
+            provider=provider_name,
+            plugin_id=plugin_id,
+            system_credentials=client_params_dict,
+        )
+        session.add(oauth_client)
+        session.commit()
+        click.echo(click.style(f"provider: {provider_name}", fg="green"))
+        click.echo(click.style(f"plugin_id: {plugin_id}", fg="green"))
+        click.echo(click.style(f"params: {json.dumps(client_params_dict, indent=2, ensure_ascii=False)}", fg="green"))
+        click.echo(click.style(f"Datasource oauth client setup successfully. id: {oauth_client.id}", fg="green"))
 
 
 @click.command("transform-datasource-credentials", help="Transform datasource credentials.")
@@ -293,32 +297,105 @@ def transform_datasource_credentials(environment: str):
                                     f"Skipping firecrawl credential for tenant {tenant_id} due to missing credentials.",
                                     fg="yellow",
                                 )
+                        auth_count = 0
+                        for notion_tenant_credential in notion_tenant_credentials:
+                            auth_count += 1
+                            # get credential oauth params
+                            access_token = notion_tenant_credential.access_token
+                            # notion info
+                            notion_info = notion_tenant_credential.source_info
+                            workspace_id = notion_info.get("workspace_id")
+                            workspace_name = notion_info.get("workspace_name")
+                            workspace_icon = notion_info.get("workspace_icon")
+                            new_credentials = {
+                                "integration_secret": encrypter.encrypt_token(tenant_id, access_token),
+                                "workspace_id": workspace_id,
+                                "workspace_name": workspace_name,
+                                "workspace_icon": workspace_icon,
+                            }
+                            datasource_provider = DatasourceProvider(
+                                provider="notion_datasource",
+                                tenant_id=tenant_id,
+                                plugin_id=notion_plugin_id,
+                                auth_type=oauth_credential_type.value,
+                                encrypted_credentials=new_credentials,
+                                name=f"Auth {auth_count}",
+                                avatar_url=workspace_icon or "default",
+                                is_default=False,
                             )
-                            continue
-                        # get credential api key
-                        credentials_json = json.loads(firecrawl_tenant_credential.credentials)
-                        api_key = credentials_json.get("config", {}).get("api_key")
-                        base_url = credentials_json.get("config", {}).get("base_url")
-                        new_credentials = {
-                            "firecrawl_api_key": api_key,
-                            "base_url": base_url,
-                        }
-                        datasource_provider = DatasourceProvider(
-                            provider="firecrawl",
-                            tenant_id=tenant_id,
-                            plugin_id=firecrawl_plugin_id,
-                            auth_type=api_key_credential_type.value,
-                            encrypted_credentials=new_credentials,
-                            name=f"Auth {auth_count}",
-                            avatar_url="default",
-                            is_default=False,
+                            session.add(datasource_provider)
+                            deal_notion_count += 1
+                    except Exception as e:
+                        click.echo(
+                            click.style(
+                                f"Error transforming notion credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                            )
                         )
-                        db.session.add(datasource_provider)
-                        deal_firecrawl_count += 1
-                except Exception as e:
-                    click.echo(
-                        click.style(
-                            f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        continue
+                    session.commit()
+            # deal firecrawl credentials
+            deal_firecrawl_count = 0
+            firecrawl_credentials = session.scalars(
+                select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.provider == "firecrawl")
+            ).all()
+            if firecrawl_credentials:
+                firecrawl_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
+                for firecrawl_credential in firecrawl_credentials:
+                    tenant_id = firecrawl_credential.tenant_id
+                    if tenant_id not in firecrawl_credentials_tenant_mapping:
+                        firecrawl_credentials_tenant_mapping[tenant_id] = []
+                    firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
+                for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
+                    tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id))
+                    if not tenant:
+                        continue
+                    try:
+                        # check firecrawl plugin is installed
+                        installed_plugins = installer_manager.list_plugins(tenant_id)
+                        installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                        if firecrawl_plugin_id not in installed_plugins_ids:
+                            if firecrawl_plugin_unique_identifier:
+                                # install firecrawl plugin
+                                PluginService.install_from_marketplace_pkg(
+                                    tenant_id, [firecrawl_plugin_unique_identifier]
+                                )
+
+                        auth_count = 0
+                        for firecrawl_tenant_credential in firecrawl_tenant_credentials:
+                            auth_count += 1
+                            if not firecrawl_tenant_credential.credentials:
+                                click.echo(
+                                    click.style(
+                                        f"Skipping firecrawl credential for tenant {tenant_id} due to missing credentials.",
+                                        fg="yellow",
+                                    )
+                                )
+                                continue
+                            # get credential api key
+                            credentials_json = json.loads(firecrawl_tenant_credential.credentials)
+                            api_key = credentials_json.get("config", {}).get("api_key")
+                            base_url = credentials_json.get("config", {}).get("base_url")
+                            new_credentials = {
+                                "firecrawl_api_key": api_key,
+                                "base_url": base_url,
+                            }
+                            datasource_provider = DatasourceProvider(
+                                provider="firecrawl",
+                                tenant_id=tenant_id,
+                                plugin_id=firecrawl_plugin_id,
+                                auth_type=api_key_credential_type.value,
+                                encrypted_credentials=new_credentials,
+                                name=f"Auth {auth_count}",
+                                avatar_url="default",
+                                is_default=False,
+                            )
+                            session.add(datasource_provider)
+                            deal_firecrawl_count += 1
+                    except Exception as e:
+                        click.echo(
+                            click.style(
+                                f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                            )
                         )
                     )
                     continue
@@ -358,32 +435,44 @@ def transform_datasource_credentials(environment: str):
                                     f"Skipping jina credential for tenant {tenant_id} due to missing credentials.",
                                     fg="yellow",
                                 )
+
+                        auth_count = 0
+                        for jina_tenant_credential in jina_tenant_credentials:
+                            auth_count += 1
+                            if not jina_tenant_credential.credentials:
+                                click.echo(
+                                    click.style(
+                                        f"Skipping jina credential for tenant {tenant_id} due to missing credentials.",
+                                        fg="yellow",
+                                    )
+                                )
+                                continue
+                            # get credential api key
+                            credentials_json = json.loads(jina_tenant_credential.credentials)
+                            api_key = credentials_json.get("config", {}).get("api_key")
+                            new_credentials = {
+                                "integration_secret": api_key,
+                            }
+                            datasource_provider = DatasourceProvider(
+                                provider="jinareader",
+                                tenant_id=tenant_id,
+                                plugin_id=jina_plugin_id,
+                                auth_type=api_key_credential_type.value,
+                                encrypted_credentials=new_credentials,
+                                name=f"Auth {auth_count}",
+                                avatar_url="default",
+                                is_default=False,
                             )
-                            continue
-                        # get credential api key
-                        credentials_json = json.loads(jina_tenant_credential.credentials)
-                        api_key = credentials_json.get("config", {}).get("api_key")
-                        new_credentials = {
-                            "integration_secret": api_key,
-                        }
-                        datasource_provider = DatasourceProvider(
-                            provider="jinareader",
-                            tenant_id=tenant_id,
-                            plugin_id=jina_plugin_id,
-                            auth_type=api_key_credential_type.value,
-                            encrypted_credentials=new_credentials,
-                            name=f"Auth {auth_count}",
-                            avatar_url="default",
-                            is_default=False,
+                            session.add(datasource_provider)
+                            deal_jina_count += 1
+                    except Exception as e:
+                        click.echo(
+                            click.style(
+                                f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                            )
                         )
-                        db.session.add(datasource_provider)
-                        deal_jina_count += 1
-                except Exception as e:
-                    click.echo(
-                        click.style(f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red")
-                    )
-                    continue
-                db.session.commit()
+                        continue
+                    session.commit()
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
