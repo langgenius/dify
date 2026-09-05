@@ -53,7 +53,11 @@ from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    TracingConfigNotFoundError,
+    TracingConfigVerificationFailedError,
+)
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
@@ -76,6 +80,10 @@ from services.app_site_service import (
     AppSiteChanges,
     AppSiteCommandResult,
     AppSiteNotFoundError,
+)
+from services.app_tracing_config_service import (
+    AppTracingConfigNotFoundError,
+    AppTracingConfigVerificationFailedError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -387,52 +395,71 @@ class TestOpsTraceEndpoints:
     def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.get)
-
+        tracing_configs = MagicMock()
+        tracing_configs.get.return_value = None
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "get_tracing_app_config",
-            lambda **_kwargs: None,
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+            result = method(
+                api,
+                TraceProviderQuery(tracing_provider="langfuse"),
+                _make_request_context(),
+                uuid.UUID(APP_ID),
+            )
 
         assert result == {"has_not_configured": True}
+        tracing_configs.get.assert_called_once_with(
+            context=_make_request_context(),
+            app_id=APP_ID,
+            tracing_provider="langfuse",
+        )
 
     def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.post)
-
+        tracing_configs = MagicMock()
+        tracing_configs.create.side_effect = AppTracingConfigVerificationFailedError()
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "create_tracing_app_config",
-            lambda **_kwargs: {"error": True},
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context(
             "/",
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
-            with pytest.raises(BadRequest):
+            with pytest.raises(TracingConfigVerificationFailedError):
                 method(
                     api,
                     TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                    _make_app(),
+                    _make_request_context(),
+                    uuid.UUID(APP_ID),
                 )
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.delete)
-
+        tracing_configs = MagicMock()
+        tracing_configs.delete.side_effect = AppTracingConfigNotFoundError()
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "delete_tracing_app_config",
-            lambda **_kwargs: False,
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            with pytest.raises(BadRequest):
-                method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+            with pytest.raises(TracingConfigNotFoundError):
+                method(
+                    api,
+                    TraceProviderQuery(tracing_provider="langfuse"),
+                    _make_request_context(),
+                    uuid.UUID(APP_ID),
+                )
 
 
 class TestSiteEndpoints:

@@ -41,6 +41,7 @@ from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -134,6 +135,8 @@ from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
+from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_service import AppTracingConfigService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -244,6 +247,7 @@ class ApplicationServices:
     app_definitions: AppDefinitionQueryService
     app_sites: AppSiteService
     app_statistics: AppStatisticQuery
+    app_tracing_configs: AppTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
@@ -592,6 +596,10 @@ def build_application_services(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
+        app_tracing_configs=AppTracingConfigService(
+            configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
+            provider=OpsTraceManagerGateway(),
+        ),
         billing_portal=BillingPortalService(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,
