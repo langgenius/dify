@@ -407,7 +407,6 @@ class TestDocumentIndexingTasks:
 
         # Document with different indexing status
         doc1 = Document(
-            id=fake.uuid4(),
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=2,
@@ -424,7 +423,6 @@ class TestDocumentIndexingTasks:
 
         # Document with disabled status
         doc2 = Document(
-            id=fake.uuid4(),
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=3,

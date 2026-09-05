@@ -710,7 +710,7 @@ class TestDocumentMetadataApi:
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
         doc = MagicMock()
-        payload = {"doc_type": "invoice", "doc_metadata": {"amount": 10, "invalid": "x"}}
+        payload = {"doc_type": "book", "doc_metadata": {"amount": 10, "invalid": "x"}}
         schema = {"amount": int}
         session = MagicMock()
         req_data = DocumentMetadataUpdatePayload.model_validate(payload)
@@ -719,7 +719,7 @@ class TestDocumentMetadataApi:
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"invoice": schema},
+                {"book": schema},
             ),
         ):
             method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
@@ -1612,7 +1612,7 @@ class TestDocumentListAdvancedCases:
         method = unwrap(api.put)
         user, tenant_id = patch_tenant
         doc = MagicMock()
-        payload = {"doc_type": "contract", "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"}}
+        payload = {"doc_type": "book", "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"}}
         schema = {"amount": int, "currency": str}
         session = MagicMock()
         req_data = DocumentMetadataUpdatePayload.model_validate(payload)
@@ -1621,7 +1621,7 @@ class TestDocumentListAdvancedCases:
             patch.object(api, "get_document", return_value=doc),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"contract": schema},
+                {"book": schema},
             ),
         ):
             response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")

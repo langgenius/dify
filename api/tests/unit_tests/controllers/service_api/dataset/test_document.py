@@ -21,6 +21,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
@@ -182,7 +183,11 @@ def make_serializable_document(**overrides: object) -> Document:
         "word_count": None,
     }
     attrs.update(overrides)
+    created_at = cast(datetime, attrs.pop("created_at"))
+    updated_at = cast(datetime, attrs.pop("updated_at"))
     document = Document(**attrs)
+    document.created_at = created_at
+    document.updated_at = updated_at
     document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
 

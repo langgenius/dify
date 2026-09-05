@@ -182,7 +182,6 @@ class TestCleanDatasetTask:
             Document: Created document instance
         """
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -196,9 +195,9 @@ class TestCleanDatasetTask:
             archived=False,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
             word_count=100,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        document.created_at = datetime.now()
+        document.updated_at = datetime.now()
 
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -916,7 +915,6 @@ class TestCleanDatasetTask:
         special_content = "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?`~"
 
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -926,9 +924,9 @@ class TestCleanDatasetTask:
             name=f"test_doc_{special_content}",
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        document.created_at = datetime.now()
+        document.updated_at = datetime.now()
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
 

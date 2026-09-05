@@ -10,6 +10,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, DocumentSegment
+from models.enums import IndexingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def remove_document_from_index_task(document_id: str):
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
 
-        if document.indexing_status != "completed":
+        if document.indexing_status != IndexingStatus.COMPLETED:
             logger.info(click.style(f"Document is not completed, remove is not allowed: {document_id}", fg="red"))
             return
 

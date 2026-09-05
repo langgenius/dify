@@ -78,8 +78,7 @@ def _make_document(
     word_count: int | None = None,
     indexing_status: IndexingStatus = IndexingStatus.WAITING,
 ) -> Document:
-    return Document(
-        id=document_id,
+    document = Document(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         position=position,
@@ -92,6 +91,8 @@ def _make_document(
         word_count=word_count,
         indexing_status=indexing_status,
     )
+    document.id = document_id
+    return document
 
 
 def _make_app(*, app_id: str, tenant_id: str = "tenant-1") -> App:
@@ -1548,8 +1549,8 @@ class TestModelIntegration:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             word_count=100,
-            id=document_id,
         )
+        document.id = document_id
 
         # Create segment
         segment = DocumentSegment(
