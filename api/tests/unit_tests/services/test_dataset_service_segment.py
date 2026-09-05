@@ -705,9 +705,7 @@ class TestSegmentServiceMutations:
 
         multimodel_update.assert_called_once_with(segment, [], dataset, session=sqlite_session)
 
-    def test_update_segment_explicit_attachment_ids_updates_multimodel_vector(
-        self, sqlite_session: Session
-    ) -> None:
+    def test_update_segment_explicit_attachment_ids_updates_multimodel_vector(self, sqlite_session: Session) -> None:
         dataset, document, segment = _persist_chain(sqlite_session)
         attachment_ids = ["attachment-1", "attachment-2"]
 
