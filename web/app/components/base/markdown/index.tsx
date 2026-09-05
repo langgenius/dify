@@ -2,6 +2,8 @@ import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrap
 import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
 import { memo, useMemo } from 'react'
+import { useLocale } from '@/context/i18n'
+import { getTextDirection } from '@/i18n-config/language'
 import dynamic from '@/next/dynamic'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
@@ -44,10 +46,13 @@ export const Markdown = memo((props: MarkdownProps) => {
     mode,
     className,
   } = props
+  const locale = useLocale()
+  const dir = getTextDirection(locale) === 'rtl' ? 'rtl' : undefined
   const latexContent = useMemo(() => preprocess(content), [content])
 
   return (
     <div
+      dir={dir}
       className={cn('markdown-body', 'text-text-primary!', className)}
       data-testid="markdown-body"
     >

@@ -1,10 +1,17 @@
 import type { StreamdownProps } from 'streamdown'
 import type { SimplePluginInfo } from '../streamdown-wrapper'
 import { render, screen } from '@testing-library/react'
+import { useTranslation } from '#i18n'
 import { Markdown } from '../index'
 
 const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
+}))
+
+vi.mock('#i18n', () => ({
+  useTranslation: vi.fn(() => ({
+    i18n: { language: 'en-US' },
+  })),
 }))
 
 vi.mock('@/next/dynamic', () => ({
@@ -38,6 +45,25 @@ const getLastWrapperProps = (): CapturedProps => {
 describe('Markdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useTranslation).mockReturnValue({
+      i18n: { language: 'en-US' },
+    } as ReturnType<typeof useTranslation>)
+  })
+
+  it('should not set a text direction for the default English locale', () => {
+    render(<Markdown content="Hello World" />)
+    expect(screen.getByTestId('markdown-body')).not.toHaveAttribute('dir')
+  })
+
+  it.each([
+    ['fa-IR', 'سلام'],
+    ['ar-TN', 'مرحبا'],
+  ])('should render right-to-left for the %s locale', (language, content) => {
+    vi.mocked(useTranslation).mockReturnValue({
+      i18n: { language },
+    } as ReturnType<typeof useTranslation>)
+    render(<Markdown content={content} />)
+    expect(screen.getByTestId('markdown-body')).toHaveAttribute('dir', 'rtl')
   })
 
   it('should render wrapper content', () => {

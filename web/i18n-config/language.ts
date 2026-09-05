@@ -79,6 +79,12 @@ export const getAccessControlTemplateLanguage = (locale: string): AccessControlT
   return ACCESS_CONTROL_TEMPLATE_LANGUAGE[locale] || 'en'
 }
 
+const RTL_LOCALES: ReadonlySet<string> = new Set(['fa-IR', 'ar-TN'])
+
+export const getTextDirection = (locale: string): 'ltr' | 'rtl' => {
+  return RTL_LOCALES.has(locale) ? 'rtl' : 'ltr'
+}
+
 export const NOTICE_I18N = {
   title: {
     en_US: 'Important Notice',
