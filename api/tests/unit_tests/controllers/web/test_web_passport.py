@@ -1,6 +1,5 @@
 """Unit tests for the thin web-passport Flask adapter."""
 
-from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -31,7 +30,7 @@ def test_passport_resource_parses_input_and_serializes_result(app: Flask) -> Non
         patch("controllers.web.passport.application_services", return_value=services),
         patch("controllers.web.passport.extract_webapp_access_token", return_value="login-token"),
     ):
-        result = unwrap(PassportResource.get)(PassportResource())
+        result = PassportResource().get()
 
     assert result == {"access_token": "issued-token"}
     service.issue.assert_called_once_with(
@@ -41,7 +40,7 @@ def test_passport_resource_parses_input_and_serializes_result(app: Flask) -> Non
 
 def test_passport_resource_requires_app_code(app: Flask) -> None:
     with app.test_request_context("/passport"), pytest.raises(Unauthorized, match="X-App-Code"):
-        unwrap(PassportResource.get)(PassportResource())
+        PassportResource().get()
 
 
 @pytest.mark.parametrize(
@@ -66,4 +65,4 @@ def test_passport_resource_translates_application_errors(
         patch("controllers.web.passport.application_services", return_value=services),
         pytest.raises(http_error),
     ):
-        unwrap(PassportResource.get)(PassportResource())
+        PassportResource().get()
