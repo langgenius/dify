@@ -36,6 +36,9 @@ function printNodeStructure(node: NodeTracing, depth: number) {
   }
 }
 
+const isParallelBoundaryNode = (node: NodeTracing) =>
+  node.node_type === BlockEnum.End || node.node_type === BlockEnum.LoopEnd
+
 function addTitle(
   {
     list,
@@ -56,7 +59,7 @@ function addTitle(
     const parallel_start_node_id =
       node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
 
-    const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
+    const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel) return
 
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
@@ -123,7 +126,7 @@ const format = (list: NodeTracing[], t: WorkflowTranslate, isPrint?: boolean): N
       node.parent_parallel_start_node_id ??
       node.execution_metadata?.parent_parallel_start_node_id ??
       null
-    const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
+    const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel) return
 
     const isParallelStartNode = parallel_start_node_id === node.node_id // in the same parallel has more than one start node
@@ -197,7 +200,7 @@ const format = (list: NodeTracing[], t: WorkflowTranslate, isPrint?: boolean): N
 
   const filteredInParallelSubNodes = result.filter((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
-    const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
+    const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel) return true
 
     const parent_parallel_id =
