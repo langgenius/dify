@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import json
-import queue
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
 import pytest
-from flask import Flask
+from flask import Flask, current_app
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -82,19 +81,18 @@ UNIFIED_PROVIDER_ENTRY = {
 }
 
 
-class DummyTimer:
-    def __init__(self, interval, function):
-        self.interval = interval
-        self.function = function
-        self.name = ""
-        self.daemon = False
+class DummyThread:
+    def __init__(self, target=None, *, name=None, daemon=None):
+        self.target = target
+        self.name = name
+        self.daemon = daemon
         self.started = False
 
     def start(self):
         self.started = True
 
     def is_alive(self):
-        return False
+        return self.started
 
 
 class EncryptTokenRecorder:
@@ -158,9 +156,8 @@ def trace_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
-    monkeypatch.setattr(module.threading, "Timer", DummyTimer)
-    monkeypatch.setattr(module, "trace_manager_queue", queue.Queue())
-    monkeypatch.setattr(module, "trace_manager_timer", None)
+    monkeypatch.setattr(module.threading, "Thread", DummyThread)
+    monkeypatch.setattr(module, "_trace_dispatcher", None, raising=False)
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
     app = Flask(__name__)
@@ -681,7 +678,73 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert generated.message_id == "message-1"
 
 
-def test_trace_queue_preserves_source_app_when_another_manager_drains(
+def _generate_name_task(name: str = "name") -> TraceTask:
+    return TraceTask(
+        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+        conversation_id="conversation-1",
+        timer={"start": 1, "end": 2},
+        tenant_id="tenant-1",
+        generate_conversation_name=name,
+        inputs="query",
+    )
+
+
+def _dispatcher(*, max_queue_size: int = 2048) -> module._TraceDispatcher:
+    return module._TraceDispatcher(current_app._get_current_object(), max_queue_size=max_queue_size)  # type: ignore
+
+
+def _process_next(dispatcher: module._TraceDispatcher) -> None:
+    dispatcher._process_item(dispatcher._queue.get_nowait())
+
+
+def test_trace_dispatcher_rejects_non_positive_capacity(trace_environment: None) -> None:
+    with pytest.raises(ValueError, match="max_queue_size must be positive"):
+        _dispatcher(max_queue_size=0)
+
+
+def test_trace_dispatcher_double_checks_worker_under_lock(trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
+    worker = MagicMock()
+    worker.is_alive.side_effect = [False, True]
+    trace_dispatcher._worker = worker
+
+    trace_dispatcher._ensure_worker()
+
+    assert worker.is_alive.call_count == 2
+    worker.start.assert_not_called()
+
+
+def test_trace_dispatcher_run_delegates_queued_item(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
+    item = module._TraceWorkItem(storage_id="app-id", task=_generate_name_task())
+    trace_dispatcher._queue.put_nowait(item)
+    process_item = MagicMock(side_effect=RuntimeError("stop test worker"))
+    monkeypatch.setattr(trace_dispatcher, "_process_item", process_item)
+
+    with pytest.raises(RuntimeError, match="stop test worker"):
+        trace_dispatcher._run()
+
+    process_item.assert_called_once_with(item)
+
+
+def test_get_trace_dispatcher_creates_and_reuses_singleton(trace_environment: None) -> None:
+    trace_dispatcher = module._get_trace_dispatcher()
+
+    assert module._get_trace_dispatcher() is trace_dispatcher
+
+
+def test_get_trace_dispatcher_uses_instance_created_while_waiting_for_lock(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    expected = _dispatcher()
+    lock = MagicMock()
+    lock.__enter__.side_effect = lambda: setattr(module, "_trace_dispatcher", expected)
+    monkeypatch.setattr(module, "_trace_dispatcher_lock", lock)
+
+    assert module._get_trace_dispatcher() is expected
+
+
+def test_trace_queue_snapshots_source_app_before_dispatch(
     monkeypatch: pytest.MonkeyPatch, trace_environment: None
 ) -> None:
     monkeypatch.setattr(
@@ -689,18 +752,11 @@ def test_trace_queue_preserves_source_app_when_another_manager_drains(
         "get_ops_trace_instance",
         classmethod(lambda cls, app_id: app_id == "source-app-id"),
     )
-    draining_manager = TraceQueueManager(app_id="draining-app-id", user_id="user-1")
+    trace_dispatcher = _dispatcher()
+    monkeypatch.setattr(module, "_get_trace_dispatcher", lambda: trace_dispatcher)
     source_manager = TraceQueueManager(app_id="source-app-id", user_id="user-2")
-    task = TraceTask(
-        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
-        conversation_id="conversation-1",
-        timer={"start": 1, "end": 2},
-        tenant_id="tenant-1",
-        generate_conversation_name="name",
-        inputs="query",
-    )
-    source_manager.add_trace_task(task)
-    assert draining_manager.collect_tasks() == [task]
+    source_manager.add_trace_task(_generate_name_task())
+    source_manager.app_id = "changed-after-enqueue"
 
     recording_storage = RecordingStorage()
     dispatcher = RecordingDispatcher()
@@ -708,8 +764,8 @@ def test_trace_queue_preserves_source_app_when_another_manager_drains(
     monkeypatch.setattr(module.process_trace_tasks, "apply_async", dispatcher.apply_async)
     file_id = UUID("00000000-0000-0000-0000-000000000123")
     monkeypatch.setattr(module, "uuid4", lambda: file_id)
-    source_manager.add_trace_task(task)
-    draining_manager.run()
+
+    _process_next(trace_dispatcher)
 
     assert len(recording_storage.writes) == 1
     path, data = recording_storage.writes[0]
@@ -718,24 +774,80 @@ def test_trace_queue_preserves_source_app_when_another_manager_drains(
     assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "source-app-id"}]
 
 
-def test_trace_queue_persists_with_caller_supplied_file_id(
+def test_trace_dispatcher_queue_is_bounded(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher(max_queue_size=1)
+    first = module._TraceWorkItem(storage_id="app-1", task=_generate_name_task("first"))
+    second = module._TraceWorkItem(storage_id="app-2", task=_generate_name_task("second"))
+    persisted: list[module._TraceWorkItem] = []
+    monkeypatch.setattr(
+        module._TraceDispatcher,
+        "_persist_trace_task",
+        lambda self, item, *, file_id=None: persisted.append(item),
+    )
+    monkeypatch.setattr(module._TraceDispatcher, "_enqueue_persisted_trace", lambda self, file_info: None)
+
+    assert trace_dispatcher.submit(first)
+    assert not trace_dispatcher.submit(second)
+    _process_next(trace_dispatcher)
+    assert persisted == [first]
+
+
+def test_trace_dispatcher_processes_all_queued_items(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
+    items = [module._TraceWorkItem(storage_id="app-id", task=_generate_name_task(str(index))) for index in range(101)]
+    persisted: list[module._TraceWorkItem] = []
+    monkeypatch.setattr(
+        module._TraceDispatcher,
+        "_persist_trace_task",
+        lambda self, item, *, file_id=None: persisted.append(item),
+    )
+    monkeypatch.setattr(module._TraceDispatcher, "_enqueue_persisted_trace", lambda self, file_info: None)
+
+    assert all(trace_dispatcher.submit(item) for item in items)
+    for _ in items:
+        _process_next(trace_dispatcher)
+    assert trace_dispatcher._queue.empty()
+    assert persisted == items
+
+
+def test_trace_dispatcher_isolates_task_failure(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
+    bad = module._TraceWorkItem(storage_id="bad-app", task=_generate_name_task("bad"))
+    good = module._TraceWorkItem(storage_id="good-app", task=_generate_name_task("good"))
+    persisted: list[str] = []
+    enqueued: list[dict[str, str]] = []
+
+    def persist(_self, item, *, file_id=None):
+        persisted.append(item.storage_id)
+        if item is bad:
+            raise OSError("storage unavailable")
+        return {"file_id": "good-file", "app_id": item.storage_id}
+
+    monkeypatch.setattr(module._TraceDispatcher, "_persist_trace_task", persist)
+    monkeypatch.setattr(
+        module._TraceDispatcher,
+        "_enqueue_persisted_trace",
+        lambda self, file_info: enqueued.append(file_info),
+    )
+    assert trace_dispatcher.submit(bad)
+    assert trace_dispatcher.submit(good)
+
+    _process_next(trace_dispatcher)
+    _process_next(trace_dispatcher)
+    assert trace_dispatcher._queue.empty()
+    assert persisted == ["bad-app", "good-app"]
+    assert enqueued == [{"file_id": "good-file", "app_id": "good-app"}]
+
+
+def test_trace_dispatcher_persists_with_caller_supplied_file_id(
     monkeypatch: pytest.MonkeyPatch, trace_environment: None
 ) -> None:
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
-    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
-    task = TraceTask(
-        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
-        conversation_id="conversation-1",
-        timer={"start": 1, "end": 2},
-        tenant_id="tenant-1",
-        generate_conversation_name="name",
-        inputs="query",
-    )
-    task.app_id = "app-id"
+    trace_dispatcher = _dispatcher()
+    item = module._TraceWorkItem(storage_id="app-id", task=_generate_name_task())
     recording_storage = RecordingStorage()
     monkeypatch.setattr(module.storage, "save", recording_storage.save)
 
-    file_info = manager.persist_trace_task(task, file_id="workflow-final-run-1")
+    file_info = trace_dispatcher._persist_trace_task(item, file_id="workflow-final-run-1")
 
     assert file_info == {"file_id": "workflow-final-run-1", "app_id": "app-id"}
     path, data = recording_storage.writes[0]
@@ -744,11 +856,11 @@ def test_trace_queue_persists_with_caller_supplied_file_id(
     assert UUID(payload["trace_info"]["operation_id"])
 
 
-def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
-    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
-    task = TraceTask(trace_type=TraceTaskName.GENERATE_NAME_TRACE)
-    task.app_id = "app-id"
+def test_trace_dispatcher_persistence_error_propagates(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    trace_dispatcher = _dispatcher()
+    item = module._TraceWorkItem(storage_id="app-id", task=_generate_name_task())
 
     def fail_save(_path: str, _data: bytes) -> None:
         raise OSError("storage unavailable")
@@ -756,12 +868,11 @@ def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(module.storage, "save", fail_save)
 
     with pytest.raises(OSError, match="storage unavailable"):
-        manager.persist_trace_task(task, file_id="workflow-final-run-1")
+        trace_dispatcher._persist_trace_task(item, file_id="workflow-final-run-1")
 
 
-def test_trace_queue_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
-    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+def test_trace_dispatcher_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
 
     def fail_enqueue(*_args: object, **_kwargs: object) -> None:
         raise ConnectionError("broker unavailable")
@@ -769,4 +880,4 @@ def test_trace_queue_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, t
     monkeypatch.setattr(module.process_trace_tasks, "apply_async", fail_enqueue)
 
     with pytest.raises(ConnectionError, match="broker unavailable"):
-        manager.enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})
+        trace_dispatcher._enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})
