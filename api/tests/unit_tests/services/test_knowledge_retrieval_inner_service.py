@@ -226,6 +226,7 @@ class TestInnerKnowledgeRetrievalService:
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
         assert rag_request.retrieval_mode == "single"
+        assert rag_request.score_threshold is None
         assert rag_request.model_provider == "openai"
         assert rag_request.model_name == "gpt-4o-mini"
         assert rag_request.model_mode == "chat"

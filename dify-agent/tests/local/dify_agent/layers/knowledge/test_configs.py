@@ -26,6 +26,8 @@ def test_knowledge_base_config_accepts_valid_multiple_mode() -> None:
 
     assert config.sets[0].dataset_ids == ["dataset-1"]
     assert config.sets[0].retrieval.top_k == 4
+    assert config.sets[0].retrieval.score_threshold is None
+    assert config.sets[0].retrieval.to_request_payload()["score_threshold"] is None
     assert config.sets[0].metadata_filtering.mode == "disabled"
 
 

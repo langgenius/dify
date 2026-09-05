@@ -382,6 +382,7 @@ class TestHitTestingServiceRetrieve:
             call_kwargs = mock_retrieve.call_args[1]
             assert call_kwargs["retrieval_method"] == RetrievalMethod.HYBRID_SEARCH
             assert call_kwargs["top_k"] == 3
+            assert call_kwargs["score_threshold"] is None
 
 
 class TestHitTestingServiceExternalRetrieve:

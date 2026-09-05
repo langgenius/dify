@@ -100,7 +100,7 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int = 4,
-        score_threshold: float | None = 0.0,
+        score_threshold: float | None = None,
         reranking_model: RerankingModelDict | None = None,
         reranking_mode: str = "reranking_model",
         weights: WeightsDict | None = None,
@@ -326,7 +326,9 @@ class RetrievalService:
                 # vector retrieval time uses embedding similarity, which is not comparable to
                 # reranked or fused scores and incorrectly drops high-quality chunks (#35233).
                 embedding_score_threshold = (
-                    0.0 if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
+                    0.0
+                    if retrieval_method == RetrievalMethod.HYBRID_SEARCH or score_threshold is None
+                    else score_threshold
                 )
                 with Session(db.engine) as session:
                     vector = Vector(dataset=dataset, session=session)
@@ -787,7 +789,7 @@ class RetrievalService:
         exceptions: list[str],
         query: str | None = None,
         top_k: int = 4,
-        score_threshold: float | None = 0.0,
+        score_threshold: float | None = None,
         reranking_model: RerankingModelDict | None = None,
         reranking_mode: str = "reranking_model",
         weights: WeightsDict | None = None,
@@ -907,7 +909,7 @@ class RetrievalService:
                         top_n=top_k,
                         query_type=query_type,
                     )
-                    if not data_post_processor.rerank_runner and score_threshold:
+                    if not data_post_processor.rerank_runner and score_threshold is not None:
                         all_documents_item = self._filter_documents_by_vector_score_threshold(
                             all_documents_item, score_threshold
                         )

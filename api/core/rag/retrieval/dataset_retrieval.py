@@ -485,7 +485,7 @@ class DatasetRetrieval:
                 available_datasets,
                 query,
                 retrieve_config.top_k or 0,
-                retrieve_config.score_threshold or 0,
+                retrieve_config.score_threshold,
                 retrieve_config.rerank_mode or "reranking_model",
                 retrieve_config.reranking_model,
                 retrieve_config.weights,
@@ -731,7 +731,7 @@ class DatasetRetrieval:
                         else None
                     )
                     # get score threshold
-                    score_threshold = 0.0
+                    score_threshold = None
                     score_threshold_enabled = retrieval_model_config.get("score_threshold_enabled")
                     if score_threshold_enabled:
                         score_threshold = retrieval_model_config.get("score_threshold", 0.0)
@@ -775,7 +775,7 @@ class DatasetRetrieval:
         available_datasets: list[Dataset],
         query: str | None,
         top_k: int,
-        score_threshold: float,
+        score_threshold: float | None,
         reranking_mode: str,
         reranking_model: RerankingModelDict | None = None,
         weights: WeightsDict | None = None,
@@ -1178,7 +1178,7 @@ class DatasetRetrieval:
                             top_k=retrieval_model.get("top_k") or 4,
                             score_threshold=retrieval_model.get("score_threshold", 0.0)
                             if retrieval_model["score_threshold_enabled"]
-                            else 0.0,
+                            else None,
                             reranking_model=retrieval_model.get("reranking_model", None)
                             if retrieval_model["reranking_enable"]
                             else None,
@@ -1454,7 +1454,7 @@ class DatasetRetrieval:
         return documents[:top_k] if top_k else documents
 
     def calculate_vector_score(
-        self, all_documents: list[Document], top_k: int, score_threshold: float
+        self, all_documents: list[Document], top_k: int, score_threshold: float | None
     ) -> list[Document]:
         filter_documents = []
         for document in all_documents:
@@ -1884,7 +1884,7 @@ class DatasetRetrieval:
         reranking_model: RerankingModelDict | None,
         weights: WeightsDict | None,
         top_k: int,
-        score_threshold: float,
+        score_threshold: float | None,
         query: str | None,
         attachment_id: str | None,
         dataset_count: int,
@@ -1999,7 +1999,7 @@ class DatasetRetrieval:
         reranking_model: RerankingModelDict | None,
         weights: WeightsDict | None,
         top_k: int,
-        score_threshold: float,
+        score_threshold: float | None,
         query: str | None,
         attachment_id: str | None,
         dataset_count: int,
