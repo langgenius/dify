@@ -503,14 +503,14 @@ describe('app-publisher sections', () => {
   it('should hide the Access Point publisher entry without view permission', () => {
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint={false}
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}

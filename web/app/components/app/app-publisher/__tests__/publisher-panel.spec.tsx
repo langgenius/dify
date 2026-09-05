@@ -27,10 +27,10 @@ function PublisherPanelHarness() {
       <PublisherPanel
         builtInPublisher={{
           actions: {
-            appDetail: null,
             appURL: '',
             canViewAccessPoint: false,
             disabledFunctionButton: false,
+            showWorkflowTool: false,
             workflowToolIsLoading: false,
             onConfigureWorkflowTool: vi.fn(),
           },
