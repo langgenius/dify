@@ -4997,6 +4997,7 @@ Sync partner tenants bindings
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden |  |
+| 409 | Education subscriptions are not supported with Tokener billing | **application/json**: [TokenerEducationCheckoutUnsupportedErrorResponse](#tokenereducationcheckoutunsupportederrorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
@@ -16657,9 +16658,11 @@ Model class for credential form schema.
 | ---- | ---- | ----------- | -------- |
 | credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
 | id | string |  | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 
 #### CustomConfigurationResponse
 
@@ -18270,6 +18273,7 @@ Flask blueprint initialization.
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
 | knowledge_rate_limit | integer, <br>**Default:** 10 |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
@@ -19467,11 +19471,14 @@ Enum class for model property key.
 | exhausted_at | integer |  | Yes |
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | next_credit_reset_date | integer |  | Yes |
 | pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
+| tokener_metering | [TokenerMeteringResponse](#tokenermeteringresponse) |  | No |
 
 #### ModelProviderCustomConfigurationSummaryResponse
 
@@ -22796,11 +22803,13 @@ Tag type
 | custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |
 | plan | [CloudPlan](#cloudplan) |  | No |
 | role | string |  | No |
 | status | string |  | No |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 | trial_credits | integer |  | No |
 | trial_credits_exhausted_at | integer |  | No |
 | trial_credits_used | integer |  | No |
@@ -22913,6 +22922,58 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
+
+#### TokenerAllowanceMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| amount_usd_micro | string |  | Yes |
+| available_usd_micro | string |  | Yes |
+| ends_at | string |  | Yes |
+| source_ref | string |  | Yes |
+| starts_at | string |  | Yes |
+| window_id | string |  | Yes |
+
+#### TokenerCurrentMonthAvailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| billed_usd_micro | string |  | Yes |
+| end_date | string |  | Yes |
+| request_count | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerCurrentMonthUnavailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end_date | string |  | Yes |
+| error_code | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerEducationCheckoutUnsupportedErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### TokenerMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowance | [TokenerAllowanceMeteringResponse](#tokenerallowancemeteringresponse) |  | No |
+| available_usd_micro | string |  | Yes |
+| balance_generated_at | string |  | Yes |
+| currency | string |  | Yes |
+| current_month | [TokenerCurrentMonthAvailableMeteringResponse](#tokenercurrentmonthavailablemeteringresponse)<br>[TokenerCurrentMonthUnavailableMeteringResponse](#tokenercurrentmonthunavailablemeteringresponse) |  | Yes |
+| entitlement_error_code | string |  | No |
+| entitlement_status | string, <br>**Available values:** "active", "failed", "processing", "retrying" |  | No |
+| tenant_id | string |  | Yes |
+| usage_generated_at | string |  | No |
 
 #### TokensPerSecondStatisticItem
 

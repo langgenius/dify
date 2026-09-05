@@ -15,6 +15,8 @@ const createCurrentWorkspaceFixture = (
   role: 'owner',
   credits: null,
   ...overrides,
+  model_billing_source: overrides.model_billing_source ?? 'legacy_message_credits',
+  tokener_bootstrap_status: overrides.tokener_bootstrap_status ?? null,
 })
 
 export const seedCurrentWorkspaceQuery = (

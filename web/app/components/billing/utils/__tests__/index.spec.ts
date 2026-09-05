@@ -104,6 +104,7 @@ describe('billing utils', () => {
         limit: 0,
       },
       ...overrides,
+      model_billing_source: overrides.model_billing_source ?? 'legacy_message_credits',
     })
 
     it('should parse plan type correctly', () => {

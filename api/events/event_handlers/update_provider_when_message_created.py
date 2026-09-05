@@ -18,6 +18,7 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_created_by,
 )
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
+from core.model_billing_profile import ModelBillingProfileResolutionError, ModelBillingProfileService
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -92,6 +93,17 @@ class _CreditDeductionContext(TypedDict, total=False):
     metadata: Mapping[str, object]
 
 
+def _legacy_message_credit_billing_allowed(tenant_id: str) -> bool:
+    try:
+        return ModelBillingProfileService.resolve(tenant_id).uses_legacy_message_credits
+    except ModelBillingProfileResolutionError:
+        logger.error(  # noqa: TRY400
+            "Skipping legacy message-credit deduction because the model billing profile is unavailable, tenant_id=%s",
+            tenant_id,
+        )
+        return False
+
+
 @message_was_created.connect
 def handle(sender: Message, **kwargs):
     """
@@ -152,6 +164,7 @@ def handle(sender: Message, **kwargs):
     if (
         not agent_gateway_metered
         and provider_configuration.using_provider_type == ProviderType.SYSTEM
+        and _legacy_message_credit_billing_allowed(tenant_id)
         and provider_configuration.system_configuration
         and provider_configuration.system_configuration.current_quota_type is not None
     ):

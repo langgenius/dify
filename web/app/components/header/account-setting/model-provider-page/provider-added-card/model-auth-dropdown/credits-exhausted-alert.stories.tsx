@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 import CreditsExhaustedAlert from './credits-exhausted-alert'
 
-const baseCredits: ModelProviderCreditsResponse = {
+const baseCredits = {
+  model_billing_source: 'legacy_message_credits',
+  tokener_bootstrap_status: null,
   pool_type: 'trial',
   quota_limit: 200,
   quota_used: 200,
@@ -13,7 +15,7 @@ const baseCredits: ModelProviderCreditsResponse = {
   is_exhausted: true,
   exhausted_at: 0,
   next_credit_reset_date: Date.now() + 86400000,
-}
+} satisfies ModelProviderCreditsResponse
 
 function createSeededQueryClient(overrides?: Partial<ModelProviderCreditsResponse>) {
   const qc = new QueryClient({
@@ -22,6 +24,9 @@ function createSeededQueryClient(overrides?: Partial<ModelProviderCreditsRespons
   qc.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
     ...baseCredits,
     ...overrides,
+    model_billing_source: overrides?.model_billing_source ?? baseCredits.model_billing_source,
+    tokener_bootstrap_status:
+      overrides?.tokener_bootstrap_status ?? baseCredits.tokener_bootstrap_status,
   })
   return qc
 }

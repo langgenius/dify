@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from flask_login import current_user
@@ -6,21 +7,29 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.model_billing_profile import ModelBillingProfileService, ModelBillingSource
 from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.tokener import TenantTokenerIntegrationStatus
 from services.account_service import TenantService
-from services.billing_service import BillingService
+from services.billing_service import BillingService, TokenerTenantMeteringResponse
+from services.errors.billing import BillingError
 from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class EffectiveCreditPool:
+    model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    tokener_bootstrap_status: str | None = None
     plan: CloudPlan | None = None
     pool_type: Literal["paid", "trial"] | None = None
     quota_limit: int | None = None
     quota_used: int | None = None
     exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
+    tokener_metering: TokenerTenantMeteringResponse | None = None
 
     @property
     def remaining_credits(self) -> int | None:
@@ -36,6 +45,8 @@ class EffectiveCreditPool:
 
     @property
     def is_exhausted(self) -> bool:
+        if self.model_billing_source == ModelBillingSource.TOKENER:
+            return False
         remaining_credits = self.remaining_credits
         return not self.is_unlimited and (remaining_credits is None or remaining_credits <= 0)
 
@@ -52,11 +63,26 @@ def _set_credit_pool_info(
 class WorkspaceService:
     @classmethod
     def get_effective_credit_pool(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
+        model_billing = ModelBillingProfileService.resolve(tenant_id, session=session)
+        tokener_bootstrap_status = (
+            model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
+        )
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return EffectiveCreditPool()
+            return EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                tokener_bootstrap_status=tokener_bootstrap_status,
+            )
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
+
+        if model_billing.uses_tokener:
+            return EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                tokener_bootstrap_status=tokener_bootstrap_status,
+                plan=subscription_plan if billing_info["enabled"] else None,
+                next_credit_reset_date=billing_info.get("next_credit_reset_date"),
+            )
 
         from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 
@@ -73,6 +99,8 @@ class WorkspaceService:
 
         if effective_pool is None:
             return EffectiveCreditPool(
+                model_billing_source=model_billing.model_billing_source,
+                tokener_bootstrap_status=tokener_bootstrap_status,
                 plan=subscription_plan if billing_info["enabled"] else None,
                 next_credit_reset_date=billing_info.get("next_credit_reset_date"),
             )
@@ -87,6 +115,8 @@ class WorkspaceService:
             exhausted_at = None
 
         return EffectiveCreditPool(
+            model_billing_source=model_billing.model_billing_source,
+            tokener_bootstrap_status=tokener_bootstrap_status,
             plan=subscription_plan if billing_info["enabled"] else None,
             pool_type=effective_pool_type,
             quota_limit=effective_pool.quota_limit,
@@ -94,6 +124,24 @@ class WorkspaceService:
             exhausted_at=exhausted_at,
             next_credit_reset_date=billing_info.get("next_credit_reset_date"),
         )
+
+    @classmethod
+    def get_model_provider_credits(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
+        """Return legacy credits or enrich a ready Tokener cohort with metering usage."""
+        credit_pool = cls.get_effective_credit_pool(tenant_id, session=session)
+        if (
+            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+            or credit_pool.model_billing_source != ModelBillingSource.TOKENER
+            or credit_pool.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
+        ):
+            return credit_pool
+
+        try:
+            tokener_metering = BillingService.get_tokener_metering(tenant_id)
+        except BillingError:
+            logger.warning("Tokener metering usage is unavailable for tenant %s", tenant_id)
+            return credit_pool
+        return replace(credit_pool, tokener_metering=tokener_metering)
 
     @classmethod
     def get_current_workspace_summary(cls, tenant: Tenant, account_id: str, *, session: Session) -> dict[str, object]:
@@ -112,6 +160,8 @@ class WorkspaceService:
             "role": tenant_account_join.role,
             "plan": effective_pool.plan,
             "credits": effective_pool.remaining_credits,
+            "model_billing_source": effective_pool.model_billing_source.value,
+            "tokener_bootstrap_status": effective_pool.tokener_bootstrap_status,
         }
 
     @classmethod
@@ -138,6 +188,11 @@ class WorkspaceService:
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
         tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
+        model_billing = ModelBillingProfileService.resolve(tenant.id, session=session)
+        tenant_info["model_billing_source"] = model_billing.model_billing_source.value
+        tenant_info["tokener_bootstrap_status"] = (
+            model_billing.tokener_bootstrap_status.value if model_billing.tokener_bootstrap_status else None
+        )
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(
@@ -155,7 +210,7 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and model_billing.uses_legacy_message_credits:
             tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
 
             from services.credit_pool_service import CreditPoolBalance, CreditPoolService

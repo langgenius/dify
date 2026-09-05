@@ -20,6 +20,7 @@ export type FeatureModel = {
   knowledge_pipeline: KnowledgePipeline
   knowledge_rate_limit: number
   members: LimitationModel
+  model_billing_source: 'legacy_message_credits' | 'tokener'
   model_load_balancing_enabled: boolean
   next_credit_reset_date: number
   trigger_event: Quota
