@@ -84,7 +84,7 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
         )
         connection.exec_driver_sql("UPDATE workflow_node_execution SET triggered_from = NULL WHERE id = 'legacy-exec'")
 
-    def execute_query(*, sql: str, **_kwargs):
+    def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
         with sqlite_engine.connect() as connection:
             return [dict(row) for row in connection.exec_driver_sql(sql).mappings()]
 

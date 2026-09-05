@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
@@ -84,7 +85,9 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
     assert all(event.node_id not in {"source-start", "source-end"} for event in events if isinstance(event, NodeEvent))
 
 
-def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding(sqlite_session_factory) -> None:
+def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     node, _, payload = _workflow_tool_node()
     source = WorkflowToolSource(
         app_id=payload.source_app_id,
@@ -185,7 +188,7 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
 
 
 def test_workflow_tool_agent_ask_human_creates_form_owned_by_outer_app(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     store = FakeSessionStore()
     client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
