@@ -857,6 +857,62 @@ class TestMessageModel:
         # Assert
         assert result == {}
 
+    def test_retriever_resources_missing_key_returns_empty_list(self):
+        """message_metadata present without retriever_resources must yield [].
+
+        Regression for #41688: web GET /messages failed Pydantic list validation
+        when metadata existed but the key was absent (property returned None).
+        """
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=json.dumps({"usage": {"tokens": 1}}),
+        )
+
+        assert message.retriever_resources == []
+
+    def test_retriever_resources_none_metadata_returns_empty_list(self):
+        """No message_metadata should still expose retriever_resources as []."""
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=None,
+        )
+
+        assert message.retriever_resources == []
+
+    def test_retriever_resources_present_passthrough(self):
+        """Existing retriever_resources list should be returned unchanged."""
+        resources = [{"dataset_id": "ds-1", "document_id": "doc-1"}]
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=json.dumps({"retriever_resources": resources}),
+        )
+
+        assert message.retriever_resources == resources
+
     def test_message_to_dict_serialization(self):
         """Test message to_dict method."""
         # Arrange
