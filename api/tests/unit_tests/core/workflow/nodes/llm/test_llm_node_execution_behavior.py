@@ -1,3 +1,5 @@
+"""Unit coverage for LLM node execution with model boundaries replaced by test doubles."""
+
 import json
 import time
 import uuid

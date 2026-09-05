@@ -1,3 +1,5 @@
+"""HTTP fixture for API-tool unit tests."""
+
 import json
 from typing import Literal
 
