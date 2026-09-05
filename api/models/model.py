@@ -1333,10 +1333,6 @@ class Conversation(Base):
 
         return model_config
 
-    @property
-    def summary_or_query(self):
-        return self.summary_or_query_with_session(session=db.session())
-
     def summary_or_query_with_session(self, *, session: Session) -> str:
         if self.summary:
             return self.summary
@@ -1347,40 +1343,20 @@ class Conversation(Base):
             else:
                 return ""
 
-    @property
-    def annotated(self) -> bool:
-        return self.annotated_with_session(session=db.session())
-
     def annotated_with_session(self, *, session: Session) -> bool:
         return (
             session.scalar(select(func.count(MessageAnnotation.id)).where(MessageAnnotation.conversation_id == self.id))
             or 0
         ) > 0
 
-    @property
-    def annotation(self) -> MessageAnnotation | None:
-        return self.annotation_with_session(session=db.session())
-
     def annotation_with_session(self, *, session: Session) -> MessageAnnotation | None:
         return session.scalar(select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1))
-
-    @property
-    def message_count(self) -> int:
-        return self.message_count_with_session(session=db.session())
 
     def message_count_with_session(self, *, session: Session) -> int:
         return session.scalar(select(func.count(Message.id)).where(Message.conversation_id == self.id)) or 0
 
-    @property
-    def user_feedback_stats(self) -> dict[str, int]:
-        return self.user_feedback_stats_with_session(session=db.session())
-
     def user_feedback_stats_with_session(self, *, session: Session) -> dict[str, int]:
         return self._feedback_stats_with_session(session=session, from_source=FeedbackFromSource.USER)
-
-    @property
-    def admin_feedback_stats(self) -> dict[str, int]:
-        return self.admin_feedback_stats_with_session(session=db.session())
 
     def admin_feedback_stats_with_session(self, *, session: Session) -> dict[str, int]:
         return self._feedback_stats_with_session(session=session, from_source=FeedbackFromSource.ADMIN)
@@ -1409,10 +1385,6 @@ class Conversation(Base):
         )
 
         return {"like": like, "dislike": dislike}
-
-    @property
-    def status_count(self):
-        return self.status_count_with_session(session=db.session())
 
     def status_count_with_session(self, *, session: Session) -> dict[str, int] | None:
         from models.workflow import WorkflowRun
@@ -1468,10 +1440,6 @@ class Conversation(Base):
             "paused": status_counts[WorkflowExecutionStatus.PAUSED],
         }
 
-    @property
-    def first_message(self) -> Message | None:
-        return self.first_message_with_session(session=db.session())
-
     def first_message_with_session(self, *, session: Session) -> Message | None:
         return session.scalar(
             select(Message).where(Message.conversation_id == self.id).order_by(Message.created_at.asc())
@@ -1482,10 +1450,6 @@ class Conversation(Base):
         with Session(db.engine, expire_on_commit=False) as session:
             return session.scalar(select(App).where(App.id == self.app_id))
 
-    @property
-    def from_end_user_session_id(self) -> str | None:
-        return self.from_end_user_session_id_with_session(session=db.session())
-
     def from_end_user_session_id_with_session(self, *, session: Session) -> str | None:
         if self.from_end_user_id:
             end_user = session.scalar(select(EndUser).where(EndUser.id == self.from_end_user_id))
@@ -1493,10 +1457,6 @@ class Conversation(Base):
                 return end_user.session_id
 
         return None
-
-    @property
-    def from_account_name(self) -> str | None:
-        return self.from_account_name_with_session(session=db.session())
 
     def from_account_name_with_session(self, *, session: Session) -> str | None:
         if self.from_account_id:
