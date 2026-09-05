@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, DefaultFieldsMixin
+from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, StringUUID
 
 if TYPE_CHECKING:
@@ -14,7 +14,7 @@ class ExecutionContentType(StrEnum):
     HUMAN_INPUT = auto()
 
 
-class ExecutionExtraContent(DefaultFieldsMixin, Base):
+class ExecutionExtraContent(DefaultFieldsDCMixin, TypeBase, kw_only=True):
     """ExecutionExtraContent stores extra contents produced during workflow / chatflow execution."""
 
     # The `ExecutionExtraContent` uses single table inheritance to model different
@@ -33,6 +33,7 @@ class ExecutionExtraContent(DefaultFieldsMixin, Base):
     type: Mapped[ExecutionContentType] = mapped_column(
         EnumText(ExecutionContentType, length=30),
         nullable=False,
+        init=False,
     )
 
     # `workflow_run_id` records the workflow execution which generates this content, correspond to
@@ -48,7 +49,7 @@ class ExecutionExtraContent(DefaultFieldsMixin, Base):
     #
     # The message referenced by `message_id` has `message.workflow_run_id == execution_extra_content.workflow_run_id`
     #
-    message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, index=True)
+    message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, index=True, default=None)
 
 
 class HumanInputContent(ExecutionExtraContent):
@@ -74,5 +75,6 @@ class HumanInputContent(ExecutionExtraContent):
         foreign_keys=[form_id],
         uselist=False,
         lazy="raise",
+        init=False,
         primaryjoin="foreign(HumanInputContent.form_id) == HumanInputForm.id",
     )

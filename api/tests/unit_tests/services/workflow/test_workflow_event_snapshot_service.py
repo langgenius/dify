@@ -322,7 +322,6 @@ def _persist_human_input_form(
 ) -> datetime:
     expiration_time = datetime(2024, 1, 1)
     form = HumanInputForm(
-        id="form-1",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
@@ -332,6 +331,7 @@ def _persist_human_input_form(
         rendered_content="content",
         expiration_time=expiration_time,
     )
+    form.id = "form-1"
     with session_maker.begin() as session:
         session.add(form)
         session.add_all(recipients)
