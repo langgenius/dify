@@ -120,9 +120,9 @@ class TestRagPipelineVariableCollectionApi:
         rag_srv = MagicMock()
         rag_srv.is_workflow_exist.return_value = True
 
-        # IMPORTANT: RESTX expects .variables
         var_list = MagicMock()
         var_list.variables = []
+        var_list.total = None
 
         draft_srv = MagicMock()
         draft_srv.list_variables_without_values.return_value = var_list
@@ -142,7 +142,7 @@ class TestRagPipelineVariableCollectionApi:
         ):
             result = method(api, PaginationQuery(page=1, limit=10), editor_user, pipeline)
 
-        assert result is var_list
+        assert result == {"items": [], "total": None}
         draft_srv.list_variables_without_values.assert_called_once_with(
             app_id="p1",
             page=1,
@@ -211,7 +211,7 @@ class TestRagPipelineNodeVariableCollectionApi:
         ):
             result = method(api, editor_user, pipeline, "node1")
 
-        assert result is var_list
+        assert result == {"items": []}
         srv.list_node_variables.assert_called_once_with("p1", "node1", user_id="account-1")
 
     def test_get_node_variables_invalid_node(self, app: Flask, editor_user):
@@ -375,7 +375,7 @@ class TestRagPipelineVariableResetApi:
                 return_value=srv,
             ),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.marshal",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.dump_response",
                 return_value={"id": "v1"},
             ),
         ):
@@ -408,7 +408,7 @@ class TestSystemAndEnvironmentVariablesApi:
         ):
             result = method(api, editor_user, pipeline)
 
-        assert result is var_list
+        assert result == {"items": []}
         srv.list_system_variables.assert_called_once_with("p1", user_id="account-1")
 
     def test_environment_variables_success(self, app: Flask, editor_user):
