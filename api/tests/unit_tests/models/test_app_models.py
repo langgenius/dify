@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 
 from models import model as model_module
+from models.account import Tenant
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
@@ -29,6 +30,7 @@ from models.model import (
     AppModelConfig,
     Conversation,
     IconType,
+    InstalledApp,
     Message,
     MessageAnnotation,
     Site,
@@ -1409,3 +1411,46 @@ class TestModelIntegration:
         # Assert
         assert site.app_id == app.id
         assert app.enable_site is True
+
+
+class TestInstalledAppModel:
+    """Test suite for InstalledApp model."""
+
+    @pytest.mark.parametrize("sqlite_session", [(InstalledApp, Tenant)], indirect=True)
+    def test_installed_app_tenant_with_session_returns_matching_tenant(self, sqlite_session: Session):
+        """Test tenant_with_session resolves the tenant through the caller-provided session."""
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = str(uuid4())
+        installed_app = InstalledApp(
+            tenant_id=tenant.id,
+            app_id=str(uuid4()),
+            app_owner_tenant_id=str(uuid4()),
+            position=0,
+            is_pinned=False,
+            last_used_at=None,
+        )
+        sqlite_session.add_all([tenant, installed_app])
+        sqlite_session.flush()
+
+        result = installed_app.tenant_with_session(session=sqlite_session)
+
+        assert result is not None
+        assert result.id == tenant.id
+
+    @pytest.mark.parametrize("sqlite_session", [(InstalledApp, Tenant)], indirect=True)
+    def test_installed_app_tenant_with_session_returns_none_when_missing(self, sqlite_session: Session):
+        """Test tenant_with_session returns None when the tenant row doesn't exist."""
+        installed_app = InstalledApp(
+            tenant_id=str(uuid4()),  # no matching Tenant row
+            app_id=str(uuid4()),
+            app_owner_tenant_id=str(uuid4()),
+            position=0,
+            is_pinned=False,
+            last_used_at=None,
+        )
+        sqlite_session.add(installed_app)
+        sqlite_session.flush()
+
+        result = installed_app.tenant_with_session(session=sqlite_session)
+
+        assert result is None

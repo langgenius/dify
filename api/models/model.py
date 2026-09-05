@@ -1044,7 +1044,10 @@ class InstalledApp(TypeBase):
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+        return self.tenant_with_session(session=db.session())
+
+    def tenant_with_session(self, *, session: Session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
 
 class TrialApp(TypeBase):
