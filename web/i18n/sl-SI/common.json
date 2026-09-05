@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Nalaganje {{type}} ne sme presegati {{size}}",
   "fileUploader.uploadFromComputerReadError": "Branje datoteke ni uspelo, poskusite znova.",
   "fileUploader.uploadFromComputerUploadError": "Nalaganje datoteke ni uspelo, naložite ga znova.",
+  "imageGallery.previewImage": "Prikaži predogled slike {{index}} od {{total}}",
   "imageInput.browse": "brskati",
   "imageInput.dropImageHere": "Tukaj spustite svojo sliko ali",
   "imageInput.supportedFormats": "Podpira PNG, JPG, JPEG, WEBP in GIF",

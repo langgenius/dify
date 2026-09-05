@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "ອັບໂຫຼດ {{type}} ຕ້ອງບໍ່ເກີນ {{size}}",
   "fileUploader.uploadFromComputerReadError": "ອ່ານໄຟລ໌ບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່.",
   "fileUploader.uploadFromComputerUploadError": "ອັບໂຫຼດໄຟລ໌ບໍ່ສຳເລັດ, ກະລຸນາອັບໂຫຼດໃໝ່.",
+  "imageGallery.previewImage": "ສະແດງຕົວຢ່າງຮູບທີ {{index}} ຈາກ {{total}}",
   "imageInput.browse": "ເລືອກເບິ່ງ",
   "imageInput.dropImageHere": "ວາງຮູບຂອງທ່ານທີ່ນີ້, ຫຼື",
   "imageInput.supportedFormats": "ຮອງຮັບ PNG, JPG, JPEG, WEBP ແລະ GIF",

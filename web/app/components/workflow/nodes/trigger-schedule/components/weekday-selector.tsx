@@ -1,3 +1,4 @@
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -30,10 +31,10 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
   const isDaySelected = (dayKey: string) => selectedDays.includes(dayKey)
 
   return (
-    <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-text-tertiary">
+    <Fieldset className="space-y-2">
+      <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
         {t(($) => $['nodes.triggerSchedule.weekdays'], { ns: 'workflow' })}
-      </label>
+      </FieldsetLegend>
       <div className="flex gap-1.5">
         {weekdays.map((day) => (
           <button
@@ -50,7 +51,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
           </button>
         ))}
       </div>
-    </div>
+    </Fieldset>
   )
 }
 

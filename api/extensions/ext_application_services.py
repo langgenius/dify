@@ -40,6 +40,7 @@ from repositories.account_oauth_repository import (
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -56,6 +57,7 @@ from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
@@ -131,6 +133,7 @@ from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
+from services.app_statistic_query import AppStatisticQuery
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -186,6 +189,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
@@ -239,6 +243,7 @@ class ApplicationServices:
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     app_sites: AppSiteService
+    app_statistics: AppStatisticQuery
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
@@ -263,6 +268,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    workflow_app_logs: WorkflowAppLogQueryService
     inner_mail: InnerMailService
     web_passport: WebPassportService
     tags: TagApplicationService
@@ -585,6 +591,7 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         billing_portal=BillingPortalService(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,
@@ -680,6 +687,9 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        workflow_app_logs=WorkflowAppLogQueryService(
+            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(

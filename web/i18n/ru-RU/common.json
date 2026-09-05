@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Загрузка {{type}} не может превышать {{size}}",
   "fileUploader.uploadFromComputerReadError": "Чтение файла не удалось, пожалуйста, повторите попытку.",
   "fileUploader.uploadFromComputerUploadError": "Загрузка файла не удалась, пожалуйста, загрузите еще раз.",
+  "imageGallery.previewImage": "Просмотреть изображение {{index}} из {{total}}",
   "imageInput.browse": "просмотр",
   "imageInput.dropImageHere": "Перетащите ваше изображение сюда или",
   "imageInput.supportedFormats": "Поддерживает PNG, JPG, JPEG, WEBP и GIF",

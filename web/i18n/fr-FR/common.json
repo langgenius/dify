@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Le téléchargement de {{type}} ne peut pas dépasser {{size}}",
   "fileUploader.uploadFromComputerReadError": "Échec de la lecture du fichier, veuillez réessayer.",
   "fileUploader.uploadFromComputerUploadError": "Le téléchargement du fichier a échoué, veuillez le télécharger à nouveau.",
+  "imageGallery.previewImage": "Prévisualiser l’image {{index}} sur {{total}}",
   "imageInput.browse": "naviguer",
   "imageInput.dropImageHere": "Déposez votre image ici, ou",
   "imageInput.supportedFormats": "Prend en charge PNG, JPG, JPEG, WEBP et GIF",

@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Tải lên {{type}} không được vượt quá {{size}}",
   "fileUploader.uploadFromComputerReadError": "Đọc tệp không thành công, vui lòng thử lại.",
   "fileUploader.uploadFromComputerUploadError": "Tải lên tệp không thành công, vui lòng tải lên lại.",
+  "imageGallery.previewImage": "Xem trước ảnh {{index}} trên {{total}}",
   "imageInput.browse": "duyệt",
   "imageInput.dropImageHere": "Kéo hình ảnh của bạn vào đây, hoặc",
   "imageInput.supportedFormats": "Hỗ trợ PNG, JPG, JPEG, WEBP và GIF",

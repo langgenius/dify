@@ -177,6 +177,7 @@
   "fileUploader.uploadFromComputerLimit": "Przesyłanie {{type}} nie może przekraczać {{size}}",
   "fileUploader.uploadFromComputerReadError": "Odczyt pliku nie powiódł się, spróbuj ponownie.",
   "fileUploader.uploadFromComputerUploadError": "Przesyłanie pliku nie powiodło się, prześlij ponownie.",
+  "imageGallery.previewImage": "Wyświetl podgląd obrazu {{index}} z {{total}}",
   "imageInput.browse": "przeglądaj",
   "imageInput.dropImageHere": "Upuść swój obraz tutaj, lub",
   "imageInput.supportedFormats": "Obsługuje PNG, JPG, JPEG, WEBP i GIF",
