@@ -63,6 +63,16 @@ def _upload_file(*, key: str = "storage-key") -> UploadFile:
     )
 
 
+def _offload(type_: ExecutionOffLoadType, *, file_id: str = "file-1") -> WorkflowNodeExecutionOffload:
+    return WorkflowNodeExecutionOffload(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_execution_id="execution-1",
+        type_=type_,
+        file_id=file_id,
+    )
+
+
 def _execution(
     *,
     execution_id: str = "execution-1",
@@ -195,12 +205,10 @@ def test_helper_functions_and_truncator_configuration(
     assert _deterministic_json_dump({"b": 1, "a": 2}) == '{"a": 2, "b": 1}'
     assert _find_first([], lambda _value: True) is None
     assert _find_first([1, 2, 3], lambda value: value > 1) == 2
-    inputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    outputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
+    inputs = _offload(ExecutionOffLoadType.INPUTS)
+    outputs = _offload(ExecutionOffLoadType.OUTPUTS)
     assert _find_first([inputs, outputs], _filter_by_offload_type(ExecutionOffLoadType.OUTPUTS)) is outputs
-    replaced = _replace_or_append_offload(
-        [inputs, outputs], WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    )
+    replaced = _replace_or_append_offload([inputs, outputs], _offload(ExecutionOffLoadType.INPUTS))
     assert [item.type_ for item in replaced] == [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.INPUTS]
 
     created: dict[str, int] = {}
@@ -458,7 +466,7 @@ def test_to_domain_model_loads_offloaded_storage(
     )
     offloads = []
     for offload_type in ExecutionOffLoadType:
-        offload = WorkflowNodeExecutionOffload(type_=offload_type)
+        offload = _offload(offload_type)
         offload.file = _upload_file(key=offload_type.value)
         offloads.append(offload)
     db_model.offload_data = offloads
