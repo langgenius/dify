@@ -1294,11 +1294,11 @@ networks:
   ssrf_proxy_network:
     driver: bridge
     internal: true
-  # Internal network shared only by agent_ssrf_proxy and local_sandbox.
+  # Internal network shared only by agent_ssrf_proxy and local shell runtimes.
   local_sandbox_proxy_network:
     driver: bridge
     internal: true
-  # shellctl control channel (agent_backend -> local_sandbox:5004).
+  # shellctl control channel (agent_backend -> local_sandbox[:rust]:5004).
   # sandbox can access agent backend through this network, this is
   # a known limitation.
   #
