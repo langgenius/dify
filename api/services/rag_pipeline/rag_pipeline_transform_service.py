@@ -311,7 +311,7 @@ class RagPipelineTransformService:
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
-            description=dataset.description,
+            description=dataset.description or "",
             created_by=account_id,
         )
         session.add(pipeline)

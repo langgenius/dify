@@ -159,9 +159,9 @@ class TestCleanDatasetTask:
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        dataset.created_at = datetime.now()
+        dataset.updated_at = datetime.now()
 
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()
@@ -905,9 +905,9 @@ class TestCleanDatasetTask:
             index_struct='{"type": "paragraph", "max_length": 10000}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        dataset.created_at = datetime.now()
+        dataset.updated_at = datetime.now()
 
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()
