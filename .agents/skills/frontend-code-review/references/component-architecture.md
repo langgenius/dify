@@ -11,11 +11,11 @@ Use the canonical reference for the changed concern. These links share rules; th
 
 ## Apply Rules In Their Actual Scope
 
-Explicit team conventions are reviewable contracts, including module organization and Props typing. Check the documented exception before reporting a violation. Do not infer an exception solely because the code appears to work, or invent a user-facing failure for a convention finding.
+Explicit team conventions are reviewable contracts, including module organization and public API boundaries. Check the documented exception before reporting a violation. Do not infer an exception solely because the code appears to work, or invent a user-facing failure for a convention finding.
 
 - For owner placement, trace the consumers and required lifetime. Establish whether the parent coordinates a snapshot, submission, navigation, shared UI, or persistence before asking to move state or handlers.
-- For component boundaries, identify the responsibilities being mixed and the proposed local owner. Apply the documented size condition with its responsibility requirement; line count alone does not establish a split.
-- For Props and types, check reuse, exports, complexity, clarity, and the domain contract. Review declaration/export syntax only when it violates a documented package rule or causes a concrete type, lifecycle, export, or framework defect.
+- For component boundaries, identify the ownership or encapsulation the proposed extraction would improve; file length alone establishes neither.
+- For props and types, check the domain contract and public API. Do not report private props typing style alone; declaration/export syntax matters only for a documented package rule or concrete type, export, or framework defect.
 - For state and Effects, trace the source of truth, external synchronization target, and mount/reset boundary. Controlledness alone does not prove that a draft is lifted or persisted; follow the form and overlay contracts linked by [State].
 - For navigation, distinguish ordinary links from mutation success, guarded redirects, command flows, and submission side effects.
 

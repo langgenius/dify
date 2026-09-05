@@ -79,7 +79,7 @@ Flag:
   state ownership and obscures whether `disabled` expresses independent unavailability.
 - Spinner or decorative loading icon exposed to screen readers.
 - Disabled controls that hide the reason users cannot proceed.
-- `aria-disabled` used without manually blocking click, Space, and Enter.
+- Controls marked `aria-disabled` that still activate through supported pointer or keyboard input. Check the primitive's handling before requesting manual event guards.
 - Toasts, inline validation, or async status changes that are not announced when users need the update to continue.
 - Icon-only loading/error affordances without text or accessible status where the state matters.
 
@@ -104,7 +104,7 @@ Use Popover for explanatory content, rich help, and infotips. Use Tooltip only a
 Flag:
 
 - Text in flex/grid children without `min-w-0` when it can overflow.
-- Names, labels, file names, model names, workspace names, or user content lacking `truncate`, `line-clamp`, or `break-words`.
+- Long names, labels, or user content that overflow, obscure adjacent controls, or become unreadable in supported layouts.
 - Right-side icons, badges, checks, or actions that shrink before the text area.
 - Empty arrays or empty strings rendering broken layout instead of an empty state.
 - Button, tab, badge, chip, menu item, or card text that can overlap sibling controls at common viewport widths.

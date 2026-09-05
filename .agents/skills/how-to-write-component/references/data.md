@@ -11,7 +11,7 @@ Read this document when a component consumes generated contracts, nullable API v
 - When a ready generated operation exists for the changed call, migrate deprecated operations and remove the replaced layer instead of adding compatibility wrappers.
 - Normalize only at real boundaries such as user input, search, URL params, filenames, DOM IDs, or a required legacy adapter.
 - Preserve `null`, `undefined`, and intentional empty strings until the final boundary. Do not use `value || undefined` when an empty string means clearing a field.
-- Build required values in the branch that proves them. Avoid `filter(Boolean)`, truthiness filters, non-null assertions after filters, and placeholder values used only to satisfy types.
+- Build required values in the branch that proves them. Do not use truthiness filters, non-null assertions, or placeholders to conceal missing required input or discard valid `0`, `false`, or empty-string values.
 
 ## Queries
 
