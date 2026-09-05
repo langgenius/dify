@@ -541,8 +541,9 @@ class TestConversationModel:
         # Assert
         assert conversation._inputs == inputs
 
-    def test_conversation_summary_or_query_with_summary(self):
-        """Test summary_or_query property when summary exists."""
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
+    def test_conversation_summary_or_query_with_summary(self, sqlite_session: Session):
+        """Test summary_or_query_with_session when summary exists."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
@@ -555,14 +556,14 @@ class TestConversationModel:
         )
 
         # Act
-        result = conversation.summary_or_query
+        result = conversation.summary_or_query_with_session(session=sqlite_session)
 
         # Assert
         assert result == "Test summary"
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
     def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session):
-        """Test summary_or_query property when summary is empty."""
+        """Test summary_or_query_with_session when summary is empty."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
