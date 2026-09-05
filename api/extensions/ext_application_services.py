@@ -47,6 +47,7 @@ from repositories.explore_banner_query_repository import ExploreBannerQueryRepos
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -154,6 +155,7 @@ from services.file_grant_service import FileGrantService
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.message_file_preview_service import MessageFilePreviewService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -256,6 +258,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     file_grants: FileGrantService
     files: FileService
+    message_file_previews: MessageFilePreviewService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -641,6 +644,10 @@ def build_application_services(
         ),
         file_grants=_build_file_grant_service(database_client=database_client),
         files=file_service,
+        message_file_previews=MessageFilePreviewService(
+            files=MessageFilePreviewQueryRepository(session_factory=database_client),
+            storage=storage,
+        ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
