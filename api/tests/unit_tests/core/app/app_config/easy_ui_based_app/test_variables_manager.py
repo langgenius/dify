@@ -70,6 +70,14 @@ class TestBasicVariablesConfigManagerConvert:
         assert len(variables) == 2
         assert len(external) == 1
 
+    def test_convert_empty_form_item_skipped(self):
+        config = {"user_input_form": [{}]}
+
+        variables, external = BasicVariablesConfigManager.convert(config)
+
+        assert variables == []
+        assert external == []
+
     def test_convert_external_data_tool_without_config_skipped(self):
         config = {
             "user_input_form": [
@@ -105,6 +113,12 @@ class TestValidateVariablesAndSetDefaults:
 
     def test_validate_invalid_key_raises(self):
         config = {"user_input_form": [{"invalid": {}}]}
+
+        with pytest.raises(ValueError):
+            BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
+
+    def test_validate_empty_form_item_raises(self):
+        config = {"user_input_form": [{}]}
 
         with pytest.raises(ValueError):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
