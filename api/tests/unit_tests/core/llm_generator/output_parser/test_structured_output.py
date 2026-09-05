@@ -301,6 +301,117 @@ class TestStructuredOutput:
         assert result.structured_output == {"result": "success"}
         assert result.system_fingerprint == "fp_prompt"
 
+    def test_invoke_llm_with_structured_output_native_declared_but_plugin_cannot_use(self):
+        """Regression for #40907: a model whose YAML declares
+        `structured-output` in `features` but whose parameter rules do not
+        list `json_schema` as a `response_format` option must NOT take the
+        native path. Pre-fix the native path set `json_schema` in the
+        request body without setting `response_format`, so the provider
+        plugin (which has no `response_format` concept) silently dropped
+        the schema and the prompt-based fallback was excluded. The
+        result was unconstrained output despite the user enabling
+        structured output in the editor.
+        """
+        model_schema = MagicMock(spec=AIModelEntity)
+        model_schema.support_structure_output = True
+        # No `response_format` parameter rule at all — the provider plugin
+        # has no `response_format` concept (the `claude-sonnet-4-6` /
+        # `langgenius/anthropic` v0.3.26 instance from #40907).
+        model_schema.parameter_rules = []
+        model_schema.model = "claude-sonnet-4-6"
+
+        model_instance = MagicMock(spec=ModelInstance)
+        mock_result = MagicMock(spec=LLMResult)
+        mock_result.message = AssistantPromptMessage(content='{"result": "success"}')
+        mock_result.model = "claude-sonnet-4-6"
+        mock_result.usage = LLMUsage.empty_usage()
+        mock_result.system_fingerprint = "fp_prompt_fallback"
+        mock_result.prompt_messages = [UserPromptMessage(content="hi")]
+
+        model_instance.invoke_llm.return_value = mock_result
+
+        result = invoke_llm_with_structured_output(
+            provider="anthropic",
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=[UserPromptMessage(content="hi")],
+            json_schema={"type": "object"},
+            stream=False,
+        )
+
+        assert isinstance(result, LLMResultWithStructuredOutput)
+        assert result.structured_output == {"result": "success"}
+        # The system fingerprint is the prompt-fallback value because the
+        # model fell through to the prompt-based branch.
+        assert result.system_fingerprint == "fp_prompt_fallback"
+        # The native branch would have called _handle_native_json_schema,
+        # which is the only path that sets `json_schema` in
+        # model_parameters. The prompt-based branch never sets that key.
+        invoke_kwargs = model_instance.invoke_llm.call_args
+        assert "json_schema" not in invoke_kwargs.kwargs["model_parameters"]
+        # The prompt-based branch must inject the schema placeholder into
+        # the system prompt. Verify the schema payload made it into
+        # prompt_messages.
+        injected = invoke_kwargs.kwargs["prompt_messages"]
+        assert any(
+            isinstance(msg, SystemPromptMessage)
+            and "{{schema}}" not in msg.content
+            and '"type": "object"' in msg.content
+            for msg in injected
+        )
+
+    def test_invoke_llm_with_structured_output_native_declared_but_response_format_rule_omits_json_schema(
+        self,
+    ):
+        """Regression for #40907 (variant): the parameter rules contain a
+        `response_format` option, but the option list does not include
+        `json_schema`. Pre-fix the native path was taken and the schema
+        was silently dropped. Post-fix the prompt-based fallback runs.
+        """
+        model_schema = MagicMock(spec=AIModelEntity)
+        model_schema.support_structure_output = True
+        # The model has a response_format rule, but it only supports plain
+        # `json` — not `json_schema`. The provider plugin therefore
+        # cannot consume the structured output schema.
+        model_schema.parameter_rules = [
+            ParameterRule(
+                name="response_format",
+                label={"en_US": ""},
+                type=ParameterType.STRING,
+                help={"en_US": ""},
+                options=[ResponseFormat.JSON],
+            )
+        ]
+        model_schema.model = "model-without-json-schema"
+
+        model_instance = MagicMock(spec=ModelInstance)
+        mock_result = MagicMock(spec=LLMResult)
+        mock_result.message = AssistantPromptMessage(content='{"result": "success"}')
+        mock_result.model = "model-without-json-schema"
+        mock_result.usage = LLMUsage.empty_usage()
+        mock_result.system_fingerprint = "fp_prompt_fallback_2"
+        mock_result.prompt_messages = [UserPromptMessage(content="hi")]
+
+        model_instance.invoke_llm.return_value = mock_result
+
+        result = invoke_llm_with_structured_output(
+            provider="some-provider",
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=[UserPromptMessage(content="hi")],
+            json_schema={"type": "object"},
+            stream=False,
+        )
+
+        assert isinstance(result, LLMResultWithStructuredOutput)
+        assert result.structured_output == {"result": "success"}
+        assert result.system_fingerprint == "fp_prompt_fallback_2"
+        # Confirm the prompt-based path was used: the schema was injected
+        # into a system prompt and `json_schema` was NOT set in the
+        # request body.
+        invoke_kwargs = model_instance.invoke_llm.call_args
+        assert "json_schema" not in invoke_kwargs.kwargs["model_parameters"]
+
     def test_invoke_llm_with_structured_output_no_string_error(self):
         model_schema = MagicMock(spec=AIModelEntity)
         model_schema.support_structure_output = False
