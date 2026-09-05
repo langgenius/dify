@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.helper.code_executor.code_executor import CodeExecutionError
 from core.repositories.human_input_repository import (
     FormCreateParams,
     HumanInputFormEntity,
@@ -34,12 +35,19 @@ from graphon.engine.event.stream import EventStream
 from graphon.engine.frame import ExecutionFrame, FrameRegistry
 from graphon.engine.ready_queue import ResumeTask, StartTask
 from graphon.engine.worker import NodeEventTask
-from graphon.engine_events import NodeRunFailedEvent, NodeRunSucceededEvent
-from graphon.engine_events.base import NodeEvent
-from graphon.engine_events.graph import GraphRunPausedEvent, GraphRunSucceededEvent
+from graphon.engine_events import NodeRunExceptionEvent, NodeRunFailedEvent, NodeRunRetryEvent, NodeRunSucceededEvent
+from graphon.engine_events.base import EngineEvent, NodeEvent
+from graphon.engine_events.graph import (
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
+    GraphRunSucceededEvent,
+)
+from graphon.entities.base_node_data import DefaultValue, DefaultValueType
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import (
     BuiltinNodeTypes,
+    ErrorStrategy,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -52,6 +60,8 @@ from graphon.nodes.container_effects import (
     LoopFrameRequest,
     build_container_value,
 )
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.protocols import ToolFileManagerProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
@@ -755,7 +765,10 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
         start_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    workflow_tool_handler.prepare_frame_event(frame=SimpleNamespace(container_id="tool"), event=event)  # type: ignore[arg-type]
+    workflow_tool_handler.prepare_frame_event(
+        frame=SimpleNamespace(container_id="tool", frame_id="source-frame"),
+        event=event,  # type: ignore[arg-type]
+    )
 
     assert nested_handler.should_emit(event=event) is False
     hidden_event_listener.assert_called_once_with(event)
@@ -764,24 +777,158 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
     assert nested_handler.should_emit(event=unmarked_event) is True
 
 
-def test_workflow_tool_child_failure_does_not_change_outer_exception_count() -> None:
-    handler, frame_registry, runtime_state, request, _ = _container_handler()
-    handler.handle_request(invocation_id="invocation", request=request)
-    now = datetime.now(UTC).replace(tzinfo=None)
-    event = NodeRunFailedEvent(
-        id="source-execution",
-        node_id="source-start",
-        node_type=BuiltinNodeTypes.START,
-        error="handled source failure",
-        start_at=now,
-        finished_at=now,
+@pytest.mark.parametrize(
+    ("child_error_strategy", "tool_error_strategy", "terminal_type", "expected_count", "expected_output", "retry_once"),
+    [
+        pytest.param(
+            ErrorStrategy.DEFAULT_VALUE,
+            None,
+            GraphRunSucceededEvent,
+            0,
+            '{"answer": "child fallback"}',
+            False,
+            id="child-handles-failure",
+        ),
+        pytest.param(None, None, GraphRunFailedEvent, 1, None, False, id="unhandled-failure"),
+        pytest.param(
+            None,
+            ErrorStrategy.DEFAULT_VALUE,
+            GraphRunPartialSucceededEvent,
+            1,
+            "tool fallback",
+            False,
+            id="tool-default-value",
+        ),
+        pytest.param(
+            None,
+            ErrorStrategy.FAIL_BRANCH,
+            GraphRunPartialSucceededEvent,
+            1,
+            "source code failed",
+            False,
+            id="tool-fail-branch",
+        ),
+        pytest.param(None, None, GraphRunSucceededEvent, 0, '{"answer": "retried output"}', True, id="child-retries"),
+    ],
+)
+def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    child_error_strategy: ErrorStrategy | None,
+    tool_error_strategy: ErrorStrategy | None,
+    terminal_type: type[GraphRunSucceededEvent | GraphRunFailedEvent | GraphRunPartialSucceededEvent],
+    expected_count: int,
+    expected_output: str | None,
+    retry_once: bool,
+) -> None:
+    execute = MagicMock(side_effect=[CodeExecutionError("source code failed"), {"output": "retried output"}])
+    monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
+    app, workflow = _source_workflow()
+    source_graph = workflow.graph_dict
+    source_graph["nodes"].insert(
+        1,
+        {
+            "id": "source-code",
+            "data": {
+                "type": "code",
+                "title": "Code",
+                "code_language": "python3",
+                "code": "def main(): return {'output': 'retried output'}",
+                "outputs": {"output": {"type": "string"}},
+                "variables": [],
+                "error_strategy": child_error_strategy,
+                "default_value": [{"key": "output", "type": "string", "value": "child fallback"}],
+                "retry_config": {"retry_enabled": retry_once, "max_retries": 1, "retry_interval": 0},
+            },
+        },
     )
+    source_graph["nodes"][-1]["data"]["outputs"][0]["value_selector"] = ["source-code", "output"]
+    source_graph["edges"] = [
+        {"id": "start-code", "source": "source-start", "target": "source-code"},
+        {"id": "code-end", "source": "source-code", "target": "source-end"},
+    ]
+    repository = MagicMock(spec=WorkflowToolSourceRepository)
+    repository.get_source.return_value = WorkflowToolSource(
+        app_id=app.id,
+        workflow_id=workflow.id,
+        graph_config=source_graph,
+        features_dict=workflow.features_dict,
+        environment_variables=(),
+        workflow_kind=workflow.kind_or_standard,
+    )
+    node, _, _ = _workflow_tool_node()
+    node.node_data.error_strategy = tool_error_strategy
+    node.node_data.default_value = [DefaultValue(key="text", type=DefaultValueType.STRING, value="tool fallback")]
+    start = StartNode(
+        node_id="outer-start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=node.init_params,
+        runtime_state=node.runtime_state,
+    )
+    end = EndNode(
+        node_id="outer-end",
+        data=EndNodeData.model_validate(
+            {
+                "title": "End",
+                "outputs": [
+                    {
+                        "variable": "answer",
+                        "value_selector": [
+                            "tool",
+                            "error_message" if tool_error_strategy == ErrorStrategy.FAIL_BRANCH else "text",
+                        ],
+                    }
+                ],
+            }
+        ),
+        init_params=node.init_params,
+        runtime_state=node.runtime_state,
+    )
+    graph = (
+        Graph.new()
+        .add_root(start)
+        .add_node(node)
+        .add_node(end, source_handle="fail-branch" if tool_error_strategy == ErrorStrategy.FAIL_BRANCH else "source")
+        .build()
+    )
+    persisted: list[NodeEvent] = []
+    engine = Engine(
+        graph=graph,
+        runtime_state=node.runtime_state,
+        command_channel=InMemoryChannel(),
+        workers=1,
+        container_handler_factories=(
+            partial(
+                WorkflowToolContainerHandler,
+                source_repository=repository,
+                event_listener_factory=lambda _: persisted.append,
+            ),
+        ),
+    )
+    events: list[EngineEvent] = []
+    if terminal_type is GraphRunFailedEvent:
+        with pytest.raises(RuntimeError, match="source code failed"):
+            events.extend(engine.run())
+    else:
+        events.extend(engine.run())
 
-    handler.prepare_frame_event(frame=frame_registry["invocation:workflow-tool"], event=event)
-    handler.prepare_frame_event(frame=frame_registry["invocation:workflow-tool"], event=event)
-    runtime_state.graph_execution.record_node_failure()
-
-    assert runtime_state.graph_execution.exceptions_count == 0
+    assert execute.call_count == (2 if retry_once else 1)
+    assert isinstance(events[-1], terminal_type)
+    assert node.runtime_state.graph_execution.exceptions_count == expected_count
+    if isinstance(events[-1], GraphRunFailedEvent):
+        assert events[-1].error == "source code failed"
+        assert not any(isinstance(event, NodeRunSucceededEvent) and event.node_id == end.id for event in events)
+    else:
+        assert isinstance(events[-1], GraphRunSucceededEvent | GraphRunPartialSucceededEvent)
+        assert events[-1].outputs == {"answer": expected_output}
+    if tool_error_strategy is not None:
+        assert any(isinstance(event, NodeRunExceptionEvent) and event.node_id == node.id for event in events)
+    if isinstance(events[-1], GraphRunFailedEvent | GraphRunPartialSucceededEvent):
+        assert events[-1].exceptions_count == expected_count
+    if child_error_strategy is not None:
+        assert any(isinstance(event, NodeRunExceptionEvent) and event.node_id == "source-code" for event in persisted)
+    if retry_once:
+        assert [event.retry_index for event in persisted if isinstance(event, NodeRunRetryEvent)] == [1]
+        assert any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "source-code" for event in persisted)
 
 
 def test_workflow_tool_empty_outputs_match_direct_invocation() -> None:

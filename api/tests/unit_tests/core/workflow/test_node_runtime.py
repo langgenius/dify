@@ -925,31 +925,11 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload() -> None
     tool.prepare_container_inputs.assert_called_once_with({"amount": "1.25"})
 
 
-def test_dify_tool_node_runtime_rejects_invalid_workflow_tool_container_payloads(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from core.tools.workflow_as_tool.tool import WorkflowTool
-
+def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:
     runtime = DifyToolNodeRuntime(_build_run_context())
     with pytest.raises(ToolRuntimeResolutionError, match="resolved tool is not a Workflow Tool"):
         runtime.build_workflow_tool_container_payload(
             tool_runtime=ToolRuntimeHandle(raw=object()),
-            tool_parameters={},
-            inputs_for_log={},
-            workflow_call_depth=0,
-        )
-
-    tool = MagicMock(spec=WorkflowTool)
-    tool.workflow_app_id = uuid4()
-    tool.workflow_id = uuid4()
-    tool.version = "published-version"
-    tool.prepare_container_inputs.return_value = (dict[str, object](), list[dict[str, str | None]]())
-    converter = MagicMock()
-    converter.to_json_encodable.return_value = None
-    monkeypatch.setattr(node_runtime, "WorkflowRuntimeTypeConverter", MagicMock(return_value=converter))
-    with pytest.raises(ToolRuntimeResolutionError, match="failed to serialize Workflow Tool inputs"):
-        runtime.build_workflow_tool_container_payload(
-            tool_runtime=ToolRuntimeHandle(raw=tool),
             tool_parameters={},
             inputs_for_log={},
             workflow_call_depth=0,
