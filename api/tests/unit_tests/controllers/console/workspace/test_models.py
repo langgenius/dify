@@ -150,7 +150,7 @@ class TestModelProviderModelApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
+            result, status = method(api, "tenant1", "openai", model="gpt-4", model_type=ModelType.LLM)
 
         assert status == 204
 
