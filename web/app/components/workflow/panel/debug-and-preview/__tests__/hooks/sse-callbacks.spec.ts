@@ -116,6 +116,69 @@ describe('useChat – handleSend SSE callbacks', () => {
     })
   }
 
+  it('keeps two same-Tool forms when one is refreshed, expired, and submitted', () => {
+    const { result } = setupAndSend()
+    startWorkflow()
+    startNode('tool', 'execution')
+    const first = {
+      form_id: 'first',
+      node_id: 'tool',
+      node_title: 'Tool',
+      form_content: 'First approval',
+      inputs: [],
+      actions: [],
+      form_token: 'first-token',
+      display_in_ui: true,
+      resolved_default_values: {},
+      expiration_time: 100,
+    }
+    const second = {
+      ...first,
+      form_id: 'second',
+      form_content: 'Second approval',
+      form_token: 'second-token',
+    }
+    act(() => {
+      capturedCallbacks.onHumanInputRequired({ data: first })
+      capturedCallbacks.onHumanInputRequired({ data: second })
+      capturedCallbacks.onHumanInputRequired({ data: { ...second, form_token: 'refreshed' } })
+    })
+    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([
+      first,
+      { ...second, form_token: 'refreshed' },
+    ])
+    act(() => {
+      capturedCallbacks.onHumanInputFormTimeout({ data: { ...second, expiration_time: 200 } })
+    })
+    expect(
+      result.current.chatList[1]!.humanInputFormDataList?.map((form) => form.expiration_time),
+    ).toEqual([100, 200])
+    const filled = {
+      form_id: 'second',
+      node_id: 'tool',
+      node_title: 'Tool',
+      rendered_content: 'Approved',
+      action_id: 'approve',
+      action_text: 'Approve',
+    }
+    act(() => {
+      capturedCallbacks.onHumanInputFormFilled({ data: filled })
+      capturedCallbacks.onHumanInputFormFilled({
+        data: { ...filled, rendered_content: 'Replayed approval' },
+      })
+      capturedCallbacks.onHumanInputFormTimeout({ data: { ...second, expiration_time: 300 } })
+    })
+    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([first])
+    expect(result.current.chatList[1]!.humanInputFilledFormDataList).toEqual([
+      {
+        ...filled,
+        rendered_content: 'Replayed approval',
+        form_content: 'Second approval',
+        inputs: [],
+      },
+    ])
+  })
+
   describe('onData', () => {
     it('should append message content', () => {
       const { result } = setupAndSend()
@@ -911,6 +974,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -935,6 +999,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -945,7 +1010,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-2' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-2' },
         })
       })
 
@@ -962,13 +1027,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node-1', form_token: 'token-1' },
+          data: { form_id: 'form-human-node-1', node_id: 'human-node-1', form_token: 'token-1' },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node-2', form_token: 'token-2' },
+          data: { form_id: 'form-human-node-2', node_id: 'human-node-2', form_token: 'token-2' },
         })
       })
 
@@ -987,7 +1052,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-1' },
         })
       })
 
@@ -1007,6 +1072,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -1017,7 +1083,11 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputFormFilled({
-          data: { node_id: 'human-node', submitted_data: { answer: 'yes' } },
+          data: {
+            form_id: 'form-human-node',
+            node_id: 'human-node',
+            submitted_data: { answer: 'yes' },
+          },
         })
       })
 
@@ -1044,13 +1114,17 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-1' },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputFormTimeout({
-          data: { node_id: 'human-node', expiration_time: '2025-01-01T00:00:00Z' },
+          data: {
+            form_id: 'form-human-node',
+            node_id: 'human-node',
+            expiration_time: '2025-01-01T00:00:00Z',
+          },
         })
       })
 

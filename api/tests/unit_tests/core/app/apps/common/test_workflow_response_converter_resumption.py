@@ -4,7 +4,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 
 
@@ -17,7 +17,7 @@ def _build_converter() -> WorkflowResponseConverter:
         workflow_id="wf-1",
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     app_entity = SimpleNamespace(
         task_id="task-1",
         app_config=SimpleNamespace(app_id="app-1", tenant_id="tenant-1"),

@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
-from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
@@ -509,17 +508,10 @@ class TestWorkflowToolManageService:
 
         assert tool_count == 0
 
-    def test_create_workflow_tool_human_input_node_error(
+    def test_create_workflow_tool_with_human_input_node_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """
-        Test workflow tool creation fails when workflow contains human input nodes.
-
-        This test verifies:
-        - Human input nodes prevent workflow tool publishing
-        - Correct error message
-        - No database changes when workflow is invalid
-        """
+        """A workflow containing Human Input can be published as a tool."""
         fake = Faker()
 
         # Create test data
@@ -539,29 +531,29 @@ class TestWorkflowToolManageService:
         )
 
         tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
-            WorkflowToolManageService.create_workflow_tool(
-                user_id=account.id,
-                tenant_id=account.current_tenant.id,
-                workflow_app_id=app.id,
-                name=fake.word(),
-                label=fake.word(),
-                icon={"type": "emoji", "emoji": "🔧"},
-                description=fake.text(max_nb_chars=200),
-                parameters=tool_parameters,
-            )
+        tool_name = fake.word()
+        result = WorkflowToolManageService.create_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_app_id=app.id,
+            name=tool_name,
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "🔧"},
+            description=fake.text(max_nb_chars=200),
+            parameters=tool_parameters,
+        )
 
-        assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
-
-        tool_count = (
+        assert result == {"result": "success"}
+        created_tool = (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
+                WorkflowToolProvider.app_id == app.id,
             )
-            .count()
+            .first()
         )
-
-        assert tool_count == 0
+        assert created_tool is not None
+        assert created_tool.name == tool_name
 
     def test_update_workflow_tool_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -651,17 +643,10 @@ class TestWorkflowToolManageService:
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called()
         mock_external_service_dependencies["tool_transform_service"].workflow_provider_to_controller.assert_called()
 
-    def test_update_workflow_tool_human_input_node_error(
+    def test_update_workflow_tool_with_human_input_node_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """
-        Test workflow tool update fails when workflow contains human input nodes.
-
-        This test verifies:
-        - Human input nodes prevent workflow tool updates
-        - Correct error message
-        - Existing tool data remains unchanged
-        """
+        """A workflow tool can be updated after adding a Human Input node."""
         fake = Faker()
 
         # Create test data
@@ -692,8 +677,6 @@ class TestWorkflowToolManageService:
             .first()
         )
 
-        original_name = created_tool.name
-
         workflow.graph = json.dumps(
             {
                 "nodes": [
@@ -706,22 +689,21 @@ class TestWorkflowToolManageService:
         )
         db_session_with_containers.commit()
 
-        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
-            WorkflowToolManageService.update_workflow_tool(
-                user_id=account.id,
-                tenant_id=account.current_tenant.id,
-                workflow_tool_id=created_tool.id,
-                name=fake.word(),
-                label=fake.word(),
-                icon={"type": "emoji", "emoji": "⚙️"},
-                description=fake.text(max_nb_chars=200),
-                parameters=initial_tool_parameters,
-            )
+        updated_name = fake.word()
+        result = WorkflowToolManageService.update_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_tool_id=created_tool.id,
+            name=updated_name,
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "⚙️"},
+            description=fake.text(max_nb_chars=200),
+            parameters=initial_tool_parameters,
+        )
 
-        assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
-
+        assert result == {"result": "success"}
         db_session_with_containers.refresh(created_tool)
-        assert created_tool.name == original_name
+        assert created_tool.name == updated_name
 
     def test_update_workflow_tool_not_found_error(
         self, db_session_with_containers: Session, mock_external_service_dependencies

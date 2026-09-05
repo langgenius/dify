@@ -526,7 +526,7 @@ class QueueHumanInputFormFilledEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.HUMAN_INPUT_FORM_FILLED
 
-    node_execution_id: str
+    form_id: str
     node_id: str
     node_type: NodeType
     node_title: str
@@ -546,6 +546,7 @@ class QueueHumanInputFormTimeoutEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.HUMAN_INPUT_FORM_TIMEOUT
 
+    form_id: str
     node_id: str
     node_type: NodeType
     node_title: str

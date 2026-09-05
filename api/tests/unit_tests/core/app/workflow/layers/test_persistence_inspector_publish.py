@@ -28,19 +28,13 @@ from core.app.workflow.layers.persistence import WorkflowPersistenceLayer
 
 @pytest.fixture
 def layer() -> WorkflowPersistenceLayer:
-    """Build a layer instance with all repository / trace deps stubbed.
-
-    We bypass ``__init__`` because constructing it for real pulls in the
-    workflow engine's app-generate-entity, repos, and a runtime state — none
-    of which matter for asserting that the publish-hook fires.
-    """
-    instance = WorkflowPersistenceLayer.__new__(WorkflowPersistenceLayer)
-    # Minimum surface the handlers touch:
-    instance._workflow_execution_repository = MagicMock()
-    instance._workflow_node_execution_repository = MagicMock()
-    instance._trace_manager = None
-    instance._workflow_info = MagicMock(workflow_id="wf-1")
-    instance._application_generate_entity = MagicMock()
+    """Use real layer initialization with repository and runtime test doubles."""
+    instance = WorkflowPersistenceLayer(
+        application_generate_entity=MagicMock(),
+        workflow_info=MagicMock(workflow_id="wf-1"),
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+    )
     # Use a SimpleNamespace-like spec so Pydantic-validated callsites (e.g.
     # ``WorkflowNodeExecution.new`` requires real strings) get the right types.
     workflow_execution = MagicMock()
@@ -52,11 +46,8 @@ def layer() -> WorkflowPersistenceLayer:
     workflow_execution.exceptions_count = 0
     workflow_execution.finished_at = None
     instance._workflow_execution = workflow_execution
-    instance._node_execution_cache = {}
-    instance._node_snapshots = {}
-    instance._node_sequence = 0
-    # `graph_runtime_state` is a layer-base property; stub it.
-    instance._graph_runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
+    # `runtime_state` is a layer-base property; stub it.
+    instance._runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
     return instance
 
 
@@ -131,8 +122,8 @@ def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> Ma
         node_type="agent",
         node_title="Greeter",
         predecessor_node_id=None,
-        in_iteration_id=None,
-        in_loop_id=None,
+        container_id="",
+        node_version="1",
         start_at=datetime(2026, 5, 26, 0, 0, 0),
     )
 

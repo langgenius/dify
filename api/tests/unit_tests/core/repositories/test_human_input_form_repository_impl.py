@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import Engine, event
@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import (
+    FormNotFoundError,
     HumanInputFormRecord,
     HumanInputFormRepositoryImpl,
     HumanInputFormSubmissionRepository,
@@ -276,6 +277,39 @@ def _persist_form(
 
 
 class TestHumanInputFormRepositoryImplPublicMethods:
+    @pytest.mark.parametrize("mismatched_scope", ["tenant_id", "app_id", "workflow_run_id", "node_id", "id"])
+    def test_mark_timeout_rejects_form_outside_execution_scope(
+        self, sqlite_session: Session, mismatched_scope: str
+    ) -> None:
+        form = _make_form(expiration_time=naive_utc_now() - timedelta(minutes=1))
+        setattr(form, mismatched_scope, "other-value")
+        _persist_form(sqlite_session, form)
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", app_id="app-id", workflow_execution_id="run-1")
+
+        with pytest.raises(FormNotFoundError):
+            repo.mark_timeout("node-1", form_id="form-1")
+
+        sqlite_session.refresh(form)
+        assert form.status == HumanInputFormStatus.WAITING
+
+    @pytest.mark.parametrize("already_submitted", [False, True])
+    def test_mark_timeout_preserves_waiting_form_that_is_not_eligible(
+        self, sqlite_session: Session, already_submitted: bool
+    ) -> None:
+        form = _make_form(
+            expiration_time=naive_utc_now() + timedelta(minutes=-1 if already_submitted else 1),
+            submitted_at=naive_utc_now() if already_submitted else None,
+        )
+        _persist_form(sqlite_session, form)
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", app_id="app-id", workflow_execution_id="run-1")
+
+        entity = repo.mark_timeout("node-1", form_id="form-1")
+
+        assert entity.status == HumanInputFormStatus.WAITING
+        assert entity.submitted == already_submitted
+        sqlite_session.refresh(form)
+        assert form.status == HumanInputFormStatus.WAITING
+
     def test_get_form_returns_entity_and_recipients(self, sqlite_session: Session):
         form = _make_form()
         recipient = _make_recipient(form.id)

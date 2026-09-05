@@ -35,7 +35,6 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.app.workflow import (
     AppQueueManager,
-    GraphEngineManager,
     WorkflowAppLogApi,
     WorkflowLogQuery,
     WorkflowRunApi,
@@ -476,12 +475,6 @@ class TestWorkflowStopMechanism:
 
         assert hasattr(AppQueueManager, "set_stop_flag_no_user_check")
 
-    def test_graph_engine_manager_has_send_stop_command(self):
-        """Test GraphEngineManager has send_stop_command method."""
-        from graphon.graph_engine.manager import GraphEngineManager
-
-        assert hasattr(GraphEngineManager, "send_stop_command")
-
 
 class TestWorkflowRunRepository:
     """Test workflow run repository interface."""
@@ -810,8 +803,9 @@ class TestWorkflowTaskStopApi:
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()
         send_mock = Mock()
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
-        monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
+        monkeypatch.setattr(workflow_module, "send_abort_command", send_mock)
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
@@ -936,12 +930,12 @@ class TestWorkflowTaskStopApiPost:
     ``post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``.
     """
 
-    @patch("controllers.service_api.app.workflow.GraphEngineManager")
+    @patch("controllers.service_api.app.workflow.send_abort_command")
     @patch("controllers.service_api.app.workflow.AppQueueManager")
     def test_stop_workflow_task_success(
         self,
         mock_queue_mgr,
-        mock_graph_mgr,
+        send_abort_command,
         app: Flask,
         workflow_app: App,
     ):
@@ -959,8 +953,7 @@ class TestWorkflowTaskStopApiPost:
 
         assert result == {"result": "success"}
         mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-        mock_graph_mgr.assert_called_once()
-        mock_graph_mgr.return_value.send_stop_command.assert_called_once_with("task-1")
+        send_abort_command.assert_called_once_with("task-1")
 
     def test_stop_workflow_task_wrong_app_mode(self, app: Flask):
         """Test NotWorkflowAppError when app mode is not workflow."""

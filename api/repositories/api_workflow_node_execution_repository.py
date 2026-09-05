@@ -16,7 +16,6 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-from core.repositories.factory import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
@@ -41,7 +40,7 @@ class WorkflowNodeExecutionSnapshot:
     loop_id: str | None = None  # Loop id from execution metadata, if any.
 
 
-class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
+class DifyAPIWorkflowNodeExecutionRepository(Protocol):
     """
     Protocol for service-layer operations on WorkflowNodeExecutionModel.
 
@@ -97,16 +96,15 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         workflow_run_id: str,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
-        Get all node executions for a specific workflow run.
+        Get visible node executions for a specific workflow run.
 
-        This method retrieves all node executions that belong to a specific workflow run,
+        This method retrieves visible node executions that belong to a specific workflow run,
         ordered by index in descending order for proper trace visualization.
+        Internal Workflow Tool executions are excluded even when the source is the same app and workflow.
 
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
-            workflow_id: The workflow identifier
-            triggered_from: The workflow trigger source
             workflow_run_id: The workflow run identifier
 
         Returns:

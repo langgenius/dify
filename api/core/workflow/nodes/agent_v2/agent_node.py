@@ -25,13 +25,14 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeRunPauseRequestedEvent
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunPauseRequestedEvent
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
@@ -57,8 +58,7 @@ from .runtime_request_builder import (
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +82,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         data: DifyAgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         binding_resolver: WorkflowAgentBindingResolver,
         runtime_request_builder: WorkflowAgentRuntimeRequestBuilder,
         agent_backend_client: AgentBackendRunClient,
@@ -92,12 +92,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
         session_store: WorkflowAgentWorkspaceStore,
+        human_input_run_context: DifyRunContext | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._binding_resolver = binding_resolver
         self._runtime_request_builder = runtime_request_builder
@@ -107,6 +108,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._human_input_run_context = human_input_run_context
 
     @classmethod
     @override
@@ -128,7 +130,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return reason
 
     @override
-    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+    def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent, None, None]:
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
@@ -155,17 +157,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+    ) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-        workflow_id = self.graph_init_params.workflow_id
+        workflow_id = self.init_params.workflow_id
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         # Set on chatflow (advanced-chat) runs; None for a pure workflow run. Lets an
         # ask_human form be tagged with its conversation in addition to workflow_run_id.
         conversation_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
         )
 
@@ -178,6 +180,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 workflow_run_id=workflow_run_id,
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
+                workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -213,6 +216,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
+        if dify_ctx.workflow_tool_invocation_id is not None:
+            process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = dify_ctx.workflow_tool_invocation_id
         session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
@@ -223,6 +228,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             workflow_agent_binding_id=bundle.binding.id,
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
+            workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
@@ -274,7 +280,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         workflow_run_id=workflow_run_id,
                         node_id=self._node_id,
                         node_execution_id=self.execution_id,
-                        variable_pool=self.graph_runtime_state.variable_pool,
+                        variable_pool=self.runtime_state.variable_pool,
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
@@ -602,9 +608,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return cancellation, None
 
     def _is_graph_aborted(self) -> bool:
-        """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
+        """Let Agent SSE consumption observe Engine's cooperative abort state."""
         try:
-            return self.graph_runtime_state.graph_execution.aborted
+            return self.runtime_state.graph_execution.aborted
         except (AttributeError, RuntimeError):
             return False
 
@@ -660,6 +666,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         ask_human form shares the same delivery/debug/console behavior: a
         submission actor is only attributed for debugger/explore surfaces.
         """
+        dify_ctx = self._human_input_run_context or dify_ctx
         invoke_source = dify_ctx.invoke_from.value
         return HumanInputFormRepositoryImpl(
             tenant_id=dify_ctx.tenant_id,

@@ -21,6 +21,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
@@ -30,11 +31,11 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
+from graphon.engine.command import RedisChannel
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
 from graphon.enums import WorkflowType
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
@@ -58,8 +59,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        workflow_tool_source_repository: WorkflowToolSourceRepository,
+        graph_engine_layers: Sequence[Layer] = (),
+        graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ):
         super().__init__(
@@ -74,6 +76,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_tool_source_repository = workflow_tool_source_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
 
@@ -106,6 +109,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 root_node_id=self._root_node_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                call_depth=self.application_generate_entity.call_depth,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
@@ -147,7 +151,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 ),
             )
 
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = RuntimeState(
+                workflow_id=self._workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
+            )
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -159,6 +165,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 root_node_id=root_node_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                call_depth=self.application_generate_entity.call_depth,
             )
 
         # RUN WORKFLOW
@@ -180,22 +187,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
-        workflow_entry = WorkflowEntry(
-            tenant_id=self._workflow.tenant_id,
-            app_id=self._workflow.app_id,
-            workflow_id=self._workflow.id,
-            graph=graph,
-            graph_config=self._workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
-            graph_runtime_state=graph_runtime_state,
-            command_channel=command_channel,
-            response_stream_filter=self._response_stream_filter,
-        )
-
         persistence_layer = WorkflowPersistenceLayer(
             application_generate_entity=self.application_generate_entity,
             workflow_info=PersistenceWorkflowInfo(
@@ -209,8 +200,26 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
-        workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(
+        workflow_entry = WorkflowEntry(
+            tenant_id=self._workflow.tenant_id,
+            app_id=self._workflow.app_id,
+            workflow_id=self._workflow.id,
+            graph=graph,
+            graph_config=self._workflow.graph_dict,
+            user_id=self.application_generate_entity.user_id,
+            user_from=user_from,
+            invoke_from=invoke_from,
+            call_depth=self.application_generate_entity.call_depth,
+            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
+            workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_tool_event_listener_factory=persistence_layer.create_workflow_tool_event_listener,
+            command_channel=command_channel,
+            response_stream_filter=self._response_stream_filter,
+        )
+
+        workflow_entry.graph_engine.add_layer(persistence_layer)
+        workflow_entry.graph_engine.add_layer(
             build_workflow_agent_workspace_retirement_layer(
                 dify_run_context=DifyRunContext(
                     tenant_id=self._workflow.tenant_id,
@@ -224,9 +233,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
         )
         for layer in self._graph_engine_layers:
-            workflow_entry.graph_engine.layer(layer)
+            workflow_entry.graph_engine.add_layer(layer)
 
-        generator = workflow_entry.run()
-
-        for event in generator:
+        for event in self._iter_workflow_events(workflow_entry):
             self._handle_event(workflow_entry, event)

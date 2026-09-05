@@ -40,9 +40,10 @@ from core.workflow.nodes.human_input.pause_reason import (
 )
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
@@ -475,10 +476,7 @@ def _build_human_input_required_events(
         if expiration_time is None:
             continue
 
-        resolved_inputs = resolve_variable_select_input_options(
-            reason.inputs,
-            variable_pool=variable_pool,
-        )
+        resolved_inputs = resolve_variable_select_input_options(reason.inputs, variable_pool=variable_pool)
         disposition = dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
@@ -510,7 +508,7 @@ def _load_variable_pool_from_resumption_context(
 ) -> ReadOnlyVariablePool | None:
     if resumption_context is None:
         return None
-    state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
     return state.variable_pool
 
@@ -564,7 +562,7 @@ def _build_pause_event(
     outputs: dict[str, Any] = {}
     variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
-        state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
         variable_pool = state.variable_pool
 
@@ -669,6 +667,8 @@ def _start_buffering(subscription) -> BufferState:
                     except queue.Full:
                         continue
                     logger.warning("Dropped buffered workflow event, total_dropped=%s", dropped_count)
+        except SubscriptionClosedError:
+            pass
         except Exception:
             logger.exception("Failed while buffering workflow events")
         finally:

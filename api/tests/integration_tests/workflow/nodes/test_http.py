@@ -15,7 +15,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
 from graphon.graph import Graph
 from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig, HttpRequestNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.http",)
@@ -64,12 +64,14 @@ def init_http_node(config: dict):
     variable_pool.add(["a", "args1"], 1)
     variable_pool.add(["a", "args2"], 2)
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     # Create node factory
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -77,8 +79,8 @@ def init_http_node(config: dict):
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
         data=HttpRequestNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
@@ -711,12 +713,14 @@ def test_nested_object_variable_selector(setup_http_mock):
     variable_pool.add(["a", "args2"], 2)
     variable_pool.add(["a", "args3"], {"nested": "nested_value"})  # Only for this test
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     # Create node factory
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -724,8 +728,8 @@ def test_nested_object_variable_selector(setup_http_mock):
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
         data=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,

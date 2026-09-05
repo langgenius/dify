@@ -18,16 +18,15 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.graph_events import (
+from graphon.engine_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -59,8 +58,8 @@ class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
 def _create_human_input_node(
     *,
     config: dict,
-    graph_init_params: GraphInitParams,
-    graph_runtime_state: GraphRuntimeState,
+    init_params: InitParams,
+    runtime_state: RuntimeState,
     repo: _FakeFormRepository,
 ) -> HumanInputNode:
     node_data = (
@@ -76,8 +75,8 @@ def _create_human_input_node(
     node = HumanInputNode(
         node_id=config["id"],
         data=node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         hitl_callback=callback,
     )
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
@@ -93,7 +92,8 @@ def _build_node(
     ),
 ) -> HumanInputNode:
     system_variables = default_system_variables()
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=system_variables,
             user_inputs={},
@@ -101,7 +101,7 @@ def _build_node(
         ),
         start_at=0.0,
     )
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -169,15 +169,16 @@ def _build_node(
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 
 
 def _build_timeout_node() -> HumanInputNode:
     system_variables = default_system_variables()
-    graph_runtime_state = GraphRuntimeState(
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=system_variables,
             user_inputs={},
@@ -185,7 +186,7 @@ def _build_timeout_node() -> HumanInputNode:
         ),
         start_at=0.0,
     )
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -224,8 +225,8 @@ def _build_timeout_node() -> HumanInputNode:
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 

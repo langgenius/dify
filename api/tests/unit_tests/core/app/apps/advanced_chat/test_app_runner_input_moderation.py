@@ -99,6 +99,7 @@ def build_runner(sqlite_session: Session):
         app=app,
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     return runner
@@ -111,7 +112,7 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
-        GraphRuntimeState=MagicMock(),
+        RuntimeState=MagicMock(),
     )
 
 
@@ -143,6 +144,7 @@ def test_handle_input_moderation_stops_on_moderation_error(build_runner):
 
 def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
     runner = build_runner
+    runner.application_generate_entity.call_depth = 5
 
     overridden_inputs = {"q": "sanitized"}
     overridden_query = "sanitized-query"
@@ -172,6 +174,7 @@ def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
 
         # since not stopped, graph initialization should proceed
         assert mock_init_graph.called
+        assert mock_init_graph.call_args.kwargs["call_depth"] == 5
 
 
 def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_runner):

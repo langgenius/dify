@@ -5,8 +5,8 @@ import pytest
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities.pause_reason import HitlRequired
-from graphon.graph_events import GraphRunPausedEvent
 
 
 class _DummyQueueManager:
@@ -23,7 +23,7 @@ class _DummyRuntimeState:
 
 class _DummyGraphEngine:
     def __init__(self):
-        self.graph_runtime_state = _DummyRuntimeState()
+        self.runtime_state = _DummyRuntimeState()
 
 
 class _DummyWorkflowEntry:

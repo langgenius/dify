@@ -18,14 +18,15 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Pipeline
@@ -50,6 +51,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         system_user_id: str,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_tool_source_repository: WorkflowToolSourceRepository,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -68,6 +70,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self._sys_user_id = system_user_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_tool_source_repository = workflow_tool_source_repository
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
@@ -191,7 +194,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow.graph_dict
             )
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = RuntimeState(
+                workflow_id=workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
+            )
 
             # init graph
             graph = self._init_rag_pipeline_graph(
@@ -203,22 +208,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
             )
 
         # RUN WORKFLOW
-        workflow_entry = WorkflowEntry(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
-            workflow_id=workflow.id,
-            graph=graph,
-            graph_config=workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=self.application_generate_entity.call_depth,
-            graph_runtime_state=graph_runtime_state,
-            variable_pool=variable_pool,
-        )
-
-        self._queue_manager.graph_runtime_state = graph_runtime_state
-
         persistence_layer = WorkflowPersistenceLayer(
             application_generate_entity=self.application_generate_entity,
             workflow_info=PersistenceWorkflowInfo(
@@ -232,11 +221,27 @@ class PipelineRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
-        workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry = WorkflowEntry(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            graph=graph,
+            graph_config=workflow.graph_dict,
+            user_id=self.application_generate_entity.user_id,
+            user_from=user_from,
+            invoke_from=invoke_from,
+            call_depth=self.application_generate_entity.call_depth,
+            graph_runtime_state=graph_runtime_state,
+            variable_pool=variable_pool,
+            workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_tool_event_listener_factory=persistence_layer.create_workflow_tool_event_listener,
+        )
 
-        generator = workflow_entry.run()
+        self._queue_manager.graph_runtime_state = graph_runtime_state
 
-        for event in generator:
+        workflow_entry.graph_engine.add_layer(persistence_layer)
+
+        for event in self._iter_workflow_events(workflow_entry):
             self._update_document_status(event, document_ref)
             self._handle_event(workflow_entry, event)
 
@@ -257,7 +262,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
     def _init_rag_pipeline_graph(
         self,
         workflow: Workflow,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         start_node_id: str | None = None,
         user_from: UserFrom = UserFrom.ACCOUNT,
         invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
@@ -314,7 +319,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
         if start_node_id is None:
             start_node_id = get_default_root_node_id(graph_config)
@@ -325,7 +330,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         return graph
 
-    def _update_document_status(self, event: GraphEngineEvent, document_ref: DocumentRef | None) -> None:
+    def _update_document_status(self, event: EngineEvent, document_ref: DocumentRef | None) -> None:
         """Set an owner-bound document to error after a failed graph run, if it exists."""
         if not isinstance(event, GraphRunFailedEvent) or document_ref is None:
             return

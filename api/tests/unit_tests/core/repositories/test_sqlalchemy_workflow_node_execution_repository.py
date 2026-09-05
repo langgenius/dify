@@ -147,6 +147,29 @@ def test_init_accepts_real_engine_and_sessionmaker_and_sets_role(
     assert end_user_repo._creator_user_role.value == "end_user"
 
 
+@pytest.mark.parametrize("source_app", ["app-1", "source-app"])
+def test_workflow_tool_scope_isolates_execution_history_with_same_tenant_and_creator(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], source_app: str
+) -> None:
+    caller = _repository(monkeypatch, sqlite_session_factory, user=_end_user())
+    source = caller.for_workflow_tool(source_app)
+    caller.save_synchronously(_execution(execution_id="caller", node_execution_id="caller"))
+    source.save_synchronously(_execution(execution_id="source", node_execution_id="source"))
+
+    assert [node.id for node in caller.get_by_workflow_execution("run-1")] == ["caller"]
+    assert [node.id for node in source.get_by_workflow_execution("run-1")] == ["source"]
+    with sqlite_session_factory() as session:
+        row = session.get(WorkflowNodeExecutionModel, "source")
+        assert row is not None
+        assert (row.tenant_id, row.app_id, row.created_by, row.created_by_role, row.triggered_from) == (
+            "tenant-1",
+            source_app,
+            "end-user-1",
+            CreatorUserRole.END_USER,
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        )
+
+
 def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
@@ -310,7 +333,7 @@ def test_save_execution_data_updates_existing_and_creates_missing(
     repo = _repository(monkeypatch, sqlite_session_factory)
     existing = _execution(
         inputs={"initial": True},
-        process_data={"workflow_agent_binding_id": "binding-1"},
+        process_data={"workflow_agent_binding_id": "binding-1", "workflow_tool_invocation_id": "tool-call-1"},
     )
     repo.save(existing)
     existing.inputs = {"updated": True}
@@ -326,6 +349,7 @@ def test_save_execution_data_updates_existing_and_creates_missing(
         assert persisted.process_data_dict == {
             "step": 3,
             "workflow_agent_binding_id": "binding-1",
+            "workflow_tool_invocation_id": "tool-call-1",
         }
 
     missing = _execution(execution_id="missing", node_execution_id="missing-node", inputs={"new": True})

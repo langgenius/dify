@@ -7,10 +7,14 @@ import time
 from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    workflow_agent_workspace_scope_key,
+)
 from models.agent import (
     AgentConfigVersionKind,
     AgentWorkingResourceStatus,
@@ -18,7 +22,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from services.agent.workspace_service import (
     AgentWorkspaceNotFoundError,
     AgentWorkspaceService,
@@ -40,6 +44,7 @@ class WorkflowAgentSessionScope:
     workflow_agent_binding_id: str
     agent_id: str
     agent_config_snapshot_id: str
+    workflow_tool_invocation_id: str | None = None
 
     @property
     def workspace_owner(self) -> WorkspaceOwnerScope:
@@ -48,7 +53,9 @@ class WorkflowAgentSessionScope:
             app_id=self.app_id,
             owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
             owner_id=self.workflow_run_id or self.node_execution_id,
-            owner_scope_key=f"{self.node_id}:{self.workflow_agent_binding_id}",
+            owner_scope_key=workflow_agent_workspace_scope_key(
+                self.node_id, self.workflow_agent_binding_id, self.workflow_tool_invocation_id
+            ),
         )
 
 
@@ -75,6 +82,7 @@ class WorkflowAgentWorkspaceStore:
         workflow_run_id: str | None,
         node_id: str,
         node_execution_id: str,
+        workflow_tool_invocation_id: str | None = None,
     ) -> WorkflowAgentSessionScope | None:
         """Return the generation pinned by an existing node execution participant."""
 
@@ -97,12 +105,16 @@ class WorkflowAgentWorkspaceStore:
             workflow_agent_binding_id = process_data.get("workflow_agent_binding_id")
             if not isinstance(workflow_agent_binding_id, str):
                 raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is missing")
+            if process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY) != workflow_tool_invocation_id:
+                raise AgentWorkspaceNotFoundError("Workflow node execution caller invocation does not match")
             owner_scope = WorkspaceOwnerScope(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
                 owner_id=workflow_run_id or node_execution_id,
-                owner_scope_key=f"{node_id}:{workflow_agent_binding_id}",
+                owner_scope_key=workflow_agent_workspace_scope_key(
+                    node_id, workflow_agent_binding_id, workflow_tool_invocation_id
+                ),
             )
             binding = AgentWorkspaceService.get_active_binding(
                 session=session,
@@ -122,6 +134,7 @@ class WorkflowAgentWorkspaceStore:
                 workflow_agent_binding_id=workflow_agent_binding_id,
                 agent_id=binding.agent_id,
                 agent_config_snapshot_id=binding.agent_config_version_id,
+                workflow_tool_invocation_id=workflow_tool_invocation_id,
             )
 
     def load_or_create_node_execution_session(
@@ -137,6 +150,9 @@ class WorkflowAgentWorkspaceStore:
             stored_workflow_binding_id = process_data.get("workflow_agent_binding_id")
             if stored_workflow_binding_id is not None and stored_workflow_binding_id != scope.workflow_agent_binding_id:
                 raise AgentWorkspaceNotFoundError("Workflow node execution caller identity does not match")
+            stored_invocation_id = process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY)
+            if stored_invocation_id is not None and stored_invocation_id != scope.workflow_tool_invocation_id:
+                raise AgentWorkspaceNotFoundError("Workflow node execution caller invocation does not match")
 
             binding_id = execution.agent_workspace_binding_id
             if binding_id is None:
@@ -149,6 +165,8 @@ class WorkflowAgentWorkspaceStore:
                     agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
                 )
                 execution.agent_workspace_binding_id = binding.id
+                if scope.workflow_tool_invocation_id is not None:
+                    process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = scope.workflow_tool_invocation_id
                 execution.process_data = json.dumps(
                     {
                         **process_data,
@@ -201,10 +219,32 @@ class WorkflowAgentWorkspaceStore:
 
         retired: list[str] = []
         with session_factory.create_session() as session:
+            # Workflow Tools keep source-app caller records, but the outer run
+            # owns their lifetime. Require the persisted caller/binding/run chain
+            # before including another app's workspace in this cleanup.
+            child_caller = (
+                select(WorkflowNodeExecutionModel.id)
+                .join(
+                    AgentWorkspaceBinding,
+                    AgentWorkspaceBinding.id == WorkflowNodeExecutionModel.agent_workspace_binding_id,
+                )
+                .join(WorkflowRun, WorkflowRun.id == WorkflowNodeExecutionModel.workflow_run_id)
+                .where(
+                    WorkflowRun.id == workflow_run_id,
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.app_id == AgentWorkspace.app_id,
+                    AgentWorkspaceBinding.tenant_id == tenant_id,
+                    AgentWorkspaceBinding.app_id == AgentWorkspace.app_id,
+                    AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
+                )
+                .exists()
+            )
             workspaces = session.scalars(
                 select(AgentWorkspace).where(
                     AgentWorkspace.tenant_id == tenant_id,
-                    AgentWorkspace.app_id == app_id,
+                    or_(AgentWorkspace.app_id == app_id, child_caller),
                     AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
                     AgentWorkspace.owner_id == workflow_run_id,
                     AgentWorkspace.status.in_((AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)),

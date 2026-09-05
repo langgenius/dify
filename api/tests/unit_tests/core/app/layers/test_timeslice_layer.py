@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.app.layers.timeslice_layer import TimeSliceLayer
-from graphon.graph_engine.entities.commands import CommandType, GraphEngineCommand
+from graphon.engine.command import PauseCommand
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import SchedulerCommand
 
@@ -95,5 +95,5 @@ class TestTimeSliceLayer:
         scheduler.remove_job.assert_called_once_with("job-1")
         layer.command_channel.send_command.assert_called_once()
         sent_command = layer.command_channel.send_command.call_args[0][0]
-        assert isinstance(sent_command, GraphEngineCommand)
-        assert sent_command.command_type == CommandType.PAUSE
+        assert isinstance(sent_command, PauseCommand)
+        assert sent_command.reason == SchedulerCommand.RESOURCE_LIMIT_REACHED

@@ -25,6 +25,10 @@ from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.tools.signature import bind_file_uri
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    workflow_agent_workspace_scope_key,
+)
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -396,10 +400,12 @@ class WorkflowAgentSandboxService:
         )
         process_data = execution.process_data_dict if execution is not None else None
         workflow_agent_binding_id = process_data.get("workflow_agent_binding_id") if process_data is not None else None
+        invocation_id = process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY) if process_data is not None else None
         if (
             execution is None
             or execution.agent_workspace_binding_id is None
             or not isinstance(workflow_agent_binding_id, str)
+            or (invocation_id is not None and not isinstance(invocation_id, str))
         ):
             raise AgentSandboxInspectorError(
                 "no_active_binding",
@@ -415,7 +421,7 @@ class WorkflowAgentSandboxService:
                 app_id=app_id,
                 owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
                 owner_id=workflow_run_id,
-                owner_scope_key=f"{node_id}:{workflow_agent_binding_id}",
+                owner_scope_key=workflow_agent_workspace_scope_key(node_id, workflow_agent_binding_id, invocation_id),
             ),
         )
         if binding is None:

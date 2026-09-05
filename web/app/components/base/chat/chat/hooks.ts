@@ -958,7 +958,7 @@ export const useChat = (
               responseItem.humanInputFormDataList = [humanInputRequiredData]
             } else {
               const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputRequiredData.node_id,
+                (item) => item.form_id === humanInputRequiredData.form_id,
               )
               if (currentFormIndex > -1) {
                 responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
@@ -985,7 +985,7 @@ export const useChat = (
               | undefined
             if (responseItem.humanInputFormDataList?.length) {
               const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFilledFormData.node_id,
+                (item) => item.form_id === humanInputFilledFormData.form_id,
               )
               if (currentFormIndex > -1) {
                 requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
@@ -999,7 +999,11 @@ export const useChat = (
             if (!responseItem.humanInputFilledFormDataList) {
               responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
             } else {
-              responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
+              const existing = responseItem.humanInputFilledFormDataList.find(
+                (form) => form.form_id === humanInputFilledFormData.form_id,
+              )
+              if (existing) Object.assign(existing, enrichedHumanInputFilledFormData)
+              else responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
             }
           })
         },
@@ -1007,10 +1011,12 @@ export const useChat = (
           updateChatTreeNode(messageId, (responseItem) => {
             if (responseItem.humanInputFormDataList?.length) {
               const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFormTimeoutData.node_id,
+                (item) => item.form_id === humanInputFormTimeoutData.form_id,
               )
-              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-                humanInputFormTimeoutData.expiration_time
+              if (currentFormIndex > -1) {
+                responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
+                  humanInputFormTimeoutData.expiration_time
+              }
             }
           })
         },
@@ -1698,7 +1704,7 @@ export const useChat = (
             responseItem.humanInputFormDataList = [humanInputRequiredData]
           } else {
             const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputRequiredData.node_id,
+              (item) => item.form_id === humanInputRequiredData.form_id,
             )
             if (currentFormIndex > -1) {
               responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
@@ -1726,7 +1732,7 @@ export const useChat = (
           let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFilledFormData.node_id,
+              (item) => item.form_id === humanInputFilledFormData.form_id,
             )
             if (currentFormIndex > -1) {
               requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
@@ -1740,7 +1746,11 @@ export const useChat = (
           if (!responseItem.humanInputFilledFormDataList) {
             responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
           } else {
-            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
+            const existing = responseItem.humanInputFilledFormDataList.find(
+              (form) => form.form_id === humanInputFilledFormData.form_id,
+            )
+            if (existing) Object.assign(existing, enrichedHumanInputFilledFormData)
+            else responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1752,10 +1762,12 @@ export const useChat = (
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFormTimeoutData.node_id,
+              (item) => item.form_id === humanInputFormTimeoutData.form_id,
             )
-            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-              humanInputFormTimeoutData.expiration_time
+            if (currentFormIndex > -1) {
+              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
+                humanInputFormTimeoutData.expiration_time
+            }
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,

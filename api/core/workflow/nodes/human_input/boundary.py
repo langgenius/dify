@@ -5,7 +5,8 @@ from collections.abc import Sequence
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables.segments import StringSegment
 
 from .pause_reason import HumanInputRequired, PauseReason
 from .session_binding import default_session_binding
@@ -13,6 +14,16 @@ from .session_binding import default_session_binding
 
 class HumanInputPauseReasonResolutionError(LookupError):
     """Raised when a graph pause reason cannot be resolved into Dify-owned form state."""
+
+
+def human_input_container_selector(form_id: str) -> tuple[str, str]:
+    return ("__dify_workflow_tool_hitl__", form_id)
+
+
+def resolve_human_input_node_id(*, node_id: str, form_id: str, variable_pool: ReadOnlyVariablePool | None) -> str:
+    """Project form ownership onto the visible graph without changing engine identity."""
+    container = variable_pool.get(human_input_container_selector(form_id)) if variable_pool is not None else None
+    return container.value if isinstance(container, StringSegment) else node_id
 
 
 def enrich_graph_pause_reasons(
@@ -50,12 +61,13 @@ def _enrich_hitl_required(
             f"missing human input form while enriching pause reason: form_id={form_id}, session_id={reason.session_id}"
         )
 
+    definition = record.definition
     return HumanInputRequired(
         form_id=record.form_id,
         form_content=record.rendered_content,
-        inputs=resolve_variable_select_input_options(record.definition.inputs, variable_pool=variable_pool),
-        actions=list(record.definition.user_actions),
-        node_id=reason.node_id,
-        node_title=reason.node_title or record.definition.node_title or record.node_id,
-        resolved_default_values=dict(record.definition.default_values),
+        inputs=resolve_variable_select_input_options(definition.inputs, variable_pool=variable_pool),
+        actions=list(definition.user_actions),
+        node_id=resolve_human_input_node_id(node_id=reason.node_id, form_id=form_id, variable_pool=variable_pool),
+        node_title=reason.node_title or definition.node_title or record.node_id,
+        resolved_default_values=dict(definition.default_values),
     )

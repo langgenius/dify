@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir uv==${UV_VERSION}
 
 FROM base AS packages
 
+# Required while Graphon is installed from an immutable Git revision.
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
 # The build context is the repository root (see build-push.yml), so paths are
 # repo-root relative. dify-agent ships its own uv.lock that resolves the server
 # extra, so this builds standalone without the api project.

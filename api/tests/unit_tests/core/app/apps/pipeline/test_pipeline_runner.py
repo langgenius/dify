@@ -24,7 +24,8 @@ from sqlalchemy.orm import Session
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.graph_events import GraphRunFailedEvent
+from graphon.engine_events import GraphRunFailedEvent
+from graphon.runtime import RuntimeState, VariablePool
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DataSourceType, DocumentCreatedFrom, EndUserType
 from models.model import EndUser
@@ -147,6 +148,7 @@ def runner():
         system_user_id="sys",
         workflow_execution_repository=workflow_execution_repository,
         workflow_node_execution_repository=workflow_node_execution_repository,
+        workflow_tool_source_repository=MagicMock(),
     )
 
 
@@ -183,6 +185,28 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
 
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+
+
+def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner):
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "parentId": "stale-owner",
+                    "data": {"type": "start", "title": "Start", "variables": [], "container_id": ""},
+                },
+                {"id": "end", "data": {"type": "end", "title": "Output", "outputs": []}},
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    runtime_state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0.0)
+
+    graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=runtime_state)
+
+    assert graph.root_node.id == "start"
+    assert set(graph.nodes) == {"start", "end"}
 
 
 def test_update_document_status_on_failure(runner, sqlite_session: Session):
@@ -242,6 +266,7 @@ def test_run_pipeline_not_found():
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     with pytest.raises(ValueError):
@@ -330,6 +355,7 @@ def test_run_workflow_not_initialized(sqlite_session: Session):
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
     with pytest.raises(ValueError):
         runner.run()
@@ -351,10 +377,14 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
+    runtime_state = RuntimeState(workflow_id="wf", variable_pool=VariablePool(), start_at=0.0)
+    runner._prepare_single_node_execution = MagicMock(
+        return_value=("graph", runtime_state.variable_pool, runtime_state)
+    )
     runner._update_document_status = MagicMock()
     runner._handle_event = MagicMock()
 
@@ -402,6 +432,7 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)

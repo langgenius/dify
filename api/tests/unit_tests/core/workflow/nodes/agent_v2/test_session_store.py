@@ -1,16 +1,19 @@
 import json
 from collections.abc import Iterator
 from contextlib import nullcontext
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import CreateExecutionBindingRequest, CreateExecutionBindingResponse
+from dify_agent.runtime_backend.errors import SharedWorkspaceUnsupportedError
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models.agent import (
     AgentConfigVersionKind,
     AgentHomeSnapshot,
@@ -19,8 +22,8 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.agent_app_sandbox_service import WorkflowAgentSandboxService
 
@@ -41,11 +44,12 @@ def _scope() -> WorkflowAgentSessionScope:
 
 def _execution_row(
     *,
+    execution_id: str = "execution-1",
     binding_id: str | None = None,
     process_data: dict[str, object] | None = None,
 ) -> WorkflowNodeExecutionModel:
     return WorkflowNodeExecutionModel(
-        id="execution-1",
+        id=execution_id,
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
@@ -53,7 +57,7 @@ def _execution_row(
         workflow_run_id="run-1",
         index=1,
         predecessor_node_id=None,
-        node_execution_id="node-execution-1",
+        node_execution_id=execution_id,
         node_id="node-1",
         node_type="agent",
         title="Agent",
@@ -156,6 +160,135 @@ def test_scope_uses_node_and_workflow_binding_as_workspace_subscope() -> None:
     assert owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
     assert owner.owner_id == "run-1"
     assert owner.owner_scope_key == "node-1:workflow-binding-1"
+
+
+@pytest.mark.parametrize("overlap", [False, True], ids=["sequential", "overlapping-allocation"])
+def test_workflow_tool_calls_allocate_distinct_agent_workspaces(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, overlap: bool
+) -> None:
+    first = _execution_row()
+    second = _execution_row(execution_id="execution-2")
+    first.triggered_from = second.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    sqlite_session.add_all([first, second])
+    sqlite_session.commit()
+    scopes = [
+        replace(_scope(), node_execution_id=execution.id, workflow_tool_invocation_id=invocation_id)
+        for execution, invocation_id in ((first, "tool-call-1"), (second, "tool-call-2"))
+    ]
+    store = WorkflowAgentWorkspaceStore()
+    client = MagicMock()
+    allocation_requests: list[CreateExecutionBindingRequest] = []
+
+    def allocate(request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
+        allocation_requests.append(request)
+        # Match providers such as E2B and Enterprise, which cannot create a new
+        # participant attached to an existing Workspace.
+        if request.existing_workspace_ref is not None:
+            raise SharedWorkspaceUnsupportedError("cannot attach to an existing Workspace")
+        if overlap and len(allocation_requests) == 1:
+            # The second caller commits after the first resolved its owner, but
+            # before the first allocation returns. This reproduces the race
+            # without relying on thread timing or SQLite write-lock behavior.
+            store.load_or_create_node_execution_session(scopes[1], home_snapshot_id=None)
+        return CreateExecutionBindingResponse(
+            binding_ref=f"binding-{request.binding_id}", workspace_ref=f"workspace-{request.workspace_id}"
+        )
+
+    client.create_execution_binding_sync.side_effect = allocate
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+    store.load_or_create_node_execution_session(scopes[0], home_snapshot_id=None)
+    if not overlap:
+        store.load_or_create_node_execution_session(scopes[1], home_snapshot_id=None)
+
+    sqlite_session.expire_all()
+    workspaces = list(sqlite_session.scalars(select(AgentWorkspace)))
+    assert len(workspaces) == 2
+    assert len({workspace.owner_scope_key for workspace in workspaces}) == 2
+    assert {workspace.owner_id for workspace in workspaces} == {"run-1"}
+    bindings = list(sqlite_session.scalars(select(AgentWorkspaceBinding)))
+    assert len({binding.workspace_id for binding in bindings}) == 2
+    assert first.agent_workspace_binding_id != second.agent_workspace_binding_id
+
+
+def test_workflow_tool_agent_workspace_identity_survives_resume(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    execution = _execution_row()
+    execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    sqlite_session.add(execution)
+    sqlite_session.commit()
+    client = _install_backend_client(monkeypatch)
+    scope = replace(_scope(), workflow_tool_invocation_id="tool-call-1")
+    stored = WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    snapshot = CompositorSessionSnapshot(layers=[])
+    WorkflowAgentWorkspaceStore().save_active_snapshot(
+        scope=scope,
+        binding_id=stored.binding_id,
+        snapshot=snapshot,
+        pending_form_id="form-1",
+        pending_tool_call_id="ask-human-1",
+    )
+
+    resumed_store = WorkflowAgentWorkspaceStore()
+    restored_scope = resumed_store.load_existing_node_execution_scope(
+        tenant_id=scope.tenant_id,
+        app_id=scope.app_id,
+        workflow_id=scope.workflow_id,
+        workflow_run_id=scope.workflow_run_id,
+        node_id=scope.node_id,
+        node_execution_id=scope.node_execution_id,
+        workflow_tool_invocation_id="tool-call-1",
+    )
+    assert restored_scope is not None
+    assert restored_scope == scope
+    resumed = resumed_store.load_or_create_node_execution_session(restored_scope, home_snapshot_id=None)
+    assert (resumed.workspace_id, resumed.binding_id) == (stored.workspace_id, stored.binding_id)
+    assert resumed.session_snapshot == snapshot
+    assert (resumed.pending_form_id, resumed.pending_tool_call_id) == ("form-1", "ask-human-1")
+    client.create_execution_binding_sync.assert_called_once()
+    sqlite_session.expire_all()
+    inspected = WorkflowAgentSandboxService._resolve_binding(
+        tenant_id=scope.tenant_id,
+        app_id=scope.app_id,
+        workflow_run_id="run-1",
+        node_id=scope.node_id,
+        node_execution_id=scope.node_execution_id,
+        session=sqlite_session,
+    )
+    assert inspected.backend_binding_ref == stored.backend_binding_ref
+
+    with pytest.raises(AgentWorkspaceNotFoundError, match="caller invocation does not match"):
+        resumed_store.load_existing_node_execution_scope(
+            tenant_id=scope.tenant_id,
+            app_id=scope.app_id,
+            workflow_id=scope.workflow_id,
+            workflow_run_id=scope.workflow_run_id,
+            node_id=scope.node_id,
+            node_execution_id=scope.node_execution_id,
+            workflow_tool_invocation_id="another-tool-call",
+        )
+
+
+def test_agent_executions_within_one_workflow_tool_invocation_keep_workspace_sharing(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    first = _execution_row()
+    second = _execution_row(execution_id="iteration-2-execution")
+    first.triggered_from = second.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    sqlite_session.add_all([first, second])
+    sqlite_session.commit()
+    _install_backend_client(monkeypatch)
+    store = WorkflowAgentWorkspaceStore()
+    scope = replace(_scope(), workflow_tool_invocation_id="tool-call-1")
+
+    first_session = store.load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    second_session = store.load_or_create_node_execution_session(
+        replace(scope, node_execution_id=second.id), home_snapshot_id=None
+    )
+
+    assert first_session.workspace_id == second_session.workspace_id
+    assert first_session.binding_id != second_session.binding_id
+    assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspace)) == 1
 
 
 def test_load_existing_scope_reads_the_generation_from_the_persisted_binding(sqlite_session: Session) -> None:
@@ -417,3 +550,48 @@ def test_retire_workflow_run_returns_existing_retired_workspace(sqlite_session: 
     sqlite_session.expire(workspace)
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert workspace_ids == [workspace.id]
+
+
+@pytest.mark.parametrize("caller_app", ["app-1", "unrelated-app"])
+def test_retire_workflow_tool_workspace_follows_persisted_run_owner(sqlite_session: Session, caller_app: str) -> None:
+    run = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+    )
+    workspace = _workspace_row(app_id="source-app")
+    binding = _binding_row()
+    binding.app_id = "source-app"
+    execution = _execution_row(binding_id=binding.id)
+    execution.app_id = "source-app"
+    execution.workflow_id = "source-workflow"
+    execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    unlinked_workspace = _workspace_row(
+        workspace_id="unlinked-workspace", app_id="source-app", owner_scope_key="unlinked"
+    )
+    sqlite_session.add_all([run, workspace, binding, execution, unlinked_workspace])
+    sqlite_session.commit()
+
+    result = WorkflowAgentWorkspaceStore().retire_workflow_run(
+        tenant_id="tenant-1", app_id=caller_app, workflow_run_id=run.id
+    )
+
+    sqlite_session.expire_all()
+    assert unlinked_workspace.status is AgentWorkingResourceStatus.ACTIVE
+    if caller_app == "app-1":
+        assert result == [workspace.id]
+        assert workspace.status is AgentWorkingResourceStatus.RETIRED
+        assert binding.status is AgentWorkingResourceStatus.RETIRED
+    else:
+        assert result == []
+        assert workspace.status is AgentWorkingResourceStatus.ACTIVE
+        assert binding.status is AgentWorkingResourceStatus.ACTIVE

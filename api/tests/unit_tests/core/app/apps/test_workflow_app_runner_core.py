@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -10,12 +11,12 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
-    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueLoopCompletedEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeRetryEvent,
+    QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueueReasoningChunkEvent,
     QueueStopEvent,
@@ -27,16 +28,13 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
-from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes
-from graphon.graph_events import (
+from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
-    NodeRunHumanInputFormFilledEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
     NodeRunReasoningChunkEvent,
@@ -45,9 +43,11 @@ from graphon.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import BuiltinNodeTypes
+from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables.segments import StringSegment
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
 
@@ -67,6 +67,72 @@ def _workflow(graph: dict[str, object] | None = None) -> Workflow:
     )
 
 
+def _nested_container_graph(ownership: str) -> dict:
+    nodes = [
+        {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+        {
+            "id": "outer",
+            "data": {
+                "type": "loop",
+                "title": "Outer loop",
+                "start_node_id": "outer-start",
+                "loop_count": 1,
+                "break_conditions": [],
+                "logical_operator": "and",
+            },
+        },
+        {"id": "outer-start", "data": {"type": "loop-start", "title": "Loop start"}},
+        {
+            "id": "inner",
+            "data": {
+                "type": "iteration",
+                "title": "Inner iteration",
+                "start_node_id": "inner-start",
+                "iterator_selector": ["start", "items"],
+                "output_selector": ["inner", "item"],
+            },
+        },
+        {"id": "inner-start", "data": {"type": "iteration-start", "title": "Iteration start"}},
+        {
+            "id": "deep",
+            "data": {
+                "type": "loop",
+                "title": "Nested loop",
+                "start_node_id": "deep-start",
+                "loop_count": 1,
+                "break_conditions": [],
+                "logical_operator": "and",
+            },
+        },
+        {"id": "deep-start", "data": {"type": "loop-start", "title": "Nested loop start"}},
+        {"id": "end", "data": {"type": "end", "title": "Output", "outputs": []}},
+    ]
+    owners = {"outer-start": "outer", "inner": "outer", "inner-start": "inner", "deep": "inner", "deep-start": "deep"}
+    for node in nodes:
+        owner = owners.get(node["id"], "")
+        if ownership == "canonical":
+            node["data"]["container_id"] = owner
+            # Canonical ownership, including the empty root owner, takes precedence.
+            node["parentId"] = "stale-owner"
+            node["data"]["loop_id"] = "stale-owner"
+        elif ownership == "parent":
+            if owner:
+                node["parentId"] = owner
+        elif owner:
+            node["data"]["loop_id"] = "deep" if owner == "deep" else "outer"
+            if owner in {"inner", "deep"}:
+                node["data"]["iteration_id"] = "inner"
+    return {
+        "nodes": nodes,
+        "edges": [
+            {"id": "start-outer", "source": "start", "target": "outer"},
+            {"id": "outer-end", "source": "outer", "target": "end"},
+            {"id": "outer-start-inner", "source": "outer-start", "target": "inner"},
+            {"id": "inner-start-deep", "source": "inner-start", "target": "deep"},
+        ],
+    }
+
+
 class TestWorkflowBasedAppRunner:
     def test_resolve_user_from(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -78,7 +144,8 @@ class TestWorkflowBasedAppRunner:
     def test_init_graph_validates_graph_structure(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
-        runtime_state = GraphRuntimeState(
+        runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
@@ -109,14 +176,18 @@ class TestWorkflowBasedAppRunner:
 
     def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
-        runtime_state = GraphRuntimeState(
+        runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
         captured = {}
 
         def fake_from_graph_init_context(**kwargs):
-            captured["run_context"] = kwargs["graph_init_context"].run_context
+            graph_init_context = kwargs["graph_init_context"]
+            captured["run_context"] = graph_init_context.run_context
+            captured["call_depth"] = graph_init_context.call_depth
+            captured["runtime_state"] = kwargs["runtime_state"]
             return SimpleNamespace()
 
         monkeypatch.setattr(
@@ -132,9 +203,54 @@ class TestWorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             root_node_id="root",
             trace_session_id="session-1",
+            call_depth=3,
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["call_depth"] == 3
+        assert captured["runtime_state"] is runtime_state
+
+    @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
+    def test_init_graph_preserves_container_execution_scopes(self, ownership: str) -> None:
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runtime_state = RuntimeState(
+            workflow_id="test-workflow",
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        graph_config = _nested_container_graph(ownership)
+        original_config = deepcopy(graph_config)
+        graph = runner._init_graph(
+            graph_config=graph_config,
+            graph_runtime_state=runtime_state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            root_node_id="start",
+        )
+
+        assert set(graph.nodes) == {"start", "outer", "end"}
+        outer_graph = Graph.init(
+            graph_config=graph.graph_config,
+            node_factory=graph.node_factory,
+            root_node_id="outer-start",
+            container_id="outer",
+        )
+        assert set(outer_graph.nodes) == {"outer-start", "inner"}
+        inner_graph = Graph.init(
+            graph_config=outer_graph.graph_config,
+            node_factory=outer_graph.node_factory,
+            root_node_id="inner-start",
+            container_id="inner",
+        )
+        assert set(inner_graph.nodes) == {"inner-start", "deep"}
+        deep_graph = Graph.init(
+            graph_config=inner_graph.graph_config,
+            node_factory=inner_graph.node_factory,
+            root_node_id="deep-start",
+            container_id="deep",
+        )
+        assert set(deep_graph.nodes) == {"deep-start"}
+        assert graph_config == original_config
 
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -144,64 +260,46 @@ class TestWorkflowBasedAppRunner:
         with pytest.raises(ValueError, match="Neither single_iteration_run nor single_loop_run"):
             runner._prepare_single_node_execution(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
 
-    def test_get_graph_and_variable_pool_for_single_node_run(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
+    @pytest.mark.parametrize("node_id", ["outer", "inner", "deep"])
+    def test_single_container_debugging_preserves_descendants(self, ownership: str, node_id: str):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
 
-        graph_config = {
-            "nodes": [{"id": "node-1", "data": {"type": "start", "version": "1"}}],
-            "edges": [],
-        }
+        graph_config = _nested_container_graph(ownership)
         workflow = _workflow(graph_config)
         workflow.id = "workflow"
-
-        monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.Graph.init",
-            lambda **kwargs: SimpleNamespace(),
-        )
-
-        class _NodeCls:
-            @staticmethod
-            def extract_variable_selector_to_variable_mapping(graph_config, config):
-                return {}
-
-        from core.app.apps import workflow_app_runner
-
-        monkeypatch.setattr(
-            workflow_app_runner,
-            "resolve_workflow_node_class",
-            lambda **_kwargs: _NodeCls,
-        )
-        monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.load_into_variable_pool",
-            lambda **kwargs: None,
-        )
-        monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
-            lambda **kwargs: None,
-        )
+        graph_runtime_state.variable_pool.add(["start", "items"], ["first", "second"])
 
         graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
             workflow=workflow,
-            node_id="node-1",
+            node_id=node_id,
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
-            node_type_filter_key="iteration_id",
             node_type_label="iteration",
             user_id="00000000-0000-0000-0000-000000000001",
         )
 
-        assert graph is not None
+        assert set(graph.nodes) == {node_id}
         assert variable_pool is graph_runtime_state.variable_pool
+        deep_graph = Graph.init(
+            graph_config=graph.graph_config,
+            node_factory=graph.node_factory,
+            root_node_id="deep-start",
+            container_id="deep",
+        )
+        assert set(deep_graph.nodes) == {"deep-start"}
 
     def test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id(
         self, monkeypatch: pytest.MonkeyPatch
     ):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
@@ -215,6 +313,7 @@ class TestWorkflowBasedAppRunner:
 
         def fake_from_graph_init_context(**kwargs):
             captured["run_context"] = kwargs["graph_init_context"].run_context
+            captured["runtime_state"] = kwargs["runtime_state"]
             return SimpleNamespace()
 
         class _NodeCls:
@@ -241,13 +340,13 @@ class TestWorkflowBasedAppRunner:
             node_id="node-1",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
-            node_type_filter_key="iteration_id",
             node_type_label="iteration",
             user_id="00000000-0000-0000-0000-000000000001",
             trace_session_id="session-1",
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["runtime_state"] is graph_runtime_state
 
     def test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init(
         self, monkeypatch: pytest.MonkeyPatch
@@ -270,7 +369,8 @@ class TestWorkflowBasedAppRunner:
             variable_loader=variable_loader,
             app_id="app",
         )
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
@@ -333,7 +433,6 @@ class TestWorkflowBasedAppRunner:
             node_id="loop-node",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
-            node_type_filter_key="loop_id",
             node_type_label="loop",
         )
 
@@ -348,11 +447,12 @@ class TestWorkflowBasedAppRunner:
                 published.append((event, publish_from))
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
 
         emails: list[dict] = []
 
@@ -417,11 +517,12 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
 
         runner._handle_event(
             workflow_entry,
@@ -507,41 +608,54 @@ class TestWorkflowBasedAppRunner:
         assert any(isinstance(event, QueueIterationCompletedEvent) for event in published)
         assert any(isinstance(event, QueueLoopCompletedEvent) for event in published)
 
-    def test_handle_human_input_form_filled_event_preserves_submitted_data(self):
+    @pytest.mark.parametrize(
+        ("container_id", "expected_iteration_id", "expected_loop_id"),
+        [
+            ("", None, None),
+            ("iteration-node", "iteration-node", None),
+            ("loop-node", None, "loop-node"),
+        ],
+    )
+    def test_handle_node_started_maps_direct_container_owner(
+        self,
+        container_id: str,
+        expected_iteration_id: str | None,
+        expected_loop_id: str | None,
+    ):
         published: list[object] = []
 
         class _QueueManager:
             def publish(self, event, publish_from):
+                del publish_from
                 published.append(event)
 
+        graph_config = {
+            "nodes": [
+                {"id": "iteration-node", "data": {"type": "iteration", "container_id": "loop-node"}},
+                {"id": "loop-node", "data": {"type": "loop"}},
+            ],
+            "edges": [],
+        }
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph=SimpleNamespace(graph_config=graph_config)))
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool.from_bootstrap(
-                system_variables=default_system_variables(),
-                user_inputs={},
-                environment_variables=[],
-            ),
-            start_at=0.0,
-        )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         runner._handle_event(
             workflow_entry,
-            NodeRunHumanInputFormFilledEvent(
+            NodeRunStartedEvent(
                 id="exec",
                 node_id="node",
-                node_type=BuiltinNodeTypes.HUMAN_INPUT,
-                node_title="Human Input",
-                rendered_content="content",
-                action_id="approve",
-                action_text="Approve",
-                submitted_data={"decision": StringSegment(value="approve")},
+                node_type=BuiltinNodeTypes.START,
+                node_title="Start",
+                start_at=datetime.now(UTC),
+                container_id=container_id,
             ),
         )
 
-        queue_event = published[-1]
-        assert isinstance(queue_event, QueueHumanInputFormFilledEvent)
-        assert queue_event.submitted_data == {"decision": StringSegment(value="approve")}
+        event = published[-1]
+        assert isinstance(event, QueueNodeStartedEvent)
+        assert event.in_iteration_id == expected_iteration_id
+        assert event.in_loop_id == expected_loop_id
+        assert not (event.in_iteration_id and event.in_loop_id)
 
     def test_handle_nested_answer_success_publishes_text_chunk(self):
         published: list[object] = []
@@ -551,11 +665,11 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
-            start_at=0.0,
+        workflow_entry = SimpleNamespace(
+            graph_engine=SimpleNamespace(
+                graph=SimpleNamespace(graph_config={"nodes": [{"id": "iteration", "data": {"type": "iteration"}}]})
+            )
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         runner._handle_event(
             workflow_entry,
@@ -566,7 +680,7 @@ class TestWorkflowBasedAppRunner:
                 start_at=datetime.now(UTC),
                 finished_at=datetime.now(UTC),
                 node_run_result=NodeRunResult(outputs={"answer": "inside iteration"}),
-                in_iteration_id="iteration",
+                container_id="iteration",
             ),
         )
 
@@ -585,11 +699,7 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
-            start_at=0.0,
-        )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace())
 
         runner._handle_event(
             workflow_entry,
@@ -668,11 +778,12 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
         started_at = datetime.now(UTC)
         finished_at = datetime.now(UTC)
         result = NodeRunResult(

@@ -72,7 +72,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import FILE_MODEL_IDENTITY, File
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -264,7 +264,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_id: str,
         status: WorkflowExecutionStatus,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         error: str | None = None,
         exceptions_count: int = 0,
     ) -> WorkflowFinishStreamResponse:
@@ -321,7 +321,7 @@ class WorkflowResponseConverter:
         *,
         event: QueueWorkflowPausedEvent,
         task_id: str,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
     ) -> list[StreamResponse]:
         run_id = self._ensure_workflow_run_id()
         started_at = self._workflow_started_at
@@ -429,6 +429,7 @@ class WorkflowResponseConverter:
     ) -> HumanInputFormFilledResponse:
         run_id = self._ensure_workflow_run_id()
         data = HumanInputFormFilledResponse.Data(
+            form_id=event.form_id,
             node_id=event.node_id,
             node_title=event.node_title,
             rendered_content=event.rendered_content,
@@ -450,6 +451,7 @@ class WorkflowResponseConverter:
             task_id=task_id,
             workflow_run_id=run_id,
             data=HumanInputFormTimeoutResponse.Data(
+                form_id=event.form_id,
                 node_id=event.node_id,
                 node_title=event.node_title,
                 expiration_time=to_utc_timestamp(event.expiration_time),

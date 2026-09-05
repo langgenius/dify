@@ -22,7 +22,7 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import (
@@ -108,7 +108,7 @@ def _build_resumption_context(*, app: App, workflow_run: WorkflowRun, options: l
         call_depth=0,
         workflow_execution_id=workflow_run.id,
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), options)
     return WorkflowResumptionContext(
         generate_entity=_WorkflowGenerateEntityWrapper(entity=generate_entity),
@@ -231,6 +231,6 @@ def test_get_human_input_form_resolves_runtime_select_options(
 
     assert response.status_code == 200, response.get_data(as_text=True)
     body = json.loads(response.get_data(as_text=True))
-    assert body["inputs"][0]["option_source"]["type"] == "variable"
-    assert body["inputs"][0]["option_source"]["selector"] == ["start", "options"]
+    assert body["inputs"][0]["option_source"]["type"] == "constant"
+    assert body["inputs"][0]["option_source"]["selector"] == []
     assert body["inputs"][0]["option_source"]["value"] == ["approve", "reject"]

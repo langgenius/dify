@@ -177,6 +177,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                           AND app_id = '{escaped_app_id}'
                           AND workflow_id = '{escaped_workflow_id}'
                           AND node_id = '{escaped_node_id}'
+                          AND (triggered_from IS NULL
+                               OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}')
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 100
@@ -190,6 +192,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 query = (
                     f"tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id} "
                     f"and workflow_id: {escaped_workflow_id} and node_id: {escaped_node_id}"
+                    " and not triggered_from: "
+                    f"{escape_logstore_query_value(WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value)}"
                 )
                 from_time = 0
                 to_time = int(time.time())  # now
@@ -282,6 +286,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                         WHERE tenant_id = '{escaped_tenant_id}'
                           AND app_id = '{escaped_app_id}'
                           AND workflow_run_id = '{escaped_workflow_run_id}'
+                          AND (triggered_from IS NULL
+                               OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}')
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 1000
@@ -295,6 +301,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 query = (
                     f"tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id} "
                     f"and workflow_run_id: {escaped_workflow_run_id}"
+                    " and not triggered_from: "
+                    f"{escape_logstore_query_value(WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value)}"
                 )
                 from_time = 0
                 to_time = int(time.time())  # now

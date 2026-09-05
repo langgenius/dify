@@ -4,11 +4,11 @@ from unittest.mock import Mock
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.engine.command import CommandChannel
+from graphon.engine_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_engine.command_channels import CommandChannel
-from graphon.graph_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.node_events import NodeRunResult
-from graphon.runtime import ReadOnlyGraphRuntimeState
+from graphon.runtime import ReadOnlyRuntimeState
 from graphon.variables import StringVariable
 from graphon.variables.segments import Segment, StringSegment
 from libs.datetime_utils import naive_utc_now
@@ -33,8 +33,8 @@ class MockReadOnlyVariablePool:
 def _build_graph_runtime_state(
     variable_pool: MockReadOnlyVariablePool,
     conversation_id: str | None = None,
-) -> ReadOnlyGraphRuntimeState:
-    graph_runtime_state = Mock(spec=ReadOnlyGraphRuntimeState)
+) -> ReadOnlyRuntimeState:
+    graph_runtime_state = Mock(spec=ReadOnlyRuntimeState)
     if conversation_id is not None:
         variable_pool._variables[("sys", SystemVariableKey.CONVERSATION_ID.value)] = StringSegment(
             value=conversation_id
