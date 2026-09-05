@@ -922,17 +922,9 @@ class DocumentSegment(TypeBase):
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
-    @property
-    def dataset(self) -> Dataset | None:
-        return self.get_dataset(session=db.session())
-
     def get_dataset(self, *, session: Session) -> Dataset | None:
         """Load the owning dataset with the caller-owned database session."""
         return session.get(Dataset, self.dataset_id)
-
-    @property
-    def document(self) -> Document | None:
-        return self.get_document(session=db.session())
 
     def get_document(self, *, session: Session) -> Document | None:
         """Load the owning document with the caller-owned database session."""
@@ -951,10 +943,6 @@ class DocumentSegment(TypeBase):
                 DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1
             )
         )
-
-    @property
-    def child_chunks(self):
-        return self.get_child_chunks(session=db.session(), include_full_doc=False)
 
     def get_child_chunks(self, *, session: Session, include_full_doc: bool = True) -> Sequence["ChildChunk"]:
         """Load hierarchical child chunks with the caller-owned database session."""
@@ -1041,10 +1029,6 @@ class DocumentSegment(TypeBase):
             offset += len(signed_url) - (end - start)
 
         return text
-
-    @property
-    def attachments(self) -> list[AttachmentItem]:
-        return self.get_attachments(session=db.session())
 
     def get_attachments(self, *, session: Session) -> list[AttachmentItem]:
         """Load attachment metadata with the caller-owned database session."""
@@ -1194,10 +1178,6 @@ class DatasetQuery(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
-
-    @property
-    def queries(self) -> list[dict[str, Any]]:
-        return self.get_queries(session=db.session())
 
     def get_queries(self, *, session: Session) -> list[dict[str, Any]]:
         try:
@@ -1467,7 +1447,7 @@ class ExternalKnowledgeApis(TypeBase):
             return None
 
     @property
-    def dataset_bindings(self) -> list[DatasetBindingItem]:
+    def dataset_bindings(self):
         return self.get_dataset_bindings(session=db.session())
 
     def get_dataset_bindings(self, *, session: Session) -> list[DatasetBindingItem]:
