@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol, override
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
@@ -114,6 +114,10 @@ class HumanInputFormRepository(Protocol):
     def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None: ...
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity: ...
+
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        """Time out an overdue waiting form and return its current state."""
+        ...
 
 
 class _HumanInputFormRecipientEntityImpl(HumanInputFormRecipientEntity):
@@ -557,6 +561,8 @@ class HumanInputFormRepositoryImpl:
         )
         if form_id is not None:
             form_query = form_query.where(HumanInputForm.id == form_id)
+        if self._app_id is not None:
+            form_query = form_query.where(HumanInputForm.app_id == self._app_id)
         with session_factory.create_session() as session:
             form_model: HumanInputForm | None = session.scalars(form_query).first()
             if form_model is None:
@@ -565,6 +571,34 @@ class HumanInputFormRepositoryImpl:
             recipient_query = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_model.id)
             recipient_models = session.scalars(recipient_query).all()
         return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
+
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        if self._workflow_execution_id is None:
+            raise ValueError("workflow_execution_id is required to time out runtime human input forms")
+
+        statement = (
+            update(HumanInputForm)
+            .where(
+                HumanInputForm.id == form_id,
+                HumanInputForm.tenant_id == self._tenant_id,
+                HumanInputForm.workflow_run_id == self._workflow_execution_id,
+                HumanInputForm.node_id == node_id,
+                HumanInputForm.status == HumanInputFormStatus.WAITING,
+                HumanInputForm.submitted_at.is_(None),
+                HumanInputForm.expiration_time <= naive_utc_now(),
+            )
+            .values(status=HumanInputFormStatus.TIMEOUT)
+        )
+        if self._app_id is not None:
+            statement = statement.where(HumanInputForm.app_id == self._app_id)
+        with session_factory.create_session() as session, session.begin():
+            session.execute(statement)
+
+        # A submission or global expiration may have won the race to finish the form.
+        form = self.get_form(node_id, form_id=form_id)
+        if form is None:
+            raise FormNotFoundError(f"form not found, id={form_id}")
+        return form
 
 
 class HumanInputFormSubmissionRepository:

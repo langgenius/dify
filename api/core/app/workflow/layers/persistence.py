@@ -21,7 +21,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from core.workflow.node_execution_process_data import preserve_workflow_agent_identity
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -450,7 +450,7 @@ class WorkflowPersistenceLayer(Layer):
     def _append_retry_history(self, execution: WorkflowNodeExecution, event: NodeRunRetryEvent) -> None:
         """Append a validated full attempt before repository truncation or offload."""
         finished_at = naive_utc_now()
-        process_data = preserve_workflow_agent_binding_id(
+        process_data = preserve_workflow_agent_identity(
             event.node_run_result.process_data,
             execution.process_data,
         )
@@ -483,7 +483,7 @@ class WorkflowPersistenceLayer(Layer):
         next_process_data: Mapping[str, Any] | None,
     ) -> Mapping[str, Any] | None:
         """Keep internal retry history while replacing node-specific Process Data."""
-        merged_process_data = preserve_workflow_agent_binding_id(existing_process_data, next_process_data)
+        merged_process_data = preserve_workflow_agent_identity(existing_process_data, next_process_data)
         raw_history = (existing_process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY)
         if not isinstance(raw_history, list) or not raw_history:
             return merged_process_data
@@ -535,7 +535,7 @@ class WorkflowPersistenceLayer(Layer):
                 metadata=node_result.metadata,
             )
         else:
-            domain_execution.process_data = preserve_workflow_agent_binding_id(
+            domain_execution.process_data = preserve_workflow_agent_identity(
                 node_result.process_data,
                 domain_execution.process_data,
             )

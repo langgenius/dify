@@ -25,6 +25,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -180,6 +181,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
                 conversation_id=conversation_id,
+                workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -216,6 +218,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
+        if dify_ctx.workflow_tool_invocation_id is not None:
+            process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = dify_ctx.workflow_tool_invocation_id
         session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
@@ -227,6 +231,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
             conversation_id=conversation_id,
+            workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)

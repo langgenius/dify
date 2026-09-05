@@ -15,7 +15,7 @@ describe('useWorkflowNodeHumanInputFormFilled', () => {
     })
 
     result.current.handleWorkflowNodeHumanInputFormFilled({
-      data: { node_id: 'n1', node_title: 'Node 1', rendered_content: 'done' },
+      data: { form_id: 'f1', node_id: 'n1', node_title: 'Node 1', rendered_content: 'done' },
     } as HumanInputFormFilledResponse)
 
     const state = store.getState().workflowRunningData!
@@ -36,7 +36,7 @@ describe('useWorkflowNodeHumanInputFormFilled', () => {
     })
 
     result.current.handleWorkflowNodeHumanInputFormFilled({
-      data: { node_id: 'n1', node_title: 'Node 1', rendered_content: 'done' },
+      data: { form_id: 'f1', node_id: 'n1', node_title: 'Node 1', rendered_content: 'done' },
     } as HumanInputFormFilledResponse)
 
     expect(store.getState().workflowRunningData!.humanInputFilledFormDataList).toBeDefined()

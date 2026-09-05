@@ -143,6 +143,9 @@ class StaticRepo(HumanInputFormRepository):
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         raise AssertionError("create_form should not be called in resume scenario")
 
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        raise AssertionError("these resume scenarios do not advance the form deadline")
+
 
 def _build_runtime_state() -> RuntimeState:
     variable_pool = VariablePool.from_bootstrap(

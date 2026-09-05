@@ -222,14 +222,7 @@ class AppExecutionCoordinator:
                 self._attempt_id,
             )
 
-        try:
-            send_abort_command(self._task_id, reason=reason)
-        except Exception:
-            logger.exception(
-                "Failed to send stop command for app execution task=%s attempt=%s",
-                self._task_id,
-                self._attempt_id,
-            )
+        send_abort_command(self._task_id, reason=reason)
 
     def _detach_watchdog_locked(self) -> threading.Timer | None:
         watchdog = self._watchdog

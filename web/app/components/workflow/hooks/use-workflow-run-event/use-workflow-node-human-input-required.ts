@@ -20,7 +20,7 @@ export const useWorkflowNodeHumanInputRequired = () => {
           draft.humanInputFormDataList = [data]
         } else {
           const currentFormIndex = draft.humanInputFormDataList.findIndex(
-            (item) => item.node_id === data.node_id,
+            (item) => item.form_id === data.form_id,
           )
           if (currentFormIndex > -1) {
             draft.humanInputFormDataList[currentFormIndex] = data

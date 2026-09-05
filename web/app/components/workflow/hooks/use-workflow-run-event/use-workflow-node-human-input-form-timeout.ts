@@ -14,9 +14,10 @@ export const useWorkflowNodeHumanInputFormTimeout = () => {
       const newWorkflowRunningData = produce(workflowRunningData!, (draft) => {
         if (draft.humanInputFormDataList?.length) {
           const currentFormIndex = draft.humanInputFormDataList.findIndex(
-            (item) => item.node_id === data.node_id,
+            (item) => item.form_id === data.form_id,
           )
-          draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
+          if (currentFormIndex > -1)
+            draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
         }
       })
       setWorkflowRunningData(newWorkflowRunningData)

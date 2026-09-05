@@ -140,6 +140,9 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
     def get_form(self, node_id: str) -> HumanInputFormEntity | None:
         return self._forms_by_node_id.get(node_id)
 
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        raise AssertionError(f"unexpected timeout in submission scenario: node={node_id}, form={form_id}")
+
     def set_submission(self, *, action_id: str, form_data: Mapping[str, Any] | None = None) -> None:
         if not self.created_forms:
             raise AssertionError("no form has been created to attach submission data")

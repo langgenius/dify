@@ -6,6 +6,7 @@ import HumanInputFilledFormList from '../human-input-filled-form-list'
 const createFilledForm = (
   overrides: Partial<HumanInputFilledFormData> = {},
 ): HumanInputFilledFormData => ({
+  form_id: 'form-1',
   node_id: 'node-1',
   node_title: 'Approval',
   rendered_content: 'Approved by Alice',
@@ -21,19 +22,16 @@ describe('HumanInputFilledFormList', () => {
   it('renders submitted form content and toggles expansion', async () => {
     const user = userEvent.setup()
 
-    render(
-      <HumanInputFilledFormList
-        humanInputFilledFormDataList={[
-          createFilledForm(),
-          createFilledForm({
-            node_id: 'node-2',
-            node_title: 'Review',
-            rendered_content: 'Reviewed by Bob',
-            action_id: 'review',
-            action_text: 'Review',
-          }),
-        ]}
-      />,
+    const first = createFilledForm()
+    const second = createFilledForm({
+      form_id: 'form-2',
+      node_title: 'Review',
+      rendered_content: 'Reviewed by Bob',
+      action_id: 'review',
+      action_text: 'Review',
+    })
+    const { rerender } = render(
+      <HumanInputFilledFormList humanInputFilledFormDataList={[first, second]} />,
     )
 
     expect(screen.getByText('Approval'))!.toBeInTheDocument()
@@ -52,5 +50,12 @@ describe('HumanInputFilledFormList', () => {
 
     expect(collapseApproval).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(1)
+
+    rerender(<HumanInputFilledFormList humanInputFilledFormDataList={[second, first]} />)
+    expect(screen.getByRole('button', { name: /Approval/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.getByRole('button', { name: /Review/ })).toHaveAttribute('aria-expanded', 'true')
   })
 })

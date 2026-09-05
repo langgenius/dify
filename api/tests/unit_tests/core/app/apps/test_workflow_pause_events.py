@@ -123,11 +123,14 @@ def _build_runner():
     )
 
 
-def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("source_node_id", ["node-human", "nested-human"])
+def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
+    monkeypatch: pytest.MonkeyPatch, source_node_id: str
+):
     runner = _build_runner()
     graph_reason = HitlRequired(
         session_id="form-1",
-        node_id="node-human",
+        node_id=source_node_id,
         node_title="Human Step",
     )
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
@@ -157,6 +160,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
     assert queue_event.paused_nodes == ["node-human"]
+    assert graph_reason.node_id == source_node_id
 
 
 def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):

@@ -194,7 +194,7 @@ const updateHumanInputRequired = (
       draft.humanInputFormDataList = [data]
     } else {
       const currentFormIndex = draft.humanInputFormDataList.findIndex(
-        (item) => item.node_id === data.node_id,
+        (item) => item.form_id === data.form_id,
       )
       if (currentFormIndex > -1) draft.humanInputFormDataList[currentFormIndex] = data
       else draft.humanInputFormDataList.push(data)
@@ -213,7 +213,7 @@ const updateHumanInputFilled = (
     let requiredFormData: NonNullable<WorkflowProcess['humanInputFormDataList']>[number] | undefined
     if (draft.humanInputFormDataList?.length) {
       const currentFormIndex = draft.humanInputFormDataList.findIndex(
-        (item) => item.node_id === data.node_id,
+        (item) => item.form_id === data.form_id,
       )
       if (currentFormIndex > -1) {
         requiredFormData = draft.humanInputFormDataList[currentFormIndex]
@@ -223,7 +223,13 @@ const updateHumanInputFilled = (
 
     const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
     if (!draft.humanInputFilledFormDataList) draft.humanInputFilledFormDataList = [enrichedData]
-    else draft.humanInputFilledFormDataList.push(enrichedData)
+    else {
+      const existing = draft.humanInputFilledFormDataList.find(
+        (form) => form.form_id === data.form_id,
+      )
+      if (existing) Object.assign(existing, enrichedData)
+      else draft.humanInputFilledFormDataList.push(enrichedData)
+    }
   })
 }
 
@@ -235,7 +241,7 @@ const updateHumanInputTimeout = (
     if (!draft.humanInputFormDataList?.length) return
 
     const currentFormIndex = draft.humanInputFormDataList.findIndex(
-      (item) => item.node_id === data.node_id,
+      (item) => item.form_id === data.form_id,
     )
     if (currentFormIndex > -1)
       draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time

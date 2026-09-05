@@ -241,9 +241,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         workflow_entry.graph_engine.add_layer(persistence_layer)
 
-        generator = workflow_entry.run()
-
-        for event in generator:
+        for event in self._iter_workflow_events(workflow_entry):
             self._update_document_status(event, document_ref)
             self._handle_event(workflow_entry, event)
 
