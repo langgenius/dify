@@ -4,7 +4,7 @@ import type {
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -291,6 +291,108 @@ describe('FormInputItem branches', () => {
       },
     })
   })
+
+  it.each([
+    { mode: 'single', multiple: false },
+    { mode: 'multiple', multiple: true },
+  ])(
+    'should let users inspect read-only static $mode selections without changing them',
+    async ({ multiple }) => {
+      const user = userEvent.setup()
+      const { onChange } = renderFormInputItem({
+        readOnly: true,
+        schema: createSchema({
+          multiple,
+          type: FormTypeEnum.select,
+          options: ['alpha', 'beta', 'gamma', 'delta'].map((value) => createOption(value)),
+        }),
+        value: {
+          field: {
+            type: VarKindType.constant,
+            value: multiple ? ['alpha', 'beta', 'gamma'] : 'alpha',
+          },
+        },
+      })
+
+      const trigger = screen.getByRole('combobox')
+      expect(trigger).toHaveTextContent(multiple ? '3 selected' : 'alpha')
+      await user.click(trigger)
+
+      expect(await screen.findByRole('listbox')).toHaveAttribute('aria-readonly', 'true')
+      for (const name of multiple ? ['alpha', 'beta', 'gamma'] : ['alpha'])
+        expect(screen.getByRole('option', { name })).toHaveAttribute('aria-selected', 'true')
+
+      await user.click(screen.getByRole('option', { name: 'alpha' }))
+      await user.click(screen.getByRole('option', { name: 'delta' }))
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(screen.getByRole('option', { name: 'alpha' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('option', { name: 'delta' })).toHaveAttribute(
+        'aria-selected',
+        'false',
+      )
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
+      expect(trigger).toHaveTextContent(multiple ? '3 selected' : 'alpha')
+    },
+  )
+
+  it.each([
+    { mode: 'single', multiple: false },
+    { mode: 'multiple', multiple: true },
+  ])(
+    'should disable loading dynamic $mode selections then allow read-only inspection',
+    async ({ multiple }) => {
+      const user = userEvent.setup()
+      let resolveOptions!: (result: { options: FormOption[] }) => void
+      mockFetchDynamicOptions.mockReturnValueOnce(
+        new Promise<{ options: FormOption[] }>((resolve) => {
+          resolveOptions = resolve
+        }),
+      )
+      const { onChange } = renderFormInputItem({
+        readOnly: true,
+        schema: createSchema({ multiple, type: FormTypeEnum.dynamicSelect }),
+        currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
+        currentTool: { name: 'tool-1' } as never,
+        providerType: PluginCategoryEnum.tool,
+        value: {
+          field: {
+            type: VarKindType.constant,
+            value: multiple ? ['alpha', 'beta', 'gamma'] : 'alpha',
+          },
+        },
+      })
+
+      const trigger = screen.getByRole('combobox')
+      expect(trigger).toBeDisabled()
+      await user.click(trigger)
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+      await act(async () => {
+        resolveOptions({
+          options: ['alpha', 'beta', 'gamma', 'delta'].map((value) => createOption(value)),
+        })
+      })
+
+      expect(trigger).not.toBeDisabled()
+      expect(trigger).toHaveTextContent(multiple ? '3 selected' : 'alpha')
+      await user.click(trigger)
+      expect(await screen.findByRole('listbox')).toHaveAttribute('aria-readonly', 'true')
+      for (const name of multiple ? ['alpha', 'beta', 'gamma'] : ['alpha'])
+        expect(screen.getByRole('option', { name })).toHaveAttribute('aria-selected', 'true')
+
+      await user.click(screen.getByRole('option', { name: 'alpha' }))
+      await user.click(screen.getByRole('option', { name: 'delta' }))
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(screen.getByRole('option', { name: 'alpha' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('option', { name: 'delta' })).toHaveAttribute(
+        'aria-selected',
+        'false',
+      )
+    },
+  )
 
   it('should recover when fetching dynamic tool options fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

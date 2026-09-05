@@ -392,7 +392,7 @@ const FormInputItem: FC<Props> = ({
       {isSelect && isConstant && !isMultipleSelect && (
         <Select
           value={selectedStaticOption?.value ?? null}
-          disabled={readOnly}
+          readOnly={readOnly}
           onValueChange={(value) => value && handleValueChange(value)}
         >
           <SelectTrigger className="h-8 min-w-0 grow">
@@ -411,7 +411,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isSelect && isConstant && isMultipleSelect && (
         <MultiSelectField
-          disabled={readOnly}
+          readOnly={readOnly}
           value={(varInput?.value as string[] | undefined) || []}
           items={staticSelectItems}
           onChange={handleValueChange}
@@ -422,7 +422,8 @@ const FormInputItem: FC<Props> = ({
       {isDynamicSelect && !isMultipleSelect && (
         <Select
           value={selectedDynamicOption?.value ?? null}
-          disabled={readOnly || isLoadingOptions}
+          readOnly={readOnly}
+          disabled={isLoadingOptions}
           onValueChange={(value) => value && handleValueChange(value)}
         >
           <SelectTrigger className="h-8 min-w-0 grow">
@@ -442,7 +443,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isDynamicSelect && isMultipleSelect && (
         <MultiSelectField
-          disabled={readOnly || isLoadingOptions}
+          readOnly={readOnly}
           isLoading={isLoadingOptions}
           value={(varInput?.value as string[] | undefined) || []}
           items={dynamicSelectItems}

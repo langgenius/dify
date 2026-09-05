@@ -257,8 +257,8 @@ export const WithDisabledItem: Story = {
 export const Disabled: Story = {
   render: () => (
     <div className={triggerWidth}>
-      <Select defaultValue="seattle">
-        <SelectTrigger aria-label="City" disabled>
+      <Select defaultValue="seattle" disabled>
+        <SelectTrigger aria-label="City">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -296,6 +296,121 @@ export const ReadOnly: Story = {
       </Select>
     </div>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'City' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveAttribute('aria-readonly', 'true')
+    await userEvent.click(trigger)
+    const list = await body.findByRole('listbox')
+    await expect(list).toHaveAttribute('aria-readonly', 'true')
+    const newYork = within(list).getByRole('option', { name: 'New York' })
+    await userEvent.click(newYork)
+    await expect(trigger).toHaveTextContent('Seattle')
+    await expect(newYork).toHaveAttribute('aria-selected', 'false')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    await userEvent.keyboard('{End}{Enter}')
+    await expect(newYork).toHaveFocus()
+    await expect(trigger).toHaveTextContent('Seattle')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('listbox')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+
+    await userEvent.keyboard('n')
+    await expect(trigger).toHaveTextContent('Seattle')
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(() => expect(body.getByRole('listbox')).toBeVisible())
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
+  },
+}
+
+export const InteractionStates: Story = {
+  render: () => (
+    <div className="group flex flex-wrap gap-6">
+      {[
+        { label: 'Editable', readOnly: false, disabled: false },
+        { label: 'Read-only', readOnly: true, disabled: false },
+        { label: 'Disabled', readOnly: false, disabled: true },
+        { label: 'Read-only and disabled', readOnly: true, disabled: true },
+      ].map(({ label, readOnly, disabled }) => (
+        <div key={label} className="flex w-52 flex-col gap-3">
+          <span className="system-xs-medium text-text-tertiary">{label}</span>
+          {(['small', 'medium', 'large'] as const).map((size) => (
+            <Select
+              key={size}
+              items={cityItems}
+              defaultValue="seattle"
+              readOnly={readOnly}
+              disabled={disabled}
+            >
+              <SelectTrigger size={size} aria-label={`${label} ${size} city`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {cityItems.map(({ label: city, value }) => (
+                  <SelectItem key={value} value={value}>
+                    <SelectItemText>{city}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+}
+
+export const ReadOnlyMultiple: Story = {
+  render: () => (
+    <div className={triggerWidth}>
+      <Select<string, true> multiple defaultValue={['seattle', 'tokyo']} items={cityItems} readOnly>
+        <SelectTrigger aria-label="Cities">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {cityItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              <SelectItemText>{item.label}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Cities' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    const list = await body.findByRole('listbox')
+    const options = within(list)
+    await expect(list).toHaveAttribute('aria-multiselectable', 'true')
+    await expect(list).toHaveAttribute('aria-readonly', 'true')
+    await userEvent.click(options.getByRole('option', { name: 'Seattle' }))
+    await userEvent.click(options.getByRole('option', { name: 'New York' }))
+    await userEvent.keyboard('{End}{Enter}')
+
+    await expect(options.getAllByRole('option', { selected: true })).toHaveLength(2)
+    await expect(options.getByRole('option', { name: 'Seattle' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await expect(options.getByRole('option', { name: 'Tokyo' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await expect(options.getByRole('option', { name: 'Paris' })).toHaveFocus()
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('listbox')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+  },
 }
 
 const ControlledDemo = () => {
