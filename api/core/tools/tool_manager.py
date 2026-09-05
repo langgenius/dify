@@ -131,9 +131,17 @@ class ToolManager:
 
         if provider not in cls._hardcoded_providers:
             # get plugin provider
-            plugin_provider = cls.get_plugin_provider(provider, tenant_id)
-            if plugin_provider:
-                return plugin_provider
+            try:
+                plugin_provider = cls.get_plugin_provider(provider, tenant_id)
+                if plugin_provider:
+                    return plugin_provider
+            except ToolProviderNotFoundError:
+                raise
+            except Exception as e:
+                raise ToolProviderNotFoundError(f"builtin or plugin provider {provider} not found: {e}")
+
+        if provider not in cls._hardcoded_providers:
+            raise ToolProviderNotFoundError(f"builtin provider {provider} not found")
 
         return cls._hardcoded_providers[provider]
 
@@ -161,7 +169,10 @@ class ToolManager:
                 return plugin_tool_providers[provider]
 
             manager = PluginToolManager()
-            provider_entity = manager.fetch_tool_provider(tenant_id, provider)
+            try:
+                provider_entity = manager.fetch_tool_provider(tenant_id, provider)
+            except Exception as e:
+                raise ToolProviderNotFoundError(f"plugin provider {provider} not found: {e}")
             if not provider_entity:
                 raise ToolProviderNotFoundError(f"plugin provider {provider} not found")
 

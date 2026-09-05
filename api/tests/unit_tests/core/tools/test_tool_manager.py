@@ -1275,3 +1275,11 @@ def test_convert_tool_parameters_type_model_selector_from_constant_value_config(
             "voice": "Cherry",
         }
     }
+
+
+def test_get_builtin_provider_unknown_raises_tool_provider_not_found():
+    ToolManager._hardcoded_providers = {"time": Mock()}
+
+    with patch.object(ToolManager, "get_plugin_provider", side_effect=ToolProviderNotFoundError("not found")):
+        with pytest.raises(ToolProviderNotFoundError, match="not found"):
+            ToolManager.get_builtin_provider("unknown_provider", "tenant-1")

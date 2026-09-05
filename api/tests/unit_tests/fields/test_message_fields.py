@@ -66,3 +66,24 @@ class TestExploreMessageListItem:
         assert payload["message_tokens"] == 7
         assert payload["answer_tokens"] == 11
         assert payload["total_tokens"] == 18
+
+    def test_message_list_item_handles_none_and_omitted_lists(self):
+        # When retriever_resources, agent_thoughts, etc. are None or omitted, it defaults to []
+        kwargs = {
+            "id": "m1",
+            "conversation_id": "c1",
+            "inputs": {},
+            "query": "hi",
+            "answer": "answer",
+            "status": "normal",
+            "retriever_resources": None,
+            "agent_thoughts": None,
+            "message_files": None,
+            "extra_contents": None,
+        }
+        item = MessageListItem(**kwargs)
+        payload = item.model_dump(mode="json")
+        assert payload["retriever_resources"] == []
+        assert payload["agent_thoughts"] == []
+        assert payload["message_files"] == []
+        assert payload["extra_contents"] == []
