@@ -25,10 +25,10 @@ def test_snippet_list_fields_include_author_name(sqlite_session: Session, monkey
         is_published=False,
         icon_info=None,
         created_by="account-1",
-        created_at=datetime.fromtimestamp(1704067200, tz=UTC),
         updated_by="account-1",
-        updated_at=datetime.fromtimestamp(1704067201, tz=UTC),
     )
+    snippet.created_at = datetime.fromtimestamp(1704067200, tz=UTC)
+    snippet.updated_at = datetime.fromtimestamp(1704067201, tz=UTC)
     sqlite_session.add_all([account, snippet])
     sqlite_session.flush()
     monkeypatch.setattr(snippet_module.db, "session", sqlite_session)

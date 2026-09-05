@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from models import snippet as snippet_module
 from models.account import Account
+from models.base import Base, TypeBase
 from models.enums import TagType
 from models.model import Tag, TagBinding
 from models.snippet import CustomizedSnippet
@@ -26,6 +27,16 @@ def snippet_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) ->
     """Expose the shared SQLite session to model properties that use the global Flask session."""
     monkeypatch.setattr(snippet_module.db, "session", sqlite_session)
     return sqlite_session
+
+
+def test_customized_snippet_uses_typebase_registry_and_generates_ids() -> None:
+    snippet = CustomizedSnippet()
+    another_snippet = CustomizedSnippet()
+
+    assert CustomizedSnippet.__mapper__.registry is TypeBase.registry
+    assert CustomizedSnippet.__mapper__.registry is not Base.registry
+    assert snippet.id != another_snippet.id
+    assert CustomizedSnippet(id=SNIPPET_ID).id == SNIPPET_ID
 
 
 def test_graph_dict_returns_empty_without_workflow_id() -> None:
