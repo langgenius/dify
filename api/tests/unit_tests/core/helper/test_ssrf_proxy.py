@@ -410,25 +410,51 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) -> None:
-    """Squid can return 401 with only the Via header set (no Server header)
-    on some configurations. The detection must work for both."""
+def test_squid_401_via_header_only_does_not_trigger_error(mock_get_client) -> None:
+    """#41434: a 401 from Squid with only the ``Via`` header set (no
+    ``Server`` header) means Squid successfully forwarded the request
+    to the upstream server — the response body came from the target,
+    not from Squid. Misclassifying it as an SSRF block sends the user
+    down the wrong remediation path (they edit the SSRF proxy allowlist
+    when the real fix is on the target server).
+    """
     mock_client = MagicMock()
     response = MagicMock()
     response.status_code = 401
-    # Server header absent — only Via identifies Squid.
+    # Server header absent — only Via identifies Squid. The upstream
+    # sent the 401 itself; Squid just forwarded it.
     response.headers = {"server": "", "via": "1.1 squid (squid/4.10)"}
     mock_client.send.return_value = response
     mock_get_client.return_value = mock_client
 
-    with pytest.raises(ToolSSRFError) as exc_info:
-        make_request("GET", "http://10.0.0.1/internal")
-
-    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+    # Should return the response unchanged, NOT raise ToolSSRFError.
+    returned = make_request("GET", "http://10.0.0.1/internal")
+    assert returned.status_code == 401
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_non_squid_403_is_not_treated_as_ssrf_block(mock_get_client) -> None:
+def test_upstream_401_with_squid_via_header_does_not_raise_ssrf_error(mock_get_client) -> None:
+    """#41434 regression: the upstream server (e.g. nginx) returns 401
+    and the request path goes through the Squid SSRF proxy. The response
+    headers ``Server: nginx`` and ``Via: 1.1 squid (squid/4.10)`` are
+    EXACTLY what the issue body reports. The upstream ``401``
+    represents application-level authorization on the target (e.g.
+    ``Dify``'s plugin / workflow / OAuth callbacks that legitimately
+    return ``401``); Squid only added the ``Via`` header while
+    forwarding. Misclassifying this as an SSRF block sends the user
+    to edit the wrong config.
+    """
+    mock_client = MagicMock()
+    response = MagicMock()
+    response.status_code = 401
+    response.headers = {"server": "nginx", "via": "1.1 xxxx (squid/6.13)"}
+    mock_client.send.return_value = response
+    mock_get_client.return_value = mock_client
+
+    # Must NOT raise. The pre-fix code raised ToolSSRFError whenever the
+    # response went through Squid; that was the regression #41434.
+    returned = make_request("GET", "http://target.example.com/api")
+    assert returned.status_code == 401
     """A 403 from the *target server* (not Squid) must NOT be re-raised as
     a ToolSSRFError — that would mislead the user into editing SSRF config
     when the real problem is application-level authorization on the target.
