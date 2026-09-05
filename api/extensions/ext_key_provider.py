@@ -39,6 +39,10 @@ class KeyProviderManager:
                 from libs.key_providers.azure_keyvault_key_provider import AzureKeyVaultKeyProvider
 
                 return AzureKeyVaultKeyProvider
+            case KeyProviderType.AWS_KMS:
+                from libs.key_providers.aws_kms_key_provider import AwsKmsKeyProvider
+
+                return AwsKmsKeyProvider
             case _:
                 raise ValueError(f"unsupported key provider type {provider_type}")
 
