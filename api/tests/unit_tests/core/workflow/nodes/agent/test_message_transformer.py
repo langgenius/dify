@@ -13,6 +13,7 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamCompletedEvent
 from graphon.variables.segments import ArrayFileSegment
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 
 def _file() -> File:
@@ -194,3 +195,132 @@ def test_transform_keeps_plain_link_as_text() -> None:
 
     assert text == "Link: https://dify.ai\n"
     assert files.value == []
+
+
+# --- #41143: Agent LOG icon enrichment caching ---------------------------
+
+
+def _log_message(provider: str | None = None) -> ToolInvokeMessage:
+    """Build a minimal ``LOG``-typed ``ToolInvokeMessage`` for icon enrichment tests."""
+    metadata: dict[str, str] | None = None
+    if provider is not None:
+        metadata = {"provider": provider}
+    return ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LOG,
+        message=ToolInvokeMessage.LogMessage(
+            id="log-1",
+            parent_id=None,
+            label="log",
+            error=None,
+            status=ToolInvokeMessage.LogMessage.LogStatus.START,
+            data={},
+            metadata=metadata,
+        ),
+    )
+
+
+class TestLogMessageIconEnrichment:
+    """Regression tests for #41143: Agent ``LOG`` messages with a
+    ``provider`` used to synchronously hit the plugin daemon and walk
+    every built-in provider on every message. The fix memoizes both
+    lookups per ``transform()`` call and makes the enrichment
+    best-effort so a plugin-daemon / credential error can no longer
+    stall or fail an Agent run.
+    """
+
+    def test_plugin_daemon_called_once_for_multiple_log_messages(self) -> None:
+        """#41143: ``PluginInstaller.list_plugins`` and
+        ``BuiltinToolManageService.list_builtin_tools`` must each be
+        called exactly once per ``transform()`` invocation, regardless
+        of how many LOG messages share the same provider name.
+        """
+        log_messages = [_log_message(provider="anthropic/claude-sonnet-4") for _ in range(5)]
+        with (
+            patch(
+                "core.plugin.impl.plugin.PluginInstaller.list_plugins",
+                return_value=[],
+            ) as mock_list_plugins,
+            patch.object(
+                BuiltinToolManageService,
+                "list_builtin_tools",
+                return_value=[],
+            ) as mock_list_builtins,
+        ):
+            list(
+                AgentMessageTransformer().transform(
+                    messages=_message_stream(log_messages),
+                    tool_info={},
+                    parameters_for_log={},
+                    user_id="user-id",
+                    tenant_id="tenant-id",
+                    conversation_id=None,
+                    node_type=BuiltinNodeTypes.AGENT,
+                    node_id="node-id",
+                    node_execution_id="execution-id",
+                )
+            )
+
+        assert mock_list_plugins.call_count == 1, (
+            "PluginInstaller.list_plugins must be called once per transform(), not once per LOG message."
+        )
+        assert mock_list_builtins.call_count == 1, (
+            "BuiltinToolManageService.list_builtin_tools must be called once per transform()."
+        )
+
+    def test_icon_enrichment_is_best_effort(self) -> None:
+        """#41143: a plugin-daemon error must NOT propagate as an
+        Agent message-transformation failure. The Agent run must
+        continue even when icon enrichment can't reach the daemon.
+        """
+        log_message = _log_message(provider="anthropic/claude-sonnet-4")
+        with patch(
+            "core.plugin.impl.plugin.PluginInstaller.list_plugins",
+            side_effect=RuntimeError("plugin daemon down"),
+        ):
+            # No exception should escape the transform generator.
+            events = list(
+                AgentMessageTransformer().transform(
+                    messages=_message_stream([log_message]),
+                    tool_info={},
+                    parameters_for_log={},
+                    user_id="user-id",
+                    tenant_id="tenant-id",
+                    conversation_id=None,
+                    node_type=BuiltinNodeTypes.AGENT,
+                    node_id="node-id",
+                    node_execution_id="execution-id",
+                )
+            )
+
+        # The log event must still be emitted (run completed).
+        assert any(isinstance(event, StreamCompletedEvent) for event in events)
+
+    def test_builtin_icon_lookup_is_safe_on_failure(self) -> None:
+        """#41143: the built-in-tool enumeration must also fail open."""
+        log_message = _log_message(provider="google/google")
+        with (
+            patch(
+                "core.plugin.impl.plugin.PluginInstaller.list_plugins",
+                return_value=[],
+            ),
+            patch.object(
+                BuiltinToolManageService,
+                "list_builtin_tools",
+                side_effect=RuntimeError("decrypt failure"),
+            ),
+        ):
+            events = list(
+                AgentMessageTransformer().transform(
+                    messages=_message_stream([log_message]),
+                    tool_info={},
+                    parameters_for_log={},
+                    user_id="user-id",
+                    tenant_id="tenant-id",
+                    conversation_id=None,
+                    node_type=BuiltinNodeTypes.AGENT,
+                    node_id="node-id",
+                    node_execution_id="execution-id",
+                )
+            )
+
+        assert any(isinstance(event, StreamCompletedEvent) for event in events)

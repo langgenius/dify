@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast
 
@@ -28,7 +29,42 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 
+logger = logging.getLogger(__name__)
+
 _file_access_controller = DatabaseFileAccessController()
+
+
+def _build_plugin_icon_lookup(tenant_id: str) -> dict[str, str]:
+    """Return ``{qualified_name: icon}`` for every plugin visible to ``tenant_id``.
+
+    The Agent message transformer only needs the icon for a single
+    provider name per message. Building the full map once per
+    ``transform()`` call keeps the per-message cost at a dictionary
+    lookup instead of a fresh ``list_plugins`` round trip to the
+    plugin daemon (up to 256 entries) and a linear scan.
+    """
+    from core.plugin.impl.plugin import PluginInstaller
+
+    manager = PluginInstaller()
+    return {f"{plugin.plugin_id}/{plugin.name}": plugin.declaration.icon for plugin in manager.list_plugins(tenant_id)}
+
+
+def _build_builtin_icon_lookup(user_id: str, tenant_id: str) -> dict[str, tuple[str, str | None]]:
+    """Return ``{provider_name: (icon, icon_dark)}`` for every built-in provider.
+
+    Mirrors ``_build_plugin_icon_lookup`` for the ``BuiltinToolManageService``
+    side of the Agent log enrichment. Avoids the per-message
+    re-enumeration of every built-in controller, default-config reload,
+    and credential decryption that the pre-fix code paid for every
+    matching log message.
+    """
+    return cast(
+        dict[str, tuple[str, str | None]],
+        {
+            provider.name: (provider.icon, provider.icon_dark)
+            for provider in BuiltinToolManageService.list_builtin_tools(user_id, tenant_id)
+        },
+    )
 
 
 class AgentMessageTransformer:
@@ -45,7 +81,14 @@ class AgentMessageTransformer:
         node_id: str,
         node_execution_id: str,
     ) -> Generator[NodeEventBase, None, None]:
-        from core.plugin.impl.plugin import PluginInstaller
+
+        # #41143: per-execution cache for the icon-enrichment lookups in
+        # the LOG-message branch below. Repeated log messages for the
+        # same provider now reuse the same ``PluginInstaller.list_plugins``
+        # / ``BuiltinToolManageService.list_builtin_tools`` result
+        # instead of paying for the full scan every time.
+        _plugin_icon_cache: dict[str, dict[str, str]] = {}
+        _builtin_icon_cache: dict[tuple[str, str], dict[str, tuple[str, str | None]]] = {}
 
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
@@ -195,33 +238,58 @@ class AgentMessageTransformer:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
                 if message.message.metadata:
                     icon = tool_info.get("icon", "")
+                    icon_dark: str | None = None
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
-                        manager = PluginInstaller()
-                        plugins = manager.list_plugins(tenant_id)
+                        # #41143: every LOG message with a `provider`
+                        # value used to synchronously hit
+                        # ``PluginInstaller.list_plugins`` (up to 256 entries
+                        # over the plugin daemon) and enumerate every
+                        # built-in provider + tool — only to populate two
+                        # decoration fields (``icon``, ``icon_dark``). The
+                        # work repeated across matching log messages
+                        # within one execution and, worse, an error in
+                        # either call path was treated as an Agent message
+                        # transformation failure in
+                        # ``AgentNode._run()`` — slowing or failing an
+                        # Agent run over decorative metadata.
+                        #
+                        # Memoize both lookups per ``transform()``
+                        # invocation so repeated log messages reuse the
+                        # same data, and wrap the enrichment in a
+                        # ``try/except`` so a slow / unreachable plugin
+                        # daemon or a credential-decryption failure can't
+                        # stall or fail the run.
                         try:
-                            current_plugin = next(
-                                plugin
-                                for plugin in plugins
-                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
+                            # ``dict.setdefault(key, default)`` evaluates
+                            # ``default`` unconditionally, so the cache
+                            # needs an explicit membership check to actually
+                            # save the plugin-daemon / built-in call on
+                            # subsequent log messages.
+                            if tenant_id not in _plugin_icon_cache:
+                                _plugin_icon_cache[tenant_id] = _build_plugin_icon_lookup(tenant_id)
+                            plugin_icon_by_provider = _plugin_icon_cache[tenant_id]
+                            icon = plugin_icon_by_provider.get(dict_metadata["provider"], icon)
+                        except Exception:
+                            logger.exception(
+                                "Agent log icon enrichment failed (plugin lookup) for provider=%s",
+                                dict_metadata.get("provider"),
                             )
-                            icon = current_plugin.declaration.icon
-                        except StopIteration:
-                            pass
-                        icon_dark = None
+
                         try:
-                            builtin_tool = next(
-                                provider
-                                for provider in BuiltinToolManageService.list_builtin_tools(
-                                    user_id,
-                                    tenant_id,
-                                )
-                                if provider.name == dict_metadata["provider"]
+                            cache_key = (user_id, tenant_id)
+                            if cache_key not in _builtin_icon_cache:
+                                _builtin_icon_cache[cache_key] = _build_builtin_icon_lookup(user_id, tenant_id)
+                            builtin_icon_by_provider = _builtin_icon_cache[cache_key]
+                            entry = builtin_icon_by_provider.get(dict_metadata["provider"])
+                            if entry is not None:
+                                icon = entry[0]
+                                icon_dark = entry[1]
+                        except Exception:
+                            logger.exception(
+                                "Agent log icon enrichment failed (builtin lookup) for provider=%s",
+                                dict_metadata.get("provider"),
                             )
-                            icon = builtin_tool.icon
-                            icon_dark = builtin_tool.icon_dark
-                        except StopIteration:
-                            pass
 
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
