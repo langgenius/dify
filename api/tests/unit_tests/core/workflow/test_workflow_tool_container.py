@@ -747,7 +747,8 @@ def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails() ->
 
 
 def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
-    frame_registry = MagicMock(spec=FrameRegistry)
+    workflow_tool_handler, frame_registry, _, request, _ = _container_handler()
+    workflow_tool_handler.handle_request(invocation_id="invocation", request=request)
     delegate = MagicMock()
     delegate.node_type = BuiltinNodeTypes.LOOP
     delegate.should_emit.return_value = True
@@ -757,7 +758,6 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
         handler_factory=lambda _: delegate,
         hidden_event_listener=hidden_event_listener,
     )
-    workflow_tool_handler = WorkflowToolContainerHandler(frame_registry, source_repository=MagicMock())
     event = NodeRunSucceededEvent(
         id="source-execution",
         node_id="source-start",
@@ -766,8 +766,8 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
     )
 
     workflow_tool_handler.prepare_frame_event(
-        frame=SimpleNamespace(container_id="tool", frame_id="source-frame"),
-        event=event,  # type: ignore[arg-type]
+        frame=frame_registry["invocation:workflow-tool"],
+        event=event,
     )
 
     assert nested_handler.should_emit(event=event) is False
@@ -823,7 +823,7 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
     execute = MagicMock(side_effect=[CodeExecutionError("source code failed"), {"output": "retried output"}])
     monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
     app, workflow = _source_workflow()
-    source_graph = workflow.graph_dict
+    source_graph = dict(workflow.graph_dict)
     source_graph["nodes"].insert(
         1,
         {
