@@ -34,7 +34,7 @@
   "archives.title": "Arşivlenmiş günlükler",
   "archives.upgradeTip.description": "Workflow çalıştırma günlüklerinin bundan sonra silinmesini önlemek için planınızı yükseltin. Zaten silinmiş günlükler kurtarılamaz.",
   "archives.upgradeTip.title": "Gelecekteki workflow günlüklerini saklamak için yükseltin",
-  "dateTimeFormat": "GG/AA/YYYY ss:dd ÖÖ/ÖS",
+  "dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "description": "Günlükler, kullanıcının girdileri ve AI tepkileri dahil olmak üzere uygulamanın çalışma durumunu kaydeder.",
   "detail.annotationTip": "{{user}} tarafından işaretlenen iyileştirmeler",
   "detail.conversationId": "Konuşma ID",
