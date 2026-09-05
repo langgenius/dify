@@ -1,12 +1,5 @@
 # Marketplace Catalog Home
 
-The redesigned Marketplace catalog shell provides the shared header, hero, search, trending, tabs, and sticky category navigation used by the Plugins and Templates pages.
+Shared catalog layout for the Plugins and Templates pages, including the header, hero, search, trending, tabs, and sticky category navigation.
 
-## Internal Modules
-
-- `marketplace/list/list-wrapper`
-- `marketplace/plugin-type-switch`
-
-## External Modules
-
-None.
+`MarketplaceView` uses `index.tsx` for the Plugins home. The Templates page composes `HomeShell` and the shared catalog parts directly, keeping its list and filters in the Templates module.

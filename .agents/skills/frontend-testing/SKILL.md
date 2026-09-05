@@ -5,12 +5,9 @@ description: Use when writing or changing Vitest or React Testing Library tests 
 
 # Frontend Testing
 
-`web/docs/test.md` is the single policy owner. Read it before changing frontend tests; this skill adds no separate requirements.
+Read the testing policy for the package that owns the changed tests:
 
-1. Identify the observable contract and regression risk.
-2. Choose the smallest boundary that includes the behavior owner.
-3. Establish the failing case first when practical, then implement one coherent scenario.
-4. Run the focused spec before the affected suite and relevant static checks.
-5. Report the behavior verified and any remaining browser, visual, or end-to-end risk.
+- `web/`: `web/docs/test.md` owns Web test boundaries, environments, and commands.
+- `packages/dify-ui/`: `packages/dify-ui/docs/testing.md` owns primitive test boundaries, environments, Storybook, and commands.
 
-Recommend deleting low-value tests as readily as adding missing behavior coverage. Use `web/docs/test.md` for policy and Web commands; use `packages/dify-ui/docs/testing.md` for Dify UI commands.
+This skill adds no parallel policy or check sequence. Follow the selected owner's requirements, including its validation commands. Recommend deleting low-value tests as readily as adding missing behavior coverage, and report the contract verified and any material verification gap.
