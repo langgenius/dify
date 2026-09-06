@@ -947,11 +947,11 @@ class DifyHumanInputNodeRuntime:
     def restore_submitted_data(
         self,
         *,
-        node_data: HumanInputNodeData,
+        inputs: Sequence[FormInputConfig],
         submitted_data: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         restored_data: dict[str, Any] = dict(submitted_data)
-        for input_config in node_data.inputs:
+        for input_config in inputs:
             output_variable_name = input_config.output_variable_name
             if output_variable_name not in submitted_data:
                 continue

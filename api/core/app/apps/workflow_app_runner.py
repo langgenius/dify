@@ -43,7 +43,7 @@ from core.workflow.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
-from core.workflow.node_runtime import resolve_dify_run_context
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons, resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
@@ -533,7 +533,10 @@ class WorkflowBasedAppRunner:
                 )
                 if action is None:
                     raise ValueError(f"Submitted human input form has no matching action: {form_id}")
-                submitted_data = {name: build_segment(value) for name, value in (form.submitted_data or {}).items()}
+                restored_data = DifyHumanInputNodeRuntime(context).restore_submitted_data(
+                    inputs=form.definition.inputs, submitted_data=form.submitted_data or {}
+                )
+                submitted_data = {name: build_segment(value) for name, value in restored_data.items()}
                 self._publish_event(
                     QueueHumanInputFormFilledEvent(
                         form_id=form_id,
