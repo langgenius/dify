@@ -8,7 +8,6 @@ import pytest
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.trace import set_tracer_provider
 
 from graphon.enums import BuiltinNodeTypes
 
@@ -20,21 +19,16 @@ def memory_span_exporter():
 
 
 @pytest.fixture
-def tracer_provider_with_memory_exporter(memory_span_exporter):
+def tracer_provider_with_memory_exporter(memory_span_exporter, monkeypatch):
     """Provide a TracerProvider configured with memory exporter."""
-    import opentelemetry.trace as trace_api
-
-    trace_api._TRACER_PROVIDER = None
-    trace_api._TRACER_PROVIDER_SET_ONCE._done = False
-
     provider = TracerProvider()
     processor = SimpleSpanProcessor(memory_span_exporter)
     provider.add_span_processor(processor)
-    set_tracer_provider(provider)
+    monkeypatch.setattr("core.app.workflow.layers.observability.get_tracer", provider.get_tracer)
 
     yield provider
 
-    provider.force_flush()
+    provider.shutdown()
 
 
 @pytest.fixture

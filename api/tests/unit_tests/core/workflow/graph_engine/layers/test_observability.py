@@ -10,8 +10,12 @@ Test coverage:
 - Disabled mode behavior
 """
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+
 import pytest
-from opentelemetry.trace import StatusCode
+from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
+from opentelemetry.trace import StatusCode, get_current_span
 
 from core.app.workflow.layers.observability import ObservabilityLayer
 from extensions.otel.semconv import DifySpanAttributes
@@ -58,8 +62,8 @@ class TestObservabilityLayerNodeSpanLifecycle:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_llm_node)
-        layer.on_node_run_end(mock_llm_node, None)
+        with layer.node_run_context(mock_llm_node):
+            layer.on_node_run_end(mock_llm_node, None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -75,8 +79,8 @@ class TestObservabilityLayerNodeSpanLifecycle:
         layer.on_graph_start()
 
         error = ValueError("Test error")
-        layer.on_node_run_start(mock_llm_node)
-        layer.on_node_run_end(mock_llm_node, error)
+        with layer.node_run_context(mock_llm_node):
+            layer.on_node_run_end(mock_llm_node, error)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -97,6 +101,64 @@ class TestObservabilityLayerNodeSpanLifecycle:
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 0
 
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_suspension_deactivates_span_until_resume(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_tool_node
+    ):
+        layer = ObservabilityLayer()
+        parent = get_current_span()
+
+        with layer.node_run_context(mock_tool_node):
+            tool_span = get_current_span()
+            assert tool_span.is_recording()
+
+        assert get_current_span() is parent
+        assert memory_span_exporter.get_finished_spans() == ()
+
+        with layer.node_run_context(mock_tool_node):
+            assert get_current_span() is tool_span
+            layer.on_node_run_end(mock_tool_node, None)
+
+        assert get_current_span() is parent
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].context == tool_span.get_span_context()
+
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_activation_does_not_swallow_node_errors(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
+    ):
+        layer = ObservabilityLayer()
+        parent = get_current_span()
+        error = ValueError("node failed")
+
+        with pytest.raises(ValueError, match="node failed"):
+            with layer.node_run_context(mock_llm_node):
+                raise error
+
+        assert get_current_span() is parent
+        layer.on_node_run_end(mock_llm_node, error)
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].status.status_code == StatusCode.ERROR
+
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_parser_failure_still_ends_span(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node, monkeypatch, caplog
+    ):
+        layer = ObservabilityLayer()
+
+        def fail_parse(**_kwargs):
+            raise ValueError("invalid node attributes")
+
+        monkeypatch.setattr(layer._default_parser, "parse", fail_parse)
+
+        with layer.node_run_context(mock_start_node):
+            layer.on_node_run_end(mock_start_node, None)
+
+        assert len(memory_span_exporter.get_finished_spans()) == 1
+        assert "invalid node attributes" in caplog.text
+
 
 class TestObservabilityLayerParserIntegration:
     """Test parser integration for different node types."""
@@ -109,8 +171,8 @@ class TestObservabilityLayerParserIntegration:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_start_node)
-        layer.on_node_run_end(mock_start_node, None)
+        with layer.node_run_context(mock_start_node):
+            layer.on_node_run_end(mock_start_node, None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -127,8 +189,8 @@ class TestObservabilityLayerParserIntegration:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_tool_node)
-        layer.on_node_run_end(mock_tool_node, None)
+        with layer.node_run_context(mock_tool_node):
+            layer.on_node_run_end(mock_tool_node, None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -159,8 +221,8 @@ class TestObservabilityLayerParserIntegration:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_llm_node)
-        layer.on_node_run_end(mock_llm_node, None, mock_result_event)
+        with layer.node_run_context(mock_llm_node):
+            layer.on_node_run_end(mock_llm_node, None, mock_result_event)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -191,8 +253,8 @@ class TestObservabilityLayerParserIntegration:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_retrieval_node)
-        layer.on_node_run_end(mock_retrieval_node, None, mock_result_event)
+        with layer.node_run_context(mock_retrieval_node):
+            layer.on_node_run_end(mock_retrieval_node, None, mock_result_event)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -218,8 +280,8 @@ class TestObservabilityLayerParserIntegration:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_start_node)
-        layer.on_node_run_end(mock_start_node, None, mock_result_event)
+        with layer.node_run_context(mock_start_node):
+            layer.on_node_run_end(mock_start_node, None, mock_result_event)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -232,16 +294,24 @@ class TestObservabilityLayerGraphLifecycle:
     """Test graph lifecycle management."""
 
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
-    def test_on_graph_start_clears_contexts(self, tracer_provider_with_memory_exporter, mock_llm_node):
-        """Test that on_graph_start clears node contexts."""
+    def test_on_graph_start_ends_leftover_spans(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
+    ):
+        """A new graph attempt must not leak or reuse an unfinished span."""
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_llm_node)
-        assert len(layer._node_contexts) == 1
+        with layer.node_run_context(mock_llm_node):
+            first_span = get_current_span()
 
         layer.on_graph_start()
-        assert len(layer._node_contexts) == 0
+        assert not first_span.is_recording()
+
+        with layer.node_run_context(mock_llm_node):
+            assert get_current_span() is not first_span
+            layer.on_node_run_end(mock_llm_node, None)
+
+        assert len(memory_span_exporter.get_finished_spans()) == 2
 
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_on_graph_end_with_no_unfinished_spans(
@@ -251,28 +321,71 @@ class TestObservabilityLayerGraphLifecycle:
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_llm_node)
-        layer.on_node_run_end(mock_llm_node, None)
+        with layer.node_run_context(mock_llm_node):
+            layer.on_node_run_end(mock_llm_node, None)
         layer.on_graph_end(None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
 
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
-    def test_on_graph_end_with_unfinished_spans_logs_warning(
-        self, tracer_provider_with_memory_exporter, mock_llm_node, caplog
+    def test_on_graph_end_ends_suspended_spans(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
     ):
-        """Test that on_graph_end logs warning for unfinished spans."""
+        """Pause and abort cleanup must export spans that never reached node end."""
         layer = ObservabilityLayer()
         layer.on_graph_start()
 
-        layer.on_node_run_start(mock_llm_node)
-        assert len(layer._node_contexts) == 1
+        with layer.node_run_context(mock_llm_node):
+            span = get_current_span()
 
         layer.on_graph_end(None)
+        layer.on_graph_end(None)
 
-        assert len(layer._node_contexts) == 0
-        assert "node spans were not properly ended" in caplog.text
+        assert not span.is_recording()
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == mock_llm_node.title
+
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_graph_end_and_late_worker_each_end_spans_once(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node, mock_llm_node, caplog
+    ):
+        """An aborted graph can finish while a worker still owns another span."""
+        graph_ending = Event()
+        worker_finished = Event()
+
+        class EndBarrier(SpanProcessor):
+            def on_end(self, span: ReadableSpan) -> None:
+                if span.name == mock_start_node.title:
+                    graph_ending.set()
+                    assert worker_finished.wait(5)
+
+        tracer_provider_with_memory_exporter.add_span_processor(EndBarrier())
+        layer = ObservabilityLayer()
+        for node in (mock_start_node, mock_llm_node):
+            with layer.node_run_context(node):
+                pass
+
+        def finish_worker() -> None:
+            assert graph_ending.wait(5)
+            try:
+                layer.on_node_run_end(mock_llm_node, None)
+            finally:
+                worker_finished.set()
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            worker = executor.submit(finish_worker)
+            try:
+                layer.on_graph_end(None)
+            finally:
+                worker.result(timeout=5)
+
+        layer.on_graph_end(None)
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        assert {span.name for span in spans} == {mock_start_node.title, mock_llm_node.title}
+        assert "Calling end() on an ended span" not in caplog.text
 
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_graph_aborted_event_records_reason_on_current_span(
@@ -280,10 +393,9 @@ class TestObservabilityLayerGraphLifecycle:
     ):
         layer = ObservabilityLayer()
         layer.on_graph_start()
-        layer.on_node_run_start(mock_start_node)
-
-        layer.on_event(GraphRunAbortedEvent(reason="worker shutdown", outputs={}))
-        layer.on_node_run_end(mock_start_node, None)
+        with layer.node_run_context(mock_start_node):
+            layer.on_event(GraphRunAbortedEvent(reason="worker shutdown", outputs={}))
+            layer.on_node_run_end(mock_start_node, None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -299,21 +411,25 @@ class TestObservabilityLayerDisabledMode:
     """Test behavior when layer is disabled."""
 
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
-    def test_disabled_mode_skips_node_start(self, memory_span_exporter, mock_start_node, config_overrides):
+    def test_disabled_mode_skips_node_start(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node, config_overrides
+    ):
         """Test that disabled layer doesn't create spans on node start."""
         config_overrides(ENABLE_OTEL=False)
         layer = ObservabilityLayer()
         assert layer._is_disabled
 
         layer.on_graph_start()
-        layer.on_node_run_start(mock_start_node)
-        layer.on_node_run_end(mock_start_node, None)
+        with layer.node_run_context(mock_start_node):
+            layer.on_node_run_end(mock_start_node, None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 0
 
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
-    def test_disabled_mode_skips_node_end(self, memory_span_exporter, mock_llm_node, config_overrides):
+    def test_disabled_mode_skips_node_end(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node, config_overrides
+    ):
         """Test that disabled layer doesn't process node end."""
         config_overrides(ENABLE_OTEL=False)
         layer = ObservabilityLayer()
