@@ -1993,10 +1993,6 @@ class MessageFeedback(TypeBase):
         init=False,
     )
 
-    @property
-    def from_account(self) -> Account | None:
-        return self.from_account_with_session(session=db.session())
-
     def from_account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.from_account_id))
 
@@ -2082,16 +2078,8 @@ class MessageAnnotation(TypeBase):
         """Return a non-null question string, falling back to the answer content."""
         return self.question or self.content
 
-    @property
-    def account(self) -> Account | None:
-        return self.account_with_session(session=db.session())
-
     def account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.account_id))
-
-    @property
-    def annotation_create_account(self) -> Account | None:
-        return self.annotation_create_account_with_session(session=db.session())
 
     def annotation_create_account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.account_id))
