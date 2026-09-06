@@ -269,6 +269,41 @@ class TestAnnotationListApi:
         assert unwrap(api.get) is not api.get
         get_mock.assert_not_called()
 
+    def test_has_more_false_on_last_page_exact_limit(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A full last page must set has_more false instead of forcing another fetch."""
+        page_size = 20
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        get_mock = Mock(return_value=([annotation] * page_size, page_size))
+        monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
+        api = AnnotationListApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+        with app.test_request_context(f"/apps/annotations?page=1&limit={page_size}", method="GET"):
+            query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
+            response = handler(api, query, MagicMock(), app_model=app_model)
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    def test_has_more_true_when_limit_exceeds_cap(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        returned_count = 100
+        total = 150
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        get_mock = Mock(return_value=([annotation] * returned_count, total))
+        monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
+        api = AnnotationListApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+        with app.test_request_context("/apps/annotations?page=1&limit=200", method="GET"):
+            query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
+            response = handler(api, query, MagicMock(), app_model=app_model)
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
+
     def test_create(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
         monkeypatch.setattr(
