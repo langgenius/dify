@@ -23,11 +23,12 @@ dev:
 	@uv --directory "$(PROJECT_DIR)" run --project . --extra server uvicorn dify_agent.server.app:app --host 127.0.0.1 --port 8000 --reload
 
 check:
-	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check .
+	@uv --directory "$(PROJECT_DIR)" run --locked --project . --only-group lint ruff check --no-fix .
+	@uv --directory "$(PROJECT_DIR)" run --locked --project . --only-group lint ruff format --check .
 
 fix:
-	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff format .
-	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check --fix .
+	@uv --directory "$(PROJECT_DIR)" run --locked --project . --only-group lint ruff check --fix .
+	@uv --directory "$(PROJECT_DIR)" run --locked --project . --only-group lint ruff format .
 
 typecheck:
 	@uv --directory "$(PROJECT_DIR)" run --project . --group dev --extra server pyrefly check

@@ -117,6 +117,7 @@ override-dependencies = [
 ]
 
 [dependency-groups]
+lint = ["ruff>=0.15.12"]
 
 ############################################################
 # [ Dev ] dependency group
@@ -127,7 +128,7 @@ dev = [
     "dotenv-linter>=0.7.0",
     "faker>=40.15.0",
     "lxml-stubs>=0.5.1",
-    "ruff>=0.15.12",
+    { include-group = "lint" },
     "pytest>=9.0.3",
     "pytest-benchmark>=5.2.3",
     "pytest-cov>=7.1.0",

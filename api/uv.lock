@@ -1343,6 +1343,7 @@ docs = [
     { name = "mkdocs-material", specifier = ">=9.7.0" },
     { name = "mkdocstrings-python", specifier = ">=2.0.0" },
 ]
+lint = [{ name = "ruff", specifier = ">=0.15.11" }]
 
 [[package]]
 name = "dify-api"
@@ -1461,6 +1462,9 @@ dev = [
 ]
 kms = [
     { name = "azure-keyvault-keys" },
+]
+lint = [
+    { name = "ruff" },
 ]
 storage = [
     { name = "azure-storage-blob" },
@@ -1750,6 +1754,7 @@ dev = [
     { name = "xinference-client", specifier = ">=2.7.0" },
 ]
 kms = [{ name = "azure-keyvault-keys", specifier = ">=4.10.0,<5.0.0" }]
+lint = [{ name = "ruff", specifier = ">=0.15.12" }]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.30.0,<13.0.0" },
     { name = "bce-python-sdk", specifier = "==0.9.76" },

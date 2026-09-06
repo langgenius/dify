@@ -7,136 +7,85 @@ on:
     types: [checks_requested]
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  # Keep the existing required check name while making verification independent of the bot.
   autofix:
     if: github.repository == 'langgenius/dify'
     runs-on: depot-ubuntu-24.04-4
     steps:
-      - name: Complete merge group check
-        if: github.event_name == 'merge_group'
-        run: echo "autofix.ci updates pull request branches, not merge group refs."
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
-      - if: github.event_name != 'merge_group'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Classify generated files
+        id: changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          base: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          filters: |
+            compose:
+              - 'docker/generate_docker_compose'
+              - 'docker/.env.example'
+              - 'docker/envs/**'
+              - 'docker/docker-compose-template.yaml'
+              - 'docker/docker-compose.yaml'
+              - '.github/workflows/autofix.yml'
+            api:
+              - 'api/**'
+              - 'dify-agent/src/**'
+              - 'dify-agent/pyproject.toml'
+              - 'packages/contracts/openapi-ts.api.config.ts'
+              - 'packages/contracts/package.json'
+              - 'packages/contracts/openapi/**'
+              - 'packages/contracts/generated/api/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'vite.config.ts'
+              - 'web/app/styles/globals.css'
+              - 'Makefile'
+              - '.github/actions/setup-web/**'
+              - '.github/workflows/autofix.yml'
 
-      - name: Check Docker Compose inputs
-        if: github.event_name != 'merge_group'
-        id: docker-compose-changes
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            docker/generate_docker_compose
-            docker/.env.example
-            docker/docker-compose-template.yaml
-            docker/docker-compose.yaml
-      - name: Check api inputs
-        if: github.event_name != 'merge_group'
-        id: api-changes
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            api/**
-      - name: Check frontend contract inputs
-        if: github.event_name != 'merge_group'
-        id: frontend-contract-changes
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            api/**
-            packages/contracts/openapi-ts.api.config.ts
-            packages/contracts/package.json
-            packages/contracts/openapi/**
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-      - name: Check dify-agent inputs
-        if: github.event_name != 'merge_group'
-        id: dify-agent-changes
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          files: |
-            dify-agent/**/*.py
-            dify-agent/pyproject.toml
-            dify-agent/uv.lock
-      - if: github.event_name != 'merge_group' && (steps.docker-compose-changes.outputs.any_changed == 'true' || steps.api-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true' || steps.dify-agent-changes.outputs.any_changed == 'true')
+      - name: Setup Python
+        if: steps.changes.outputs.compose == 'true' || steps.changes.outputs.api == 'true'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.11'
-
-      - if: github.event_name != 'merge_group' && (steps.api-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true' || steps.dify-agent-changes.outputs.any_changed == 'true')
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+          python-version: '3.12'
 
       - name: Generate Docker Compose
-        if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
-        run: |
-          cd docker
-          ./generate_docker_compose
+        if: steps.changes.outputs.compose == 'true'
+        run: ./docker/generate_docker_compose
 
-      - if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
-        run: |
-          cd api
-          uv sync --dev
-          # fmt first to avoid line too long
-          uv run ruff format ..
-          # Fix lint errors
-          uv run ruff check --fix .
-          # Format code
-          uv run ruff format ..
-
-      - if: github.event_name != 'merge_group' && steps.dify-agent-changes.outputs.any_changed == 'true'
-        run: |
-          cd dify-agent
-          uv sync --dev
-          # fmt first to avoid line too long
-          uv run ruff format .
-          # Fix lint errors
-          uv run ruff check --fix .
-          # Format code
-          uv run ruff format .
-
-      - name: ast-grep
-        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
-        run: |
-          # ast-grep exits 1 if no matches are found; allow idempotent runs.
-          uvx --from ast-grep-cli ast-grep --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all || true
-          uvx --from ast-grep-cli ast-grep --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all || true
-          uvx --from ast-grep-cli ast-grep -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all || true
-          uvx --from ast-grep-cli ast-grep -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all || true
-          # Convert Optional[T] to T | None (ignoring quoted types)
-          cat > /tmp/optional-rule.yml << 'EOF'
-          id: convert-optional-to-union
-          language: python
-          rule:
-            kind: generic_type
-            all:
-              - has:
-                  kind: identifier
-                  pattern: Optional
-              - has:
-                  kind: type_parameter
-                  has:
-                    kind: type
-                    pattern: $T
-          fix: $T | None
-          EOF
-          uvx --from ast-grep-cli ast-grep scan . --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
-          # Fix forward references that were incorrectly converted (Python doesn't support "Type" | None syntax)
-          find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
-          find . -name "*.py.bak" -type f -delete
+      - name: Setup UV
+        if: steps.changes.outputs.api == 'true'
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: Setup web environment
-        if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
+        if: steps.changes.outputs.api == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Generate API docs
-        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+      - name: Generate API artifacts
+        if: steps.changes.outputs.api == 'true'
+        run: make generate-api-artifacts
+
+      - name: Verify generated files
+        id: verify
         run: |
-          cd api
-          uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
+          changes=$(git status --porcelain --untracked-files=all -- \
+            docker/docker-compose.yaml api/openapi/markdown packages/contracts/generated/api)
+          if [ -n "$changes" ]; then
+            printf '%s\n' "$changes"
+            git diff --stat -- docker/docker-compose.yaml api/openapi/markdown packages/contracts/generated/api
+            echo "Generated files are out of date. Run ./docker/generate_docker_compose or make generate-api-artifacts." >&2
+            exit 1
+          fi
 
-      - name: Generate frontend contracts
-        if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
-        run: pnpm --dir packages/contracts gen-api-contract
-
-      - if: github.event_name != 'merge_group'
+      - name: Offer generated file fixes
+        if: failure() && steps.verify.outcome == 'failure' && github.event_name == 'pull_request'
         uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4
+        with:
+          commit-message: 'chore: regenerate API and Docker artifacts'

@@ -69,9 +69,17 @@ jobs:
             api/uv.lock
             dify-agent/uv.lock
 
+      - name: Run API Ruff
+        if: inputs.run-python-style
+        run: make check
+
+      - name: Run Dify Agent Ruff
+        if: inputs.run-dify-agent-style
+        run: make -C dify-agent check
+
       - name: Install dependencies
         if: inputs.run-python-style
-        run: uv sync --project api --dev
+        run: uv sync --locked --project api --dev
 
       - name: Run Import Linter
         if: inputs.run-python-style
@@ -94,10 +102,6 @@ jobs:
         env:
           PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
-
-      - name: Run Dify Agent Ruff
-        if: inputs.run-dify-agent-style
-        run: make -C dify-agent check
 
       - name: Run Dify Agent Type Checks
         if: inputs.run-dify-agent-style

@@ -67,22 +67,29 @@ dev-clean:
 # Backend Code Quality Commands
 format:
 	@echo "🎨 Running ruff format..."
-	@uv run --project api --dev ruff format ./api
+	@uv run --locked --project api --only-group lint ruff format ./api
 	@echo "✅ Code formatting complete"
 
 check:
-	@echo "🔍 Running ruff check..."
-	@uv run --project api --dev ruff check ./api
+	@echo "🔍 Checking Python lint and formatting..."
+	@uv run --locked --project api --only-group lint ruff check --no-fix ./api
+	@uv run --locked --project api --only-group lint ruff format --check ./api
 	@echo "✅ Code check complete"
 
 lint:
 	@echo "🔧 Running ruff format, check with fixes, response contract lint, import linter, and dotenv-linter..."
 	@uv run --project api --dev ruff format ./api
 	@uv run --project api --dev ruff check --fix ./api
+	@uv run --project api --dev ruff format ./api
 	@$(MAKE) api-contract-lint
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
+
+generate-api-artifacts:
+	@rm -rf api/openapi/markdown
+	@uv run --locked --project api python api/dev/generate_swagger_markdown_docs.py --swagger-dir packages/contracts/openapi --markdown-dir api/openapi/markdown --keep-swagger-json
+	@CI=true pnpm --dir packages/contracts gen-api-contract
 
 api-contract-lint:
 	@echo "🔎 Linting Flask response contracts..."
@@ -211,9 +218,10 @@ help:
 	@echo ""
 	@echo "Backend Code Quality:"
 	@echo "  make format         - Format code with ruff"
-	@echo "  make check          - Check code with ruff"
+	@echo "  make check          - Check Python lint and formatting with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
+	@echo "  make generate-api-artifacts - Regenerate API documentation and contracts"
 	@echo "  make type-check     - Run type checks (pyrefly, mypy)"
 	@echo "  make type-check-core - Run core type checks (pyrefly, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
@@ -228,4 +236,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all
+.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint generate-api-artifacts api-contract-lint type-check test test-all

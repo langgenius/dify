@@ -59,6 +59,44 @@ How we prioritize:
 | Non-core features and minor enhancements | Low Priority |
 | Valuable but not immediate | Future-Feature |
 
+## Development checks
+
+The commit hook runs `vp staged` against staged files. It fixes Python lint/formatting,
+checks and fixes JavaScript/TypeScript with Vite+, and formats supported non-code files.
+Partial staging is preserved: task fixes are staged, while previously unstaged changes
+remain unstaged. Unfixable errors fail the commit and restore the original state.
+Git merge, rebase, cherry-pick, revert, and squash operations skip staged checks;
+required CI checks still validate their results.
+
+Ruff uses each Python project's locked `lint` dependency group, without installing
+application or test dependencies on a fresh environment. Run `vp hooks status` to
+check the hook installation. `vp staged` is not a substitute for full project checks:
+
+| Scope | Read-only checks | Fixes |
+| --- | --- | --- |
+| API | `make check`, `make type-check` | `make lint` |
+| Dify Agent | `make -C dify-agent check`, `make -C dify-agent typecheck` | `make -C dify-agent fix` |
+| TypeScript workspace | `pnpm -w check` | `pnpm -w check:fix` |
+| Web project rules | `vp run dify-web#lint:tss`, `vp run knip`, `vp run knip:production`, `vp run knip:production-unused-check` | Resolve reported issues |
+
+Run the relevant tests for changed behavior as well. Project-wide checks, tests,
+OpenAPI generation, and Docker generation are not added to the commit hook.
+Python Style and TS Common enforce lint/formatting independently of local hooks,
+including on merge groups. Configuration changes trigger the corresponding CI checks.
+
+The `autofix.ci` workflow owns generated API artifacts and Docker Compose only.
+It regenerates and verifies outputs on both pull requests and merge groups, including
+when only generated outputs change. On a pull request, stale outputs fail verification
+and the official bot can submit a repair; bot availability does not determine the
+verification result. The `autofix.ci` workflow name is required by the bot, and the
+`autofix` job name is retained for the existing required status check.
+
+Regenerate API artifacts with `make generate-api-artifacts`, or Docker Compose with
+`./docker/generate_docker_compose`. The API command replaces the generated Markdown
+and API contract directories; commit the resulting changes. Raw OpenAPI JSON remains
+an ignored intermediate artifact. Ruff repairs belong to local development, and
+repository-wide code migrations belong in separately reviewed changes.
+
 ## Submitting your PR
 
 ### Pull Request Process

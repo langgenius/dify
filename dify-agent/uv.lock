@@ -628,6 +628,9 @@ docs = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings-python" },
 ]
+lint = [
+    { name = "ruff" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -665,6 +668,7 @@ docs = [
     { name = "mkdocs-material", specifier = ">=9.7.0" },
     { name = "mkdocstrings-python", specifier = ">=2.0.0" },
 ]
+lint = [{ name = "ruff", specifier = ">=0.15.11" }]
 
 [[package]]
 name = "distro"
