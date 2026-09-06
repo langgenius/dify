@@ -408,10 +408,12 @@ class WorkflowAgentSandboxService:
                 status_code=404,
             )
         conversation_id = session.scalar(
-            select(Message.conversation_id).where(
+            select(Message.conversation_id)
+            .where(
                 Message.app_id == app_id,
                 Message.workflow_run_id == workflow_run_id,
-            ).limit(1)
+            )
+            .limit(1)
         )
         binding = AgentWorkspaceService.get_active_binding(
             session=session,
