@@ -29,6 +29,41 @@ _CALLER_VISIBILITY_ATTEMPTS = 60
 _CALLER_VISIBILITY_INTERVAL_SECONDS = 0.05
 
 
+def resolve_workflow_agent_workspace_owner_scope(
+    *,
+    tenant_id: str,
+    app_id: str,
+    conversation_id: str | None,
+    workflow_run_id: str | None,
+    node_id: str,
+    workflow_agent_binding_id: str,
+    node_execution_id: str | None = None,
+) -> WorkspaceOwnerScope:
+    """Choose the Workspace owner for a workflow Agent participant.
+
+    Chatflow runs carry ``conversation_id`` and should persist Agent memory across
+    turns the same way standalone Agent Apps do. Pure workflow runs keep the
+    per-run ``WORKFLOW_RUN`` scope.
+    """
+
+    owner_scope_key = f"{node_id}:{workflow_agent_binding_id}"
+    if conversation_id:
+        return WorkspaceOwnerScope(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+            owner_id=conversation_id,
+            owner_scope_key=owner_scope_key,
+        )
+    return WorkspaceOwnerScope(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id=workflow_run_id or node_execution_id or "",
+        owner_scope_key=owner_scope_key,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class WorkflowAgentSessionScope:
     tenant_id: str
@@ -40,15 +75,18 @@ class WorkflowAgentSessionScope:
     workflow_agent_binding_id: str
     agent_id: str
     agent_config_snapshot_id: str
+    conversation_id: str | None = None
 
     @property
     def workspace_owner(self) -> WorkspaceOwnerScope:
-        return WorkspaceOwnerScope(
+        return resolve_workflow_agent_workspace_owner_scope(
             tenant_id=self.tenant_id,
             app_id=self.app_id,
-            owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
-            owner_id=self.workflow_run_id or self.node_execution_id,
-            owner_scope_key=f"{self.node_id}:{self.workflow_agent_binding_id}",
+            conversation_id=self.conversation_id,
+            workflow_run_id=self.workflow_run_id,
+            node_id=self.node_id,
+            workflow_agent_binding_id=self.workflow_agent_binding_id,
+            node_execution_id=self.node_execution_id,
         )
 
 
@@ -75,6 +113,7 @@ class WorkflowAgentWorkspaceStore:
         workflow_run_id: str | None,
         node_id: str,
         node_execution_id: str,
+        conversation_id: str | None = None,
     ) -> WorkflowAgentSessionScope | None:
         """Return the generation pinned by an existing node execution participant."""
 
@@ -97,12 +136,14 @@ class WorkflowAgentWorkspaceStore:
             workflow_agent_binding_id = process_data.get("workflow_agent_binding_id")
             if not isinstance(workflow_agent_binding_id, str):
                 raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is missing")
-            owner_scope = WorkspaceOwnerScope(
+            owner_scope = resolve_workflow_agent_workspace_owner_scope(
                 tenant_id=tenant_id,
                 app_id=app_id,
-                owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
-                owner_id=workflow_run_id or node_execution_id,
-                owner_scope_key=f"{node_id}:{workflow_agent_binding_id}",
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                workflow_agent_binding_id=workflow_agent_binding_id,
+                node_execution_id=node_execution_id,
             )
             binding = AgentWorkspaceService.get_active_binding(
                 session=session,
@@ -122,6 +163,7 @@ class WorkflowAgentWorkspaceStore:
                 workflow_agent_binding_id=workflow_agent_binding_id,
                 agent_id=binding.agent_id,
                 agent_config_snapshot_id=binding.agent_config_version_id,
+                conversation_id=conversation_id,
             )
 
     def load_or_create_node_execution_session(
@@ -175,7 +217,7 @@ class WorkflowAgentWorkspaceStore:
                     agent_config_version_id=scope.agent_config_snapshot_id,
                     agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
                 )
-            return self._stored(scope, binding)
+            return self._stored(session, scope, binding)
 
     def save_active_snapshot(
         self,
@@ -267,11 +309,16 @@ class WorkflowAgentWorkspaceStore:
         raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
 
     @staticmethod
-    def _stored(scope: WorkflowAgentSessionScope, binding: AgentWorkspaceBinding) -> StoredWorkflowAgentSession:
-        snapshot = (
-            CompositorSessionSnapshot.model_validate_json(binding.session_snapshot)
-            if binding.session_snapshot
-            else None
+    def _stored(
+        session: Session,
+        scope: WorkflowAgentSessionScope,
+        binding: AgentWorkspaceBinding,
+    ) -> StoredWorkflowAgentSession:
+        snapshot = WorkflowAgentWorkspaceStore._resolve_session_snapshot(
+            session,
+            tenant_id=scope.tenant_id,
+            binding=binding,
+            conversation_scoped=scope.conversation_id is not None,
         )
         return StoredWorkflowAgentSession(
             scope=scope,
@@ -283,5 +330,37 @@ class WorkflowAgentWorkspaceStore:
             pending_tool_call_id=binding.pending_tool_call_id,
         )
 
+    @staticmethod
+    def _resolve_session_snapshot(
+        session: Session,
+        *,
+        tenant_id: str,
+        binding: AgentWorkspaceBinding,
+        conversation_scoped: bool,
+    ) -> CompositorSessionSnapshot | None:
+        if binding.session_snapshot:
+            return CompositorSessionSnapshot.model_validate_json(binding.session_snapshot)
+        if not conversation_scoped:
+            return None
+        inherited_snapshot = session.scalar(
+            select(AgentWorkspaceBinding.session_snapshot)
+            .where(
+                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.workspace_id == binding.workspace_id,
+                AgentWorkspaceBinding.session_snapshot.isnot(None),
+                AgentWorkspaceBinding.id != binding.id,
+            )
+            .order_by(AgentWorkspaceBinding.created_at.desc())
+            .limit(1)
+        )
+        if inherited_snapshot is None:
+            return None
+        return CompositorSessionSnapshot.model_validate_json(inherited_snapshot)
 
-__all__ = ["StoredWorkflowAgentSession", "WorkflowAgentSessionScope", "WorkflowAgentWorkspaceStore"]
+
+__all__ = [
+    "StoredWorkflowAgentSession",
+    "WorkflowAgentSessionScope",
+    "WorkflowAgentWorkspaceStore",
+    "resolve_workflow_agent_workspace_owner_scope",
+]

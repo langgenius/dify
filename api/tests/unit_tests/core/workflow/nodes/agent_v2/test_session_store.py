@@ -6,10 +6,16 @@ from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from agenton.compositor.schemas import LayerSessionSnapshot
+from agenton.layers.base import LifecycleState
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+from core.workflow.nodes.agent_v2.session_store import (
+    WorkflowAgentSessionScope,
+    WorkflowAgentWorkspaceStore,
+    resolve_workflow_agent_workspace_owner_scope,
+)
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.agent import (
     AgentConfigVersionKind,
@@ -41,16 +47,18 @@ def _scope() -> WorkflowAgentSessionScope:
 
 def _execution_row(
     *,
+    execution_id: str = "execution-1",
+    workflow_run_id: str = "run-1",
     binding_id: str | None = None,
     process_data: dict[str, object] | None = None,
 ) -> WorkflowNodeExecutionModel:
     return WorkflowNodeExecutionModel(
-        id="execution-1",
+        id=execution_id,
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        workflow_run_id="run-1",
+        workflow_run_id=workflow_run_id,
         index=1,
         predecessor_node_id=None,
         node_execution_id="node-execution-1",
@@ -156,6 +164,99 @@ def test_scope_uses_node_and_workflow_binding_as_workspace_subscope() -> None:
     assert owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
     assert owner.owner_id == "run-1"
     assert owner.owner_scope_key == "node-1:workflow-binding-1"
+
+
+def test_resolve_workspace_owner_scope_uses_conversation_for_chatflow() -> None:
+    owner = resolve_workflow_agent_workspace_owner_scope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id="conversation-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        workflow_agent_binding_id="workflow-binding-1",
+    )
+    assert owner.owner_type is AgentWorkspaceOwnerType.CONVERSATION
+    assert owner.owner_id == "conversation-1"
+    assert owner.owner_scope_key == "node-1:workflow-binding-1"
+
+
+def test_resolve_workspace_owner_scope_keeps_workflow_run_for_pure_workflow() -> None:
+    owner = resolve_workflow_agent_workspace_owner_scope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id=None,
+        workflow_run_id="run-1",
+        node_id="node-1",
+        workflow_agent_binding_id="workflow-binding-1",
+        node_execution_id="execution-1",
+    )
+    assert owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
+    assert owner.owner_id == "run-1"
+
+
+def test_conversation_scope_inherits_session_snapshot_from_prior_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    prior_snapshot = CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(
+                name="history",
+                lifecycle_state=LifecycleState.SUSPENDED,
+                runtime_state={"turn": 1},
+            )
+        ]
+    )
+    workspace = AgentWorkspace(
+        id="workspace-conversation",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+        owner_id="conversation-1",
+        owner_scope_key="node-1:workflow-binding-1",
+        backend_workspace_ref="workspace-1-ref",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+    prior_binding = AgentWorkspaceBinding(
+        id="binding-prior",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workspace_id=workspace.id,
+        agent_id="agent-1",
+        base_home_snapshot_id="home-1",
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref="backend-binding-prior",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        session_snapshot=prior_snapshot.model_dump_json(),
+    )
+    execution = _execution_row(
+        execution_id="execution-2",
+        workflow_run_id="run-2",
+        process_data={"workflow_agent_binding_id": "workflow-binding-1"},
+    )
+    sqlite_session.add_all([_home_snapshot(), workspace, prior_binding, execution])
+    sqlite_session.commit()
+    _install_backend_client(monkeypatch)
+
+    scope = WorkflowAgentSessionScope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_run_id="run-2",
+        node_id="node-1",
+        node_execution_id="execution-2",
+        workflow_agent_binding_id="workflow-binding-1",
+        agent_id="agent-1",
+        agent_config_snapshot_id="config-1",
+        conversation_id="conversation-1",
+    )
+    stored = WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id="home-1")
+
+    assert stored.workspace_id == workspace.id
+    assert stored.binding_id != prior_binding.id
+    assert stored.session_snapshot == prior_snapshot
 
 
 def test_load_existing_scope_reads_the_generation_from_the_persisted_binding(sqlite_session: Session) -> None:
