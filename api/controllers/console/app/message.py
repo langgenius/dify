@@ -2,7 +2,6 @@ import logging
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
@@ -158,8 +157,14 @@ class ChatMessageListApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, session: Session, current_user: Account, app_model: App):
-        return _list_chat_messages(session=session, app_model=app_model, current_user=current_user)
+    @model_validate(ChatMessagesQuery)
+    def get(self, req_data: ChatMessagesQuery, session: Session, current_user: Account, app_model: App):
+        return _list_chat_messages(
+            args=req_data,
+            session=session,
+            app_model=app_model,
+            current_user=current_user,
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -178,13 +183,26 @@ class AgentChatMessageListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @model_validate(ChatMessagesQuery)
+    def get(
+        self,
+        req_data: ChatMessagesQuery,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         app_model = resolve_agent_runtime_app_model(
             session=session,
             tenant_id=current_tenant_id,
             agent_id=agent_id,
         )
-        return _list_chat_messages(session=session, app_model=app_model, current_user=current_user)
+        return _list_chat_messages(
+            args=req_data,
+            session=session,
+            app_model=app_model,
+            current_user=current_user,
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -202,8 +220,14 @@ class MessageFeedbackApi(Resource):
     @with_current_user
     @with_session
     @get_app_model
-    def post(self, session: Session, current_user: Account, app_model: App):
-        return _update_message_feedback(session=session, current_user=current_user, app_model=app_model)
+    @model_validate(MessageFeedbackPayload)
+    def post(self, req_data: MessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
+        return _update_message_feedback(
+            args=req_data,
+            session=session,
+            current_user=current_user,
+            app_model=app_model,
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
@@ -220,13 +244,26 @@ class AgentMessageFeedbackApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(
+        self,
+        req_data: MessageFeedbackPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         app_model = resolve_agent_runtime_app_model(
             session=session,
             tenant_id=current_tenant_id,
             agent_id=agent_id,
         )
-        return _update_message_feedback(session=session, current_user=current_user, app_model=app_model)
+        return _update_message_feedback(
+            args=req_data,
+            session=session,
+            current_user=current_user,
+            app_model=app_model,
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
@@ -386,9 +423,13 @@ class AgentMessageApi(Resource):
         return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
 
 
-def _list_chat_messages(*, session: Session, app_model: App, current_user: Account | None = None):
-    args = ChatMessagesQuery.model_validate(request.args.to_dict())
-
+def _list_chat_messages(
+    *,
+    args: ChatMessagesQuery,
+    session: Session,
+    app_model: App,
+    current_user: Account | None = None,
+):
     if AppMode.value_of(app_model.mode) == AppMode.AGENT and current_user is not None:
         try:
             conversation = ConversationService.get_conversation(
@@ -465,9 +506,13 @@ def _list_chat_messages(*, session: Session, app_model: App, current_user: Accou
     )
 
 
-def _update_message_feedback(*, session: Session, current_user: Account, app_model: App):
-    args = MessageFeedbackPayload.model_validate(console_ns.payload)
-
+def _update_message_feedback(
+    *,
+    args: MessageFeedbackPayload,
+    session: Session,
+    current_user: Account,
+    app_model: App,
+):
     message_id = args.message_id
 
     message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1))
