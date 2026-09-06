@@ -24,6 +24,10 @@ class SuggestedQuestionsAfterAnswerOutputParser:
 
     def parse(self, text: str) -> Sequence[str]:
         stripped_text = text.strip()
+        # Reasoning models may prepend a <think>...</think> block before the payload. Any
+        # bracket pair inside it would otherwise be matched first (and either fail to parse
+        # or parse as non-strings), leaving the suggested questions empty.
+        stripped_text = re.sub(r"<think>.*?</think>", "", stripped_text, flags=re.DOTALL).strip()
         action_match = re.search(r"\[.*?\]", stripped_text, re.DOTALL)
         questions: list[str] = []
         if action_match is not None:
