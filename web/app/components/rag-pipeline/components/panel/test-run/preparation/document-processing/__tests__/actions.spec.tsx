@@ -65,4 +65,17 @@ describe('Document processing actions', () => {
       screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }),
     )
   })
+
+  it('should keep the pending form submit action focusable when canSubmit becomes false', () => {
+    render(
+      <Actions
+        formParams={createFormParams({ canSubmit: false, isSubmitting: true })}
+        onBack={vi.fn()}
+      />,
+    )
+
+    expectLoadingButton(
+      screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }),
+    )
+  })
 })

@@ -5294,10 +5294,6 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
 
     expect(await screen.findByText('dataset.newKnowledge.taskActionFailed')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toHaveAttribute(
-      'aria-busy',
-      'false',
-    )
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
@@ -5399,7 +5395,7 @@ describe('DocumentsPage', () => {
     rendered.unmount()
   })
 
-  it('announces upload and re-index operations as busy', async () => {
+  it('keeps upload and re-index actions focusable and unavailable while pending', async () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
     const emptyPage = render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -5409,7 +5405,7 @@ describe('DocumentsPage', () => {
     )
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toHaveAttribute('aria-busy', 'true')
+    ).toHaveAttribute('aria-disabled', 'true')
     emptyPage.unmount()
 
     reindexMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
@@ -5419,7 +5415,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
-    ).toHaveAttribute('aria-busy', 'true')
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('locks uploads after a write mutation reveals revoked permission', async () => {

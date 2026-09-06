@@ -68,7 +68,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
               onClick={handleImportFromUrl}
               loading={isParsing}
             >
-              {isParsing ? '' : t(($) => $['operation.ok'], { ns: 'common' })}
+              {t(($) => $['operation.ok'], { ns: 'common' })}
             </Button>
           </div>
         </DropdownMenuContent>

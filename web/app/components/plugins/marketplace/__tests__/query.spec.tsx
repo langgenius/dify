@@ -163,7 +163,7 @@ describe('useMarketplacePlugins', () => {
     })
   })
 
-  it('should handle API error gracefully', async () => {
+  it('should surface API errors instead of an empty success', async () => {
     mockSearchAdvanced.mockRejectedValue(new Error('Network error'))
 
     const { useMarketplacePlugins } = await import('../query')
@@ -177,11 +177,14 @@ describe('useMarketplacePlugins', () => {
     )
 
     await waitFor(() => {
-      expect(result.current.data).toBeDefined()
+      expect(result.current.isError).toBe(true)
     })
 
-    expect(result.current.data?.pages[0]!.plugins).toEqual([])
-    expect(result.current.data?.pages[0]!.total).toBe(0)
+    // No synthesized page: an empty success let a backend outage render as
+    // "no plugins found", suppressed retries, and permanently disabled
+    // getNextPageParam for this key.
+    expect(result.current.data).toBeUndefined()
+    expect(result.current.error).toEqual(new Error('Network error'))
   })
 
   it('should determine next page correctly via getNextPageParam', async () => {

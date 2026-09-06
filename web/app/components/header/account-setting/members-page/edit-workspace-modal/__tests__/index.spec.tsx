@@ -115,6 +115,33 @@ describe('EditWorkspaceModal', () => {
     expect(mockOnCancel).not.toHaveBeenCalled()
   })
 
+  it('should expose the saving label and prevent duplicate form submission', async () => {
+    const user = userEvent.setup()
+    let rejectUpdate!: (reason: Error) => void
+    vi.mocked(updateWorkspaceInfo).mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectUpdate = reject
+        }),
+    )
+    renderModal()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Renamed Workspace')
+
+    await user.click(getSaveButton())
+
+    const savingButton = screen.getByRole('button', { name: /operation\.saving/i })
+    expect(savingButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.submit(savingButton.closest('form')!)
+    expect(updateWorkspaceInfo).toHaveBeenCalledOnce()
+
+    rejectUpdate(new Error('update failed'))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /operation\.save/i })).toBeEnabled()
+    })
+  })
+
   it('should show error toast when update fails', async () => {
     const user = userEvent.setup()
 

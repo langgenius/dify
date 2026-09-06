@@ -550,11 +550,7 @@ const Operations = ({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={deleting}
-              disabled={deleting}
-              onClick={() => onOperate('delete')}
-            >
+            <AlertDialogConfirmButton loading={deleting} onClick={() => onOperate('delete')}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

@@ -369,7 +369,6 @@ const WebAppsSectionContent = () => {
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={uninstallAppMutation.isPending}
-              disabled={uninstallAppMutation.isPending}
               onClick={handleDelete}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

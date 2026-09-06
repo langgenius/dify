@@ -269,7 +269,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+            <AlertDialogConfirmButton loading={deleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
