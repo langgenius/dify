@@ -857,6 +857,77 @@ class TestMessageModel:
         # Assert
         assert result == {}
 
+    def test_retriever_resources_default_when_key_missing(self):
+        """Regression for langgenius/dify#41688: when message_metadata is set
+        but does not contain the 'retriever_resources' key, the property must
+        return [] (not None) so MessageListItem.retriever_resources
+        (a required list[...] field) does not fail Pydantic validation.
+        """
+        # Arrange — message_metadata exists but has no retriever_resources key
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=json.dumps({"usage": {"tokens": 100}}),
+        )
+
+        # Act
+        result = message.retriever_resources
+
+        # Assert — must default to empty list, not None
+        assert result == []
+
+    def test_retriever_resources_none_when_message_metadata_none(self):
+        """When message_metadata is None, the property returns [] (the else branch)."""
+        # Arrange
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=None,
+        )
+
+        # Act
+        result = message.retriever_resources
+
+        # Assert
+        assert result == []
+
+    def test_retriever_resources_returns_existing_value(self):
+        """When retriever_resources is set in metadata, the property returns it."""
+        # Arrange
+        resources = [{"document_id": "doc-1", "score": 0.9}]
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=json.dumps({"retriever_resources": resources}),
+        )
+
+        # Act
+        result = message.retriever_resources
+
+        # Assert
+        assert result == resources
+
     def test_message_to_dict_serialization(self):
         """Test message to_dict method."""
         # Arrange
