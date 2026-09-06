@@ -14,12 +14,19 @@ from sqlalchemy.orm import aliased
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
 from models.model import App, Conversation, Message, MessageFeedback
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 
 
 @dataclass(frozen=True)
@@ -326,17 +333,15 @@ class AgentObservabilityService:
                 and_(
                     WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
                     WorkflowAgentNodeBinding.agent_id == agent_id,
-                    WorkflowAgentNodeBinding.app_id == WorkflowRun.app_id,
-                    WorkflowAgentNodeBinding.workflow_id == WorkflowRun.workflow_id,
-                    WorkflowAgentNodeBinding.workflow_version == WorkflowRun.version,
+                    self._workflow_node_binding_condition(),
                 ),
             )
-            .join(workflow_app, workflow_app.id == WorkflowAgentNodeBinding.app_id)
+            .join(
+                workflow_app,
+                and_(workflow_app.id == WorkflowAgentNodeBinding.app_id, workflow_app.tenant_id == app.tenant_id),
+            )
             .where(
                 WorkflowNodeExecutionModel.tenant_id == app.tenant_id,
-                WorkflowNodeExecutionModel.app_id == WorkflowAgentNodeBinding.app_id,
-                WorkflowNodeExecutionModel.workflow_id == WorkflowAgentNodeBinding.workflow_id,
-                WorkflowNodeExecutionModel.node_id == WorkflowAgentNodeBinding.node_id,
             )
         )
         stmt = self._apply_workflow_node_filters(stmt, params=params, workflow_app=workflow_app)
@@ -443,18 +448,16 @@ class AgentObservabilityService:
                 and_(
                     WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
                     WorkflowAgentNodeBinding.agent_id == agent_id,
-                    WorkflowAgentNodeBinding.app_id == WorkflowRun.app_id,
-                    WorkflowAgentNodeBinding.workflow_id == WorkflowRun.workflow_id,
-                    WorkflowAgentNodeBinding.workflow_version == WorkflowRun.version,
+                    self._workflow_node_binding_condition(),
                 ),
             )
-            .join(workflow_app, workflow_app.id == WorkflowAgentNodeBinding.app_id)
+            .join(
+                workflow_app,
+                and_(workflow_app.id == WorkflowAgentNodeBinding.app_id, workflow_app.tenant_id == app.tenant_id),
+            )
             .where(
                 WorkflowNodeExecutionModel.id == conversation_id,
                 WorkflowNodeExecutionModel.tenant_id == app.tenant_id,
-                WorkflowNodeExecutionModel.app_id == WorkflowAgentNodeBinding.app_id,
-                WorkflowNodeExecutionModel.workflow_id == WorkflowAgentNodeBinding.workflow_id,
-                WorkflowNodeExecutionModel.node_id == WorkflowAgentNodeBinding.node_id,
             )
         )
         stmt = self._apply_workflow_node_filters(stmt, params=params, workflow_app=workflow_app)
@@ -465,6 +468,65 @@ class AgentObservabilityService:
             ).all()
         )
         return [self.serialize_workflow_node_message(execution) for execution in executions]
+
+    def _workflow_node_binding_condition(self, *, statistics: bool = False) -> sa.ColumnElement[bool]:
+        """Resolve source ownership independently of a Tool's outer lifecycle run."""
+        node = aliased(WorkflowNodeExecutionModel, name="wne") if statistics else WorkflowNodeExecutionModel
+        binding = aliased(WorkflowAgentNodeBinding, name="wanb") if statistics else WorkflowAgentNodeBinding
+        run = aliased(WorkflowRun, name="wr") if statistics else WorkflowRun
+        document = func.nullif(node.process_data, "")
+        if self._session.get_bind().dialect.name == "sqlite":
+            binding_id = func.json_extract(document, f"$.{WORKFLOW_AGENT_BINDING_ID_KEY}")
+        else:
+            binding_id = sa.cast(document, sa.JSON)[WORKFLOW_AGENT_BINDING_ID_KEY].as_string()
+
+        node_table = "wne" if statistics else WorkflowNodeExecutionModel.__tablename__
+        source_version = (
+            select(Workflow.version)
+            .where(
+                Workflow.id == sa.literal_column(f"{node_table}.workflow_id"),
+                Workflow.app_id == sa.literal_column(f"{node_table}.app_id"),
+                Workflow.tenant_id == sa.literal_column(f"{node_table}.tenant_id"),
+            )
+            .scalar_subquery()
+        )
+        legacy_binding = aliased(WorkflowAgentNodeBinding, name="legacy_binding")
+        unambiguous_version = (
+            select(func.min(legacy_binding.workflow_version))
+            .where(
+                legacy_binding.tenant_id == sa.literal_column(f"{node_table}.tenant_id"),
+                legacy_binding.app_id == sa.literal_column(f"{node_table}.app_id"),
+                legacy_binding.workflow_id == sa.literal_column(f"{node_table}.workflow_id"),
+                legacy_binding.node_id == sa.literal_column(f"{node_table}.node_id"),
+            )
+            .having(func.count() == 1)
+            .scalar_subquery()
+        )
+        is_tool = node.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+        # Old Tool rows may outlive their source Workflow. A sole source binding
+        # is still unambiguous; never choose among versions using the caller run.
+        legacy_version = sa.case((is_tool, func.coalesce(source_version, unambiguous_version)), else_=run.version)
+        return and_(
+            node.tenant_id == run.tenant_id,
+            binding.tenant_id == node.tenant_id,
+            binding.app_id == node.app_id,
+            binding.workflow_id == node.workflow_id,
+            binding.node_id == node.node_id,
+            or_(is_tool, and_(node.app_id == run.app_id, node.workflow_id == run.workflow_id)),
+            or_(
+                sa.cast(binding.id, sa.String) == binding_id,
+                and_(binding_id.is_(None), binding.workflow_version == legacy_version),
+            ),
+        )
+
+    def _statistics_workflow_node_binding_join_sql(self) -> str:
+        # Reuse the log/detail owner predicate in both raw-SQL statistics queries.
+        return str(
+            self._workflow_node_binding_condition(statistics=True).compile(
+                dialect=self._session.get_bind().dialect,
+                compile_kwargs={"literal_binds": True},
+            )
+        )
 
     def _list_workflow_sources(self, *, app: App, agent_id: str) -> list[dict[str, Any]]:
         workflow_app = aliased(App)
@@ -947,6 +1009,7 @@ WHERE
             ("agent_log", "agent_backend", "usage", "completion_tokens"), "BIGINT"
         )
         binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
+        binding_join = self._statistics_workflow_node_binding_join_sql()
         run_date_filters = ""
         args: dict[str, Any] = {
             "tz": params.timezone,
@@ -981,17 +1044,14 @@ WHERE
         COALESCE(SUM(COALESCE(wne.elapsed_time, 0)), 0) AS latency,
         COALESCE(SUM(COALESCE({completion_tokens}, 0)), 0) AS answer_tokens
     FROM workflow_runs wr
-    JOIN workflow_agent_node_bindings wanb
-        ON wanb.tenant_id = :tenant_id
-        AND wanb.agent_id = :agent_id
-        AND wanb.app_id = wr.app_id
-        AND wanb.workflow_id = wr.workflow_id
-        AND wanb.workflow_version = wr.version
-        {binding_filters}
     JOIN workflow_node_executions wne
         ON wne.workflow_run_id = wr.id
-        AND wne.node_id = wanb.node_id
-    WHERE wr.type != :chat_workflow_type{run_date_filters}
+    JOIN workflow_agent_node_bindings wanb
+        ON {binding_join}
+        AND wanb.agent_id = :agent_id
+        {binding_filters}
+    JOIN apps source_app ON source_app.id = wanb.app_id AND source_app.tenant_id = wr.tenant_id
+    WHERE wr.tenant_id = :tenant_id AND wr.type != :chat_workflow_type{run_date_filters}
     GROUP BY wr.id, wr.created_by_role, wr.created_by, wr.created_at
 )
 SELECT
@@ -1085,24 +1145,23 @@ WHERE
             workflow_binding_filters.append("wanb.node_id = :node_id")
         return f"AND {' AND '.join(workflow_binding_filters)}" if workflow_binding_filters else ""
 
-    @classmethod
-    def _statistics_workflow_message_scope_sql(cls, source_filter: AgentSourceFilter) -> str:
-        binding_filters = cls._statistics_workflow_binding_filters_sql(source_filter)
+    def _statistics_workflow_message_scope_sql(self, source_filter: AgentSourceFilter) -> str:
+        binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
+        binding_join = self._statistics_workflow_node_binding_join_sql()
         return f"""m.workflow_run_id IS NOT NULL
         AND EXISTS (
             SELECT 1
             FROM workflow_runs wr
-            JOIN workflow_agent_node_bindings wanb
-                ON wanb.tenant_id = :tenant_id
-                AND wanb.agent_id = :agent_id
-                AND wanb.app_id = wr.app_id
-                AND wanb.workflow_id = wr.workflow_id
-                AND wanb.workflow_version = wr.version
-                {binding_filters}
             JOIN workflow_node_executions wne
                 ON wne.workflow_run_id = wr.id
-                AND wne.node_id = wanb.node_id
+            JOIN workflow_agent_node_bindings wanb
+                ON {binding_join}
+                AND wanb.agent_id = :agent_id
+                {binding_filters}
+            JOIN apps source_app ON source_app.id = wanb.app_id AND source_app.tenant_id = wr.tenant_id
             WHERE wr.id = m.workflow_run_id
+                AND wr.app_id = m.app_id
+                AND wr.tenant_id = :tenant_id
                 AND wr.type = :chat_workflow_type
         )"""
 
