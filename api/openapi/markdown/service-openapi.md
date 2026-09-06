@@ -310,7 +310,7 @@ Convert text to speech.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
+| 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, M$A, MP3, Ogg, WAV, or m4a. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/m4a**: binary<br>**audio/m4a: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/m4a**: binary<br> |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
