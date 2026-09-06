@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { OpenAPIHono } from "@hono/zod-openapi";
+import { documentMimeTypesForFilename } from "@knowledge/parsers";
 
 import {
   CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED_MESSAGE,
@@ -1436,25 +1437,8 @@ function slugPart(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/gu, "-").replace(/^-+|-+$/gu, "");
 }
 
-const MIME_TYPES_BY_EXTENSION: Readonly<Record<string, string>> = {
-  csv: "text/csv",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  htm: "text/html",
-  html: "text/html",
-  json: "application/json",
-  markdown: "text/markdown",
-  md: "text/markdown",
-  pdf: "application/pdf",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  txt: "text/plain",
-  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  xml: "application/xml",
-};
-
 export function mimeTypeForFilename(filename: string): string {
-  const extension = /\.([a-zA-Z0-9]+)$/u.exec(filename)?.[1]?.toLowerCase();
-
-  return (extension && MIME_TYPES_BY_EXTENSION[extension]) || "application/octet-stream";
+  return documentMimeTypesForFilename(filename)?.[0] ?? "application/octet-stream";
 }
 
 export interface ImportedPageState {

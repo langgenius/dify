@@ -52,6 +52,7 @@ try {
   const port = await dockerPort(containerId);
   const imageProcessing = await verifySharpRuntime(containerId);
   const pdfRasterizer = await verifyPdfRasterizerRuntime(containerId);
+  const nativeParserWorker = await verifyNativeParserWorkerRuntime(containerId);
   const health = await waitForHealth(`http://127.0.0.1:${port}/health`);
 
   console.log(
@@ -61,6 +62,7 @@ try {
       healthOk: health.ok,
       imageTag,
       imageProcessing,
+      nativeParserWorker,
       ok: true,
       pdfRasterizer,
       port,
@@ -75,6 +77,37 @@ try {
   }
 }
 
+async function verifyNativeParserWorkerRuntime(containerId) {
+  const script = `
+    const { fork } = await import('node:child_process');
+    const child = fork('/workspace/native-parser-worker.mjs', [], {
+      execArgv: ['--max-old-space-size=256'], serialization: 'advanced',
+      stdio: ['ignore', 'ignore', 'ignore', 'ipc'], env: {}
+    });
+    const timer = setTimeout(() => { child.kill('SIGKILL'); process.exitCode = 1; }, 10000);
+    let passed = false;
+    child.on('message', result => {
+      passed = result.ok === true && result.artifact.elements[0]?.text.includes('worker-smoke')
+        && result.artifact.metadata.parserExecution.isolation === 'child-process';
+    });
+    child.on('error', () => { process.exitCode = 1; });
+    child.on('close', (code, signal) => { clearTimeout(timer); if (!passed || code !== 0 || signal !== null) process.exitCode = 1; else console.log('native-worker-ok'); });
+    child.send({ kind: 'native-structured', options: {}, input: {
+      body: new TextEncoder().encode('{"value":"worker-smoke"}'),
+      documentAssetId: '00000000-0000-4000-8000-000000000001', filename: 'smoke.json',
+      mimeType: 'application/json', version: 1
+    } });
+  `;
+  const { stdout } = await execFileAsync(
+    docker,
+    ["exec", containerId, "node", "--input-type=module", "--eval", script],
+    { timeout: 15_000, maxBuffer: 65_536 },
+  );
+  if (!stdout.includes("native-worker-ok"))
+    throw new Error("Native parser worker bundle smoke failed");
+  return { ok: true, isolation: "child-process" };
+}
+
 async function verifyPdfRasterizerRuntime(containerId) {
   const [
     { stderr, stdout },
@@ -82,6 +115,7 @@ async function verifyPdfRasterizerRuntime(containerId) {
     materializationConcurrencyResult,
     fallbackConcurrencyResult,
     fallbackReservedBytesResult,
+    pdfInfoResult,
   ] = await Promise.all([
     execFileAsync(docker, ["exec", containerId, "pdftoppm", "-v"]),
     execFileAsync(docker, [
@@ -108,8 +142,12 @@ async function verifyPdfRasterizerRuntime(containerId) {
       "printenv",
       "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES",
     ]),
+    execFileAsync(docker, ["exec", containerId, "pdfinfo", "-v"]),
   ]);
   const version = `${stdout}${stderr}`.trim();
+  if (!/^pdfinfo version\b/m.test(`${pdfInfoResult.stdout}${pdfInfoResult.stderr}`)) {
+    throw new Error("Poppler PDF safety inspector is unavailable in the API image");
+  }
   const maxConcurrency = Number(concurrencyResult.stdout.trim());
   const materializationMaxConcurrency = Number(materializationConcurrencyResult.stdout.trim());
   const fallbackMaxConcurrency = Number(fallbackConcurrencyResult.stdout.trim());
@@ -157,6 +195,20 @@ async function verifySharpRuntime(containerId) {
     if (data.byteLength < 1 || info.format !== "png" || info.width !== 2 || info.height !== 1) {
       throw new Error("sharp native runtime did not produce the expected PNG");
     }
+    const { fork } = await import('node:child_process');
+    const isolated = await new Promise((resolve, reject) => {
+      const child = fork('/workspace/image-variant-worker.mjs', [], {
+        execArgv: ['--max-old-space-size=128'], serialization: 'advanced',
+        stdio: ['ignore', 'ignore', 'ignore', 'ipc'], env: { VIPS_CONCURRENCY: '1' }
+      });
+      let result;
+      const timer = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('Image worker deadline')); }, 10000);
+      child.on('message', message => { result = message; });
+      child.on('error', reject);
+      child.on('close', code => { clearTimeout(timer); if (code !== 0 || result?.ok !== true) reject(new Error('Image worker failed')); else resolve(result); });
+      child.send({ options: { analysisMaxDimension: 2048 }, input: { body: data, contentType: 'image/png', elementId: 'smoke' } });
+    });
+    if (isolated.variants.length !== 2 || !isolated.variants.some(v => v.name === 'analysis')) throw new Error('Missing analysis variant');
     console.log(JSON.stringify({
       format: info.format,
       height: info.height,

@@ -76,6 +76,8 @@ export function createUnderstandingDocumentMultimodalEnrichmentProvider({
 
   return {
     enrich: async (input) => {
+      // Metadata/OCR already present remains usable, but never forward a rejected original to a VLM.
+      if (input.item.assetRef?.analysisUnavailable !== undefined) return {};
       const task = understandingTaskForItem(input.item);
 
       if (!task) {

@@ -2,8 +2,8 @@ import {
   type DocumentImageVariantGenerator,
   type DocumentPdfRasterizer,
   createPopplerPdfRasterizer,
-  createSharpImageThumbnailVariantGenerator,
 } from "@knowledge/api";
+import { createIsolatedImageVariantGenerator } from "./isolated-image-variant-generator";
 
 export interface ApiMultimodalEnv {
   readonly DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE?:
@@ -149,7 +149,14 @@ function imageThumbnailOptions(
   }
 
   return {
-    documentMultimodalImageVariantGenerator: createSharpImageThumbnailVariantGenerator({
+    documentMultimodalImageVariantGenerator: createIsolatedImageVariantGenerator({
+      analysisMaxDimension: Math.max(
+        2048,
+        positiveIntegerEnv(
+          env.KNOWLEDGE_IMAGE_THUMBNAIL_MAX_DIMENSION ?? "320",
+          "KNOWLEDGE_IMAGE_THUMBNAIL_MAX_DIMENSION",
+        ),
+      ),
       ...(env.KNOWLEDGE_IMAGE_THUMBNAIL_MAX_DIMENSION !== undefined
         ? {
             maxDimension: positiveIntegerEnv(

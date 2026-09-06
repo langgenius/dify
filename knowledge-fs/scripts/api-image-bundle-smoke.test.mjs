@@ -23,6 +23,7 @@ test("isolated API bundle smoke starts the container and checks compute health",
   assert.match(smokeScript, /difyDependencyConnected/);
   assert.match(smokeScript, /verifyPdfRasterizerRuntime/);
   assert.match(smokeScript, /pdftoppm/);
+  assert.match(smokeScript, /"pdfinfo", "-v"/);
   assert.match(smokeScript, /KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY/);
   assert.match(smokeScript, /KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY/);
   assert.match(smokeScript, /materializationMaxConcurrency !== 2/);
@@ -30,6 +31,9 @@ test("isolated API bundle smoke starts the container and checks compute health",
   assert.match(smokeScript, /fallbackMaxReservedBytes !== 31457280/);
   assert.match(smokeScript, /maxConcurrency !== 2/);
   assert.match(smokeScript, /verifySharpRuntime/);
+  assert.match(smokeScript, /verifyNativeParserWorkerRuntime/);
+  assert.match(smokeScript, /native-parser-worker\.mjs/);
+  assert.match(smokeScript, /image-variant-worker\.mjs/);
   assert.match(smokeScript, /await import\("sharp"\)/);
   assert.match(smokeScript, /sharp\.versions\.vips/);
   assert.match(smokeScript, /imageProcessing/);
@@ -41,11 +45,25 @@ test("isolated API bundle smoke starts the container and checks compute health",
 test("production API image carries and executes the target platform sharp runtime", () => {
   assert.equal(apiPackageJson.dependencies.sharp, "^0.35.3");
   assert.match(apiPackageJson.scripts["build:prod"], /--external:sharp/);
+  assert.match(apiPackageJson.scripts["build:prod"], /src\/native-parser-worker\.ts/);
+  assert.match(apiPackageJson.scripts["build:prod"], /src\/image-variant-worker\.ts/);
+  assert.match(
+    apiDockerfile,
+    /COPY --from=builder .*native-parser-worker\.mjs \.\/native-parser-worker\.mjs/,
+  );
+  assert.match(
+    apiDockerfile,
+    /COPY --from=builder .*image-variant-worker\.mjs \.\/image-variant-worker\.mjs/,
+  );
   assert.match(apiDockerfile, /realpath apps\/api\/node_modules\/sharp/);
   assert.match(apiDockerfile, /cp -LR/);
   assert.match(apiDockerfile, /COPY --from=builder \/runtime\/node_modules \.\/node_modules/);
   assert.match(apiDockerfile, /await import\('sharp'\)/);
   assert.match(apiDockerfile, /sharp native runtime smoke failed/);
+});
+
+test("native worker smoke requires a clean process exit as well as a response", () => {
+  assert.match(smokeScript, /!passed \|\| code !== 0 \|\| signal !== null/);
 });
 
 test("production API image carries and executes the Poppler PDF rasterizer", () => {
@@ -65,4 +83,6 @@ test("production API image carries and executes the Poppler PDF rasterizer", () 
   assert.match(apiDockerfile, /KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES=31457280/);
   assert.match(apiDockerfile, /command -v pdftoppm/);
   assert.match(apiDockerfile, /pdftoppm -v/);
+  assert.match(apiDockerfile, /command -v pdfinfo/);
+  assert.match(apiDockerfile, /pdfinfo -v/);
 });

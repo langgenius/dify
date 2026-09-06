@@ -18,6 +18,12 @@ import {
   buildDocumentOutlineKnowledgePath,
   buildDocumentSectionKnowledgePaths,
 } from "./document-knowledge-paths";
+import {
+  type DocumentMediaCapabilityResolver,
+  createDocumentMediaExecutionPlan,
+  documentParserHints,
+  withDocumentMediaExecutionPlan,
+} from "./document-media-execution-plan";
 import { finalizeDocumentMultimodalArtifact } from "./document-multimodal-artifact";
 import { extractDocumentMultimodalAssets } from "./document-multimodal-asset-extractor";
 import type { DocumentRemoteAssetFetcher } from "./document-multimodal-asset-extractor";
@@ -34,6 +40,7 @@ import type { DocumentOutlineRepository } from "./document-outline-repository";
 import type { DocumentOutlineSummaryEnhancer } from "./document-outline-summary-enhancer";
 import {
   type DocumentPdfRasterizer,
+  DocumentPdfRenderError,
   rasterizeDocumentPdfMultimodalAssets,
 } from "./document-pdf-rasterizer";
 import { sha256Hex } from "./document-upload-utils";
@@ -60,6 +67,7 @@ export interface CompileDocumentArtifactInput {
   readonly publicationGenerationId?: string | undefined;
   readonly tenantId: string;
   readonly traceId: string;
+  readonly signal?: AbortSignal | undefined;
 }
 
 export interface CompileDocumentArtifactDeps {
@@ -89,6 +97,8 @@ export interface CompileDocumentArtifactDeps {
   readonly synchronousUploadReindexer: IncrementalReindexer | null;
   readonly traces: TraceRecorder;
   readonly visualEmbeddingModel?: string | undefined;
+  readonly profileImageExtractionEnabled?: boolean | undefined;
+  readonly resolveDocumentMediaCapabilities?: DocumentMediaCapabilityResolver | undefined;
 }
 
 export async function compileDocumentArtifact(
@@ -103,6 +113,7 @@ export async function compileDocumentArtifact(
     publicationGenerationId: requestedPublicationGenerationId,
     tenantId,
     traceId,
+    signal,
   } = input;
   const {
     artifacts,
@@ -131,6 +142,8 @@ export async function compileDocumentArtifact(
     synchronousUploadReindexer,
     traces,
     visualEmbeddingModel,
+    profileImageExtractionEnabled,
+    resolveDocumentMediaCapabilities,
   } = deps;
   const publicationGenerationId =
     requestedPublicationGenerationId === undefined
@@ -149,58 +162,115 @@ export async function compileDocumentArtifact(
         }
       : null;
   let stagedProjectionIds: readonly string[] = [];
+  signal?.throwIfAborted();
+  const mediaCapabilities = await resolveDocumentMediaCapabilities?.({
+    knowledgeSpaceId,
+    tenantId,
+    signal,
+  });
+  const mediaPlan = createDocumentMediaExecutionPlan({
+    profileImageExtractionEnabled:
+      mediaCapabilities?.imageExtractionEnabled ?? profileImageExtractionEnabled,
+    hasPdfRasterizer: Boolean(documentPdfRasterizer),
+    hasImageVariantGenerator: Boolean(documentMultimodalImageVariantGenerator),
+    visualEmbeddingEnabled:
+      mediaCapabilities?.visualEmbeddingEnabled ?? Boolean(visualEmbeddingModel),
+  });
 
-  const artifact = await traceAsync(traces, traceId, "ingestion.parser_parse", () =>
-    documentParser.parse({
-      body,
-      documentAssetId: asset.id,
-      filename: asset.filename,
-      mimeType: asset.mimeType,
-      version: asset.version,
-    }),
-  );
-  const rasterizedArtifact = await traceAsync(traces, traceId, "ingestion.pdf_rasterize", () =>
-    rasterizeDocumentPdfMultimodalAssets({
-      artifact,
-      documentBody: body,
-      documentMimeType: asset.mimeType,
-      knowledgeSpaceId,
-      ...(documentMultimodalMaxPdfRasterizedAssets
-        ? { maxRasterizedAssets: documentMultimodalMaxPdfRasterizedAssets }
-        : {}),
-      objectStorage,
-      ...(documentPdfRasterizer ? { rasterizer: documentPdfRasterizer } : {}),
-      tenantId,
-    }),
+  const externalPdfImages =
+    Boolean(documentPdfRasterizer) &&
+    asset.mimeType.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf";
+  const parse = (imagesHandledExternally: boolean) =>
+    traceAsync(traces, traceId, "ingestion.parser_parse", () =>
+      documentParser.parse({
+        body,
+        documentAssetId: asset.id,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        parserHints: documentParserHints({
+          assetMetadata: asset.metadata,
+          imagesHandledExternally,
+          requiresImages: mediaPlan.requestParserImages,
+        }),
+        ...(signal ? { signal } : {}),
+        version: asset.version,
+      }),
+    );
+  const artifact = await parse(externalPdfImages);
+  const rasterizedArtifact = await traceAsync(
+    traces,
+    traceId,
+    "ingestion.pdf_rasterize",
+    async () => {
+      if (!mediaPlan.materializeImages) return { artifact };
+      try {
+        const result = await rasterizeDocumentPdfMultimodalAssets({
+          artifact,
+          documentBody: body,
+          documentMimeType: asset.mimeType,
+          knowledgeSpaceId,
+          ...(documentMultimodalMaxPdfRasterizedAssets
+            ? { maxRasterizedAssets: documentMultimodalMaxPdfRasterizedAssets }
+            : {}),
+          objectStorage,
+          ...(documentPdfRasterizer ? { rasterizer: documentPdfRasterizer } : {}),
+          tenantId,
+          ...(signal ? { signal } : {}),
+        });
+        if (
+          externalPdfImages &&
+          mediaPlan.requestParserImages &&
+          result.rasterizedCount === 0 &&
+          result.unresolvedCount > 0
+        )
+          return { artifact: await parse(false) };
+        return result;
+      } catch (error) {
+        signal?.throwIfAborted();
+        if (
+          !(error instanceof DocumentPdfRenderError) ||
+          !externalPdfImages ||
+          !mediaPlan.requestParserImages
+        )
+          throw error;
+        return { artifact: await parse(false) };
+      }
+    },
   );
   const assetExtractionResult = await traceAsync(
     traces,
     traceId,
     "ingestion.multimodal_assets_extract",
     () =>
-      extractDocumentMultimodalAssets({
-        ...(documentMultimodalLocalAssetAllowlist
-          ? { allowLocalAssetPaths: documentMultimodalLocalAssetAllowlist }
-          : {}),
-        artifact: rasterizedArtifact.artifact,
-        knowledgeSpaceId,
-        ...(documentMultimodalMaxExtractedAssets
-          ? { maxExtractedAssets: documentMultimodalMaxExtractedAssets }
-          : {}),
-        ...(documentMultimodalMaxLocalAssetBytes
-          ? { maxLocalAssetBytes: documentMultimodalMaxLocalAssetBytes }
-          : {}),
-        ...(documentMultimodalImageVariantGenerator
-          ? { imageVariantGenerator: documentMultimodalImageVariantGenerator }
-          : {}),
-        objectStorage,
-        ...(documentMultimodalRemoteAssetFetcher
-          ? { remoteAssetFetcher: documentMultimodalRemoteAssetFetcher }
-          : {}),
-        tenantId,
-      }),
+      mediaPlan.materializeImages
+        ? extractDocumentMultimodalAssets({
+            ...(documentMultimodalLocalAssetAllowlist
+              ? { allowLocalAssetPaths: documentMultimodalLocalAssetAllowlist }
+              : {}),
+            artifact: rasterizedArtifact.artifact,
+            knowledgeSpaceId,
+            ...(documentMultimodalMaxExtractedAssets
+              ? { maxExtractedAssets: documentMultimodalMaxExtractedAssets }
+              : {}),
+            ...(documentMultimodalMaxLocalAssetBytes
+              ? { maxLocalAssetBytes: documentMultimodalMaxLocalAssetBytes }
+              : {}),
+            ...(documentMultimodalImageVariantGenerator
+              ? { imageVariantGenerator: documentMultimodalImageVariantGenerator }
+              : {}),
+            objectStorage,
+            ...(documentMultimodalRemoteAssetFetcher
+              ? { remoteAssetFetcher: documentMultimodalRemoteAssetFetcher }
+              : {}),
+            tenantId,
+            ...(signal ? { signal } : {}),
+          })
+        : Promise.resolve({ artifact: rasterizedArtifact.artifact, extractedCount: 0 }),
   );
-  const materializedArtifact = finalizeDocumentMultimodalArtifact(assetExtractionResult.artifact);
+  signal?.throwIfAborted();
+  const materializedArtifact = finalizeDocumentMultimodalArtifact(
+    withDocumentMediaExecutionPlan(assetExtractionResult.artifact, mediaPlan),
+  );
   const artifactToPersist = ParseArtifactSchema.parse({
     ...materializedArtifact,
     metadata: {
@@ -300,7 +370,11 @@ export async function compileDocumentArtifact(
           projectionVersion: asset.version,
           ...(publicationGenerationId !== undefined ? { publicationGenerationId } : {}),
           tenantId,
-          ...(visualEmbeddingModel ? { visualModel: visualEmbeddingModel } : {}),
+          ...(visualEmbeddingModel && mediaPlan.visualEmbedding
+            ? { visualModel: visualEmbeddingModel }
+            : mediaCapabilities || profileImageExtractionEnabled === false
+              ? { skipVisual: true as const }
+              : {}),
         }),
       );
       if (stagedProjectionPublication && reindexResult.status === "rebuilt") {

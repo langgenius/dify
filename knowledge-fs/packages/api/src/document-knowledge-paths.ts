@@ -144,6 +144,9 @@ export function buildDocumentMultimodalAssetKnowledgePaths({
         }),
         knowledgeSpaceId: asset.knowledgeSpaceId,
         metadata: {
+          ...(item.assetRef?.analysisUnavailable
+            ? { analysisUnavailable: { ...item.assetRef.analysisUnavailable } }
+            : {}),
           ...(item.assetRef?.contentType ? { assetContentType: item.assetRef.contentType } : {}),
           ...(item.assetRef?.objectKey ? { objectKey: item.assetRef.objectKey } : {}),
           ...(item.assetRef?.sha256 ? { sha256: item.assetRef.sha256 } : {}),
@@ -398,6 +401,9 @@ function buildDocumentMultimodalItemResourceKnowledgePath({
     }),
     knowledgeSpaceId: asset.knowledgeSpaceId,
     metadata: {
+      ...(item.assetRef?.analysisUnavailable
+        ? { analysisUnavailable: { ...item.assetRef.analysisUnavailable } }
+        : {}),
       ...(item.assetRef?.contentType ? { assetContentType: item.assetRef.contentType } : {}),
       ...(item.assetRef?.objectKey ? { objectKey: item.assetRef.objectKey } : {}),
       ...(item.assetRef?.sha256 ? { sha256: item.assetRef.sha256 } : {}),

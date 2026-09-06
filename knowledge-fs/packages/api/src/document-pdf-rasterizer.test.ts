@@ -32,6 +32,11 @@ interface FakePopplerCommand {
 
 async function createFakePopplerCommand(
   mode: "failure" | "success" | "timeout" = "success",
+  options: {
+    readonly pdfInfoOutput?: string;
+    readonly pageSizePoints?: { readonly height: number; readonly width: number };
+    readonly renderedSize?: { readonly height: number; readonly width: number };
+  } = {},
 ): Promise<FakePopplerCommand> {
   const root = await mkdtemp(join(tmpdir(), "knowledge-fs-fake-poppler-"));
   const command = join(root, "pdftoppm.cjs");
@@ -43,8 +48,8 @@ async function createFakePopplerCommand(
     create: {
       background: { alpha: 1, b: 255, g: 127, r: 63 },
       channels: 4,
-      height: 80,
-      width: 100,
+      height: options.renderedSize?.height ?? 80,
+      width: options.renderedSize?.width ?? 100,
     },
   })
     .png()
@@ -57,7 +62,12 @@ if (args.includes("-box")) {
   fs.appendFileSync(${JSON.stringify(pdfInfoInvocationLog)}, JSON.stringify(args) + "\\n");
   fs.appendFileSync(${JSON.stringify(workDirLog)}, path.dirname(args.at(-1)) + "\\n");
   const pageNumber = args[args.indexOf("-f") + 1];
-  process.stdout.write("Page " + pageNumber + " size: 612 x 792 pts\\n");
+  if (${options.pdfInfoOutput !== undefined}) {
+    process.stdout.write(${JSON.stringify(options.pdfInfoOutput ?? "")});
+    process.exit(0);
+  }
+  process.stdout.write("Page " + pageNumber + " size: ${options.pageSizePoints?.width ?? 612} x ${options.pageSizePoints?.height ?? 792} pts\\n");
+  process.stdout.write("Page " + pageNumber + " MediaBox: 0 0 ${options.pageSizePoints?.width ?? 612} ${options.pageSizePoints?.height ?? 792}\\n");
   process.exit(0);
 }
 const inputPath = args.at(-2);
@@ -1198,6 +1208,38 @@ describe("createPopplerPdfRasterizer batch rendering", () => {
     }
   });
 
+  it.each([
+    "Page 1 size: 72 x 72 pts\n",
+    "Page 2 MediaBox: 0 0 72 72\n",
+    "Page 1 MediaBox: 0 0 72\n",
+    "Page 1 MediaBox: 0 0 Infinity 72\n",
+    "Page 1 MediaBox: 0 0 NaN 72\n",
+    "Page 1 MediaBox: 72 0 0 72\n",
+    "Page 1 MediaBox: 0 72 72 0\n",
+    "Page 1 MediaBox: 0 0 1e200 1e200\n",
+    "Page 1 MediaBox: 0 0 72 72\nPage 1 MediaBox: 0 0 144 144\n",
+  ])(
+    "rejects unsafe or ambiguous MediaBox metadata before rendering (%j)",
+    async (pdfInfoOutput) => {
+      const fakePoppler = await createFakePopplerCommand("success", { pdfInfoOutput });
+
+      try {
+        const rasterizer = createPopplerPdfRasterizer({
+          command: fakePoppler.command,
+          pdfInfoCommand: fakePoppler.pdfInfoCommand,
+        });
+
+        await expect(
+          rasterizer.render({ documentBody, elementId: "unsafe-page", pageNumber: 1 }),
+        ).rejects.toThrow("could not determine MediaBox size");
+        expect(await fakePoppler.readInvocations()).toHaveLength(0);
+        await expectTemporaryDirectoriesRemoved(await fakePoppler.readWorkDirs());
+      } finally {
+        await fakePoppler.cleanup();
+      }
+    },
+  );
+
   it("caches page sizes across batches in one document session and removes its work directory", async () => {
     const fakePoppler = await createFakePopplerCommand();
 
@@ -1565,6 +1607,104 @@ describe("createPopplerPdfRasterizer batch rendering", () => {
           args.includes("-scale-to") ? args[args.indexOf("-scale-to") + 1] : undefined,
         ),
       ).toEqual(["1000", "333"]);
+    } finally {
+      await fakePoppler.cleanup();
+    }
+  });
+
+  it.each([
+    {
+      height: 5_102.36,
+      maxPageDimension: 4_096,
+      maxPagePixels: 1_000_000,
+      scaleTo: 1_499,
+      width: 2_267.72,
+    },
+    { height: 792, maxPageDimension: 4_096, maxPagePixels: 100_000, scaleTo: 359, width: 612 },
+    { height: 100, maxPageDimension: 4_096, maxPagePixels: 10_000, scaleTo: 100, width: 100.1 },
+    { height: 100_000, maxPageDimension: 20_000, maxPagePixels: 10_000, scaleTo: 10_000, width: 1 },
+  ])(
+    "caps Poppler allocation before rendering a $width x $height point page to $maxPagePixels pixels",
+    async ({ height, maxPageDimension, maxPagePixels, scaleTo, width }) => {
+      const fakePoppler = await createFakePopplerCommand("success", {
+        pageSizePoints: { height, width },
+      });
+
+      try {
+        const rasterizer = createPopplerPdfRasterizer({
+          command: fakePoppler.command,
+          maxPageDimension,
+          maxPagePixels,
+          pdfInfoCommand: fakePoppler.pdfInfoCommand,
+          thumbnailDpi: 144,
+        });
+
+        await rasterizer.render({ documentBody, elementId: "page-1", pageNumber: 1 });
+        const [args] = await fakePoppler.readInvocations();
+        expect(args).toContain("-scale-to");
+        expect(Number(args?.[args.indexOf("-scale-to") + 1])).toBe(scaleTo);
+        const shortEdge = Math.max(
+          1,
+          Math.ceil((scaleTo * Math.min(width, height)) / Math.max(width, height)),
+        );
+        expect(scaleTo * shortEdge).toBeLessThanOrEqual(maxPagePixels);
+        expect(scaleTo).toBeLessThanOrEqual(maxPageDimension);
+      } finally {
+        await fakePoppler.cleanup();
+      }
+    },
+  );
+
+  it("preserves PDF, pixel, and relative crop positions after pixel-budget scaling", async () => {
+    const fakePoppler = await createFakePopplerCommand("success", {
+      pageSizePoints: { height: 800, width: 600 },
+      renderedSize: { height: 240, width: 180 },
+    });
+
+    try {
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        maxPagePixels: 43_200,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+        thumbnailDpi: 144,
+      });
+      const images = await rasterizer.renderBatch?.({
+        documentBody,
+        requests: [
+          {
+            boundingBox: { height: 400, width: 300, x: 60, y: 160 },
+            boundingBoxGeometry: { coordinateSystem: "pdf-point", pageHeight: 800, pageWidth: 600 },
+            elementId: "pdf-points",
+            pageNumber: 1,
+          },
+          {
+            boundingBox: { height: 800, width: 600, x: 120, y: 320 },
+            boundingBoxGeometry: { coordinateSystem: "pixel", pageHeight: 1_600, pageWidth: 1_200 },
+            elementId: "pixels",
+            pageNumber: 1,
+          },
+          {
+            boundingBox: { height: 0.5, width: 0.5, x: 0.1, y: 0.2 },
+            boundingBoxGeometry: { coordinateSystem: "relative" },
+            elementId: "relative",
+            pageNumber: 1,
+          },
+        ],
+      });
+
+      const [args] = await fakePoppler.readInvocations();
+      expect(args?.[args.indexOf("-scale-to") + 1]).toBe("239");
+      expect(images).toHaveLength(3);
+      const sharp = (await import("sharp")).default;
+      for (const image of images ?? []) {
+        expect(image?.metadata).toMatchObject({
+          crop: { normalizedBoundingBox: { height: 120, width: 90, x: 18, y: 48 } },
+        });
+        await expect(sharp(image?.body).metadata()).resolves.toMatchObject({
+          height: 120,
+          width: 90,
+        });
+      }
     } finally {
       await fakePoppler.cleanup();
     }

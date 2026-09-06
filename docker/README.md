@@ -69,7 +69,13 @@ defaults.
 The optional `knowledge-fs-unstructured` profile starts one isolated parser service named
 `knowledge_fs_unstructured` for every KnowledgeFS remote format. Its tracked
 `knowledge-fs-unstructured-service.defaults` additionally enables bounded page parallelism for
-PDFs; an optional copied `knowledge-fs-unstructured.env` can override those service values. The
+PDFs and a 25-million-pixel pre-allocation limit per page at the pinned 350 DPI; an optional copied
+`knowledge-fs-unstructured.env` can override those service values. Do not raise the DPI or pixel
+limit, or disable the guard: the KnowledgeFS client estimates page rasters at 350 DPI and rejects
+oversized or unverifiable page geometry before sending it to the parser. Oversized pages need
+smaller page dimensions or tiling before import; reducing compressed file size alone does not
+help. Existing installations need the new KnowledgeFS image and a recreated parser service to
+activate both guards. The
 existing `unstructured` profile remains unchanged for Dify's legacy ETL, so KnowledgeFS tuning
 cannot alter its PDF or Office parsing behavior. The copied
 `knowledge-fs.env` pairs every PDF and structurally/byte-heavy remote document with the longer

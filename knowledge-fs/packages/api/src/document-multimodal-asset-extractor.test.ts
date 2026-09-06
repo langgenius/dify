@@ -58,8 +58,16 @@ describe("extractDocumentMultimodalAssets", () => {
 
     expect(result.extractedCount).toBe(2);
     expect(fetchCalls).toEqual([
-      { maxBytes: 1024, url: "https://cdn.example.test/markdown.png" },
-      { maxBytes: 1024, url: "https://cdn.example.test/office.png" },
+      {
+        maxBytes: 1024,
+        signal: expect.any(AbortSignal),
+        url: "https://cdn.example.test/markdown.png",
+      },
+      {
+        maxBytes: 1024,
+        signal: expect.any(AbortSignal),
+        url: "https://cdn.example.test/office.png",
+      },
     ]);
     for (const element of result.artifact.elements) {
       expect(element.metadata).toMatchObject({
@@ -127,7 +135,7 @@ describe("extractDocumentMultimodalAssets", () => {
     expect(remoteFetches).toEqual([
       {
         maxBytes: 10 * 1024 * 1024,
-        signal: controller.signal,
+        signal: expect.any(AbortSignal),
         url: "https://cdn.example.test/missing.png",
       },
     ]);
@@ -227,7 +235,10 @@ describe("extractDocumentMultimodalAssets", () => {
     expect(result).toMatchObject({ extractedCount: 1, skippedForCapCount: 1 });
     expect(fetchCalls).toEqual([]);
     expect(result.artifact.elements[1]?.metadata).toEqual({
-      assetRef: { uri: "https://cdn.example.test/second.png" },
+      assetRef: {
+        uri: "https://cdn.example.test/second.png",
+        analysisUnavailable: { reason: "asset-count-budget" },
+      },
     });
     expect(result.artifact.elements[2]?.metadata).toEqual({
       assetRef: { uri: "https://user:secret@cdn.example.test/private.png" },
@@ -546,7 +557,10 @@ describe("extractDocumentMultimodalAssets", () => {
     });
     // The over-cap image is left inline (its data URI preserved), not extracted.
     const figure2 = result.artifact.elements.find((element) => element.id === "figure-2");
-    expect(figure2?.metadata.assetRef).toEqual({ uri: "data:image/png;base64,BQYHCA==" });
+    expect(figure2?.metadata.assetRef).toEqual({
+      uri: "data:image/png;base64,BQYHCA==",
+      analysisUnavailable: { reason: "asset-count-budget" },
+    });
     // Exactly one object was written (the extracted figure-1), so no orphan from figure-2.
     const figure1 = result.artifact.elements.find((element) => element.id === "figure-1");
     const objectKey = (figure1?.metadata.assetRef as { objectKey?: string } | undefined)?.objectKey;

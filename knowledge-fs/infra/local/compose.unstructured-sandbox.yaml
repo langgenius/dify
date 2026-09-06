@@ -1,0 +1,21 @@
+# Explicit local opt-in; retains the same unstructured hostname and API URL.
+services:
+  unstructured:
+    build:
+      context: ../../services/unstructured-sandbox
+      dockerfile: Dockerfile
+    image: knowledge-fs-unstructured-sandbox:local
+    init: true
+    read_only: true
+    pids_limit: 192
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=1073741824,mode=1777
+    environment:
+      UNSTRUCTURED_PARALLEL_MODE_ENABLED: "false"
+    deploy:
+      resources:
+        limits:
+          pids: 192

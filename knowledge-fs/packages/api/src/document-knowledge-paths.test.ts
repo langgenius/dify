@@ -107,6 +107,7 @@ describe("document KnowledgeFS paths", () => {
     ).toEqual([
       expect.objectContaining({
         metadata: expect.objectContaining({
+          analysisUnavailable: { reason: "variant-pixel-budget" },
           assetContentType: "image/png",
           contentKind: "document-multimodal-asset",
           filename: "image-架构图--018f0d60.json",
@@ -400,6 +401,7 @@ function documentMultimodalManifest(
     items: [
       {
         assetRef: {
+          analysisUnavailable: { reason: "variant-pixel-budget" },
           contentType: "image/png",
           objectKey:
             "tenant-dev/spaces/ab96d0c6-5853-4979-ba1a-98128e54fa7d/documents/6c07b8ca-dd64-4ccd-a6e9-91f816795412/assets/figure-1.png",

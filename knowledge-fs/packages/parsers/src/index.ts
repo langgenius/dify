@@ -16,7 +16,37 @@ import {
   ParseElementSchema,
 } from "@knowledge/core";
 
+import { resolveDocumentFormat } from "./document-format-registry";
+import { OfficeArchiveAdmissionError, assertOfficeArchiveSafe } from "./office-parser-preflight";
+import { createArchiveMediaReportCollector } from "./parse-coverage";
+export {
+  DOCUMENT_UPLOAD_MIME_TYPES_BY_EXTENSION,
+  documentExtension,
+  documentMimeTypesForFilename,
+  resolveDocumentFormat,
+} from "./document-format-registry";
+import {
+  ParserResourceLimitError,
+  assertParserResourceBudget,
+  parserResourceLimits,
+} from "./parser-resource-budget";
+import {
+  documentJsonRootType,
+  isDocumentRecord,
+  parseDocumentJson,
+  stringifyDocumentJson,
+} from "./structured-json";
+import { assertXmlStructureBudget, iterateDocumentLines } from "./structured-stream-admission";
+import { decodeDocumentText, propertiesElements, vttElements } from "./text-document-contracts";
+import { createUnstructuredGlyphIndex } from "./unstructured-glyph-index";
+import {
+  maxUnstructuredSectionDepth,
+  maxUnstructuredSectionPathItems,
+  maxUnstructuredVerticalCandidateComparisons,
+} from "./unstructured-normalization-policy";
 import { createUnstructuredRequestCoordinator } from "./unstructured-request-coordinator";
+import { parseUnstructuredResponsePayload } from "./unstructured-response-budget";
+import { classifyUnstructuredResourceResponse } from "./unstructured-sandbox-response";
 import {
   type UnstructuredWorkloadClassification,
   classifyUnstructuredWorkload,
@@ -203,6 +233,8 @@ export interface NativeParserOptions {
 }
 
 export interface UnstructuredParserClientOptions extends NativeParserOptions {
+  /** Deployment-owned semantic identity (pinned image + extraction policy), not transport limits. */
+  readonly backendRevision?: string;
   readonly apiKey?: string;
   readonly defaultLanguage?: string;
   readonly endpoint: string;
@@ -220,8 +252,14 @@ export interface UnstructuredParserClientOptions extends NativeParserOptions {
   /** @deprecated Compatibility alias for `heavyRequestTimeoutMs`. */
   readonly pdfRequestTimeoutMs?: number;
   readonly requestTimeoutMs?: number;
+  /** Platform-specific resource checks, inside admission and before any remote work starts. */
+  readonly requestPreflight?: UnstructuredRequestPreflight;
   readonly retryDelayMs?: number;
   readonly sleep?: (ms: number) => Promise<void>;
+}
+
+export interface UnstructuredRequestPreflight {
+  check(input: ParseDocumentInput): Promise<void>;
 }
 
 export interface StructuredDataParserOptions extends NativeParserOptions {
@@ -280,20 +318,6 @@ const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
 const defaultNow = () => new Date().toISOString();
 const defaultGenerateId = () => crypto.randomUUID();
-const unstructuredDocumentExtensions = new Set([
-  "doc",
-  "docx",
-  "eml",
-  "epub",
-  "msg",
-  "odt",
-  "pdf",
-  "ppt",
-  "pptx",
-  "rtf",
-  "xls",
-  "xlsx",
-]);
 
 const UnstructuredElementSchema = z.object({
   element_id: z.string().min(1).max(512).optional(),
@@ -332,7 +356,7 @@ function parserPolicyFingerprintHash(context: string): string {
 export function createNativeMarkdownParser(options: NativeParserOptions = {}): ParserAdapter {
   const policyFingerprint = (input: ParseDocumentInput): string => {
     const parserVersion =
-      options.parserVersion ?? (isMdxInput(input) ? "native-mdx@2" : "native-markdown@2");
+      options.parserVersion ?? (isMdxInput(input) ? "native-mdx@4" : "native-markdown@4");
     return nativeParserPolicyFingerprint(input, "native-markdown", parserVersion, options);
   };
 
@@ -340,14 +364,22 @@ export function createNativeMarkdownParser(options: NativeParserOptions = {}): P
     kind: "native-markdown",
     policyFingerprint,
     parse: async (input) => {
+      input.signal?.throwIfAborted();
       const isMdx = isMdxInput(input);
-      const parserVersion = options.parserVersion ?? (isMdx ? "native-mdx@2" : "native-markdown@2");
+      const parserVersion = options.parserVersion ?? (isMdx ? "native-mdx@4" : "native-markdown@4");
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
-      const text = decodeUtf8(input.body);
-      const tokens = marked.lexer(text, { gfm: true });
-      const elements = markdownTokensToElements(tokens, { preserveHtmlText: isMdx });
+      const { text, encoding } = decodeDocumentText(input.body);
+      const extension = input.filename.trim().toLowerCase().split(".").at(-1);
+      const mimeType = normalizedMimeType(input.mimeType);
+      const elements =
+        extension === "properties" || mimeType === "text/x-java-properties"
+          ? propertiesElements(text, options.maxElements ?? defaultMaxElements)
+          : extension === "vtt" || mimeType === "text/vtt"
+            ? vttElements(text, options.maxElements ?? defaultMaxElements)
+            : markdownTokensToElements(marked.lexer(text, { gfm: true }));
 
       return createParseArtifact({
+        artifactMetadata: { textEncoding: encoding },
         elements,
         input,
         kind: "native-markdown",
@@ -359,15 +391,16 @@ export function createNativeMarkdownParser(options: NativeParserOptions = {}): P
 }
 
 export function createNativeHtmlParser(options: NativeParserOptions = {}): ParserAdapter {
-  const parserVersion = options.parserVersion ?? "native-html@3";
+  const parserVersion = options.parserVersion ?? "native-html@5";
 
   return {
     kind: "native-html",
     policyFingerprint: (input) =>
       nativeParserPolicyFingerprint(input, "native-html", parserVersion, options),
     parse: async (input) => {
+      input.signal?.throwIfAborted();
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
-      const text = decodeUtf8(input.body);
+      const { text, encoding } = decodeDocumentText(input.body);
       const document = parseDocument(text, {
         lowerCaseAttributeNames: true,
         lowerCaseTags: true,
@@ -377,7 +410,7 @@ export function createNativeHtmlParser(options: NativeParserOptions = {}): Parse
       const documentTitle = htmlDocumentTitle(nodes);
 
       return createParseArtifact({
-        ...(documentTitle ? { artifactMetadata: { documentTitle } } : {}),
+        artifactMetadata: { ...(documentTitle ? { documentTitle } : {}), textEncoding: encoding },
         elements,
         input,
         kind: "native-html",
@@ -391,7 +424,7 @@ export function createNativeHtmlParser(options: NativeParserOptions = {}): Parse
 export function createNativeStructuredDataParser(
   options: StructuredDataParserOptions = {},
 ): ParserAdapter {
-  const parserVersion = options.parserVersion ?? "native-structured@2";
+  const parserVersion = options.parserVersion ?? "native-structured@4";
 
   return {
     kind: "native-structured",
@@ -403,17 +436,24 @@ export function createNativeStructuredDataParser(
         }),
       ),
     parse: async (input) => {
+      input.signal?.throwIfAborted();
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
-      const text = decodeUtf8(input.body);
+      const { text, encoding } = decodeDocumentText(input.body);
       const format = structuredDataFormat(input);
 
       if (!format) {
         throw new ProviderUnsupportedFileTypeError("Structured parser unsupported file type");
       }
 
-      const elements = structuredDataElements(format, text, options.maxRows ?? defaultMaxRows);
+      const elements = structuredDataElements(
+        format,
+        text,
+        options.maxRows ?? defaultMaxRows,
+        input.signal,
+      );
 
       return createParseArtifact({
+        artifactMetadata: { textEncoding: encoding },
         elements,
         input,
         kind: "native-structured",
@@ -426,6 +466,7 @@ export function createNativeStructuredDataParser(
 
 export function createUnstructuredParserClient({
   apiKey,
+  backendRevision = "external-unversioned",
   defaultLanguage,
   endpoint,
   fetch: fetchImpl = fetch,
@@ -436,6 +477,7 @@ export function createUnstructuredParserClient({
   maxRetries = defaultMaxRetries,
   pdfMaxConcurrency,
   requestTimeoutMs = defaultRequestTimeoutMs,
+  requestPreflight,
   pdfRequestTimeoutMs,
   retryDelayMs = defaultRetryDelayMs,
   sleep = sleepMs,
@@ -466,7 +508,12 @@ export function createUnstructuredParserClient({
   const requestGate = createAbortAwareConcurrencyGate(maxConcurrency);
   const heavyRequestGate = createAbortAwareConcurrencyGate(effectiveHeavyMaxConcurrency);
   const requestCoordinator = createUnstructuredRequestCoordinator();
-  const parserVersion = options.parserVersion ?? "unstructured@10";
+  const parserVersion = options.parserVersion ?? "unstructured@12";
+  if (!backendRevision.trim() || backendRevision.length > 256) {
+    throw new ProviderInputError(
+      "Unstructured backendRevision must be a non-empty bounded identity",
+    );
+  }
   const maxInputBytes = options.maxInputBytes ?? defaultMaxInputBytes;
   const workloadCache = new WeakMap<
     Uint8Array,
@@ -488,6 +535,7 @@ export function createUnstructuredParserClient({
     return classification;
   };
   const resolveRequestPolicy = (input: ParseDocumentInput): UnstructuredRequestPolicy => ({
+    backendRevision,
     partitionStrategy: unstructuredPartitionStrategy(input),
     providerImageBlockTypes: unstructuredProviderImageBlockTypes(input),
     providerLanguage: unstructuredLanguage(input.parserHints?.language ?? defaultLanguage),
@@ -520,6 +568,7 @@ export function createUnstructuredParserClient({
         );
       }
       const requestPolicy = {
+        backendRevision,
         partitionStrategy,
         providerImageBlockTypes,
         providerLanguage,
@@ -541,6 +590,19 @@ export function createUnstructuredParserClient({
         // durable retry overlap a provider request that survived the client disconnect.
         request: async ({ markTransportStarted, signal: admissionSignal }) => {
           const runTransport = async (): Promise<ParseArtifact> => {
+            // File inspection shares the remote admission slot and single-flight lifetime. Never
+            // mark an operation as remotely started until local checks succeed: a rejected file
+            // has no ambiguous provider outcome and cancellation can still stop inspection.
+            try {
+              await assertOfficeArchiveSafe({ ...input, signal: admissionSignal });
+            } catch (error) {
+              if (error instanceof OfficeArchiveAdmissionError) {
+                throw new ProviderInputError(error.message);
+              }
+              throw error;
+            }
+            await requestPreflight?.check({ ...input, signal: admissionSignal });
+            admissionSignal.throwIfAborted();
             markTransportStarted();
             // This deadline belongs to the transport, not to any one caller. The coordinator waits
             // for it to settle before it reports a caller abort.
@@ -592,10 +654,15 @@ export function createUnstructuredParserClient({
               let payload: unknown;
 
               try {
-                payload = JSON.parse(responseText);
+                payload = parseUnstructuredResponsePayload(responseText, {
+                  maxResponseBytes,
+                  signal: deadline.signal,
+                });
               } catch (error) {
                 throw new ProviderResponseError(
-                  "Unstructured parser returned an invalid response",
+                  error instanceof ParserResourceLimitError
+                    ? "Unstructured parser response exceeds structural resource limits"
+                    : "Unstructured parser returned an invalid response",
                   { cause: error },
                 );
               }
@@ -609,12 +676,21 @@ export function createUnstructuredParserClient({
               const providerElements = unstructuredElementsToElements(
                 normalizeUnstructuredLayout(parsed.data),
               );
-              const elements = appendArchiveMediaFallbackElements(input, providerElements);
+              const mediaReport = createArchiveMediaReportCollector(
+                input.parserHints?.requiresImages,
+              );
+              const elements = appendArchiveMediaFallbackElements(
+                input,
+                providerElements,
+                mediaReport,
+              );
 
               const artifact = await createParseArtifact({
                 artifactHashContext: unstructuredArtifactHashContext(input, requestPolicy),
+                artifactMetadata: { backendRevision, ...mediaReport.metadata() },
                 elements,
-                input,
+                // The shared operation can outlive the first caller's cancellation.
+                input: { ...input, signal: admissionSignal },
                 kind: "unstructured",
                 options,
                 parserVersion,
@@ -628,6 +704,12 @@ export function createUnstructuredParserClient({
                 // another whole-document parse on top of that possible remote ghost request.
                 throw new ProviderTimeoutError(
                   `Unstructured parser request timed out after requestTimeoutMs=${effectiveRequestTimeoutMs}`,
+                  { cause: error },
+                );
+              }
+              if (error instanceof ParserResourceLimitError) {
+                throw new ProviderResponseError(
+                  "Unstructured normalized output exceeds structural resource limits",
                   { cause: error },
                 );
               }
@@ -727,6 +809,7 @@ function normalizedMimeType(value: string): string {
 }
 
 interface UnstructuredRequestPolicy {
+  readonly backendRevision: string;
   readonly partitionStrategy: "auto" | "fast" | "hi_res";
   readonly providerImageBlockTypes: readonly ("Image" | "Table")[];
   readonly providerLanguage?: string | undefined;
@@ -761,13 +844,16 @@ function unstructuredArtifactHashContext(
   const hints = input.parserHints;
 
   return JSON.stringify({
+    backendRevision: request.backendRevision,
     filename: input.filename,
     mimeType: input.mimeType.trim().toLowerCase(),
     parserHints: {
       imagesHandledExternally: hints?.imagesHandledExternally === true,
       language: hints?.language?.trim().toLowerCase() || null,
       layoutComplexity: hints?.layoutComplexity ?? null,
-      requiresImages: hints?.requiresImages === true,
+      // Legacy auto extraction (undefined) and explicit text-only (false) produce different
+      // archive media and must never share a checkpoint or in-flight request identity.
+      requiresImages: hints?.requiresImages ?? null,
       requiresOcr: hints?.requiresOcr === true,
       requiresTables: hints?.requiresTables === true,
     },
@@ -790,10 +876,15 @@ function unstructuredPartitionEndpoint(endpoint: string): string {
 function appendArchiveMediaFallbackElements(
   input: ParseDocumentInput,
   elements: readonly ParseElementInput[],
+  report: ReturnType<typeof createArchiveMediaReportCollector>,
 ): ParseElementInput[] {
   const roots = archiveMediaRoots(input);
 
-  if (!roots || !zipSignatureIsSupported(input.body)) {
+  if (
+    !roots ||
+    !zipSignatureIsSupported(input.body) ||
+    input.parserHints?.requiresImages === false
+  ) {
     return [...elements];
   }
 
@@ -816,6 +907,10 @@ function appendArchiveMediaFallbackElements(
   try {
     const archive = unzipSync(input.body, {
       filter: (file) => {
+        if (/^(?:word|ppt|xl)\/(?:charts|diagrams)\/[^/]+\.xml$/iu.test(file.name)) {
+          report.observe();
+          report.skip(file.name, "office-visual-structure-not-rendered");
+        }
         if (
           officeArchiveMetadataPath(input, file.name) &&
           selectedMetadataCount < defaultMaxArchiveMetadataCount &&
@@ -829,15 +924,27 @@ function appendArchiveMediaFallbackElements(
           return true;
         }
 
-        if (
-          selectedCount >= defaultMaxArchiveImageCount ||
-          file.originalSize < 1 ||
-          file.originalSize > defaultMaxArchiveImageBytes ||
-          selectedBytes + file.originalSize > defaultMaxArchiveImageTotalBytes ||
-          !archivePathIsSafe(file.name) ||
-          !archivePathMatchesRoots(file.name, roots) ||
-          !archiveImageContentType(file.name)
-        ) {
+        const mediaCandidate =
+          archivePathMatchesRoots(file.name, roots) &&
+          !file.name.endsWith("/") &&
+          (roots[0] !== "" ||
+            /\.(?:png|jpe?g|gif|webp|svg|tiff?|bmp|emf|wmf|avif|heic|ico)$/iu.test(file.name));
+        if (!mediaCandidate) return false;
+        report.observe();
+        const reason = !archivePathIsSafe(file.name)
+          ? "unsafe-resource-reference"
+          : !archiveImageContentType(file.name)
+            ? "unsupported-media-format"
+            : file.originalSize < 1
+              ? "empty-media-resource"
+              : selectedCount >= defaultMaxArchiveImageCount
+                ? "media-count-budget"
+                : file.originalSize > defaultMaxArchiveImageBytes ||
+                    selectedBytes + file.originalSize > defaultMaxArchiveImageTotalBytes
+                  ? "media-byte-budget"
+                  : undefined;
+        if (reason) {
+          report.skip(file.name, reason);
           return false;
         }
 
@@ -925,6 +1032,7 @@ function appendArchiveMediaFallbackElements(
   } catch {
     // The authoritative parser response remains usable even when an optional archive-media
     // fallback cannot inspect a malformed or unsupported ZIP container.
+    report.skip("", "archive-media-inspection-failed");
     return [...elements];
   }
 }
@@ -1978,8 +2086,7 @@ function selectParser(
     throw new Error("Parser router maxNativeInputBytes must be at least 1");
   }
 
-  const mimeType = input.mimeType.toLowerCase();
-  const filename = input.filename.toLowerCase();
+  const format = resolveDocumentFormat(input);
   const language = input.parserHints?.language?.trim().toLowerCase();
 
   if (input.parserHints?.requiresOcr) {
@@ -1998,13 +2105,13 @@ function selectParser(
     return { parser: unstructured, reason: "unsupported-native-language" };
   }
 
-  if (unstructuredDocumentExtensions.has(filename.split(".").at(-1) ?? "")) {
+  if (format === "unstructured") {
     return { parser: unstructured, reason: "complex-file-type" };
   }
 
   const structuredFormat = structuredDataFormat(input);
 
-  if (structuredFormat && input.body.byteLength > maxNativeInputBytes) {
+  if (!structured && structuredFormat && input.body.byteLength > maxNativeInputBytes) {
     return { parser: unstructured, reason: "native-size-limit" };
   }
 
@@ -2013,21 +2120,9 @@ function selectParser(
   }
 
   const nativeParser =
-    mimeType === "text/markdown" ||
-    mimeType === "text/mdx" ||
-    mimeType === "text/plain" ||
-    mimeType === "text/vtt" ||
-    mimeType === "text/x-java-properties" ||
-    filename.endsWith(".md") ||
-    filename.endsWith(".markdown") ||
-    filename.endsWith(".mdx") ||
-    filename.endsWith(".properties") ||
-    filename.endsWith(".vtt")
+    format === "markdown" || format === "properties" || format === "vtt"
       ? markdown
-      : mimeType === "text/html" ||
-          mimeType === "application/xhtml+xml" ||
-          filename.endsWith(".html") ||
-          filename.endsWith(".htm")
+      : format === "html"
         ? html
         : null;
 
@@ -2036,7 +2131,9 @@ function selectParser(
   }
 
   if (input.body.byteLength > maxNativeInputBytes) {
-    return { parser: unstructured, reason: "native-size-limit" };
+    throw new ProviderInputError(
+      `Native parser input exceeds maxNativeInputBytes=${maxNativeInputBytes}`,
+    );
   }
 
   return { parser: nativeParser, reason: "native-file-type" };
@@ -2061,8 +2158,20 @@ async function createParseArtifact({
 }): Promise<ParseArtifact> {
   const maxElements = options.maxElements ?? defaultMaxElements;
 
+  input.signal?.throwIfAborted();
+  assertParserResourceBudget(
+    { elements, metadata: artifactMetadata },
+    {
+      maxNodes: parserResourceLimits.maxArtifactNodes,
+      signal: input.signal,
+    },
+  );
+
   if (elements.length > maxElements) {
-    throw new Error(`Parser output exceeds maxElements=${maxElements}`);
+    const message = `Parser output exceeds maxElements=${maxElements}`;
+    throw kind === "unstructured"
+      ? new ProviderResponseError(message)
+      : new ProviderInputError(message);
   }
 
   const id = (options.generateId ?? defaultGenerateId)();
@@ -2099,54 +2208,21 @@ function structuredDataFormat({
   filename,
   mimeType,
 }: Pick<ParseDocumentInput, "filename" | "mimeType">): StructuredDataFormat | null {
-  const normalizedMime = mimeType.toLowerCase();
-  const normalizedFilename = filename.toLowerCase();
-
-  if (normalizedMime === "text/csv" || normalizedFilename.endsWith(".csv")) {
-    return "csv";
-  }
-
-  if (normalizedFilename.endsWith(".jsonl") || normalizedFilename.endsWith(".ndjson")) {
-    return "jsonl";
-  }
-
-  if (normalizedFilename.endsWith(".json")) {
-    return "json";
-  }
-
-  if (normalizedMime === "application/x-ndjson" || normalizedMime === "application/jsonl") {
-    return "jsonl";
-  }
-
-  if (normalizedMime === "application/json" || normalizedMime === "text/json") {
-    return "json";
-  }
-
-  if (
-    normalizedMime === "application/yaml" ||
-    normalizedMime === "text/yaml" ||
-    normalizedMime === "application/x-yaml" ||
-    normalizedFilename.endsWith(".yaml") ||
-    normalizedFilename.endsWith(".yml")
-  ) {
-    return "yaml";
-  }
-
-  if (
-    normalizedMime === "application/xml" ||
-    normalizedMime === "text/xml" ||
-    normalizedFilename.endsWith(".xml")
-  ) {
-    return "xml";
-  }
-
-  return null;
+  const format = resolveDocumentFormat({ filename, mimeType });
+  return format === "csv" ||
+    format === "json" ||
+    format === "jsonl" ||
+    format === "xml" ||
+    format === "yaml"
+    ? format
+    : null;
 }
 
 function structuredDataElements(
   format: StructuredDataFormat,
   text: string,
   maxRows: number,
+  signal?: AbortSignal,
 ): ParseElementInput[] {
   if (!Number.isInteger(maxRows) || maxRows < 1) {
     throw new Error("Structured parser maxRows must be at least 1");
@@ -2154,54 +2230,93 @@ function structuredDataElements(
 
   try {
     if (format === "csv") {
-      return rowsToTableElements(format, parseCsvRows(text, maxRows), maxRows);
+      const { columns, rows } = parseCsvRows(text, maxRows);
+      return rowsToTableElements(format, rows, maxRows, columns);
     }
 
     if (format === "jsonl") {
-      return rowsToTableElements(format, parseJsonLines(text, maxRows), maxRows);
+      const records = parseJsonLines(text, maxRows, signal);
+      if (records.every(isDocumentRecord)) return rowsToTableElements(format, records, maxRows);
+      const lines = records.map((record) => stringifyDocumentJson(record));
+      assertParserResourceBudget(lines);
+      return [
+        {
+          metadata: { format, rowCount: records.length },
+          sectionPath: [],
+          text: lines.join("\n"),
+          type: "code",
+        },
+      ];
     }
 
     if (format === "json") {
-      return structuredValueElements(format, JSON.parse(text), maxRows);
+      return structuredValueElements(format, parseDocumentJson(text), maxRows);
     }
 
     if (format === "yaml") {
       return structuredValueElements(format, parseYaml(text), maxRows);
     }
 
-    return structuredValueElements(format, new XMLParser().parse(text), maxRows);
+    assertXmlStructureBudget(text, { signal });
+    return structuredValueElements(
+      format,
+      new XMLParser({
+        ignoreAttributes: false,
+        parseTagValue: false,
+        parseAttributeValue: false,
+      }).parse(text),
+      maxRows,
+    );
   } catch (error) {
+    signal?.throwIfAborted();
+    if (error instanceof ParserResourceLimitError) throw error;
     if (error instanceof Error && error.message.startsWith("Structured parser")) {
-      throw error;
+      throw new ProviderInputError(error.message, { cause: error });
     }
 
-    throw new Error("Structured parser returned an invalid response");
+    throw new ProviderInputError("Structured parser input is malformed", { cause: error });
   }
 }
 
-function parseCsvRows(text: string, maxRows: number): Record<string, unknown>[] {
+function parseCsvRows(
+  text: string,
+  maxRows: number,
+): { columns: readonly string[]; rows: Record<string, unknown>[] } {
   let rows = 0;
+  let columns: string[] | undefined;
+  const records: Record<string, unknown>[] = [];
 
-  return parseCsv(text, {
-    columns: true,
-    on_record: (record) => {
+  parseCsv(text, {
+    // Decode arrays first: csv-parse's object projection assigns __proto__ instead of defining
+    // it as an own column. Object.fromEntries preserves every user-supplied header safely.
+    on_record: (record: string[]) => {
+      if (!columns) {
+        if (record.length > parserResourceLimits.maxTableColumns)
+          throw new ParserResourceLimitError("table column count");
+        columns = uniqueColumnNames(record);
+        return null;
+      }
       rows += 1;
 
       if (rows > maxRows) {
         throw new Error(`Structured parser row count exceeds maxRows=${maxRows}`);
       }
 
-      return record as Record<string, unknown>;
+      records.push(
+        Object.fromEntries(columns.map((column, index) => [column, record[index] ?? ""])),
+      );
+      return null;
     },
     skip_empty_lines: true,
     trim: true,
-  }) as Record<string, unknown>[];
+  });
+  return { columns: columns ?? [], rows: records };
 }
 
-function parseJsonLines(text: string, maxRows: number): Record<string, unknown>[] {
-  const rows: Record<string, unknown>[] = [];
+function parseJsonLines(text: string, maxRows: number, signal?: AbortSignal): unknown[] {
+  const rows: unknown[] = [];
 
-  for (const rawLine of text.split(/\r?\n/)) {
+  for (const rawLine of iterateDocumentLines(text, signal)) {
     const line = rawLine.trim();
 
     if (!line) {
@@ -2212,7 +2327,7 @@ function parseJsonLines(text: string, maxRows: number): Record<string, unknown>[
       throw new Error(`Structured parser row count exceeds maxRows=${maxRows}`);
     }
 
-    rows.push(JSON.parse(line) as Record<string, unknown>);
+    rows.push(parseDocumentJson(line));
   }
 
   return rows;
@@ -2223,10 +2338,8 @@ function structuredValueElements(
   value: unknown,
   maxRows: number,
 ): ParseElementInput[] {
-  if (
-    Array.isArray(value) &&
-    value.every((item) => item && typeof item === "object" && !Array.isArray(item))
-  ) {
+  assertParserResourceBudget(value);
+  if (Array.isArray(value) && value.every(isDocumentRecord)) {
     return rowsToTableElements(format, value as Record<string, unknown>[], maxRows);
   }
 
@@ -2234,10 +2347,10 @@ function structuredValueElements(
     {
       metadata: {
         format,
-        rootType: Array.isArray(value) ? "array" : typeof value,
+        rootType: documentJsonRootType(value),
       },
       sectionPath: [],
-      text: JSON.stringify(value, null, 2),
+      text: stringifyDocumentJson(value, true),
       type: "code",
     },
   ];
@@ -2247,17 +2360,63 @@ function rowsToTableElements(
   format: StructuredDataFormat,
   rows: readonly Record<string, unknown>[],
   maxRows: number,
+  sourceColumns?: readonly string[],
 ): ParseElementInput[] {
   if (rows.length > maxRows) {
     throw new Error(`Structured parser row count exceeds maxRows=${maxRows}`);
   }
 
-  const columns = uniqueStrings(rows.flatMap((row) => Object.keys(row)));
+  assertParserResourceBudget(rows);
+  const columns = sourceColumns ?? uniqueStrings(rows.flatMap((row) => Object.keys(row)));
+  if (columns.length > parserResourceLimits.maxTableColumns)
+    throw new ParserResourceLimitError("table column count");
+  const actualCellCount = rows.reduce((count, row) => count + Object.keys(row).length, 0);
+  if (actualCellCount > parserResourceLimits.maxTableCells)
+    throw new ParserResourceLimitError("table cell count");
+  const denseCellCount = rows.length * columns.length;
+  if (denseCellCount > Math.max(actualCellCount * 8, 10_000)) {
+    const lines = rows.map((row) =>
+      Object.entries(row)
+        .map(
+          ([key, value]) =>
+            `${normalizeTableCell(key)}: ${normalizeTableCell(structuredCell(value))}`,
+        )
+        .join(" | "),
+    );
+    assertParserResourceBudget(lines);
+    return [
+      {
+        metadata: {
+          columns,
+          format,
+          rowCount: rows.length,
+          table: {
+            columns,
+            headerRowCount: 0,
+            mode: "record-list",
+            recordCount: rows.length,
+            semanticVersion: 1,
+            sourceRowCount: rows.length,
+            sparse: true,
+          },
+        },
+        sectionPath: [],
+        text: lines.join("\n"),
+        type: "table",
+      },
+    ];
+  }
+  if (denseCellCount > parserResourceLimits.maxTableCells)
+    throw new ParserResourceLimitError("expanded table cell count");
   const headerRowCount = format === "csv" ? 1 : 0;
   const projection = projectTableRecords({
     columns,
     headerRowCount,
-    rows: rows.map((row) => columns.map((column) => structuredCell(row[column]))),
+    rows: rows.map((row) =>
+      columns.map((column) =>
+        Object.prototype.hasOwnProperty.call(row, column) ? structuredCell(row[column]) : "",
+      ),
+    ),
   });
 
   return [
@@ -2295,23 +2454,31 @@ function projectTableRecords({
   mode,
   rows,
   sourceRowCount,
+  tableBudget = { expandedCells: 0, projectedBytes: 0 },
 }: {
   readonly columns: readonly string[];
   readonly headerRowCount: number;
   readonly mode?: TableSemanticMode | undefined;
   readonly rows: readonly (readonly string[])[];
   readonly sourceRowCount?: number | undefined;
+  readonly tableBudget?: HtmlTableExpansionBudget;
 }): TableProjection {
   let width = Math.max(rawColumns.length, 1);
   for (const row of rows) width = Math.max(width, row.length);
-  const columnCounts = new Map<string, number>();
-  const columns = Array.from({ length: width }, (_, index) => {
-    const value = normalizeTableCell(rawColumns[index] ?? "");
-    const base = value || `column_${index + 1}`;
-    const count = (columnCounts.get(base) ?? 0) + 1;
-    columnCounts.set(base, count);
-    return count === 1 ? base : `${base}_${count}`;
-  });
+  if (width > parserResourceLimits.maxTableColumns)
+    throw new ParserResourceLimitError("table column count");
+  if (width * rows.length > parserResourceLimits.maxTableCells)
+    throw new ParserResourceLimitError("expanded table cell count");
+  const columns = uniqueColumnNames(
+    Array.from({ length: width }, (_, index) => normalizeTableCell(rawColumns[index] ?? "")),
+  );
+  const columnBytes = columns.map((column) => Buffer.byteLength(column));
+  if (rows.length === 0) {
+    consumeTableProjectionBytes(
+      tableBudget,
+      columnBytes.reduce((total, bytes) => total + bytes, Math.max(0, columns.length - 1) * 3),
+    );
+  }
   const lines: string[] = [];
   let matrixCellCount = 0;
   let numericCellCount = 0;
@@ -2319,6 +2486,13 @@ function projectTableRecords({
     const cells: string[] = [];
     for (let index = 0; index < columns.length; index += 1) {
       const value = normalizeTableCell(row[index] ?? "");
+      consumeTableProjectionBytes(
+        tableBudget,
+        (columnBytes[index] ?? 0) +
+          2 +
+          Buffer.byteLength(value) +
+          (index === 0 ? (lines.length > 0 ? 1 : 0) : 3),
+      );
       cells.push(value);
       if (index === 0 || !value) continue;
       matrixCellCount += 1;
@@ -2374,7 +2548,7 @@ function structuredCell(value: unknown): string {
   }
 
   if (typeof value === "object") {
-    return JSON.stringify(value);
+    return stringifyDocumentJson(value);
   }
 
   return String(value);
@@ -2384,20 +2558,56 @@ function uniqueStrings(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
 
-function markdownTokensToElements(
-  tokens: readonly Token[],
-  { preserveHtmlText }: { readonly preserveHtmlText: boolean },
-): ParseElementInput[] {
+function uniqueColumnNames(names: readonly string[]): string[] {
+  const reserved = new Set(names);
+  const used = new Set<string>();
+  const nextSuffix = new Map<string, number>();
+  return names.map((name, index) => {
+    const base = name || `column_${index + 1}`;
+    let candidate = base;
+    let suffix = nextSuffix.get(base) ?? 2;
+    while (used.has(candidate) || (candidate !== base && reserved.has(candidate))) {
+      candidate = `${base}_${suffix++}`;
+    }
+    used.add(candidate);
+    nextSuffix.set(base, suffix);
+    return candidate;
+  });
+}
+
+function markdownTokensToElements(tokens: readonly Token[]): ParseElementInput[] {
   const elements: ParseElementInput[] = [];
   const sectionPath: string[] = [];
+  const tableBudget: HtmlTableExpansionBudget = { expandedCells: 0, projectedBytes: 0 };
+  const pending = tokens.map((token) => ({ token, depth: 0 })).reverse();
+  let visited = 0;
 
-  for (const token of tokens) {
+  while (pending.length > 0) {
+    const entry = pending.pop();
+    if (!entry) break;
+    const { token, depth } = entry;
+    visited += 1;
+    if (visited > parserResourceLimits.maxNodes || depth > parserResourceLimits.maxDepth) {
+      throw new ParserResourceLimitError("Markdown token count or depth");
+    }
     if (token.type === "space") {
+      continue;
+    }
+
+    if (token.type === "blockquote") {
+      for (const child of [...(token as Tokens.Blockquote).tokens].reverse()) {
+        pending.push({ token: child, depth: depth + 1 });
+      }
       continue;
     }
 
     if (token.type === "heading") {
       const heading = token as Tokens.Heading;
+      const images = markdownImagesFromToken(heading);
+      if (images.length > 0 || /<[!\/a-z]/iu.test(heading.text)) {
+        pushMarkdownHtmlElements(token, elements, sectionPath, images, tableBudget);
+        continue;
+      }
       const text = normalizeText(heading.text);
 
       if (!text) {
@@ -2421,40 +2631,32 @@ function markdownTokensToElements(
     if (token.type === "paragraph") {
       const paragraph = token as Tokens.Paragraph;
       const images = markdownImagesFromToken(paragraph);
-      for (const image of images) {
-        pushImageElement(elements, sectionPath, {
-          assetRef: {
-            ...(image.contentType ? { contentType: image.contentType } : {}),
-            uri: image.uri,
-          },
-          caption: image.alt,
-          source: "markdown-image",
-          ...(image.title ? { title: image.title } : {}),
-        });
+      if (images.length > 0 || /<[!\/a-z]/iu.test(paragraph.text)) {
+        pushMarkdownHtmlElements(token, elements, sectionPath, images, tableBudget);
+      } else {
+        pushTextElement(elements, "paragraph", paragraph.text, sectionPath);
       }
-
-      if (images.length > 0 && normalizeText(paragraph.text).startsWith("![")) {
-        continue;
-      }
-
-      pushTextElement(elements, "paragraph", paragraph.text, sectionPath);
       continue;
     }
 
-    if (token.type === "html" && preserveHtmlText) {
-      const html = token as Tokens.HTML;
-      pushTextElement(elements, "paragraph", markdownHtmlBlockText(html.text), sectionPath);
+    if (token.type === "html") {
+      pushMarkdownHtmlElements(token, elements, sectionPath, [], tableBudget);
       continue;
     }
 
     if (token.type === "list") {
       const list = token as Tokens.List;
-      pushTextElement(
-        elements,
-        "list",
-        list.items.map((item) => item.text).join("\n"),
-        sectionPath,
-      );
+      const images = markdownImagesFromToken(list);
+      if (images.length > 0 || /<[!\/a-z]/iu.test(list.raw)) {
+        pushMarkdownHtmlElements(token, elements, sectionPath, images, tableBudget);
+      } else {
+        pushTextElement(
+          elements,
+          "list",
+          list.items.map((item) => item.text).join("\n"),
+          sectionPath,
+        );
+      }
       continue;
     }
 
@@ -2468,7 +2670,12 @@ function markdownTokensToElements(
 
     if (token.type === "table") {
       const table = token as Tokens.Table;
-      const projection = markdownTableProjection(table);
+      const images = markdownImagesFromToken(table);
+      if (images.length > 0 || /<[!\/a-z]/iu.test(table.raw)) {
+        pushMarkdownHtmlElements(token, elements, sectionPath, images, tableBudget);
+        continue;
+      }
+      const projection = markdownTableProjection(table, tableBudget);
       pushTextElement(elements, "table", projection.text, sectionPath, {
         table: projection.metadata,
       });
@@ -2476,6 +2683,41 @@ function markdownTokensToElements(
   }
 
   return elements;
+}
+
+function pushMarkdownHtmlElements(
+  token: Token,
+  elements: ParseElementInput[],
+  sectionPath: string[],
+  images: readonly MarkdownImageRef[],
+  tableBudget: HtmlTableExpansionBudget,
+): void {
+  // Render syntax to an inert DOM, never evaluate JSX, execute scripts or fetch referenced URLs.
+  // This keeps text/image order while the same HTML visitor excludes non-searchable subtrees.
+  const source =
+    token.type === "html" ? (token as Tokens.HTML).text : marked.parser([token], { async: false });
+  const nodes = parseDocument(source).children as HtmlNode[];
+  assertHtmlStructureBudget(nodes);
+  const start = elements.length;
+  visitHtmlNode({ children: nodes }, elements, sectionPath, tableBudget);
+  const references = new Set(images.map((image) => image.uri));
+  for (let index = start; index < elements.length; index += 1) {
+    const element = elements[index];
+    if (!element) continue;
+    const assetRef = element.metadata.assetRef as { uri?: string } | undefined;
+    if (element.type !== "image" || !assetRef?.uri || !references.has(assetRef.uri)) continue;
+    const alt = metadataString(element.metadata, "alt");
+    const title = metadataString(element.metadata, "title");
+    elements[index] = {
+      ...element,
+      metadata: {
+        assetRef: cloneMetadata(element.metadata.assetRef as Readonly<Record<string, unknown>>),
+        ...(alt ? { caption: alt } : {}),
+        source: "markdown-image",
+        ...(title ? { title } : {}),
+      },
+    };
+  }
 }
 
 function isMdxInput({
@@ -2487,53 +2729,136 @@ function isMdxInput({
   );
 }
 
-function markdownHtmlBlockText(source: string): string {
-  const document = parseDocument(source, {
-    lowerCaseAttributeNames: true,
-    lowerCaseTags: true,
-  });
-  const nodes = document.children as HtmlNode[];
-
-  return nodes.map(searchableMarkdownHtmlText).join("\n");
-}
-
-function searchableMarkdownHtmlText(node: HtmlNode): string {
-  const name = node.name?.toLowerCase();
-  if (name && ["script", "style", "noscript"].includes(name)) {
-    return "";
-  }
-
-  if (!node.children?.length) {
-    return htmlText(node);
-  }
-
-  return node.children.map(searchableMarkdownHtmlText).join("\n");
-}
-
 function htmlNodesToElements(nodes: readonly HtmlNode[]): ParseElementInput[] {
   const elements: ParseElementInput[] = [];
   const sectionPath: string[] = [];
-
-  for (const node of nodes) {
-    visitHtmlNode(node, elements, sectionPath);
-  }
-
+  const tableBudget: HtmlTableExpansionBudget = { expandedCells: 0, projectedBytes: 0 };
+  assertHtmlStructureBudget(nodes);
+  visitHtmlNode({ children: nodes }, elements, sectionPath, tableBudget);
   return elements;
 }
 
 function htmlDocumentTitle(nodes: readonly HtmlNode[]): string | undefined {
-  for (const node of nodes) {
+  const pending = [...nodes].reverse();
+  while (pending.length > 0) {
+    const node = pending.pop();
+    if (!node) break;
     if (node.name?.toLowerCase() === "title") {
       const title = normalizeText(htmlText(node));
       if (title) return Array.from(title).slice(0, defaultMaxDocumentTitleChars).join("");
     }
-    const childTitle = htmlDocumentTitle(node.children ?? []);
-    if (childTitle) return childTitle;
+    for (const child of [...(node.children ?? [])].reverse()) pending.push(child);
   }
   return undefined;
 }
 
-function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPath: string[]): void {
+function assertHtmlStructureBudget(nodes: readonly HtmlNode[]): void {
+  const pending = nodes.map((node) => ({ node, depth: 0 }));
+  let count = 0;
+  while (pending.length > 0) {
+    const entry = pending.pop();
+    if (!entry) break;
+    const { node, depth } = entry;
+    count += 1;
+    if (count > parserResourceLimits.maxNodes || depth > parserResourceLimits.maxDepth) {
+      throw new ParserResourceLimitError("HTML node count or depth");
+    }
+    for (const child of node.children ?? []) {
+      pending.push({ node: child, depth: depth + 1 });
+      if (pending.length + count > parserResourceLimits.maxNodes) {
+        throw new ParserResourceLimitError("HTML node count");
+      }
+    }
+  }
+}
+
+const searchableHtmlBlockNames = new Set([
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "body",
+  "dd",
+  "div",
+  "dl",
+  "dt",
+  "figure",
+  "footer",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "head",
+  "header",
+  "hr",
+  "html",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "table",
+  "ul",
+]);
+
+function pushHtmlInlineElements(
+  nodes: readonly HtmlNode[],
+  elements: ParseElementInput[],
+  sectionPath: readonly string[],
+  type: "paragraph" | "list" = "paragraph",
+  figureCaption?: string,
+): void {
+  const pending: (HtmlNode | string)[] = [...nodes].reverse();
+  let text = "";
+  const flush = () => {
+    pushTextElement(elements, type, text, sectionPath);
+    text = "";
+  };
+  while (pending.length > 0) {
+    const node = pending.pop();
+    if (node === undefined) break;
+    if (typeof node === "string") {
+      text += node;
+      continue;
+    }
+    const name = node.name?.toLowerCase();
+    if (name && ["script", "style", "noscript", "title"].includes(name)) continue;
+    if (name === "figcaption" && figureCaption !== undefined) continue;
+    if (name === "img") {
+      flush();
+      pushHtmlImageElement(
+        elements,
+        node,
+        sectionPath,
+        figureCaption || undefined,
+        figureCaption === undefined ? "html-img" : "html-figure",
+      );
+    } else if (name === "br") {
+      text += "\n";
+    } else if (node.children?.length) {
+      const block = name && searchableHtmlBlockNames.has(name);
+      if (block) {
+        text += "\n";
+        pending.push("\n");
+      }
+      for (const child of [...node.children].reverse()) pending.push(child);
+    } else {
+      text += htmlText(node);
+    }
+  }
+  flush();
+}
+
+function visitHtmlNode(
+  node: HtmlNode,
+  elements: ParseElementInput[],
+  sectionPath: string[],
+  tableBudget: HtmlTableExpansionBudget,
+): void {
   const name = node.name?.toLowerCase();
 
   if (name && ["script", "style", "noscript"].includes(name)) {
@@ -2565,16 +2890,20 @@ function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPat
       });
     }
 
+    for (const image of findHtmlElements(node, "img")) {
+      pushHtmlImageElement(elements, image, sectionPath, undefined, "html-img");
+    }
+
     return;
   }
 
   if (name === "p") {
-    pushTextElement(elements, "paragraph", htmlText(node), sectionPath);
+    pushHtmlInlineElements(node.children ?? [], elements, sectionPath);
     return;
   }
 
   if (name === "ul" || name === "ol") {
-    pushTextElement(elements, "list", htmlListText(node), sectionPath);
+    pushHtmlInlineElements(node.children ?? [], elements, sectionPath, "list");
     return;
   }
 
@@ -2584,22 +2913,24 @@ function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPat
   }
 
   if (name === "table") {
-    const projection = htmlTableProjection(node);
+    const projection = htmlTableProjection(node, tableBudget);
     pushTextElement(elements, "table", projection.text, sectionPath, {
       table: projection.metadata,
     });
+    for (const image of findHtmlElements(node, "img")) {
+      pushHtmlImageElement(elements, image, sectionPath, undefined, "html-img");
+    }
     return;
   }
 
   if (name === "figure") {
-    const image = firstHtmlImage(node);
-    if (image) {
+    if (findHtmlElements(node, "img").length > 0) {
       const caption = normalizeText(
         findHtmlElements(node, "figcaption")
           .map((captionNode) => htmlText(captionNode))
           .join(" "),
       );
-      pushHtmlImageElement(elements, image, sectionPath, caption || undefined, "html-figure");
+      pushHtmlInlineElements(node.children ?? [], elements, sectionPath, "paragraph", caption);
       return;
     }
   }
@@ -2609,9 +2940,21 @@ function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPat
     return;
   }
 
-  for (const child of node.children ?? []) {
-    visitHtmlNode(child, elements, sectionPath);
+  if (!node.children?.length) {
+    pushHtmlInlineElements([node], elements, sectionPath);
+    return;
   }
+  let inline: HtmlNode[] = [];
+  for (const child of node.children) {
+    if (child.name && searchableHtmlBlockNames.has(child.name.toLowerCase())) {
+      pushHtmlInlineElements(inline, elements, sectionPath);
+      inline = [];
+      visitHtmlNode(child, elements, sectionPath, tableBudget);
+    } else {
+      inline.push(child);
+    }
+  }
+  pushHtmlInlineElements(inline, elements, sectionPath);
 }
 
 function unstructuredElementsToElements(
@@ -2620,11 +2963,15 @@ function unstructuredElementsToElements(
   const elements: ParseElementInput[] = [];
   const sectionPath: string[] = [];
   const headingPathsByElementId = new Map<string, string[]>();
+  const tableBudget: HtmlTableExpansionBudget = { expandedCells: 0, projectedBytes: 0 };
+  let sectionPathItems = 0;
 
   for (const sourceElement of sourceElements) {
     const type = unstructuredType(sourceElement.type);
     const tableProjection =
-      type === "table" ? unstructuredTableProjection(sourceElement.metadata) : undefined;
+      type === "table"
+        ? unstructuredTableProjection(sourceElement.metadata, tableBudget)
+        : undefined;
     const providerText = tableProjection?.text ?? normalizeText(sourceElement.text ?? "");
     const text = hasChineseOcrLanguage(sourceElement.metadata)
       ? normalizeChineseOcrText(providerText)
@@ -2645,6 +2992,11 @@ function unstructuredElementsToElements(
           ? [...sectionPath.slice(0, categoryDepth), text]
           : undefined;
       const nextPath = parentPath ? [...parentPath, text] : (depthPath ?? [text]);
+      if (nextPath.length > maxUnstructuredSectionDepth) {
+        throw new ProviderResponseError(
+          `Unstructured parser output exceeds maxSectionDepth=${maxUnstructuredSectionDepth}`,
+        );
+      }
       sectionPath.splice(0, sectionPath.length, ...nextPath);
 
       if (sourceElement.element_id) {
@@ -2652,6 +3004,12 @@ function unstructuredElementsToElements(
       }
     }
 
+    sectionPathItems += sectionPath.length;
+    if (sectionPathItems > maxUnstructuredSectionPathItems) {
+      throw new ProviderResponseError(
+        `Unstructured parser output exceeds maxSectionPathItems=${maxUnstructuredSectionPathItems}`,
+      );
+    }
     elements.push({
       metadata: unstructuredParseElementMetadata({
         metadata: sourceElement.metadata,
@@ -2753,11 +3111,17 @@ function mergeUnstructuredVerticalText(
         return null;
       }
 
+      if (!Number.isFinite(box.width) || !Number.isFinite(box.height)) {
+        throw new ProviderResponseError("Unstructured parser returned invalid glyph geometry");
+      }
+
       return { box, element, index, pageNumber, text };
     })
     .filter((glyph): glyph is UnstructuredVerticalGlyph => glyph !== null)
     .sort(compareUnstructuredVerticalGlyphs);
   const availableIndexes = new Set(glyphs.map((glyph) => glyph.index));
+  const candidateIndex = createUnstructuredGlyphIndex(glyphs);
+  let candidateComparisons = 0;
   const mergedByIndex = new Map<number, UnstructuredSourceElement>();
   const removedIndexes = new Set<number>();
 
@@ -2765,27 +3129,39 @@ function mergeUnstructuredVerticalText(
     if (!availableIndexes.delete(first.index)) {
       continue;
     }
+    candidateIndex.remove(first);
 
     const group = [first];
     let current = first;
 
     while (true) {
-      const next = glyphs
-        .filter(
-          (candidate) =>
-            availableIndexes.has(candidate.index) &&
-            unstructuredVerticalGlyphsAreAdjacent(current, candidate),
-        )
-        .sort(
-          (left, right) =>
-            verticalGlyphDistance(current, left) - verticalGlyphDistance(current, right),
-        )[0];
+      let next: UnstructuredVerticalGlyph | undefined;
+      let nextDistance = Number.POSITIVE_INFINITY;
+      for (const candidate of candidateIndex.candidates(current)) {
+        candidateComparisons += 1;
+        if (candidateComparisons > maxUnstructuredVerticalCandidateComparisons) {
+          throw new ProviderResponseError(
+            `Unstructured parser layout exceeds maxVerticalCandidateComparisons=${maxUnstructuredVerticalCandidateComparisons}`,
+          );
+        }
+        if (!unstructuredVerticalGlyphsAreAdjacent(current, candidate)) continue;
+        const distance = verticalGlyphDistance(current, candidate);
+        if (
+          !next ||
+          distance < nextDistance ||
+          (distance === nextDistance && compareUnstructuredVerticalGlyphs(candidate, next) < 0)
+        ) {
+          next = candidate;
+          nextDistance = distance;
+        }
+      }
 
       if (!next) {
         break;
       }
 
       availableIndexes.delete(next.index);
+      candidateIndex.remove(next);
       group.push(next);
       current = next;
     }
@@ -3097,6 +3473,7 @@ function unstructuredParseElementMetadata({
 
 function unstructuredTableProjection(
   metadata: Readonly<Record<string, unknown>>,
+  tableBudget: HtmlTableExpansionBudget,
 ): TableProjection | undefined {
   const textAsHtml = metadataString(metadata, "text_as_html");
   if (!textAsHtml) return undefined;
@@ -3107,7 +3484,7 @@ function unstructuredTableProjection(
   const table = (document.children as HtmlNode[]).flatMap((node) =>
     node.name?.toLowerCase() === "table" ? [node] : findHtmlElements(node, "table"),
   )[0];
-  return table ? htmlTableProjection(table) : undefined;
+  return table ? htmlTableProjection(table, tableBudget) : undefined;
 }
 
 function unstructuredAssetRef(
@@ -3278,24 +3655,56 @@ function compactSectionPath(sectionPath: readonly (string | undefined)[]): strin
   return sectionPath.filter((segment): segment is string => typeof segment === "string");
 }
 
-function markdownTableProjection(table: Tokens.Table): TableProjection {
+function markdownTableProjection(
+  table: Tokens.Table,
+  tableBudget: HtmlTableExpansionBudget,
+): TableProjection {
   return projectTableRecords({
     columns: table.header.map((cell) => normalizeText(cell.text)),
     headerRowCount: 1,
     rows: table.rows.map((row) => row.map((cell) => normalizeText(cell.text))),
+    tableBudget,
   });
 }
 
-function htmlListText(node: HtmlNode): string {
-  return (node.children ?? [])
-    .filter((child) => child.name?.toLowerCase() === "li")
-    .map((child) => normalizeText(htmlText(child)))
-    .filter(Boolean)
-    .join("\n");
+interface HtmlTableExpansionBudget {
+  // Created once per document normalization, never stored on a reusable parser adapter.
+  expandedCells: number;
+  projectedBytes: number;
 }
 
-function htmlTableProjection(node: HtmlNode): TableProjection {
-  const rows = htmlTableRows(node);
+function consumeTableProjectionBytes(
+  tableBudget: HtmlTableExpansionBudget,
+  addedBytes: number,
+): void {
+  if (tableBudget.projectedBytes + addedBytes > parserResourceLimits.maxOutputBytes) {
+    throw new ParserResourceLimitError("table projection bytes");
+  }
+  tableBudget.projectedBytes += addedBytes;
+}
+
+function consumeHtmlTableCells(tableBudget: HtmlTableExpansionBudget, addedCells: number): void {
+  if (tableBudget.expandedCells + addedCells > parserResourceLimits.maxTableCells) {
+    throw new ParserResourceLimitError("expanded HTML table cell count");
+  }
+  tableBudget.expandedCells += addedCells;
+}
+
+function htmlTableProjection(
+  node: HtmlNode,
+  tableBudget: HtmlTableExpansionBudget,
+): TableProjection {
+  const rows = htmlTableRows(node, tableBudget);
+  let width = 0;
+  let populatedRowCells = 0;
+  for (const row of rows) {
+    width = Math.max(width, row.cells.length);
+    populatedRowCells += row.cells.length;
+  }
+  // Projection scans the rectangular logical table, including short-row padding. Charge only
+  // the added padding here; source/rowspan cells (including filtered empty rows) were charged
+  // before assignment, and must not be counted twice.
+  consumeHtmlTableCells(tableBudget, width * rows.length - populatedRowCells);
   if (rows.length === 0) {
     return {
       metadata: {
@@ -3322,12 +3731,19 @@ function htmlTableProjection(node: HtmlNode): TableProjection {
       headerRowCount: resolvedHeaderRowCount,
       rows: rows.slice(resolvedHeaderRowCount).map((row) => row.cells),
       sourceRowCount: rows.length,
+      tableBudget,
     });
   }
-  return projectHeaderlessTableRows(rows.map((row) => row.cells));
+  return projectHeaderlessTableRows(
+    rows.map((row) => row.cells),
+    tableBudget,
+  );
 }
 
-function htmlTableRows(node: HtmlNode): Array<{
+function htmlTableRows(
+  node: HtmlNode,
+  tableBudget: HtmlTableExpansionBudget,
+): Array<{
   readonly cells: readonly string[];
   readonly hasHeaderCell: boolean;
   readonly inHeaderGroup: boolean;
@@ -3336,6 +3752,15 @@ function htmlTableRows(node: HtmlNode): Array<{
     findHtmlElements(node, "thead").flatMap((header) => findHtmlElements(header, "tr")),
   );
   let activeRowspans = new Map<number, { readonly remaining: number; readonly value: string }>();
+  const writeCell = (cells: string[], column: number, value: string) => {
+    if (column >= parserResourceLimits.maxTableColumns) {
+      throw new ParserResourceLimitError("HTML table column count");
+    }
+    // Sparse carried rows still reserve every column up to their final cell.
+    const addedCells = Math.max(0, column + 1 - cells.length);
+    consumeHtmlTableCells(tableBudget, addedCells);
+    cells[column] = value;
+  };
   return findHtmlElements(node, "tr")
     .map((row) => {
       const sourceCells = (row.children ?? []).filter((cell) =>
@@ -3350,7 +3775,7 @@ function htmlTableRows(node: HtmlNode): Array<{
       const consumeRowspan = () => {
         const carried = activeRowspans.get(column);
         if (!carried) return false;
-        cells[column] = carried.value;
+        writeCell(cells, column, carried.value);
         if (carried.remaining > 1) {
           nextRowspans.set(column, { remaining: carried.remaining - 1, value: carried.value });
         }
@@ -3369,15 +3794,17 @@ function htmlTableRows(node: HtmlNode): Array<{
           while (consumeRowspan()) {
             // A colspan only occupies columns not already reserved by a rowspan.
           }
-          cells[column] = value;
+          writeCell(cells, column, value);
           if (rowSpan > 1) {
             nextRowspans.set(column, { remaining: rowSpan - 1, value });
           }
           column += 1;
         }
       }
-      while (activeRowspans.size > 0) {
-        if (!consumeRowspan()) column += 1;
+      // Remaining reservations are ordered by column; skip holes without scanning them.
+      for (const carriedColumn of activeRowspans.keys()) {
+        column = carriedColumn;
+        consumeRowspan();
       }
       activeRowspans = nextRowspans;
       return {
@@ -3390,12 +3817,23 @@ function htmlTableRows(node: HtmlNode): Array<{
 }
 
 function flattenHtmlTableHeaders(rows: readonly { readonly cells: readonly string[] }[]): string[] {
-  const width = Math.max(...rows.map((row) => row.cells.length), 1);
+  let width = 1;
+  for (const row of rows) width = Math.max(width, row.cells.length);
+  if (width > parserResourceLimits.maxTableColumns)
+    throw new ParserResourceLimitError("HTML table column count");
+  if (width * rows.length > parserResourceLimits.maxTableCells)
+    throw new ParserResourceLimitError("expanded HTML table cell count");
+  let headerBytes = 0;
   return Array.from({ length: width }, (_, column) => {
     const labels: string[] = [];
     for (const row of rows) {
       const label = row.cells[column]?.trim();
-      if (label && labels.at(-1) !== label) labels.push(label);
+      if (label && labels.at(-1) !== label) {
+        headerBytes += Buffer.byteLength(label, "utf8") + (labels.length > 0 ? 3 : 0);
+        if (headerBytes > parserResourceLimits.maxOutputBytes)
+          throw new ParserResourceLimitError("HTML table header bytes");
+        labels.push(label);
+      }
     }
     return labels.join(" / ");
   });
@@ -3406,9 +3844,18 @@ function htmlTableCellSpan(cell: HtmlNode, attribute: "colspan" | "rowspan"): nu
   return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 256 ? parsed : 1;
 }
 
-function projectHeaderlessTableRows(rows: readonly (readonly string[])[]): TableProjection {
+function projectHeaderlessTableRows(
+  rows: readonly (readonly string[])[],
+  tableBudget: HtmlTableExpansionBudget,
+): TableProjection {
+  let width = 1;
+  for (const row of rows) width = Math.max(width, row.length);
+  if (width > parserResourceLimits.maxTableColumns)
+    throw new ParserResourceLimitError("HTML table column count");
+  if (width * rows.length > parserResourceLimits.maxTableCells)
+    throw new ParserResourceLimitError("expanded HTML table cell count");
   if (rows.length === 1) {
-    return projectTableRecords({ columns: [], headerRowCount: 0, rows });
+    return projectTableRecords({ columns: [], headerRowCount: 0, rows, tableBudget });
   }
   const firstRow = rows[0] ?? [];
   if (looksLikeTableHeader(firstRow, rows.slice(1))) {
@@ -3416,6 +3863,7 @@ function projectHeaderlessTableRows(rows: readonly (readonly string[])[]): Table
       columns: firstRow,
       headerRowCount: 1,
       rows: rows.slice(1),
+      tableBudget,
     });
   }
   if (looksLikeKeyValueTable(rows)) {
@@ -3425,16 +3873,15 @@ function projectHeaderlessTableRows(rows: readonly (readonly string[])[]): Table
       mode: "single-record",
       rows: [rows.map((row) => row[1] ?? "")],
       sourceRowCount: rows.length,
+      tableBudget,
     });
   }
   return projectTableRecords({
-    columns: Array.from(
-      { length: Math.max(...rows.map((row) => row.length), 1) },
-      (_, index) => `column_${index + 1}`,
-    ),
+    columns: Array.from({ length: width }, (_, index) => `column_${index + 1}`),
     headerRowCount: 0,
     mode: "record-list",
     rows,
+    tableBudget,
   });
 }
 
@@ -3489,49 +3936,47 @@ function tableCellValueKind(value: string): "boolean" | "date" | "number" | "tex
 }
 
 function markdownImagesFromToken(token: Token): MarkdownImageRef[] {
-  const candidate = token as Token & {
-    readonly href?: unknown;
-    readonly text?: unknown;
-    readonly title?: unknown;
-    readonly tokens?: readonly Token[];
-  };
   const images: MarkdownImageRef[] = [];
-
-  if (candidate.type === "image" && typeof candidate.href === "string" && candidate.href.trim()) {
-    const uri = candidate.href.trim();
-    const alt = typeof candidate.text === "string" ? normalizeText(candidate.text) : "";
-    const title = typeof candidate.title === "string" ? normalizeText(candidate.title) : "";
-
-    images.push({
-      ...(alt ? { alt } : {}),
-      ...(title ? { title } : {}),
-      ...(inferImageContentTypeFromUri(uri)
-        ? { contentType: inferImageContentTypeFromUri(uri) }
-        : {}),
-      uri,
-    });
-  }
-
-  for (const child of candidate.tokens ?? []) {
-    images.push(...markdownImagesFromToken(child));
-  }
-
-  return images;
-}
-
-function firstHtmlImage(node: HtmlNode): HtmlNode | undefined {
-  if (node.name?.toLowerCase() === "img") {
-    return node;
-  }
-
-  for (const child of node.children ?? []) {
-    const image = firstHtmlImage(child);
-    if (image) {
-      return image;
+  const pending = [{ token, depth: 0 }];
+  let count = 0;
+  while (pending.length > 0) {
+    const entry = pending.pop();
+    if (!entry) break;
+    const { token: current, depth } = entry;
+    if (++count > parserResourceLimits.maxNodes || depth > parserResourceLimits.maxDepth) {
+      throw new ParserResourceLimitError("Markdown inline node count or depth");
+    }
+    const candidate = current as Token & {
+      readonly href?: unknown;
+      readonly text?: unknown;
+      readonly title?: unknown;
+      readonly tokens?: readonly Token[];
+      readonly items?: readonly Token[];
+    };
+    if (candidate.type === "image" && typeof candidate.href === "string" && candidate.href.trim()) {
+      const uri = candidate.href.trim();
+      const alt = typeof candidate.text === "string" ? normalizeText(candidate.text) : "";
+      const title = typeof candidate.title === "string" ? normalizeText(candidate.title) : "";
+      images.push({
+        ...(alt ? { alt } : {}),
+        ...(title ? { title } : {}),
+        ...(inferImageContentTypeFromUri(uri)
+          ? { contentType: inferImageContentTypeFromUri(uri) }
+          : {}),
+        uri,
+      });
+    }
+    const children =
+      candidate.type === "table"
+        ? [...(current as Tokens.Table).header, ...(current as Tokens.Table).rows.flat()].flatMap(
+            (cell) => cell.tokens,
+          )
+        : (candidate.tokens ?? candidate.items ?? []);
+    for (const child of [...children].reverse()) {
+      pending.push({ token: child, depth: depth + 1 });
     }
   }
-
-  return undefined;
+  return images;
 }
 
 function pushHtmlImageElement(
@@ -3607,20 +4052,34 @@ function inferImageContentTypeFromUri(uri: string): string | undefined {
 
 function findHtmlElements(node: HtmlNode, name: string): HtmlNode[] {
   const matches: HtmlNode[] = [];
-
-  if (node.name?.toLowerCase() === name) {
-    matches.push(node);
+  const pending = [node];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current) break;
+    const currentName = current.name?.toLowerCase();
+    if (currentName && ["script", "style", "noscript"].includes(currentName)) continue;
+    if (currentName === name) matches.push(current);
+    for (const child of [...(current.children ?? [])].reverse()) pending.push(child);
   }
-
-  for (const child of node.children ?? []) {
-    matches.push(...findHtmlElements(child, name));
-  }
-
   return matches;
 }
 
 function htmlText(node: HtmlNode): string {
-  return DomUtils.textContent(node as never);
+  const text: string[] = [];
+  const pending = [node];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current) break;
+    const name = current.name?.toLowerCase();
+    if (name && ["script", "style", "noscript"].includes(name)) continue;
+    if (name === "br") {
+      text.push("\n");
+      continue;
+    }
+    if (!current.children?.length) text.push(DomUtils.textContent(current as never));
+    else for (const child of [...current.children].reverse()) pending.push(child);
+  }
+  return text.join("");
 }
 
 function htmlHeadingDepth(name: string | undefined): number | null {
@@ -3645,7 +4104,7 @@ function inferContentType(elements: readonly ParseElement[]): ParseArtifact["con
 }
 
 function decodeUtf8(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
+  return decodeDocumentText(bytes).text;
 }
 
 function normalizeText(text: string): string {
@@ -3808,6 +4267,29 @@ async function fetchWithRetries({
       throw new ProviderRequestError("Unstructured parser request failed", {
         cause: error,
         retryable: true,
+      });
+    }
+
+    // The pinned provider wraps its pre-allocation PDF safety rejection as HTTP 500. Classify
+    // that exact, bounded error before retry admission so neither inline nor durable retries
+    // repeatedly submit a page that cannot fit. Other failures keep their HTTP semantics.
+    const resourceRejection = await classifyUnstructuredResourceResponse(response, signal);
+    if (resourceRejection?.kind === "pdf") {
+      throw new ProviderInputError(
+        "PDF page exceeds safe raster limits. Reduce page dimensions before importing.",
+      );
+    }
+    if (resourceRejection?.kind === "input") {
+      throw new ProviderInputError(
+        `Unstructured parser resource limit: ${resourceRejection.reason}`,
+      );
+    }
+    if (resourceRejection?.kind === "timeout") {
+      throw new ProviderError("Unstructured isolated worker exceeded its execution deadline", {
+        code: "provider_timeout",
+        requestOutcomeAmbiguous: false,
+        retryable: false,
+        status: response.status,
       });
     }
 
@@ -3990,6 +4472,7 @@ interface UnstructuredRequestDeadline {
 function createUnstructuredRequestDeadline(requestTimeoutMs: number): UnstructuredRequestDeadline {
   const controller = new AbortController();
   const timeoutReason = new Error("Unstructured parser request deadline exceeded");
+  const expiresAt = performance.now() + requestTimeoutMs;
   let expired = false;
   const timer = setTimeout(() => {
     if (!controller.signal.aborted) {
@@ -4004,9 +4487,14 @@ function createUnstructuredRequestDeadline(requestTimeoutMs: number): Unstructur
     dispose: () => {
       clearTimeout(timer);
     },
-    expired: () => expired,
+    expired: () => expired || performance.now() >= expiresAt,
     throwIfExpired: () => {
-      if (expired) {
+      // Synchronous normalization can delay timers. Measure elapsed monotonic time as well, so
+      // overruns cannot become successful results merely because the timeout callback was late.
+      // This detects overruns; a hard CPU cancellation boundary still requires a worker process.
+      if (expired || performance.now() >= expiresAt) {
+        expired = true;
+        controller.abort(timeoutReason);
         throw timeoutReason;
       }
     },

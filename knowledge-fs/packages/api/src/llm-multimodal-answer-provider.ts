@@ -155,7 +155,7 @@ export function createObjectStorageContentBlockMultimodalAnswerProvider({
   maxImageBytes = 10 * 1024 * 1024,
   maxTotalImageBytes = 32 * 1024 * 1024,
   objectStorage,
-  preferredVariant = "thumbnail",
+  preferredVariant = "analysis",
   ...options
 }: ObjectStorageContentBlockMultimodalAnswerProviderOptions): MultimodalAnswerProvider {
   if (!Number.isSafeInteger(maxImageBytes) || maxImageBytes < 1) {
@@ -385,7 +385,10 @@ function objectBackedImageAssetRef({
   readonly attachment: MultimodalAnswerProviderInput["multimodalEvidence"][number];
   readonly preferredVariant: string;
 }): { readonly contentType: string; readonly objectKey: string } | undefined {
-  if (!isPlainObject(attachment.assetRef)) {
+  if (
+    !isPlainObject(attachment.assetRef) ||
+    attachment.assetRef.analysisUnavailable !== undefined
+  ) {
     return undefined;
   }
 
@@ -472,7 +475,10 @@ function multimodalContentBlockMessages({
 
   for (const [index, attachment] of input.multimodalEvidence.entries()) {
     const label = `M${index + 1}`;
-    const url = isVisualAttachment(attachment) ? assetUrlResolver(attachment) : undefined;
+    const url =
+      isVisualAttachment(attachment) && attachment.assetRef?.analysisUnavailable === undefined
+        ? assetUrlResolver(attachment)
+        : undefined;
 
     attachmentTextBlocks.push({
       text: multimodalAttachmentLine(label, attachment, url),

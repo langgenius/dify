@@ -252,6 +252,8 @@ test("local parser isolates every bounded heavy document workload", () => {
   );
   assert.match(localUnstructured, /^ {10}cpus: "4\.0"$/m);
   assert.match(localUnstructured, /^ {10}memory: 6G$/m);
+  assert.match(localUnstructured, /^ {6}PDF_RENDER_DPI: "350"$/m);
+  assert.match(localUnstructured, /^ {6}PDF_RENDER_MAX_PIXELS_PER_PAGE: "25000000"$/m);
   assert.match(localEnvExample, /^UNSTRUCTURED_MAX_CONCURRENCY=2$/m);
   assert.match(localEnvExample, /^UNSTRUCTURED_MAX_INPUT_BYTES=15728640$/m);
   assert.match(localEnvExample, /^UNSTRUCTURED_REQUEST_TIMEOUT_MS=600000$/m);
@@ -470,6 +472,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "KNOWLEDGE_RESEARCH_MAX_RERANK_CANDIDATES",
     "KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS",
     "UNSTRUCTURED_API_URL",
+    "UNSTRUCTURED_BACKEND_REVISION",
     "UNSTRUCTURED_API_KEY",
     "UNSTRUCTURED_MAX_CONCURRENCY",
     "UNSTRUCTURED_HEAVY_MAX_CONCURRENCY",
@@ -531,12 +534,21 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
 
 test("KnowledgeFS has an isolated page-parallel parser without changing legacy Unstructured", () => {
   assert.deepEqual(envVariableNames(difyKnowledgeFsUnstructuredEnv), [
+    "PDF_RENDER_DPI",
+    "PDF_RENDER_MAX_PIXELS_PER_PAGE",
     "UNSTRUCTURED_PARALLEL_MODE_ENABLED",
     "UNSTRUCTURED_PARALLEL_MODE_URL",
     "UNSTRUCTURED_PARALLEL_MODE_SPLIT_SIZE",
     "UNSTRUCTURED_PARALLEL_MODE_THREADS",
     "UNSTRUCTURED_PARALLEL_RETRY_ATTEMPTS",
   ]);
+  for (const configuration of [
+    difyKnowledgeFsUnstructuredEnv,
+    difyKnowledgeFsUnstructuredServiceDefaults,
+  ]) {
+    assert.match(configuration, /^PDF_RENDER_DPI=350$/m);
+    assert.match(configuration, /^PDF_RENDER_MAX_PIXELS_PER_PAGE=25000000$/m);
+  }
   assert.match(difyKnowledgeFsUnstructuredEnv, /^UNSTRUCTURED_PARALLEL_MODE_ENABLED=true$/m);
   assert.match(
     difyKnowledgeFsUnstructuredEnv,

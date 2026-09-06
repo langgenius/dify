@@ -3,6 +3,48 @@ import { describe, expect, it } from "vitest";
 import { createSharpImageThumbnailVariantGenerator } from "./document-image-variant-generator";
 
 describe("createSharpImageThumbnailVariantGenerator", () => {
+  it.each([0, 319, 4097, Number.NaN])(
+    "rejects unsafe analysis dimension %s",
+    (analysisMaxDimension) => {
+      expect(() => createSharpImageThumbnailVariantGenerator({ analysisMaxDimension })).toThrow(
+        "Sharp image analysis dimension",
+      );
+    },
+  );
+  it("requires distinct variant names and skips non-image/empty input", async () => {
+    expect(() =>
+      createSharpImageThumbnailVariantGenerator({
+        analysisMaxDimension: 640,
+        variantName: "analysis",
+      }),
+    ).toThrow("distinct variant names");
+    const generator = createSharpImageThumbnailVariantGenerator({ analysisMaxDimension: 640 });
+    await expect(
+      generator.generate({
+        body: new Uint8Array([1]),
+        contentType: "text/plain",
+        elementId: "text",
+      }),
+    ).resolves.toEqual([]);
+    await expect(
+      generator.generate({ body: new Uint8Array(), contentType: "image/png", elementId: "empty" }),
+    ).resolves.toEqual([]);
+  });
+  it("keeps a separate analysis image with enough detail instead of feeding the preview thumbnail to vision", async () => {
+    const sharp = (await import("sharp")).default;
+    const body = await sharp({
+      create: { background: "white", channels: 3, width: 800, height: 400 },
+    })
+      .png()
+      .toBuffer();
+    const variants = await createSharpImageThumbnailVariantGenerator({
+      analysisMaxDimension: 640,
+    }).generate({ body, contentType: "image/png", elementId: "figure" });
+    expect(variants.map(({ name, width, height }) => ({ name, width, height }))).toEqual([
+      { name: "thumbnail", width: 320, height: 160 },
+      { name: "analysis", width: 640, height: 320 },
+    ]);
+  });
   it("generates bounded PNG thumbnail variants from image bytes", async () => {
     const sharp = (await import("sharp")).default;
     const generator = createSharpImageThumbnailVariantGenerator({

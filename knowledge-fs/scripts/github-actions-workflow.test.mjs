@@ -37,6 +37,25 @@ function qualityStep(name) {
   return step;
 }
 
+test("dedicated parser process and attachment regressions run with locked Python dependencies", () => {
+  const check = qualityStep("Test dedicated parser sandbox");
+  assert.equal(check["working-directory"], ".");
+  assert.match(check.run, /uv run --project api python -m unittest discover/);
+  assert.match(check.env.PYTHONPATH, /services\/unstructured-sandbox/);
+  assert.ok(
+    qualitySteps.indexOf(check) >
+      qualitySteps.indexOf(qualityStep("Install Dify contract dependencies")),
+  );
+});
+
+test("PDF geometry integration tests have the production metadata inspector available", () => {
+  const inspector = qualityStep("Install PDF metadata inspector");
+  assert.match(inspector.run, /apt-get install --yes --no-install-recommends poppler-utils/);
+  assert.match(inspector.run, /pdfinfo -v/);
+  const checks = qualitySteps.findIndex((step) => step.run === "pnpm check");
+  assert.ok(qualitySteps.indexOf(inspector) < checks);
+});
+
 test("root workflow always emits a stable PR and merge-queue gate", () => {
   assert.match(workflow, /^name: KnowledgeFS CI$/m);
   assert.match(workflow, /^ {2}pull_request:$/m);

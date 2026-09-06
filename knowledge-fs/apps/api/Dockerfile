@@ -63,16 +63,20 @@ ENV NODE_ENV=production \
 WORKDIR /workspace
 
 # PDF image elements are rasterized outside Unstructured. Keep Poppler in the
-# final image and fail the build if the executable is not usable on the target
-# platform. Deployments can set KNOWLEDGE_PDF_RASTERIZER=off as a kill switch.
+# final image and verify both the renderer and metadata inspector. pdfinfo is also
+# required by remote PDF admission, even when local image rasterization is off.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && command -v pdftoppm >/dev/null \
-    && pdftoppm -v >/dev/null 2>&1
+    && pdftoppm -v >/dev/null 2>&1 \
+    && command -v pdfinfo >/dev/null \
+    && pdfinfo -v >/dev/null 2>&1
 
 COPY --from=builder /workspace/apps/api/dist/server.mjs ./server.mjs
 COPY --from=builder /workspace/apps/api/dist/migrate.mjs ./migrate.mjs
+COPY --from=builder /workspace/apps/api/dist/native-parser-worker.mjs ./native-parser-worker.mjs
+COPY --from=builder /workspace/apps/api/dist/image-variant-worker.mjs ./image-variant-worker.mjs
 COPY --from=builder /runtime/node_modules ./node_modules
 
 # Fail the image build if the target platform's sharp binary or libvips payload

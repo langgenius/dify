@@ -1141,7 +1141,7 @@ describe("online document import edge branches", () => {
     });
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.documents).toHaveLength(1);
+    expect(body.documents, JSON.stringify(body)).toHaveLength(1);
     expect(body.failed).toEqual([
       {
         code: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.code,
@@ -1376,7 +1376,7 @@ describe("online drive import edge branches", () => {
     );
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.documents).toEqual([
+    expect(body.documents, JSON.stringify(body)).toEqual([
       { documentAssetId: expect.any(String), filename: "plain.txt" },
     ]);
     expect(body.failed).toEqual([

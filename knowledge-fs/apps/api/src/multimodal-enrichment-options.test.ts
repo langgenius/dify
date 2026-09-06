@@ -37,7 +37,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
     await objectStorage.putObject({
       body: new Uint8Array([1, 2, 3]),
       contentType: "image/png",
-      key: "tenant/spaces/space/documents/doc/assets/chart-thumbnail.png",
+      key: "tenant/spaces/space/documents/doc/assets/chart-analysis.png",
     });
     globalThis.fetch = (async (input, init) => {
       const request = new Request(input, init);
@@ -88,6 +88,10 @@ describe("createApiMultimodalEnrichmentOptions", () => {
               contentType: "image/png",
               objectKey: "tenant/spaces/space/documents/doc/assets/chart.png",
               variants: {
+                analysis: {
+                  contentType: "image/png",
+                  objectKey: "tenant/spaces/space/documents/doc/assets/chart-analysis.png",
+                },
                 thumbnail: {
                   contentType: "image/png",
                   objectKey: "tenant/spaces/space/documents/doc/assets/chart-thumbnail.png",

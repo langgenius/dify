@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!kfs_sandbox
+!kfs_sandbox/*.py
+!golden.py
+!build-converter-manifest.py
+!bin
+!bin/*
+!fixtures
+!fixtures/*

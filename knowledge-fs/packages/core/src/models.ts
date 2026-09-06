@@ -929,6 +929,21 @@ export const DocumentMultimodalAssetVariantSchema = z.object({
 export type DocumentMultimodalAssetVariant = z.infer<typeof DocumentMultimodalAssetVariantSchema>;
 
 export const DocumentMultimodalAssetRefSchema = z.object({
+  // A retained download/preview reference is not necessarily safe to decode for model analysis.
+  // Absent on legacy artifacts; only explicit rejection disables image analysis.
+  analysisUnavailable: z
+    .object({
+      reason: z.enum([
+        "asset-count-budget",
+        "materialized-byte-budget",
+        "variant-pixel-budget",
+        "variant-deadline",
+        "variant-input-rejected",
+        "variant-unavailable",
+      ]),
+    })
+    .strict()
+    .optional(),
   contentType: z.string().min(1).optional(),
   objectKey: ObjectStorageKeySchema.optional(),
   sha256: Sha256Schema.optional(),

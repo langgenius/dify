@@ -39,6 +39,7 @@ import type { DocumentCompilationJobStateMachine } from "./document-compilation-
 import { compileDocumentArtifact } from "./document-compilation-pipeline";
 import type { DocumentImageVariantGenerator } from "./document-image-variant-generator";
 import { buildDocumentKnowledgePath } from "./document-knowledge-paths";
+import type { DocumentMediaCapabilityResolver } from "./document-media-execution-plan";
 import type { DocumentRemoteAssetFetcher } from "./document-multimodal-asset-extractor";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
 import type { DocumentOutlineBuilder } from "./document-outline-builder";
@@ -194,6 +195,7 @@ export interface RegisterDocumentWriteHandlersOptions {
   readonly synchronousUploadDenseModel?: string | undefined;
   readonly traces: TraceRecorder;
   readonly visualEmbeddingModel?: string | undefined;
+  readonly resolveDocumentMediaCapabilities?: DocumentMediaCapabilityResolver | undefined;
 }
 
 interface BulkUploadAcceptedItem {
@@ -269,6 +271,7 @@ export function registerDocumentWriteHandlers({
   synchronousUploadDenseModel,
   traces,
   visualEmbeddingModel,
+  resolveDocumentMediaCapabilities,
 }: RegisterDocumentWriteHandlersOptions): void {
   const effectiveBufferedDocumentUploadAdmission =
     bufferedDocumentUploadAdmission ??
@@ -1480,6 +1483,7 @@ export function registerDocumentWriteHandlers({
               body: upload.body,
               knowledgeSpaceId,
               permissionScope: [],
+              signal: context.req.raw.signal,
               tenantId: subject.tenantId,
               traceId,
             },
@@ -1510,6 +1514,7 @@ export function registerDocumentWriteHandlers({
               synchronousUploadReindexer,
               traces,
               visualEmbeddingModel,
+              resolveDocumentMediaCapabilities,
             },
           );
           await assertWritable();

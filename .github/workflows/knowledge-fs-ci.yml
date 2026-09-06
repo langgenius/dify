@@ -106,6 +106,7 @@ jobs:
               - 'docker/envs/core-services/knowledge-fs.env.example'
               - 'docker/envs/core-services/knowledge-fs-unstructured-service.defaults'
               - 'docker/envs/core-services/knowledge-fs-unstructured.env.example'
+              - 'docker/knowledge-fs-unstructured-sandbox.compose.yaml'
               - 'docker/generate_docker_compose'
               - 'docs/design/knowledge-fs*'
               - '.github/dependabot.yml'
@@ -195,6 +196,12 @@ jobs:
       - name: Install KnowledgeFS dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install PDF metadata inspector
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends poppler-utils
+          pdfinfo -v
+
       - name: Scan KnowledgeFS secrets
         run: pnpm security:secrets
 
@@ -226,6 +233,12 @@ jobs:
       - name: Install Dify contract dependencies
         working-directory: .
         run: uv sync --project api --locked --dev
+
+      - name: Test dedicated parser sandbox
+        working-directory: .
+        env:
+          PYTHONPATH: knowledge-fs/services/unstructured-sandbox
+        run: uv run --project api python -m unittest discover -s knowledge-fs/services/unstructured-sandbox/tests -t knowledge-fs/services/unstructured-sandbox -v
 
       - name: Collect Dify KnowledgeFS gate targets
         working-directory: .
