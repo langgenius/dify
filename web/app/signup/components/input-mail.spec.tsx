@@ -1,5 +1,5 @@
 import type { MockedFunction } from 'vite-plus/test'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useLocale } from '@/context/i18n'
@@ -152,27 +152,30 @@ describe('InputMail Form', () => {
 
   // Validation and failure paths.
   describe('Edge Cases', () => {
-    it('should block submission when email is invalid', () => {
-      const { container } = renderForm()
-      const form = container.querySelector('form')
+    it('should block submission when email is invalid', async () => {
+      const user = userEvent.setup()
+      renderForm()
       const input = screen.getByLabelText('login.email')
 
-      fireEvent.change(input, { target: { value: 'invalid-email' } })
-      expect(form).not.toBeNull()
-      fireEvent.submit(form as HTMLFormElement)
+      await user.type(input, 'invalid-email{Enter}')
 
+      const error = await screen.findByText('login.error.emailInValid')
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(input).toHaveAccessibleDescription(error.textContent ?? '')
+      expect(input).toHaveFocus()
       expect(mockSubmitMail).not.toHaveBeenCalled()
       expect(mockOnSuccess).not.toHaveBeenCalled()
     })
 
     it('should not call onSuccess when mutation does not succeed', async () => {
+      const user = userEvent.setup()
       mockSubmitMail.mockResolvedValue({ result: 'failed', data: 'token' })
       renderForm()
       const input = screen.getByLabelText('login.email')
       const button = screen.getByRole('button', { name: 'login.signup.verifyMail' })
 
-      fireEvent.change(input, { target: { value: 'test@example.com' } })
-      fireEvent.click(button)
+      await user.type(input, 'test@example.com')
+      await user.click(button)
 
       await waitFor(() => {
         expect(mockSubmitMail).toHaveBeenCalled()

@@ -291,7 +291,6 @@ export default function IntegrationsPage({
             />
             <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
               <CollapsibleTrigger
-                aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
                 className={cn(
                   toolsNavItemClassName,
                   'border-none bg-transparent data-panel-open:text-components-menu-item-text',

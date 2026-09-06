@@ -107,12 +107,7 @@ export function DatasetMetadataPicker({
     <Popover open={open} onOpenChange={setOpen} onOpenChangeComplete={handleOpenChangeComplete}>
       <PopoverTrigger
         render={
-          <Button
-            variant="tertiary"
-            size="small"
-            aria-label={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
-            className="w-full px-2 py-0"
-          >
+          <Button variant="tertiary" size="small" className="w-full px-2 py-0">
             <span className="flex min-w-0 items-center justify-center gap-1">
               <span
                 className="i-ri-add-line size-3.5 shrink-0 text-components-button-tertiary-text"

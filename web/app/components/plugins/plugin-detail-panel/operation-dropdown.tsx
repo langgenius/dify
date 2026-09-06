@@ -113,7 +113,6 @@ export function OperationDropdown({
             href={detailUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
           >
             <span className="min-w-0 grow truncate px-1 py-0.5">
               {t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}

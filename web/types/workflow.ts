@@ -16,7 +16,7 @@ import type {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import type { TransferMethod } from '@/types/app'
+import type { AppModeEnum, TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
   node_execution_id: string
@@ -457,6 +457,8 @@ export type PublishWorkflowParams = {
 export type WorkflowKind = 'standard'
 
 export type UpdateWorkflowParams = {
+  appId?: string
+  appMode?: AppModeEnum
   url: string
   title: string
   releaseNotes: string

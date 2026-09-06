@@ -175,7 +175,7 @@ function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
   }
 
   return (
-    <div className="flex max-h-[428px] flex-col gap-2 overflow-y-auto px-3 pt-3 pb-4">
+    <div className="flex max-h-107 flex-col gap-2 overflow-y-auto px-3 pt-3 pb-4">
       <div className="flex min-w-0 flex-col items-start gap-1">
         <WorkspaceSkillIcon />
         <div className="min-w-0 flex-1">
@@ -269,7 +269,7 @@ function WorkspaceSkillSelector({
   )
 
   return (
-    <div ref={selectorRef} className="relative h-[520px] w-[320px]">
+    <div ref={selectorRef} className="relative h-130 w-[320px]">
       <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-[5px]">
         <div className="border-b border-divider-subtle p-2">
           <div className="relative">
@@ -338,7 +338,7 @@ function WorkspaceSkillSelector({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
         </Link>
       </div>
-      <div className="absolute top-[52px] left-[-244px] w-[240px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+      <div className="absolute top-13 -left-61 w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
         <WorkspaceSkillPreview skill={previewSkill} />
       </div>
     </div>
@@ -735,7 +735,7 @@ export function AgentSkills() {
                 sideOffset={4}
                 className={
                   addMenuView === 'menu'
-                    ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+                    ? 'w-70 bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
                     : 'w-[320px] overflow-visible border-none bg-transparent p-0 shadow-none'
                 }
               >

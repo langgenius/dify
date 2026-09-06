@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -54,17 +54,14 @@ const setSearchParams = (params: Record<string, string>) => {
 }
 
 const completePasswordChange = async () => {
+  const user = userEvent.setup()
   render(<ChangePasswordForm />)
 
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
 
-  fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-    target: { value: 'ValidPass123!' },
-  })
-  fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-    target: { value: 'ValidPass123!' },
-  })
-  fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+  await user.type(screen.getByLabelText('common.account.newPassword'), 'ValidPass123!')
+  await user.type(screen.getByLabelText('common.account.confirmPassword'), 'ValidPass123!')
+  await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
 
   await waitFor(() => {
     expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toBeInTheDocument()
@@ -98,6 +95,7 @@ describe('Reset Password Set Password Page', () => {
     const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
 
     expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+    expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
     expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
 
     await user.type(passwordInput, 'ValidPass123!')
@@ -118,6 +116,31 @@ describe('Reset Password Set Password Page', () => {
         },
       })
     })
+  })
+
+  it('revalidates the confirmation field when the password changes', async () => {
+    const user = userEvent.setup()
+    render(<ChangePasswordForm />)
+
+    const passwordInput = screen.getByLabelText('common.account.newPassword')
+    await user.type(passwordInput, 'ValidPass123!')
+    const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+    await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
+
+    const error = await screen.findByText('common.account.notEqual')
+    expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
+    expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
+    expect(confirmPasswordInput).toHaveFocus()
+    expect(mockChangePasswordWithToken).not.toHaveBeenCalled()
+
+    await user.clear(passwordInput)
+    await user.type(passwordInput, 'DifferentPass123!')
+
+    await waitFor(() => {
+      expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+    })
+    expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
+    expect(mockChangePasswordWithToken).not.toHaveBeenCalled()
   })
 
   describe('Post-reset navigation', () => {

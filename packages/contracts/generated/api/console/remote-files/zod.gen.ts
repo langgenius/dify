@@ -6,7 +6,7 @@ import * as z from 'zod'
  * RemoteFileUploadPayload
  */
 export const zRemoteFileUploadPayload = z.object({
-  url: z.string(),
+  url: z.url(),
 })
 
 /**

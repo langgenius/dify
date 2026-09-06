@@ -162,7 +162,6 @@
   "mcp.server.modal.parameters": "Параметры",
   "mcp.server.modal.parametersPlaceholder": "Назначение и ограничения параметра",
   "mcp.server.modal.parametersTip": "Добавьте описания для каждого параметра, чтобы помочь LLM понять их назначение и ограничения.",
-  "mcp.server.publishTip": "Приложение не опубликовано. Пожалуйста, сначала опубликуйте приложение.",
   "mcp.server.reGen": "Хотите регенерировать URL сервера? Текущий URL немедленно перестанет работать.",
   "mcp.server.title": "MCP Сервер",
   "mcp.server.url": "URL сервера",

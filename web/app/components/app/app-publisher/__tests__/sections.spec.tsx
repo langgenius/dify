@@ -594,7 +594,9 @@ describe('app-publisher sections', () => {
 
     await user.hover(screen.getByRole('button', { name: /common\.openWebApp\b/ }))
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Open web app unavailable')
+    expect(
+      await screen.findByText('Open web app unavailable', { selector: '[data-open]' }),
+    ).toBeVisible()
   })
 
   it('should keep an unavailable action with a tooltip keyboard focusable', async () => {
@@ -622,6 +624,8 @@ describe('app-publisher sections', () => {
     expect(action).toHaveFocus()
     expect(action).toHaveAttribute('aria-disabled', 'true')
     expect(action).toHaveAccessibleDescription('Open web app unavailable')
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Open web app unavailable')
+    expect(
+      await screen.findByText('Open web app unavailable', { selector: '[data-open]' }),
+    ).toBeVisible()
   })
 })

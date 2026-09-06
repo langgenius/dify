@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.entities import SubscriptionBuilder, SubscriptionBuilderUpdater
+from core.trigger.entities.entities import Subscription, SubscriptionBuilder, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -249,3 +249,50 @@ def test_process_validation_endpoint_uses_the_public_capability() -> None:
     assert str(provider_call["provider_id"]) == str(PROVIDER_ID)
     controller.dispatch.assert_called_once()
     append_log.assert_called_once()
+
+
+def test_update_and_build_persists_provider_subscription_expires_at() -> None:
+    """Authorized create must store the plugin lease, not the builder's -1 placeholder."""
+    builder = subscription_builder().model_copy(
+        update={
+            "credential_type": CredentialType.OAUTH2,
+            "credentials": {"token": "x"},
+            "credential_expires_at": 1_787_560_741,
+        }
+    )
+    assert builder.expires_at == -1
+    real_lease = 1_787_560_681
+    provider_subscription = Subscription(
+        expires_at=real_lease,
+        endpoint="https://dify.example.com/triggers/plugin/builder-1",
+        parameters={"label_ids": ["INBOX"]},
+        properties={"topic_name": "projects/p/topics/t"},
+    )
+
+    with (
+        patch.object(TriggerManager, "get_trigger_provider", return_value=Mock()),
+        patch.object(TriggerSubscriptionBuilderService, "acquire_builder_lock", return_value=nullcontext()),
+        patch.object(TriggerSubscriptionBuilderService, "get_subscription_builder", return_value=builder),
+        patch.object(TriggerManager, "subscribe_trigger", return_value=provider_subscription) as subscribe_trigger,
+        patch(
+            "services.trigger.trigger_subscription_builder_service.TriggerProviderService.add_trigger_subscription"
+        ) as add_subscription,
+        patch("services.trigger.trigger_subscription_builder_service.redis_client.setex"),
+        patch("services.trigger.trigger_subscription_builder_service.redis_client.delete"),
+    ):
+        TriggerSubscriptionBuilderService.update_and_build_builder(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            provider_id=PROVIDER_ID,
+            subscription_builder_id=builder.id,
+            subscription_builder_updater=SubscriptionBuilderUpdater(),
+        )
+
+    subscribe_trigger.assert_called_once()
+    add_subscription.assert_called_once()
+    persisted = add_subscription.call_args.kwargs
+    assert persisted["expires_at"] == real_lease
+    assert persisted["expires_at"] != -1
+    assert persisted["properties"] == {"topic_name": "projects/p/topics/t"}
+    assert persisted["credential_expires_at"] == 1_787_560_741
+    assert persisted["credentials"] == {"token": "x"}

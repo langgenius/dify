@@ -98,7 +98,6 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             <DropdownMenuRadioItemIndicator />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem<CredentialPermission>
-            aria-label={allTeamMembersLabel}
             value={PermissionLevel.allTeamMembers}
             closeOnClick
             className="touch-manipulation"

@@ -1083,7 +1083,7 @@ describe('prune-unused-i18n', () => {
       })
     })
 
-    it('should keep literals assigned to typed i18n key fields', async () => {
+    it('should keep literals when conditional i18n key types expand into unions', async () => {
       // Arrange
       writeJson('i18n/en-US/agent-v-2.json', {
         'agentDetail.configure.tools.credential.authOne': 'Auth 1',
@@ -1092,15 +1092,26 @@ describe('prune-unused-i18n', () => {
       writeSource(
         'src/typed-key-field.ts',
         `
-        type I18nKeysWithPrefix<Namespace extends string, Prefix extends string> =
-          'agentDetail.configure.tools.credential.authOne' | 'agentDetail.configure.tools.unused'
+        type Resources = {
+          agentV2: {
+            'agentDetail.configure.tools.credential.authOne': string
+            'agentDetail.configure.tools.unused': string
+          }
+        }
+
+        type I18nKeysWithPrefix<Namespace extends keyof Resources, Prefix extends string> =
+          Extract<keyof Resources[Namespace], \`\${Prefix}\${string}\`>
 
         type Tool = {
           credentialKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
         }
 
-        export const tool: Tool = {
-          credentialKey: 'agentDetail.configure.tools.credential.authOne',
+        export function addTool(tools: Tool[], hasCredential: boolean) {
+          tools.push({
+            credentialKey: hasCredential
+              ? 'agentDetail.configure.tools.credential.authOne'
+              : undefined,
+          })
         }
       `,
       )

@@ -47,7 +47,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
       <Tooltip>
         <TooltipTrigger
           render={
-            <div className="relative" aria-label={tooltip}>
+            <div className="relative">
               <ModelSelector
                 models={[]}
                 value={undefined}
@@ -57,6 +57,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
                 disabled
               />
               <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />
+              <span className="sr-only">{tooltip}</span>
             </div>
           }
         />
@@ -76,7 +77,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
     ns: 'workflow',
   })
   const modelSelector = (
-    <div className="relative" aria-label={showWarn ? modelNotInstalledTooltip : undefined}>
+    <div className="relative">
       <ModelSelector
         models={modelList}
         value={{
@@ -89,6 +90,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
         disabled
       />
       {showWarn && <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />}
+      {showWarn && <span className="sr-only">{modelNotInstalledTooltip}</span>}
     </div>
   )
 

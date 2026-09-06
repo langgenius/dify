@@ -1081,20 +1081,12 @@ export class CollaborationManager {
     return this.eventEmitter.on('varsAndFeaturesUpdate', callback)
   }
 
-  onAppStateUpdate(callback: (update: CollaborationUpdate) => void): () => void {
-    return this.eventEmitter.on('appStateUpdate', callback)
-  }
-
   onAppPublishUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appPublishUpdate', callback)
   }
 
   onAppMetaUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appMetaUpdate', callback)
-  }
-
-  onMcpServerUpdate(callback: (update: CollaborationUpdate) => void): () => void {
-    return this.eventEmitter.on('mcpServerUpdate', callback)
   }
 
   onNodePanelPresenceUpdate(callback: (presence: NodePanelPresenceMap) => void): () => void {
@@ -1782,14 +1774,10 @@ export class CollaborationManager {
           this.eventEmitter.emit('cursors', { ...this.cursors })
         } else if (update.type === 'vars_and_features_update') {
           this.eventEmitter.emit('varsAndFeaturesUpdate', update)
-        } else if (update.type === 'app_state_update') {
-          this.eventEmitter.emit('appStateUpdate', update)
         } else if (update.type === 'app_meta_update') {
           this.eventEmitter.emit('appMetaUpdate', update)
         } else if (update.type === 'app_publish_update') {
           this.eventEmitter.emit('appPublishUpdate', update)
-        } else if (update.type === 'mcp_server_update') {
-          this.eventEmitter.emit('mcpServerUpdate', update)
         } else if (update.type === 'workflow_update') {
           this.eventEmitter.emit('workflowUpdate', update.data)
         } else if (update.type === 'comments_update') {

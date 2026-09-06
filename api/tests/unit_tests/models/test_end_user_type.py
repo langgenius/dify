@@ -15,6 +15,7 @@ API_ROOT = Path(__file__).resolve().parents[3]
 
 def test_end_user_type_covers_persisted_creation_values():
     assert {member.value for member in EndUserType} == {
+        "app-deploy",
         "browser",
         "mcp",
         "openapi",

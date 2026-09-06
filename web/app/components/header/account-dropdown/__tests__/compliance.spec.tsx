@@ -10,7 +10,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
-import { expectLoadingButton } from '@/test/button'
 import { downloadUrl } from '@/utils/download'
 import Compliance from '../compliance'
 
@@ -144,6 +143,9 @@ describe('Compliance', () => {
 
       // Assert
       expect(screen.getAllByText('common.operation.download').length).toBeGreaterThan(0)
+      expect(getComplianceMenuItem('common.compliance.soc2Type1')).toHaveAccessibleName(
+        'common.compliance.soc2Type1 common.operation.download',
+      )
     })
   })
 
@@ -229,7 +231,7 @@ describe('Compliance', () => {
       expect(mockSetSettingsDestination).toHaveBeenCalledWith('billing')
     })
 
-    // isPending branches: spinner visible, loading button contract, guard blocks second call
+    // isPending branches: spinner visible and the owning menu item blocks a second call
     it('should show spinner and guard against duplicate download when isPending is true', async () => {
       // Arrange
       let resolveDownload: (value: { url: string }) => void
@@ -253,13 +255,11 @@ describe('Compliance', () => {
       expect(menuItem).not.toBeNull()
       fireEvent.click(menuItem!)
 
-      // Assert - button should enter the loading-disabled state while mutation is pending
+      // Assert - the menu item owns the pending interaction state
       await waitFor(
         () => {
-          const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
-          expect(loadingButton).not.toBeNull()
-          expectLoadingButton(loadingButton)
-          expect(loadingButton!.querySelector('.animate-spin')).not.toBeNull()
+          expect(menuItem).toHaveAttribute('aria-disabled', 'true')
+          expect(menuItem!.querySelector('.animate-spin')).not.toBeNull()
         },
         { timeout: 10000 },
       )
@@ -297,9 +297,7 @@ describe('Compliance', () => {
       // Wait for mutation to start and React to re-render (isPending=true)
       await waitFor(
         () => {
-          const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
-          expect(loadingButton).not.toBeNull()
-          expectLoadingButton(loadingButton)
+          expect(menuItem).toHaveAttribute('aria-disabled', 'true')
           expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
         },
         { timeout: 10000 },

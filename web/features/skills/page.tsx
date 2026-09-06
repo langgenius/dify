@@ -274,8 +274,7 @@ function DeleteSkillDialog({
   })
   const references = referencesQuery.data?.data ?? []
   const referenceCount = Math.max(skill.reference_count ?? 0, references.length)
-  const isDeleteDisabled =
-    deleteMutation.isPending ||
+  const isDeleteUnavailable =
     (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
@@ -290,7 +289,7 @@ function DeleteSkillDialog({
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
-    if (isDeleteDisabled) return
+    if (deleteMutation.isPending || isDeleteUnavailable) return
 
     deleteMutation.mutate(
       {
@@ -388,7 +387,7 @@ function DeleteSkillDialog({
           <AlertDialogConfirmButton
             tone="destructive"
             loading={deleteMutation.isPending}
-            disabled={isDeleteDisabled}
+            disabled={isDeleteUnavailable}
             onClick={handleDelete}
           >
             {tCommon(($) => $['operation.delete'])}
@@ -674,8 +673,6 @@ function SkillsToolbar({
 }) {
   const { t } = useTranslation('skill')
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
-  const isMutating = creating || importing
-
   return (
     <div className="flex min-w-0 items-center gap-2">
       <SkillTagFilter onOpenTagManagement={onOpenTagManagement} />
@@ -692,7 +689,7 @@ function SkillsToolbar({
         {canEdit && (
           <Button
             className="h-8 gap-1 px-3"
-            disabled={isMutating}
+            disabled={creating}
             loading={importing}
             onClick={onImport}
           >
@@ -704,7 +701,7 @@ function SkillsToolbar({
           <Button
             variant="primary"
             className="h-8 gap-0.5 px-3"
-            disabled={isMutating}
+            disabled={importing}
             loading={creating}
             onClick={onCreate}
           >
@@ -889,7 +886,7 @@ export default function SkillsPage() {
   useDocumentTitle(t(($) => $['skillManagement.title']))
 
   const handleCreate = () => {
-    if (createMutation.isPending) return
+    if (createMutation.isPending || importMutation.isPending) return
 
     createMutation.mutate(
       {
@@ -914,7 +911,7 @@ export default function SkillsPage() {
   }
 
   const handleFileChange = (file: File | undefined) => {
-    if (!file || importMutation.isPending) return
+    if (!file || importMutation.isPending || createMutation.isPending) return
 
     importMutation.mutate(
       {

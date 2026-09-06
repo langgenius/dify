@@ -119,9 +119,6 @@ export function OutputEditCard({
             <Field name="required" className="contents">
               <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
                 <Switch
-                  aria-label={t(($) => $['nodes.agent.outputVars.requiredLabel'], {
-                    ns: 'workflow',
-                  })}
                   size="xs"
                   checked={draft.required}
                   onCheckedChange={(required) => updateDraft({ required })}
@@ -195,13 +192,7 @@ export function OutputEditCard({
           <Button type="button" size="small" variant="secondary" onClick={onCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button
-            type="submit"
-            size="small"
-            variant="primary"
-            disabled={confirmDisabled}
-            aria-label={t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
-          >
+          <Button type="submit" size="small" variant="primary" disabled={confirmDisabled}>
             {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
             <ConfirmHotkeyHint />
           </Button>

@@ -171,7 +171,7 @@ const ImportFromMarketplaceTemplateModal = ({
           </Button>
           <Button
             variant="primary"
-            disabled={isLoading || isError || importing}
+            disabled={isLoading || isError}
             loading={importing}
             onClick={handleConfirm}
           >

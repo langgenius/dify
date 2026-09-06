@@ -210,7 +210,7 @@ def test_remote_upload_records_form_file_link(
     ssrf_proxy.head.return_value = response
     monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
     monkeypatch.setattr(
-        upload_module.helpers,
+        upload_module,
         "guess_file_info_from_response",
         lambda _response: SimpleNamespace(filename="sample.txt", extension="txt", mimetype="text/plain", size=6),
     )

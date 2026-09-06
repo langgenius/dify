@@ -187,15 +187,6 @@ class Account(UserMixin, TypeBase):
     def get_status(self) -> AccountStatus:
         return self.status
 
-    @classmethod
-    def get_by_openid(cls, provider: str, open_id: str):
-        account_integrate = db.session.execute(
-            select(AccountIntegrate).where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
-        ).scalar_one_or_none()
-        if account_integrate:
-            return db.session.scalar(select(Account).where(Account.id == account_integrate.account_id))
-        return None
-
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
@@ -312,7 +303,7 @@ class TenantAccountJoin(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     account_id: Mapped[str] = mapped_column(StringUUID)
-    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
+    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false(), default=False)
     role: Mapped[TenantAccountRole] = mapped_column(
         EnumText(TenantAccountRole, length=16), server_default="normal", default=TenantAccountRole.NORMAL
     )

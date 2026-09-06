@@ -13,7 +13,6 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from sqlalchemy.orm import sessionmaker
 
 import services
-from controllers.common import helpers
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
@@ -24,6 +23,7 @@ from controllers.common.errors import (
 )
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
+from core.file.remote_file_metadata import guess_file_info_from_response
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, FileWithSignedUrl
@@ -155,7 +155,7 @@ def _upload_remote_file(context, url: str):
     except httpx.RequestError as exc:
         raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(exc)}")
 
-    file_info = helpers.guess_file_info_from_response(resp)
+    file_info = guess_file_info_from_response(resp)
     if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
         raise FileTooLargeError()
 

@@ -33,6 +33,7 @@ export const DSLExportConfirmContent = ({
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
   const [isExporting, setIsExporting] = useState(false)
+  const exportButtonLabelId = React.useId()
 
   const submit = useCallback(async () => {
     if (isExporting) return
@@ -131,14 +132,16 @@ export const DSLExportConfirmContent = ({
         <AlertDialogConfirmButton
           tone="default"
           loading={isExporting}
-          disabled={isExporting}
+          aria-labelledby={exportButtonLabelId}
           onClick={submit}
         >
-          {isExporting
-            ? t(($) => $['operation.exporting'], { ns: 'common' })
-            : exportSecrets
-              ? t(($) => $['env.export.export'], { ns: 'workflow' })
-              : t(($) => $['env.export.ignore'], { ns: 'workflow' })}
+          <span id={exportButtonLabelId}>
+            {isExporting
+              ? t(($) => $['operation.exporting'], { ns: 'common' })
+              : exportSecrets
+                ? t(($) => $['env.export.export'], { ns: 'workflow' })
+                : t(($) => $['env.export.ignore'], { ns: 'workflow' })}
+          </span>
         </AlertDialogConfirmButton>
       </AlertDialogActions>
     </AlertDialogContent>

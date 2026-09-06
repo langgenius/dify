@@ -5,10 +5,7 @@ import { createTestQueryClient } from '@/test/query-client'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 
 const mocks = vi.hoisted(() => ({
-  emit: vi.fn(),
   fetchAppDetail: vi.fn().mockResolvedValue({ id: 'app-1' }),
-  getSocket: vi.fn(),
-  onAppStateUpdate: vi.fn(() => vi.fn()),
   setAppDetail: vi.fn(),
   toast: vi.fn(),
   updateAppSiteConfig: vi.fn().mockResolvedValue({}),
@@ -19,14 +16,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mocks.toast }))
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { setAppDetail: typeof mocks.setAppDetail }) => unknown) =>
     selector({ setAppDetail: mocks.setAppDetail }),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: { onAppStateUpdate: mocks.onAppStateUpdate },
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
-  webSocketClient: { getSocket: mocks.getSocket },
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -81,10 +70,9 @@ function renderActions(appId = 'app-1', canManageAccessPoint = true) {
 describe('useAccessPointActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getSocket.mockReturnValue({ emit: mocks.emit })
   })
 
-  it('refreshes and broadcasts a successful access point result', async () => {
+  it('refreshes after a successful access point result', async () => {
     const { result } = renderActions()
 
     act(() => result.current.handleResult(null))
@@ -93,25 +81,17 @@ describe('useAccessPointActions', () => {
       expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
       expect(mocks.setAppDetail).toHaveBeenCalledWith({ id: 'app-1' })
     })
-    expect(mocks.emit).toHaveBeenCalledWith(
-      'collaboration_event',
-      expect.objectContaining({
-        type: 'app_state_update',
-        timestamp: expect.any(Number),
-      }),
-    )
     expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully', {
       type: 'success',
     })
   })
 
-  it('reports a failed result without refreshing or broadcasting stale state', () => {
+  it('reports a failed result without refreshing stale state', () => {
     const { result } = renderActions()
 
     act(() => result.current.handleResult(new Error('request failed')))
 
     expect(mocks.fetchAppDetail).not.toHaveBeenCalled()
-    expect(mocks.getSocket).not.toHaveBeenCalled()
     expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully', {
       type: 'error',
     })

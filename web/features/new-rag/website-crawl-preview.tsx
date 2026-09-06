@@ -295,6 +295,8 @@ export function WebsiteCrawlPreview({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const rootUrlErrorId = useId()
+  const primaryActionLabelId = useId()
+  const stopButtonLabelId = useId()
   const [rootUrl, setRootUrl] = useState(initialDraft?.rootUrl ?? '')
   const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
   const [urlTouched, setUrlTouched] = useState(false)
@@ -403,7 +405,8 @@ export function WebsiteCrawlPreview({
     run && !starting && !stopping && !pollPaused && (active || !pagesLoaded),
   )
   const runId = run?.id
-  const locked = starting || stopping || active || successfulPreview || uncertainOperation
+  const workflowUnavailable = stopping || active || successfulPreview || uncertainOperation
+  const locked = starting || workflowUnavailable
   const dirty = Boolean(
     rootUrl || sourceName || run || !includeSubpages || pageLimit !== DEFAULT_PAGE_LIMIT,
   )
@@ -1162,11 +1165,14 @@ export function WebsiteCrawlPreview({
             className="mt-4 w-full"
             disabled={
               !configuration ||
-              (locked && requestError !== 'POLL_FAILED' && !canReconcileUncertainOperation)
+              (workflowUnavailable &&
+                requestError !== 'POLL_FAILED' &&
+                !canReconcileUncertainOperation)
             }
             loading={starting}
+            aria-labelledby={primaryActionLabelId}
           >
-            {primaryLabel}
+            <span id={primaryActionLabelId}>{primaryLabel}</span>
           </Button>
         )}
       </form>
@@ -1193,12 +1199,15 @@ export function WebsiteCrawlPreview({
                 variant="tertiary"
                 size="small"
                 className="ml-auto shrink-0"
-                disabled={stopping}
+                loading={stopping}
+                aria-labelledby={stopButtonLabelId}
                 onClick={() => void stop()}
               >
-                {stopping
-                  ? t(($) => $['newKnowledge.stoppingCrawl'])
-                  : t(($) => $['newKnowledge.stopCrawl'])}
+                <span id={stopButtonLabelId}>
+                  {stopping
+                    ? t(($) => $['newKnowledge.stoppingCrawl'])
+                    : t(($) => $['newKnowledge.stopCrawl'])}
+                </span>
               </Button>
             </div>
             {requestError === 'CANCEL_FAILED' && (
@@ -1333,11 +1342,7 @@ export function WebsiteCrawlPreview({
             <AlertDialogCancelButton disabled={discarding}>
               {t(($) => $['newKnowledge.keepEditing'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={discarding}
-              loading={discarding}
-              onClick={() => void discardAndCancel()}
-            >
+            <AlertDialogConfirmButton loading={discarding} onClick={() => void discardAndCancel()}>
               {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
