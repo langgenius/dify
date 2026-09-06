@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from sqlalchemy import event
@@ -32,10 +32,23 @@ from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
 
+class _CallableSessionProxy:
+    """Lets ``db.session`` support both attribute access and ``db.session()`` calls in tests."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def __call__(self) -> Session:
+        return self._session
+
+    def __getattr__(self, name: str):
+        return getattr(self._session, name)
+
+
 @dataclass(frozen=True)
 class _ToolDatabase:
     engine: Engine
-    session: Session
+    session: _CallableSessionProxy
 
 
 @pytest.fixture
@@ -48,7 +61,7 @@ def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
     ]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield _ToolDatabase(engine=sqlite_engine, session=session)
+        yield _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
 
 
 def _builtin_provider(
@@ -962,7 +975,7 @@ def test_get_api_provider_controller_returns_controller_and_credentials(
 
     assert built_controller is controller
     assert credentials == provider.credentials
-    mock_from_db.assert_called_with(provider, ApiProviderAuthType.API_KEY_QUERY)
+    mock_from_db.assert_called_with(provider, ApiProviderAuthType.API_KEY_QUERY, session=ANY)
     controller.load_bundled_tools.assert_called_once_with(provider.tools)
 
 

@@ -781,6 +781,7 @@ class ToolManager:
                             db_provider=db_provider,
                             decrypt_credentials=False,
                             labels=provider_labels,
+                            session=db.session(),
                         )
                         result_providers[f"api_provider.{user_provider.name}"] = user_provider
 
@@ -858,6 +859,7 @@ class ToolManager:
         controller = ApiToolProviderController.from_db(
             provider,
             auth_type,
+            session=db.session(),
         )
         controller.load_bundled_tools(provider.tools)
 
@@ -918,6 +920,7 @@ class ToolManager:
         controller = ApiToolProviderController.from_db(
             provider_obj,
             auth_type,
+            session=db.session(),
         )
         # init tool configuration
         encrypter, _ = create_tool_provider_encrypter(
