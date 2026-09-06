@@ -254,6 +254,34 @@ class TestAnnotationListApi:
         assert isinstance(session, MagicMock)
         assert get_mock.call_args.args == ("app", 2, 5, "refund", session)
 
+    @pytest.mark.parametrize(
+        ("requested_limit", "item_count", "total", "expected_limit", "expected_has_more"),
+        [(20, 20, 20, 20, False), (200, 100, 150, 100, True)],
+    )
+    def test_get_uses_effective_limit_for_pagination(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        requested_limit: int,
+        item_count: int,
+        total: int,
+        expected_limit: int,
+        expected_has_more: bool,
+    ) -> None:
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        get_mock = Mock(return_value=([annotation] * item_count, total))
+        monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
+        api = AnnotationListApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+        query = AnnotationListQuery(page=1, limit=requested_limit)
+
+        response = handler(api, query, MagicMock(), app_model=app_model)
+
+        assert response["limit"] == expected_limit
+        assert response["has_more"] is expected_has_more
+        assert get_mock.call_args.args[2] == expected_limit
+
     @pytest.mark.parametrize("query_string", ["page=abc&limit=5", "page=1&limit=abc", "page=&limit=5", "limit=0"])
     def test_get_rejects_invalid_explicit_pagination_value(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, query_string: str

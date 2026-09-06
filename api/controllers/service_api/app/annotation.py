@@ -210,14 +210,15 @@ class AnnotationListApi(Resource):
     def get(self, query: AnnotationListQuery, session: Session, app_model: App):
         """List annotations for the application."""
 
+        effective_limit = min(query.limit, 100)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_model.id, query.page, query.limit, query.keyword, session
+            app_model.id, query.page, effective_limit, query.keyword, session
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return AnnotationList(
             data=annotation_models,
-            has_more=len(annotation_list) == query.limit,
-            limit=query.limit,
+            has_more=query.page * effective_limit < total,
+            limit=effective_limit,
             total=total,
             page=query.page,
         ).model_dump(mode="json")

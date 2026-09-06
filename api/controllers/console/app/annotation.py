@@ -299,15 +299,19 @@ class AnnotationApi(Resource):
     @model_validate(AnnotationListQuery)
     def get(self, req_data: AnnotationListQuery, session: Session, app_id: UUID):
         page = req_data.page
-        limit = req_data.limit
+        effective_limit = min(req_data.limit, 100)
         keyword = req_data.keyword
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            str(app_id), page, limit, keyword, session
+            str(app_id), page, effective_limit, keyword, session
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return AnnotationList(
-            data=annotation_models, has_more=len(annotation_list) == limit, limit=limit, total=total, page=page
+            data=annotation_models,
+            has_more=page * effective_limit < total,
+            limit=effective_limit,
+            total=total,
+            page=page,
         ).model_dump(mode="json"), 200
 
     @console_ns.doc("create_annotation")
@@ -550,18 +554,22 @@ class AnnotationHitHistoryListApi(Resource):
     @with_session(write=False)
     def get(self, session: Session, app_id: UUID, annotation_id: UUID):
         page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
+        effective_limit = min(request.args.get("limit", default=20, type=int), 100)
         app_ref = _get_app_ref(session, str(app_id))
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
             annotation_ref,
             page,
-            limit,
+            effective_limit,
             session,
         )
         history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
             annotation_hit_history_list, from_attributes=True
         )
         return AnnotationHitHistoryList(
-            data=history_models, has_more=len(annotation_hit_history_list) == limit, limit=limit, total=total, page=page
+            data=history_models,
+            has_more=page * effective_limit < total,
+            limit=effective_limit,
+            total=total,
+            page=page,
         ).model_dump(mode="json")
