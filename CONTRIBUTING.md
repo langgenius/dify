@@ -75,7 +75,7 @@ the commit hook, along with artifact generation:
 | --- | --- | --- |
 | API | `make check`, `make type-check` | `make lint` |
 | Dify Agent | `make -C dify-agent check`, `make -C dify-agent typecheck` | `make -C dify-agent fix` |
-| TypeScript workspace | `pnpm -w check` | `pnpm -w check:fix` |
+| TypeScript workspace | `vp run -w check` | `vp run -w check:fix` |
 | Web project rules | `vp run dify-web#lint:tss`, `vp run knip`, `vp run knip:production`, `vp run knip:production-unused-check` | Resolve reported issues |
 
 Python Style and TS Common independently enforce lint/formatting on PRs and merge
