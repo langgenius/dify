@@ -1212,7 +1212,7 @@ class TraceTask:
         tool_parameters = {}
         created_time = message_data.created_at
         end_time = message_data.updated_at
-        agent_thoughts = message_data.agent_thoughts
+        agent_thoughts = message_data.agent_thoughts_with_session(session=db.session())
         for agent_thought in agent_thoughts:
             if tool_name in agent_thought.tools:
                 created_time = agent_thought.created_at
