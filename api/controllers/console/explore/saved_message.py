@@ -37,7 +37,11 @@ class SavedMessageListApi(InstalledAppResource):
             raise NotCompletionAppError()
 
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, current_user, str(req_data.last_id) if req_data.last_id else None, req_data.limit, session=session
+            app_model,
+            current_user,
+            str(req_data.last_id) if req_data.last_id else None,
+            req_data.limit,
+            session=session,
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [
