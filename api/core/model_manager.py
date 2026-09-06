@@ -428,11 +428,8 @@ class ModelInstance:
 
     def _round_robin_invoke(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
-        Round-robin invoke
-        :param function: function to invoke
-        :param args: function args
-        :param kwargs: function kwargs
-        :return:
+        Round-robin invoke: tries each load-balancing credential in turn,
+        cooling down any that fail with rate-limit or auth errors.
         """
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
@@ -446,7 +443,7 @@ class ModelInstance:
                 else:
                     raise last_exception
 
-            # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
+            # fallback policy check in case fetch_next missed it
             try:
                 from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
@@ -467,12 +464,12 @@ class ModelInstance:
                 kwargs["credentials"] = lb_config.credentials
                 return function(*args, **kwargs)
             except InvokeRateLimitError as e:
-                # expire in 60 seconds
+                # cooldown longer for rate limits
                 self.load_balancing_manager.cooldown(lb_config, expire=60)
                 last_exception = e
                 continue
             except (InvokeAuthorizationError, InvokeConnectionError) as e:
-                # expire in 10 seconds
+                # shorter cooldown for auth/connection issues
                 self.load_balancing_manager.cooldown(lb_config, expire=10)
                 last_exception = e
                 continue
@@ -1035,9 +1032,8 @@ class LBModelManager:
 
     def fetch_next(self) -> ModelLoadBalancingConfiguration | None:
         """
-        Get next model load balancing config
-        Strategy: Round Robin
-        :return:
+        Get next model load balancing config using round-robin via Redis counter.
+        Returns None if all configs are on cooldown.
         """
         cache_key = "model_lb_index:{}:{}:{}:{}".format(
             self._tenant_id, self._provider, self._model_type.value, self._model

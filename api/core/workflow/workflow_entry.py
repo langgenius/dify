@@ -540,12 +540,14 @@ class WorkflowEntry:
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
-                # In single run, the input_value is set as the LLM's structured output value within the variable_pool.
+                # When a node references a specific key inside a structured output
+                # (e.g. structured_output.name), we merge it into the parent dict
+                # so multiple keys from the same output coexist in one variable.
                 if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
                     input_value = {variable_key_list[1]: input_value}
                     variable_key_list = variable_key_list[0:1]
 
-                    # Support for a single node to reference multiple structured_output variables
+                    # merge with any existing structured output so sibling keys aren't lost
                     current_variable = variable_pool.get([variable_node_id] + variable_key_list)
                     if current_variable and isinstance(current_variable.value, dict):
                         input_value = current_variable.value | input_value
