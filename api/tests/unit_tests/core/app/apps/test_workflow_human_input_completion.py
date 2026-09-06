@@ -1,12 +1,15 @@
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -20,9 +23,12 @@ from core.app.entities.queue_entities import (
 )
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl, HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
+from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
     FormDefinition,
     HumanInputNodeData,
     ParagraphInputConfig,
@@ -30,18 +36,24 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.storage.storage_type import StorageType
 from graphon.engine.ready_queue import StartTask
+from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
+from graphon.file.helpers import verify_file_signature
 from graphon.graph import Graph
 from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from models import UploadFile
+from models.enums import CreatorUserRole
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import _build_pipeline
-from tests.workflow_test_utils import build_test_graph_init_params
+from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
 def _persist_form(
@@ -201,6 +213,88 @@ def test_resume_rejects_form_outside_the_trusted_execution_owner(sqlite_session:
         list(runner._iter_workflow_events(entry))
 
     assert not any(isinstance(call.args[0], QueueHumanInputFormFilledEvent) for call in queue.publish.call_args_list)
+
+
+def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    submitted_at = 1_700_000_000
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: submitted_at)
+    factory = DifyFileReferenceFactory(build_test_run_context())
+    persisted_files = []
+    for name in ("first.txt", "second.txt"):
+        upload = UploadFile(
+            tenant_id="tenant",
+            storage_type=StorageType.LOCAL,
+            key=name,
+            name=name,
+            size=12,
+            extension="txt",
+            mime_type="text/plain",
+            created_by="user",
+            created_by_role=CreatorUserRole.END_USER,
+            created_at=datetime.now(UTC),
+            used=False,
+        )
+        sqlite_session.add(upload)
+        sqlite_session.commit()
+        persisted_files.append(
+            factory.build_from_mapping(mapping={"transfer_method": "local_file", "upload_file_id": upload.id}).to_dict()
+        )
+
+    def url_is_valid(file: Mapping[str, object]) -> bool:
+        url, file_id = file["url"], file["related_id"]
+        assert isinstance(url, str)
+        assert isinstance(file_id, str)
+        query = parse_qs(urlparse(url).query)
+        return verify_file_signature(
+            upload_file_id=file_id,
+            timestamp=query["timestamp"][0],
+            nonce=query["nonce"][0],
+            sign=query["sign"][0],
+        )
+
+    assert all(url_is_valid(file) for file in persisted_files)
+    form = _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    definition = FormDefinition.model_validate_json(form.form_definition)
+    definition.inputs.extend(
+        [FileInputConfig(output_variable_name="attachment"), FileListInputConfig(output_variable_name="attachments")]
+    )
+    form.form_definition = definition.model_dump_json()
+    form.submitted_data = json.dumps(
+        {"answer": "approved", "attachment": persisted_files[0], "attachments": persisted_files}
+    )
+    sqlite_session.commit()
+
+    monkeypatch.setattr(
+        "core.app.workflow.file_runtime.time.time", lambda: submitted_at + dify_config.FILES_ACCESS_TIMEOUT + 1
+    )
+    assert not any(url_is_valid(file) for file in persisted_files)
+    queue = MagicMock(spec=AppQueueManager)
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    entry = _resuming_entry(runner, [form])
+    for event in runner._iter_workflow_events(entry):
+        runner._handle_event(entry, event)
+
+    completions = [
+        call.args[0]
+        for call in queue.publish.call_args_list
+        if isinstance(call.args[0], QueueHumanInputFormFilledEvent)
+    ]
+    assert len(completions) == 1
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task", workflow_run_id="run-1", workflow_id="workflow", reason=WorkflowStartReason.RESUMPTION
+    )
+    response = converter.human_input_form_filled_to_stream_response(event=completions[0], task_id="task")
+    data = response.data.submitted_data
+    assert data is not None
+    assert data["answer"] == "approved"
+    assert response.data.rendered_content == "Decision: approved"
+    restored_files = [data["attachment"], *data["attachments"]]
+    for restored, persisted in zip(restored_files, [persisted_files[0], *persisted_files], strict=True):
+        assert (restored["related_id"], restored["filename"]) == (persisted["related_id"], persisted["filename"])
+        assert url_is_valid(restored)
 
 
 @pytest.mark.parametrize("late_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
