@@ -1,6 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
+from contextlib import ExitStack
 from functools import partial
 from typing import Any, TypedDict
 from uuid import uuid4
@@ -593,6 +594,7 @@ class WorkflowEntry:
             error: Exception | None = None
             result_event: NodeEvent | None = None
             layers_finished = False
+            node_contexts = ExitStack()
 
             def finish_layers() -> None:
                 nonlocal layers_finished
@@ -601,10 +603,13 @@ class WorkflowEntry:
                 layers_finished = True
                 for layer in layers:
                     layer.on_node_run_end(node, error, result_event)
+                node_contexts.close()
                 for layer in layers:
                     layer.on_graph_end(error)
 
             try:
+                for layer in layers:
+                    node_contexts.enter_context(layer.node_run_context(node))
                 for layer in layers:
                     layer.on_node_run_start(node)
                 for event in node.run():
