@@ -53,6 +53,7 @@ import { website } from './website/orpc.gen'
 import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflowRunArchives } from './workflow-run-archives/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
+import { workspace } from './workspace/orpc.gen'
 import { workspaces } from './workspaces/orpc.gen'
 
 const communityContract = {
@@ -108,6 +109,7 @@ const communityContract = {
   workflow,
   workflowGenerate,
   workflowRunArchives,
+  workspace,
   workspaces,
 }
 

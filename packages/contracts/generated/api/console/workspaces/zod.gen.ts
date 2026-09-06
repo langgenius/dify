@@ -1116,30 +1116,6 @@ export const zBatchGetContactsResponse = z.object({
 })
 
 /**
- * IMIntegrationStatus
- *
- * Connectivity state of an organization-level IM integration.
- */
-export const zImIntegrationStatus = z.enum([
-  'callback_error',
-  'configured',
-  'connected',
-  'connection_error',
-  'not_configured',
-  'permission_issue',
-])
-
-/**
- * TestIMIntegrationResponse
- *
- * Response body returned by IM integration test APIs.
- */
-export const zTestImIntegrationResponse = z.object({
-  message: z.string(),
-  status: zImIntegrationStatus,
-})
-
-/**
  * NodeDataMigrationBlocker
  *
  * Stable node-scoped reason why the backend cannot produce lossless v2 data.
@@ -2231,6 +2207,7 @@ export const zHumanInputContactType = z.enum(['external', 'platform', 'workspace
  */
 export const zContactOption = z.object({
   avatar_url: z.string().nullish(),
+  email: z.string().nullish(),
   id: z.string(),
   name: z.string(),
   type: zHumanInputContactType,
@@ -2293,157 +2270,6 @@ export const zListImIdentitiesResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
-})
-
-/**
- * IMIntegration
- *
- * One organization-level IM integration snapshot.
- */
-export const zImIntegration = z.object({
-  callback_url: z.string().nullish(),
-  config_version: z.int().gte(1).nullish(),
-  configured_at: z.int().nullish(),
-  integration_id: z.string().nullish(),
-  permission_hint: z.string().nullish(),
-  provider: zImProvider.nullish(),
-  status: zImIntegrationStatus,
-  updated_at: z.int().nullish(),
-})
-
-/**
- * GetIMIntegrationResponse
- *
- * Response body carrying one IM integration snapshot.
- */
-export const zGetImIntegrationResponse = z.object({
-  integration: zImIntegration,
-})
-
-/**
- * UpdateIMIntegrationResponse
- *
- * Response body returned after updating one IM integration.
- */
-export const zUpdateImIntegrationResponse = z.object({
-  integration: zImIntegration,
-})
-
-/**
- * PreserveOriginalValue
- */
-export const zPreserveOriginalValue = z.object({
-  tag: z.literal('preserve_original_value').optional().default('preserve_original_value'),
-})
-
-/**
- * FeishuIMIntegrationCredentials
- *
- * Feishu integration credentials used by organization-level IM setup.
- */
-export const zFeishuImIntegrationCredentials = z.object({
-  app_id: z.string(),
-  app_secret: z.union([z.string(), zPreserveOriginalValue]),
-  encrypt_key: z.union([z.string(), zPreserveOriginalValue]).nullish(),
-  provider: z.literal('feishu'),
-  verification_token: z.union([z.string(), zPreserveOriginalValue]).nullish(),
-})
-
-/**
- * LarkIMIntegrationCredentials
- *
- * Lark integration credentials used by organization-level IM setup.
- */
-export const zLarkImIntegrationCredentials = z.object({
-  app_id: z.string(),
-  app_secret: z.union([z.string(), zPreserveOriginalValue]),
-  encrypt_key: z.union([z.string(), zPreserveOriginalValue]).nullish(),
-  provider: z.literal('lark'),
-  verification_token: z.union([z.string(), zPreserveOriginalValue]).nullish(),
-})
-
-/**
- * SlackIMIntegrationCredentials
- *
- * Slack integration credentials used by organization-level IM setup.
- */
-export const zSlackImIntegrationCredentials = z.object({
-  app_token: z.union([z.string(), zPreserveOriginalValue]),
-  bot_token: z.union([z.string(), zPreserveOriginalValue]),
-  client_id: z.string(),
-  client_secret: z.union([z.string(), zPreserveOriginalValue]),
-  provider: z.literal('slack'),
-  signing_secret: z.union([z.string(), zPreserveOriginalValue]),
-})
-
-/**
- * DingTalkIMIntegrationCredentials
- *
- * DingTalk integration credentials used by organization-level IM setup.
- */
-export const zDingTalkImIntegrationCredentials = z.object({
-  client_id: z.string(),
-  client_secret: z.union([z.string(), zPreserveOriginalValue]),
-  corp_id: z.string(),
-  provider: z.literal('ding_talk'),
-})
-
-/**
- * MSTeamsIMIntegrationCredentials
- *
- * Microsoft Teams integration credentials used by organization-level IM setup.
- */
-export const zMsTeamsImIntegrationCredentials = z.object({
-  client_id: z.string(),
-  client_secret: z.union([z.string(), zPreserveOriginalValue]),
-  provider: z.literal('ms_teams'),
-  tenant_id: z.string(),
-})
-
-/**
- * WeComIMIntegrationCredentials
- *
- * WeCom integration credentials used by organization-level IM setup.
- */
-export const zWeComImIntegrationCredentials = z.object({
-  agent_id: z.string(),
-  corp_id: z.string(),
-  provider: z.literal('we_com'),
-  secret: z.union([z.string(), zPreserveOriginalValue]),
-})
-
-/**
- * UpdateIMIntegrationRequest
- *
- * Request body for creating or updating one IM integration.
- */
-export const zUpdateImIntegrationRequest = z.object({
-  credentials: z.discriminatedUnion('provider', [
-    zFeishuImIntegrationCredentials.extend({ provider: z.literal('feishu') }),
-    zLarkImIntegrationCredentials.extend({ provider: z.literal('lark') }),
-    zSlackImIntegrationCredentials.extend({ provider: z.literal('slack') }),
-    zDingTalkImIntegrationCredentials.extend({ provider: z.literal('ding_talk') }),
-    zMsTeamsImIntegrationCredentials.extend({ provider: z.literal('ms_teams') }),
-    zWeComImIntegrationCredentials.extend({ provider: z.literal('we_com') }),
-  ]),
-  expected_config_version: z.int().gte(1).nullish(),
-  expected_integration_id: z.string().min(1).nullish(),
-})
-
-/**
- * TestIMIntegrationRequest
- *
- * Request body for testing one IM integration.
- */
-export const zTestImIntegrationRequest = z.object({
-  credentials: z.discriminatedUnion('provider', [
-    zFeishuImIntegrationCredentials.extend({ provider: z.literal('feishu') }),
-    zLarkImIntegrationCredentials.extend({ provider: z.literal('lark') }),
-    zSlackImIntegrationCredentials.extend({ provider: z.literal('slack') }),
-    zDingTalkImIntegrationCredentials.extend({ provider: z.literal('ding_talk') }),
-    zMsTeamsImIntegrationCredentials.extend({ provider: z.literal('ms_teams') }),
-    zWeComImIntegrationCredentials.extend({ provider: z.literal('we_com') }),
-  ]),
 })
 
 /**
@@ -3958,7 +3784,10 @@ export const zLegacyUserAction = z.object({
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -5515,35 +5344,6 @@ export const zGetWorkspacesCurrentHumanInputImIdentitiesQuery = z.object({
  * Success
  */
 export const zGetWorkspacesCurrentHumanInputImIdentitiesResponse = zListImIdentitiesResponse
-
-export const zDeleteWorkspacesCurrentHumanInputImIntegrationQuery = z.object({
-  expected_config_version: z.int().gte(1),
-  expected_integration_id: z.string().min(1),
-})
-
-/**
- * IM integration deleted successfully
- */
-export const zDeleteWorkspacesCurrentHumanInputImIntegrationResponse = z.void()
-
-/**
- * Success
- */
-export const zGetWorkspacesCurrentHumanInputImIntegrationResponse = zGetImIntegrationResponse
-
-export const zPutWorkspacesCurrentHumanInputImIntegrationBody = zUpdateImIntegrationRequest
-
-/**
- * Success
- */
-export const zPutWorkspacesCurrentHumanInputImIntegrationResponse = zUpdateImIntegrationResponse
-
-export const zPostWorkspacesCurrentHumanInputImIntegrationTestBody = zTestImIntegrationRequest
-
-/**
- * Success
- */
-export const zPostWorkspacesCurrentHumanInputImIntegrationTestResponse = zTestImIntegrationResponse
 
 /**
  * Success

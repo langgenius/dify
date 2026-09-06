@@ -212,6 +212,22 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type FormAccessRequestResponse = {
+  challenge_token: string
+  expires_in_seconds: number
+  resend_after_seconds: number
+}
+
+export type FormDefinitionResponse = {
+  expiration_time: number
+  form_content?: string | null
+  inputs?: Array<FormInputConfig>
+  resolved_default_values?: {
+    [key: string]: string
+  }
+  user_actions?: Array<UserActionConfig>
+}
+
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -225,6 +241,15 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+
+export type FormSubmitResponse = {
+  [key: string]: unknown
+}
+
+export type FormUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
 
 export type GeneratedAppResponse = JsonValue
 
@@ -291,6 +316,15 @@ export type HumanInputFormSubmitResponse = {
 export type HumanInputUploadTokenResponse = {
   expires_at: number
   upload_token: string
+}
+
+export type HumanInputV2FormSubmitRequest = {
+  action: string
+  challenge_token?: string | null
+  inputs: {
+    [key: string]: JsonValue2
+  }
+  otp_code?: string | null
 }
 
 export type JsonValue =
@@ -995,6 +1029,10 @@ export type WorkflowRunPayload = {
   }
 }
 
+export type FormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
 export type GeneratedAppResponseWritable = JsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
@@ -1393,24 +1431,88 @@ export type GetFormHumanInputByFormTokenData = {
     form_token: string
   }
   query?: never
-  url: '/form/human_input/{form_token}'
-}
-
-export type GetFormHumanInputByFormTokenErrors = {
-  403: unknown
-  404: unknown
-  412: unknown
-  429: unknown
+  url: '/form/human-input/{form_token}'
 }
 
 export type GetFormHumanInputByFormTokenResponses = {
-  200: HumanInputFormDefinitionResponse
+  200: FormDefinitionResponse
 }
 
 export type GetFormHumanInputByFormTokenResponse =
   GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
+  body: HumanInputV2FormSubmitRequest
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/{form_token}'
+}
+
+export type PostFormHumanInputByFormTokenResponses = {
+  200: FormSubmitResponse
+}
+
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+
+export type PostFormHumanInputByFormTokenAccessRequestData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/{form_token}/access-request'
+}
+
+export type PostFormHumanInputByFormTokenAccessRequestResponses = {
+  200: FormAccessRequestResponse
+}
+
+export type PostFormHumanInputByFormTokenAccessRequestResponse =
+  PostFormHumanInputByFormTokenAccessRequestResponses[keyof PostFormHumanInputByFormTokenAccessRequestResponses]
+
+export type PostFormHumanInputByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponses = {
+  200: FormUploadTokenResponse
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponse =
+  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+
+export type GetFormHumanInputByFormToken2Data = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human_input/{form_token}'
+}
+
+export type GetFormHumanInputByFormToken2Errors = {
+  403: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
+export type GetFormHumanInputByFormToken2Responses = {
+  200: HumanInputFormDefinitionResponse
+}
+
+export type GetFormHumanInputByFormToken2Response =
+  GetFormHumanInputByFormToken2Responses[keyof GetFormHumanInputByFormToken2Responses]
+
+export type PostFormHumanInputByFormToken2Data = {
   body: HumanInputFormSubmitPayload
   path: {
     form_token: string
@@ -1419,21 +1521,21 @@ export type PostFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
-export type PostFormHumanInputByFormTokenErrors = {
+export type PostFormHumanInputByFormToken2Errors = {
   400: unknown
   404: unknown
   412: unknown
   429: unknown
 }
 
-export type PostFormHumanInputByFormTokenResponses = {
+export type PostFormHumanInputByFormToken2Responses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse =
-  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormToken2Response =
+  PostFormHumanInputByFormToken2Responses[keyof PostFormHumanInputByFormToken2Responses]
 
-export type PostFormHumanInputByFormTokenUploadTokenData = {
+export type PostFormHumanInputByFormTokenUploadToken2Data = {
   body?: never
   path: {
     form_token: string
@@ -1442,18 +1544,18 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
   url: '/form/human_input/{form_token}/upload-token'
 }
 
-export type PostFormHumanInputByFormTokenUploadTokenErrors = {
+export type PostFormHumanInputByFormTokenUploadToken2Errors = {
   404: unknown
   412: unknown
   429: unknown
 }
 
-export type PostFormHumanInputByFormTokenUploadTokenResponses = {
+export type PostFormHumanInputByFormTokenUploadToken2Responses = {
   200: HumanInputUploadTokenResponse
 }
 
-export type PostFormHumanInputByFormTokenUploadTokenResponse =
-  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+export type PostFormHumanInputByFormTokenUploadToken2Response =
+  PostFormHumanInputByFormTokenUploadToken2Responses[keyof PostFormHumanInputByFormTokenUploadToken2Responses]
 
 export type PostHumanInputFormsFilesData = {
   body?: never

@@ -81,5 +81,6 @@ export const contractLoaders = {
     import('./workflow-run-archives/orpc.gen').then(({ workflowRunArchives }) => ({
       workflowRunArchives,
     })),
+  workspace: () => import('./workspace/orpc.gen').then(({ workspace }) => ({ workspace })),
   workspaces: () => import('./workspaces/orpc.gen').then(({ workspaces }) => ({ workspaces })),
 }

@@ -255,65 +255,6 @@ export type ListImIdentitiesResponse = {
   total: number
 }
 
-export type GetImIntegrationResponse = {
-  integration: ImIntegration
-}
-
-export type UpdateImIntegrationRequest = {
-  credentials:
-    | ({
-        provider: 'feishu'
-      } & FeishuImIntegrationCredentials)
-    | ({
-        provider: 'lark'
-      } & LarkImIntegrationCredentials)
-    | ({
-        provider: 'slack'
-      } & SlackImIntegrationCredentials)
-    | ({
-        provider: 'ding_talk'
-      } & DingTalkImIntegrationCredentials)
-    | ({
-        provider: 'ms_teams'
-      } & MsTeamsImIntegrationCredentials)
-    | ({
-        provider: 'we_com'
-      } & WeComImIntegrationCredentials)
-  expected_config_version?: number | null
-  expected_integration_id?: string | null
-}
-
-export type UpdateImIntegrationResponse = {
-  integration: ImIntegration
-}
-
-export type TestImIntegrationRequest = {
-  credentials:
-    | ({
-        provider: 'feishu'
-      } & FeishuImIntegrationCredentials)
-    | ({
-        provider: 'lark'
-      } & LarkImIntegrationCredentials)
-    | ({
-        provider: 'slack'
-      } & SlackImIntegrationCredentials)
-    | ({
-        provider: 'ding_talk'
-      } & DingTalkImIntegrationCredentials)
-    | ({
-        provider: 'ms_teams'
-      } & MsTeamsImIntegrationCredentials)
-    | ({
-        provider: 'we_com'
-      } & WeComImIntegrationCredentials)
-}
-
-export type TestImIntegrationResponse = {
-  message: string
-  status: ImIntegrationStatus
-}
-
 export type CreateImSyncRunResponse = {
   run: ImSyncRun
 }
@@ -1591,6 +1532,7 @@ export type EndpointListItemResponse = {
 
 export type ContactOption = {
   avatar_url?: string | null
+  email?: string | null
   id: string
   name: string
   type: HumanInputContactType
@@ -1621,71 +1563,6 @@ export type ImIdentity = {
   provider: ImProvider
   provider_user_id: string
 }
-
-export type ImIntegration = {
-  callback_url?: string | null
-  config_version?: number | null
-  configured_at?: number | null
-  integration_id?: string | null
-  permission_hint?: string | null
-  provider?: ImProvider | null
-  status: ImIntegrationStatus
-  updated_at?: number | null
-}
-
-export type FeishuImIntegrationCredentials = {
-  app_id: string
-  app_secret: string | PreserveOriginalValue
-  encrypt_key?: string | PreserveOriginalValue | null
-  provider: 'feishu'
-  verification_token?: string | PreserveOriginalValue | null
-}
-
-export type LarkImIntegrationCredentials = {
-  app_id: string
-  app_secret: string | PreserveOriginalValue
-  encrypt_key?: string | PreserveOriginalValue | null
-  provider: 'lark'
-  verification_token?: string | PreserveOriginalValue | null
-}
-
-export type SlackImIntegrationCredentials = {
-  app_token: string | PreserveOriginalValue
-  bot_token: string | PreserveOriginalValue
-  client_id: string
-  client_secret: string | PreserveOriginalValue
-  provider: 'slack'
-  signing_secret: string | PreserveOriginalValue
-}
-
-export type DingTalkImIntegrationCredentials = {
-  client_id: string
-  client_secret: string | PreserveOriginalValue
-  corp_id: string
-  provider: 'ding_talk'
-}
-
-export type MsTeamsImIntegrationCredentials = {
-  client_id: string
-  client_secret: string | PreserveOriginalValue
-  provider: 'ms_teams'
-  tenant_id: string
-}
-
-export type WeComImIntegrationCredentials = {
-  agent_id: string
-  corp_id: string
-  provider: 'we_com'
-  secret: string | PreserveOriginalValue
-}
-
-export type ImIntegrationStatus =
-  | 'callback_error'
-  | 'configured'
-  | 'connected'
-  | 'connection_error'
-  | 'not_configured'
-  | 'permission_issue'
 
 export type ImSyncRun = {
   error_message?: string | null
@@ -2440,10 +2317,6 @@ export type ImBinding = {
 export type ImIdentityBindingStatus = 'bound' | 'unbound'
 
 export type ImProvider = 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
-
-export type PreserveOriginalValue = {
-  tag?: 'preserve_original_value'
-}
 
 export type ImSyncRunResultCounts = {
   added: number
@@ -4292,65 +4165,6 @@ export type GetWorkspacesCurrentHumanInputImIdentitiesResponses = {
 
 export type GetWorkspacesCurrentHumanInputImIdentitiesResponse =
   GetWorkspacesCurrentHumanInputImIdentitiesResponses[keyof GetWorkspacesCurrentHumanInputImIdentitiesResponses]
-
-export type DeleteWorkspacesCurrentHumanInputImIntegrationData = {
-  body?: never
-  path?: never
-  query: {
-    expected_config_version: number
-    expected_integration_id: string
-  }
-  url: '/workspaces/current/human-input/im-integration'
-}
-
-export type DeleteWorkspacesCurrentHumanInputImIntegrationResponses = {
-  204: void
-}
-
-export type DeleteWorkspacesCurrentHumanInputImIntegrationResponse =
-  DeleteWorkspacesCurrentHumanInputImIntegrationResponses[keyof DeleteWorkspacesCurrentHumanInputImIntegrationResponses]
-
-export type GetWorkspacesCurrentHumanInputImIntegrationData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current/human-input/im-integration'
-}
-
-export type GetWorkspacesCurrentHumanInputImIntegrationResponses = {
-  200: GetImIntegrationResponse
-}
-
-export type GetWorkspacesCurrentHumanInputImIntegrationResponse =
-  GetWorkspacesCurrentHumanInputImIntegrationResponses[keyof GetWorkspacesCurrentHumanInputImIntegrationResponses]
-
-export type PutWorkspacesCurrentHumanInputImIntegrationData = {
-  body: UpdateImIntegrationRequest
-  path?: never
-  query?: never
-  url: '/workspaces/current/human-input/im-integration'
-}
-
-export type PutWorkspacesCurrentHumanInputImIntegrationResponses = {
-  200: UpdateImIntegrationResponse
-}
-
-export type PutWorkspacesCurrentHumanInputImIntegrationResponse =
-  PutWorkspacesCurrentHumanInputImIntegrationResponses[keyof PutWorkspacesCurrentHumanInputImIntegrationResponses]
-
-export type PostWorkspacesCurrentHumanInputImIntegrationTestData = {
-  body: TestImIntegrationRequest
-  path?: never
-  query?: never
-  url: '/workspaces/current/human-input/im-integration/test'
-}
-
-export type PostWorkspacesCurrentHumanInputImIntegrationTestResponses = {
-  200: TestImIntegrationResponse
-}
-
-export type PostWorkspacesCurrentHumanInputImIntegrationTestResponse =
-  PostWorkspacesCurrentHumanInputImIntegrationTestResponses[keyof PostWorkspacesCurrentHumanInputImIntegrationTestResponses]
 
 export type PostWorkspacesCurrentHumanInputImSyncRunsData = {
   body?: never
