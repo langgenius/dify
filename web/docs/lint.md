@@ -61,7 +61,7 @@ The non-code baseline and its repository-wide file scope live in `eslint.config.
 
 ### Auto-fix Workflow
 
-Configure the Oxc and ESLint editor extensions to apply their respective fixes on save. The commit hook runs `vp staged`, which delegates staged files to `vp check --fix` and adds the ESLint fallback for non-code files. The autofix workflow uses the same combined Vite+ check.
+Configure the Oxc and ESLint editor extensions to apply their respective fixes on save. The commit hook runs `vp staged`, which delegates staged files to `vp check --fix` and adds the ESLint fallback for non-code files. TS Common enforces the full check in CI. The `autofix.ci` workflow only verifies and repairs generated artifacts; see [Development checks].
 
 Always review automatic fixes before committing. JS plugins are allowed to provide fixes, and their behavior is not necessarily identical to a native Oxlint rule.
 
@@ -107,3 +107,5 @@ Suppression comments belong to exactly one linter. Use `oxlint-disable` for code
 ### Introducing New Plugins or Rules
 
 Prefer a native Oxlint rule. If none exists, verify that the rule works through an Oxlint JS plugin on representative files. Record unsupported code rules as migration gaps instead of adding them to ESLint; reserve the ESLint configuration for non-code languages that Oxlint cannot parse. Do not add the Antfu ESLint config as a dependency or enable rules already covered by Oxlint.
+
+[Development checks]: ../../CONTRIBUTING.md#development-checks

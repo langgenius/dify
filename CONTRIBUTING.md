@@ -61,16 +61,15 @@ How we prioritize:
 
 ## Development checks
 
-The commit hook runs `vp staged` against staged files. It fixes Python lint/formatting,
-checks and fixes JavaScript/TypeScript with Vite+, and formats supported non-code files.
-Partial staging is preserved: task fixes are staged, while previously unstaged changes
-remain unstaged. Unfixable errors fail the commit and restore the original state.
-Git merge, rebase, cherry-pick, revert, and squash operations skip staged checks;
-required CI checks still validate their results.
+The commit hook runs `vp staged`: it fixes staged Python files with Ruff, checks and
+fixes JavaScript/TypeScript with Vite+, and formats supported non-code files.
+Fixes are staged while existing unstaged changes stay unstaged; failures restore
+the original state. Ruff uses locked lint-only dependencies. Git operations such
+as merges and rebases skip the hook checks; CI still validates their results.
+Use `vp hooks status` to check the hook installation.
 
-Ruff uses each Python project's locked `lint` dependency group, without installing
-application or test dependencies on a fresh environment. Run `vp hooks status` to
-check the hook installation. `vp staged` is not a substitute for full project checks:
+Run the relevant full checks and tests before opening a PR. They remain outside
+the commit hook, along with artifact generation:
 
 | Scope | Read-only checks | Fixes |
 | --- | --- | --- |
@@ -79,23 +78,14 @@ check the hook installation. `vp staged` is not a substitute for full project ch
 | TypeScript workspace | `pnpm -w check` | `pnpm -w check:fix` |
 | Web project rules | `vp run dify-web#lint:tss`, `vp run knip`, `vp run knip:production`, `vp run knip:production-unused-check` | Resolve reported issues |
 
-Run the relevant tests for changed behavior as well. Project-wide checks, tests,
-OpenAPI generation, and Docker generation are not added to the commit hook.
-Python Style and TS Common enforce lint/formatting independently of local hooks,
-including on merge groups. Configuration changes trigger the corresponding CI checks.
-
-The `autofix.ci` workflow owns generated API artifacts and Docker Compose only.
-It regenerates and verifies outputs on both pull requests and merge groups, including
-when only generated outputs change. On a pull request, stale outputs fail verification
-and the official bot can submit a repair; bot availability does not determine the
-verification result. The `autofix.ci` workflow name is required by the bot, and the
-`autofix` job name is retained for the existing required status check.
+Python Style and TS Common independently enforce lint/formatting on PRs and merge
+groups. The `autofix.ci` workflow verifies generated API artifacts and Docker Compose;
+stale outputs fail even if the bot is unavailable. Bot repairs run only on PRs,
+never on merge groups.
 
 Regenerate API artifacts with `make generate-api-artifacts`, or Docker Compose with
-`./docker/generate_docker_compose`. The API command replaces the generated Markdown
-and API contract directories; commit the resulting changes. Raw OpenAPI JSON remains
-an ignored intermediate artifact. Ruff repairs belong to local development, and
-repository-wide code migrations belong in separately reviewed changes.
+`./docker/generate_docker_compose`, then commit the results. The API command replaces
+the generated Markdown and API contract directories; raw OpenAPI JSON is ignored.
 
 ## Submitting your PR
 

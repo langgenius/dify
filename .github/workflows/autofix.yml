@@ -10,7 +10,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  # Keep the existing required check name while making verification independent of the bot.
+  # Preserve the existing required check name.
   autofix:
     if: github.repository == 'langgenius/dify'
     runs-on: depot-ubuntu-24.04-4
@@ -24,7 +24,6 @@ jobs:
         id: changes
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          base: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
           filters: |
             compose:
               - 'docker/generate_docker_compose'
