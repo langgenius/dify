@@ -57,6 +57,7 @@ from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from .agent import Agent
+    from .dataset import DatasetCollectionBinding
     from .workflow import Workflow
 
 
@@ -2160,11 +2161,10 @@ class AppAnnotationSetting(TypeBase):
         init=False,
     )
 
-    @property
-    def collection_binding_detail(self):
+    def collection_binding_detail(self, session: Session) -> DatasetCollectionBinding | None:
         from .dataset import DatasetCollectionBinding
 
-        return db.session.scalar(
+        return session.scalar(
             select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id)
         )
 
