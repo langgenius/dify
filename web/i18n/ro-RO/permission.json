@@ -34,6 +34,7 @@
   "accessRule.updated": "Regula de acces a fost actualizată cu succes",
   "accessRule.workspaceOwner": "Proprietarul spațiului de lucru",
   "common.duplicateAction": "Duplică",
+  "group.agent": "Agenți",
   "group.app": "Aplicații",
   "group.app_acl": "Permisiuni de acces ale aplicației",
   "group.billing": "Facturare",
