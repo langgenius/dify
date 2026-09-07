@@ -28,7 +28,7 @@ snapshots.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from pydantic_ai.messages import UserContent
@@ -50,6 +50,9 @@ from dify_agent.layers.execution_context.configs import DifyExecutionContextLaye
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
+from dify_agent.layers.knowledge_fs.configs import DifyKnowledgeFsLayerConfig
+from dify_agent.layers.knowledge_fs.layer import DifyKnowledgeFsLayer
+from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
 from dify_agent.layers.runtime.layer import DifyRuntimeLayer
@@ -70,6 +73,7 @@ def create_default_layer_providers(
     shell_redact_patterns: list[str] | None = None,
     agent_stub_api_base_url: str | None = None,
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
+    knowledge_session_store: Callable[[], KnowledgeFsSessionStore] | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers."""
     providers: list[DifyAgentLayerProvider] = [
@@ -139,6 +143,15 @@ def create_default_layer_providers(
                     ),
                 ),
             ]
+        )
+    if knowledge_session_store is not None:
+        providers.append(
+            LayerProvider.from_factory(
+                layer_type=DifyKnowledgeFsLayer,
+                create=lambda config: DifyKnowledgeFsLayer(
+                    config=DifyKnowledgeFsLayerConfig.model_validate(config), get_store=knowledge_session_store
+                ),
+            )
         )
     return tuple(providers)
 

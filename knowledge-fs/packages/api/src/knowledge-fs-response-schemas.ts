@@ -115,6 +115,8 @@ export const KnowledgeFsOpenNodeResponseSchema = z.object({
   citation: z.object({
     artifactHash: z.string(),
     documentAssetId: z.string(),
+    documentTitle: z.string().max(512).optional(),
+    documentVersion: z.number().int().positive().optional(),
     endOffset: z.number().int().nonnegative(),
     pageNumber: z.number().int().positive().optional(),
     parseArtifactId: z.string(),

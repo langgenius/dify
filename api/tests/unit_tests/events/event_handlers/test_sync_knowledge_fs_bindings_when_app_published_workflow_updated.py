@@ -67,3 +67,25 @@ def test_publish_handler_exactly_syncs_workflow_bindings(monkeypatch) -> None:
         control_space_ids=["space-a", "space-b"],
         session=publish_session,
     )
+
+
+def test_publish_union_includes_modern_agent_and_uses_the_publish_transaction(monkeypatch) -> None:
+    sync = Mock()
+    monkeypatch.setattr(
+        handler,
+        "get_knowledge_fs_runtime",
+        lambda _: SimpleNamespace(app_bindings=SimpleNamespace(sync_workflow_bindings=sync)),
+    )
+    session = Mock()
+
+    def frozen_spaces(**kwargs):
+        session.flush.assert_called_once()
+        assert kwargs["session"] is session
+        return ("space-b", "space-c")
+
+    monkeypatch.setattr(handler, "collect_workflow_agent_knowledge_space_ids", frozen_spaces)
+    workflow = _workflow(["space-a", "space-b"])
+    workflow.graph_dict["nodes"].append({"data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}})
+    handler.handle(SimpleNamespace(id="app-1", tenant_id="tenant-1"), published_workflow=workflow, session=session)
+    assert sync.call_args.kwargs["control_space_ids"] == ["space-a", "space-b", "space-c"]
+    assert sync.call_args.kwargs["session"] is session

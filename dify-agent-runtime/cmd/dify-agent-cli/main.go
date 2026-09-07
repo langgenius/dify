@@ -15,9 +15,10 @@ import (
 // knownRootCommands mirrors the Python CLI's _KNOWN_ROOT_COMMANDS. Anything else
 // on the command line is treated as argv forwarded to an implicit connect.
 var knownRootCommands = map[string]struct{}{
-	"config":  {},
-	"connect": {},
-	"file":    {},
+	"config":    {},
+	"connect":   {},
+	"file":      {},
+	"knowledge": {},
 }
 
 func main() {
@@ -76,6 +77,7 @@ func newRootCommand() *cobra.Command {
 		newConnectCommand(),
 		newFileCommand(),
 		newConfigCommand(),
+		newKnowledgeCommand(),
 	)
 	return root
 }

@@ -650,6 +650,7 @@ export type RetrieverResource = {
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
   message_id?: string
   position: number
   score?: number | null
@@ -686,6 +687,22 @@ export type HumanInputFormSubmissionData = {
 }
 
 export type ExecutionContentType = 'human_input'
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
 
 export type UserActionConfig = {
   button_style?: ButtonStyle

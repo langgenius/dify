@@ -31,9 +31,10 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.graph_events import NodeRunPauseRequestedEvent
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventBase, NodeRunResult, RunRetrieverResourceEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
@@ -336,6 +337,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 process_data=process_data,
                 metadata=metadata,
             )
+            if metadata.get("knowledge_fs_sources"):
+                yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
                 isinstance(terminal_event, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent)
@@ -785,6 +788,18 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         if event.event_kind:
             agent_backend["last_stream_event_kind"] = event.event_kind
         if isinstance(event.data, Mapping):
+            sources = knowledge_sources_from_stream_event(event.data)
+            if sources:
+                current = metadata.setdefault("knowledge_fs_sources", [])
+                seen = {source["knowledge_fs_citation"]["id"] for source in current}
+                for source in sources:
+                    if (
+                        source.knowledge_fs_citation
+                        and source.knowledge_fs_citation.id not in seen
+                        and len(current) < 200
+                    ):
+                        current.append(source.model_dump(mode="json"))
+                        seen.add(source.knowledge_fs_citation.id)
             usage = event.data.get("usage") or event.data.get("model_usage")
             if isinstance(usage, Mapping):
                 agent_backend["usage"] = dict(usage)

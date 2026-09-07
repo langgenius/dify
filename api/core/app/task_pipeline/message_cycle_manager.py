@@ -192,6 +192,7 @@ class MessageCycleManager:
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
             existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}
+            receipt_ids = {r.knowledge_fs_citation.id for r in merged_resources if r.knowledge_fs_citation}
 
             # Add new unique resources from the event
             for resource in event.retriever_resources or []:
@@ -199,13 +200,20 @@ class MessageCycleManager:
                     continue
 
                 is_duplicate = (
-                    resource.dataset_id
-                    and resource.document_id
-                    and (resource.dataset_id, resource.document_id) in existing_ids
+                    resource.knowledge_fs_citation.id in receipt_ids
+                    if resource.knowledge_fs_citation
+                    else (
+                        resource.knowledge_fs_citation is None
+                        and resource.dataset_id
+                        and resource.document_id
+                        and (resource.dataset_id, resource.document_id) in existing_ids
+                    )
                 )
 
                 if not is_duplicate:
                     merged_resources.append(resource)
+                    if resource.knowledge_fs_citation:
+                        receipt_ids.add(resource.knowledge_fs_citation.id)
 
             for i, resource in enumerate(merged_resources, 1):
                 resource.position = i

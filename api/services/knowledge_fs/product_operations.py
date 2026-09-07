@@ -85,7 +85,7 @@ class KnowledgeFSProductOperation(NamedTuple):
     rbac_permission: RBACPermission
     max_request_bytes: int
     max_response_bytes: int
-    stream_kind: Literal["buffered-multipart", "json", "sse"]
+    stream_kind: Literal["binary", "buffered-multipart", "json", "sse"]
 
     @property
     def action(self) -> str | None:
@@ -107,7 +107,7 @@ def _operation(
     ],
     max_request_bytes: int,
     max_response_bytes: int,
-    stream_kind: Literal["buffered-multipart", "json", "sse"],
+    stream_kind: Literal["binary", "buffered-multipart", "json", "sse"],
 ) -> KnowledgeFSProductOperation:
     return KnowledgeFSProductOperation(
         method=method,
@@ -223,6 +223,28 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_request_bytes=16 * 1024,
             max_response_bytes=256 * 1024,
             stream_kind="json",
+        ),
+        "openNodeKnowledgeFs": _operation(
+            "GET",
+            "openNodeKnowledgeFs",
+            KnowledgeFSProductPermission.READ,
+            "/knowledge-spaces/{id}/fs/open_node",
+            "json",
+            resource_resolver="knowledge_space",
+            max_request_bytes=16 * 1024,
+            max_response_bytes=1024 * 1024,
+            stream_kind="json",
+        ),
+        "getDocumentMultimodalAsset": _operation(
+            "GET",
+            "getDocumentMultimodalAsset",
+            KnowledgeFSProductPermission.READ,
+            "/knowledge-spaces/{id}/documents/{documentId}/multimodal/{itemId}/asset",
+            "binary",
+            resource_resolver="document",
+            max_request_bytes=0,
+            max_response_bytes=4 * 1024 * 1024,
+            stream_kind="binary",
         ),
         "updateSpace": _operation(
             "PATCH",

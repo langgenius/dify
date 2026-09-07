@@ -36,6 +36,7 @@ from dify_agent.layers.shell import (
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import OperationalError
 
@@ -68,6 +69,7 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
@@ -217,7 +219,10 @@ class WorkflowAgentRuntimeRequestBuilder:
             runtime_config_skills=runtime_config_skills,
         )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise WorkflowAgentRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -267,7 +272,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge_fs=knowledge_config,
                 config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,

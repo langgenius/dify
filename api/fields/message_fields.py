@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Annotated
 from uuid import uuid4
 
+from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
 from pydantic import Field, WithJsonSchema, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
@@ -24,6 +25,7 @@ class SimpleFeedback(ResponseModel):
 
 
 class RetrieverResource(ResponseModel):
+    knowledge_fs_citation: KnowledgeFsCitation | None = None
     id: UUIDString = Field(default_factory=lambda: str(uuid4()))
     message_id: UUIDString = Field(default_factory=lambda: str(uuid4()))
     position: int

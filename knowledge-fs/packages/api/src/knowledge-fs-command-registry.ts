@@ -1566,7 +1566,14 @@ async function openKnowledgeFsNode({
     knowledgeSpaceId: input.knowledgeSpaceId,
   });
 
-  if (!node || !(await isCandidateReadableNodeWithAsset({ assets, input, node }))) {
+  if (!node || !candidatePermissionAllowsNode(node, candidateGrants(input))) {
+    throw new KnowledgeFsNotFoundError("KnowledgeFS node not found");
+  }
+  const asset = await assets.get({
+    id: node.documentAssetId,
+    knowledgeSpaceId: input.knowledgeSpaceId,
+  });
+  if (!asset || !candidatePermissionAllowsAsset(asset, candidateGrants(input))) {
     throw new KnowledgeFsNotFoundError("KnowledgeFS node not found");
   }
 
@@ -1574,6 +1581,8 @@ async function openKnowledgeFsNode({
     citation: {
       artifactHash: node.artifactHash,
       documentAssetId: node.documentAssetId,
+      documentTitle: asset.filename,
+      documentVersion: asset.version,
       endOffset: node.sourceLocation.endOffset ?? node.endOffset,
       ...(node.sourceLocation.pageNumber ? { pageNumber: node.sourceLocation.pageNumber } : {}),
       parseArtifactId: node.parseArtifactId,

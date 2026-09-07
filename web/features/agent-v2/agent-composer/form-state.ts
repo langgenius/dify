@@ -61,6 +61,9 @@ export type AgentFileNode = {
 
 export type AgentKnowledgeRetrievalItem = {
   id: string
+  /** Present for KnowledgeFS bindings; absent only for historical dataset configs. */
+  controlSpaceId?: string
+  isMissing?: boolean
   name?: string
   description?: string
   nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>

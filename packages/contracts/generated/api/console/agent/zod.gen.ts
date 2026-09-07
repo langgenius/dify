@@ -1266,6 +1266,56 @@ export const zFeedback = z.object({
 export const zExecutionContentType = z.enum(['human_input'])
 
 /**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
+ * RetrievalSourceMetadata
+ */
+export const zRetrievalSourceMetadata = z.object({
+  content: z.string().nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.string().nullish(),
+  dataset_name: z.string().nullish(),
+  doc_metadata: z.record(z.string(), z.unknown()).nullish(),
+  document_asset_id: z.string().nullish(),
+  document_id: z.string().nullish(),
+  document_name: z.string().nullish(),
+  document_revision: z.int().nullish(),
+  document_version: z.int().nullish(),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  hit_count: z.int().nullish(),
+  index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
+  page: z.int().nullish(),
+  position: z.int().nullish(),
+  retriever_from: z.string().nullish(),
+  score: z.number().nullish(),
+  segment_id: z.string().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  title: z.string().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
  * AgentAverageResponseTimeStatisticResponse
  */
 export const zAgentAverageResponseTimeStatisticResponse = z.object({
@@ -1438,6 +1488,23 @@ export const zAgentHumanToolConfig = z.object({
 export const zAgentSoulHumanConfig = z.object({
   contacts: z.array(zAgentHumanContactConfig).optional(),
   tools: z.array(zAgentHumanToolConfig).optional(),
+})
+
+/**
+ * AgentKnowledgeSpaceConfig
+ *
+ * One read-only KnowledgeFS binding, addressed by stable ID or CLI alias.
+ *
+ * The control-space ID is Dify-owned, never the execution-plane space ID.
+ * ``is_missing`` preserves unresolved DSL references for editing; it never
+ * authorizes execution. Names/descriptions are author guidance, not authority.
+ */
+export const zAgentKnowledgeSpaceConfig = z.object({
+  control_space_id: z.string().length(36),
+  description: z.string().max(2000).nullish(),
+  id: z.string().min(1).max(255),
+  is_missing: z.boolean().optional().default(false),
+  name: z.string().min(1).max(120),
 })
 
 /**
@@ -1671,9 +1738,11 @@ export const zAgentComposerKnowledgeDatasetCandidateResponse = z.object({
  * AgentComposerKnowledgeSetCandidateResponse
  */
 export const zAgentComposerKnowledgeSetCandidateResponse = z.object({
+  control_space_id: z.string().nullish(),
   datasets: z.array(zAgentComposerKnowledgeDatasetCandidateResponse).optional(),
   description: z.string().nullish(),
   id: z.string(),
+  missing: z.boolean().optional().default(false),
   missing_dataset_ids: z.array(z.string()).optional(),
   name: z.string(),
 })
@@ -2238,16 +2307,16 @@ export const zAgentKnowledgeSetConfig = z.object({
 /**
  * AgentSoulKnowledgeConfig
  *
- * Top-level Agent v2 knowledge config.
+ * KnowledgeFS-only authoring, with lossless historical dataset decoding.
  *
- * Agent v2 models knowledge as explicit sets instead of one flat
- * ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
- * list means no knowledge layer should be emitted at runtime, while set-name
- * uniqueness stays case-insensitive because runtime selection addresses sets
- * by name.
+ * New configuration uses ``spaces``. ``sets`` is retained solely so existing
+ * snapshots/DSL remain readable; new publish/run validation rejects legacy
+ * datasets with an explicit rebind error. Empty knowledge adds no runtime
+ * capability. The two formats must never coexist or shadow one another.
  */
 export const zAgentSoulKnowledgeConfig = z.object({
   sets: z.array(zAgentKnowledgeSetConfig).optional(),
+  spaces: z.array(zAgentKnowledgeSpaceConfig).max(10).optional(),
 })
 
 /**
@@ -2444,6 +2513,7 @@ export const zMessageDetailResponse = z.object({
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number(),
   query: z.string(),
+  retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
   status: z.string(),
   workflow_run_id: z.string().nullish(),
 })

@@ -38,11 +38,31 @@ from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
+from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
+from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 
 
 def create_app(settings: ServerSettings | None = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
+    state: dict[str, object] = {}
+
+    def get_knowledge_store() -> RedisKnowledgeSessionStore:
+        return cast(RedisKnowledgeSessionStore, state["knowledge_store"])
+
+    def get_knowledge_http_client() -> httpx.AsyncClient:
+        return cast(httpx.AsyncClient, state["knowledge_http"])
+
+    knowledge_request_handler = (
+        AgentStubKnowledgeHandler(
+            get_store=get_knowledge_store,
+            get_http_client=get_knowledge_http_client,
+            inner_api_url=resolved_settings.inner_api_url,
+            inner_api_key=resolved_settings.inner_api_key or "",
+        )
+        if resolved_settings.inner_api_key
+        else None
+    )
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
@@ -71,6 +91,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
+        knowledge_session_store=get_knowledge_store,
     )
     binding_file_service = (
         BindingFileService(
@@ -95,13 +116,14 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         if runtime_backend_profile is not None
         else None
     )
-    state: dict[str, object] = {}
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
+        state["knowledge_store"] = RedisKnowledgeSessionStore(redis, prefix=resolved_settings.redis_prefix)
+        state["knowledge_http"] = dify_api_inner_http_client
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
@@ -151,6 +173,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             token_codec=agent_stub_token_codec,
             file_request_handler=agent_stub_file_request_handler,
             config_request_handler=agent_stub_config_request_handler,
+            knowledge_request_handler=knowledge_request_handler,
         )
     )
     return app

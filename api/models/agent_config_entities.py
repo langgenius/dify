@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -722,22 +723,63 @@ class AgentSoulToolsConfig(BaseModel):
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
 
 
-class AgentSoulKnowledgeConfig(BaseModel):
-    """Top-level Agent v2 knowledge config.
+class AgentKnowledgeSpaceConfig(BaseModel):
+    """One read-only KnowledgeFS binding, addressed by stable ID or CLI alias.
 
-    Agent v2 models knowledge as explicit sets instead of one flat
-    ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
-    list means no knowledge layer should be emitted at runtime, while set-name
-    uniqueness stays case-insensitive because runtime selection addresses sets
-    by name.
+    The control-space ID is Dify-owned, never the execution-plane space ID.
+    ``is_missing`` preserves unresolved DSL references for editing; it never
+    authorizes execution. Names/descriptions are author guidance, not authority.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    id: str = Field(min_length=1, max_length=255)
+    control_space_id: str = Field(min_length=36, max_length=36)
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2_000)
+    is_missing: bool = False
+
+    @field_validator("control_space_id")
+    @classmethod
+    def validate_control_space_id(cls, value: str) -> str:
+        return str(UUID(value))
+
+    @field_validator("id", "name")
+    @classmethod
+    def validate_identity(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise ValueError("knowledge binding ID and alias must be non-blank and contain no control characters")
+        return value
+
+
+class AgentSoulKnowledgeConfig(BaseModel):
+    """KnowledgeFS-only authoring, with lossless historical dataset decoding.
+
+    New configuration uses ``spaces``. ``sets`` is retained solely so existing
+    snapshots/DSL remain readable; new publish/run validation rejects legacy
+    datasets with an explicit rebind error. Empty knowledge adds no runtime
+    capability. The two formats must never coexist or shadow one another.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    spaces: list[AgentKnowledgeSpaceConfig] = Field(default_factory=list, max_length=10)
     sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_unique_sets(self) -> Self:
+        if self.spaces and self.sets:
+            raise ValueError("KnowledgeFS spaces cannot be mixed with legacy dataset sets")
+        for attribute in ("id", "control_space_id", "name"):
+            values = [getattr(space, attribute).casefold() for space in self.spaces]
+            if len(values) != len(set(values)):
+                raise ValueError(f"knowledge space {attribute} values must be unique")
+        # An alias must not shadow a different binding's stable ID.
+        ids = {space.id.casefold(): space for space in self.spaces}
+        for space in self.spaces:
+            if (other := ids.get(space.name.casefold())) is not None and other.id != space.id:
+                raise ValueError("knowledge alias must not shadow another binding ID")
         set_ids = [item.id.strip() for item in self.sets]
         if len(set_ids) != len(set(set_ids)):
             raise ValueError("knowledge set ids must be unique")

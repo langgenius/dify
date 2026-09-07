@@ -33,6 +33,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID, DifyKnowledgeFsLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -72,6 +73,17 @@ def _shell_layer_deps() -> dict[str, str]:
 
 def _config_layer_deps() -> dict[str, str]:
     return {"shell": DIFY_SHELL_LAYER_ID}
+
+
+def _knowledge_fs_spec(run_input: AgentBackendWorkflowNodeRunInput | AgentBackendAgentAppRunInput) -> RunLayerSpec:
+    if not run_input.include_shell or run_input.knowledge is not None:
+        raise ValueError("KnowledgeFS requires shell and cannot be combined with legacy knowledge retrieval")
+    return RunLayerSpec(
+        name="knowledge_fs",
+        type=DIFY_KNOWLEDGE_FS_LAYER_TYPE_ID,
+        deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID, "shell": DIFY_SHELL_LAYER_ID},
+        config=run_input.knowledge_fs,
+    )
 
 
 def _markdown_backtick_fence(text: str) -> str:
@@ -207,6 +219,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement; a deferred call ends the run and
@@ -253,6 +266,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement (ENG-635).
@@ -406,6 +420,8 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge_fs is not None:
+            layers.append(_knowledge_fs_spec(run_input))
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
@@ -584,6 +600,8 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge_fs is not None:
+            layers.append(_knowledge_fs_spec(run_input))
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(

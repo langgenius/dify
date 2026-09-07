@@ -1,9 +1,11 @@
 from typing import Any
 
+from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
 from pydantic import BaseModel
 
 
 class RetrievalSourceMetadata(BaseModel):
+    knowledge_fs_citation: KnowledgeFsCitation | None = None
     position: int | None = None
     dataset_id: str | None = None
     dataset_name: str | None = None

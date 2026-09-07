@@ -26,6 +26,7 @@ export const DocumentMultimodalAssetParamsSchema = DocumentAssetParamsSchema.ext
 
 export const DocumentMultimodalAssetQuerySchema = z
   .object({
+    expectedArtifactHash: z.string().min(1).max(255).optional(),
     variant: z
       .string()
       .min(1)

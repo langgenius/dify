@@ -661,6 +661,19 @@ class AgentDslService:
                         details={"name": dataset_name},
                     )
                 )
+        # A portable configuration carries references, not the source app's
+        # access grants. Require explicit reselection even for a same-tenant
+        # import so import cannot silently publish new knowledge access.
+        for index, space in enumerate(soul_data.get("knowledge", {}).get("spaces", [])):
+            space["is_missing"] = True
+            warnings.append(
+                DslImportWarning(
+                    code="agent_knowledge_fs_rebind_required",
+                    path=f"{package_path}.soul.knowledge.spaces.{index}",
+                    message=f"KnowledgeFS space {space['name']!r} must be reselected in the target workspace.",
+                    details={"name": space["name"]},
+                )
+            )
         return AgentSoulConfig.model_validate(soul_data), warnings
 
     def _create_snapshot(

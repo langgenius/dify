@@ -58,6 +58,7 @@ const baseSystemFeatures = {
   enable_step_by_step_tour: false,
   knowledge_fs_enabled: false,
   knowledge_fs_upload_enabled: false,
+  agent_knowledge_fs_enabled: false,
 } satisfies GetSystemFeaturesResponse
 
 const baseSystemFeaturesLicense = {

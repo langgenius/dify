@@ -1,3 +1,4 @@
+import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import { DocumentOutlineSchema, ParseArtifactSchema } from "@knowledge/core";
 import type { ParserAdapter } from "@knowledge/parsers";
@@ -107,7 +108,13 @@ function createFixtureParser(): ParserAdapter {
 }
 
 function createAdapterWithStorageOverrides() {
-  const baseAdapter = createNodePlatformAdapter({ env: {} });
+  const baseAdapter = {
+    ...createNodePlatformAdapter({ env: {} }),
+    objectStorage: createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: maxAssetReadBytes + 1,
+    }),
+  };
   const fakeMetadata = (key: string, sizeBytes: number) => ({
     contentType: "image/png",
     key,
@@ -397,6 +404,21 @@ describe("document read handlers coverage", () => {
     });
     expect(goodVariant.status).toBe(200);
     expect(goodVariant.headers.get("x-document-multimodal-asset-variant")).toBe("thumbnail");
+
+    const stale = await app.request(
+      `${assetUrl(itemId("fig-good"), "thumbnail")}&expectedArtifactHash=${"d".repeat(64)}`,
+      {
+        headers: bearer(readToken),
+      },
+    );
+    expect(stale.status).toBe(409);
+    const pinned = await app.request(
+      `${assetUrl(itemId("fig-good"), "thumbnail")}&expectedArtifactHash=${"c".repeat(64)}`,
+      {
+        headers: bearer(readToken),
+      },
+    );
+    expect(pinned.status).toBe(200);
 
     const missingVariant = await app.request(assetUrl(itemId("fig-good"), "webp"), {
       headers: bearer(readToken),

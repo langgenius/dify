@@ -208,12 +208,50 @@ class KnowledgeFSAppBindingManagementService:
         session: Session | None = None,
     ) -> builtins.list[KnowledgeFSAppBindingResponse]:
         """Make published Workflow bindings exactly match one validated graph snapshot."""
+        return self._sync_bindings(
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            app_id=app_id,
+            control_space_ids=control_space_ids,
+            session=session,
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        )
+
+    def sync_agent_bindings(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        app_id: str,
+        control_space_ids: builtins.list[str] | tuple[str, ...],
+        session: Session | None = None,
+    ) -> builtins.list[KnowledgeFSAppBindingResponse]:
+        """Reconcile the published Agent channel without changing Workflow grants."""
+        return self._sync_bindings(
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            app_id=app_id,
+            control_space_ids=control_space_ids,
+            session=session,
+            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+        )
+
+    def _sync_bindings(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        app_id: str,
+        control_space_ids: builtins.list[str] | tuple[str, ...],
+        session: Session | None,
+        caller_kind: KnowledgeFSAppSpaceJoinType,
+    ) -> builtins.list[KnowledgeFSAppBindingResponse]:
 
         normalized_space_ids = list(dict.fromkeys(space_id.strip() for space_id in control_space_ids))
         if any(not space_id for space_id in normalized_space_ids):
             raise KnowledgeFSAppBindingManagementError("KnowledgeFS control-space ids must be non-empty")
         if len(normalized_space_ids) > 10:
-            raise KnowledgeFSAppBindingManagementError("A workflow can bind at most 10 KnowledgeFS Spaces")
+            raise KnowledgeFSAppBindingManagementError("An application can bind at most 10 KnowledgeFS Spaces")
 
         # Authorize every desired target before opening the mutation transaction. A failure therefore
         # cannot leave a partially updated set of published Workflow bindings.
@@ -225,24 +263,26 @@ class KnowledgeFSAppBindingManagementService:
             )
 
         if session is not None:
-            return self._sync_workflow_bindings_in_session(
+            return self._sync_bindings_in_session(
                 session=session,
                 tenant_id=tenant_id,
                 actor_account_id=actor_account_id,
                 app_id=app_id,
                 normalized_space_ids=normalized_space_ids,
+                caller_kind=caller_kind,
             )
 
         with self._session_maker.begin() as managed_session:
-            return self._sync_workflow_bindings_in_session(
+            return self._sync_bindings_in_session(
                 session=managed_session,
                 tenant_id=tenant_id,
                 actor_account_id=actor_account_id,
                 app_id=app_id,
                 normalized_space_ids=normalized_space_ids,
+                caller_kind=caller_kind,
             )
 
-    def _sync_workflow_bindings_in_session(
+    def _sync_bindings_in_session(
         self,
         *,
         session: Session,
@@ -250,6 +290,7 @@ class KnowledgeFSAppBindingManagementService:
         actor_account_id: str,
         app_id: str,
         normalized_space_ids: builtins.list[str],
+        caller_kind: KnowledgeFSAppSpaceJoinType,
     ) -> builtins.list[KnowledgeFSAppBindingResponse]:
         desired = set(normalized_space_ids)
         responses_by_space: dict[str, KnowledgeFSAppBindingResponse] = {}
@@ -257,16 +298,16 @@ class KnowledgeFSAppBindingManagementService:
             session=session,
             tenant_id=tenant_id,
             app_id=app_id,
-            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            caller_kind=caller_kind,
         ):
-            raise KnowledgeFSAppBindingManagementError("App is not eligible for the KnowledgeFS workflow channel")
+            raise KnowledgeFSAppBindingManagementError("App is not eligible for this KnowledgeFS caller channel")
         existing = tuple(
             session.scalars(
                 sa.select(AppKnowledgeFSSpaceJoin)
                 .where(
                     AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
                     AppKnowledgeFSSpaceJoin.app_id == app_id,
-                    AppKnowledgeFSSpaceJoin.join_type == KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                    AppKnowledgeFSSpaceJoin.join_type == caller_kind,
                 )
                 .with_for_update()
             )
@@ -285,7 +326,7 @@ class KnowledgeFSAppBindingManagementService:
                     tenant_id=tenant_id,
                     control_space_id=control_space_id,
                     app_id=app_id,
-                    join_type=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                    join_type=caller_kind,
                     created_by_account_id=actor_account_id,
                 )
                 session.add(binding)
@@ -324,7 +365,7 @@ class KnowledgeFSAppBindingManagementService:
                 control_space_id=binding.control_space_id,
                 subject=f"dify-app:{app_id}",
                 reason_code="app_binding_revoked",
-                caller_kinds=(KnowledgeFSAppSpaceJoinType.WORKFLOW.value,),
+                caller_kinds=(caller_kind.value,),
             )
 
         return [responses_by_space[space_id] for space_id in normalized_space_ids]

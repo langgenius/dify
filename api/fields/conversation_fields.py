@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from pydantic import Field, WithJsonSchema, field_validator, model_validator
 from sqlalchemy.orm import Session
 
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from fields.base import ResponseModel
 from graphon.file import File
 from libs.helper import to_timestamp
@@ -262,6 +263,7 @@ class AgentThought(ResponseModel):
 
 
 class MessageDetail(ResponseModel):
+    retriever_resources: list[RetrievalSourceMetadata] = Field(default_factory=list)
     id: str
     conversation_id: str
     inputs: dict[str, JSONValue]

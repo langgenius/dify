@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createNodePlatformAdapter } from "@knowledge/adapters/node";
+import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import type { ParseArtifact } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 import { extractDocumentMultimodalAssets } from "./document-multimodal-asset-extractor";
@@ -9,7 +9,10 @@ import { createDocumentRemoteMediaBudget } from "./document-remote-media-budget"
 
 const options = () => ({
   knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-  objectStorage: createNodePlatformAdapter({ env: {} }).objectStorage,
+  objectStorage: createMemoryObjectStorageAdapter({
+    kind: "memory",
+    maxObjectBytes: 25 * 1024 * 1024,
+  }),
   tenantId: "tenant-1",
 });
 function artifact(uris: string[]): ParseArtifact {

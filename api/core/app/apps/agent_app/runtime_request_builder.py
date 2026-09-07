@@ -20,6 +20,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextUserFrom,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 
 from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
@@ -42,12 +43,12 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_ask_human_layer_config,
     build_config_aware_soul_mention_resolver,
     build_config_layer_config,
-    build_knowledge_layer_config,
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
 
 from .errors import AgentSessionSnapshotIncompatibleError
@@ -140,7 +141,10 @@ class AgentAppRuntimeRequestBuilder:
             agent_soul,
             runtime_config_skills=runtime_config_skills,
         )
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise AgentAppRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -183,7 +187,7 @@ class AgentAppRuntimeRequestBuilder:
                 user_prompt=context.user_query,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge_fs=knowledge_config,
                 config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,

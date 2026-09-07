@@ -127,43 +127,64 @@ const toMetadataFilteringConfig = (
 const toKnowledgeSets = (
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
 ): AgentKnowledgeSetConfig[] =>
-  knowledgeRetrievals.map((item) => ({
-    id: item.id,
-    name: getKnowledgeRetrievalSetName(item),
-    description: item.description,
-    datasets: toKnowledgeDatasetRefs(item),
-    query: {
-      mode: item.queryMode === 'custom' ? ('user_query' as const) : ('generated_query' as const),
-      value: item.queryMode === 'custom' ? item.customQuery?.trim() || undefined : undefined,
-    },
-    retrieval: toRetrievalConfig(item),
-    metadata_filtering: toMetadataFilteringConfig(item),
-  }))
+  knowledgeRetrievals
+    .filter((item) => !item.controlSpaceId)
+    .map((item) => ({
+      id: item.id,
+      name: getKnowledgeRetrievalSetName(item),
+      description: item.description,
+      datasets: toKnowledgeDatasetRefs(item),
+      query: {
+        mode: item.queryMode === 'custom' ? ('user_query' as const) : ('generated_query' as const),
+        value: item.queryMode === 'custom' ? item.customQuery?.trim() || undefined : undefined,
+      },
+      retrieval: toRetrievalConfig(item),
+      metadata_filtering: toMetadataFilteringConfig(item),
+    }))
 
 const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledgeRetrievalItem[] => {
-  return (config?.knowledge?.sets ?? []).map((knowledgeSet) => ({
-    id: knowledgeSet.id,
-    name: knowledgeSet.name,
-    description: knowledgeSet.description ?? undefined,
-    queryMode: knowledgeSet.query.mode === 'user_query' ? 'custom' : 'agent',
-    customQuery: knowledgeSet.query.value ?? undefined,
-    datasetRefs: knowledgeSet.datasets,
-    retrievalMode:
-      knowledgeSet.retrieval.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
-    multipleRetrievalConfig: toMultipleRetrievalFormState(knowledgeSet.retrieval),
-    singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
-    metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ??
-      MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
-    metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as
-      | MetadataFilteringConditions
-      | undefined,
-    metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
+  const spaces: AgentKnowledgeRetrievalItem[] = (config?.knowledge?.spaces ?? []).map((space) => ({
+    id: space.id,
+    controlSpaceId: space.control_space_id,
+    name: space.name,
+    description: space.description ?? undefined,
+    isMissing: space.is_missing ?? false,
   }))
+  return [
+    ...spaces,
+    ...(config?.knowledge?.sets ?? []).map((knowledgeSet): AgentKnowledgeRetrievalItem => ({
+      id: knowledgeSet.id,
+      name: knowledgeSet.name,
+      description: knowledgeSet.description ?? undefined,
+      queryMode: knowledgeSet.query.mode === 'user_query' ? 'custom' : 'agent',
+      customQuery: knowledgeSet.query.value ?? undefined,
+      datasetRefs: knowledgeSet.datasets,
+      retrievalMode:
+        knowledgeSet.retrieval.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
+      multipleRetrievalConfig: toMultipleRetrievalFormState(knowledgeSet.retrieval),
+      singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
+      metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ??
+        MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
+      metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as
+        | MetadataFilteringConditions
+        | undefined,
+      metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
+    })),
+  ]
 }
 
 const toKnowledgeConfig = (
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
 ): AgentSoulConfig['knowledge'] => ({
+  spaces: knowledgeRetrievals
+    .filter((item) => item.controlSpaceId)
+    .map((item) => ({
+      id: item.id,
+      control_space_id: item.controlSpaceId!,
+      name: getKnowledgeRetrievalSetName(item),
+      description: item.description,
+      is_missing: item.isMissing ?? false,
+    })),
   sets: toKnowledgeSets(knowledgeRetrievals),
 })
 

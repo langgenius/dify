@@ -548,6 +548,39 @@ class TestMessageCycleManagerOptimization:
         assert len(message_cycle_manager._task_state.metadata.retriever_resources) == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
 
+    def test_knowledge_receipts_survive_message_metadata_without_collapsing_same_document(self, message_cycle_manager):
+        from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
+
+        message_cycle_manager._application_generate_entity.app_config = SimpleNamespace(
+            additional_features=SimpleNamespace(show_retrieve_source=True)
+        )
+        message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata())
+        sources = [
+            RetrievalSourceMetadata(
+                dataset_id="space",
+                document_id="doc",
+                data_source_type="knowledge_fs",
+                knowledge_fs_citation=KnowledgeFsCitation(
+                    id="kfs_" + char * 32,
+                    control_space_id="00000000-0000-4000-8000-000000000001",
+                    space_name="Docs",
+                    node_id=f"node-{char}",
+                    document_asset_id="doc",
+                    artifact_hash="hash",
+                ),
+            )
+            for char in ("a", "b")
+        ]
+        event = QueueRetrieverResourcesEvent(retriever_resources=[*sources, sources[0]])
+        message_cycle_manager.handle_retriever_resources(event)
+        message_cycle_manager.handle_retriever_resources(event)
+        restored = TaskStateMetadata.model_validate_json(message_cycle_manager._task_state.metadata.model_dump_json())
+        assert [source.knowledge_fs_citation.id for source in restored.retriever_resources] == [
+            "kfs_" + "a" * 32,
+            "kfs_" + "b" * 32,
+        ]
+        assert [source.position for source in restored.retriever_resources] == [1, 2]
+
     def test_message_file_to_stream_response_uses_http_url_directly(self, message_cycle_manager, cycle_db: Session):
         """Use original URL when message file URL is already HTTP."""
         message_cycle_manager._application_generate_entity.task_id = "task-http"

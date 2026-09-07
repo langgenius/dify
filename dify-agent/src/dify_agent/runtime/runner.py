@@ -55,6 +55,8 @@ from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
+from dify_agent.layers.knowledge_fs.layer import DifyKnowledgeFsLayer
+from dify_agent.layers.knowledge_fs.history import without_historical_knowledge_evidence
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     CreateRunRequest,
@@ -333,6 +335,11 @@ class AgentRunRunner:
             async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
                 entered_run = True
                 apply_layer_exit_signals(run, self.request.on_exit)
+                for slot in run.slots.values():
+                    if isinstance(slot.layer, DifyKnowledgeFsLayer):
+                        await slot.layer.start(
+                            run_id=self.run_id, resume=self.request.deferred_tool_results is not None
+                        )
                 user_prompts = run.user_prompts
                 deferred_tool_results = _resolve_deferred_tool_results(self.request)
                 if deferred_tool_results is None and not has_non_blank_user_prompt(user_prompts):
@@ -360,6 +367,9 @@ class AgentRunRunner:
                     output_contract = resolve_run_output_contract(run)
                     history_layer = get_history_layer(run)
                     message_history = history_layer.message_history if history_layer is not None else None
+                    if message_history:
+                        # Also strip when knowledge was removed from the new Soul.
+                        message_history = without_historical_knowledge_evidence(message_history)
                     ask_human_layer = get_ask_human_layer(run)
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
                     compaction = build_compaction_capability(

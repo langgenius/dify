@@ -139,6 +139,21 @@
       "resourceType": "job"
     },
     {
+      "action": "namespace_source_previews.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "DELETE",
+      "operationId": "cancelNamespaceSourcePreview",
+      "parentResourceBinding": null,
+      "path": "/namespace/source-preview-jobs/{jobId}",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
       "action": "research_tasks.cancel",
       "allowedCallerKinds": [
         "interactive",
@@ -227,6 +242,23 @@
       "resourceType": "upload_session"
     },
     {
+      "action": "namespace_source_previews.consume",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "POST",
+      "operationId": "consumeNamespaceSourcePreview",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/namespace-preview-import",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
       "action": "sources.crawl",
       "allowedCallerKinds": [
         "interactive",
@@ -295,6 +327,21 @@
         "pathParameter": "id"
       },
       "resourceType": "knowledge_space"
+    },
+    {
+      "action": "namespace_source_previews.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "POST",
+      "operationId": "createNamespaceSourcePreview",
+      "parentResourceBinding": null,
+      "path": "/namespace/source-preview-jobs",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
     },
     {
       "action": "quality.write",
@@ -689,6 +736,25 @@
         "workflow"
       ],
       "method": "GET",
+      "operationId": "getDocumentMultimodalAsset",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/multimodal/{itemId}/asset",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "documents.multimodal.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
       "operationId": "getDocumentMultimodalManifest",
       "parentResourceBinding": {
         "pathParameter": "id"
@@ -874,6 +940,21 @@
         "pathParameter": "documentId"
       },
       "resourceType": "document"
+    },
+    {
+      "action": "namespace_source_previews.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "GET",
+      "operationId": "getNamespaceSourcePreview",
+      "parentResourceBinding": null,
+      "path": "/namespace/source-preview-jobs/{jobId}",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
     },
     {
       "action": "quality.read",
@@ -1492,6 +1573,23 @@
       "operationId": "matchGoldenQuestionEvidence",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/golden-questions/evidence-matches",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.open_node",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "openNodeKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/open_node",
       "resourceBinding": {
         "pathParameter": "id"
       },

@@ -1691,6 +1691,8 @@ describe("knowledge-fs command registry coverage", () => {
     expect((full.output as { citation: unknown }).citation).toEqual({
       artifactHash: "a".repeat(64),
       documentAssetId: uuid("cc43"),
+      documentTitle: `${uuid("cc43")}.md`,
+      documentVersion: 1,
       endOffset: 20,
       pageNumber: 2,
       parseArtifactId: uuid("cc44"),
@@ -1700,6 +1702,8 @@ describe("knowledge-fs command registry coverage", () => {
     expect((bare.output as { citation: unknown }).citation).toEqual({
       artifactHash: "a".repeat(64),
       documentAssetId: uuid("cc43"),
+      documentTitle: `${uuid("cc43")}.md`,
+      documentVersion: 1,
       endOffset: 30,
       parseArtifactId: uuid("cc44"),
       sectionPath: [],
