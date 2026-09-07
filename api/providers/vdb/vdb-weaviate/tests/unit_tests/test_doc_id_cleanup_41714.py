@@ -21,12 +21,13 @@ The fix:
    too — backwards-compatible with the rows already in production.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from core.rag.models.document import Document
+import pytest
 from dify_vdb_weaviate import weaviate_vector as weaviate_vector_module
 from dify_vdb_weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+
+from core.rag.models.document import Document
 
 
 def _unexpected_response(status_code: int) -> "weaviate_vector_module.UnexpectedStatusCodeError":

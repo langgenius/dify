@@ -431,9 +431,7 @@ class WeaviateVector(BaseVector):
         #    metadata so a delete pass never leaves orphans behind.
         if ids:
             try:
-                col.data.delete_many(
-                    where=Filter.by_property("doc_id").contains_any(ids)
-                )
+                col.data.delete_many(where=Filter.by_property("doc_id").contains_any(ids))
             except UnexpectedStatusCodeError as e:
                 if getattr(e, "status_code", None) != 404:
                     raise
