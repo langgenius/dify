@@ -33,7 +33,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 
 
 class _CallableSessionProxy:
-    """Lets ``db.session`` support both attribute access and ``db.session()`` calls in tests."""
+    """Lets test code use a session directly while production obtains it from ``db.session()``."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -41,8 +41,20 @@ class _CallableSessionProxy:
     def __call__(self) -> Session:
         return self._session
 
-    def __getattr__(self, name: str):
-        return getattr(self._session, name)
+    def add(self, instance: object) -> None:
+        self._session.add(instance)
+
+    def add_all(self, instances: list[object]) -> None:
+        self._session.add_all(instances)
+
+    def commit(self) -> None:
+        self._session.commit()
+
+    def expire_all(self) -> None:
+        self._session.expire_all()
+
+    def get(self, entity: type[object], ident: object) -> object | None:
+        return self._session.get(entity, ident)
 
 
 @dataclass(frozen=True)
