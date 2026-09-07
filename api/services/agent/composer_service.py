@@ -1090,7 +1090,8 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         """Collect non-blocking composer validation findings."""
         existing_knowledge_set_ids = (
-            {binding.id for binding in [*payload.agent_soul.knowledge.sets, *payload.agent_soul.knowledge.spaces]}
+            {binding.id for binding in payload.agent_soul.knowledge.sets}
+            | {binding.id for binding in payload.agent_soul.knowledge.spaces}
             if payload.agent_soul is not None
             else None
         )

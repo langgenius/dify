@@ -144,7 +144,7 @@ class AgentKnowledgeGateway:
                 KnowledgeFSRetrievalTestPayload(
                     query=command.query or "",
                     query_id=command.command_id,
-                    query_images=images,
+                    queryImages=images,
                     mode="fast",
                     include_text=True,
                 ).model_dump(mode="json", by_alias=True, exclude_none=True),

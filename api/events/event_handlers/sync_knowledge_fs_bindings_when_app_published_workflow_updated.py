@@ -43,7 +43,7 @@ def handle(sender: object, **kwargs: object) -> None:
         )
 
     if not control_space_ids:
-        lookup_session = publish_session if publish_session is not None else db.session
+        lookup_session = publish_session if publish_session is not None else cast(Session, db.session)
         existing_binding = lookup_session.scalar(
             select(AppKnowledgeFSSpaceJoin.id)
             .where(
