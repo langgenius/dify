@@ -83,6 +83,20 @@ def assert_license_valid() -> None:
         raise Forbidden("license_invalid")
 
 
+class CheckEnterpriseLicense(Requirement):
+    """An enterprise deployment with a dead licence refuses the account-identity
+    routes; every other edition ignores this. It runs after `authenticate`, so a
+    missing bearer still answers 401 ahead of it.
+    """
+
+    rank = Rank.FIRST
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+            assert_license_valid()
+
+
 class CheckAppApiEnabled(Requirement):
     rank = Rank.EARLY
 

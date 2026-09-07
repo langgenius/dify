@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
+    CheckEnterpriseLicense,
     CheckRBACPermission,
     CheckSessionOwnership,
     CheckSubject,
@@ -30,6 +31,7 @@ from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSetti
 from services.entities.feature_entities import (
     LicenseStatus,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 from ._world import (
     ACCOUNT_ID,
@@ -92,6 +94,25 @@ def test_assert_license_valid_denies_only_dead_licences(status: LicenseStatus, d
                 assert_license_valid()
         else:
             assert_license_valid()
+
+
+@pytest.mark.parametrize(
+    ("edition", "denied"),
+    [(DeploymentEdition.ENTERPRISE, True), (DeploymentEdition.COMMUNITY, False)],
+)
+def test_enterprise_licence_gate_applies_only_to_the_enterprise_edition(
+    edition: DeploymentEdition, denied: bool, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
+    subject = account_subject()
+    ctx = make_ctx(sqlite_session, subject)
+
+    with patch(FEATURES, return_value=system_features(license_status=LicenseStatus.EXPIRED)):
+        if denied:
+            with pytest.raises(Forbidden, match="license_invalid"):
+                CheckEnterpriseLicense().run(subject, ctx, sqlite_session)
+        else:
+            CheckEnterpriseLicense().run(subject, ctx, sqlite_session)
 
 
 def test_assert_license_valid_re_reads_the_licence_on_every_call() -> None:
