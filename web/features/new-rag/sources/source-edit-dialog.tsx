@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -487,6 +488,7 @@ function WebsiteSourceEditDialogContent({
   const [previewPages, setPreviewPages] = useState<CrawlPreviewPage[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [previewing, setPreviewing] = useState(false)
+  const [previewRequested, setPreviewRequested] = useState(false)
   const [previewError, setPreviewError] = useState(false)
   const previewAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
@@ -535,7 +537,13 @@ function WebsiteSourceEditDialogContent({
     !providerConfigurationReady ||
     (!missingRequiredDatasourceParameters(parameterSchemas, displayedParameters).length &&
       !invalidDatasourceParameters(parameterSchemas, displayedParameters).length)
-  const websiteSelectionReady = initialSource.type !== 'web' || selectedPageIds.size > 0
+  const parametersChanged = !isEqual(
+    displayedParameters,
+    sourceParametersForSchemas(initialSource, initialParameters, parameterSchemas),
+  )
+  const needsWebsiteSelection = parametersChanged || previewRequested
+  const websiteSelectionReady = !needsWebsiteSelection || selectedPageIds.size > 0
+  const editParametersValid = !needsWebsiteSelection || parametersValid
 
   useEffect(() => {
     if (
@@ -570,6 +578,7 @@ function WebsiteSourceEditDialogContent({
         .catch(() => {})
     setPreviewPages([])
     setSelectedPageIds(new Set())
+    setPreviewRequested(false)
     setPreviewError(false)
   }
 
@@ -578,6 +587,7 @@ function WebsiteSourceEditDialogContent({
     const attempt = previewAttemptRef.current + 1
     previewAttemptRef.current = attempt
     setPreviewing(true)
+    setPreviewRequested(true)
     setPreviewError(false)
     setPreviewPages([])
     setSelectedPageIds(new Set())
@@ -630,7 +640,7 @@ function WebsiteSourceEditDialogContent({
   }
   const submitEdit = async () => {
     const name = nextName.trim()
-    if (!name || !customIntervalValid || !parametersValid || !websiteSelectionReady || pending)
+    if (!name || !customIntervalValid || !editParametersValid || !websiteSelectionReady || pending)
       return
     const normalizedUrl =
       initialSource.type === 'web' && typeof displayedParameters.url === 'string'
@@ -640,7 +650,7 @@ function WebsiteSourceEditDialogContent({
       await onEdit({
         expectedVersion: initialSource.version,
         name,
-        ...(initialSource.type === 'web'
+        ...(needsWebsiteSelection
           ? {
               providerParameters: displayedParameters,
               selection: {
@@ -675,6 +685,7 @@ function WebsiteSourceEditDialogContent({
   return (
     <>
       <form
+        noValidate={!needsWebsiteSelection}
         onSubmit={(event) => {
           event.preventDefault()
           void submitEdit()
@@ -782,7 +793,10 @@ function WebsiteSourceEditDialogContent({
           </Button>
           <Button
             disabled={
-              !nextName.trim() || !customIntervalValid || !parametersValid || !websiteSelectionReady
+              !nextName.trim() ||
+              !customIntervalValid ||
+              !editParametersValid ||
+              !websiteSelectionReady
             }
             loading={pending}
             type="submit"
