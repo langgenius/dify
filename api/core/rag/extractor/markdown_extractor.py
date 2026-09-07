@@ -46,6 +46,12 @@ class MarkdownExtractor(BaseExtractor):
 
         return documents
 
+    @staticmethod
+    def _clean_header(header: str) -> str:
+        """Remove Markdown heading markers without changing literal hashes in the title."""
+        header = re.sub(r"^#+\s+", "", header)
+        return re.sub(r"\s+#+\s*$", "", header).strip()
+
     def markdown_to_tups(self, markdown_text: str) -> list[tuple[str | None, str]]:
         """Convert a markdown file to a dictionary.
 
@@ -77,7 +83,7 @@ class MarkdownExtractor(BaseExtractor):
         markdown_tups.append((current_header, current_text))
 
         markdown_tups = [
-            (re.sub(r"#", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
+            (self._clean_header(key) if key else None, re.sub(r"<.*?>", "", value))
             for key, value in markdown_tups
         ]
 

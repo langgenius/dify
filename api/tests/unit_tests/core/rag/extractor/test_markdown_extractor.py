@@ -47,6 +47,19 @@ after
         assert tups[1][0] == "Header"
         assert "# this is not a heading" in tups[1][1]
 
+    def test_markdown_to_tups_preserves_literal_hash_in_heading(self):
+        markdown = """## Getting Started with C#
+content
+## Heading with closing markers ###
+content
+"""
+        extractor = MarkdownExtractor(file_path="dummy_path")
+
+        tups = extractor.markdown_to_tups(markdown)
+
+        assert tups[1][0] == "Getting Started with C#"
+        assert tups[2][0] == "Heading with closing markers"
+
     def test_remove_images_and_hyperlinks(self):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
