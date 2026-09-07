@@ -85,20 +85,38 @@ def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
             view()
 
 
-def test_a_dead_licence_403s_an_unauthenticated_caller_on_an_ee_endpoint(
+@pytest.mark.parametrize("edition", [None, ENTERPRISE_ONLY], ids=["any-edition-route", "ee-only-route"])
+def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterprise(
+    edition: frozenset[DeploymentEdition] | None,
     app: Flask,
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The endpoint licence check fires before `extract_bearer`, so a caller
-    with no bearer at all sees 403, not 401.
+    """The licence is a fact about the deployment, so the router checks it once,
+    for every route, before `extract_bearer` - a caller with no bearer at all
+    sees 403, not 401.
     """
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(FEATURES, lambda: system_features(license_status=LicenseStatus.EXPIRED))
-    view = _guard(_nothing, edition=ENTERPRISE_ONLY)
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    view = _guard(_nothing, edition=edition)
 
-    with app.test_request_context("/openapi/v1/permitted-external-apps"):
+    with app.test_request_context("/openapi/v1/account"):
         with pytest.raises(Forbidden, match="license_invalid"):
+            view()
+
+
+def test_the_licence_is_never_consulted_outside_enterprise(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(FEATURES, never_reached)
+    view = _guard(_nothing)
+
+    with app.test_request_context("/openapi/v1/account"):
+        with pytest.raises(Unauthorized, match="bearer required"):
             view()
 
 

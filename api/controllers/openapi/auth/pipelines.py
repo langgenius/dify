@@ -16,7 +16,6 @@ from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
     ResolveCaller,
-    assert_license_valid,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
@@ -67,7 +66,8 @@ class AccountPipeline(Pipeline, serves=AccountSubject):
 class _RequiresEnterprise(Requirement):
     """A gate on the token kind, not on a route, so no endpoint declares it.
     It runs after `authenticate` on purpose: a `dfoe_` string no row backs
-    answers 401 like any bad bearer, so the edition cannot be probed.
+    answers 401 like any bad bearer, so the edition cannot be probed. The
+    licence is the router's, checked before any bearer is read.
     """
 
     rank = Rank.FIRST
@@ -76,7 +76,6 @@ class _RequiresEnterprise(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             raise Forbidden("external_sso_requires_ee")
-        assert_license_valid()
 
 
 class ExternalSsoPipeline(Pipeline, serves=ExternalSsoSubject):

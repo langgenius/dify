@@ -37,7 +37,6 @@ from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
-from services.entities.feature_entities import LicenseStatus
 from tests.unit_tests.config_override import apply_config_overrides
 
 from ._world import (
@@ -164,31 +163,18 @@ def test_the_external_sso_gate_refuses_a_non_enterprise_edition(
 ) -> None:
     """The gate that keeps a `dfoe_` token issued before a downgrade from working
     on the routes an account shares with it - the ones no `edition=` can cover,
-    because the account still has to reach them.
+    because the account still has to reach them. The licence is not its concern:
+    the router has already answered for it.
     """
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
     subject = sso_subject()
 
-    with patch(FEATURES, return_value=system_features(license_status=LicenseStatus.ACTIVE)):
+    with patch(FEATURES, side_effect=never_reached):
         if edition is DeploymentEdition.ENTERPRISE:
             _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
         else:
             with pytest.raises(Forbidden, match="external_sso_requires_ee"):
                 _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
-
-
-def test_the_external_sso_gate_checks_the_edition_before_the_licence(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Same order as the router's endpoint-level gate: a CE deployment answers
-    about the edition and never reaches the licence.
-    """
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    subject = sso_subject()
-
-    with patch(FEATURES, side_effect=never_reached):
-        with pytest.raises(Forbidden, match="external_sso_requires_ee"):
-            _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
 @pytest.mark.parametrize("view_raises", [False, True])

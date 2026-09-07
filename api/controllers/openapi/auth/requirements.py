@@ -73,26 +73,9 @@ class CheckSubject(Requirement):
 
 
 def assert_license_valid() -> None:
-    """Shared by the router's endpoint-level gate, which has to answer before
-    `extract_bearer`, and by `ExternalSsoPipeline`'s own gate. One function, so
-    the two cannot drift apart.
-    """
+    """The router's deployment-wide gate, answered before `extract_bearer`."""
     if SystemFeatureService.get_public_system_features().license.status in _DEAD_LICENSE_STATUSES:
         raise Forbidden("license_invalid")
-
-
-class CheckEnterpriseLicense(Requirement):
-    """An enterprise deployment with a dead licence refuses the account-identity
-    routes; every other edition ignores this. It runs after `authenticate`, so a
-    missing bearer still answers 401 ahead of it.
-    """
-
-    rank = Rank.FIRST
-
-    @override
-    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-            assert_license_valid()
 
 
 class CheckAppApiEnabled(Requirement):
