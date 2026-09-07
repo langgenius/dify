@@ -136,6 +136,7 @@ from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
+from services.app_task_service import AppTaskControlService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -250,6 +251,7 @@ class ApplicationServices:
     app_definitions: AppDefinitionQueryService
     app_sites: AppSiteService
     app_statistics: AppStatisticQuery
+    app_tasks: AppTaskControlService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
@@ -609,6 +611,7 @@ def build_application_services(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
+        app_tasks=AppTaskControlService(redis_client=redis),
         billing_portal=BillingPortalService(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,

@@ -76,6 +76,7 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 
 @pytest.mark.parametrize(
@@ -563,6 +564,29 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = _StopRedis(read_error=AssertionError("Workflow stop must not inspect task ownership"))
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    services.app_tasks.stop_workflow_task_no_user_check(task_id="workflow-task")
+
+    assert redis.reads == []
+    assert redis.operations == ["legacy_flag", "graph_command"]
+    assert redis.values["generate_task_stopped:workflow-task"] == b"1"
+    assert redis.expirations["generate_task_stopped:workflow-task"] == 600
+    assert [json.loads(command) for command in redis.commands["workflow:workflow-task:commands"]] == [
+        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+    ]
+    assert redis.expirations["workflow:workflow-task:commands"] == 3600
 
 
 def test_build_application_services_wires_trial_app_usage(

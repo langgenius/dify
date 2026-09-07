@@ -1,4 +1,4 @@
-"""Generate completion and chat responses for an admitted workspace installation."""
+"""Generate completion, chat, and workflow responses for an admitted installation."""
 
 from collections.abc import Iterator, Mapping
 from datetime import datetime
@@ -26,6 +26,10 @@ class InstalledAppNotCompletionError(ValueError):
 
 class InstalledAppNotChatError(ValueError):
     """The installed app does not support the chat endpoint."""
+
+
+class InstalledAppNotWorkflowError(ValueError):
+    """The installed app does not support the workflow endpoint."""
 
 
 class InstalledAppUsageRecorder(Protocol):
@@ -75,6 +79,20 @@ class InstalledAppGenerationService:
             raise InstalledAppNotChatError(f"App {installed_app.app_id} is not a chat app")
 
         return self._generate(installed_app=installed_app, account_id=account_id, args=args, streaming=True)
+
+    def generate_workflow(
+        self, *, installed_app: InstalledAppRef, account_id: str, args: Mapping[str, object]
+    ) -> GenerationResponse:
+        if self._app_definitions.get_mode(installed_app.app_id) != "workflow":
+            raise InstalledAppNotWorkflowError(f"App {installed_app.app_id} is not a workflow app")
+
+        # Workflow runs do not update installation usage or add chat naming options.
+        return self._runtime.generate(
+            app_id=installed_app.app_id,
+            account_id=account_id,
+            args=args,
+            streaming=True,
+        )
 
     def _generate(
         self,
