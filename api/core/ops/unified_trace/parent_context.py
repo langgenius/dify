@@ -93,8 +93,13 @@ def parent_destination_from_config(
     unified: bool,
 ) -> ParentDestination:
     """Build destination compatibility from non-secret persisted fields."""
+    # Imported lazily, like the registry lookup in resolve_parent_destination, to keep this
+    # module importable from the registry's own provider entries.
+    from core.ops.unified_trace.registry import unified_scope_key_field
+
     endpoint = tracing_config.get("endpoint")
-    scope_key = tracing_config.get("project") or tracing_config.get("service_name")
+    scope_key_field = unified_scope_key_field(provider)
+    scope_key = tracing_config.get(scope_key_field) if scope_key_field else None
     return ParentDestination(
         provider=provider,
         scope=destination_scope(

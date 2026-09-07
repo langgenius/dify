@@ -37,3 +37,19 @@ class UnifiedTraceProviderConfigMap(collections.UserDict[str, UnifiedProviderCon
 
 
 unified_provider_config_map = UnifiedTraceProviderConfigMap()
+
+
+def unified_scope_key_field(tracing_provider: str) -> str | None:
+    """Name of the config field a provider uses as its destination scope key.
+
+    Declared here next to the provider entries so generic parent-context code does not
+    have to guess the field name, and resolved without importing the provider SDK: it
+    runs for the *parent* app's provider, which the current deployment may not install.
+    """
+    match tracing_provider:
+        case TracingProviderEnum.PHOENIX | TracingProviderEnum.LANGSMITH:
+            return "project"
+        case TracingProviderEnum.OTEL:
+            return "service_name"
+        case _:
+            return None

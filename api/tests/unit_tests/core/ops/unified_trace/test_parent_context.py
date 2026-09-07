@@ -74,6 +74,29 @@ def test_parent_destination_uses_service_name_for_otel_scope() -> None:
     assert "secret" not in destination.scope
 
 
+def test_parent_destination_ignores_foreign_scope_field() -> None:
+    # "project" belongs to Phoenix/LangSmith; the OTel entry declares "service_name", so a
+    # stray project value must not leak into the scope.
+    destination = parent_destination_from_config(
+        "otel",
+        {"endpoint": "http://collector:4318/v1/traces", "project": "not-the-scope-key"},
+        unified=True,
+    )
+
+    assert destination.scope == destination_scope("otel", "http://collector:4318/v1/traces", "")
+
+
+def test_parent_destination_for_unregistered_provider_has_empty_scope_key() -> None:
+    destination = parent_destination_from_config(
+        "langfuse",
+        {"endpoint": "https://cloud.langfuse.com", "project": "project-a", "service_name": "svc"},
+        unified=False,
+    )
+
+    assert destination.scope == destination_scope("langfuse", "https://cloud.langfuse.com", "")
+    assert destination.unified is False
+
+
 def test_publish_uses_unified_namespace_and_configured_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
     redis = MagicMock()
     value = context()
