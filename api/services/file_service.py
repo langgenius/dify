@@ -58,6 +58,7 @@ class FileService:
         source: Literal["datasets"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
+        session: Session | None = None,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -115,9 +116,17 @@ class FileService:
             source_url=source_url,
         )
 
-        with self._session_maker(expire_on_commit=False) as session:
+        if session is not None:
+            # Use the caller's session so the just-added row is visible to the
+            # same transaction's follow-up queries (matters under MySQL
+            # REPEATABLE-READ, which freezes the snapshot at the first read
+            # of the request session).
             session.add(upload_file)
-            session.commit()
+            session.flush()
+        else:
+            with self._session_maker(expire_on_commit=False) as own_session:
+                own_session.add(upload_file)
+                own_session.commit()
 
         if not upload_file.source_url:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
@@ -198,7 +207,15 @@ class FileService:
             return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
-    def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
+    def upload_text(
+        self,
+        text: str,
+        text_name: str,
+        user_id: str,
+        tenant_id: str,
+        *,
+        session: Session | None = None,
+    ) -> UploadFile:
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name
@@ -226,9 +243,17 @@ class FileService:
             used_at=naive_utc_now(),
         )
 
-        with self._session_maker(expire_on_commit=False) as session:
+        if session is not None:
+            # Use the caller's session so the just-added row is visible to the
+            # same transaction's follow-up queries (matters under MySQL
+            # REPEATABLE-READ, which freezes the snapshot at the first read
+            # of the request session).
             session.add(upload_file)
-            session.commit()
+            session.flush()
+        else:
+            with self._session_maker(expire_on_commit=False) as own_session:
+                own_session.add(upload_file)
+                own_session.commit()
 
         return upload_file
 

@@ -410,7 +410,11 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
         raise ValueError("current_user is required")
 
     upload_file = FileService(db.engine).upload_text(
-        text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id_str
+        text=payload.text,
+        text_name=payload.name,
+        user_id=current_user.id,
+        tenant_id=tenant_id_str,
+        session=session,
     )
     data_source = {
         "type": "upload_file",
@@ -475,7 +479,11 @@ def _update_document_by_text(
         if not current_user:
             raise ValueError("current_user is required")
         upload_file = FileService(db.engine).upload_text(
-            text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
+            text=str(text),
+            text_name=str(name),
+            user_id=current_user.id,
+            tenant_id=tenant_id,
+            session=session,
         )
         data_source = {
             "type": "upload_file",
@@ -793,6 +801,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 user=current_user,
                 source="datasets",
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
+                session=session,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
@@ -871,6 +880,7 @@ def _update_document_by_file(
                 user=current_user,
                 source="datasets",
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
+                session=session,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
