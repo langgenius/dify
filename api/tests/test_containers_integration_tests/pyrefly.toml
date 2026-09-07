@@ -80,7 +80,6 @@ project-excludes = [
   "services/test_messages_clean_service.py",
   "services/test_model_load_balancing_service.py",
   "services/test_model_provider_service.py",
-  "services/test_ops_service.py",
   "services/test_restore_archived_workflow_run.py",
   "services/test_saved_message_service.py",
   "services/test_schedule_service.py",

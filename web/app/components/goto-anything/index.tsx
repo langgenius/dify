@@ -585,9 +585,16 @@ function GotoAnythingDialog() {
                       />
                     )}
 
-                    <AutocompleteList className="max-h-none overflow-visible p-0">
+                    <AutocompleteList
+                      aria-label={
+                        isCommandsMode
+                          ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
+                          : undefined
+                      }
+                      className="max-h-none overflow-visible p-0"
+                    >
                       {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
-                        <AutocompleteGroup items={commandOptions} role="rowgroup">
+                        <AutocompleteGroup items={commandOptions}>
                           <AutocompleteGroupLabel className="px-4 pt-4 pb-2 text-left font-mono text-[11px] font-medium tracking-[0.12em] text-text-tertiary uppercase">
                             {isSlashMode
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })

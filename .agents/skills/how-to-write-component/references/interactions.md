@@ -23,10 +23,9 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 - Follow the [overlay contract] for primitive choice and shared mechanics. The nearest consumer `AGENTS.md` owns application-specific composite reuse policy.
 - Separate behavior ownership from placement ownership: the action may own trigger, open state, and menu content while the caller owns slots, offsets, and alignment.
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
-- Keep overlay open-state ownership separate from content-session ownership. A controlled root does not require controlled fields or root-owned drafts.
-- Match transient state to the primitive's content mount lifecycle. State below an unmounting content boundary gets a fresh instance after unmount; intentionally kept-mounted content needs an explicit persistence or reset policy.
-- Keep a controlled overlay root at its coordination owner so the primitive can complete exit transitions, focus restoration, and detached-handle behavior. Do not conditionally remove the root to reset content state, and use keys only for stable semantic identity.
+- Use the [overlay contract] to determine content lifetime and preserve the Root's closing lifecycle. Follow [state ownership] for draft placement and semantic identity; portal placement alone does not locate the state owner.
 - Place query subscriptions and mutation observers at the owner whose lifetime matches when they should run. Mounted-session work may belong inside content; work that must start or stop exactly with `open` needs an explicit open-state condition.
 - Prefer primitive-owned open state unless another owner must observe or coordinate it. Analytics callbacks and local cleanup alone do not require a controlled root.
 
 [overlay contract]: ../../../../packages/dify-ui/docs/overlays.md
+[state ownership]: state.md
