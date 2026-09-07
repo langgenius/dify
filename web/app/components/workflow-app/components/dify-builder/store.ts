@@ -57,9 +57,12 @@ export const difyBuilderScopedAtoms = [
 
 export const difyBuilderAvailableAtom = atom((get) => get(difyBuilderRuntimeAtom)?.enabled === true)
 export const difyBuilderHasSessionAtom = atom((get) => get(difyBuilderSessionViewAtom) !== null)
+export const difyBuilderInteractionAtom = atom(
+  (get) => get(difyBuilderSessionViewAtom)?.active_interaction ?? null,
+)
 export const difyBuilderActiveInteractionAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
-  const interaction = view?.active_interaction
+  const interaction = get(difyBuilderInteractionAtom)
   return interaction?.valid_at_version === view?.version ? interaction : null
 })
 export const difyBuilderActionsAtom = atom(
