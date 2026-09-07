@@ -59,18 +59,6 @@ How we prioritize:
 | Non-core features and minor enhancements | Low Priority |
 | Valuable but not immediate | Future-Feature |
 
-## Development checks
-
-The commit hook runs `vp staged` to check and fix staged files. Python files use
-Ruff with each project's development dependencies and configuration. Fixes are
-staged automatically; existing unstaged changes stay unstaged, and failures restore
-the original state. Git operations such as merges and rebases skip staged checks.
-
-Local hooks are optional and do not replace CI. The existing autofix workflow
-continues to offer Python repairs and regenerate artifacts on pull requests.
-Run relevant project checks and tests before opening a PR; for frontend static
-checks, use `vp run -w check` or `vp run -w check:fix` to apply fixes.
-
 ## Submitting your PR
 
 ### Pull Request Process
