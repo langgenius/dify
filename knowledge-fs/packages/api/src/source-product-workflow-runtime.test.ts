@@ -1306,6 +1306,52 @@ describe("source-product workflow provider imports", () => {
       progressTotal: 1,
       state: "completed",
     });
+    expect(fixture.sourceUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          __knowledgeFsWebsiteSelection: {
+            sourceUrls: ["HTTPS://EXAMPLE.TEST:443/selected/#preview"],
+            version: 1,
+          },
+        }),
+      }),
+    );
+  });
+
+  it("keeps the previous website selection when a replacement import fails", async () => {
+    const previousSelection = ["https://example.test/previous"];
+    const replacementSelection = ["https://example.test/replacement"];
+    const bodies = new Map<string, Uint8Array>();
+    const source = sourceRecord("failed-website-selection-replacement", {
+      metadata: websiteSelectionMetadata(previousSelection),
+      type: "web",
+    });
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: bodies.size, hasMore: false })),
+        get: vi.fn(async ({ contentObjectKey }) => bodies.get(contentObjectKey) ?? null),
+        put: vi.fn(async ({ body, pageId }) => {
+          const key = `staged/${pageId}`;
+          bodies.set(key, body);
+          return key;
+        }),
+      },
+      inventory: [],
+      publishError: new Error("replacement publication failed"),
+      run: providerRun(source.id, "crawl-import", {
+        selectedSourceUrls: replacementSelection,
+      }),
+      source,
+      websiteCrawl: {
+        crawl: vi.fn(async ({ selectedUrl }) => ({
+          pages: [{ content: "replacement", sourceUrl: selectedUrl ?? "", title: "Replacement" }],
+        })),
+      },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    expect(fixture.sourceUpdates).not.toHaveBeenCalled();
+    expect(source.metadata).toEqual(websiteSelectionMetadata(previousSelection));
   });
 
   it("fails bounded crawl imports for invalid cleanup, incomplete cleanup, and missing content", async () => {
@@ -1420,6 +1466,7 @@ describe("source-product workflow runtime sync", () => {
         documentId: "document-missing-page",
         policy: "tombstone",
         providerItemId: "missing-page",
+        workflowId: fixture.run.id,
       }),
       expect.any(Object),
     );
@@ -1428,6 +1475,79 @@ describe("source-product workflow runtime sync", () => {
       progressTotal: 2,
       state: "completed",
     });
+  });
+
+  it("syncs only the latest effective website selection and removes escaped inventory", async () => {
+    const selectedUrls = ["https://example.test/current-a", "https://example.test/current-b"];
+    const selectedProviderItemIds = selectedUrls.map((url) =>
+      createHash("sha256").update(url, "utf8").digest("hex"),
+    );
+    const crawl = vi.fn(async ({ selectedUrl }: WebsiteCrawlInput) => ({
+      pages: [
+        {
+          content: `content:${selectedUrl}`,
+          sourceUrl: selectedUrl ?? "https://example.test/unexpected-root",
+          title: selectedUrl?.split("/").at(-1),
+        },
+        {
+          content: "provider returned an unselected page",
+          sourceUrl: "https://example.test/unselected",
+          title: "Unselected",
+        },
+      ],
+    }));
+    const source = sourceRecord("selected-website-sync", {
+      metadata: {
+        ...websiteSelectionMetadata(selectedUrls),
+        initialPreview: { canonicalSourceUrls: ["https://example.test/stale-initial"] },
+      },
+      type: "web",
+    });
+    const fixture = await createFixture({
+      inventory: [inventoryItem("escaped-provider-item", "website")],
+      source,
+      websiteCrawl: { crawl },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(crawl).toHaveBeenCalledTimes(2);
+    expect(crawl.mock.calls.map(([request]) => request.selectedUrl)).toEqual(selectedUrls);
+    expect(fixture.publish.mock.calls.map(([request]) => request.providerItemId).sort()).toEqual(
+      [...selectedProviderItemIds].sort(),
+    );
+    expect(fixture.publish).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerItemId: createHash("sha256")
+          .update("https://example.test/unselected", "utf8")
+          .digest("hex"),
+      }),
+      expect.any(Object),
+    );
+    expect(fixture.markRemoteMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerItemId: "escaped-provider-item",
+        workflowId: fixture.run.id,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("uses the initial website selection for sources created before selection markers", async () => {
+    const selectedUrls = ["https://example.test/legacy-a", "https://example.test/legacy-b"];
+    const crawl = vi.fn(async ({ selectedUrl }: WebsiteCrawlInput) => ({
+      pages: selectedUrl ? [{ content: selectedUrl, sourceUrl: selectedUrl }] : [],
+    }));
+    const fixture = await createFixture({
+      inventory: [],
+      source: sourceRecord("legacy-selected-website-sync", {
+        metadata: { initialPreview: { canonicalSourceUrls: selectedUrls } },
+        type: "web",
+      }),
+      websiteCrawl: { crawl },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(crawl.mock.calls.map(([request]) => request.selectedUrl)).toEqual(selectedUrls);
   });
 
   it("uses deterministic website fallbacks for missing and filesystem-unsafe titles", async () => {
@@ -3567,6 +3687,17 @@ function frozenSelectionMetadata(
       version: 1,
     },
     providerKind: kind,
+  };
+}
+
+function websiteSelectionMetadata(
+  sourceUrls: readonly string[],
+): Readonly<Record<string, unknown>> {
+  return {
+    __knowledgeFsWebsiteSelection: {
+      sourceUrls: [...sourceUrls],
+      version: 1,
+    },
   };
 }
 

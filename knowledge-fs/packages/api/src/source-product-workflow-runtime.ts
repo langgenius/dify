@@ -48,6 +48,7 @@ import type { CrawledPage, WebsiteCrawlConnector } from "./website-crawl-connect
 
 const encoder = new TextEncoder();
 const PROVIDER_SELECTION_METADATA_KEY = "__knowledgeFsProviderSelection";
+const WEBSITE_SELECTION_METADATA_KEY = "__knowledgeFsWebsiteSelection";
 
 export interface SourceWorkflowContentStore extends SourceWorkflowContentStagingStore {
   get(input: {
@@ -247,6 +248,7 @@ export function createSourceProductWorkflowRuntime(input: {
         setRun: update,
       });
       let completionState: "completed" | "preview_ready" | "zero_results" = "completed";
+      let importedWebsiteSourceUrls: readonly string[] | undefined;
       await execution.assertActive();
       const source = run.sourceId
         ? await input.sources.get({ id: run.sourceId, knowledgeSpaceId: run.knowledgeSpaceId })
@@ -258,7 +260,11 @@ export function createSourceProductWorkflowRuntime(input: {
       switch (run.kind) {
         case "crawl-preview":
           if (selectedPageIds(run).length > 0) {
-            await processCrawlImport(input, execution, requiredSource(source));
+            importedWebsiteSourceUrls = await processCrawlImport(
+              input,
+              execution,
+              requiredSource(source),
+            );
           } else {
             completionState = await processCrawlPreview(input, execution, requiredSource(source));
           }
@@ -277,9 +283,17 @@ export function createSourceProductWorkflowRuntime(input: {
           break;
         case "crawl-import":
           if (selectedSourceUrls(run).length > 0) {
-            await processSelectedCrawlImport(input, execution, requiredSource(source));
+            importedWebsiteSourceUrls = await processSelectedCrawlImport(
+              input,
+              execution,
+              requiredSource(source),
+            );
           } else {
-            await processCrawlImport(input, execution, requiredSource(source));
+            importedWebsiteSourceUrls = await processCrawlImport(
+              input,
+              execution,
+              requiredSource(source),
+            );
           }
           break;
       }
@@ -289,7 +303,7 @@ export function createSourceProductWorkflowRuntime(input: {
       ) {
         await cleanupStagedContent(input, execution, maxCleanupBatchesPerRun);
       }
-      await activateImportedPreviewSource(input, execution, source);
+      await commitImportedWebsiteSource(input, execution, source, importedWebsiteSourceUrls);
       await execution.assertActive();
       await input.repository.complete({
         fence: fence(execution.run()),
@@ -632,33 +646,30 @@ async function cleanupStagedContent(
   );
 }
 
-async function activateImportedPreviewSource(
+async function commitImportedWebsiteSource(
   input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
   execution: RuntimeExecution,
   source: Source | null,
+  sourceUrls: readonly string[] | undefined,
 ): Promise<void> {
+  if (!source || !sourceUrls?.length) return;
   const run = execution.run();
-  if (
-    !source ||
-    !(
-      (run.kind === "crawl-preview" && selectedPageIds(run).length > 0) ||
-      (run.kind === "crawl-import" &&
-        (selectedSourceUrls(run).length > 0 || selectedPageIds(run).length > 0))
-    ) ||
-    source.status !== "disabled" ||
-    source.metadata.preview !== true
-  ) {
-    return;
-  }
+  const selection = prepareWebsiteSelection(sourceUrls);
+  const activatePreview = source.status === "disabled" && source.metadata.preview === true;
   await execution.assertActive();
-  const activated = await input.sources.update({
-    expectedVersion: source.version,
+  const updated = await updateSourceWithRetry({
     id: source.id,
     knowledgeSpaceId: run.knowledgeSpaceId,
-    metadata: { ...source.metadata, preview: false },
-    status: "active",
+    merge: (fresh) => ({
+      ...fresh.metadata,
+      ...(activatePreview ? { preview: false } : {}),
+      [WEBSITE_SELECTION_METADATA_KEY]: selection,
+    }),
+    sources: input.sources,
+    ...(activatePreview ? { status: "active" } : {}),
   });
-  if (!activated) throw runtimeError("SOURCE_NOT_FOUND", "Source no longer exists");
+  if (!updated) throw runtimeError("SOURCE_NOT_FOUND", "Source no longer exists");
+  await execution.assertActive();
 }
 
 async function processCrawlPreview(
@@ -764,7 +775,7 @@ async function processCrawlImport(
   input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
   execution: RuntimeExecution,
   source: Source,
-): Promise<void> {
+): Promise<readonly string[]> {
   const run = execution.run();
   const selected = new Set(selectedPageIds(run));
   const previewPages: SourceCrawlPreviewPage[] = [];
@@ -783,13 +794,15 @@ async function processCrawlImport(
     throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
   }
   await importCrawlPages(input, execution, source, previewPages);
+  return previewPages.map((page) => page.sourceUrl);
 }
 
 async function processSelectedCrawlImport(
   input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
   execution: RuntimeExecution,
   source: Source,
-): Promise<void> {
+): Promise<readonly string[]> {
+  const requestedUrls = selectedSourceUrls(execution.run());
   const referencedPages = selectedStagedPageReferences(execution.run());
   if (referencedPages.length) {
     await execution.mutate((current) =>
@@ -805,7 +818,7 @@ async function processSelectedCrawlImport(
       }),
     );
     await importCrawlPages(input, execution, source, referencedPages);
-    return;
+    return requestedUrls;
   }
   const stagedPages = selectedStagedPages(execution.run());
   if (stagedPages.length) {
@@ -825,7 +838,7 @@ async function processSelectedCrawlImport(
       }),
     );
     await importCrawlPages(input, execution, source, selectedPages);
-    return;
+    return requestedUrls;
   }
   if (!input.websiteCrawl) {
     throw runtimeError(
@@ -833,12 +846,11 @@ async function processSelectedCrawlImport(
       "Website crawl provider is unavailable",
     );
   }
-  const requestedUrls = selectedSourceUrls(execution.run());
   const connectorSource = await execution.external(() =>
     resolveSource(input, source, execution.run().tenantId),
   );
   const selectedPages: SourceCrawlPreviewPage[] = [];
-  for (const [index, requestedUrl] of requestedUrls.entries()) {
+  for (const requestedUrl of requestedUrls) {
     const initial = execution.run();
     const result = await execution.external(
       (signal) =>
@@ -861,10 +873,8 @@ async function processSelectedCrawlImport(
       throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
     }
     selectedPages.push(
-      ...(await stageCrawlPages(input, execution, [page], (candidate) =>
-        createHash("sha256")
-          .update(`${index}\0${requestedUrl}\0${candidate.sourceUrl}`, "utf8")
-          .digest("hex"),
+      ...(await stageCrawlPages(input, execution, [page], () =>
+        createHash("sha256").update(requestedUrl, "utf8").digest("hex"),
       )),
     );
   }
@@ -881,6 +891,7 @@ async function processSelectedCrawlImport(
     }),
   );
   await importCrawlPages(input, execution, source, selectedPages);
+  return requestedUrls;
 }
 
 async function importCrawlPages(
@@ -1137,6 +1148,58 @@ interface FrozenProviderSelection {
   readonly identityHashes: readonly string[];
   readonly kind: "online-document" | "online-drive";
   readonly version: 1;
+}
+
+interface FrozenWebsiteSelection {
+  readonly sourceUrls: readonly string[];
+  readonly version: 1;
+}
+
+function prepareWebsiteSelection(sourceUrls: readonly string[]): FrozenWebsiteSelection {
+  if (
+    sourceUrls.length < 1 ||
+    sourceUrls.length > 200 ||
+    sourceUrls.some(
+      (sourceUrl) =>
+        typeof sourceUrl !== "string" ||
+        !sourceUrl.trim() ||
+        sourceUrl !== sourceUrl.trim() ||
+        sourceUrl.length > 4_096,
+    ) ||
+    new Set(sourceUrls).size !== sourceUrls.length
+  ) {
+    throw runtimeError("SOURCE_WEBSITE_SELECTION_INVALID", "Website selection marker is invalid");
+  }
+  return { sourceUrls: [...sourceUrls], version: 1 };
+}
+
+function readWebsiteSelection(
+  metadata: Readonly<Record<string, unknown>>,
+): FrozenWebsiteSelection | undefined {
+  const marker = metadata[WEBSITE_SELECTION_METADATA_KEY];
+  if (marker !== undefined && marker !== null) {
+    if (!marker || typeof marker !== "object" || Array.isArray(marker)) {
+      throw runtimeError("SOURCE_WEBSITE_SELECTION_INVALID", "Website selection marker is invalid");
+    }
+    const record = marker as Record<string, unknown>;
+    if (record.version !== 1 || !Array.isArray(record.sourceUrls)) {
+      throw runtimeError("SOURCE_WEBSITE_SELECTION_INVALID", "Website selection marker is invalid");
+    }
+    return prepareWebsiteSelection(record.sourceUrls as readonly string[]);
+  }
+
+  const initialPreview = metadata.initialPreview;
+  if (!initialPreview || typeof initialPreview !== "object" || Array.isArray(initialPreview)) {
+    return undefined;
+  }
+  const preview = initialPreview as Record<string, unknown>;
+  const legacyUrls = Array.isArray(preview.canonicalSourceUrls)
+    ? preview.canonicalSourceUrls
+    : preview.requestedSourceUrls;
+  if (!Array.isArray(legacyUrls) || legacyUrls.some((url) => typeof url !== "string")) {
+    return undefined;
+  }
+  return prepareWebsiteSelection(legacyUrls as readonly string[]);
 }
 
 function prepareProviderSelection(
@@ -2259,29 +2322,77 @@ async function processWebsiteSync(
   const connectorSource = await execution.external(() =>
     resolveSource(input, source, initial.tenantId),
   );
-  const result = await execution.external(
-    (signal) =>
-      input.websiteCrawl?.crawl({
-        signal,
-        source: connectorSource,
-        tenantId: initial.tenantId,
-        userId: workflowSubjectId(initial),
-      }) ??
-      Promise.reject(
-        runtimeError("SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "Website crawl provider is unavailable"),
-      ),
-  );
-  if (result.pages.length > maxItems) {
-    throw runtimeError(
-      "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
-      "Website sync result exceeds its durable item budget",
+  const selection = readWebsiteSelection(source.metadata);
+  const selectedResults: Array<{
+    readonly page?: CrawledPage | undefined;
+    readonly providerItemId: string;
+    readonly selectedSourceUrl: string;
+  }> = [];
+  if (selection) {
+    if (selection.sourceUrls.length > maxItems) {
+      throw runtimeError(
+        "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
+        "Website sync result exceeds its durable item budget",
+      );
+    }
+    for (const selectedSourceUrl of selection.sourceUrls) {
+      const run = execution.run();
+      const result = await execution.external(
+        (signal) =>
+          input.websiteCrawl?.crawl({
+            selectedUrl: selectedSourceUrl,
+            signal,
+            source: connectorSource,
+            tenantId: run.tenantId,
+            userId: workflowSubjectId(run),
+          }) ??
+          Promise.reject(
+            runtimeError(
+              "SOURCE_CRAWL_PROVIDER_UNAVAILABLE",
+              "Website crawl provider is unavailable",
+            ),
+          ),
+      );
+      selectedResults.push({
+        page: result.pages[0],
+        providerItemId: createHash("sha256").update(selectedSourceUrl, "utf8").digest("hex"),
+        selectedSourceUrl,
+      });
+    }
+  } else {
+    const result = await execution.external(
+      (signal) =>
+        input.websiteCrawl?.crawl({
+          signal,
+          source: connectorSource,
+          tenantId: initial.tenantId,
+          userId: workflowSubjectId(initial),
+        }) ??
+        Promise.reject(
+          runtimeError(
+            "SOURCE_CRAWL_PROVIDER_UNAVAILABLE",
+            "Website crawl provider is unavailable",
+          ),
+        ),
+    );
+    if (result.pages.length > maxItems) {
+      throw runtimeError(
+        "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
+        "Website sync result exceeds its durable item budget",
+      );
+    }
+    selectedResults.push(
+      ...result.pages.map((page) => ({
+        page,
+        providerItemId: createHash("sha256").update(page.sourceUrl, "utf8").digest("hex"),
+        selectedSourceUrl: page.sourceUrl,
+      })),
     );
   }
-  const pages = result.pages
-    .map((page) => ({
-      ...page,
-      providerItemId: createHash("sha256").update(page.sourceUrl, "utf8").digest("hex"),
-    }))
+  const pages = selectedResults
+    .flatMap(({ page, providerItemId, selectedSourceUrl }) =>
+      page ? [{ ...page, providerItemId, selectedSourceUrl }] : [],
+    )
     .sort(
       (left, right) =>
         left.providerItemId.localeCompare(right.providerItemId) ||
@@ -2289,7 +2400,12 @@ async function processWebsiteSync(
     );
   const fingerprint = providerListingFingerprint(
     "website",
-    pages.map((page) => [page.providerItemId, page.sourceUrl, page.content]),
+    selectedResults.map(({ page, providerItemId, selectedSourceUrl }) => [
+      providerItemId,
+      selectedSourceUrl,
+      page?.sourceUrl ?? "",
+      page?.content ?? "",
+    ]),
   );
   const cursor = requireMatchingSyncCursor(initial.cursor, "website", fingerprint);
   if (cursor.phase === "eof") return;
@@ -2826,6 +2942,7 @@ async function processRemoteMissing(
               providerItemId: item.providerItemId,
               sourceId: source.id,
               tenantId: run.tenantId,
+              workflowId: run.id,
             },
             {
               assertActive: async () => {

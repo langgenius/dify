@@ -927,6 +927,43 @@ def test_source_edit_ignores_order_when_canonical_url_multiplicity_is_unchanged(
     assert console_resources._source_edit_requires_import(source, payload) is False
 
 
+def test_source_edit_uses_latest_effective_website_selection_instead_of_stale_crawl_metadata() -> None:
+    source = SimpleNamespace(
+        metadata={
+            "crawled": {"https://docs.dify.ai/old": {}},
+            "initialPreview": {"canonicalSourceUrls": ["https://docs.dify.ai/old"]},
+            "__knowledgeFsWebsiteSelection": {
+                "sourceUrls": ["https://docs.dify.ai/current/"],
+                "version": 1,
+            },
+        },
+        status="active",
+        type="web",
+        uri="https://docs.dify.ai",
+    )
+    unchanged = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "selection": {
+                "kind": "website_crawl",
+                "sourceUrls": ["https://DOCS.dify.ai:443/current#selected"],
+            },
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+    changed = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "selection": {
+                "kind": "website_crawl",
+                "sourceUrls": ["https://docs.dify.ai/old"],
+            },
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+
+    assert console_resources._source_edit_requires_import(source, unchanged) is False
+    assert console_resources._source_edit_requires_import(source, changed) is True
+
+
 def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() -> None:
     provider_item_id = '["workspace-a","page-a"]'
     identity_hash = sha256(f"online-document\0{provider_item_id}".encode()).hexdigest()

@@ -782,9 +782,25 @@ def _source_edit_requires_import(source: KnowledgeFSSourceResponse, payload: Kno
     ):
         return True
     if selection.kind == "website_crawl":
+        website_selection = source.metadata.get("__knowledgeFsWebsiteSelection")
+        frozen_urls = (
+            website_selection.get("sourceUrls")
+            if isinstance(website_selection, dict) and website_selection.get("version") == 1
+            else None
+        )
+        initial_preview = source.metadata.get("initialPreview")
+        initial_urls = (
+            initial_preview.get("canonicalSourceUrls") or initial_preview.get("requestedSourceUrls")
+            if isinstance(initial_preview, dict)
+            else None
+        )
         crawled = source.metadata.get("crawled")
         current_urls = (
-            Counter(normalize_knowledge_fs_source_url(url) for url in crawled)
+            Counter(normalize_knowledge_fs_source_url(url) for url in frozen_urls)
+            if isinstance(frozen_urls, list) and all(isinstance(url, str) for url in frozen_urls)
+            else Counter(normalize_knowledge_fs_source_url(url) for url in initial_urls)
+            if isinstance(initial_urls, list) and all(isinstance(url, str) for url in initial_urls)
+            else Counter(normalize_knowledge_fs_source_url(url) for url in crawled)
             if isinstance(crawled, dict)
             else Counter[str]()
         )
