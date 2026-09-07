@@ -202,6 +202,11 @@ class TencentVector(BaseVector):
                 if metadatas is None:
                     continue
                 metadata = metadatas[i] or {}
+                if metadata.get("is_summary") is True:
+                    # Tencent VectorDB JSON fields do not support boolean values.
+                    # Use an integer only for the summary marker so other metadata
+                    # and other vector backends keep their existing types.
+                    metadata = {**metadata, "is_summary": 1}
                 doc = document.Document(
                     id=metadata.get("doc_id"),
                     vector=embeddings[i],
