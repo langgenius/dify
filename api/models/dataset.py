@@ -299,10 +299,6 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def word_count(self) -> int:
-        return self.get_word_count(session=db.session())
-
     def get_word_count(self, *, session: Session) -> int:
         return (
             session.scalar(
@@ -310,10 +306,6 @@ class Dataset(Base):
             )
             or 0
         )
-
-    @property
-    def doc_form(self) -> str | None:
-        return self.get_doc_form(session=db.session())
 
     def get_doc_form(self, *, session: Session) -> str | None:
         if self.chunk_structure:
@@ -343,10 +335,6 @@ class Dataset(Base):
             return default_retrieval_model
 
         return {**default_retrieval_model, **self.retrieval_model}
-
-    @property
-    def tags(self) -> Sequence[Tag]:
-        return self.get_tags(session=db.session())
 
     def get_tags(self, *, session: Session) -> Sequence[Tag]:
         tags = session.scalars(
