@@ -167,6 +167,7 @@ project-excludes = [
   "controllers/openapi/test_device_sso.py",
   "controllers/openapi/test_device_token.py",
   "controllers/openapi/test_error_contract.py",
+  "controllers/openapi/test_files.py",
   "controllers/openapi/test_health.py",
   "controllers/openapi/test_human_input_form.py",
   "controllers/openapi/test_input_schema.py",
