@@ -2,7 +2,7 @@ import type {
   DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { VarType } from '../workflow/types'
+import type { Variable, VarType } from '../workflow/types'
 
 type LocalizedText<T = string> = {
   en_US: T
@@ -212,10 +212,21 @@ export type WorkflowToolProviderParameter = {
   type?: string
 }
 
+export type WorkflowToolOutputSource = {
+  nodeId: string
+  nodeTitle: string
+  outputIndex: number
+}
+
+export type WorkflowToolOutputVariable = Variable & {
+  source?: WorkflowToolOutputSource
+}
+
 export type WorkflowToolProviderOutputParameter = {
   name: string
   description: string
   type?: VarType
+  source?: WorkflowToolOutputSource
   reserved?: boolean
 }
 

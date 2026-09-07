@@ -53,11 +53,14 @@ vi.mock('../ExternalApiSelect', () => ({
   default: ({
     items,
     onSelect,
+    'aria-labelledby': ariaLabelledBy,
   }: {
     items: Array<{ value: string; name: string }>
     onSelect: (item: { value: string; name: string }) => void
+    'aria-labelledby'?: string
   }) => (
     <div>
+      <button type="button" aria-labelledby={ariaLabelledBy} />
       {items.map((item) => (
         <button type="button" key={item.value} onClick={() => onSelect(item)}>
           {item.name}
@@ -95,6 +98,14 @@ describe('ExternalApiSelection', () => {
     )
   })
 
+  it('associates the external API label with its selector', () => {
+    render(<ExternalApiSelection {...defaultProps} />)
+
+    expect(
+      screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }),
+    ).toBeInTheDocument()
+  })
+
   it('updates the external knowledge ID', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -112,7 +123,7 @@ describe('ExternalApiSelection', () => {
     }
     render(<Harness />)
 
-    await user.type(screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder'), 'kb-123')
+    await user.type(screen.getByRole('textbox', { name: 'dataset.externalKnowledgeId' }), 'kb-123')
 
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ external_knowledge_id: 'kb-123' }),

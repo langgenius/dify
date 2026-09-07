@@ -127,10 +127,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
       latest_published_at: publishedOverride.publishedAt,
       latest_published_version_id: publishedOverride.id,
       latest_published_version_number: publishedOverride.versionNumber,
-      updated_at:
-        baseDetail.latest_published_version_id === publishedOverride.id
-          ? baseDetail.updated_at
-          : Math.max(baseDetail.updated_at, publishedOverride.publishedAt),
     }
   }, [baseDetail, publishedOverride])
   if (
@@ -253,7 +249,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
               latest_published_at: version.created_at,
               latest_published_version_id: version.id,
               latest_published_version_number: version.version_number,
-              updated_at: Math.max(detail.updated_at, version.created_at),
             })
           }
           await queryClient.invalidateQueries({ queryKey: detailQueryKey })

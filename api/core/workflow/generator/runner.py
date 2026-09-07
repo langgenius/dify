@@ -1193,7 +1193,7 @@ class WorkflowGenerator:
             if node.get("node_type") == BuiltinNodeTypes.TOOL and node.get("id")
         }
         for node in graph.get("nodes") or []:
-            planned = planned_by_id.get(str(node.get("id") or ""))
+            planned = planned_by_id.get(node.get("id") or "")
             if planned is None:
                 continue
             data = node.get("data")

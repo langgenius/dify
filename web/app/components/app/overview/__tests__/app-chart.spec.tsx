@@ -40,7 +40,7 @@ describe('app-chart', () => {
         />,
       )
 
-      expect(screen.getByText('Cost title'))!.toBeInTheDocument()
+      expect(screen.getByText('Cost title')).toHaveAttribute('title', 'Cost title')
       expect(screen.getByText('300'))!.toBeInTheDocument()
       expect(screen.queryByText('Last 7 days'))!.not.toBeInTheDocument()
       expect(screen.getByText(/\$3\.7500/))!.toBeInTheDocument()

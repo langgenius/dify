@@ -25,7 +25,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
@@ -56,7 +55,6 @@ const getDefaultPeriodQuery = () => {
 export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const docLink = useDocLink()
   const [period, setPeriod] = useState(() => ({
     name: t(($) => $['agentDetail.monitoring.timeRanges.today']),
     query: getDefaultPeriodQuery(),
@@ -107,17 +105,8 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['agentDetail.monitoring.title'])}
           </h2>
-          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t(($) => $['agentDetail.monitoring.description'])}</span>
-            <a
-              href={docLink('/use-dify/monitor/logs')}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              {t(($) => $['agentDetail.monitoring.learnMore'])}
-              <span aria-hidden className="i-ri-external-link-line size-3" />
-            </a>
+          <p className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['agentDetail.monitoring.description'])}
           </p>
         </div>
 

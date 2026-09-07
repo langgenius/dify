@@ -461,7 +461,7 @@ class FinalizeSuccessOnCancellationRunner(SnapshotlessRunner):
             assert result.applied is True
 
 
-def test_default_runner_factory_passes_run_timeout_to_runner() -> None:
+def test_default_runner_factory_passes_runtime_limits_to_runner() -> None:
     async def scenario() -> None:
         store = FakeStore()
         record = await store.create_run()
@@ -471,12 +471,18 @@ def test_default_runner_factory_passes_run_timeout_to_runner() -> None:
                 plugin_daemon_http_client=client,
                 dify_api_http_client=client,
                 run_timeout_seconds=17,
+                stream_text_delta_coalescing_enabled=False,
+                stream_text_delta_flush_interval_seconds=0.25,
+                stream_text_delta_max_chars=2048,
             )
 
             runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
 
         assert isinstance(runner, AgentRunRunner)
         assert runner.run_timeout_seconds == 17
+        assert runner.stream_text_delta_coalescing_enabled is False
+        assert runner.stream_text_delta_flush_interval_seconds == 0.25
+        assert runner.stream_text_delta_max_chars == 2048
 
     asyncio.run(scenario())
 

@@ -219,13 +219,13 @@ type Account = {
 
 export type ResourceUserAccessSetting = {
   account: Account
-  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
+  roles: Omit<Role, 'tenant_id' | 'description'>[]
   access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
 }
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
-  scope: ResourceOpenScope
+  pagination: Pagination
 }
 
 export type GetMembersOfRoleResponse = {
@@ -256,5 +256,3 @@ export type RemoveAppAccessPolicyMemberBindingsRequest =
 
 export type RemoveDatasetAccessPolicyMemberBindingsRequest =
   RemoveResourceAccessPolicyMemberBindingsRequest
-
-export type ResourceOpenScope = 'all' | 'only_me' | 'specific'

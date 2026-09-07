@@ -14,6 +14,7 @@ from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
 from tasks import human_input_timeout_tasks as task_module
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _FakeService:
@@ -103,7 +104,7 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
 ):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
 
     forms = [
         _build_form(
@@ -180,7 +181,7 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
 ):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
 
     forms = [
         _build_form(
@@ -222,7 +223,7 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
 ):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
 
     old_unexpired_form = _build_form(
         form_id="form-old",
@@ -263,7 +264,7 @@ def test_check_and_handle_human_input_timeouts_routes_conversation_owned_form_to
     # workflow_run_id — which previously raised and was swallowed by the except.
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
 
     form = _build_form(
         form_id="form-chat",

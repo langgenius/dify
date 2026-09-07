@@ -1,5 +1,5 @@
 import type { SkillFileResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   buildUploadReviewItems,
   createAvailableUploadPath,

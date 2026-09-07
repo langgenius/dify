@@ -8,6 +8,7 @@ import {
   ComboboxPortal,
   ComboboxPositioner,
   ComboboxTrigger,
+  createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -24,15 +25,12 @@ import { TagSearchContent } from './tag-search-content'
 import { TagTriggerContent } from './tag-trigger-content'
 
 const normalizeTagName = (name: string) => name.trim().toLocaleLowerCase()
-const TAG_COMBOBOX_FILTER: NonNullable<ComboboxProps<TagComboboxItem, true>['filter']> = (
-  tag,
-  query,
-) => normalizeTagName(tag.name).includes(normalizeTagName(query))
-const tagToString = (tag: TagComboboxItem) => tag.name
-const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
+const TAG_COMBOBOX_FILTER: NonNullable<
+  ComboboxProps<TagComboboxItem['id'], true, TagComboboxItem>['filter']
+> = (tag, query) => normalizeTagName(tag.name).includes(normalizeTagName(query))
 
 type TagSelectorRootProps = Omit<
-  ComboboxProps<TagComboboxItem, true>,
+  ComboboxProps<TagComboboxItem['id'], true, TagComboboxItem>,
   | 'items'
   | 'multiple'
   | 'value'
@@ -43,6 +41,7 @@ type TagSelectorRootProps = Omit<
   | 'onInputValueChange'
   | 'filter'
   | 'itemToStringLabel'
+  | 'itemToStringValue'
   | 'isItemEqualToValue'
   | 'open'
   | 'defaultOpen'
@@ -53,6 +52,7 @@ type TagSelectorRootProps = Omit<
 export type TagSelectorProps = TagSelectorRootProps &
   Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
+    contextLabel?: string
     type: TagType
     value: Tag[]
     canBindOrUnbindTags?: boolean
@@ -62,6 +62,7 @@ export type TagSelectorProps = TagSelectorRootProps &
 
 export const TagSelector = ({
   targetId,
+  contextLabel,
   type,
   value,
   canBindOrUnbindTags,
@@ -73,7 +74,7 @@ export const TagSelector = ({
 }: TagSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [draftTags, setDraftTags] = useState<Tag[]>(value)
+  const [draftTagIds, setDraftTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
@@ -106,6 +107,7 @@ export const TagSelector = ({
     ? t(($) => $['tag.addTag'], { ns: 'common' })
     : t(($) => $['tag.noTag'], { ns: 'common' })
   const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
+  const accessibleTriggerLabel = contextLabel ? `${triggerLabel}: ${contextLabel}` : triggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
@@ -120,7 +122,10 @@ export const TagSelector = ({
     }
 
     for (const tag of value) {
-      if (tag.type === type && !tagIds.has(tag.id)) nextItems.push(tag)
+      if (tag.type === type && !tagIds.has(tag.id)) {
+        tagIds.add(tag.id)
+        nextItems.push(tag)
+      }
     }
 
     if (
@@ -140,9 +145,17 @@ export const TagSelector = ({
 
     return nextItems
   }, [canManageTags, inputValue, tagList, type, value])
+  const tagItemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
+  const tagItems = useMemo(
+    () =>
+      createComboboxItems(items, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [items],
+  )
 
   const applyTagBindings = useCallback(() => {
-    const draftTagIds = draftTags.map((tag) => tag.id)
     const draftTagIdSet = new Set(draftTagIds)
     const tagSelectionChanged =
       selectedTagIds.length !== draftTagIds.length ||
@@ -181,19 +194,19 @@ export const TagSelector = ({
         },
       },
     )
-  }, [applyTagBindingsMutation, draftTags, onTagsChange, selectedTagIds, t, targetId, type])
+  }, [applyTagBindingsMutation, draftTagIds, onTagsChange, selectedTagIds, t, targetId, type])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        setDraftTags(value)
+        setDraftTagIds(selectedTagIds)
       } else {
         applyTagBindings()
       }
 
       setOpen(nextOpen)
     },
-    [applyTagBindings, value],
+    [applyTagBindings, selectedTagIds],
   )
 
   const createNewTag = useCallback(
@@ -222,36 +235,38 @@ export const TagSelector = ({
   )
 
   const handleValueChange = useCallback(
-    (nextTags: TagComboboxItem[]) => {
-      const createOption = nextTags.find(isCreateTagOption)
-      if (createOption) {
+    (nextTagIds: string[]) => {
+      const createOptionId = nextTagIds.find((tagId) => {
+        const tag = tagItemById.get(tagId)
+        return tag ? isCreateTagOption(tag) : false
+      })
+      const createOption = createOptionId ? tagItemById.get(createOptionId) : undefined
+      if (createOption && isCreateTagOption(createOption)) {
         createNewTag(createOption.name)
         return
       }
 
-      setDraftTags(nextTags.filter((tag) => !isCreateTagOption(tag)))
+      setDraftTagIds(nextTagIds)
     },
-    [createNewTag],
+    [createNewTag, tagItemById],
   )
 
   return (
-    <Combobox
+    <Combobox<TagComboboxItem['id'], true, TagComboboxItem>
       {...rootProps}
       open={open}
       onOpenChange={handleOpenChange}
-      items={items}
+      items={tagItems}
       multiple
-      value={draftTags}
+      value={draftTagIds}
       onValueChange={handleValueChange}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
       filter={TAG_COMBOBOX_FILTER}
-      itemToStringLabel={tagToString}
-      isItemEqualToValue={isSameTag}
     >
       <ComboboxTrigger
         disabled={!canManageTags && !canBindOrUnbindTags}
-        aria-label={triggerLabel}
+        aria-label={accessibleTriggerLabel}
         className={cn(
           'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
           className,
@@ -268,7 +283,7 @@ export const TagSelector = ({
       <ComboboxPortal>
         <ComboboxPositioner placement="bottom-start" sideOffset={4}>
           <ComboboxPopup
-            aria-label={triggerLabel}
+            aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >
             <TagSearchContent

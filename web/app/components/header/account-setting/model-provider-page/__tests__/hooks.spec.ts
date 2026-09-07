@@ -396,6 +396,26 @@ describe('hooks', () => {
       expect(result.current.data).toBeUndefined()
     })
 
+    it('should keep the query disabled when requested', () => {
+      ;(useQuery as Mock).mockReturnValue({
+        data: undefined,
+        isPending: true,
+        refetch: vi.fn(),
+      })
+
+      const { result } = renderHook(() =>
+        useDefaultModel(ModelTypeEnum.textEmbedding, { enabled: false }),
+      )
+
+      expect(useQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: false,
+          queryKey: ['default-model', ModelTypeEnum.textEmbedding],
+        }),
+      )
+      expect(result.current.isLoading).toBe(false)
+    })
+
     it('should handle loading state', () => {
       ;(useQuery as Mock).mockReturnValue({
         data: undefined,

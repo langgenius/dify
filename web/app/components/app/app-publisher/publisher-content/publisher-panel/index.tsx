@@ -1,7 +1,9 @@
+import type { PopoverProps } from '@langgenius/dify-ui/popover'
 import type { ComponentProps } from 'react'
 import type { AppPublisherProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
 import { BuiltInPublisher } from '../../built-in-publisher'
@@ -9,7 +11,10 @@ import { PublisherEnvironmentFlow } from '../../environment-deployment-flow'
 
 type PublisherPanelProps = Pick<AppPublisherProps, 'crossAxisOffset' | 'disabled'> & {
   builtInPublisher: ComponentProps<typeof BuiltInPublisher>
-  environmentPublisher: ComponentProps<typeof PublisherEnvironmentFlow>
+  environmentPublisher: Omit<
+    ComponentProps<typeof PublisherEnvironmentFlow>,
+    'onConfigurationOpenChange'
+  >
   environmentPublisherKey: string
   open: boolean
   showBuiltInPublisher: boolean
@@ -29,9 +34,21 @@ export function PublisherPanel({
   workflowLaunch,
 }: PublisherPanelProps) {
   const { t } = useTranslation()
+  const [deploymentConfigurationOpen, setDeploymentConfigurationOpen] = useState(false)
+  const handleOpenChange: NonNullable<PopoverProps['onOpenChange']> = (nextOpen, eventDetails) => {
+    const isOutsideDismiss =
+      eventDetails.reason === 'outside-press' || eventDetails.reason === 'focus-out'
+    if (!nextOpen && deploymentConfigurationOpen && isOutsideDismiss) {
+      eventDetails.cancel()
+      return
+    }
+
+    if (!nextOpen) setDeploymentConfigurationOpen(false)
+    onOpenChange(nextOpen)
+  }
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button variant="primary" className="py-2 pr-2 pl-3" disabled={disabled}>
@@ -50,7 +67,11 @@ export function PublisherPanel({
           {showBuiltInPublisher ? (
             <BuiltInPublisher {...builtInPublisher} />
           ) : (
-            <PublisherEnvironmentFlow key={environmentPublisherKey} {...environmentPublisher} />
+            <PublisherEnvironmentFlow
+              key={environmentPublisherKey}
+              {...environmentPublisher}
+              onConfigurationOpenChange={setDeploymentConfigurationOpen}
+            />
           )}
         </div>
       </PopoverContent>

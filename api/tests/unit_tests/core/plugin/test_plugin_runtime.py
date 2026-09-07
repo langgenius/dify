@@ -23,7 +23,7 @@ from core.plugin.entities.plugin_daemon import (
     CredentialType,
     PluginDaemonInnerError,
 )
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import BasePluginClient, use_plugin_daemon_request_timeout
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
     PluginDaemonClientSideError,
@@ -153,6 +153,30 @@ class TestPluginRuntimeExecution:
             # Assert
             call_kwargs = mock_request.call_args[1]
             assert "timeout" in call_kwargs
+
+    def test_request_timeout_can_be_scoped_to_current_context(self, plugin_client, mock_config):
+        mock_response = MagicMock(status_code=200)
+
+        with (
+            patch("core.plugin.impl.base.plugin_daemon_request_timeout", httpx.Timeout(600.0)),
+            patch("httpx.request", return_value=mock_response, autospec=True) as mock_request,
+        ):
+            with use_plugin_daemon_request_timeout(30.0):
+                plugin_client._request("GET", "plugin/test-tenant/test")
+            plugin_client._request("GET", "plugin/test-tenant/test")
+
+        scoped_timeout = mock_request.call_args_list[0].kwargs["timeout"]
+        default_timeout = mock_request.call_args_list[1].kwargs["timeout"]
+        assert isinstance(scoped_timeout, httpx.Timeout)
+        assert isinstance(default_timeout, httpx.Timeout)
+        assert scoped_timeout.read == 30.0
+        assert default_timeout.read == 600.0
+
+    @pytest.mark.parametrize("timeout_seconds", [0.0, -1.0])
+    def test_request_timeout_override_rejects_non_positive_values(self, timeout_seconds):
+        with pytest.raises(ValueError, match="greater than zero"):
+            with use_plugin_daemon_request_timeout(timeout_seconds):
+                pass
 
     def test_request_connection_error(self, plugin_client, mock_config):
         """Test handling of connection errors during request."""

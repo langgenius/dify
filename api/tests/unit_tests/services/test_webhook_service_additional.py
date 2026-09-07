@@ -62,7 +62,9 @@ class TestWebhookServiceExtractionFallbacks:
         flask_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(service_module.dify_config, "WEBHOOK_REQUEST_BODY_MAX_SIZE", 1)
+        from tests.unit_tests.config_override import apply_config_overrides
+
+        apply_config_overrides(monkeypatch, WEBHOOK_REQUEST_BODY_MAX_SIZE=1)
 
         with flask_app.test_request_context("/webhook", method="POST", data="ab"):
             with pytest.raises(RequestEntityTooLarge):

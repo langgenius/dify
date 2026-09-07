@@ -1,12 +1,20 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
+export type AppPublisherPublishOptions = {
+  showSuccessToast?: boolean
+}
+
 type AppPublisherPublishHandler =
-  | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
-  | ((params?: unknown) => Promise<unknown> | unknown)
+  | ((
+      params?: AppPublisherPublishParams,
+      options?: AppPublisherPublishOptions,
+    ) => Promise<unknown> | unknown)
+  | ((params?: unknown, options?: AppPublisherPublishOptions) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
@@ -25,7 +33,7 @@ export type AppPublisherProps = {
   crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
-  outputs?: Variable[]
+  outputs?: WorkflowToolOutputVariable[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean

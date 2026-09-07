@@ -122,7 +122,7 @@ function CurrentDraftItem({
       aria-current={isActive ? 'true' : undefined}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-start gap-1 rounded-lg py-1 pr-[5px] pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
     >
@@ -327,7 +327,7 @@ function VersionRow({
       <li className="group relative">
         <div
           className={cn(
-            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-[5px] pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
+            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
             selected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
           )}
         >
@@ -355,7 +355,7 @@ function VersionRow({
                 )}
               </span>
               {version.publish_note && (
-                <span className="block system-xs-regular break-words text-text-secondary">
+                <span className="block system-xs-regular wrap-break-word text-text-secondary">
                   {version.publish_note}
                 </span>
               )}
@@ -377,7 +377,7 @@ function VersionRow({
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[184px]">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-46">
               <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>
@@ -403,7 +403,7 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
           <DialogClose
             render={
               <IconButton

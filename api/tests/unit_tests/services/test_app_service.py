@@ -27,6 +27,7 @@ from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
+from services.enterprise import rbac_service as enterprise_rbac_service
 
 
 def _persist_account(session: Session) -> Account:
@@ -67,9 +68,18 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
-def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: str = "Old") -> tuple[App, Agent]:
-    tenant_id = str(uuid4())
-    creator_id = str(uuid4())
+def _persist_agent_app(
+    session: Session,
+    *,
+    app_name: str = "Old",
+    agent_name: str = "Old",
+    tenant_id: str | None = None,
+    creator_id: str | None = None,
+    active_config_snapshot_id: str | None = None,
+    active_config_is_published: bool = False,
+) -> tuple[App, Agent]:
+    tenant_id = tenant_id or str(uuid4())
+    creator_id = creator_id or str(uuid4())
     app = App(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -95,6 +105,8 @@ def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: s
         icon="robot",
         icon_background="#fff",
         app_id=app.id,
+        active_config_snapshot_id=active_config_snapshot_id,
+        active_config_is_published=active_config_is_published,
         created_by=creator_id,
     )
     session.add_all([app, agent])
@@ -103,7 +115,10 @@ def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: s
 
 
 class TestCreateAppTransactionBoundary:
-    def test_commits_database_state_before_external_side_effects(self, sqlite_session: Session) -> None:
+    def test_commits_database_state_before_external_side_effects(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
         phase_events: list[str] = []
         event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
@@ -118,10 +133,9 @@ class TestCreateAppTransactionBoundary:
                 side_effect=lambda *_args: phase_events.append("external"),
             ),
             patch(
-                "services.app_service.FeatureService.get_system_features",
-                return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
             ),
-            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 account.current_tenant_id,
@@ -163,7 +177,10 @@ class TestCreateAppTransactionBoundary:
         assert sqlite_session.scalars(select(AppModelConfig)).all() == []
         assert sqlite_session.get(Agent, existing_agent.id) is existing_agent
 
-    def test_falls_back_when_default_model_schema_is_unavailable(self, sqlite_session: Session) -> None:
+    def test_falls_back_when_default_model_schema_is_unavailable(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
@@ -181,10 +198,9 @@ class TestCreateAppTransactionBoundary:
             patch("services.app_service.app_was_created.send"),
             patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
             patch(
-                "services.app_service.FeatureService.get_system_features",
-                return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
             ),
-            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 account.current_tenant_id,
@@ -205,6 +221,63 @@ class TestCreateAppTransactionBoundary:
         model_manager.get_default_provider_model_name.assert_called_once_with(
             tenant_id=account.current_tenant_id, model_type=ModelType.LLM
         )
+
+
+class TestCreateAppRBACAccessInitialization:
+    """`create_app` bootstraps RBAC access per app mode: agents get the agent flavour."""
+
+    @staticmethod
+    def _create(session: Session, account: Account, mode: AppMode) -> App:
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch(
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
+            ),
+        ):
+            return AppService().create_app(
+                account.current_tenant_id,
+                CreateAppParams(name=f"RBAC {mode.value}", mode=mode.value),
+                account,
+                session=session,
+            )
+
+    def test_agent_app_initializes_agent_access_and_skips_the_app_creator_sync(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=True)
+        account = _persist_account(sqlite_session)
+
+        with (
+            patch(
+                "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist"
+            ) as replace_whitelist,
+            patch("services.rbac_agent_access_service.initialize_created_app_rbac_access_task.delay") as seed_task,
+            patch(
+                "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AccessPolicies"
+                ".sync_creator_access_policy_member_bindings"
+            ) as creator_sync,
+            patch(
+                "services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ) as app_creator_sync,
+        ):
+            app = self._create(sqlite_session, account, AppMode.AGENT)
+
+        agent = sqlite_session.scalars(select(Agent).where(Agent.app_id == app.id)).one()
+        replace_whitelist.assert_called_once_with(
+            account.current_tenant_id,
+            account.id,
+            agent.id,
+            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        )
+        seed_task.assert_called_once_with(account.current_tenant_id, account.id, agent_id=agent.id)
+        creator_sync.assert_called_once_with(
+            account.current_tenant_id,
+            account.id,
+            resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+            resource_id=agent.id,
+        )
+        app_creator_sync.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -493,6 +566,78 @@ class TestAgentAppType:
         params = CreateAppParams(name="Iris", mode="agent")
         assert params.mode == "agent"
 
+    def test_list_filter_and_counts_use_server_owned_publication_state(self, sqlite_session: Session):
+        tenant_id = str(uuid4())
+        creator_id = str(uuid4())
+        published_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Published",
+            agent_name="Published Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+            active_config_snapshot_id=str(uuid4()),
+            active_config_is_published=True,
+        )
+        draft_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Draft",
+            agent_name="Draft Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+            active_config_snapshot_id=str(uuid4()),
+        )
+        unpublished_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Unpublished",
+            agent_name="Unpublished Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+        )
+        _persist_agent_app(
+            sqlite_session,
+            app_name="Other tenant",
+            agent_name="Other Agent",
+            active_config_snapshot_id=str(uuid4()),
+            active_config_is_published=True,
+        )
+
+        service = AppService()
+        published_page = service.get_paginate_apps(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=True),
+            sqlite_session,
+        )
+        draft_page = service.get_paginate_apps(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=False),
+            sqlite_session,
+        )
+        counts = service.get_agent_publication_counts(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=True),
+            sqlite_session,
+        )
+        searched_counts = service.get_agent_publication_counts(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", name="Draft", agent_is_published=True),
+            sqlite_session,
+        )
+
+        assert published_page is not None
+        assert {app.id for app in published_page.items} == {published_app.id}
+        assert published_page.total == 1
+        assert draft_page is not None
+        assert {app.id for app in draft_page.items} == {draft_app.id, unpublished_app.id}
+        assert draft_page.total == 2
+        assert counts.published == 1
+        assert counts.drafts == 2
+        assert searched_counts.published == 0
+        assert searched_counts.drafts == 1
+
     def test_bound_agent_id_is_none_for_non_agent_app(self):
         """Non-agent apps short-circuit without touching the DB."""
         from models.model import App, AppMode
@@ -675,7 +820,7 @@ class TestAgentAppType:
             patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
-            patch("services.app_service.FeatureService"),
+            patch("services.app_service.SystemFeatureService"),
             patch(
                 "services.app_service.remove_app_and_related_data_task.delay",
                 side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
@@ -826,7 +971,7 @@ class TestAgentAppType:
         with (
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_deleted.send"),
-            patch("services.app_service.FeatureService"),
+            patch("services.app_service.SystemFeatureService"),
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),

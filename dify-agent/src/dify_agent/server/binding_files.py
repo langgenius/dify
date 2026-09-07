@@ -109,9 +109,15 @@ data = data[:max_bytes]
 try:
     text = data.decode("utf-8")
     binary = False
-except UnicodeDecodeError:
-    text = None
-    binary = True
+except UnicodeDecodeError as exc:
+    # Truncation may split a trailing multi-byte code point. Keep the longest
+    # complete UTF-8 prefix; genuine invalid bytes still classify as binary.
+    if truncated and exc.reason == "unexpected end of data" and exc.end == len(data):
+        text = data[: exc.start].decode("utf-8")
+        binary = False
+    else:
+        text = None
+        binary = True
 payload = {
     "path": response_path,
     "size": size,

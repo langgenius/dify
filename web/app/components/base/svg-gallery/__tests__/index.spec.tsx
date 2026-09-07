@@ -64,7 +64,7 @@ describe('SVGRenderer', () => {
       render(<SVGRenderer content="invalid" />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Error rendering SVG/))!.toBeInTheDocument()
+        expect(screen.getByText('common.svgRenderer.generatingImage'))!.toBeInTheDocument()
       })
     })
 

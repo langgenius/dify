@@ -1,16 +1,15 @@
 'use client'
-import type { MouseEventHandler } from 'react'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { updateDatasetSetting } from '@/service/datasets'
 import AppIcon from '../../base/app-icon'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -48,7 +47,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
     setAppIcon(icon)
   }, [])
-  const onConfirm: MouseEventHandler = useCallback(async () => {
+  const onConfirm = useCallback(async () => {
     if (!name.trim()) {
       toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
@@ -96,37 +95,51 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     t,
   ])
   return (
-    <Dialog open={show}>
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <DialogContent className="w-full max-w-130 overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
-        <div className="flex items-center justify-between pb-2">
-          <div className="text-xl leading-7.5 font-medium text-text-primary">
-            {t(($) => $.title, { ns: 'datasetSettings' })}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            onConfirm()
+          }}
+        >
+          <div className="flex items-center justify-between pb-2">
+            <DialogTitle className="text-xl leading-7.5 font-medium text-text-primary">
+              {t(($) => $.title, { ns: 'datasetSettings' })}
+            </DialogTitle>
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={onClose}
+            >
+              <span aria-hidden="true" className="i-ri-close-line size-4" />
+            </IconButton>
           </div>
-          <button
-            type="button"
-            className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onClose}
-          >
-            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
-          </button>
-        </div>
-        <div>
-          <div className={cn('flex flex-col py-4')}>
-            <div className="shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+          <Field name="name" className="gap-0 py-4">
+            <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $['form.name'], { ns: 'datasetSettings' })}
-            </div>
+            </FieldLabel>
             <div className="flex items-center gap-x-2">
-              <AppIcon
-                size="medium"
+              <button
+                type="button"
+                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                className="shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleOpenAppIconPicker}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                showEditIcon
-              />
+              >
+                <AppIcon
+                  size="medium"
+                  iconType={appIcon.type}
+                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                  background={appIcon.type === 'image' ? undefined : appIcon.background}
+                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                  showEditIcon
+                />
+              </button>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -134,30 +147,27 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
                 placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
               />
             </div>
-          </div>
-          <div className={cn('flex flex-col py-4')}>
-            <div className="shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+          </Field>
+          <Field name="description" className="gap-0 py-4">
+            <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
-            </div>
-            <div className="w-full">
-              <Textarea
-                aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
-                value={description}
-                onValueChange={(value) => setDescription(value)}
-                className="resize-none"
-                placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
-              />
-            </div>
+            </FieldLabel>
+            <Textarea
+              value={description}
+              onValueChange={(value) => setDescription(value)}
+              className="resize-none"
+              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-6">
+            <Button type="button" onClick={onClose}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button type="submit" loading={loading} variant="primary">
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
           </div>
-        </div>
-        <div className="flex justify-end pt-6">
-          <Button className="mr-2" onClick={onClose}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button disabled={loading} variant="primary" onClick={onConfirm}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </div>
+        </form>
         {showAppIconPicker && (
           <AppIconPicker
             open={showAppIconPicker}

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -143,12 +144,10 @@ const environmentVariableGraphPatchMatches = (
 const getLLMEnvironmentValue = (
   variable: EnvironmentVariable,
 ): LLMEnvironmentVariableValue | undefined => {
-  if (variable.value_type !== 'llm' || !variable.value || typeof variable.value !== 'object')
+  if (variable.value_type !== 'llm' || !isLLMEnvironmentVariableValue(variable.value))
     return undefined
 
-  const value = variable.value as Partial<LLMEnvironmentVariableValue>
-  if (!value.provider || !value.name || !value.mode) return undefined
-  return value as LLMEnvironmentVariableValue
+  return variable.value
 }
 
 const useEnvPanelActions = ({

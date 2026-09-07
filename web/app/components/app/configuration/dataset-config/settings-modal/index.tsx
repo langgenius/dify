@@ -5,14 +5,14 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useQueryState } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Input from '@/app/components/base/input'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -58,6 +58,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const translateRetrieval: RetrievalTranslate = (selector, options) => t(selector, options)
   const docLink = useDocLink()
   const ref = useRef(null)
+  const nameInputId = useId()
   const isExternal = currentDataset.provider === 'external'
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const [loading, setLoading] = useState(false)
@@ -232,13 +233,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
       <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-17">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">
+            <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.name'], { ns: 'datasetSettings' })}
-            </div>
+            </label>
           </div>
           <Input
+            id={nameInputId}
             value={localeCurrentDataset.name}
-            onChange={(e) => handleValueChange('name', e.target.value)}
+            onValueChange={(value) => handleValueChange('name', value)}
             className="block h-9"
             placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
           />

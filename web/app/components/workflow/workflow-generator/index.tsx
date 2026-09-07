@@ -19,7 +19,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -36,6 +36,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { generateWorkflow, generateWorkflowStream } from '@/service/workflow-generator'
@@ -684,16 +685,13 @@ function WorkflowGeneratorModal() {
                   {t(($) => $['workflowGenerator.regenerate'])}
                 </Button>
                 {genErrorHasUnknownTool && (
-                  <Button
-                    size="small"
-                    variant="secondary"
-                    onClick={() => {
-                      closeGenerator()
-                      router.push('/tools')
-                    }}
+                  <Link
+                    href="/tools"
+                    className={buttonVariants({ size: 'small', variant: 'secondary' })}
+                    onClick={closeGenerator}
                   >
                     {t(($) => $['workflowGenerator.errors.installTools'])}
-                  </Button>
+                  </Link>
                 )}
               </div>
             </div>

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createContext, use } from 'react'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/client'
@@ -40,16 +41,18 @@ export const useAgentConfigSkills = () => {
 
 export const useAgentWorkspaceSkillBindings = () => {
   const { agentId } = useAgentConfigApiContext()
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
 
-  return useQuery(
-    consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({
+  return useQuery({
+    ...consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({
       input: {
         params: {
           agent_id: agentId,
         },
       },
     }),
-  )
+    enabled: enableSkill,
+  })
 }
 
 export const useAgentConfigFiles = () => {

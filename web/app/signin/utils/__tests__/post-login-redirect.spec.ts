@@ -48,6 +48,18 @@ describe('post-login redirect utilities', () => {
     ).toEqual({ kind: 'absolute', href: redirectUrl })
   })
 
+  it('should reject a Marketplace origin that is not a trusted Dify login target', () => {
+    const searchParams = new URLSearchParams({
+      redirect_url: 'http://localhost:3001/plugin/langgenius/openai?tab=reviews#rating',
+    })
+
+    expect(
+      resolvePostLoginRedirect(
+        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
+      ),
+    ).toEqual({ kind: 'internal', href: '/' })
+  })
+
   it('should use the default target instead of a stored device target when the query target is invalid', () => {
     setPostLoginRedirect('/device?user_code=ABCD')
     const searchParams = new URLSearchParams({ redirect_url: 'https://google.com' })
@@ -108,5 +120,16 @@ describe('post-login redirect utilities', () => {
     setPostLoginRedirect('/apps')
 
     expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
+  })
+
+  it('should preserve every Marketplace OAuth authorize parameter across signin', () => {
+    setPostLoginRedirect(
+      '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code',
+    )
+
+    expect(resolvePostLoginRedirect()).toEqual({
+      kind: 'internal',
+      href: '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code',
+    })
   })
 })

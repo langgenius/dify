@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -21,9 +22,11 @@ def test_get_plugin_pkg_url_contains_unique_identifier() -> None:
     assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in url
 
 
-def test_download_plugin_pkg_delegates_with_configured_size(mocker: MockerFixture) -> None:
+def test_download_plugin_pkg_delegates_with_configured_size(
+    mocker: MockerFixture, config_overrides: Callable[..., None]
+) -> None:
     mocked_download = mocker.patch("core.helper.marketplace.download_with_size_limit", return_value=b"pkg")
-    mocker.patch("core.helper.marketplace.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 1234)
+    config_overrides(PLUGIN_MAX_PACKAGE_SIZE=1234)
 
     result = download_plugin_pkg("langgenius/openai:0.4.2@checksum")
 

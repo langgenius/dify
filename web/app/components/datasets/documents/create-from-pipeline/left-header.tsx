@@ -1,5 +1,6 @@
 import type { Step } from './step-indicator'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import Effect from '@/app/components/base/effect'
@@ -27,13 +28,15 @@ const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
       </div>
       <div className="system-md-semibold text-text-primary">{steps[currentStep - 1]?.label}</div>
       {currentStep !== steps.length && (
-        <Link href={`/datasets/${datasetId}/documents`} replace>
-          <Button
-            variant="secondary-accent"
-            className="absolute top-3.5 -left-11 size-9 rounded-full p-0"
-          >
-            <RiArrowLeftLine className="size-5" />
-          </Button>
+        <Link
+          href={`/datasets/${datasetId}/documents`}
+          replace
+          className={cn(
+            buttonVariants({ variant: 'secondary-accent' }),
+            'absolute top-3.5 -left-11 size-9 rounded-full p-0',
+          )}
+        >
+          <RiArrowLeftLine className="size-5" />
         </Link>
       )}
       <Effect className="-top-8.5 left-8 opacity-20" />

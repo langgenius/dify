@@ -1,5 +1,6 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.openapi.auth.conditions import (
     EDITION_CLOUD,
     EDITION_COMMUNITY,
@@ -18,12 +19,13 @@ from controllers.openapi.auth.conditions import (
     data_cond,
     request_cond,
 )
-from controllers.openapi.auth.data import AuthData, RBACRequirement, RequestContext
-from core.rbac import RBACPermission, RBACResourceScope
+from controllers.openapi.auth.data import AuthData, RequestContext
+from core.rbac import RBACPermission
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _ctx(token_type=TokenType.OAUTH_ACCOUNT, path_params=None, **kwargs):
@@ -117,36 +119,25 @@ def test_path_has_app_id_false():
 
 
 def test_edition_community():
-    with patch(
-        "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
-        DeploymentEdition.COMMUNITY,
-    ):
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY):
         assert EDITION_COMMUNITY(_ctx()) is True
         assert EDITION_ENTERPRISE(_ctx()) is False
         assert EDITION_CLOUD(_ctx()) is False
 
 
 def test_edition_enterprise():
-    with patch(
-        "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
-        DeploymentEdition.ENTERPRISE,
-    ):
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE):
         assert EDITION_ENTERPRISE(_ctx()) is True
         assert EDITION_COMMUNITY(_ctx()) is False
 
 
 def test_edition_cloud():
-    with patch(
-        "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
-        DeploymentEdition.CLOUD,
-    ):
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
         assert EDITION_CLOUD(_ctx()) is True
 
 
 def test_webapp_auth_enabled():
-    mock_features = MagicMock()
-    mock_features.webapp_auth.enabled = True
-    with patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=mock_features):
+    with patch("controllers.openapi.auth.conditions.SystemFeatureService.is_webapp_auth_enabled", return_value=True):
         assert WEBAPP_AUTH_ENABLED(_ctx()) is True
 
 
@@ -163,7 +154,7 @@ def test_webapp_run_scoped_false_when_scope_none():
 
 
 def _rbac_req():
-    return RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN)
+    return RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())
 
 
 def test_has_rbac_true():

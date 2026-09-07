@@ -527,30 +527,6 @@ export type PluginCategoryListResponse = {
   plugins: Array<PluginCategoryInstalledPluginResponse>
 }
 
-export type AccessPolicyList = {
-  data?: Array<AccessPolicy>
-  pagination?: Pagination | null
-}
-
-export type AccessPolicy = {
-  category?: string
-  created_at?: number
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  policy_key?: string
-  resource_type: string
-  tenant_id?: string
-  updated_at?: number
-}
-
-export type AccessPolicyBindingState = {
-  binding_id: string
-  is_locked?: boolean
-}
-
 export type DeleteMemberBindingsRequest = {
   account_ids?: Array<string>
 }
@@ -563,14 +539,14 @@ export type RoleBindingsResponse = {
   data?: Array<AccessPolicyRoleBinding>
 }
 
-export type AppAccessMatrix = {
-  app_id?: string
+export type AgentAccessMatrix = {
+  agent_id?: string
   items?: Array<AccessMatrixItem>
 }
 
 export type ResourceUserAccessPoliciesResponse = {
   data?: Array<ResourceUserAccessPolicies>
-  scope: RbacResourceWhitelistScope
+  pagination?: Pagination | null
 }
 
 export type ReplaceUserAccessPolicies = {
@@ -587,7 +563,16 @@ export type ResourceWhitelist = {
 }
 
 export type ResourceAccessScopeRequest = {
-  scope: RbacResourceWhitelistScope
+  automatic_include_workspace_members: boolean
+}
+
+export type ResourceWhitelistConfig = {
+  automatic_include_workspace_members: boolean
+}
+
+export type AppAccessMatrix = {
+  app_id?: string
+  items?: Array<AccessMatrixItem>
 }
 
 export type DatasetAccessMatrix = {
@@ -605,6 +590,7 @@ export type ReplaceMemberRolesRequest = {
 }
 
 export type MyPermissionsResponse = {
+  agent?: ResourcePermissionSnapshot
   app?: ResourcePermissionSnapshot
   dataset?: ResourcePermissionSnapshot
   workspace?: WorkspacePermissionSnapshot
@@ -612,23 +598,6 @@ export type MyPermissionsResponse = {
 
 export type PermissionCatalogResponse = {
   groups?: Array<PermissionCatalogGroup>
-}
-
-export type RbacRoleList = {
-  data?: Array<RbacRole>
-  pagination?: Pagination | null
-}
-
-export type RbacRole = {
-  category?: string
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  role_tag?: string
-  tenant_id?: string | null
-  type: string
 }
 
 export type MembersInRoleList = {
@@ -1191,9 +1160,9 @@ export type SubscriptionBuilderApiEntity = {
 }
 
 export type TriggerSubscriptionBuilderVerifyPayload = {
-  credentials: {
+  credentials?: {
     [key: string]: unknown
-  }
+  } | null
 }
 
 export type TriggerVerificationResponse = {
@@ -1210,6 +1179,12 @@ export type TriggerOAuthAuthorizeResponse = {
   authorization_url: string
   subscription_builder: SubscriptionBuilderApiEntity
   subscription_builder_id: string
+}
+
+export type TriggerSubscriptionVerifyPayload = {
+  credentials: {
+    [key: string]: unknown
+  }
 }
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
@@ -1680,13 +1655,6 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
-export type Pagination = {
-  current_page?: number
-  per_page?: number
-  total_count?: number
-  total_pages?: number
-}
-
 export type AccessPolicyMemberBinding = {
   access_policy_id: string
   account_id: string
@@ -1715,7 +1683,38 @@ export type ResourceUserAccessPolicies = {
   roles?: Array<RbacRole>
 }
 
-export type RbacResourceWhitelistScope = 'all' | 'only_me' | 'specific'
+export type Pagination = {
+  current_page?: number
+  per_page?: number
+  total_count?: number
+  total_pages?: number
+}
+
+export type AccessPolicy = {
+  category?: string
+  created_at?: number
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  policy_key?: string
+  resource_type: string
+  tenant_id?: string
+  updated_at?: number
+}
+
+export type RbacRole = {
+  category?: string
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  role_tag?: string
+  tenant_id?: string | null
+  type: string
+}
 
 export type ResourcePermissionSnapshot = {
   default_permission_keys?: Array<string>
@@ -4364,7 +4363,9 @@ export type GetWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponses = {
-  200: AccessPolicyList
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4378,7 +4379,9 @@ export type PostWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
-  201: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4394,7 +4397,9 @@ export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4410,7 +4415,9 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4426,7 +4433,9 @@ export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4442,7 +4451,9 @@ export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses = {
-  201: AccessPolicy
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse =
@@ -4458,7 +4469,9 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses = {
-  200: AccessPolicyBindingState
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse =
@@ -4474,11 +4487,170 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = 
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses = {
-  200: AccessPolicyBindingState
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse =
   PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses]
+
+export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsData = {
+  body: DeleteMemberBindingsRequest
+  path: {
+    agent_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings'
+}
+
+export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses =
+  {
+    200: MemberBindingsResponse
+  }
+
+export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    agent_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses =
+  {
+    200: MemberBindingsResponse
+  }
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    agent_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponses = {
+  200: RoleBindingsResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponse =
+  GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
+  url: '/workspaces/current/rbac/agents/{agent_id}/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponses = {
+  200: AgentAccessMatrix
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponse =
+  GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponses[keyof GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponses]
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
+  url: '/workspaces/current/rbac/agents/{agent_id}/user-access-policies'
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponses = {
+  200: ResourceUserAccessPoliciesResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponse =
+  GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponses]
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesData = {
+  body: ReplaceUserAccessPolicies
+  path: {
+    agent_id: string
+    target_account_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/users/{target_account_id}/access-policies'
+}
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponses = {
+  200: ReplaceUserAccessPoliciesResponse
+}
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponse =
+  PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponses[keyof PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponses]
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/whitelist'
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses = {
+  200: ResourceWhitelist
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse =
+  GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses[keyof GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses]
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistData = {
+  body: ResourceAccessScopeRequest
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/whitelist'
+}
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses = {
+  200: ResourceWhitelist
+}
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse =
+  PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses[keyof PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses]
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/agents/{agent_id}/whitelist_config'
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponses = {
+  200: ResourceWhitelistConfig
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponse =
+  GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponses[keyof GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponses]
 
 export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsData = {
   body: DeleteMemberBindingsRequest
@@ -4557,6 +4729,9 @@ export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesData = {
   }
   query?: {
     language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
   }
   url: '/workspaces/current/rbac/apps/{app_id}/user-access-policies'
 }
@@ -4616,6 +4791,22 @@ export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses = {
 
 export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse =
   PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses[keyof PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/whitelist_config'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses = {
+  200: ResourceWhitelistConfig
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponse =
+  GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses]
 
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsData =
   {
@@ -4698,6 +4889,9 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesData = 
   }
   query?: {
     language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
   }
   url: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies'
 }
@@ -4759,6 +4953,22 @@ export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses = {
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse =
   PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses]
 
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist_config'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses = {
+  200: ResourceWhitelistConfig
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponse =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses]
+
 export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
   body?: never
   path: {
@@ -4819,6 +5029,20 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponses = {
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponse =
   GetWorkspacesCurrentRbacRolePermissionsCatalogResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogResponses]
 
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog/agent'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponses = {
+  200: PermissionCatalogResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse =
+  GetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponses]
+
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppData = {
   body?: never
   path?: never
@@ -4855,7 +5079,9 @@ export type GetWorkspacesCurrentRbacRolesData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesResponses = {
-  200: RbacRoleList
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacRolesResponse =
@@ -4869,7 +5095,9 @@ export type PostWorkspacesCurrentRbacRolesData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesResponses = {
-  201: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacRolesResponse =
@@ -4885,7 +5113,9 @@ export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -4901,7 +5131,9 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -4917,7 +5149,9 @@ export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -4933,7 +5167,9 @@ export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
-  201: RbacRole
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse =
@@ -4954,6 +5190,69 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses = {
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponse =
   GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses]
+
+export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsData = {
+  body: ReplaceBindingsRequest
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponses = {
+  200: AccessMatrixItem
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponse =
+  PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponses =
+  {
+    200: MemberBindingsResponse
+  }
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse =
+  GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponses = {
+  200: RoleBindingsResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponse =
+  GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/workspace/agents/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponses = {
+  200: WorkspaceAccessMatrix
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponse =
+  GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponses]
 
 export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsData = {
   body: ReplaceBindingsRequest
@@ -6314,7 +6613,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdData =
   {
-    body: TriggerSubscriptionBuilderVerifyPayload
+    body: TriggerSubscriptionVerifyPayload
     path: {
       provider: string
       subscription_id: string

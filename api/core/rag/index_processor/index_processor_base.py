@@ -190,7 +190,16 @@ class BaseIndexProcessor(ABC):
                         upload_file_id_list.append(upload_file_id)
                 continue
             if current_user:
-                upload_file_id = self._download_image(image.split(" ")[0], current_user)
+                image_url = image.split(" ")[0]
+                try:
+                    parsed_url = urlparse(image_url)
+                except ValueError:
+                    logging.debug("Skipping malformed image reference: %s", image_url)
+                    continue
+                if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+                    logging.debug("Skipping non-HTTP image reference: %s", image_url)
+                    continue
+                upload_file_id = self._download_image(image_url, current_user)
                 if upload_file_id:
                     upload_file_id_list.append(upload_file_id)
 

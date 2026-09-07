@@ -32,13 +32,13 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-const mockCurrentPluginID = vi.fn((): string | undefined => undefined)
-const mockSetCurrentPluginID = vi.fn()
+const mockSelectedItem = vi.fn((): { type: 'plugin'; id: string } | undefined => undefined)
+const mockSetSelectedItem = vi.fn()
 vi.mock('../../plugin-page/context', () => ({
   usePluginPageContext: (selector: (v: Record<string, unknown>) => unknown) => {
     const context = {
-      currentPluginID: mockCurrentPluginID(),
-      setCurrentPluginID: mockSetCurrentPluginID,
+      selectedItem: mockSelectedItem(),
+      setSelectedItem: mockSetSelectedItem,
     }
     return selector(context)
   },
@@ -174,7 +174,7 @@ describe('PluginItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockTheme.mockReturnValue('light')
-    mockCurrentPluginID.mockReturnValue(undefined)
+    mockSelectedItem.mockReturnValue(undefined)
     mockEnableMarketplace.mockReturnValue(true)
     mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
     mockGetValueFromI18nObject.mockImplementation((obj: Record<string, string>) => obj?.en_US || '')
@@ -588,7 +588,7 @@ describe('PluginItem', () => {
 
   // ==================== User Interactions Tests ====================
   describe('User Interactions', () => {
-    it('should call setCurrentPluginID when plugin is clicked', () => {
+    it('should select the plugin when its card is clicked', () => {
       // Arrange
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
 
@@ -598,12 +598,15 @@ describe('PluginItem', () => {
       fireEvent.click(pluginContainer)
 
       // Assert
-      expect(mockSetCurrentPluginID).toHaveBeenCalledWith('test-plugin-id')
+      expect(mockSetSelectedItem).toHaveBeenCalledWith({
+        type: 'plugin',
+        id: 'test-plugin-id',
+      })
     })
 
     it('should highlight selected plugin', () => {
       // Arrange
-      mockCurrentPluginID.mockReturnValue('test-plugin-id')
+      mockSelectedItem.mockReturnValue({ type: 'plugin', id: 'test-plugin-id' })
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
 
       // Act
@@ -611,12 +614,14 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).toHaveClass(
+        'after:inset-ring-components-option-card-option-selected-border',
+      )
     })
 
     it('should not highlight unselected plugin', () => {
       // Arrange
-      mockCurrentPluginID.mockReturnValue('other-plugin-id')
+      mockSelectedItem.mockReturnValue({ type: 'plugin', id: 'other-plugin-id' })
       const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
 
       // Act
@@ -625,7 +630,7 @@ describe('PluginItem', () => {
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
       expect(pluginContainer).not.toHaveClass(
-        'border-components-option-card-option-selected-border',
+        'after:inset-ring-components-option-card-option-selected-border',
       )
     })
 
@@ -638,8 +643,8 @@ describe('PluginItem', () => {
       const actionArea = screen.getByTestId('plugin-action').parentElement
       fireEvent.click(actionArea!)
 
-      // Assert - setCurrentPluginID should not be called
-      expect(mockSetCurrentPluginID).not.toHaveBeenCalled()
+      // Assert - selecting the plugin should not be triggered
+      expect(mockSetSelectedItem).not.toHaveBeenCalled()
     })
 
     it('should only reveal actions on card hover or focus', () => {
@@ -651,9 +656,18 @@ describe('PluginItem', () => {
 
       // Assert
       expect(screen.getByTestId('plugin-action').parentElement).toHaveClass(
+        'absolute',
+        'top-1/2',
+        'right-0',
+        '-translate-y-1/2',
+        'pointer-events-none',
         'opacity-0',
+        'group-hover/plugin-item:pointer-events-auto',
         'group-hover/plugin-item:opacity-100',
-        'focus-within:opacity-100',
+        'group-focus-within/plugin-item:pointer-events-auto',
+        'group-focus-within/plugin-item:opacity-100',
+        '[@media(hover:none)]:pointer-events-auto',
+        '[@media(hover:none)]:opacity-100',
       )
     })
   })

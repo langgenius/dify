@@ -91,7 +91,7 @@ const MCPCardSkeleton = () => (
       </div>
     </div>
     <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
-      <div className="flex w-0 grow items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <SkeletonRectangle className="h-3 w-16 animate-pulse" />
         <SkeletonPoint />
         <SkeletonRectangle className="h-3 w-24 animate-pulse" />

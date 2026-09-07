@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentRosterField } from '../agent-roster-field'
 
 const permission = vi.hoisted(() => ({ canManageAgents: true }))

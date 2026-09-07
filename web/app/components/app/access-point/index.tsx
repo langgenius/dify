@@ -1,11 +1,18 @@
 'use client'
 
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/access-point'
+import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -33,15 +40,17 @@ type AccessPointProps = {
 }
 
 type AccessPointContentProps = AccessPointProps & {
-  canEdit: boolean
-  canManage: boolean
+  canDeploy: boolean
+  canManageAccessPoint: boolean
+  canReleaseAndVersion: boolean
   showEnvironmentTabs: boolean
 }
 
 function AccessPointContent({
   appId,
-  canEdit,
-  canManage,
+  canDeploy,
+  canManageAccessPoint,
+  canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
   const { t } = useTranslation()
@@ -62,7 +71,7 @@ function AccessPointContent({
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-2">
         <div className="flex flex-col gap-0.5">
           <div className="flex h-6 items-center">
-            <h1 className="title-xl-semi-bold text-text-primary">
+            <h1 id="access-point-title" className="title-xl-semi-bold text-text-primary">
               {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
             </h1>
           </div>
@@ -101,25 +110,41 @@ function AccessPointContent({
         )}
       </header>
 
-      <div
-        className="min-h-0 flex-1 overflow-y-auto px-6 py-2"
-        data-environment={selectedEnvironment}
-      >
-        {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
-          <BuiltInAccessPoints
-            appId={appId}
-            highlightedAccessPoint={selectedHighlightedAccessPoint}
-          />
-        ) : (
-          <DeployedEnvironmentAccessPoints
-            appId={appId}
-            environmentId={selectedEnvironment}
-            canEdit={canEdit}
-            canManage={canManage}
-            highlightedAccessPoint={selectedHighlightedAccessPoint}
-          />
-        )}
-      </div>
+      <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaViewport
+          aria-labelledby="access-point-title"
+          className="overscroll-contain"
+          data-environment={selectedEnvironment}
+          role="region"
+          style={{ overflowX: 'hidden' }}
+        >
+          <ScrollAreaContent
+            className="min-h-full w-full max-w-full px-6 py-2"
+            style={{ minWidth: 0 }}
+          >
+            {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
+              <BuiltInAccessPoints
+                appId={appId}
+                canDeploy={canDeploy}
+                canManageAccessPoint={canManageAccessPoint}
+                canReleaseAndVersion={canReleaseAndVersion}
+                highlightedAccessPoint={selectedHighlightedAccessPoint}
+              />
+            ) : (
+              <DeployedEnvironmentAccessPoints
+                appId={appId}
+                environmentId={selectedEnvironment}
+                canManageAccessPoint={canManageAccessPoint}
+                canReleaseAndVersion={canReleaseAndVersion}
+                highlightedAccessPoint={selectedHighlightedAccessPoint}
+              />
+            )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollArea>
     </main>
   )
 }
@@ -136,14 +161,17 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
-  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canDeploy
+  const showEnvironmentTabs =
+    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
+    capabilities.canViewAccessPoint
 
   return (
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
       <AccessPointContent
         appId={appId}
-        canEdit={capabilities.canEdit}
-        canManage={capabilities.canDeploy}
+        canDeploy={capabilities.canDeploy}
+        canManageAccessPoint={capabilities.canManageAccessPoint}
+        canReleaseAndVersion={capabilities.canReleaseAndVersion}
         showEnvironmentTabs={showEnvironmentTabs}
       />
     </AccessPointStateBoundary>

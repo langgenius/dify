@@ -11,7 +11,9 @@ from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
+from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream, resolve_audio_mime_type
+from core.credit_usage import CreditUsageCreatedBy
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.agent_config_entities import AgentSoulConfig
@@ -160,7 +162,14 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id, user_id=end_user)
+        model_manager = ModelManager.for_tenant(
+            tenant_id=app_model.tenant_id,
+            user_id=end_user,
+            request_metadata={
+                "app_type": get_credit_usage_app_type(app_model.mode),
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
+        )
         model_instance = model_manager.get_default_model_instance(
             tenant_id=app_model.tenant_id, model_type=ModelType.SPEECH2TEXT
         )
@@ -211,7 +220,14 @@ class AudioService:
 
                         voice = cast(str | None, text_to_speech_dict.get("voice"))
 
-            model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id, user_id=end_user)
+            model_manager = ModelManager.for_tenant(
+                tenant_id=app_model.tenant_id,
+                user_id=end_user,
+                request_metadata={
+                    "app_type": get_credit_usage_app_type(app_model.mode),
+                    "created_by": CreditUsageCreatedBy.AUDIO,
+                },
+            )
             model_instance = model_manager.get_default_model_instance(
                 tenant_id=app_model.tenant_id, model_type=ModelType.TTS
             )
@@ -258,7 +274,10 @@ class AudioService:
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_manager = ModelManager.for_tenant(
+            tenant_id=tenant_id,
+            request_metadata={"created_by": CreditUsageCreatedBy.AUDIO},
+        )
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.TTS)
         if model_instance is None:
             raise ProviderNotSupportTextToSpeechServiceError()

@@ -35,7 +35,7 @@ export type CommandDescriptor = {
   agentGuide: string | null
 }
 
-function isStructured(format: string): boolean {
+export function isStructured(format: string): boolean {
   return format === 'json' || format === 'yaml'
 }
 
@@ -71,13 +71,22 @@ function agentGuideOf(ctor: CommandConstructor): string {
   return new C().agentGuide()
 }
 
-export function describeCommand(ctor: CommandConstructor, path: string): CommandDescriptor {
-  const guide = agentGuideOf(ctor)
-
+function summarizeCommand(
+  ctor: CommandConstructor,
+  path: string,
+): Pick<CommandDescriptor, 'command' | 'description' | 'effect'> {
   return {
     command: path,
     description: ctor.description ?? null,
     effect: ctor.effect ?? 'read',
+  }
+}
+
+export function describeCommand(ctor: CommandConstructor, path: string): CommandDescriptor {
+  const guide = agentGuideOf(ctor)
+
+  return {
+    ...summarizeCommand(ctor, path),
     args: Object.entries(ctor.args ?? {}).map(([name, def]) => ({
       name,
       required: def.required ?? false,
@@ -230,13 +239,28 @@ function formatTopLevelHelpText(tree: CommandTree): string {
     `GUIDES\n${renderTopicRows()}`,
     `LEARN MORE\n` +
       `  Use \`${BIN} <command> --help\` for details on a command.\n` +
-      `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} --help -o json\`.`,
+      `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} help -o json --compact\`.`,
   ]
 
   return `${sections.join('\n\n')}\n`
 }
 
-export function formatTopLevelHelp(tree: CommandTree, format: string): string {
+export function formatTopLevelHelp(
+  tree: CommandTree,
+  format: string,
+  options: { compact?: boolean } = {},
+): string {
+  if (options.compact && isStructured(format)) {
+    return serialize(
+      {
+        commands: collectCommands(tree).map(({ command, path }) =>
+          summarizeCommand(command, path.join(' ')),
+        ),
+      },
+      format,
+    )
+  }
+
   if (isStructured(format)) {
     return serialize(
       {

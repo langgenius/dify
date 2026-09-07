@@ -167,13 +167,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           {submissionError.message}
         </div>
       )}
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        loading={isPending}
-        disabled={isPending}
-      >
+      <Button type="submit" variant="primary" className="w-full" loading={isPending}>
         {validRecipientCount > 0
           ? t(($) => $['members.sendInviteCount'], {
               ns: 'common',

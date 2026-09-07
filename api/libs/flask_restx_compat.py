@@ -8,14 +8,178 @@ spec export fail or succeed in the same way.
 
 import hashlib
 import json
+from collections.abc import Mapping
 from typing import TypeGuard, cast
 
 from flask import current_app
 from flask_restx import fields
 from flask_restx import swagger as restx_swagger
-from flask_restx.model import Model, OrderedModel, instance
+from flask_restx.model import Model, ModelBase, OrderedModel, instance
 from flask_restx.swagger import Swagger
 from flask_restx.utils import not_none
+
+BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY = "dify-binary-response-media-types"
+_BINARY_RESPONSE_MEDIA_TYPES_EXTENSION = f"x-{BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY}"
+_HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+
+
+def _normalize_media_type(media_type: str) -> str:
+    """Return the case-insensitive media type without optional parameters."""
+
+    return media_type.partition(";")[0].strip().lower()
+
+
+def _add_transport_response_schemas(payload: dict[str, object]) -> None:
+    """Finalize response schemas that Flask-RESTX cannot express directly."""
+
+    paths = payload.get("paths")
+    if not isinstance(paths, dict):
+        return
+
+    for path_item in paths.values():
+        if not isinstance(path_item, dict):
+            continue
+        for method, operation in path_item.items():
+            if method not in _HTTP_METHODS or not isinstance(operation, dict):
+                continue
+
+            binary_media_types = operation.pop(_BINARY_RESPONSE_MEDIA_TYPES_EXTENSION, [])
+            normalized_binary_media_types = {
+                _normalize_media_type(media_type) for media_type in binary_media_types if isinstance(media_type, str)
+            }
+
+            responses = operation.get("responses")
+            if not isinstance(responses, dict):
+                continue
+            for response in responses.values():
+                if not isinstance(response, dict):
+                    continue
+                content = response.get("content")
+                if not isinstance(content, dict):
+                    continue
+                for media_type, media in content.items():
+                    if not isinstance(media_type, str) or not isinstance(media, dict):
+                        continue
+                    normalized_media_type = _normalize_media_type(media_type)
+                    if normalized_media_type == "text/event-stream":
+                        # Flask-RESTX attaches the status response model to every
+                        # produced media type. The model describes the blocking
+                        # JSON body; the SSE transport itself is always text.
+                        media["schema"] = {"type": "string"}
+                    elif normalized_media_type in normalized_binary_media_types:
+                        # Binary responses are explicitly marked by the
+                        # service_api.schema.binary_response decorator. Do not
+                        # guess from an unfamiliar non-JSON media type.
+                        media["schema"] = {"format": "binary", "type": "string"}
+
+
+def _deduplicate_operation_ids(payload: dict[str, object]) -> None:
+    """Make operationId values unique while preserving the canonical route ID."""
+
+    paths = payload.get("paths")
+    if not isinstance(paths, dict):
+        return
+
+    operations_by_id: dict[str, list[tuple[str, str, dict[str, object]]]] = {}
+    for path, path_item in paths.items():
+        if not isinstance(path, str) or not isinstance(path_item, dict):
+            continue
+        for method, operation in path_item.items():
+            if method not in _HTTP_METHODS or not isinstance(operation, dict):
+                continue
+            operation_id = operation.get("operationId")
+            if isinstance(operation_id, str):
+                operations_by_id.setdefault(operation_id, []).append((method, path, operation))
+
+    for operation_id, operations in operations_by_id.items():
+        if len(operations) < 2:
+            continue
+        ordered_operations = sorted(
+            operations,
+            key=lambda item: (
+                bool(item[2].get("deprecated")),
+                "_" in item[1],
+                item[1],
+                item[0],
+            ),
+        )
+        for index, (method, path, operation) in enumerate(ordered_operations):
+            if index == 0:
+                continue
+            digest = hashlib.sha1(f"{method}:{path}".encode()).hexdigest()[:8]
+            operation["operationId"] = f"{operation_id}_{digest}"
+
+
+def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> object:
+    """Sort order-insensitive OpenAPI arrays so every public representation is stable."""
+
+    if isinstance(value, dict):
+        return {key: sort_openapi_arrays(item, parent_key=key) for key, item in value.items()}
+    if not isinstance(value, list):
+        return value
+
+    sorted_items = [sort_openapi_arrays(item, parent_key=parent_key) for item in value]
+    if parent_key == "parameters":
+        return sorted(
+            sorted_items,
+            key=lambda item: (
+                item.get("in", "") if isinstance(item, dict) else "",
+                item.get("name", "") if isinstance(item, dict) else "",
+                json.dumps(item, sort_keys=True, default=str),
+            ),
+        )
+    if parent_key in {"enum", "required", "schemes", "tags"}:
+        string_items = [item for item in sorted_items if isinstance(item, str)]
+        if len(string_items) == len(sorted_items):
+            return sorted(string_items)
+    return sorted_items
+
+
+def _replace_legacy_refs(value: object) -> object:
+    if isinstance(value, dict):
+        replaced: dict[object, object] = {}
+        for key, item in value.items():
+            if key == "$ref" and isinstance(item, str) and item.startswith("#/definitions/"):
+                replaced[key] = item.replace("#/definitions/", "#/components/schemas/", 1)
+            else:
+                replaced[key] = _replace_legacy_refs(item)
+        return replaced
+    if isinstance(value, list):
+        return [_replace_legacy_refs(item) for item in value]
+    return value
+
+
+def _merge_registered_schemas(payload: dict[str, object], registered_models: Mapping[str, object]) -> dict[str, object]:
+    """Include registered but route-indirect models in every public OpenAPI representation."""
+
+    components = payload.setdefault("components", {})
+    if not isinstance(components, dict):
+        raise RuntimeError("unexpected OpenAPI components payload")
+    schemas = components.setdefault("schemas", {})
+    if not isinstance(schemas, dict):
+        raise RuntimeError("unexpected OpenAPI component schemas payload")
+
+    for name, model in registered_models.items():
+        if isinstance(model, ModelBase):
+            schemas.setdefault(name, _replace_legacy_refs(model.__schema__))
+
+    payload.pop("definitions", None)
+    replaced_payload = _replace_legacy_refs(payload)
+    if not isinstance(replaced_payload, dict):
+        raise RuntimeError("unexpected OpenAPI payload")
+    return cast(dict[str, object], replaced_payload)
+
+
+def finalize_openapi_payload(
+    payload: dict[str, object], *, registered_models: Mapping[str, object] | None = None
+) -> dict[str, object]:
+    """Apply the shared finalization used by live and exported OpenAPI specs."""
+
+    if registered_models is not None:
+        payload = _merge_registered_schemas(payload, registered_models)
+    _add_transport_response_schemas(payload)
+    _deduplicate_operation_ids(payload)
+    return cast(dict[str, object], sort_openapi_arrays(payload))
 
 
 def _is_inline_field_map(value: object) -> TypeGuard[dict[object, object]]:
@@ -121,6 +285,7 @@ def install_swagger_compatibility() -> None:
     original_schema_from_parameter = Swagger.schema_from_parameter
     original_description_for = Swagger.description_for
     original_serialize_operation = Swagger.serialize_operation
+    original_responses_for = Swagger.responses_for
     original_parameters_and_request_body_for = Swagger.parameters_and_request_body_for
     original_request_body_from_form_params = Swagger.request_body_from_form_params
     original_as_dict = Swagger.as_dict
@@ -187,6 +352,29 @@ def install_swagger_compatibility() -> None:
 
         return operation
 
+    def responses_for_with_status_specific_media(self: Swagger, doc: dict[str, object], method: str):
+        responses = original_responses_for(self, doc, method)
+        blueprint = self.api.blueprint
+        if blueprint is None or blueprint.name != "service_api":
+            return responses
+        method_doc = doc.get(method)
+        if not isinstance(method_doc, dict):
+            return responses
+
+        for status, response in responses.items():
+            if not isinstance(response, dict) or str(status).startswith("2"):
+                continue
+            content = response.get("content")
+            if not isinstance(content, dict) or not content:
+                response["content"] = {"application/json": {}}
+                continue
+            schemas = [media for media in content.values() if isinstance(media, dict) and "schema" in media]
+            if schemas:
+                response["content"] = {"application/json": schemas[0]}
+            else:
+                response["content"] = {"application/json": {}}
+        return responses
+
     def serialize_resource_with_explicit_operation_tags(self: Swagger, ns, resource, url, route_doc=None, **kwargs):
         doc = self.extract_resource_doc(resource, url, route_doc=route_doc)
         if doc is False:
@@ -238,7 +426,8 @@ def install_swagger_compatibility() -> None:
         include_all_models = current_app.config.get("RESTX_INCLUDE_ALL_MODELS", False)
         current_app.config["RESTX_INCLUDE_ALL_MODELS"] = False
         try:
-            return original_as_dict(self)
+            payload = original_as_dict(self)
+            return finalize_openapi_payload(payload, registered_models=self.api.models)
         finally:
             current_app.config["RESTX_INCLUDE_ALL_MODELS"] = include_all_models
 
@@ -248,6 +437,7 @@ def install_swagger_compatibility() -> None:
     Swagger.schema_from_parameter = schema_from_parameter_with_description
     Swagger.description_for = description_for_with_explicit_summary
     Swagger.serialize_operation = serialize_operation_with_explicit_summary_tags
+    Swagger.responses_for = responses_for_with_status_specific_media
     Swagger.serialize_resource = serialize_resource_with_explicit_operation_tags
     Swagger.request_body_from_form_params = request_body_from_form_params_with_file_description
     Swagger.as_dict = as_dict_with_inline_dict_support

@@ -19,6 +19,7 @@ export const baseProviderContextValue: ProviderContextState = {
   isFetchedPlan: false,
   isFetchedPlanInfo: false,
   enableBilling: false,
+  enableSkill: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,

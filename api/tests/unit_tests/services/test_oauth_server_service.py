@@ -1,190 +1,250 @@
-"""Unit tests for OAuthServerService with SQLite-backed database access."""
-
-from __future__ import annotations
-
-import uuid
-from collections.abc import Iterator
-from typing import cast
-from unittest.mock import patch
-from uuid import uuid4
+from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest
 
-from models.account import Account
-from models.engine import db
-from models.model import OAuthProviderApp
-from services.oauth_server import (
-    OAUTH_ACCESS_TOKEN_EXPIRES_IN,
-    OAUTH_ACCESS_TOKEN_REDIS_KEY,
-    OAUTH_AUTHORIZATION_CODE_REDIS_KEY,
-    OAUTH_REFRESH_TOKEN_EXPIRES_IN,
-    OAUTH_REFRESH_TOKEN_REDIS_KEY,
-    OAuthGrantType,
+from machinery.context import RequestContext
+from services.entities.oauth_server_entities import (
+    OAuthProviderAccount,
+    OAuthProviderAccountRecord,
+    OAuthProviderAccountStatus,
+    OAuthProviderAppRecord,
+)
+from services.oauth_server_service import (
+    OAuthServerClientNotFoundError,
+    OAuthServerRequestError,
     OAuthServerService,
+    OAuthServerUnauthorizedError,
 )
 
 
 @pytest.fixture
-def oauth_db() -> Iterator[Session]:
-    """Provide the production database extension with an isolated SQLite provider table."""
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        OAuthProviderApp.__table__.create(db.engine)
-        with Session(db.engine, expire_on_commit=False) as session:
-            yield session
-
-
-class TestOAuthServerServiceGetProviderApp:
-    """Verify provider lookup against a real SQLAlchemy database."""
-
-    def test_get_oauth_provider_app_returns_app_when_exists(self, oauth_db: Session) -> None:
-        client_id = f"client-{uuid4()}"
-        app = OAuthProviderApp(
-            app_icon="icon.png",
-            client_id=client_id,
-            client_secret=str(uuid4()),
-            app_label={"en-US": "Test OAuth App"},
-            redirect_uris=["https://example.com/callback"],
-            scope="read",
-        )
-        oauth_db.add(app)
-        oauth_db.commit()
-
-        result = OAuthServerService.get_oauth_provider_app(client_id)
-
-        assert result is not None
-        assert result.client_id == client_id
-        assert result.id == app.id
-
-    def test_get_oauth_provider_app_returns_none_when_not_exists(self, oauth_db: Session) -> None:
-        result = OAuthServerService.get_oauth_provider_app(f"nonexistent-{uuid4()}")
-
-        assert result is None
+def provider_app() -> OAuthProviderAppRecord:
+    return OAuthProviderAppRecord(
+        app_icon="icon",
+        client_id="client-1",
+        client_secret="secret",
+        app_label={"en-US": "Test App"},
+        redirect_uris=("https://example.com/callback",),
+        scope="read",
+        auto_authorize=True,
+    )
 
 
-class TestOAuthServerServiceTokenOperations:
-    """Verify Redis-backed token signing and validation branches."""
+@pytest.fixture
+def service(provider_app: OAuthProviderAppRecord) -> tuple[OAuthServerService, MagicMock, MagicMock]:
+    repository = MagicMock()
+    repository.get_provider_app_by_client_id.return_value = provider_app
+    tokens = MagicMock()
+    return (
+        OAuthServerService(
+            repository=repository,
+            tokens=tokens,
+            access_token_expires_in=43200,
+        ),
+        repository,
+        tokens,
+    )
 
-    @pytest.fixture
-    def mock_redis(self):
-        with patch("services.oauth_server.redis_client") as mock:
-            yield mock
 
-    def test_sign_authorization_code_stores_and_returns_code(self, mock_redis) -> None:
-        deterministic_uuid = uuid.UUID("00000000-0000-0000-0000-000000000111")
-        with patch("services.oauth_server.uuid.uuid4", return_value=deterministic_uuid):
-            code = OAuthServerService.sign_oauth_authorization_code("client-1", "user-1")
+def test_get_provider_validates_redirect_and_hides_credentials(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, repository, _tokens = service
 
-        assert code == str(deterministic_uuid)
-        mock_redis.set.assert_called_once_with(
-            OAUTH_AUTHORIZATION_CODE_REDIS_KEY.format(client_id="client-1", code=code),
-            "user-1",
-            ex=600,
-        )
+    result = oauth_server.get_provider(
+        client_id="client-1",
+        redirect_uri="https://example.com/callback",
+    )
 
-    def test_sign_access_token_raises_bad_request_for_invalid_code(self, mock_redis) -> None:
-        mock_redis.get.return_value = None
+    assert result.app_icon == "icon"
+    assert result.app_label == {"en-US": "Test App"}
+    assert result.scope == "read"
+    assert result.auto_authorize is True
+    repository.get_provider_app_by_client_id.assert_called_once_with("client-1")
 
-        with pytest.raises(BadRequest, match="invalid code"):
-            OAuthServerService.sign_oauth_access_token(
-                grant_type=OAuthGrantType.AUTHORIZATION_CODE,
-                code="bad-code",
-                client_id="client-1",
-            )
 
-    def test_sign_access_token_issues_tokens_for_valid_code(self, mock_redis) -> None:
-        token_uuids = [
-            uuid.UUID("00000000-0000-0000-0000-000000000201"),
-            uuid.UUID("00000000-0000-0000-0000-000000000202"),
-        ]
-        with patch("services.oauth_server.uuid.uuid4", side_effect=token_uuids):
-            mock_redis.get.return_value = b"user-1"
-            access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type=OAuthGrantType.AUTHORIZATION_CODE,
-                code="code-1",
-                client_id="client-1",
-            )
+def test_get_provider_rejects_invalid_redirect(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, _provider_apps, _tokens = service
 
-        assert access_token == str(token_uuids[0])
-        assert refresh_token == str(token_uuids[1])
-        code_key = OAUTH_AUTHORIZATION_CODE_REDIS_KEY.format(client_id="client-1", code="code-1")
-        mock_redis.delete.assert_called_once_with(code_key)
-        mock_redis.set.assert_any_call(
-            OAUTH_ACCESS_TOKEN_REDIS_KEY.format(client_id="client-1", token=access_token),
-            b"user-1",
-            ex=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
-        )
-        mock_redis.set.assert_any_call(
-            OAUTH_REFRESH_TOKEN_REDIS_KEY.format(client_id="client-1", token=refresh_token),
-            b"user-1",
-            ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
+    with pytest.raises(OAuthServerRequestError, match="redirect_uri is invalid"):
+        oauth_server.get_provider(client_id="client-1", redirect_uri="https://invalid.example/callback")
+
+
+def test_missing_client_is_reported_by_application_boundary(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, repository, _tokens = service
+    repository.get_provider_app_by_client_id.return_value = None
+
+    with pytest.raises(OAuthServerClientNotFoundError, match="client_id is invalid"):
+        oauth_server.authorize(
+            RequestContext("request-1", None, "account-1", "workspace-1"),
+            client_id="missing",
         )
 
-    def test_sign_access_token_raises_bad_request_for_invalid_refresh_token(self, mock_redis) -> None:
-        mock_redis.get.return_value = None
 
-        with pytest.raises(BadRequest, match="invalid refresh token"):
-            OAuthServerService.sign_oauth_access_token(
-                grant_type=OAuthGrantType.REFRESH_TOKEN,
-                refresh_token="stale-token",
-                client_id="client-1",
-            )
+def test_authorize_uses_stable_request_context(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, _provider_apps, tokens = service
+    tokens.issue_authorization_code.return_value = "code-1"
+    context = RequestContext("request-1", "trace-1", "account-1", "workspace-1")
 
-    def test_sign_access_token_issues_new_token_for_valid_refresh(self, mock_redis) -> None:
-        deterministic_uuid = uuid.UUID("00000000-0000-0000-0000-000000000301")
-        with patch("services.oauth_server.uuid.uuid4", return_value=deterministic_uuid):
-            mock_redis.get.return_value = b"user-1"
-            access_token, returned_refresh = OAuthServerService.sign_oauth_access_token(
-                grant_type=OAuthGrantType.REFRESH_TOKEN,
-                refresh_token="refresh-1",
-                client_id="client-1",
-            )
+    result = oauth_server.authorize(context, client_id="client-1")
 
-        assert access_token == str(deterministic_uuid)
-        assert returned_refresh == "refresh-1"
+    assert result.code == "code-1"
+    tokens.issue_authorization_code.assert_called_once_with("client-1", "account-1")
 
-    def test_sign_access_token_returns_none_for_unknown_grant_type(self, mock_redis) -> None:
-        grant_type = cast(OAuthGrantType, "invalid-grant-type")
 
-        result = OAuthServerService.sign_oauth_access_token(grant_type=grant_type, client_id="client-1")
+def test_exchange_authorization_code_validates_client_and_returns_token_contract(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, _provider_apps, tokens = service
+    tokens.exchange_authorization_code.return_value = ("access-1", "refresh-1")
 
-        assert result is None
+    result = oauth_server.exchange_token(
+        client_id="client-1",
+        grant_type="authorization_code",
+        code="code-1",
+        client_secret="secret",
+        redirect_uri="https://example.com/callback",
+        refresh_token=None,
+    )
 
-    def test_sign_refresh_token_stores_with_expected_expiry(self, mock_redis) -> None:
-        deterministic_uuid = uuid.UUID("00000000-0000-0000-0000-000000000401")
-        with patch("services.oauth_server.uuid.uuid4", return_value=deterministic_uuid):
-            refresh_token = OAuthServerService._sign_oauth_refresh_token("client-2", "user-2")
+    assert result.access_token == "access-1"
+    assert result.refresh_token == "refresh-1"
+    assert result.token_type == "Bearer"
+    assert result.expires_in == 43200
+    tokens.exchange_authorization_code.assert_called_once_with("client-1", "code-1")
 
-        assert refresh_token == str(deterministic_uuid)
-        mock_redis.set.assert_called_once_with(
-            OAUTH_REFRESH_TOKEN_REDIS_KEY.format(client_id="client-2", token=refresh_token),
-            "user-2",
-            ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
-        )
 
-    def test_validate_access_token_returns_none_when_not_found(self, mock_redis, sqlite_engine: Engine) -> None:
-        mock_redis.get.return_value = None
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"grant_type": "invalid"}, "invalid grant_type"),
+        ({"code": None}, "code is required"),
+        ({"client_secret": "invalid"}, "client_secret is invalid"),
+        ({"redirect_uri": "https://invalid.example/callback"}, "redirect_uri is invalid"),
+    ],
+)
+def test_exchange_authorization_code_rejects_invalid_requests(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+    overrides: dict[str, str | None],
+    message: str,
+) -> None:
+    oauth_server, _provider_apps, tokens = service
+    values = {
+        "client_id": "client-1",
+        "grant_type": "authorization_code",
+        "code": "code-1",
+        "client_secret": "secret",
+        "redirect_uri": "https://example.com/callback",
+        "refresh_token": None,
+        **overrides,
+    }
 
-        with Session(sqlite_engine) as session:
-            result = OAuthServerService.validate_oauth_access_token("client-1", "missing-token", session)
+    with pytest.raises(OAuthServerRequestError, match=message):
+        oauth_server.exchange_token(**values)  # type: ignore[arg-type]
 
-        assert result is None
+    tokens.exchange_authorization_code.assert_not_called()
 
-    def test_validate_access_token_loads_user_when_exists(self, mock_redis, sqlite_engine: Engine) -> None:
-        mock_redis.get.return_value = b"user-88"
-        expected_user = Account(name="Test User", email="user@example.com")
-        expected_user.id = "user-88"
 
-        with Session(sqlite_engine) as session:
-            with patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load:
-                result = OAuthServerService.validate_oauth_access_token("client-1", "access-token", session)
-                mock_load.assert_called_once_with("user-88", session)
+def test_refresh_token_grant_delegates_to_repository(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, _provider_apps, tokens = service
+    tokens.refresh_access_token.return_value = ("access-2", "refresh-1")
 
-        assert result is expected_user
+    result = oauth_server.exchange_token(
+        client_id="client-1",
+        grant_type="refresh_token",
+        code=None,
+        client_secret=None,
+        redirect_uri=None,
+        refresh_token="refresh-1",
+    )
+
+    assert result.access_token == "access-2"
+    assert result.refresh_token == "refresh-1"
+    tokens.refresh_access_token.assert_called_once_with("client-1", "refresh-1")
+
+
+def test_get_account_returns_active_account_without_requiring_workspace_membership(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, repository, tokens = service
+    tokens.resolve_account_id.return_value = "account-1"
+    repository.get_account_by_id.return_value = OAuthProviderAccountRecord(
+        id="account-1",
+        name="Test User",
+        email="test@example.com",
+        avatar=None,
+        interface_language="en-US",
+        timezone="UTC",
+        status=OAuthProviderAccountStatus.ACTIVE,
+    )
+
+    assert oauth_server.get_account(client_id="client-1", access_token="access-1") == OAuthProviderAccount(
+        id="account-1",
+        name="Test User",
+        email="test@example.com",
+        avatar=None,
+        interface_language="en-US",
+        timezone="UTC",
+    )
+    tokens.resolve_account_id.assert_called_once_with("client-1", "access-1")
+    repository.get_account_by_id.assert_called_once_with("account-1")
+
+
+def test_get_account_rejects_invalid_token(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, _provider_apps, tokens = service
+    tokens.resolve_account_id.return_value = None
+
+    with pytest.raises(OAuthServerUnauthorizedError, match="access_token or client_id is invalid"):
+        oauth_server.get_account(client_id="client-1", access_token="invalid")
+
+
+def test_get_account_validates_client_before_missing_token(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+) -> None:
+    oauth_server, repository, tokens = service
+    repository.get_provider_app_by_client_id.return_value = None
+
+    with pytest.raises(OAuthServerClientNotFoundError, match="client_id is invalid"):
+        oauth_server.get_account(client_id="missing", access_token=None)
+
+    tokens.resolve_account_id.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [
+        (OAuthProviderAccountStatus.PENDING, "Account is not active"),
+        (OAuthProviderAccountStatus.UNINITIALIZED, "Account is not active"),
+        (OAuthProviderAccountStatus.BANNED, "Account is banned"),
+        (OAuthProviderAccountStatus.CLOSED, "Account is not active"),
+    ],
+)
+def test_get_account_rejects_inactive_account(
+    service: tuple[OAuthServerService, MagicMock, MagicMock],
+    status: OAuthProviderAccountStatus,
+    message: str,
+) -> None:
+    oauth_server, repository, tokens = service
+    tokens.resolve_account_id.return_value = "account-1"
+    repository.get_account_by_id.return_value = OAuthProviderAccountRecord(
+        id="account-1",
+        name="Test User",
+        email="test@example.com",
+        avatar=None,
+        interface_language=None,
+        timezone=None,
+        status=status,
+    )
+
+    with pytest.raises(OAuthServerUnauthorizedError, match=message):
+        oauth_server.get_account(client_id="client-1", access_token="access-1")

@@ -18,7 +18,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/app/components/billing/pricing', () => ({
-  default: () => <div>billing.plansCommon.mostPopular</div>,
+  Pricing: () => <div>billing.plansCommon.mostPopular</div>,
 }))
 
 vi.mock('@/app/components/plugins/update-plugin', () => ({

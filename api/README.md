@@ -96,7 +96,7 @@ The scripts resolve paths relative to their location, so you can run them from a
    uv run pytest tests/integration_tests/  # Integration tests
 
    # Code quality
-   ./dev/reformat               # Run all formatters and linters
+   ../dev/reformat              # Run all formatters and linters
    uv run ruff check --fix ./   # Fix linting issues
    uv run ruff format ./        # Format code
    uv run pyrefly check         # Type checking

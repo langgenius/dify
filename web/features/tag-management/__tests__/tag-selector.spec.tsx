@@ -150,6 +150,12 @@ describe('TagSelector', () => {
     expect(screen.getByText('Frontend')).toBeInTheDocument()
   })
 
+  it('adds the owning app name to the combobox accessible name', () => {
+    render(<TagSelector {...defaultProps} contextLabel="Test App" />)
+
+    expect(screen.getByRole('combobox', { name: 'Frontend: Test App' })).toBeInTheDocument()
+  })
+
   it('keeps dataset tag interactions inside the tag trigger', async () => {
     const user = userEvent.setup()
     const onOuterClick = vi.fn()

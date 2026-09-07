@@ -1,5 +1,5 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -386,15 +386,18 @@ vi.mock('@/features/tag-management/components/app-card-tags', () => ({
   AppCardTags: ({
     tags,
     canBindOrUnbindTags,
+    appName,
   }: {
     tags?: { id: string; name: string }[]
     canBindOrUnbindTags?: boolean
+    appName: string
   }) => {
     return React.createElement(
       'div',
       {
         'aria-label': 'tag-selector',
         'data-can-bind-or-unbind-tags': String(Boolean(canBindOrUnbindTags)),
+        'data-app-name': appName,
       },
       tags?.map((tag: { id: string; name: string }) =>
         React.createElement('span', { key: tag.id }, tag.name),
@@ -472,6 +475,8 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('button', { name: 'Preview Only App' })
       expect(card).toHaveClass('opacity-60')
+      expect(screen.getByRole('listitem')).toContainElement(card)
+      expect(card).toHaveAccessibleDescription('Only visible metadata')
       expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
@@ -552,6 +557,17 @@ describe('AppCard', () => {
       const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
+      expect(emojiIcon?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('should treat a redundant image icon as decorative', () => {
+      const imageApp = createMockApp({
+        icon_type: 'image',
+        icon_url: 'https://example.com/app-icon.png',
+      })
+      const { container } = render(<AppCard app={imageApp} />)
+
+      expect(container.querySelector('img')).toHaveAttribute('alt', '')
     })
 
     it('should render app type icon', () => {
@@ -579,7 +595,7 @@ describe('AppCard', () => {
       }
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
-      expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-app-name', 'Test App')
     })
 
     it('should display refreshed tag names from app props when tag ids stay the same', () => {
@@ -670,21 +686,36 @@ describe('AppCard', () => {
       const cardLink = screen.getByRole('link', { name: 'Test App' })
 
       expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
+      expect(cardLink).toHaveAccessibleName('Test App')
+      expect(cardLink).toHaveAccessibleDescription('Test app description')
+      expect(cardLink).toHaveAttribute('aria-describedby')
+      expect(screen.getByRole('listitem')).toContainElement(cardLink)
     })
 
-    it('should expose a visible focus ring on the card link', () => {
+    it('should keep card navigation and actions as sibling focus targets', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
-      const cardLink = screen.getByRole('link', { name: 'Test App' })
 
-      expect(cardLink).toHaveClass('focus-visible:ring-2')
-      expect(cardLink).toHaveClass('focus-visible:ring-state-accent-solid')
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
+      const operationsTrigger = getOperationsTrigger()
+
+      expect(cardLink).not.toContainElement(starToggle)
+      expect(cardLink).not.toContainElement(operationsTrigger)
+
+      await user.tab()
+      expect(cardLink).toHaveFocus()
+      await user.tab()
+      expect(starToggle).toHaveFocus()
+      await user.tab()
+      expect(operationsTrigger).toHaveFocus()
     })
 
     it('should star the app from the card action without navigating', async () => {
       const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
       expect(starToggle).toHaveAttribute('aria-pressed', 'false')
 
       await user.click(starToggle)
@@ -702,8 +733,12 @@ describe('AppCard', () => {
       const starredApp = createMockApp({ is_starred: true })
       render(<AppCard app={starredApp} />)
 
-      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
       expect(starToggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.hover(starToggle)
+
+      expect(await screen.findByText('app.studio.starApp')).toBeInTheDocument()
 
       await user.click(starToggle)
 
@@ -716,20 +751,6 @@ describe('AppCard', () => {
   })
 
   describe('Operations Menu', () => {
-    it('should reveal operations trigger when card receives keyboard focus', () => {
-      render(<AppCard app={mockApp} />)
-      const operationsTrigger = getOperationsTrigger()
-      const operationsTriggerWrapper = operationsTrigger.closest('.absolute')
-
-      expect(operationsTriggerWrapper).toHaveClass('top-2')
-      expect(operationsTriggerWrapper).toHaveClass('right-2')
-      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
-      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
-      expect(operationsTriggerWrapper).not.toHaveClass('w-[120px]')
-      expect(operationsTrigger).toHaveClass('focus-visible:ring-2')
-      expect(operationsTrigger).toHaveClass('focus-visible:ring-state-accent-solid')
-    })
-
     it('should show edit option when dropdown menu is opened', async () => {
       const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
@@ -740,6 +761,32 @@ describe('AppCard', () => {
         expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
       expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('should expose the same operations from the card context menu', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.pointer({
+        target: screen.getByRole('link', { name: 'Test App' }),
+        keys: '[MouseRight]',
+      })
+
+      expect(await screen.findByRole('menuitem', { name: 'app.editApp' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.duplicate' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.export' })).toBeInTheDocument()
+    })
+
+    it('should keep card actions outside the card context menu trigger', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.pointer({
+        target: screen.getByRole('button', { name: 'app.studio.starApp: Test App' }),
+        keys: '[MouseRight]',
+      })
+
+      expect(screen.queryByRole('menuitem', { name: 'app.editApp' })).not.toBeInTheDocument()
     })
 
     it('should show duplicate option when dropdown menu is opened', async () => {
@@ -1179,6 +1226,7 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
 
       const trigger = screen.getByRole('button', { name: 'common.operation.exporting' })
+
       expect(trigger).toBeDisabled()
     })
   })
@@ -1242,6 +1290,21 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
       })
+    })
+
+    it('should hide open in explore for SSO-restricted apps', async () => {
+      mockWebappAuthEnabled = true
+      const user = userEvent.setup()
+      const ssoApp = createMockApp({ access_mode: AccessMode.EXTERNAL_MEMBERS })
+
+      render(<AppCard app={ssoApp} />)
+
+      await user.click(getOperationsTrigger())
+      const menu = await screen.findByRole('menu')
+
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'app.openInExplore' }),
+      ).not.toBeInTheDocument()
     })
   })
 

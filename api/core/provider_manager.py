@@ -73,7 +73,7 @@ _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
 _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS = 360
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
-_PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:v:{version}"
+_PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY = "provider_configurations:v2:tenant:{tenant_id}:source:{source}:v:{version}"
 
 
 class ProviderConfigurationCacheSource(StrEnum):

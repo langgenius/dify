@@ -1,10 +1,11 @@
 'use client'
 
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 
 type Props = {
   userCode: string
@@ -26,28 +27,26 @@ type Props = {
  */
 const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
   const { t } = useTranslation('deviceFlow')
-  const router = useRouter()
-
-  const onAccount = () => {
-    setPostLoginRedirect(`/device?user_code=${encodeURIComponent(userCode)}`)
-    router.push('/signin')
-  }
-
-  const onSSO = () => {
-    window.location.href = `/openapi/v1/oauth/device/sso-initiate?user_code=${encodeURIComponent(userCode)}`
-  }
+  const deviceReturnPath = `/device?user_code=${encodeURIComponent(userCode)}`
 
   return (
     <div className="flex flex-col gap-3">
-      <Button variant="primary" size="large" className="w-full" onClick={onAccount}>
+      <Link
+        href="/signin"
+        className={cn(buttonVariants({ variant: 'primary', size: 'large' }), 'w-full')}
+        onClick={() => setPostLoginRedirect(deviceReturnPath)}
+      >
         <span className="i-ri-user-3-line h-4 w-4" />
         {t(($) => $['chooser.signInAccount'])}
-      </Button>
+      </Link>
       {ssoAvailable && (
-        <Button variant="secondary" size="large" className="w-full" onClick={onSSO}>
+        <a
+          href={`/openapi/v1/oauth/device/sso-initiate?user_code=${encodeURIComponent(userCode)}`}
+          className={cn(buttonVariants({ variant: 'secondary', size: 'large' }), 'w-full')}
+        >
           <span className="i-ri-shield-line h-4 w-4" />
           {t(($) => $['chooser.signInSSO'])}
-        </Button>
+        </a>
       )}
     </div>
   )

@@ -33,6 +33,12 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
+// startGatePollInterval is how often the parent runner checks for the
+// start-gate handshake file. It is a cheap local stat on the same path the
+// server has just written, so a fine interval keeps per-job startup latency
+// low without meaningful cost.
+const startGatePollInterval = 5 * time.Millisecond
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--exec" {
 		childMode()
@@ -67,7 +73,7 @@ func parentMode() {
 		if _, err := os.Stat(startGate); err == nil {
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(startGatePollInterval)
 	}
 
 	// Load environment overlay from JSON.

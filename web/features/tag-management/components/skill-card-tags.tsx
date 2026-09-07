@@ -38,6 +38,7 @@ export const SkillCardTags = ({
         targetId={skillId}
         value={selectedTags}
         canBindOrUnbindTags
+        className="focus-visible:ring-inset"
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onTagsChange}
       />

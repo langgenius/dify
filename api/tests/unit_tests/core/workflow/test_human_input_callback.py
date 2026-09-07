@@ -132,7 +132,7 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form() -> None:
 
     decision = callback(_ctx("run-1", "node-1"))
 
-    assert decision.selected_handle == "__timeout__"
+    assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
         "__action_value": build_segment(""),
@@ -159,7 +159,7 @@ def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline(
 
     decision = callback(_ctx("run-1", "node-1"))
 
-    assert decision.selected_handle == "__timeout__"
+    assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
         "__action_value": build_segment(""),

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { MarkdownBodyReferencePreview, MarkdownLiveBodyEditor } from '../markdown-editor'
 
 vi.mock('@/app/components/base/markdown', () => ({

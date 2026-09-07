@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
@@ -40,12 +41,12 @@ export function AgentSkillItem({
   const handleRemove = useCallback(() => {
     onRemove(skill.id)
   }, [onRemove, skill.id])
-  const handleDownload = useCallback(async () => {
+  const downloadSkill = useCallback(async () => {
     if (skill.isMissing) return
 
     if (apiContext.workflow) {
-      const result = await queryClient.fetchQuery(
-        consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+      const result = await queryClient.query({
+        ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
           input: {
             params: {
               app_id: apiContext.workflow.appId,
@@ -58,13 +59,14 @@ export function AgentSkillItem({
             },
           },
         }),
-      )
+        staleTime: 0,
+      })
       downloadUrl({ url: result.url, fileName: skill.name })
       return
     }
 
-    const result = await queryClient.fetchQuery(
-      consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
+    const result = await queryClient.query({
+      ...consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
         input: {
           params: {
             agent_id: apiContext.agentId,
@@ -76,9 +78,13 @@ export function AgentSkillItem({
           },
         },
       }),
-    )
+      staleTime: 0,
+    })
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])
+  const handleDownload = useCallback(() => {
+    void downloadSkill().catch(noop)
+  }, [downloadSkill])
   const handleOpenPreview = useCallback(() => {
     if (skill.isMissing) return
 

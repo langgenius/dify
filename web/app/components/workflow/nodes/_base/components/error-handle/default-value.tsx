@@ -1,7 +1,7 @@
 import type { DefaultValueForm } from './types'
-import { useCallback } from 'react'
+import { Input } from '@langgenius/dify-ui/input'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -12,27 +12,7 @@ type DefaultValueProps = {
 }
 const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
   const { t } = useTranslation()
-  const getFormChangeHandler = useCallback(
-    ({ key, type }: DefaultValueForm) => {
-      return (payload: any) => {
-        let value
-        if (type === VarType.string || type === VarType.number) value = payload.target.value
-
-        if (
-          type === VarType.array ||
-          type === VarType.arrayNumber ||
-          type === VarType.arrayString ||
-          type === VarType.arrayObject ||
-          type === VarType.arrayFile ||
-          type === VarType.object
-        )
-          value = payload
-
-        onFormChange({ key, type, value })
-      }
-    },
-    [onFormChange],
-  )
+  const id = useId()
 
   return (
     <div className="px-4 pt-2">
@@ -42,17 +22,27 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
       </div>
       <div className="space-y-1">
         {forms.map((form, index) => {
+          const isInput = form.type === VarType.string || form.type === VarType.number
+          const inputId = `${id}-${index}`
           return (
             <div key={index} className="py-1">
               <div className="mb-1 flex items-center">
-                <div className="mr-1 system-sm-medium text-text-primary">{form.key}</div>
+                {isInput ? (
+                  <label htmlFor={inputId} className="mr-1 system-sm-medium text-text-primary">
+                    {form.key}
+                  </label>
+                ) : (
+                  <div className="mr-1 system-sm-medium text-text-primary">{form.key}</div>
+                )}
                 <div className="system-xs-regular text-text-tertiary">{form.type}</div>
               </div>
-              {(form.type === VarType.string || form.type === VarType.number) && (
+              {isInput && (
                 <Input
-                  type={form.type}
+                  id={inputId}
+                  type={form.type === VarType.number ? 'number' : 'text'}
+                  placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
                   value={form.value || (form.type === VarType.string ? '' : 0)}
-                  onChange={getFormChangeHandler({ key: form.key, type: form.type })}
+                  onValueChange={(value) => onFormChange({ key: form.key, type: form.type, value })}
                 />
               )}
               {(form.type === VarType.array ||
@@ -63,7 +53,7 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
                 <CodeEditor
                   language={CodeLanguage.json}
                   value={form.value}
-                  onChange={getFormChangeHandler({ key: form.key, type: form.type })}
+                  onChange={(value) => onFormChange({ key: form.key, type: form.type, value })}
                 />
               )}
             </div>

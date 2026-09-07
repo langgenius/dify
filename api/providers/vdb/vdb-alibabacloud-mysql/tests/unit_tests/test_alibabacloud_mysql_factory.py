@@ -1,9 +1,11 @@
-from types import SimpleNamespace
+import json
 from unittest.mock import MagicMock, patch
 
 import dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector as alibaba_module
 import pytest
 from dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector import AlibabaCloudMySQLVectorFactory
+
+from models.dataset import Dataset
 
 
 def test_validate_distance_function_accepts_supported_values():
@@ -22,10 +24,8 @@ def test_validate_distance_function_rejects_unsupported_values():
 
 def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch: pytest.MonkeyPatch):
     factory = AlibabaCloudMySQLVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "existing_collection"}},
-        index_struct=None,
+    dataset = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "existing_collection"}})
     )
 
     monkeypatch.setattr(alibaba_module.dify_config, "ALIBABACLOUD_MYSQL_HOST", "host")
@@ -47,11 +47,7 @@ def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch
 
 def test_factory_init_vector_generates_collection_name_when_index_struct_is_missing(monkeypatch: pytest.MonkeyPatch):
     factory = AlibabaCloudMySQLVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-2",
-        index_struct_dict=None,
-        index_struct=None,
-    )
+    dataset = Dataset(id="dataset-2")
 
     monkeypatch.setattr(alibaba_module.Dataset, "gen_collection_name_by_id", lambda dataset_id: f"COL_{dataset_id}")
     monkeypatch.setattr(alibaba_module.dify_config, "ALIBABACLOUD_MYSQL_HOST", "host")

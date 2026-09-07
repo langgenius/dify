@@ -13,6 +13,7 @@ from configs import dify_config
 from configs.feature import TemplateMode
 from extensions.ext_mail import mail
 from libs.email_i18n import get_email_i18n_service
+from services.entities.mail_entities import InnerMailMessage
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class SandboxedEnvironment(ImmutableSandboxedEnvironment):
         return super().call(context, obj, *args, **kwargs)
 
 
-def _render_template_with_strategy(body: str, substitutions: Mapping[str, str]) -> str:
+def _render_template_with_strategy(body: str, substitutions: Mapping[str, Any]) -> str:
     mode = dify_config.MAIL_TEMPLATING_MODE
     timeout = dify_config.MAIL_TEMPLATING_TIMEOUT
     if mode == TemplateMode.UNSAFE:
@@ -43,7 +44,7 @@ def _render_template_with_strategy(body: str, substitutions: Mapping[str, str]) 
 
 
 @shared_task(queue="mail")
-def send_inner_email_task(to: list[str], subject: str, body: str, substitutions: Mapping[str, str]):
+def send_inner_email_task(to: list[str], subject: str, body: str, substitutions: Mapping[str, Any]):
     if not mail.is_inited():
         return
 
@@ -60,3 +61,12 @@ def send_inner_email_task(to: list[str], subject: str, body: str, substitutions:
         logger.info(click.style(f"Send enterprise mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
         logger.exception("Send enterprise mail to %s failed", to)
+
+
+def enqueue_inner_mail(message: InnerMailMessage) -> None:
+    send_inner_email_task.delay(
+        to=list(message.recipients),
+        subject=message.subject,
+        body=message.body,
+        substitutions=message.substitutions or {},
+    )

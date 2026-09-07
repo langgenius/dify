@@ -146,24 +146,21 @@ class TestAudioApi:
 # ---------------------------------------------------------------------------
 class TestTextApi:
     @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
-    @patch("controllers.web.audio.web_ns")
-    def test_happy_path(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"text": "hello", "voice": "alloy"}
-
-        with app.test_request_context("/text-to-audio", method="POST"):
+    def test_happy_path(self, mock_tts: MagicMock, app: Flask) -> None:
+        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello", "voice": "alloy"}):
             result = TextApi().post(_app_model(), _end_user())
 
         assert result == "audio-bytes"
         mock_tts.assert_called_once()
 
     @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
-    @patch("controllers.web.audio.web_ns")
-    def test_happy_path_with_message_ref(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
+    def test_happy_path_with_message_ref(self, mock_tts: MagicMock, app: Flask) -> None:
         message_id = "550e8400-e29b-41d4-a716-446655440000"
-        mock_ns.payload = {"text": "hello", "message_id": message_id}
         app_model = _app_model()
 
-        with app.test_request_context("/text-to-audio", method="POST"):
+        with app.test_request_context(
+            "/text-to-audio", method="POST", json={"text": "hello", "message_id": message_id}
+        ):
             result = TextApi().post(app_model, _end_user())
 
         assert result == "audio-bytes"
@@ -177,10 +174,7 @@ class TestTextApi:
         "controllers.web.audio.AudioService.transcript_tts",
         side_effect=InvokeError(description="invoke failed"),
     )
-    @patch("controllers.web.audio.web_ns")
-    def test_invoke_error_mapped(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"text": "hello"}
-
-        with app.test_request_context("/text-to-audio", method="POST"):
+    def test_invoke_error_mapped(self, mock_tts: MagicMock, app: Flask) -> None:
+        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
             with pytest.raises(CompletionRequestError):
                 TextApi().post(_app_model(), _end_user())

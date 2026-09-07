@@ -264,4 +264,4 @@ def test_human_input_node_emits_timeout_event_before_succeeded():
 
     assert isinstance(events[0], NodeRunStartedEvent)
     assert isinstance(events[1], NodeRunSucceededEvent)
-    assert events[1].node_run_result.edge_source_handle == "__timeout__"
+    assert events[1].node_run_result.edge_source_handle == "__timeout"

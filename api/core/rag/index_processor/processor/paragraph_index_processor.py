@@ -9,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -376,6 +378,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return preview_texts
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_summary(
         tenant_id: str,
         text: str,

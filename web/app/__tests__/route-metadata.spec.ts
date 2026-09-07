@@ -1,4 +1,6 @@
 import { generateMetadata as generateAgentsMetadata } from '../(commonLayout)/agents/page'
+import { generateMetadata as generateAppsMetadata } from '../(commonLayout)/apps/page'
+import { generateMetadata as generateHomeMetadata } from '../(commonLayout)/page'
 import { generateMetadata as generateWebappCheckCodeMetadata } from '../(shareLayout)/webapp-reset-password/check-code/layout'
 import { generateMetadata as generateWebappResetPasswordMetadata } from '../(shareLayout)/webapp-reset-password/layout'
 import { generateMetadata as generateWebappSetPasswordMetadata } from '../(shareLayout)/webapp-reset-password/set-password/layout'
@@ -28,9 +30,11 @@ vi.mock('../(shareLayout)/webapp-reset-password/reset-password-layout', () => ({
   default: () => null,
 }))
 vi.mock('../init/InitPasswordPopup', () => ({ default: () => null }))
+vi.mock('@/app/components/apps', () => ({ Apps: () => null }))
 vi.mock('@/features/agent-v2/roster/page', () => ({ default: () => null }))
+vi.mock('@/features/home/page', () => ({ HomePage: () => null }))
 
-describe('fixed authentication route metadata', () => {
+describe('fixed route metadata', () => {
   it.each([
     [generateResetPasswordMetadata, 'Reset Password'],
     [generateCheckCodeMetadata, 'Check your email'],
@@ -46,6 +50,8 @@ describe('fixed authentication route metadata', () => {
     [generateInitMetadata, 'Admin initialization password'],
     [generateOAuthCallbackMetadata, 'Sign in'],
     [generateAgentsMetadata, 'Agents'],
+    [generateAppsMetadata, 'Studio'],
+    [generateHomeMetadata, 'Home'],
   ])('provides the localized title %s', async (generateMetadata, expectedTitle) => {
     await expect(generateMetadata()).resolves.toMatchObject({ title: expectedTitle })
   })

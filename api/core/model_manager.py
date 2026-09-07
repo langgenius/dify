@@ -5,11 +5,20 @@ from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, 
 from uuid import UUID
 
 from configs import dify_config
+from core.credit_usage import (
+    CreditUsageAppType,
+    CreditUsageAppTypeInput,
+    CreditUsageCreatedBy,
+    CreditUsageCreatedByInput,
+    normalize_credit_usage_app_type,
+    normalize_credit_usage_created_by,
+)
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
@@ -38,13 +47,20 @@ class ModelInstance:
     Model instance class.
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str, credentials: dict | None = None) -> None:
+    def __init__(
+        self,
+        provider_model_bundle: ProviderModelBundle,
+        model: str,
+        credentials: dict | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> None:
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
         if credentials is None:
             credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
         self.credentials = credentials
+        self._request_metadata = dict(request_metadata) if request_metadata else None
         # Runtime LLM invocation fields.
         self.parameters: Mapping[str, Any] = {}
         self.stop: Sequence[str] = ()
@@ -55,6 +71,16 @@ class ModelInstance:
             model=model,
             credentials=self.credentials,
         )
+
+    def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
+        bound_request_metadata = self._request_metadata
+        if bound_request_metadata is None:
+            if request_metadata is None:
+                return get_credit_usage_metadata()
+            return request_metadata
+        if request_metadata is None:
+            return bound_request_metadata
+        return {**bound_request_metadata, **request_metadata}
 
     def get_model_schema(self) -> AIModelEntity:
         """Return the resolved schema for the current model instance."""
@@ -176,6 +202,7 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
+        request_metadata = self._resolve_request_metadata(request_metadata)
         return cast(
             Union[LLMResult, Generator],
             self._round_robin_invoke(
@@ -213,7 +240,11 @@ class ModelInstance:
         )
 
     def invoke_text_embedding(
-        self, texts: list[str], input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+        self,
+        texts: list[str],
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         """
         Invoke large language model
@@ -230,12 +261,15 @@ class ModelInstance:
             credentials=self.credentials,
             texts=texts,
             input_type=input_type,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
     def invoke_multimodal_embedding(
         self,
         multimodel_documents: list[dict],
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         """
         Invoke large language model
@@ -252,6 +286,7 @@ class ModelInstance:
             credentials=self.credentials,
             multimodel_documents=multimodel_documents,
             input_type=input_type,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
     def get_text_embedding_num_tokens(self, texts: list[str]) -> list[int]:
@@ -276,6 +311,8 @@ class ModelInstance:
         docs: list[str],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -296,6 +333,7 @@ class ModelInstance:
             docs=docs,
             score_threshold=score_threshold,
             top_n=top_n,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
     def invoke_multimodal_rerank(
@@ -304,6 +342,8 @@ class ModelInstance:
         docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -324,9 +364,10 @@ class ModelInstance:
             docs=docs,
             score_threshold=score_threshold,
             top_n=top_n,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
-    def invoke_moderation(self, text: str) -> bool:
+    def invoke_moderation(self, text: str, *, request_metadata: Mapping[str, object] | None = None) -> bool:
         """
         Invoke moderation model
 
@@ -340,9 +381,10 @@ class ModelInstance:
             model=self.model_name,
             credentials=self.credentials,
             text=text,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
-    def invoke_speech2text(self, file: IO[bytes]) -> str:
+    def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
         """
         Invoke large language model
 
@@ -356,9 +398,16 @@ class ModelInstance:
             model=self.model_name,
             credentials=self.credentials,
             file=file,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
-    def invoke_tts(self, content_text: str, voice: str = "") -> Iterable[bytes]:
+    def invoke_tts(
+        self,
+        content_text: str,
+        voice: str = "",
+        *,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Iterable[bytes]:
         """
         Invoke large language tts model
 
@@ -374,6 +423,7 @@ class ModelInstance:
             credentials=self.credentials,
             content_text=content_text,
             voice=voice,
+            request_metadata=self._resolve_request_metadata(request_metadata),
         )
 
     def _round_robin_invoke(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
@@ -446,8 +496,19 @@ class ModelInstance:
 class QuotaManagedModelInstance(ModelInstance):
     """A system-hosted model instance that owns quota settlement per invocation."""
 
-    def reserve_quota(self, *, request_id: str | None = None):
+    def reserve_quota(
+        self,
+        *,
+        request_id: str | None = None,
+        app_type: CreditUsageAppTypeInput = None,
+        created_by: CreditUsageCreatedByInput = None,
+    ):
         from core.app.llm.quota import reserve_model_quota_for_model
+
+        if app_type is None:
+            app_type = self._get_reservation_app_type(self._request_metadata)
+        if created_by is None:
+            created_by = self._get_reservation_created_by(self._request_metadata)
 
         return reserve_model_quota_for_model(
             tenant_id=self.provider_model_bundle.configuration.tenant_id,
@@ -455,6 +516,8 @@ class QuotaManagedModelInstance(ModelInstance):
             model_type=self.model_type_instance.model_type,
             model=self.model_name,
             request_id=request_id,
+            app_type=app_type,
+            created_by=created_by,
         )
 
     @staticmethod
@@ -467,11 +530,39 @@ class QuotaManagedModelInstance(ModelInstance):
         except ValueError:
             return None
 
+    @staticmethod
+    def _get_reservation_created_by(
+        request_metadata: Mapping[str, object] | None,
+    ) -> CreditUsageCreatedBy | None:
+        created_by = request_metadata.get("created_by") if request_metadata else None
+        if created_by is None:
+            return None
+        return normalize_credit_usage_created_by(created_by)
+
+    @staticmethod
+    def _get_reservation_app_type(
+        request_metadata: Mapping[str, object] | None,
+    ) -> CreditUsageAppType | None:
+        app_type = request_metadata.get("app_type") if request_metadata else None
+        if app_type is None:
+            return None
+        return normalize_credit_usage_app_type(app_type)
+
     def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
         request_id = self._get_reservation_request_id(request_metadata)
-        if request_id is None:
+        app_type = self._get_reservation_app_type(request_metadata)
+        created_by = self._get_reservation_created_by(request_metadata)
+        if request_id is None and app_type is None and created_by is None:
             return self.reserve_quota()
-        return self.reserve_quota(request_id=request_id)
+
+        reservation_kwargs: dict[str, str | CreditUsageAppType | CreditUsageCreatedBy] = {}
+        if request_id is not None:
+            reservation_kwargs["request_id"] = request_id
+        if app_type is not None:
+            reservation_kwargs["app_type"] = app_type
+        if created_by is not None:
+            reservation_kwargs["created_by"] = created_by
+        return self.reserve_quota(**reservation_kwargs)
 
     @staticmethod
     def release_quota_safely(reservation) -> None:
@@ -481,7 +572,13 @@ class QuotaManagedModelInstance(ModelInstance):
             logger.exception("Failed to release model quota reservation")
 
     def _invoke_with_quota(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
-        reservation = self.reserve_quota()
+        request_metadata = kwargs.get("request_metadata")
+        effective_request_metadata = self._resolve_request_metadata(
+            request_metadata if isinstance(request_metadata, Mapping) else None
+        )
+        if effective_request_metadata is not None:
+            kwargs["request_metadata"] = effective_request_metadata
+        reservation = self._reserve_quota_for_request(effective_request_metadata)
         try:
             response = function(*args, **kwargs)
             reservation.commit()
@@ -548,7 +645,8 @@ class QuotaManagedModelInstance(ModelInstance):
                 request_metadata=request_metadata,
             )
 
-        reservation = self._reserve_quota_for_request(request_metadata)
+        effective_request_metadata = self._resolve_request_metadata(request_metadata)
+        reservation = self._reserve_quota_for_request(effective_request_metadata)
         try:
             response = super().invoke_llm(
                 prompt_messages=normalized_prompt_messages,
@@ -557,7 +655,7 @@ class QuotaManagedModelInstance(ModelInstance):
                 stop=normalized_stop,
                 stream=False,
                 callbacks=callbacks,
-                request_metadata=request_metadata,
+                request_metadata=effective_request_metadata,
             )
             if isinstance(response, Generator):
                 raise TypeError("Non-streaming LLM invocation returned a generator.")
@@ -576,7 +674,8 @@ class QuotaManagedModelInstance(ModelInstance):
         callbacks: list[Callback] | None,
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
-        reservation = self._reserve_quota_for_request(request_metadata)
+        effective_request_metadata = self._resolve_request_metadata(request_metadata)
+        reservation = self._reserve_quota_for_request(effective_request_metadata)
         usage: LLMUsage | None = None
         try:
             response = super().invoke_llm(
@@ -586,7 +685,7 @@ class QuotaManagedModelInstance(ModelInstance):
                 stop=stop,
                 stream=True,
                 callbacks=callbacks,
-                request_metadata=request_metadata,
+                request_metadata=effective_request_metadata,
             )
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
@@ -614,20 +713,32 @@ class QuotaManagedModelInstance(ModelInstance):
 
     @override
     def invoke_text_embedding(
-        self, texts: list[str], input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+        self,
+        texts: list[str],
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
-        return self._invoke_with_quota(super().invoke_text_embedding, texts=texts, input_type=input_type)
+        return self._invoke_with_quota(
+            super().invoke_text_embedding,
+            texts=texts,
+            input_type=input_type,
+            request_metadata=request_metadata,
+        )
 
     @override
     def invoke_multimodal_embedding(
         self,
         multimodel_documents: list[dict],
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
             super().invoke_multimodal_embedding,
             multimodel_documents=multimodel_documents,
             input_type=input_type,
+            request_metadata=request_metadata,
         )
 
     @override
@@ -637,6 +748,8 @@ class QuotaManagedModelInstance(ModelInstance):
         docs: list[str],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         return self._invoke_with_quota(
             super().invoke_rerank,
@@ -644,6 +757,7 @@ class QuotaManagedModelInstance(ModelInstance):
             docs=docs,
             score_threshold=score_threshold,
             top_n=top_n,
+            request_metadata=request_metadata,
         )
 
     @override
@@ -653,6 +767,8 @@ class QuotaManagedModelInstance(ModelInstance):
         docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         return self._invoke_with_quota(
             super().invoke_multimodal_rerank,
@@ -660,24 +776,42 @@ class QuotaManagedModelInstance(ModelInstance):
             docs=docs,
             score_threshold=score_threshold,
             top_n=top_n,
+            request_metadata=request_metadata,
         )
 
     @override
-    def invoke_moderation(self, text: str) -> bool:
-        return self._invoke_with_quota(super().invoke_moderation, text=text)
+    def invoke_moderation(self, text: str, *, request_metadata: Mapping[str, object] | None = None) -> bool:
+        return self._invoke_with_quota(super().invoke_moderation, text=text, request_metadata=request_metadata)
 
     @override
-    def invoke_speech2text(self, file: IO[bytes]) -> str:
-        return self._invoke_with_quota(super().invoke_speech2text, file=file)
+    def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
+        return self._invoke_with_quota(super().invoke_speech2text, file=file, request_metadata=request_metadata)
 
     @override
-    def invoke_tts(self, content_text: str, voice: str = "") -> Iterable[bytes]:
-        return self._invoke_tts_stream(content_text=content_text, voice=voice)
+    def invoke_tts(
+        self,
+        content_text: str,
+        voice: str = "",
+        *,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Iterable[bytes]:
+        return self._invoke_tts_stream(content_text=content_text, voice=voice, request_metadata=request_metadata)
 
-    def _invoke_tts_stream(self, *, content_text: str, voice: str) -> Generator[bytes, None, None]:
-        reservation = self.reserve_quota()
+    def _invoke_tts_stream(
+        self,
+        *,
+        content_text: str,
+        voice: str,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Generator[bytes, None, None]:
+        effective_request_metadata = self._resolve_request_metadata(request_metadata)
+        reservation = self._reserve_quota_for_request(effective_request_metadata)
         try:
-            response = super().invoke_tts(content_text=content_text, voice=voice)
+            response = super().invoke_tts(
+                content_text=content_text,
+                voice=voice,
+                request_metadata=effective_request_metadata,
+            )
             for chunk in response:
                 reservation.commit()
                 yield chunk
@@ -706,14 +840,34 @@ class ModelManager:
         provider_manager: ProviderManager,
         *,
         enable_credentials_cache: bool = False,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> None:
         self._provider_manager = provider_manager
         self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
         self._enable_credentials_cache = enable_credentials_cache
+        self._request_metadata = dict(request_metadata) if request_metadata else None
 
     @classmethod
-    def for_tenant(cls, tenant_id: str, user_id: str | None = None) -> "ModelManager":
-        return cls(provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id))
+    def for_tenant(
+        cls,
+        tenant_id: str,
+        user_id: str | None = None,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> "ModelManager":
+        if request_metadata is None:
+            request_metadata = get_credit_usage_metadata()
+        return cls(
+            provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id),
+            request_metadata=request_metadata,
+        )
+
+    def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
+        if self._request_metadata is None:
+            return request_metadata
+        if request_metadata is None:
+            return self._request_metadata
+        return {**self._request_metadata, **request_metadata}
 
     @staticmethod
     def _validate_system_model_access(
@@ -755,6 +909,8 @@ class ModelManager:
         provider: str,
         model_type: ModelType,
         model: str,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> ModelInstance:
         """
         Get model instance
@@ -772,6 +928,7 @@ class ModelManager:
         )
         self._validate_system_model_access(provider_model_bundle, model_type=model_type, model=model)
         model_instance_class = self._model_instance_class(provider_model_bundle, model_type)
+        effective_request_metadata = self._resolve_request_metadata(request_metadata)
 
         cred_cache_key = (tenant_id, provider, model_type.value, model)
 
@@ -780,9 +937,10 @@ class ModelManager:
                 provider_model_bundle,
                 model,
                 deepcopy(self._credentials_cache[cred_cache_key]),
+                effective_request_metadata,
             )
 
-        ret = model_instance_class(provider_model_bundle, model)
+        ret = model_instance_class(provider_model_bundle, model, request_metadata=effective_request_metadata)
         if self._enable_credentials_cache:
             self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
         return ret

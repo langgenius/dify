@@ -1,5 +1,5 @@
 'use client'
-import type { JsonObject2 } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { JsonObject } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -90,7 +90,7 @@ const getBlockType = (value: unknown) => {
   return blockTypeMap[value] || null
 }
 
-const normalizeWorkflowPreviewGraph = (graph: JsonObject2) => {
+const normalizeWorkflowPreviewGraph = (graph: JsonObject) => {
   const nodesData = Array.isArray(graph.nodes) ? graph.nodes : []
   const edgesData = Array.isArray(graph.edges) ? graph.edges : []
 

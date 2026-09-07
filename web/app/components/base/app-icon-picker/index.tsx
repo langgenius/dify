@@ -179,6 +179,7 @@ function AppIconPickerContent({
 
   return (
     <DialogContent
+      backdropProps={{ forceRender: true }}
       className={cn(
         'w-full overflow-hidden! border-none text-left align-middle',
         s.container,
@@ -230,13 +231,7 @@ function AppIconPickerContent({
           {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
         </Button>
 
-        <Button
-          variant="primary"
-          className="w-full"
-          disabled={uploading}
-          loading={uploading}
-          onClick={handleSelect}
-        >
+        <Button variant="primary" className="w-full" loading={uploading} onClick={handleSelect}>
           {t(($) => $['iconPicker.ok'], { ns: 'app' })}
         </Button>
       </div>

@@ -6,7 +6,7 @@ import { SkillBuilderGridTexture } from './builder-grid-texture'
 export function DetailSkeleton() {
   return (
     <div aria-busy="true" className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
-      <aside aria-hidden className="flex h-full w-[248px] shrink-0 bg-background-body p-1">
+      <aside aria-hidden className="flex h-full w-62 shrink-0 bg-background-body p-1">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg">
           <div className="flex h-12 shrink-0 items-center gap-1 px-2">
             <SkeletonRectangle className="my-0 size-6 rounded-md opacity-12" />
@@ -48,7 +48,7 @@ export function DetailSkeleton() {
           <SkeletonRectangle className="my-0 h-3 w-20 rounded-md opacity-20" />
         </div>
         <div className="min-h-0 flex-1 overflow-hidden px-12 py-8">
-          <div className="mx-auto flex max-w-[768px] flex-col gap-5">
+          <div className="mx-auto flex max-w-3xl flex-col gap-5">
             <div className="flex flex-col gap-2">
               <SkeletonRectangle className="my-0 h-2 w-12 rounded-md opacity-12" />
               <SkeletonRectangle className="my-0 h-3 w-44 rounded-md opacity-20" />
@@ -72,11 +72,11 @@ export function DetailSkeleton() {
 
       <aside
         aria-hidden
-        className="relative my-1 mr-1 flex w-[396px] shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
+        className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
       >
         <div className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2" />
-        <SkillBuilderGridTexture className="pointer-events-none absolute top-0 left-0 z-[2]" />
-        <SkillBuilderGridTexture className="pointer-events-none absolute bottom-0 left-0 z-[1] origin-center scale-y-[-1]" />
+        <SkillBuilderGridTexture className="pointer-events-none absolute top-0 left-0 z-2" />
+        <SkillBuilderGridTexture className="pointer-events-none absolute bottom-0 left-0 z-1 origin-center scale-y-[-1]" />
         <div className="relative z-10 flex h-12 shrink-0 items-center justify-between px-4">
           <SkeletonRectangle className="my-0 h-3 w-24 rounded-md opacity-20" />
           <div className="flex gap-2">

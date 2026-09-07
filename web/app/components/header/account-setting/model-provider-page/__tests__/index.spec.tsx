@@ -10,6 +10,7 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
+  ModelTypeEnum,
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
@@ -28,6 +29,11 @@ type MockReferenceSetting = {
 const { mockSetSettingsDestination, mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSetSettingsDestination: vi.fn(),
   mockSaveAutoUpgrade: vi.fn(),
+}))
+
+const { mockDefaultModelQuery, mockPluginSettingsAccess } = vi.hoisted(() => ({
+  mockDefaultModelQuery: vi.fn(),
+  mockPluginSettingsAccess: { canSetPluginPreferences: true },
 }))
 
 const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
@@ -232,7 +238,10 @@ const mockDefaultModels: Record<string, { data: unknown; isLoading: boolean }> =
 }
 
 vi.mock('../hooks', () => ({
-  useDefaultModel: (type: string) => mockDefaultModels[type] ?? { data: null, isLoading: false },
+  useDefaultModel: (type: string, options?: { enabled?: boolean }) => {
+    mockDefaultModelQuery(type, options)
+    return mockDefaultModels[type] ?? { data: null, isLoading: false }
+  },
   useLanguage: () => 'en_US',
 }))
 
@@ -282,7 +291,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
   usePluginSettingsAccess: () => ({
     canSetPermissions: true,
-    canSetPluginPreferences: true,
+    canSetPluginPreferences: mockPluginSettingsAccess.canSetPluginPreferences,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting,
@@ -390,6 +399,7 @@ describe('ModelProviderPage', () => {
     mockProviderContextState.isLoadingModelProviders = false
     mockProviderContextState.isSuccessModelProviders = true
     mockProviderContextState.modelProviderPlugins = {}
+    mockPluginSettingsAccess.canSetPluginPreferences = true
     mockAutoUpgradeError.value = undefined
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
@@ -445,6 +455,24 @@ describe('ModelProviderPage', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
+  })
+
+  it('should skip system model settings without plugin preference access', () => {
+    mockPluginSettingsAccess.canSetPluginPreferences = false
+
+    renderModelProviderPage()
+
+    expect(mockDefaultModelQuery.mock.calls).toEqual([
+      [ModelTypeEnum.textGeneration, { enabled: false }],
+      [ModelTypeEnum.textEmbedding, { enabled: false }],
+      [ModelTypeEnum.rerank, { enabled: false }],
+      [ModelTypeEnum.speech2text, { enabled: false }],
+      [ModelTypeEnum.tts, { enabled: false }],
+    ])
+    expect(screen.queryByTestId('system-model-selector')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should align the toolbar without extra internal top offset', () => {

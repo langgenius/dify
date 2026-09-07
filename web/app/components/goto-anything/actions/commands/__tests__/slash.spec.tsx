@@ -46,6 +46,12 @@ vi.mock('next-themes', () => ({
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: mockSetLocale,
 }))
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: () => true,
+}))
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
 
 vi.mock('../command-bus', () => ({
   executeCommand: (...args: unknown[]) => mockExecuteCommand(...args),
@@ -120,9 +126,9 @@ describe('SlashCommandProvider', () => {
     expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
     ])
@@ -132,6 +138,10 @@ describe('SlashCommandProvider', () => {
     expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'language' }), {
       setLocale: mockSetLocale,
     })
+    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'go' }), {
+      agentsAvailable: true,
+      skillsAvailable: true,
+    })
 
     unmount()
 
@@ -140,9 +150,9 @@ describe('SlashCommandProvider', () => {
     expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
       'create',
@@ -158,9 +168,9 @@ describe('SlashCommandProvider', () => {
     expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
       'create',
@@ -172,9 +182,9 @@ describe('SlashCommandProvider', () => {
     expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
-      'forum',
       'docs',
-      'community',
+      'discord',
+      'models',
       'account',
       'go',
       'create',

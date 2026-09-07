@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
@@ -225,7 +225,7 @@ const ChatWrapper = () => {
       })
       const appMode = isNewAgent ? 'agent-v2' : appData?.mode
       if (appSourceType === AppSourceType.webApp && appMode)
-        trackEvent('webapp_run', { app_mode: appMode })
+        trackWebAppEvent('webapp_run', { app_mode: appMode })
     },
     [
       inputsForms,

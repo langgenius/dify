@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -21,7 +22,6 @@ from .. import console_ns
 from ..app.wraps import get_app_model
 from ..wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -100,7 +100,7 @@ class WebhookTriggerApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=AppMode.WORKFLOW)
     @model_validate(Parser)
     def get(self, req_data: Parser, app_model: App):
@@ -134,7 +134,7 @@ class AppTriggersApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, current_tenant_id: str, app_model: App):
         """Get app triggers list"""
@@ -171,7 +171,7 @@ class AppTriggerEnableApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
     @with_current_tenant_id
     @get_app_model(mode=AppMode.WORKFLOW)

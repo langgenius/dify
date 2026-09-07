@@ -125,6 +125,7 @@ import {
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
+  zPostDatasetsApiKeysBody,
   zPostDatasetsApiKeysResponse,
   zPostDatasetsBatchImportStatusByJobIdBody,
   zPostDatasetsBatchImportStatusByJobIdPath,
@@ -248,6 +249,7 @@ export const post = oc
     path: '/datasets/api-keys',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
 
 export const apiKeys = {

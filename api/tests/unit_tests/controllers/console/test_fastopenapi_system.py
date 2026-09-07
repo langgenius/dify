@@ -1,5 +1,4 @@
 import builtins
-from unittest.mock import patch
 
 import pytest
 from flask.views import MethodView
@@ -7,6 +6,7 @@ from flask.views import MethodView
 from configs import dify_config
 from dify_app import DifyApp
 from extensions import ext_fastopenapi
+from tests.unit_tests.config_override import config_overrides_context
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -31,7 +31,7 @@ def test_console_ping_fastopenapi_returns_pong(app: DifyApp) -> None:
 def test_console_version_fastopenapi_returns_current_version(app: DifyApp) -> None:
     ext_fastopenapi.init_app(app)
 
-    with patch("controllers.console.system.dify_config.CHECK_UPDATE_URL", None):
+    with config_overrides_context(CHECK_UPDATE_URL=None):
         response = app.test_client().get("/console/api/version", query_string={"current_version": "0.0.0"})
 
     assert response.status_code == 200

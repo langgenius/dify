@@ -61,11 +61,7 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent
-          placement={placement || 'bottom-end'}
-          sideOffset={4}
-          className="w-[224px]"
-        >
+        <DropdownMenuContent placement={placement || 'bottom-end'} sideOffset={4} className="w-56">
           <div className="px-3 py-1.5 system-md-regular text-text-secondary">
             <div className="flex items-center gap-2">
               <div className="grow">{t(($) => $['theme.theme'], { ns: 'common' })}</div>

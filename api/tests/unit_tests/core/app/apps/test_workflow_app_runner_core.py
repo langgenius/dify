@@ -543,6 +543,70 @@ class TestWorkflowBasedAppRunner:
         assert isinstance(queue_event, QueueHumanInputFormFilledEvent)
         assert queue_event.submitted_data == {"decision": StringSegment(value="approve")}
 
+    def test_handle_nested_answer_success_publishes_text_chunk(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+
+        runner._handle_event(
+            workflow_entry,
+            NodeRunSucceededEvent(
+                id="exec",
+                node_id="answer-in-iteration",
+                node_type=BuiltinNodeTypes.ANSWER,
+                start_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+                node_run_result=NodeRunResult(outputs={"answer": "inside iteration"}),
+                in_iteration_id="iteration",
+            ),
+        )
+
+        text_chunk = published[0]
+        assert isinstance(text_chunk, QueueTextChunkEvent)
+        assert text_chunk.text == "inside iteration"
+        assert text_chunk.from_variable_selector == ["answer-in-iteration", "answer"]
+        assert text_chunk.in_iteration_id == "iteration"
+        assert any(isinstance(event, QueueNodeSucceededEvent) for event in published)
+
+    def test_handle_root_answer_success_does_not_publish_extra_text_chunk(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+
+        runner._handle_event(
+            workflow_entry,
+            NodeRunSucceededEvent(
+                id="exec",
+                node_id="answer",
+                node_type=BuiltinNodeTypes.ANSWER,
+                start_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+                node_run_result=NodeRunResult(outputs={"answer": "root answer"}),
+            ),
+        )
+
+        assert not any(isinstance(event, QueueTextChunkEvent) for event in published)
+        assert len(published) == 1
+        assert isinstance(published[0], QueueNodeSucceededEvent)
+
     @pytest.mark.parametrize(
         ("event_factory", "queue_event_cls"),
         [

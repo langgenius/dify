@@ -41,7 +41,7 @@ import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentOrchestrateViewingVersion } from '../read-only-context'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
 import {
@@ -333,7 +333,10 @@ function AddToolMenu({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <ConfigureSectionAddButton ariaLabel={t(($) => $['agentDetail.configure.tools.add'])} />
+          <ConfigureSectionAddButton
+            ariaLabel={t(($) => $['agentDetail.configure.tools.add'])}
+            className="data-popup-open:bg-state-base-hover"
+          />
         }
       />
       <PopoverContent
@@ -341,8 +344,8 @@ function AddToolMenu({
         sideOffset={4}
         className={
           view === 'menu'
-            ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
-            : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'
+            ? 'w-70 bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+            : 'w-100 overflow-hidden border-none bg-transparent p-0 shadow-none'
         }
       >
         {view === 'menu' ? (
@@ -380,7 +383,7 @@ function AddToolMenu({
 
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
-  const isViewingVersion = useAgentOrchestrateViewingVersion()
+  const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -530,7 +533,7 @@ export function AgentTools() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={
-          !isViewingVersion ? (
+          !readOnly ? (
             <AddToolMenu
               onAddCliTool={openCliToolDialog}
               onAddTools={addTools}

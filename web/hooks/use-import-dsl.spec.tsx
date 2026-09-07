@@ -1,4 +1,4 @@
-import { act, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -93,6 +93,46 @@ describe('useImportDSL', () => {
     mockResolveImportedAppRedirectionTarget.mockImplementation(async (target) => target)
   })
 
+  it('should show response warnings when an import completes with warnings', async () => {
+    const completedResponse = {
+      id: 'import-1',
+      status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
+      app_id: 'app-1',
+      app_mode: AppModeEnum.WORKFLOW,
+      permission_keys: [],
+      warnings: [
+        {
+          code: 'agent_tool_authorization_required',
+          path: 'agent_packages.agent_1.soul.tools.dify_tools.0',
+          message: "Agent tool 'jina_search' requires authorization.",
+          details: { tool_name: 'jina_search' },
+        },
+      ],
+    }
+    mockImportDSL.mockResolvedValue(completedResponse)
+    mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'app: demo',
+        },
+        { skipRedirectOnSuccess: true },
+      )
+    })
+
+    expect(toastMocks.warning).toHaveBeenCalledWith('app.newApp.caution', {
+      description: expect.anything(),
+    })
+    const warningDescription = toastMocks.warning.mock.calls[0]![1].description
+    render(<>{warningDescription}</>)
+    expect(screen.getByText("Agent tool 'jina_search' requires authorization.")).toBeInTheDocument()
+    expect(screen.queryByText('app.newApp.appCreateDSLWarning')).not.toBeInTheDocument()
+  })
+
   it('should complete a confirmed import that returns warnings', async () => {
     let resolvePluginCheck: (() => void) | undefined
     const pendingResponse = {
@@ -163,8 +203,12 @@ describe('useImportDSL', () => {
     expect(onSuccess).toHaveBeenCalledWith(completedResponse)
     expect(onFailed).not.toHaveBeenCalled()
     expect(toastMocks.warning).toHaveBeenCalledWith('app.newApp.caution', {
-      description: 'app.newApp.appCreateDSLWarning',
+      description: expect.anything(),
     })
+    const warningDescription = toastMocks.warning.mock.calls[0]![1].description
+    render(<>{warningDescription}</>)
+    expect(screen.getByText('Agent file was not included.')).toBeInTheDocument()
+    expect(screen.queryByText('app.newApp.appCreateDSLWarning')).not.toBeInTheDocument()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'app-1',

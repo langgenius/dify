@@ -16,14 +16,10 @@ export function SkillDropDestinationHint({ target }: { target: SkillDropTarget |
 
   const destination = target.path || 'root folder'
   const action = target.operation === 'upload' ? 'Upload' : 'Move'
-  const label = `${action} to ${destination}`
   return (
     <div className="pointer-events-none absolute inset-x-1 bottom-2 z-10 flex justify-center">
       <div className="flex h-7 max-w-full items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
-        <span
-          aria-label={label}
-          className="max-w-full truncate px-0.5 system-xs-regular text-text-secondary"
-        >
+        <span className="max-w-full truncate px-0.5 system-xs-regular text-text-secondary">
           {action} to <strong className="font-medium">{destination}</strong>
         </span>
       </div>
@@ -64,12 +60,12 @@ export function SkillUploadStatusPanel({
         className={cn(
           'pointer-events-auto relative overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
           failedCount > 0 && !hasActiveUpload
-            ? 'min-h-[72px] px-2 py-2'
+            ? 'min-h-18 px-2 py-2'
             : 'flex h-8 items-center gap-2 py-1 pr-1.5 pl-2',
           !hasActiveUpload &&
             (failedCount > 0
-              ? 'before:absolute before:inset-0 before:bg-gradient-to-r before:from-state-warning-hover before:to-transparent before:opacity-40'
-              : 'before:absolute before:inset-0 before:bg-gradient-to-r before:from-state-success-hover before:to-transparent before:opacity-40'),
+              ? 'before:absolute before:inset-0 before:bg-linear-to-r before:from-state-warning-hover before:to-transparent before:opacity-40'
+              : 'before:absolute before:inset-0 before:bg-linear-to-r before:from-state-success-hover before:to-transparent before:opacity-40'),
         )}
       >
         {hasActiveUpload && (
@@ -132,7 +128,7 @@ export function SkillUploadStatusPanel({
             aria-label={tCommon(($) => $['operation.cancel'])}
             onClick={onCancel}
           >
-            <span aria-hidden className="i-ri-stop-circle-line size-[18px]" />
+            <span aria-hidden className="i-ri-stop-circle-line size-4.5" />
           </button>
         ) : (
           <div className="relative flex shrink-0 items-center gap-1">
@@ -145,7 +141,7 @@ export function SkillUploadStatusPanel({
               aria-label={t(($) => $['skillManagement.detail.uploadStatusDismiss'])}
               onClick={onDismiss}
             >
-              <span aria-hidden className="i-ri-close-line size-[18px]" />
+              <span aria-hidden className="i-ri-close-line size-4.5" />
             </button>
           </div>
         )}

@@ -38,6 +38,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
@@ -421,6 +422,7 @@ function AgentPromptSelectionBridge({
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const [value, setValue] = useAtom(agentComposerPromptAtom)
   const { skills: embeddedSkills } = useAgentConfigSkills()
   const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
@@ -1058,6 +1060,7 @@ export function AgentPromptEditor() {
           onAddFile={addActions.files}
           onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
+          canAddWorkspaceSkill={enableSkill}
           knowledgeRetrievals={retrievals}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
@@ -1130,7 +1133,7 @@ export function AgentPromptEditor() {
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
-              className="min-h-26 text-text-primary"
+              className={cn('min-h-26 text-text-primary', readOnly && 'cursor-not-allowed')}
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}

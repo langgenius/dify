@@ -10,6 +10,7 @@ from pydantic import SecretStr
 from core.helper import ssrf_proxy
 from core.rbac import RBACPermission
 from core.tools.errors import ToolSSRFError
+from models.account import Account, TenantAccountRole
 from services.knowledge_fs_operations import (
     KNOWLEDGE_FS_CONSOLE_OPERATIONS,
     KnowledgeFSMethod,
@@ -32,6 +33,23 @@ from services.knowledge_fs_proxy import (
 )
 
 _JWT_SECRET = "production-secret-with-at-least-32-bytes"
+
+
+def _account(*, role: TenantAccountRole = TenantAccountRole.DATASET_OPERATOR) -> Account:
+    account = Account(name="Knowledge User", email="knowledge@example.com")
+    account.id = "account-1"
+    account.role = role
+    return account
+
+
+def _account_for_legacy_role(role: str) -> Account:
+    roles = {
+        "admin": TenantAccountRole.ADMIN,
+        "dataset_editor": TenantAccountRole.DATASET_OPERATOR,
+        "reader": TenantAccountRole.NORMAL,
+    }
+    return _account(role=roles[role])
+
 
 _HAPPY_PATH_OPERATION_IDS = (
     "listKnowledgeSpaces",
@@ -205,14 +223,15 @@ def _set_config(
     timeout_seconds: float = 7.5,
     jwt_secret: str | None = _JWT_SECRET,
 ) -> None:
+    from tests.unit_tests.config_override import apply_config_overrides
+
     values = {
         "KNOWLEDGE_FS_BASE_URL": base_url,
         "KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS": sse_read_timeout_seconds,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": timeout_seconds,
         "KNOWLEDGE_FS_JWT_SECRET": SecretStr(jwt_secret) if jwt_secret is not None else None,
     }
-    for name, value in values.items():
-        monkeypatch.setattr(f"services.knowledge_fs_proxy.dify_config.{name}", value, raising=False)
+    apply_config_overrides(monkeypatch, **values)
 
 
 def _processing_task_events_path() -> str:
@@ -322,7 +341,7 @@ def test_list_and_create_forward_raw_request(monkeypatch: pytest.MonkeyPatch, me
 
 
 def test_proxy_forwards_only_registry_declared_headers(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = _account()
     upstream = MagicMock()
     forward = MagicMock(return_value=upstream)
     monkeypatch.setattr(
@@ -344,7 +363,7 @@ def test_proxy_forwards_only_registry_declared_headers(monkeypatch: pytest.Monke
 
 
 def test_authorized_proxy_does_not_repeat_workspace_rbac(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = _account()
     check_access = MagicMock(return_value=True)
     forward = MagicMock(return_value=MagicMock())
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
@@ -374,7 +393,7 @@ def test_authorization_capability_cannot_be_constructed_directly() -> None:
 
 
 def test_authorization_resolves_the_canonical_operation_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=False, is_admin_or_owner=False)
+    account = _account(role=TenantAccountRole.NORMAL)
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
 
@@ -402,7 +421,7 @@ def test_authorization_capability_binding_cannot_be_mutated(
     attribute: str,
     value: object,
 ) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = _account()
     monkeypatch.setattr(
         "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
         MagicMock(return_value=True),
@@ -423,7 +442,7 @@ def test_authorization_capability_binding_cannot_be_mutated(
 
 
 def test_authorization_capability_cannot_be_reused(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = _account()
     forward = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(
         "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
@@ -449,7 +468,7 @@ def test_authorization_rejects_workspace_rbac_denial(
     monkeypatch: pytest.MonkeyPatch,
     operation: KnowledgeFSOperation,
 ) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = _account_for_legacy_role(operation.legacy_role)
     check_access = MagicMock(return_value=False)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
 
@@ -478,7 +497,7 @@ def test_dataset_editor_operations_reject_legacy_viewers_before_rbac(
     monkeypatch: pytest.MonkeyPatch,
     operation: KnowledgeFSOperation,
 ) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=False, is_admin_or_owner=False)
+    account = _account(role=TenantAccountRole.NORMAL)
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
 
@@ -494,7 +513,7 @@ def test_dataset_editor_operations_reject_legacy_viewers_before_rbac(
 
 
 def test_admin_operation_rejects_legacy_editors_before_rbac(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True, is_admin_or_owner=False)
+    account = _account()
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
     operation = get_knowledge_fs_operation(
@@ -513,7 +532,7 @@ def test_admin_operation_rejects_legacy_editors_before_rbac(monkeypatch: pytest.
 
 
 def test_authorization_uses_the_declared_reader_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=False, is_admin_or_owner=False)
+    account = _account(role=TenantAccountRole.NORMAL)
     check_access = MagicMock(return_value=True)
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
     operation = get_knowledge_fs_operation("GET", "knowledge-spaces")

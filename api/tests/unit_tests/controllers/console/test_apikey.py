@@ -12,7 +12,6 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from configs import dify_config
 from controllers.console.agent.roster import AgentApiKeyListApi
 from controllers.console.apikey import (
     AppApiKeyListResource,
@@ -58,9 +57,9 @@ def _make_account(role: TenantAccountRole) -> Account:
     return account
 
 
-def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
+def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT, app_id: str = "app-1") -> App:
     app = App(
-        id="app-1",
+        id=app_id,
         tenant_id="tenant-1",
         name="API key app",
         mode=mode,
@@ -249,58 +248,71 @@ def test_delete_api_key_rejects_foreign_tenant_token(sqlite_session: Session) ->
     assert session.get(ApiToken, "key-1") is api_key
 
 
-def test_api_key_lists_require_matching_rbac_permission() -> None:
+def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        RBAC_ENABLED=True,
+    )
     app = Flask(__name__)
     account = _make_account(TenantAccountRole.OWNER)
     api_id = UUID("00000000-0000-0000-0000-000000000001")
     cases = [
         (
             lambda: AppApiKeyListResource().get(resource_id=api_id),
-            [(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True)],
-        ),
-        (
-            lambda: AgentApiKeyListApi().get(agent_id=api_id),
-            [
-                (RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, False),
-                (RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True),
-            ],
+            {
+                "scene": RBACPermission.APP_RELEASE_AND_VERSION,
+                "resource_type": RBACResourceScope.APP,
+                "resource_id": str(api_id),
+            },
         ),
         (
             lambda: DatasetApiKeyApi().get(),
-            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, False)],
+            {"scene": RBACPermission.DATASET_API_KEY_MANAGE, "resource_type": None, "resource_id": None},
         ),
         (
             lambda: DatasetApiKeyListResource().get(resource_id=api_id),
-            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, True)],
+            {
+                "scene": RBACPermission.DATASET_API_KEY_MANAGE,
+                "resource_type": RBACResourceScope.DATASET,
+                "resource_id": str(api_id),
+            },
         ),
     ]
 
     with (
         app.test_request_context("/"),
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-        patch.object(dify_config, "LOGIN_DISABLED", True),
-        patch.object(dify_config, "RBAC_ENABLED", True),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch("controllers.common.rbac.locators.agent_binding", return_value=None),
+        patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
+        patch("controllers.common.rbac.locators.DatasetId.owner_id", return_value=None),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
     ):
-        for invoke, expected_gates in cases:
+        for invoke, expected_kwargs in cases:
             with patch(
-                "controllers.common.wraps.enforce_rbac_access",
-                side_effect=[None] * (len(expected_gates) - 1) + [Forbidden()],
-            ) as enforce_rbac_access:
+                "controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False
+            ) as check_access:
                 with pytest.raises(Forbidden):
                     invoke()
 
-            assert [
-                (kwargs["resource_type"], kwargs["scene"], kwargs["resource_required"])
-                for _, kwargs in enforce_rbac_access.call_args_list
-            ] == expected_gates
+            check_access.assert_called_once_with(
+                "tenant-1",
+                account.id,
+                scene=expected_kwargs["scene"],
+                resource_type=expected_kwargs["resource_type"],
+                resource_id=expected_kwargs["resource_id"],
+            )
 
     get_api_key_list.assert_not_called()
 
 
-def test_api_key_lists_reject_legacy_read_only_members() -> None:
+def test_api_key_lists_reject_legacy_read_only_members(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        RBAC_ENABLED=False,
+    )
     app = Flask(__name__)
     account = _make_account(TenantAccountRole.NORMAL)
     api_id = UUID("00000000-0000-0000-0000-000000000001")
@@ -310,9 +322,6 @@ def test_api_key_lists_reject_legacy_read_only_members() -> None:
 
     with (
         app.test_request_context("/"),
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-        patch.object(dify_config, "LOGIN_DISABLED", True),
-        patch.object(dify_config, "RBAC_ENABLED", False),
         patch("libs.login.current_user", current_user),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,

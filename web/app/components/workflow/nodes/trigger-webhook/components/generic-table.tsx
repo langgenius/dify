@@ -2,6 +2,7 @@
 import type { FC, ReactNode } from 'react'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectItem,
@@ -16,7 +17,6 @@ import {
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import Input from '@/app/components/base/input'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
@@ -110,6 +110,7 @@ const renderInputCell = (
 ) => {
   return (
     <Input
+      aria-label={column.title}
       value={(value as string) || ''}
       onChange={(e) => {
         if (column.key === 'key' || column.key === 'name')
@@ -124,9 +125,8 @@ const renderInputCell = (
       }}
       placeholder={column.placeholder}
       disabled={readonly}
-      wrapperClassName="w-full min-w-0"
       className={cn(
-        'h-6 rounded-none border-0 bg-transparent p-0 shadow-none',
+        'h-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none',
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
