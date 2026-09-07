@@ -15,6 +15,7 @@ export const DifyBuilderConversation = memo(
   ({
     busy,
     activeInteraction,
+    viewVersion,
     activeFormId,
     changesExpanded,
     interrupted,
@@ -29,6 +30,7 @@ export const DifyBuilderConversation = memo(
   }: {
     busy: boolean
     activeInteraction: SessionView['active_interaction']
+    viewVersion: SessionView['version']
     activeFormId?: string
     changesExpanded: boolean
     interrupted: boolean
@@ -44,6 +46,7 @@ export const DifyBuilderConversation = memo(
     const { t } = useTranslation()
     const groups = useMemo(() => groupConversationItems(items), [items])
     const activeCard = activeInteraction?.card
+    const interactionIsCurrent = activeInteraction?.valid_at_version === viewVersion
 
     return (
       <div className="flex flex-col gap-3 px-4 py-4">
@@ -70,7 +73,7 @@ export const DifyBuilderConversation = memo(
                   key={`${group.item.seq}-${group.item.kind}`}
                   item={group.item}
                   busy={busy}
-                  interactive={group.item.seq === activeInteraction?.card.seq}
+                  interactive={interactionIsCurrent && group.item.seq === activeCard?.seq}
                   changesExpanded={changesExpanded}
                   invalidated={false}
                   onActionPayloadChange={onActionPayloadChange}
@@ -96,7 +99,7 @@ export const DifyBuilderConversation = memo(
                 <ConversationCard
                   item={group.turn}
                   busy={busy}
-                  interactive={group.turn.seq === activeInteraction?.card.seq}
+                  interactive={interactionIsCurrent && group.turn.seq === activeCard?.seq}
                   changesExpanded={changesExpanded}
                   invalidated={group.invalidated}
                   onActionPayloadChange={onActionPayloadChange}
@@ -112,7 +115,7 @@ export const DifyBuilderConversation = memo(
                       key={`${item.seq}-${item.kind}`}
                       item={item}
                       busy={busy}
-                      interactive={item.seq === activeInteraction?.card.seq}
+                      interactive={interactionIsCurrent && item.seq === activeCard?.seq}
                       changesExpanded={changesExpanded}
                       invalidated={group.invalidated}
                       onActionPayloadChange={onActionPayloadChange}
@@ -128,11 +131,11 @@ export const DifyBuilderConversation = memo(
         </div>
         {activeCard && (
           <ConversationCard
-            key={`active-${activeCard.seq}-${activeCard.kind}`}
+            key={`active-${activeInteraction?.action_id}-${activeCard.seq}-${activeCard.kind}`}
             item={activeCard}
             busy={busy}
             formId={activeFormId}
-            interactive
+            interactive={interactionIsCurrent}
             changesExpanded={changesExpanded}
             invalidated={false}
             onActionPayloadChange={onActionPayloadChange}
