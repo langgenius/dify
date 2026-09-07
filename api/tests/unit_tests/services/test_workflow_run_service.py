@@ -8,6 +8,7 @@ import pytest
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+    WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
@@ -94,6 +95,7 @@ class TestWorkflowRunServiceQueries:
                 "answer": "approved",
                 WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-1",
                 WORKFLOW_TOOL_INVOCATION_ID_KEY: "invocation-1",
+                WORKFLOW_TOOL_ROOT_APP_ID_KEY: "app-1",
             }
         )
         monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", MagicMock(return_value=[trace]))

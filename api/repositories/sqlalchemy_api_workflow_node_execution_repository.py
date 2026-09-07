@@ -356,7 +356,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         batch_size: int = 1000,
     ) -> int:
         """
-        Delete all workflow node executions for a specific app.
+        Delete source-app executions and nested executions owned by the app's runs.
 
         Args:
             tenant_id: The tenant identifier
@@ -375,7 +375,10 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                     select(WorkflowNodeExecutionModel.id)
                     .where(
                         WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                        WorkflowNodeExecutionModel.app_id == app_id,
+                        or_(
+                            WorkflowNodeExecutionModel.app_id == app_id,
+                            WorkflowNodeExecutionModel.workflow_tool_owned_by_app(tenant_id=tenant_id, app_id=app_id),
+                        ),
                     )
                     .limit(batch_size)
                 )
@@ -385,6 +388,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                     break
 
                 # Delete the batch
+                session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.tenant_id == tenant_id,
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(execution_ids),
+                    )
+                )
                 delete_stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
                 result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()

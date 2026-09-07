@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -17,12 +17,10 @@ from core.workflow.node_execution_process_data import (
 )
 from models.agent import (
     AgentConfigVersionKind,
-    AgentWorkingResourceStatus,
-    AgentWorkspace,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel
 from services.agent.workspace_service import (
     AgentWorkspaceNotFoundError,
     AgentWorkspaceService,
@@ -272,50 +270,10 @@ class WorkflowAgentWorkspaceStore:
     def retire_workflow_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
         """Retire active Workspaces, commit, and return active or already-retired IDs for collection."""
 
-        retired: list[str] = []
         with session_factory.create_session() as session:
-            # Workflow Tools keep source-app caller records, but the outer run
-            # owns their lifetime. Require the persisted caller/binding/run chain
-            # before including another app's workspace in this cleanup.
-            child_caller = (
-                select(WorkflowNodeExecutionModel.id)
-                .join(
-                    AgentWorkspaceBinding,
-                    AgentWorkspaceBinding.id == WorkflowNodeExecutionModel.agent_workspace_binding_id,
-                )
-                .join(WorkflowRun, WorkflowRun.id == WorkflowNodeExecutionModel.workflow_run_id)
-                .where(
-                    WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.tenant_id == tenant_id,
-                    WorkflowRun.app_id == app_id,
-                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                    WorkflowNodeExecutionModel.app_id == AgentWorkspace.app_id,
-                    AgentWorkspaceBinding.tenant_id == tenant_id,
-                    AgentWorkspaceBinding.app_id == AgentWorkspace.app_id,
-                    AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
-                )
-                .exists()
+            retired = AgentWorkspaceService.retire_workflow_run(
+                session=session, tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id
             )
-            workspaces = session.scalars(
-                select(AgentWorkspace).where(
-                    AgentWorkspace.tenant_id == tenant_id,
-                    or_(AgentWorkspace.app_id == app_id, child_caller),
-                    AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
-                    AgentWorkspace.owner_id == workflow_run_id,
-                    AgentWorkspace.status.in_((AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)),
-                )
-            ).all()
-            for workspace in workspaces:
-                if workspace.status == AgentWorkingResourceStatus.RETIRED:
-                    retired.append(workspace.id)
-                    continue
-                workspace_id = AgentWorkspaceService.retire_workspace(
-                    session=session,
-                    tenant_id=tenant_id,
-                    workspace_id=workspace.id,
-                )
-                if workspace_id is not None:
-                    retired.append(workspace_id)
             session.commit()
         return retired
 

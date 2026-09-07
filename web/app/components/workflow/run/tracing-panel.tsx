@@ -7,10 +7,13 @@ import * as React from 'react'
 import { use, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
+import { BlockEnum } from '../types'
 import { getHoveredParallelId } from './get-hovered-parallel-id'
 import { useLogs } from './hooks'
 import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
+import { getIterationDurationMap, getIterationResultList } from './utils/format-log/iteration'
+import { getLoopResultList } from './utils/format-log/loop'
 import WorkflowToolTracing from './workflow-tool-tracing'
 import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
@@ -20,6 +23,14 @@ type TracingPanelProps = {
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
   workflowRun?: WorkflowRunScope
+}
+
+function findExecution(nodes: NodeTracing[], id: string): NodeTracing | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const child = node.parallelDetail?.children && findExecution(node.parallelDetail.children, id)
+    if (child) return child
+  }
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -34,6 +45,10 @@ const TracingPanel: FC<TracingPanelProps> = ({
   const [workflowTool, setWorkflowTool] = useState<NodeTracing | null>(null)
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
+  const [containerId, setContainerId] = useState<string | null>(null)
+  const container = containerId ? findExecution(treeNodes, containerId) : undefined
+  const iteration = container?.node_type === BlockEnum.Iteration ? container : undefined
+  const loop = container?.node_type === BlockEnum.Loop ? container : undefined
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 
@@ -62,19 +77,6 @@ const TracingPanel: FC<TracingPanelProps> = ({
     setShowRetryDetailFalse,
     retryResultList,
     handleShowRetryResultList,
-
-    showIteratingDetail,
-    setShowIteratingDetailFalse,
-    iterationResultList,
-    iterationResultDurationMap,
-    handleShowIterationResultList,
-
-    showLoopingDetail,
-    setShowLoopingDetailFalse,
-    loopResultList,
-    loopResultDurationMap,
-    loopResultVariableMap,
-    handleShowLoopResultList,
 
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
@@ -155,8 +157,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <NodePanel
             nodeInfo={node!}
             allExecutions={list}
-            onShowIterationDetail={handleShowIterationResultList}
-            onShowLoopDetail={handleShowLoopResultList}
+            onShowIterationDetail={() => setContainerId(node.id)}
+            onShowLoopDetail={() => setContainerId(node.id)}
             onShowRetryDetail={handleShowRetryResultList}
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
@@ -175,20 +177,20 @@ const TracingPanel: FC<TracingPanelProps> = ({
         workflowRun={runScope}
         onBack={() => setWorkflowTool(null)}
       />
-    ) : showSpecialResultPanel ? (
+    ) : container || showSpecialResultPanel ? (
       <SpecialResultPanel
         showRetryDetail={showRetryDetail}
         setShowRetryDetailFalse={setShowRetryDetailFalse}
         retryResultList={retryResultList}
-        showIteratingDetail={showIteratingDetail}
-        setShowIteratingDetailFalse={setShowIteratingDetailFalse}
-        iterationResultList={iterationResultList}
-        iterationResultDurationMap={iterationResultDurationMap}
-        showLoopingDetail={showLoopingDetail}
-        setShowLoopingDetailFalse={setShowLoopingDetailFalse}
-        loopResultList={loopResultList}
-        loopResultDurationMap={loopResultDurationMap}
-        loopResultVariableMap={loopResultVariableMap}
+        showIteratingDetail={!!iteration}
+        setShowIteratingDetailFalse={() => setContainerId(null)}
+        iterationResultList={iteration ? getIterationResultList(iteration, list) : undefined}
+        iterationResultDurationMap={iteration ? getIterationDurationMap(iteration) : undefined}
+        showLoopingDetail={!!loop}
+        setShowLoopingDetailFalse={() => setContainerId(null)}
+        loopResultList={loop ? getLoopResultList(loop, list) : undefined}
+        loopResultDurationMap={loop?.loopDurationMap || loop?.execution_metadata?.loop_duration_map}
+        loopResultVariableMap={loop?.execution_metadata?.loop_variable_map}
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}
         handleShowAgentOrToolLog={handleShowAgentOrToolLog}
