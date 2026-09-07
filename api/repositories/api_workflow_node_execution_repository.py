@@ -16,36 +16,7 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
-from graphon.enums import BuiltinNodeTypes
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
-
-
-def workflow_tool_child_executions(
-    executions: Sequence[WorkflowNodeExecutionModel], parent_node_execution_id: str
-) -> list[WorkflowNodeExecutionModel]:
-    """Select one Tool invocation's children from tenant/run-scoped persisted records."""
-    parent = next(
-        (
-            execution
-            for execution in executions
-            if parent_node_execution_id in (execution.id, execution.node_execution_id)
-            and execution.node_type == BuiltinNodeTypes.TOOL
-        ),
-        None,
-    )
-    if parent is None:
-        return []
-    parent_execution_id = parent.node_execution_id or parent.id
-    return sorted(
-        (
-            execution
-            for execution in executions
-            if execution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
-            and (execution.process_data_dict or {}).get(WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY) == parent_execution_id
-        ),
-        key=lambda execution: (execution.created_at, execution.index),
-    )
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
 @dataclass(frozen=True)

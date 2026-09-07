@@ -13,17 +13,15 @@ from typing import Any, override
 
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.api_workflow_node_execution_repository import (
-    DifyAPIWorkflowNodeExecutionRepository,
-    workflow_tool_child_executions,
-)
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -369,50 +367,53 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         workflow_run_id: str,
         parent_node_execution_id: str,
     ) -> Sequence[WorkflowNodeExecutionModel]:
-        rows: list[dict[str, Any]] = []
-        offset = 0
-        to_time = int(time.time())
-        while True:
-            if self.logstore_client.supports_pg_protocol:
-                page = self.logstore_client.execute_sql(
-                    sql=f"""
-                        SELECT * FROM (
-                            SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
-                            FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                            WHERE tenant_id = '{escape_identifier(tenant_id)}'
-                              AND workflow_run_id = '{escape_identifier(workflow_run_id)}'
-                              AND __time__ > 0
-                        ) AS executions WHERE rn = 1 ORDER BY id LIMIT 1000 OFFSET {offset}
-                    """,
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                )
-            else:
-                page = self.logstore_client.get_logs(
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                    from_time=0,
-                    to_time=to_time,
-                    query=(
-                        f"tenant_id: {escape_logstore_query_value(tenant_id)} "
-                        f"and workflow_run_id: {escape_logstore_query_value(workflow_run_id)}"
-                    ),
-                    line=1000,
-                    offset=offset,
-                    reverse=False,
-                )
-            rows.extend(page)
-            if len(page) < 1000:
-                break
-            offset += len(page)
-        latest: dict[str, dict[str, Any]] = {}
-        for row in rows:
-            execution_id = row["id"]
-            if execution_id not in latest or safe_int(row.get("log_version")) > safe_int(
-                latest[execution_id].get("log_version")
-            ):
-                latest[execution_id] = row
-        return workflow_tool_child_executions(
-            [_dict_to_workflow_node_execution_model(row) for row in latest.values()], parent_node_execution_id
+        scope = (
+            f"tenant_id = '{escape_identifier(tenant_id)}' "
+            f"AND workflow_run_id = '{escape_identifier(workflow_run_id)}' AND __time__ > 0"
         )
+        search_query = (
+            f"tenant_id: {escape_logstore_query_value(tenant_id)} "
+            f"and workflow_run_id: {escape_logstore_query_value(workflow_run_id)}"
+        )
+        requested_id = escape_identifier(parent_node_execution_id)
+        to_time = int(time.time())
+        parents = self.logstore_client.execute_sql(
+            sql=f"""
+                SELECT id, node_execution_id FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                WHERE {scope} AND node_type = '{BuiltinNodeTypes.TOOL}'
+                  AND (id = '{requested_id}' OR node_execution_id = '{requested_id}')
+                ORDER BY log_version DESC LIMIT 1
+            """,
+            logstore=AliyunLogStore.workflow_node_execution_logstore,
+            query=search_query,
+            to_time=to_time,
+        )
+        if not parents:
+            return []
+        parent_execution_id = escape_identifier(parents[0].get("node_execution_id") or parents[0]["id"])
+        children: list[WorkflowNodeExecutionModel] = []
+        offset = 0
+        while True:
+            page = self.logstore_client.execute_sql(
+                sql=f"""
+                    SELECT * FROM (
+                        SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
+                        FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                        WHERE {scope}
+                          AND triggered_from = '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}'
+                          AND json_extract_scalar(process_data, '$.{WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY}')
+                              = '{parent_execution_id}'
+                    ) AS executions WHERE rn = 1
+                    ORDER BY created_at, "index", id LIMIT 1000 OFFSET {offset}
+                """,
+                logstore=AliyunLogStore.workflow_node_execution_logstore,
+                query=search_query,
+                to_time=to_time,
+            )
+            children.extend(_dict_to_workflow_node_execution_model(row) for row in page)
+            if len(page) < 1000:
+                return children
+            offset += len(page)
 
     @override
     def get_execution_by_id(

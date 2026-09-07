@@ -130,14 +130,6 @@ class WorkflowPersistenceLayer(Layer):
 
         def on_node_event(event: NodeEvent) -> None:
             self._initialize_workflow_tool_layer(child)
-            if (
-                isinstance(event, NodeRunStartedEvent)
-                and not isinstance(event, NodeRunRetryEvent)
-                and (execution := child._node_execution_cache.get(event.id)) is not None
-                and execution.status == WorkflowNodeExecutionStatus.RETRY
-            ):
-                # Tool listeners run before the engine suppresses repeated starts during retry.
-                return
             child.on_event(event)
 
         return on_node_event

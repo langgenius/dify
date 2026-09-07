@@ -1,3 +1,5 @@
+from dataclasses import replace
+from datetime import UTC, datetime
 from functools import partial
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -20,6 +22,9 @@ from core.workflow.nodes.agent_v2.session_store import StoredWorkflowAgentSessio
 from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
+from graphon.engine.event.processor import NodeEventProcessor
+from graphon.engine.event.stream import EventStream
+from graphon.engine.worker import NodeEventTask
 from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunSucceededEvent,
@@ -28,14 +33,72 @@ from graphon.engine_events import (
 )
 from graphon.engine_events.base import NodeEvent
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import WorkflowType
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.node_events import NodeRunResult
 from graphon.runtime import RuntimeState
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeBindingResolver, FakeSessionStore
-from tests.unit_tests.core.workflow.test_workflow_tool_container import _outer_graph, _workflow_tool_node
+from tests.unit_tests.core.workflow.test_workflow_tool_container import (
+    _container_handler,
+    _outer_graph,
+    _workflow_tool_node,
+)
+
+
+def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> None:
+    _, frames, state, request, repository = _container_handler()
+    assert isinstance(repository, MagicMock)
+    source = repository.get_source.return_value
+    repository.get_source.return_value = replace(
+        source,
+        graph_config={
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "loop",
+                    "data": {
+                        "type": "loop",
+                        "title": "Loop",
+                        "loop_count": 1,
+                        "start_node_id": "loop-start",
+                        "break_conditions": [],
+                        "logical_operator": "and",
+                    },
+                },
+                {"id": "loop-start", "data": {"type": "loop-start", "title": "Loop start", "loop_id": "loop"}},
+            ],
+            "edges": [{"id": "start-loop", "source": "start", "target": "loop"}],
+        },
+    )
+    persisted: list[NodeEvent] = []
+    handler = WorkflowToolContainerHandler(
+        frames, source_repository=repository, event_listener_factory=lambda _: persisted.append
+    )
+    handler.handle_request(invocation_id="invocation", request=request)
+    frame = frames["invocation:workflow-tool"]
+    frame.state.variable_pool.add(("loop", "counter"), 2)
+    processor = NodeEventProcessor(
+        graph_execution=state.graph_execution,
+        event_stream=MagicMock(spec=EventStream),
+        frame_registry=frames,
+        container_handlers={BuiltinNodeTypes.TOOL: handler},
+    )
+    event = NodeRunSucceededEvent(
+        id="loop-execution",
+        node_id="loop",
+        node_type=BuiltinNodeTypes.LOOP,
+        start_at=datetime.now(UTC).replace(tzinfo=None),
+        node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"counter": 1}),
+    )
+
+    processor.dispatch(NodeEventTask(frame_id=frame.frame_id, event=event))
+
+    assert event.node_run_result.outputs == {"counter": 2}
+    assert persisted[0].node_run_result.outputs == {"counter": 2}
+    assert persisted[0].container_id == ""
 
 
 def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_them() -> None:

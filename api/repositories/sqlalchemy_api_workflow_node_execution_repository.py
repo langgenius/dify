@@ -10,17 +10,17 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol, cast, override
 
-from sqlalchemy import asc, delete, desc, func, select
+from sqlalchemy import JSON, String, Text, asc, delete, desc, func, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from extensions.ext_storage import storage
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionSnapshot,
-    workflow_tool_child_executions,
 )
 
 
@@ -155,13 +155,42 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         workflow_run_id: str,
         parent_node_execution_id: str,
     ) -> Sequence[WorkflowNodeExecutionModel]:
-        stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
-            WorkflowNodeExecutionModel.tenant_id == tenant_id,
-            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        )
         with self._session_maker() as session:
-            executions = session.scalars(stmt).all()
-        return workflow_tool_child_executions(executions, parent_node_execution_id)
+            parent_execution_id = session.scalar(
+                select(
+                    func.coalesce(
+                        func.nullif(WorkflowNodeExecutionModel.node_execution_id, ""),
+                        WorkflowNodeExecutionModel.id.cast(String),
+                    )
+                )
+                .where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                    WorkflowNodeExecutionModel.node_type == BuiltinNodeTypes.TOOL,
+                    or_(
+                        WorkflowNodeExecutionModel.id.cast(String) == parent_node_execution_id,
+                        WorkflowNodeExecutionModel.node_execution_id == parent_node_execution_id,
+                    ),
+                )
+                .limit(1)
+            )
+            if parent_execution_id is None:
+                return []
+
+            # Ownership remains inline when Process Data is offloaded. SQLite's
+            # JSON functions consume text; CAST AS JSON would convert it to zero.
+            process_data = WorkflowNodeExecutionModel.process_data.cast(JSON().with_variant(Text(), "sqlite"))
+            stmt = (
+                WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+                .where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                    WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+                    process_data[WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY].as_string() == parent_execution_id,
+                )
+                .order_by(WorkflowNodeExecutionModel.created_at, WorkflowNodeExecutionModel.index)
+            )
+            return session.scalars(stmt).all()
 
     @override
     def get_execution_snapshots_by_workflow_run(
