@@ -1,6 +1,6 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSetAtom } from 'jotai'
 import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
@@ -176,6 +176,134 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     mocks.conversation.mockResolvedValue(conversationPage())
     window.sessionStorage.clear()
   })
+
+  it.each([
+    {
+      entryMode: 'build',
+      edgeCount: 0,
+      approvalState: 'build.plan_approval',
+      appliedState: 'build.execution',
+    },
+    {
+      entryMode: 'edit',
+      edgeCount: 1,
+      approvalState: 'edit.plan_approval',
+      appliedState: 'edit.apply_changes',
+    },
+    {
+      entryMode: 'fix',
+      edgeCount: 0,
+      approvalState: 'fix.await_approval',
+      appliedState: 'fix.await_verify',
+    },
+  ] as const)(
+    'displays $entryMode change sets on commit and after restoring the session',
+    async ({ entryMode, edgeCount, approvalState, appliedState }) => {
+      const waiting = createSessionView({
+        entry_mode: entryMode,
+        state: approvalState,
+        version: 2,
+        actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve changes' }],
+      })
+      const changeSet: ConversationItem = {
+        seq: 0,
+        at_version: 3,
+        kind: 'change_set',
+        payload: {
+          count: 2,
+          changes: ['Update answer configuration', 'Add an approval step'],
+          scope: 'configuration',
+          nodes: [
+            { node_id: 'node3', title: 'Answer' },
+            { node_id: 'node4', title: 'Approval' },
+          ],
+        },
+      }
+      const applied = createSessionView({
+        entry_mode: entryMode,
+        state: appliedState,
+        version: 3,
+        conversation_last_seq: 0,
+      })
+      const actionStream = createControlledEventStream()
+      mocks.create.mockResolvedValue(
+        streamOf(commandStartedEvent(createSessionView()), stateEvent(waiting)),
+      )
+      mocks.action.mockResolvedValue(actionStream.iterable)
+      const user = userEvent.setup()
+      const { unmount } = renderFlow(edgeCount)
+
+      if (entryMode === 'fix') {
+        await user.click(screen.getByRole('button', { name: 'Fix failed run' }))
+      } else {
+        await user.type(getComposer(), 'Prepare the workflow')
+        await user.click(getSendButton())
+      }
+      const approve = await screen.findByRole('button', { name: 'Approve changes' })
+      await waitFor(() => expect(approve).toBeEnabled())
+      await user.click(approve)
+      await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
+
+      await act(async () => {
+        actionStream.push(commandStartedEvent(waiting))
+        actionStream.push({
+          event: 'commit',
+          data: {
+            kind: 'commit',
+            session_id: waiting.session_id,
+            operation_id: 'apply-1',
+            stage_id: appliedState,
+            at_version: 3,
+            version: 3,
+            state: appliedState,
+            settled: true,
+            items: [changeSet],
+          },
+        })
+      })
+
+      const changes = await screen.findByRole('article', { name: 'workflow.difyBuilder.changes' })
+      const details = within(changes).getByRole('list', {
+        name: 'workflow.difyBuilder.changeDetails',
+      })
+      for (const change of changeSet.payload.changes) {
+        expect(within(details).getByText(change)).toBeInTheDocument()
+      }
+      const targets = within(changes).getByRole('list', {
+        name: 'workflow.difyBuilder.affectedNodes',
+      })
+      expect(within(targets).getByText('Answer')).toBeInTheDocument()
+      expect(within(targets).getByText('node3')).toBeInTheDocument()
+      expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
+      expect(getComposer()).toBeDisabled()
+
+      await act(async () => {
+        actionStream.push(stateEvent(applied))
+        actionStream.close()
+      })
+      await waitFor(() => expect(getComposer()).toBeEnabled())
+
+      mocks.get.mockResolvedValue(applied)
+      mocks.conversation.mockResolvedValue(conversationPage([changeSet]))
+      unmount()
+      renderFlow(edgeCount)
+
+      const restored = await screen.findByRole('article', { name: 'workflow.difyBuilder.changes' })
+      const restoredDetails = within(restored).getByRole('list', {
+        name: 'workflow.difyBuilder.changeDetails',
+      })
+      for (const change of changeSet.payload.changes) {
+        expect(within(restoredDetails).getByText(change)).toBeInTheDocument()
+      }
+      const restoredTargets = within(restored).getByRole('list', {
+        name: 'workflow.difyBuilder.affectedNodes',
+      })
+      expect(within(restoredTargets).getByText('Answer')).toBeInTheDocument()
+      expect(within(restoredTargets).getByText('node3')).toBeInTheDocument()
+      expect(mocks.get).toHaveBeenCalledOnce()
+      expect(mocks.action).toHaveBeenCalledOnce()
+    },
+  )
 
   it.each([
     {

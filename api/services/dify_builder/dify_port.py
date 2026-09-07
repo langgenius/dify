@@ -40,6 +40,7 @@ from typing import Any
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import CanvasEvent
 from core.dify_builder.models import (
     Actor,
@@ -261,6 +262,7 @@ class WorkflowServiceDifyPort:
 
             return ApplyResult(
                 changed_nodes=changed_nodes,
+                nodes=describe_changed_nodes(changed_nodes, before_graph, graph),
                 new_hash=updated.unique_hash,
                 changes=changes,
                 scope=scope,

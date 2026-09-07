@@ -28,7 +28,7 @@ from core.dify_builder.contract import (
     TestResultCard,
     TestStat,
 )
-from core.dify_builder.models import EntryMode
+from core.dify_builder.models import ChangedNode, EntryMode
 from core.dify_builder.state import PcState
 from services.dify_builder.service import SessionView, _run_status
 from services.dify_builder.wiring import session_view_to_dict
@@ -128,15 +128,23 @@ def test_card_shapes_round_trip():
     card family (spec §4.3), plus one typed submit payload (spec §5)."""
 
     # change_set -- the brief's canonical example.
-    c = ChangeSetCard(count=2, changes=["a", "b"], scope="configuration", full_diff_open=False)
+    c = ChangeSetCard(
+        count=2, changes=["a", "b"], scope="configuration", nodes=[ChangedNode(node_id="node-1", title="Answer")]
+    )
     assert c.kind == CardKind.CHANGE_SET
     assert "kind" not in asdict(c)
-    assert asdict(c) == {"count": 2, "changes": ["a", "b"], "scope": "configuration", "full_diff_open": False}
+    expected = {
+        "count": 2,
+        "changes": ["a", "b"],
+        "scope": "configuration",
+        "nodes": [{"node_id": "node-1", "title": "Answer"}],
+    }
+    assert asdict(c) == expected
     item = c.to_item(seq=5, at_version=3)
     assert item.kind == "change_set"
     assert item.seq == 5
     assert item.at_version == 3
-    assert item.payload == {"count": 2, "changes": ["a", "b"], "scope": "configuration", "full_diff_open": False}
+    assert item.payload == expected
 
     # plan
     plan = PlanCard(title="Build plan", version_tag="v1", items=["Add start node", "Add LLM node"])

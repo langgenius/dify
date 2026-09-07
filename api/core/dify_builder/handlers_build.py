@@ -12,6 +12,7 @@ no handler -- its completion summary is emitted by the governance-tail handlers
 
 import uuid
 
+from core.dify_builder.changes import describe_changed_nodes, describe_proposed_nodes
 from core.dify_builder.contract import (
     AssistantTurnItem,
     BuildLearningCard,
@@ -448,7 +449,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     changes, scope, fc.change_set = build_change_set(result, default_scope="structure", fallback_diff="graph built")
 
     change_set_items = append_card(
-        fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+        fc,
+        ChangeSetCard(
+            count=len(changes),
+            changes=changes,
+            scope=scope,
+            nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
+        ),
     )
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2.1", items=list(fc.plan_items)))
     decision_items = append_card(fc, DecisionItem(text="Approved the plan"))
@@ -718,7 +725,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     cs_items = (
         append_card(
-            fc, ChangeSetCard(count=len(intents), changes=proposed, scope="configuration", full_diff_open=False)
+            fc,
+            ChangeSetCard(
+                count=len(intents),
+                changes=proposed,
+                scope="configuration",
+                nodes=describe_proposed_nodes(intents, graph),
+            ),
         )
         if intents
         else []
@@ -771,7 +784,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc.staged_repair = []
         changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
         cs_items = append_card(
-            fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+            fc,
+            ChangeSetCard(
+                count=len(changes),
+                changes=changes,
+                scope=scope,
+                nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
+            ),
         )
         progress.activate("build-prepare-retest")
         decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))

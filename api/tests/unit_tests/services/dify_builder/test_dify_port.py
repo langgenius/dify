@@ -27,7 +27,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.dify_builder.models import Actor, MutationIntent, NodeEvent
+from core.dify_builder.models import Actor, ChangedNode, MutationIntent, NodeEvent
 from core.dify_builder.ports import DifyPort
 from models.account import Account
 from models.model import App
@@ -323,6 +323,7 @@ def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(m
     assert result.scope == "structure"
     assert "added node llm-1" in result.changes
     assert "added a → llm-1" in result.changes
+    assert result.nodes == [ChangedNode(node_id="llm-1", title="llm-1"), ChangedNode(node_id="a")]
 
 
 def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_session: MagicMock):
@@ -347,6 +348,7 @@ def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_sess
 
     assert result.scope == "configuration"
     assert result.changes == ["node-1: code updated"]
+    assert result.nodes == [ChangedNode(node_id="node-1")]
 
 
 def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: MagicMock):

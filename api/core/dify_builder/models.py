@@ -9,7 +9,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   is never persisted and only ever valid for a single ``Advance`` call.
 - Every field except ``PcState``/``EntryMode``-typed fields
   (``Session.entry_mode``, ``Session.current_state``, ``Checkpoint.state``)
-  and ``Turn.actor`` gets a default matching the Go zero value (``""``,
+  ``Turn.actor``, and ``ChangedNode.node_id`` gets a default matching the Go zero value (``""``,
   ``0``, ``False``, empty list/dict, ``datetime.min``). This mirrors how the
   Go test suite constructs these structs: almost every struct literal in
   ``*_test.go`` sets only a handful of fields and relies on Go's implicit
@@ -195,10 +195,19 @@ class NodeEvent:
 
 
 @dataclass(kw_only=True)
+class ChangedNode:
+    """A node's identity and display name captured with a change summary."""
+
+    node_id: str
+    title: str = ""
+
+
+@dataclass(kw_only=True)
 class ApplyResult:
     """Reports what a repair changed and the draft's new hash."""
 
     changed_nodes: list[str] = field(default_factory=list)
+    nodes: list[ChangedNode] = field(default_factory=list)
     new_hash: str = ""
     changes: list[str] = field(default_factory=list)
     scope: str = ""

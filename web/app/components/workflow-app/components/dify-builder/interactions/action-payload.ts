@@ -24,5 +24,3 @@ export const getDefaultActionPayload = (
   if (actionId === 'provide_testdata') return { mode: 'mock' }
   return {}
 }
-
-export const isClientOnlyAction = (actionId: string) => actionId === 'view_changes'

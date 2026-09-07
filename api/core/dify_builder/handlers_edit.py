@@ -10,6 +10,7 @@ from the review decision so its progress and side effect precede the terminal
 
 import uuid
 
+from core.dify_builder.changes import describe_changed_nodes, describe_proposed_nodes
 from core.dify_builder.contract import (
     AssistantTurnItem,
     ChallengeCard,
@@ -129,9 +130,9 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         fc,
         ChangeSetCard(
             count=len(fc.edit_target_node_ids),
-            changes=[f"will edit {nid}" for nid in fc.edit_target_node_ids],
+            changes=[],
             scope="configuration",
-            full_diff_open=False,
+            nodes=describe_changed_nodes(fc.edit_target_node_ids, graph),
         ),
     )
     execution = progress.finish()
@@ -258,7 +259,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")
 
     change_set_items = append_card(
-        fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+        fc,
+        ChangeSetCard(
+            count=len(changes),
+            changes=changes,
+            scope=scope,
+            nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
+        ),
     )
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=fc.checkpoint_id, label="Pre-edit checkpoint", created_at="")
@@ -529,7 +536,13 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     cs_items = (
         append_card(
-            fc, ChangeSetCard(count=len(intents), changes=proposed, scope="configuration", full_diff_open=False)
+            fc,
+            ChangeSetCard(
+                count=len(intents),
+                changes=proposed,
+                scope="configuration",
+                nodes=describe_proposed_nodes(intents, graph),
+            ),
         )
         if intents
         else []
@@ -582,7 +595,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc.staged_repair = []
         changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
         cs_items = append_card(
-            fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+            fc,
+            ChangeSetCard(
+                count=len(changes),
+                changes=changes,
+                scope=scope,
+                nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
+            ),
         )
         progress.activate("edit-prepare-retest")
         decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
@@ -622,6 +641,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
         return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *summary_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
+        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         emit_canvas(env, "cancel_publish")
         for node_id in fc.edit_target_node_ids:
             emit_canvas(env, "highlight_edit_target", node_id=node_id)
@@ -646,9 +666,9 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             fc,
             ChangeSetCard(
                 count=len(fc.edit_target_node_ids),
-                changes=[f"will edit {nid}" for nid in fc.edit_target_node_ids],
+                changes=[],
                 scope="configuration",
-                full_diff_open=False,
+                nodes=describe_changed_nodes(fc.edit_target_node_ids, graph),
             ),
         )
         turn_items = append_card(

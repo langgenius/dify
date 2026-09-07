@@ -640,7 +640,7 @@ def test_submit_action_rejects_missing_unknown_or_wrong_state_action_without_enq
     assert enqueued == []
 
 
-def test_submit_action_rejects_client_only_action_outside_its_surfaced_state(
+def test_submit_action_rejects_removed_action_during_verification(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[tuple]
 ) -> None:
     session = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
@@ -757,7 +757,6 @@ def test_get_session_view_actions_for_fix_await_decision(
         ("publish_fix", ActionKind.PRIMARY),
         ("keep_draft", ActionKind.SECONDARY),
         ("continue_adjusting", ActionKind.SECONDARY),
-        ("view_changes", ActionKind.SECONDARY),
         ("revert", ActionKind.DESTRUCTIVE),
     ]
 
@@ -820,7 +819,7 @@ def test_resolve_action_kind_passes_through_ids_that_match_handler_kinds() -> No
 
 def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
     """For EACH Fix/Checklist waiting state in ``_ACTIONS_FOR``, every
-    surfaced non-client-only action id must resolve (via
+    surfaced action id must resolve (via
     ``resolve_action_kind``) to a handler kind that state's handler in
     ``handlers_fix.py`` actually branches on -- otherwise the button is dead
     (falls through to the state's default no-op/branch) rather than doing
@@ -835,47 +834,41 @@ def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
         PcState.FIX_AWAIT_APPROVAL: {"approve_repair", "reject_repair"},
         PcState.FIX_AWAIT_VERIFY: {"run_verify", "undo"},
         PcState.FIX_AWAIT_TESTDATA: {"provide_testdata"},
-        # excludes the client-only view_changes, which never reaches the handler.
         PcState.FIX_AWAIT_DECISION: {"publish", "keep_draft", "re_fix", "undo"},
         PcState.CHECKLIST_AWAIT_RECHECK: {"recheck", "undo"},
     }
     for state, handled in handled_kinds.items():
         actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
+        resolved = {resolve_action_kind(a.id) for a in actions}
         assert resolved <= handled, f"{state}: resolved kinds {resolved} not handled by its handler ({handled})"
 
 
 def test_every_backend_waiting_action_has_a_ui_path() -> None:
     for state, backend_kinds in service_module._BACKEND_ACTIONS_FOR.items():
-        surfaced_kinds = {
-            resolve_action_kind(action.id)
-            for action in service_module._ACTIONS_FOR.get(state, [])
-            if action.id not in service_module._CLIENT_ONLY_ACTIONS
-        }
+        surfaced_kinds = {resolve_action_kind(action.id) for action in service_module._ACTIONS_FOR.get(state, [])}
         assert backend_kinds <= surfaced_kinds, f"{state}: hidden backend actions {backend_kinds - surfaced_kinds}"
 
 
-def test_submit_action_view_changes_is_a_noop_not_keep_draft(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[tuple]
+@pytest.mark.parametrize("state", [PcState.FIX_AWAIT_DECISION, PcState.BUILD_REVIEW, PcState.EDIT_REVIEW])
+@pytest.mark.parametrize("streaming", [False, True])
+def test_submit_action_rejects_view_changes_without_advancing(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    enqueued: list[tuple],
+    state: PcState,
+    streaming: bool,
 ) -> None:
-    """``view_changes`` is a client-side-only card toggle (forces
-    ``change_set.full_diff_open`` in the FE) that is never mapped in
-    ``_ACTION_ID_TO_KIND``, so ``resolve_action_kind`` passes it through
-    unchanged. If it ever reached ``dispatch`` at ``fix.await_decision``,
-    ``handle_await_decision``'s DEFAULT branch (``keep_draft`` ->
-    ``PcState.SUCCESS``, terminal) would silently end the session. The
-    ``_CLIENT_ONLY_ACTIONS`` guard in ``submit_action`` must intercept it
-    before the CAS check/dispatch and return the view unchanged."""
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
-    actor = _actor()
+    """Removed actions must not reach handlers that default to keeping the draft."""
+    session = _seed_session_at(repo, state)
+    submit = service.submit_action_stream if streaming else service.submit_action
 
-    view = service.submit_action(s.id, actor, Action(kind="view_changes", base_version=s.version))
+    with pytest.raises(BadRequestError, match="not allowed"):
+        submit(session.id, _actor(), Action(kind="view_changes", base_version=session.version))
 
-    assert view.state == "fix.await_decision"
-    assert view.state != "success"
-    assert view.version == s.version  # no CAS/dispatch advance happened
-    assert view.run_status != "complete"
-    assert enqueued == []  # never reached enqueue_fn -- proves it's a no-op, not a dispatched keep_draft
+    persisted, _context = repo.get_session(session.id)
+    assert persisted.current_state == state
+    assert persisted.version == session.version
+    assert enqueued == []
 
 
 def test_submit_action_update_model_persists_without_dispatch(
@@ -1319,7 +1312,6 @@ def test_build_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderR
         "publish_workflow",
         "keep_draft",
         "continue_adjusting",
-        "view_changes",
         "revert",
     ]
 
@@ -1334,7 +1326,7 @@ def test_build_complete_is_terminal_with_no_actions(
 
 
 def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """Every non-client-only Build action id must resolve (via
+    """Every Build action id must resolve (via
     resolve_action_kind) to a kind its handler in handlers_build.py branches
     on -- otherwise the button is a dead no-op. approve_plan->approve_repair,
     revert->undo, continue_adjusting/retry_after_revert->re_fix reuse the
@@ -1351,7 +1343,7 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
     }
     for state, kinds in handled.items():
         actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
+        resolved = {resolve_action_kind(a.id) for a in actions}
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
 
 
@@ -1438,7 +1430,6 @@ def test_edit_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRe
         "publish_workflow",
         "keep_draft",
         "continue_adjusting",
-        "view_changes",
         "revert",
     ]
 
@@ -1451,7 +1442,7 @@ def test_edit_complete_is_terminal_with_no_actions(service: DifyBuilderService, 
 
 
 def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """Every non-client-only Edit action id must resolve (via
+    """Every Edit action id must resolve (via
     resolve_action_kind) to a kind its handler in handlers_edit.py branches on.
     approve_plan->approve_repair, revert->undo, continue_adjusting/
     retry_after_revert->re_fix reuse the existing global map; the rest pass
@@ -1467,7 +1458,7 @@ def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
     }
     for state, kinds in handled.items():
         actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
+        resolved = {resolve_action_kind(a.id) for a in actions}
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
 
 

@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
-from core.dify_builder.models import ConversationItem, EntryMode
+from core.dify_builder.models import ChangedNode, ConversationItem, EntryMode
 
 
 class Phase(StrEnum):
@@ -550,16 +550,14 @@ class CheckpointCard(_Card):
 
 @dataclass
 class ChangeSetCard(_Card):
-    """Collapsible diff. ``scope`` in annotation|configuration|structure.
-    The ``view_changes`` action forces ``full_diff_open``.
-    """
+    """Read-only change summary. ``scope`` in annotation|configuration|structure."""
 
     kind: ClassVar[CardKind] = CardKind.CHANGE_SET
 
     count: int
     changes: list[str]
     scope: str
-    full_diff_open: bool = False
+    nodes: list[ChangedNode] = field(default_factory=list)
 
 
 @dataclass

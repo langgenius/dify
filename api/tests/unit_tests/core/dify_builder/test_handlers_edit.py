@@ -110,6 +110,10 @@ def test_edit_capability_check_renders_agent_fields():
     assert result.context.form_fields[0]["key"] == "tone"
     assert result.context.edit_rules == {"tone": "formal"}
     assert result.context.edit_target_node_ids == ["llm"]
+    change_set = next(item for item in result.items if item.kind == "change_set")
+    assert change_set.payload["changes"] == []
+    assert change_set.payload["nodes"][0]["node_id"] == "llm"
+    assert change_set.payload["nodes"][0]["title"]
 
 
 def test_capability_check_ignores_non_goal_action():
@@ -454,6 +458,10 @@ def test_review_continue_adjusting_returns_to_impact_analysis():
     assert res.next == PcState.EDIT_IMPACT_ANALYSIS
     kinds = {i.kind for i in res.items}
     assert {"form", "challenge", "change_set"} <= kinds
+    change_set = next(item for item in res.items if item.kind == "change_set")
+    assert change_set.payload["changes"] == []
+    assert change_set.payload["nodes"][0]["node_id"] == "llm"
+    assert change_set.payload["nodes"][0]["title"]
 
 
 def test_review_revert_records_intent_only():
