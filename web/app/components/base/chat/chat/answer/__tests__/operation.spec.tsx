@@ -3,25 +3,15 @@ import type { ChatContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import Operation from '../operation'
 
-const { mockSetShowAnnotationFullModal, mockProviderContext, mockT, mockAddAnnotation } =
-  vi.hoisted(() => {
-    return {
-      mockAddAnnotation: vi.fn(),
-      mockSetShowAnnotationFullModal: vi.fn(),
-      mockT: vi.fn((key: string): string => key),
-      mockProviderContext: {
-        plan: {
-          usage: { annotatedResponse: 0 },
-          total: { annotatedResponse: 100 },
-        },
-        enableBilling: false,
-      },
-    }
-  })
+const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(() => {
+  return {
+    mockAddAnnotation: vi.fn(),
+    mockSetShowAnnotationFullModal: vi.fn(),
+    mockT: vi.fn((key: string): string => key),
+  }
+})
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
@@ -33,10 +23,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAnnotationFullModal: mockSetShowAnnotationFullModal,
   }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContext,
 }))
 
 vi.mock('@/service/annotation', () => ({
@@ -59,13 +45,11 @@ vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({
     isShow,
     onHide,
     onEdited,
-    onAdded,
     onRemove,
   }: {
     isShow: boolean
     onHide: () => void
     onEdited: (q: string, a: string) => void
-    onAdded: (id: string, name: string, q: string, a: string) => void
     onRemove: () => void
   }) =>
     isShow ? (
@@ -75,9 +59,6 @@ vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({
         </button>
         <button data-testid="modal-edit" onClick={() => onEdited('eq', 'ea')}>
           Edit
-        </button>
-        <button data-testid="modal-add" onClick={() => onAdded('a1', 'author', 'eq', 'ea')}>
-          Add
         </button>
         <button data-testid="modal-remove" onClick={onRemove}>
           Remove
@@ -98,13 +79,7 @@ vi.mock(
       onEdit: () => void
       cached: boolean
     }) {
-      const { setShowAnnotationFullModal } = useModalContext()
-      const { plan, enableBilling } = useProviderContext()
       const handleAdd = () => {
-        if (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse) {
-          setShowAnnotationFullModal()
-          return
-        }
         onAdded('ann-new', 'Test User')
       }
       return (
@@ -266,8 +241,7 @@ describe('Operation', () => {
     mockContextValue.onAnnotationRemoved = vi.fn()
     mockContextValue.readonly = false
     mockContextValue.showRegenerate = false
-    mockProviderContext.plan.usage.annotatedResponse = 0
-    mockProviderContext.enableBilling = false
+
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
   })
 
@@ -1060,17 +1034,6 @@ describe('Operation', () => {
       )
     })
 
-    it('should show annotation full modal when limit reached', async () => {
-      const user = userEvent.setup()
-      mockProviderContext.enableBilling = true
-      mockProviderContext.plan.usage.annotatedResponse = 100
-      renderOperation()
-      const addBtn = screen.getByTestId('annotation-add-btn')
-      await user.click(addBtn)
-      expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
-      expect(mockAddAnnotation).not.toHaveBeenCalled()
-    })
-
     it('should open edit reply modal when cached annotation exists', async () => {
       const user = userEvent.setup()
       const item = {
@@ -1094,19 +1057,6 @@ describe('Operation', () => {
       await user.click(editBtn)
       await user.click(screen.getByTestId('modal-edit'))
       expect(mockContextValue.onAnnotationEdited).toHaveBeenCalledWith('eq', 'ea', 0)
-    })
-
-    it('should call onAnnotationAdded from edit reply modal', async () => {
-      const user = userEvent.setup()
-      const item = {
-        ...baseItem,
-        annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' },
-      }
-      renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-add'))
-      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith('a1', 'author', 'eq', 'ea', 0)
     })
 
     it('should call onAnnotationRemoved from edit reply modal', async () => {

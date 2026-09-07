@@ -604,6 +604,7 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      features: { billing: { subscription: { plan: 'sandbox' } } },
       educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
@@ -655,9 +656,7 @@ describe('MainNav', () => {
       enableSkill: true,
     }
     ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: false,
-      isFetchedPlan: true,
       plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
@@ -835,9 +834,7 @@ describe('MainNav', () => {
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: true,
-      isFetchedPlan: true,
       plan: { type: 'sandbox' },
     } as ProviderContextState)
 

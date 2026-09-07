@@ -1,11 +1,10 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useProviderContext } from '@/context/provider-context'
 import {
   addAnnotation,
   delAnnotation,
@@ -17,9 +16,13 @@ import {
   updateAnnotationScore,
   updateAnnotationStatus,
 } from '@/service/annotation'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
+
+let annotationQuota = { size: 0, limit: 10 }
+/* oxlint-disable typescript/no-explicit-any */
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
@@ -39,10 +42,6 @@ vi.mock('@/service/annotation', () => ({
   queryAnnotationJobStatus: vi.fn(),
   updateAnnotationScore: vi.fn(),
   updateAnnotationStatus: vi.fn(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
 }))
 
 vi.mock('../filter', () => ({
@@ -180,7 +179,6 @@ const fetchAnnotationListMock = fetchAnnotationList as Mock
 const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
 const updateAnnotationScoreMock = updateAnnotationScore as Mock
 const updateAnnotationStatusMock = updateAnnotationStatus as Mock
-const useProviderContextMock = useProviderContext as Mock
 
 const appDetail = {
   id: 'app-id',
@@ -196,6 +194,13 @@ const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationIt
 })
 
 const renderComponent = () => render(<Annotation appDetail={appDetail} />)
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: annotationQuota },
+  })
+}
 
 describe('Annotation', () => {
   beforeEach(() => {
@@ -215,13 +220,7 @@ describe('Annotation', () => {
     updateAnnotationStatusMock.mockResolvedValue({ job_id: 'job-1' })
     updateAnnotationScoreMock.mockResolvedValue(undefined)
     editAnnotationMock.mockResolvedValue(undefined)
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 0 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: false,
-    })
+    annotationQuota = { size: 0, limit: 10 }
   })
 
   it('should render empty element when no annotations are returned', async () => {
@@ -338,13 +337,7 @@ describe('Annotation', () => {
   })
 
   it('should show the annotation-full modal when enabling annotations exceeds the plan quota', async () => {
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 10 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: true,
-    })
+    annotationQuota = { size: 10, limit: 10 }
 
     renderComponent()
 

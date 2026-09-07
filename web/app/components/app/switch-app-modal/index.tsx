@@ -17,13 +17,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -49,8 +48,20 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const appIconType = zIconType.safeParse(appDetail.icon_type).data
@@ -75,6 +86,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
   )
 
   const goStart = async () => {
+    if (isAppQuotaUnavailable || isAppsFull) return
     try {
       const { new_app_id: newAppID, permission_keys } = await convertToWorkflow({
         params: { app_id: appDetail.id },
@@ -214,7 +226,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
               </Button>
               <Button
                 className="inset-ring-red-700"
-                disabled={isAppsFull || !name}
+                disabled={isAppQuotaUnavailable || isAppsFull || !name}
                 variant="primary"
                 tone="destructive"
                 onClick={goStart}

@@ -10,6 +10,7 @@ type ActionMenuItemProps = {
     key: VersionHistoryContextMenuOptions
     name: string
     description?: string
+    disabled?: boolean
     showUpgrade?: boolean
   }
   onClick: (operation: VersionHistoryContextMenuOptions) => void
@@ -19,6 +20,7 @@ type ActionMenuItemProps = {
 const ActionMenuItem: FC<ActionMenuItemProps> = ({ item, onClick, isDestructive = false }) => {
   return (
     <DropdownMenuItem
+      disabled={item.disabled}
       variant={isDestructive ? 'destructive' : 'default'}
       className={cn(
         'justify-between gap-x-3 px-2 py-1.5 whitespace-nowrap',

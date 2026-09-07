@@ -34,6 +34,7 @@
   "accessRule.updated": "تم تحديث قاعدة الوصول بنجاح",
   "accessRule.workspaceOwner": "مالك مساحة العمل",
   "common.duplicateAction": "تكرار",
+  "group.agent": "الوكلاء",
   "group.app": "التطبيقات",
   "group.app_acl": "أذونات الوصول إلى التطبيق",
   "group.billing": "الفوترة",

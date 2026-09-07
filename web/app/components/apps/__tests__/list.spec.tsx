@@ -131,12 +131,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-const mockOnPlanInfoChanged = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    onPlanInfoChanged: mockOnPlanInfoChanged,
-  }),
-}))
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -288,11 +282,9 @@ vi.mock('@/next/dynamic', () => ({
       return function MockCreateFromDSLModal({
         show,
         onClose,
-        onSuccess,
       }: {
         show: boolean
         onClose: () => void
-        onSuccess: () => void
       }) {
         if (!show) return null
         return React.createElement(
@@ -305,7 +297,7 @@ vi.mock('@/next/dynamic', () => ({
           ),
           React.createElement(
             'button',
-            { onClick: onSuccess, 'data-testid': 'success-dsl-modal' },
+            { onClick: onClose, 'data-testid': 'success-dsl-modal' },
             'Success',
           ),
         )
@@ -315,12 +307,10 @@ vi.mock('@/next/dynamic', () => ({
       return function MockCreateAppModal({
         show,
         onClose,
-        onSuccess,
         onCreateFromTemplate,
       }: {
         show: boolean
         onClose: () => void
-        onSuccess: () => void
         onCreateFromTemplate: () => void
       }) {
         if (!show) return null
@@ -334,7 +324,7 @@ vi.mock('@/next/dynamic', () => ({
           ),
           React.createElement(
             'button',
-            { onClick: onSuccess, 'data-testid': 'success-create-modal' },
+            { onClick: onClose, 'data-testid': 'success-create-modal' },
             'Success',
           ),
           React.createElement(
@@ -349,12 +339,10 @@ vi.mock('@/next/dynamic', () => ({
       return function MockCreateAppTemplateDialog({
         show,
         onClose,
-        onSuccess,
         onCreateFromBlank,
       }: {
         show: boolean
         onClose: () => void
-        onSuccess: () => void
         onCreateFromBlank: () => void
       }) {
         if (!show) return null
@@ -368,7 +356,7 @@ vi.mock('@/next/dynamic', () => ({
           ),
           React.createElement(
             'button',
-            { onClick: onSuccess, 'data-testid': 'success-template-dialog' },
+            { onClick: onClose, 'data-testid': 'success-template-dialog' },
             'Success',
           ),
           React.createElement(

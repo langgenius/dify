@@ -34,6 +34,7 @@
   "accessRule.updated": "Regra de acesso atualizada com sucesso",
   "accessRule.workspaceOwner": "Proprietário do workspace",
   "common.duplicateAction": "Duplicar",
+  "group.agent": "Agentes",
   "group.app": "Aplicativos",
   "group.app_acl": "Permissões de acesso ao aplicativo",
   "group.billing": "Faturamento",

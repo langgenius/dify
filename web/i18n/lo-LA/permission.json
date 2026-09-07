@@ -34,6 +34,7 @@
   "accessRule.updated": "ອັບເດດກົດລະບຽບການເຂົ້າເຖິງສຳເລັດແລ້ວ",
   "accessRule.workspaceOwner": "ເຈົ້າຂອງພື້ນທີ່ເຮັດວຽກ",
   "common.duplicateAction": "ເຮັດສຳເນົາ",
+  "group.agent": "ຕົວແທນ",
   "group.app": "ແອັບພລິເຄຊັນ",
   "group.app_acl": "ສິດການເຂົ້າເຖິງແອັບຯ",
   "group.billing": "ການຊຳລະເງິນ",

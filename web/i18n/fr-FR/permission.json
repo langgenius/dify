@@ -34,6 +34,7 @@
   "accessRule.updated": "Règle d'accès mise à jour avec succès",
   "accessRule.workspaceOwner": "Propriétaire de l’espace de travail",
   "common.duplicateAction": "Dupliquer",
+  "group.agent": "Agents",
   "group.app": "Applications",
   "group.app_acl": "Autorisations d'accès à l'application",
   "group.billing": "Facturation",

@@ -1,17 +1,11 @@
-import type { RefObject } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import type { UploadDropzoneProps } from '../upload-dropzone'
-import type { ProviderContextState } from '@/context/provider-context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import UploadDropzone from '../upload-dropzone'
 
-let mockEnableBilling = false
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: <T,>(
-    selector: (state: Pick<ProviderContextState, 'enableBilling'>) => T,
-  ): T => selector({ enableBilling: mockEnableBilling }),
-}))
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 
 // Helper to create mock ref objects for testing
 const createMockRef = <T,>(value: T | null = null): RefObject<T | null> => ({ current: value })
@@ -37,7 +31,7 @@ describe('UploadDropzone', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
   })
 
   describe('rendering', () => {
@@ -89,7 +83,7 @@ describe('UploadDropzone', () => {
 
   describe('tip rendering by billing state', () => {
     it('should render tip without total count limit when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -103,7 +97,7 @@ describe('UploadDropzone', () => {
     })
 
     it('should render tip with total count limit when billing is enabled', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -116,7 +110,7 @@ describe('UploadDropzone', () => {
     })
 
     it('should pass file size, batch count and supported types to tip when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -128,7 +122,7 @@ describe('UploadDropzone', () => {
     })
 
     it('should additionally pass total count to tip when billing is enabled', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
 
       render(<UploadDropzone {...defaultProps} />)
 
@@ -294,3 +288,10 @@ describe('UploadDropzone', () => {
     })
   })
 })
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: {},
+  })
+}

@@ -1,20 +1,17 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/client'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import DuplicateAppModal from '../index'
 
-const { mockProviderContext, toastErrorMock } = vi.hoisted(() => ({
-  mockProviderContext: {
-    plan: {
-      usage: { buildApps: 0 },
-      total: { buildApps: 1 },
-    },
-    enableBilling: true,
-  },
+const { mockAppQuota, toastErrorMock } = vi.hoisted(() => ({
+  mockAppQuota: { size: 0, limit: 1 },
   toastErrorMock: vi.fn(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContext,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -70,6 +67,13 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
   },
 }))
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: mockAppQuota },
+  })
+}
+
 describe('DuplicateAppModal', () => {
   const getIconButton = () =>
     screen.getByRole('button', {
@@ -78,8 +82,8 @@ describe('DuplicateAppModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProviderContext.plan.usage.buildApps = 0
-    mockProviderContext.plan.total.buildApps = 1
+    mockAppQuota.size = 0
+    mockAppQuota.limit = 1
   })
 
   it('should render a named dialog', () => {
@@ -212,7 +216,7 @@ describe('DuplicateAppModal', () => {
     const onConfirm = vi.fn()
     const onHide = vi.fn()
     const user = userEvent.setup()
-    mockProviderContext.plan.usage.buildApps = 1
+    mockAppQuota.size = 1
 
     render(
       <DuplicateAppModal
@@ -279,4 +283,33 @@ describe('DuplicateAppModal', () => {
       }),
     )
   })
+})
+
+it('waits for the real Cloud quota and allows an unlimited quota without an upgrade notice', async () => {
+  const queryClient = createConsoleQueryClient()
+  void queryClient.query({
+    ...consoleQuery.features.get.queryOptions(),
+    queryFn: () => new Promise(() => {}),
+  })
+  const onConfirm = vi.fn()
+  renderWithConsoleQuery(
+    <DuplicateAppModal
+      appName="Existing"
+      icon_type="emoji"
+      icon="🤖"
+      show
+      onConfirm={onConfirm}
+      onHide={vi.fn()}
+    />,
+    { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+  )
+  const button = screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ })
+  expect(button).toBeDisabled()
+  expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
+  await act(async () => {
+    seedFeatures(queryClient, { apps: { size: 100, limit: 0 } })
+  })
+  await waitFor(() => expect(button).toBeEnabled())
+  await userEvent.setup().click(button)
+  expect(onConfirm).toHaveBeenCalledOnce()
 })

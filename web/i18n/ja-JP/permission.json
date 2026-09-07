@@ -34,6 +34,7 @@
   "accessRule.updated": "アクセスルールを更新しました",
   "accessRule.workspaceOwner": "ワークスペースのオーナー",
   "common.duplicateAction": "複製",
+  "group.agent": "エージェント",
   "group.app": "アプリ",
   "group.app_acl": "アプリアクセス権限",
   "group.billing": "請求",

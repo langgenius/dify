@@ -34,6 +34,7 @@
   "accessRule.updated": "Pomyślnie zaktualizowano regułę dostępu",
   "accessRule.workspaceOwner": "Właściciel obszaru roboczego",
   "common.duplicateAction": "Duplikuj",
+  "group.agent": "Agenci",
   "group.app": "Aplikacje",
   "group.app_acl": "Uprawnienia dostępu do aplikacji",
   "group.billing": "Rozliczenia",

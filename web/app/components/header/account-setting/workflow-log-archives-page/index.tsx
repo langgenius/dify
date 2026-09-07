@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { API_PREFIX } from '@/config'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 
@@ -68,21 +67,25 @@ export default function WorkflowLogArchivesPage() {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { plan, enableBilling } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const canViewArchiveContent =
-    deploymentEdition === 'CLOUD' && enableBilling && plan.type !== 'sandbox'
   const archiveListQuery = useQuery(
     consoleQuery.workflowRunArchives.get.queryOptions({
-      enabled: canViewArchiveContent,
+      enabled: deploymentEdition === 'CLOUD' && (plan === 'professional' || plan === 'team'),
     }),
   )
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
   const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
   const summary = archiveData?.summary
-  const isLoading = archiveListQuery.isLoading
+  const isLoading =
+    (deploymentEdition === 'CLOUD' && plan === undefined) || archiveListQuery.isLoading
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
   useEffect(() => {
@@ -129,7 +132,7 @@ export default function WorkflowLogArchivesPage() {
     },
   ]
 
-  if (!canViewArchiveContent) {
+  if (deploymentEdition !== 'CLOUD' || plan === 'sandbox') {
     return (
       <div className="pb-6">
         <ArchivedLogsUpgradeBanner />

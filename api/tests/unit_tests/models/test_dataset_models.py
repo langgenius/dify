@@ -1662,6 +1662,34 @@ class TestChildChunkSessionAccessors:
         assert child_chunk.segment(session=sqlite_session) is None
 
 
+class TestDatasetAvailableDocumentCount:
+    """Regression coverage for ``Dataset.get_available_document_count``.
+
+    The accessor was a ``@property`` reaching for the global ``db.session``; it now takes a
+    caller-provided session, matching the other ``get_*`` accessors on ``Dataset``.
+    """
+
+    def test_counts_only_completed_enabled_documents(self, sqlite_session: Session):
+        dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
+        completed = _make_document(
+            document_id=str(uuid4()),
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            indexing_status=IndexingStatus.COMPLETED,
+        )
+        waiting = _make_document(
+            document_id=str(uuid4()),
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            position=2,
+            indexing_status=IndexingStatus.WAITING,
+        )
+        sqlite_session.add_all([dataset, completed, waiting])
+        sqlite_session.flush()
+
+        assert dataset.get_available_document_count(session=sqlite_session) == 1
+
+
 class TestDocumentSegmentNeighborAccessors:
     """Regression coverage for ``DocumentSegment.previous_segment`` and ``next_segment`` refactored
     to take a caller-provided session.

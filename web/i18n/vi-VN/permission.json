@@ -34,6 +34,7 @@
   "accessRule.updated": "Đã cập nhật quy tắc truy cập thành công",
   "accessRule.workspaceOwner": "Chủ sở hữu workspace",
   "common.duplicateAction": "Nhân bản",
+  "group.agent": "Tác nhân",
   "group.app": "Ứng dụng",
   "group.app_acl": "Quyền truy cập ứng dụng",
   "group.billing": "Thanh toán",

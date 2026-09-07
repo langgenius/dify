@@ -66,7 +66,7 @@ describe('EditCustomCollectionModal', () => {
       plan: {
         type: 'sandbox',
       },
-      enableBilling: false,
+
       webappCopyrightEnabled: true,
     } as ProviderContextState)
   })

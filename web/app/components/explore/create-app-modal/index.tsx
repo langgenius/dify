@@ -10,13 +10,16 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import AppIconPicker from '../../base/app-icon-picker'
 
@@ -86,10 +89,24 @@ const CreateAppModal = ({
       : '',
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD' && !isEditModal,
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && !isEditModal && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
+    if (!isEditModal && (isAppQuotaUnavailable || isAppsFull)) return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -112,6 +129,9 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    isEditModal,
+    isAppQuotaUnavailable,
+    isAppsFull,
     name,
     appIcon,
     description,
@@ -130,7 +150,7 @@ const CreateAppModal = ({
       handleSubmit()
     },
     {
-      enabled: show && !(!isEditModal && isAppsFull) && !!name.trim(),
+      enabled: show && !isAppQuotaUnavailable && !(!isEditModal && isAppsFull) && !!name.trim(),
       ignoreInputs: false,
     },
   )
@@ -254,7 +274,12 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
-              disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
+              disabled={
+                isAppQuotaUnavailable ||
+                (!isEditModal && isAppsFull) ||
+                !name.trim() ||
+                confirmDisabled
+              }
               className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}

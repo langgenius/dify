@@ -7,7 +7,7 @@ import Billing from '../index'
 
 let currentBillingUrl: string | undefined = 'https://billing.example.com'
 let isManager = true
-let enableBilling = true
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(() => new Promise(() => {})),
@@ -25,12 +25,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling,
-  }),
-}))
-
 vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
 }))
@@ -42,7 +36,10 @@ const renderBilling = () => {
       url: currentBillingUrl,
     })
   }
-  const { wrapper } = createConsoleQueryWrapper({ queryClient })
+  const { wrapper } = createConsoleQueryWrapper({
+    queryClient,
+    systemFeatures: { deployment_edition: deploymentEdition },
+  })
 
   return render(<Billing />, { wrapper })
 }
@@ -52,7 +49,7 @@ describe('Billing', () => {
     vi.clearAllMocks()
     currentBillingUrl = 'https://billing.example.com'
     isManager = true
-    enableBilling = true
+    deploymentEdition = 'CLOUD'
   })
 
   it('renders the billing portal as a keyboard-accessible external link for workspace managers', async () => {
@@ -77,7 +74,7 @@ describe('Billing', () => {
   })
 
   it('hides the billing action when billing is disabled', () => {
-    enableBilling = false
+    deploymentEdition = 'COMMUNITY'
 
     renderBilling()
 
