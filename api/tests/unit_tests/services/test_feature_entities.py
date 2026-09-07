@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from enums import CloudPlan
-from services.entities.feature_entities import LicenseLimitationModel, SubscriptionModel
+from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, SubscriptionModel
 
 
 def test_subscription_model_uses_the_cloud_plan_value_set() -> None:
@@ -40,3 +40,11 @@ def test_license_limitation_availability(
     limitation = LicenseLimitationModel(enabled=enabled, size=size, limit=limit)
 
     assert limitation.is_available(required) is expected
+
+
+def test_feature_response_exposes_subscription_without_legacy_billing_switch() -> None:
+    features = FeatureModel(billing={"subscription": {"plan": "professional", "interval": "month"}})
+
+    assert features.model_dump(mode="json")["billing"] == {
+        "subscription": {"plan": "professional", "interval": "month"},
+    }

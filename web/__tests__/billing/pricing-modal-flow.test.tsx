@@ -32,7 +32,6 @@ const render = (ui: React.ReactElement) => {
   })
   seedFeatures(queryClient, {
     billing: {
-      enabled: true,
       subscription: { interval: 'month', plan: mockCurrentPlan },
     },
     education: { enabled: mockEducationEnabled },

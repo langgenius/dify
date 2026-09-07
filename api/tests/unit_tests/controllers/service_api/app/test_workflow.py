@@ -608,7 +608,7 @@ class TestWorkflowRunApi:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
 
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -667,7 +667,7 @@ class TestWorkflowRunByIdApi:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
 
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -700,12 +700,11 @@ class TestWorkflowRunByIdApi:
         }
 
     @pytest.mark.parametrize(
-        ("deployment_edition", "billing_enabled", "plan"),
+        ("deployment_edition", "plan"),
         [
-            (DeploymentEdition.COMMUNITY, True, CloudPlan.SANDBOX),
-            (DeploymentEdition.ENTERPRISE, True, CloudPlan.SANDBOX),
-            (DeploymentEdition.CLOUD, False, CloudPlan.SANDBOX),
-            (DeploymentEdition.CLOUD, True, CloudPlan.PROFESSIONAL),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX),
+            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL),
         ],
     )
     def test_allows_execution_outside_enabled_sandbox_plan(
@@ -713,14 +712,13 @@ class TestWorkflowRunByIdApi:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         deployment_edition: DeploymentEdition,
-        billing_enabled: bool,
         plan: CloudPlan,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
-        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)

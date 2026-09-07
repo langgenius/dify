@@ -37,6 +37,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole, TenantStatus
@@ -82,7 +83,7 @@ def _load_account(session: Session, account_id: object) -> Account:
 def _check_member_invite_quota(tenant_id: str) -> None:
     features = FeatureService.get_features(tenant_id)
 
-    if features.billing.enabled:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
         members = features.members
         if 0 < members.limit <= members.size:
             raise MemberLimitExceeded()

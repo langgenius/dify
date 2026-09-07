@@ -12,8 +12,6 @@ class FeatureService:
             return CloudPlan.SANDBOX
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        if not billing_info["enabled"]:
-            return CloudPlan.SANDBOX
         return CloudPlan(billing_info["subscription"]["plan"])
 
     @classmethod
@@ -86,7 +84,7 @@ class FeatureService:
             return True
         if not tenant_id:
             return False
-        return features.billing.enabled and features.billing.subscription.plan.is_paid
+        return features.billing.subscription.plan.is_paid
 
     @classmethod
     def _fulfill_trial_models_from_env(cls, quota_types: tuple[str, ...] | None = None) -> list[str]:
@@ -140,7 +138,6 @@ class FeatureService:
 
         features_usage_info = BillingService.get_quota_info(tenant_id)
 
-        features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = CloudPlan(billing_info["subscription"]["plan"])
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)

@@ -173,7 +173,6 @@ class BillingInfo(TypedDict):
         3. To preserve compatibility, always keep non-strict mode here and avoid strict mode
     """
 
-    enabled: bool
     subscription: _BillingSubscription
     members: _BillingQuota
     apps: _BillingQuota

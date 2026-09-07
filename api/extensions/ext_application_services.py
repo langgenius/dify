@@ -635,6 +635,7 @@ def build_application_services(
             file_service=file_service,
             workspace_features=feature_gateway.get_workspace_features,
             files_url=dify_config.FILES_URL,
+            deployment_edition=deployment_edition,
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(session_factory=database_client),
