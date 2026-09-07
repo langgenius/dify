@@ -9,10 +9,20 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
 
 import controllers.web.human_input_file_upload as upload_module
-from controllers.common.errors import NoFileUploadedError
+from controllers.common.errors import (
+    BlockedFileExtensionError,
+    FileTooLargeError,
+    NoFileUploadedError,
+    RemoteFileAccessDeniedError,
+    RemoteFileInvalidResponseError,
+    RemoteFileInvalidUrlError,
+    RemoteFileNotFoundError,
+    RemoteFileUnavailableError,
+    RemoteFileUrlBlockedError,
+    UnsupportedFileTypeError,
+)
 from controllers.web.human_input_file_upload import (
     HumanInputFileUploadApi,
     InvalidUploadTokenForbiddenError,
@@ -23,7 +33,26 @@ from models import Account
 from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.human_input_file_upload_service import HumanInputUploadContext
+from services.errors.file import (
+    BlockedFileExtensionError as BlockedFileExtensionServiceError,
+)
+from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
+from services.human_input_file_upload_service import (
+    HumanInputUploadContext,
+    InvalidUploadTokenError,
+)
+from services.remote_file_service import (
+    RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
+)
+from services.remote_file_service import (
+    RemoteFileInvalidResponseError as RemoteFileInvalidResponseServiceError,
+)
+from services.remote_file_service import RemoteFileInvalidUrlError as RemoteFileInvalidUrlServiceError
+from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNotFoundServiceError
+from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
+from services.remote_file_service import RemoteFileUploadResult
+from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
 
 
 @pytest.fixture
@@ -69,23 +98,25 @@ def _upload_file() -> UploadFile:
     return upload_file
 
 
-def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> tuple[MagicMock, dict[str, object]]:
-    workflow_run_repository = MagicMock()
-    repo_factory = MagicMock(return_value=workflow_run_repository)
-    captured: dict[str, object] = {}
-
-    def _service_factory(session_factory, workflow_run_repository):
-        captured["session_factory"] = session_factory
-        captured["workflow_run_repository"] = workflow_run_repository
-        return service
-
-    monkeypatch.setattr(
-        upload_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        repo_factory,
+def _remote_upload_file() -> RemoteFileUploadResult:
+    return RemoteFileUploadResult(
+        id="file-1",
+        name="sample.txt",
+        size=6,
+        extension="txt",
+        url="signed:file-1",
+        mime_type="text/plain",
+        created_by="owner-1",
+        created_at=datetime(2024, 1, 1),
     )
-    monkeypatch.setattr(upload_module, "HumanInputFileUploadService", _service_factory)
-    return repo_factory, captured
+
+
+def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> None:
+    monkeypatch.setattr(
+        upload_module,
+        "application_services",
+        lambda: SimpleNamespace(human_input_file_uploads=service),
+    )
 
 
 def test_human_input_file_upload_route_uses_unified_path() -> None:
@@ -111,18 +142,12 @@ def test_local_upload_requires_authorization_before_reading_files(app: Flask) ->
             HumanInputFileUploadApi().post()
 
 
-def test_local_upload_ignores_source_and_records_form_file_link(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
-) -> None:
+def test_local_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
-    service.validate_upload_token.return_value = _upload_context()
-    repo_factory, captured = _patch_upload_service(monkeypatch, service)
-
-    file_service = MagicMock()
-    file_service.upload_file.return_value = _upload_file()
-    file_service_cls = MagicMock(return_value=file_service)
-    monkeypatch.setattr(upload_module, "FileService", file_service_cls)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
+    context = _upload_context()
+    service.validate_upload_token.return_value = context
+    service.upload_local_file.return_value = _upload_file()
+    _patch_upload_service(monkeypatch, service)
 
     data = {
         "file": (BytesIO(b"content"), "sample.txt"),
@@ -139,24 +164,18 @@ def test_local_upload_ignores_source_and_records_form_file_link(
 
     assert status == 201
     assert result["id"] == "file-1"
-    file_service.upload_file.assert_called_once()
-    assert file_service.upload_file.call_args.kwargs["source"] is None
-    assert file_service.upload_file.call_args.kwargs["user"].id == "owner-1"
-    repo_factory.assert_called_once()
-    assert captured["workflow_run_repository"] is repo_factory.return_value
-    service.record_upload_file.assert_called_once_with(
-        context=service.validate_upload_token.return_value,
-        file_id="file-1",
+    service.upload_local_file.assert_called_once_with(
+        context=context,
+        filename="sample.txt",
+        content=b"content",
+        mimetype="text/plain",
     )
 
 
-def test_local_upload_missing_file_raises_after_valid_token(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
-) -> None:
+def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
     _patch_upload_service(monkeypatch, service)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     with app.test_request_context(
         "/api/human-input-forms/files",
@@ -170,15 +189,10 @@ def test_local_upload_missing_file_raises_after_valid_token(
     service.validate_upload_token.assert_called_once_with("hitl_upload_token-1")
 
 
-def test_remote_upload_validates_token_before_fetching_remote_url(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
-) -> None:
+def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
-    service.validate_upload_token.side_effect = InvalidUploadTokenForbiddenError()
+    service.validate_upload_token.side_effect = InvalidUploadTokenError()
     _patch_upload_service(monkeypatch, service)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
-    ssrf_proxy = MagicMock()
-    monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
 
     with app.test_request_context(
         "/api/human-input-forms/files",
@@ -190,41 +204,15 @@ def test_remote_upload_validates_token_before_fetching_remote_url(
         with pytest.raises(InvalidUploadTokenForbiddenError):
             HumanInputFileUploadApi().post()
 
-    ssrf_proxy.head.assert_not_called()
-    ssrf_proxy.get.assert_not_called()
+    service.upload_remote_file.assert_not_called()
 
 
-def test_remote_upload_records_form_file_link(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
-) -> None:
+def test_remote_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
-    service.validate_upload_token.return_value = _upload_context()
+    context = _upload_context()
+    service.validate_upload_token.return_value = context
+    service.upload_remote_file.return_value = _remote_upload_file()
     _patch_upload_service(monkeypatch, service)
-    monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=sqlite_engine))
-
-    response = MagicMock()
-    response.status_code = 200
-    response.content = b"remote"
-    response.request.method = "GET"
-    ssrf_proxy = MagicMock()
-    ssrf_proxy.head.return_value = response
-    monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
-    monkeypatch.setattr(
-        upload_module,
-        "guess_file_info_from_response",
-        lambda _response: SimpleNamespace(filename="sample.txt", extension="txt", mimetype="text/plain", size=6),
-    )
-
-    file_service = MagicMock()
-    file_service.upload_file.return_value = _upload_file()
-    file_service_cls = MagicMock(return_value=file_service)
-    file_service_cls.is_file_size_within_limit.return_value = True
-    monkeypatch.setattr(upload_module, "FileService", file_service_cls)
-    monkeypatch.setattr(
-        upload_module.file_helpers,
-        "get_signed_file_url",
-        lambda upload_file_id: f"signed:{upload_file_id}",
-    )
 
     with app.test_request_context(
         "/api/human-input-forms/files",
@@ -237,10 +225,84 @@ def test_remote_upload_records_form_file_link(
 
     assert status == 201
     assert result["url"] == "signed:file-1"
-    file_service.upload_file.assert_called_once()
-    assert file_service.upload_file.call_args.kwargs["source_url"] == "https://example.com/file.txt"
-    assert file_service.upload_file.call_args.kwargs["user"].id == "owner-1"
-    service.record_upload_file.assert_called_once_with(
-        context=service.validate_upload_token.return_value,
-        file_id="file-1",
+    service.upload_remote_file.assert_called_once_with(
+        context=context,
+        url="https://example.com/file.txt",
     )
+
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        pytest.param(RemoteFileInvalidUrlServiceError(), RemoteFileInvalidUrlError, id="invalid-url"),
+        pytest.param(RemoteFileUrlBlockedServiceError(), RemoteFileUrlBlockedError, id="blocked-url"),
+        pytest.param(RemoteFileNotFoundServiceError(), RemoteFileNotFoundError, id="not-found"),
+        pytest.param(RemoteFileAccessDeniedServiceError(), RemoteFileAccessDeniedError, id="access-denied"),
+        pytest.param(RemoteFileUnavailableServiceError(), RemoteFileUnavailableError, id="unavailable"),
+        pytest.param(RemoteFileInvalidResponseServiceError(), RemoteFileInvalidResponseError, id="invalid-response"),
+    ],
+)
+def test_remote_upload_maps_remote_file_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    service_error: Exception,
+    http_error: type[Exception],
+) -> None:
+    service = MagicMock()
+    service.validate_upload_token.return_value = _upload_context()
+    service.upload_remote_file.side_effect = service_error
+    _patch_upload_service(monkeypatch, service)
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "Bearer hitl_upload_token-1"},
+        data={"url": "https://example.com/file.txt"},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(http_error) as raised:
+            HumanInputFileUploadApi().post()
+
+    assert raised.value.__cause__ is service_error
+
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        pytest.param(FileTooLargeServiceError(), FileTooLargeError, id="too-large"),
+        pytest.param(UnsupportedFileTypeServiceError(), UnsupportedFileTypeError, id="unsupported"),
+        pytest.param(BlockedFileExtensionServiceError("Blocked extension"), BlockedFileExtensionError, id="blocked"),
+    ],
+)
+@pytest.mark.parametrize("remote", [False, True], ids=["local", "remote"])
+def test_upload_maps_file_service_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    service_error: Exception,
+    http_error: type[Exception],
+    remote: bool,
+) -> None:
+    service = MagicMock()
+    service.validate_upload_token.return_value = _upload_context()
+    if remote:
+        service.upload_remote_file.side_effect = service_error
+        data = {"url": "https://example.com/file.txt"}
+    else:
+        service.upload_local_file.side_effect = service_error
+        data = {"file": (BytesIO(b"content"), "sample.txt")}
+    _patch_upload_service(monkeypatch, service)
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "Bearer hitl_upload_token-1"},
+        data=data,
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(http_error) as raised:
+            HumanInputFileUploadApi().post()
+
+    assert raised.value.__cause__ is service_error
+    if isinstance(service_error, FileTooLargeServiceError):
+        assert isinstance(raised.value, FileTooLargeError)
+        assert raised.value.description == "File size exceeded."
