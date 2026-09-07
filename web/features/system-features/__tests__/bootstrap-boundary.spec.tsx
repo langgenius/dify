@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { serverConsoleQuery } from '@/service/server'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { SystemFeaturesBootstrapBoundary } from '../bootstrap-boundary'
-
-const queryKey = ['console', 'system-features', 'get']
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -26,24 +30,39 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
 }))
 
-vi.mock('../client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey,
-    queryFn: mocks.query,
-    retryDelay: 0,
-    staleTime: Infinity,
-  }),
+vi.mock('server-only', () => ({}))
+
+vi.mock('@/config/server', () => ({
+  SERVER_CONSOLE_API_PREFIX: 'http://localhost/console/api',
 }))
+
+vi.mock('../client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../client')>()
+
+  return {
+    ...actual,
+    systemFeaturesQueryOptions: () => ({
+      ...actual.systemFeaturesQueryOptions(),
+      queryFn: mocks.query,
+      retryDelay: 0,
+    }),
+  }
+})
 
 vi.mock('@/app/components/full-screen-loading', () => ({
   FullScreenLoading: () => <div role="status">Loading system features</div>,
 }))
 
-vi.mock('@/utils/client', () => ({
-  get isClient() {
-    return mocks.isClient
-  },
-}))
+vi.mock('@/utils/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/client')>()
+
+  return {
+    ...actual,
+    get isClient() {
+      return mocks.isClient
+    },
+  }
+})
 
 function createQueryClient() {
   return new QueryClient()
@@ -65,11 +84,23 @@ describe('SystemFeaturesBootstrapBoundary', () => {
     mocks.isClient = true
   })
 
-  it('renders immediately from hydrated data without a client request', () => {
+  it('hydrates the server System Features query into the client boundary', () => {
+    const serverQueryClient = createQueryClient()
+    serverQueryClient.setQueryData(
+      serverConsoleQuery.systemFeatures.get.queryKey(),
+      createSystemFeaturesFixture(),
+    )
     const queryClient = createQueryClient()
-    queryClient.setQueryData(queryKey, createSystemFeaturesFixture())
 
-    renderBoundary(<div>Application</div>, queryClient)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HydrationBoundary state={dehydrate(serverQueryClient)}>
+          <SystemFeaturesBootstrapBoundary>
+            <div>Application</div>
+          </SystemFeaturesBootstrapBoundary>
+        </HydrationBoundary>
+      </QueryClientProvider>,
+    )
 
     expect(screen.getByText('Application')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -102,7 +133,7 @@ describe('SystemFeaturesBootstrapBoundary', () => {
     expect(mocks.query).not.toHaveBeenCalled()
   })
 
-  it('allows a manual retry after the client retry budget is exhausted', async () => {
+  it('allows a manual retry after a client query error', async () => {
     const user = userEvent.setup()
     mocks.query.mockRejectedValue(new Error('system features unavailable'))
 

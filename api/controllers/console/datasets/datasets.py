@@ -13,15 +13,15 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList
+from controllers.console.apikey import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
@@ -51,11 +51,12 @@ from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, U
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache
 from services.app_service import AppService
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -65,6 +66,18 @@ DATASET_LIST_PERMISSION_KEYS = frozenset({"dataset.preview", "dataset.acl.previe
 
 def _has_dataset_list_permission(permission_keys: list[str]) -> bool:
     return any(permission_key in DATASET_LIST_PERMISSION_KEYS for permission_key in permission_keys)
+
+
+def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Account, session: Session) -> Dataset:
+    dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), tenant_id, session=session)
+    if dataset is None:
+        raise NotFound("Dataset not found.")
+    if not dify_config.RBAC_ENABLED:
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+    return dataset
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -150,6 +163,12 @@ class IndexingEstimatePayload(BaseModel):
         if result is None:
             return "text_model"
         return result
+
+
+class DatasetApiKeyCreatePayload(BaseModel):
+    # Knowledge bases to scope the key to. Absent/empty => the key can access every
+    # dataset in the tenant (default). Declared so the generated client can send it.
+    dataset_ids: list[str] = Field(default_factory=list)
 
 
 class ConsoleDatasetListQuery(BaseModel):
@@ -323,7 +342,12 @@ class AutoDisableLogsResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+    console_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    IndexingEstimatePayload,
+    ConsoleDatasetListQuery,
+    DatasetApiKeyCreatePayload,
 )
 register_response_schema_models(
     console_ns,
@@ -467,15 +491,14 @@ class DatasetListApi(Resource):
                 }
             if getattr(whitelist_scope, "unrestricted", False):
                 filtered_dataset_ids = permission_dataset_ids
+                include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
             else:
+                # A restricted dataset whitelist is the highest-priority visibility gate:
+                # default readonly, per-dataset permission overrides, and own-dataset
+                # management must not expose datasets outside this set.
                 filtered_dataset_ids = set(whitelist_scope.resource_ids)
-                if permission_dataset_ids is not None:
-                    filtered_dataset_ids |= permission_dataset_ids
-                elif has_default_readonly:
-                    filtered_dataset_ids = None
             if filtered_dataset_ids is not None:
                 accessible_dataset_ids = sorted(filtered_dataset_ids)
-            include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
 
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
@@ -566,9 +589,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
@@ -600,23 +621,6 @@ class DatasetListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        if dify_config.RBAC_ENABLED:
-            if permission == DatasetPermissionEnum.ALL_TEAM:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                    current_tenant_id,
-                    current_user.id,
-                    dataset.id,
-                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-                )
-                initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
-            else:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                    current_tenant_id,
-                    current_user.id,
-                    dataset.id,
-                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.SPECIFIC),
-                )
-
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             current_tenant_id,
             current_user.id,
@@ -628,6 +632,16 @@ class DatasetListApi(Resource):
             dataset_detail_response_source(dataset, session=session), from_attributes=True
         ).model_dump(mode="json")
         item["permission_keys"] = permission_keys_map.get(dataset.id, [])
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
+
         return item, 201
 
 
@@ -646,7 +660,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -655,10 +669,12 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
             current_user.id,
@@ -713,7 +729,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DatasetUpdatePayload)
     def patch(
@@ -780,7 +796,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -811,12 +827,13 @@ class DatasetUseCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-
-        dataset_is_using = DatasetService.dataset_use_check(dataset_id_str, session)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        dataset_is_using = DatasetService.dataset_use_check(DatasetRefService.create_dataset_ref(dataset), session)
         return UsageCheckResponse(is_using=dataset_is_using).model_dump(mode="json"), 200
 
 
@@ -834,7 +851,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -990,7 +1007,7 @@ class DatasetRelatedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1027,13 +1044,15 @@ class DatasetIndexingStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+
         documents = session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
+            select(Document).where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
         ).all()
         documents_status = []
         for document in documents:
@@ -1041,6 +1060,8 @@ class DatasetIndexingStatusApi(Resource):
                 session.scalar(
                     select(func.count(DocumentSegment.id)).where(
                         DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.tenant_id == dataset.tenant_id,
+                        DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.document_id == str(document.id),
                         DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                     )
@@ -1050,6 +1071,8 @@ class DatasetIndexingStatusApi(Resource):
             total_segments = (
                 session.scalar(
                     select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.tenant_id == dataset.tenant_id,
+                        DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.document_id == str(document.id),
                         DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                     )
@@ -1086,6 +1109,8 @@ class DatasetApiKeyApi(Resource):
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
@@ -1093,18 +1118,34 @@ class DatasetApiKeyApi(Resource):
         keys = session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return dump_response(ApiKeyList, {"data": keys})
+        token_ids = [str(key.id) for key in keys]
+        bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, token_ids)
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys, bindings_by_token))
 
+    @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str):
+        # Optional list of knowledge bases to scope the key to. Absent/empty => the key
+        # can access every dataset in the tenant (default). Duplicates are de-duplicated.
+        payload = request.get_json(silent=True) or {}
+        raw_dataset_ids = payload.get("dataset_ids") or []
+        if not isinstance(raw_dataset_ids, list) or any(not isinstance(item, str) for item in raw_dataset_ids):
+            console_ns.abort(400, message="dataset_ids must be a list of strings.")
+        dataset_ids = list(dict.fromkeys(raw_dataset_ids))
+
+        if dataset_ids:
+            unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, current_tenant_id)
+            if unknown:
+                console_ns.abort(400, message=f"Unknown knowledge base id(s): {', '.join(unknown)}")
+
         current_key_count = (
             session.scalar(
                 select(func.count(ApiToken.id)).where(
@@ -1128,7 +1169,13 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         session.add(api_token)
         session.flush()
-        return dump_response(ApiKeyItem, api_token), 200
+        dataset_api_key_service.bind_datasets(session, api_token.id, dataset_ids)
+        session.flush()
+
+        # Reveal-once: the create response carries the full secret and its bound scope.
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.dataset_ids = dataset_ids
+        return dump_response(ApiKeyItem, item), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
@@ -1142,7 +1189,7 @@ class DatasetApiDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
@@ -1177,12 +1224,16 @@ class DatasetEnableApiApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
-    def post(self, session: Session, dataset_id: UUID, status: str):
-        dataset_id_str = str(dataset_id)
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, status: str):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
 
-        DatasetService.update_dataset_api_status(dataset_id_str, status == "enable", session)
+        DatasetService.update_dataset_api_status(dataset, status == "enable", current_user, session)
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -1248,14 +1299,15 @@ class DatasetErrorDocs(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str, session)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        results = DocumentService.get_error_documents_by_dataset_ref(
+            DatasetRefService.create_dataset_ref(dataset), session
+        )
 
         return dump_response(ErrorDocsResponse, {"data": results, "total": len(results)}), 200
 
@@ -1276,7 +1328,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1307,12 +1359,13 @@ class DatasetAutoDisableLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        auto_disable_logs = DatasetService.get_dataset_auto_disable_logs(dataset_id_str, session)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        auto_disable_logs = DatasetService.get_dataset_auto_disable_logs(
+            DatasetRefService.create_dataset_ref(dataset), session
+        )
         return dump_response(AutoDisableLogsResponse, auto_disable_logs), 200

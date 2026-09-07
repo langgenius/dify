@@ -32,6 +32,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -44,6 +45,7 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class MemberInvitePayload(BaseModel):
@@ -179,17 +181,17 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_accou
 
     features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
 
-    if dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
         workspace_members = features.workspace_members
         if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
             raise WorkspaceMembersLimitExceeded()
         if new_account_count > 0:
-            seats = FeatureService.get_license().seats
+            seats = SystemFeatureService.get_license().seats
             if not seats.is_available(new_account_count):
                 raise SeatsLimitExceeded()
         return
 
-    if dify_config.BILLING_ENABLED and features.billing.enabled is True:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
         members = features.members
         current_member_count = _count_current_members(tenant_id)
         if 0 < members.limit < current_member_count + new_member_count:
@@ -265,7 +267,10 @@ class MemberInviteEmailApi(Resource):
 
         tenant_id = inviter.current_tenant.id
         with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
-            if dify_config.ENTERPRISE_ENABLED is True or dify_config.BILLING_ENABLED is True:
+            if dify_config.DEPLOYMENT_EDITION in {
+                DeploymentEdition.CLOUD,
+                DeploymentEdition.ENTERPRISE,
+            }:
                 new_member_count, new_account_count = _count_new_member_invites(tenant_id, invitee_emails)
                 _check_member_invite_limits(tenant_id, new_member_count, new_account_count)
 

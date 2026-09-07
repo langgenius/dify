@@ -6,9 +6,35 @@
 
 ## Package Contracts
 
+Web owns application-specific requirements and consumes shared architecture guidance from skills and primitive contracts from Dify UI. Link to those owners instead of redefining their rules here.
+
+- For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
 - User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
 - For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/client`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
-- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Preserve a visible focus indicator on the final focusable element.
-- Follow `docs/overlay.md` for overlay selection and migration. Migrate a legacy overlay only when the current behavior change actually involves that overlay boundary.
+- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Use the [Dify UI package index] to find a primitive; read the relevant contract directly when it is already known. Preserve a visible focus indicator on the final focusable element.
+- Reuse the Web `SearchInput` composite when its search, clear, and IME contract matches the feature; otherwise follow the canonical [Input Group contract].
+- Give save and submit flows a real form boundary with visible labels and accessible errors. Use Dify UI `Form` when its structured submission and validation contract is the owner; otherwise use a native form. Follow the canonical [form contract].
+- Follow the canonical [Button contract] and [IconButton contract] for action semantics, loading, accessible names, and primitive composition. Do not add a Web wrapper that hides those contracts.
+- Follow [Accessible names and descriptions] when choosing or changing visible labels, ARIA naming, descriptions, or visually hidden text. Web owns localization and feature-specific status announcements; do not redefine the Dify UI naming contract locally.
+- Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Reuse the Web `Infotip` composite for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
 - For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
-- `docs/test.md` is the single source of truth for frontend automated-test policy. Skills may route and execute that policy but must not redefine it.
+- `docs/test.md` is the single source of truth for Web automated-test policy. Skills may route and execute that policy but must not redefine it.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+[Accessible names and descriptions]: ../packages/dify-ui/docs/accessible-names-and-descriptions.md
+[Button contract]: ../packages/dify-ui/src/button/README.md
+[Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
+[Dify UI package index]: ../packages/dify-ui/README.md
+[IconButton contract]: ../packages/dify-ui/src/icon-button/README.md
+[Input Group contract]: ../packages/dify-ui/src/input-group/README.md
+[Truncated Text Disclosure]: docs/truncated-text-disclosure.md
+[form contract]: ../packages/dify-ui/docs/forms.md

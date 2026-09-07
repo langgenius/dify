@@ -1,6 +1,9 @@
 'use client'
 import type { Locale } from '@/i18n-config'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -8,12 +11,10 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiAccountCircleLine } from '@remixicon/react'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -21,6 +22,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -115,6 +117,21 @@ export default function InviteSettingsPage() {
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
+  const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
+  const workspaceInvitationTitle = checkRes?.data?.workspace_name
+    ? t(($) => $.joinWorkspace, {
+        ns: 'login',
+        workspaceName: checkRes.data.workspace_name,
+      })
+    : setupAccountTitle
+  const documentTitle = !checkRes
+    ? setupAccountTitle
+    : !checkRes.is_valid
+      ? t(($) => $.invalid, { ns: 'login' })
+      : requiresAccountSetup || !checkRes.data?.workspace_name
+        ? setupAccountTitle
+        : workspaceInvitationTitle
+  useDocumentTitle(documentTitle)
 
   useEffect(() => {
     if (!shouldReturnToSignIn) return
@@ -124,11 +141,8 @@ export default function InviteSettingsPage() {
 
   const handleActivate = useCallback(async () => {
     try {
+      if (isActivating) return
       if (!isInvitationForCurrentAccount) return
-      if (requiresAccountSetup && !name) {
-        toast.error(t(($) => $.enterYourName, { ns: 'login' }))
-        return
-      }
       setIsActivating(true)
       const body = requiresAccountSetup
         ? {
@@ -156,6 +170,7 @@ export default function InviteSettingsPage() {
     }
   }, [
     isInvitationForCurrentAccount,
+    isActivating,
     language,
     name,
     queryClient,
@@ -165,7 +180,6 @@ export default function InviteSettingsPage() {
     timezone,
     token,
     router,
-    t,
   ])
 
   if (isProfilePending || shouldReturnToSignIn || !checkRes) return <Loading />
@@ -181,9 +195,12 @@ export default function InviteSettingsPage() {
           </h1>
         </div>
         <div className="mx-auto mt-6 w-full">
-          <Button variant="primary" className="w-full text-sm!">
-            <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
-          </Button>
+          <a
+            href="https://dify.ai"
+            className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+          >
+            {t(($) => $.explore, { ns: 'login' })}
+          </a>
         </div>
       </div>
     )
@@ -192,102 +209,83 @@ export default function InviteSettingsPage() {
   return (
     <div className="flex flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiAccountCircleLine className="size-6 text-2xl text-text-accent-light-mode-only" />
+        <span
+          className="i-ri-account-circle-line size-6 text-text-accent-light-mode-only"
+          aria-hidden="true"
+        />
       </div>
       <div className="pt-2 pb-4">
         <h1 className="title-4xl-semi-bold text-text-primary">
           {requiresAccountSetup
             ? t(($) => $.setYourAccount, { ns: 'login' })
-            : `${t(($) => $.join, { ns: 'login' })}${checkRes?.data?.workspace_name}`}
+            : workspaceInvitationTitle}
         </h1>
       </div>
-      <form onSubmit={noop}>
+      <Form
+        onFormSubmit={() => {
+          void handleActivate()
+        }}
+      >
         {requiresAccountSetup && (
           <>
-            <div className="mb-5">
-              <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
-                {t(($) => $.name, { ns: 'login' })}
-              </label>
-              <div className="mt-1">
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleActivate()
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <div className="mb-5">
-              <label
-                htmlFor="interface_language"
-                className="my-2 system-md-semibold text-text-secondary"
-              >
-                {t(($) => $.interfaceLanguage, { ns: 'login' })}
-              </label>
-              <div className="mt-1">
-                <Select
-                  value={selectedLanguage?.value ?? null}
-                  onValueChange={handleLanguageChange}
-                >
-                  <SelectTrigger id="interface_language" size="large">
-                    {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGE_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        <SelectItemText>{item.name}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="mb-5">
-              <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
-                {t(($) => $.timezone, { ns: 'login' })}
-              </label>
-              <div className="mt-1">
-                <Select
-                  value={selectedTimezone?.value ?? null}
-                  onValueChange={handleTimezoneChange}
-                >
-                  <SelectTrigger id="timezone" size="large">
-                    {selectedTimezone?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMEZONE_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        <SelectItemText>{item.name}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <Field
+              name="name"
+              validate={(value) => {
+                const nameValue = String(value)
+                return !nameValue || nameValue.trim()
+                  ? null
+                  : t(($) => $.enterYourName, { ns: 'login' })
+              }}
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $.name, { ns: 'login' })}</FieldLabel>
+              <Input
+                type="text"
+                required
+                value={name}
+                onValueChange={setName}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+              />
+              <FieldError>{t(($) => $.enterYourName, { ns: 'login' })}</FieldError>
+            </Field>
+            <Field name="interface_language" className="mb-5">
+              <Select value={selectedLanguage?.value ?? null} onValueChange={handleLanguageChange}>
+                <SelectLabel>{t(($) => $.interfaceLanguage, { ns: 'login' })}</SelectLabel>
+                <SelectTrigger size="large">
+                  {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGE_OPTIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <SelectItemText>{item.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field name="timezone" className="mb-5">
+              <Select value={selectedTimezone?.value ?? null} onValueChange={handleTimezoneChange}>
+                <SelectLabel>{t(($) => $.timezone, { ns: 'login' })}</SelectLabel>
+                <SelectTrigger size="large">
+                  {selectedTimezone?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONE_OPTIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <SelectItemText>{item.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
           </>
         )}
-        <div>
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={handleActivate}
-            loading={isActivating}
-            disabled={isActivating}
-          >
-            {`${t(($) => $.join, { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
-          </Button>
-        </div>
-      </form>
+        <Button type="submit" variant="primary" className="w-full" loading={isActivating}>
+          {workspaceInvitationTitle}
+        </Button>
+      </Form>
       {!systemFeatures.branding.enabled && (
         <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
           {t(($) => $['license.tip'], { ns: 'login' })}

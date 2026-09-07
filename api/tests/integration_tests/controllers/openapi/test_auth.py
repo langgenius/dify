@@ -12,6 +12,7 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from models import App, Tenant
 
@@ -66,7 +67,7 @@ def test_layer0_denies_account_bearer_without_membership(
     assert res.json.get("message") == "workspace_membership_revoked"
 
 
-def test_layer0_skipped_when_enterprise_enabled(
+def test_layer0_skipped_for_enterprise_edition(
     test_client: FlaskClient,
     account_token: str,
     other_workspace_app: App,
@@ -81,7 +82,7 @@ def test_layer0_skipped_when_enterprise_enabled(
     from configs import dify_config
 
     # Override the conftest autouse default for this test only.
-    monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
 
     res = test_client.get(
         f"/openapi/v1/apps/{other_workspace_app.id}/info",

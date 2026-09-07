@@ -79,10 +79,13 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    await user.type(
-      screen.getByPlaceholderText('workflow.snippet.namePlaceholder'),
-      '  Support snippet  ',
-    )
+    const nameInput = screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+
+    await waitFor(() => {
+      expect(nameInput).toHaveFocus()
+    })
+
+    await user.type(nameInput, '  Support snippet  ')
     await user.type(
       screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder'),
       '  Helps agents  ',

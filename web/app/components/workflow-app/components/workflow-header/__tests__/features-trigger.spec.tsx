@@ -1,13 +1,14 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
 import type { App } from '@/types/app'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
+import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -17,7 +18,6 @@ const mockUseChecklist = vi.fn()
 const mockUseChecklistBeforePublish = vi.fn()
 const mockUseNodesSyncDraft = vi.fn()
 const mockUseFeatures = vi.fn()
-const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
 
@@ -112,22 +112,8 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQueryClient: () => ({
-      invalidateQueries: mockInvalidateQueries,
-    }),
-  }
-})
-
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: Record<string, unknown>) => unknown) => mockUseFeatures(selector),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
 }))
 
 vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
@@ -149,6 +135,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         data-start-node-limit-exceeded={String(Boolean(props.startNodeLimitExceeded))}
         data-has-trigger-node={String(Boolean(props.hasTriggerNode))}
         data-inputs={JSON.stringify(inputs)}
+        data-outputs={JSON.stringify(props.outputs ?? [])}
       >
         <button
           type="button"
@@ -181,6 +168,23 @@ vi.mock('@/app/components/app/app-publisher', () => ({
           }}
         >
           publisher-publish
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(
+              (
+                props.onPublish as
+                  | ((
+                      params?: unknown,
+                      options?: { showSuccessToast?: boolean },
+                    ) => Promise<unknown> | unknown)
+                  | undefined
+              )?.(undefined, { showSuccessToast: false }),
+            ).catch(() => undefined)
+          }}
+        >
+          publisher-publish-silently
         </button>
         <button
           type="button"
@@ -235,23 +239,16 @@ vi.mock('@/hooks/use-theme', () => ({
 
 // Use real app store - global zustand mock will auto-reset between tests
 
-const createProviderContext = ({
-  type = Plan.sandbox,
-  isFetchedPlan = true,
-}: {
-  type?: Plan
-  isFetchedPlan?: boolean
-}) => ({
-  plan: { type },
-  isFetchedPlan,
-})
-
-const renderWithToast = (ui: ReactElement) => {
-  const queryClient = new QueryClient()
-  return {
-    queryClient,
-    ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>),
-  }
+const renderWithToast = (
+  ui: ReactElement,
+  { edition = 'CLOUD', plan = 'sandbox' }: { edition?: DeploymentEdition; plan?: CloudPlan } = {},
+) => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: edition },
+  })
+  seedFeatures(queryClient, { billing: { subscription: { plan } } })
+  vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
+  return { queryClient, ...render(ui, { wrapper }) }
 }
 
 describe('FeaturesTrigger', () => {
@@ -277,7 +274,6 @@ describe('FeaturesTrigger', () => {
     mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
       selector({ features: { file: {} } }),
     )
-    mockUseProviderContext.mockReturnValue(createProviderContext({}))
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
     // Set up app store state
@@ -387,6 +383,39 @@ describe('FeaturesTrigger', () => {
 
   // Verifies derived props passed into AppPublisher (variables, limits, and triggers).
   describe('Computed Props', () => {
+    it('should pass outputs from every end node to AppPublisher', () => {
+      const aaa = {
+        variable: 'aaa',
+        value_type: 'string',
+        value_selector: ['source-1', 'value'],
+      }
+      const bbb = {
+        variable: 'bbb',
+        value_type: 'number',
+        value_selector: ['source-2', 'value'],
+      }
+      mockUseNodes.mockReturnValue([
+        { id: 'end-1', data: { type: BlockEnum.End, title: 'Success End', outputs: [aaa] } },
+        { id: 'end-2', data: { type: BlockEnum.End, title: 'Fallback End', outputs: [bbb] } },
+      ])
+
+      renderWithToast(<FeaturesTrigger />)
+
+      const outputs = JSON.parse(
+        screen.getByTestId('app-publisher').getAttribute('data-outputs') ?? '[]',
+      )
+      expect(outputs).toEqual([
+        {
+          ...aaa,
+          source: { nodeId: 'end-1', nodeTitle: 'Success End', outputIndex: 0 },
+        },
+        {
+          ...bbb,
+          source: { nodeId: 'end-2', nodeTitle: 'Fallback End', outputIndex: 0 },
+        },
+      ])
+    })
+
     it('should append image input when file image upload is enabled', () => {
       // Arrange
       mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
@@ -416,24 +445,32 @@ describe('FeaturesTrigger', () => {
       })
     })
 
-    it('should set startNodeLimitExceeded when sandbox entry limit is exceeded', () => {
-      // Arrange
-      mockUseNodes.mockReturnValue([
-        { id: 'start', data: { type: BlockEnum.Start } },
-        { id: 'trigger-1', data: { type: BlockEnum.TriggerWebhook } },
-        { id: 'trigger-2', data: { type: BlockEnum.TriggerSchedule } },
-        { id: 'end', data: { type: BlockEnum.End } },
-      ])
+    it.each([
+      { edition: 'CLOUD', plan: 'sandbox', restricted: true },
+      { edition: 'CLOUD', plan: 'professional', restricted: false },
+      { edition: 'COMMUNITY', plan: 'sandbox', restricted: false },
+      { edition: 'ENTERPRISE', plan: 'sandbox', restricted: false },
+    ] as const)(
+      'should apply the entry limit for $edition / $plan',
+      ({ edition, plan, restricted }) => {
+        // Arrange
+        mockUseNodes.mockReturnValue([
+          { id: 'start', data: { type: BlockEnum.Start } },
+          { id: 'trigger-1', data: { type: BlockEnum.TriggerWebhook } },
+          { id: 'trigger-2', data: { type: BlockEnum.TriggerSchedule } },
+          { id: 'end', data: { type: BlockEnum.End } },
+        ])
 
-      // Act
-      renderWithToast(<FeaturesTrigger />)
+        // Act
+        renderWithToast(<FeaturesTrigger />, { edition, plan })
 
-      // Assert
-      const publisher = screen.getByTestId('app-publisher')
-      expect(publisher).toHaveAttribute('data-start-node-limit-exceeded', 'true')
-      expect(publisher).toHaveAttribute('data-publish-disabled', 'true')
-      expect(publisher).toHaveAttribute('data-has-trigger-node', 'true')
-    })
+        // Assert
+        const publisher = screen.getByTestId('app-publisher')
+        expect(publisher).toHaveAttribute('data-start-node-limit-exceeded', String(restricted))
+        expect(publisher).toHaveAttribute('data-publish-disabled', String(restricted))
+        expect(publisher).toHaveAttribute('data-has-trigger-node', 'true')
+      },
+    )
   })
 
   // Verifies callbacks wired from AppPublisher to stores and draft syncing.
@@ -580,6 +617,21 @@ describe('FeaturesTrigger', () => {
             name: 'Updated App',
           }),
         )
+      })
+    })
+
+    it('should not show a success toast when the publisher requests a silent publish', async () => {
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-silently' }))
+
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
       })
     })
 

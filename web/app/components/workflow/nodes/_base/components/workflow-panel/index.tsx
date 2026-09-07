@@ -5,8 +5,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
-import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -47,7 +47,7 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -96,8 +96,12 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const { t } = useTranslation()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)
-  const userProfile = useAtomValue(userProfileAtom)
-  const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
+  const { isConnected, nodePanelPresence } = useCollaboration(appId as string, canEdit)
   const { showMessageLogModal } = useAppStore(
     useShallow((state) => ({
       showMessageLogModal: state.showMessageLogModal,

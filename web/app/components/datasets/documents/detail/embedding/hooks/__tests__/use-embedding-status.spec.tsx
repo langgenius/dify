@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as datasetsService from '@/service/datasets'
 import {
   calculatePercent,

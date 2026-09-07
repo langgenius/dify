@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol, override
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services.billing_service import BillingService, SubscriptionPlan
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class MessagesCleanPolicy(Protocol):
 
 class BillingDisabledPolicy(MessagesCleanPolicy):
     """
-    Policy for community or enterpriseedition (billing disabled).
+    Policy for self-hosted editions, which do not use Cloud billing plans.
 
     No special filter logic, just return all message ids.
     """
@@ -61,7 +61,7 @@ class BillingDisabledPolicy(MessagesCleanPolicy):
 
 class BillingSandboxPolicy(MessagesCleanPolicy):
     """
-    Policy for sandbox plan tenants in cloud edition (billing enabled).
+    Policy for sandbox-plan tenants in the Cloud edition.
 
     Filters messages based on sandbox plan expiration rules:
     - Skip tenants in the whitelist
@@ -186,24 +186,22 @@ def create_message_clean_policy(
     """
     Factory function to create the appropriate message clean policy.
 
-    Determines which policy to use based on BILLING_ENABLED configuration:
-    - If BILLING_ENABLED is True: returns BillingSandboxPolicy
-    - If BILLING_ENABLED is False: returns BillingDisabledPolicy
+    Cloud uses BillingSandboxPolicy; self-hosted editions use BillingDisabledPolicy.
 
     Args:
         graceful_period_days: Grace period in days after subscription expiration (default: 21)
         current_timestamp: Current Unix timestamp for testing (default: None, uses current time)
     """
-    if not dify_config.BILLING_ENABLED:
-        logger.info("create_message_clean_policy: billing disabled, using BillingDisabledPolicy")
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        logger.info("create_message_clean_policy: self-hosted edition, using BillingDisabledPolicy")
         return BillingDisabledPolicy()
 
-    # Billing enabled - fetch whitelist from BillingService
+    # Cloud deployment - fetch whitelist from BillingService.
     tenant_whitelist = BillingService.get_expired_subscription_cleanup_whitelist()
     plan_provider = BillingService.get_plan_bulk_with_cache
 
     logger.info(
-        "create_message_clean_policy: billing enabled, using BillingSandboxPolicy "
+        "create_message_clean_policy: Cloud edition, using BillingSandboxPolicy "
         "(graceful_period_days=%s, whitelist=%s)",
         graceful_period_days,
         tenant_whitelist,

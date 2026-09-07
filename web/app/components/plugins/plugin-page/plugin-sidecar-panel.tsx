@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverClose, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 
@@ -26,13 +26,13 @@ export function PluginSidecarPanel({ children, footer, title }: PluginSidecarPan
         </div>
         <PopoverClose
           render={
-            <Button
-              variant="ghost"
+            <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-2.5 right-2.5 size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              size="lg"
+              className="absolute top-2.5 right-2.5"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
-            </Button>
+            </IconButton>
           }
         />
       </div>

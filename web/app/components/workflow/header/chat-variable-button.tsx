@@ -1,12 +1,13 @@
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo } from 'react'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
+  const { t } = useTranslation()
   const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
@@ -21,17 +22,23 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   }
 
   return (
-    <Button
+    <IconButton
+      aria-label={t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
+      aria-expanded={showChatVariablePanel}
+      size="lg"
       className={cn(
-        'rounded-lg border border-transparent p-2',
+        'border border-transparent',
         theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
       )}
       disabled={disabled}
       onClick={handleClick}
       variant="ghost"
     >
-      <BubbleX className="size-4 text-components-button-secondary-text" />
-    </Button>
+      <span
+        aria-hidden
+        className="i-custom-vender-line-others-bubble-x size-4 text-components-button-secondary-text"
+      />
+    </IconButton>
   )
 }
 

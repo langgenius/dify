@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, WithJsonSchema
 
 from fields.base import ResponseModel
+
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
 
 
 class SimpleEndUser(ResponseModel):
@@ -22,9 +25,9 @@ class EndUserDetail(ResponseModel):
     `is_anonymous` from `_is_anonymous` to return the stored value.
     """
 
-    id: str
-    tenant_id: str
-    app_id: str | None = None
+    id: UUIDString
+    tenant_id: UUIDString
+    app_id: UUIDString | None = None
     type: str
     external_user_id: str | None = None
     name: str | None = None

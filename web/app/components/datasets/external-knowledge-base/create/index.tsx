@@ -1,12 +1,13 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from './declarations'
-import { Button } from '@langgenius/dify-ui/button'
-import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { useDocLink } from '@/context/i18n'
+import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import ExternalApiSelection from './ExternalApiSelection'
 import InfoPanel from './InfoPanel'
@@ -78,13 +79,15 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 </a>
                 <span>{t(($) => $['connectHelper.helper5'], { ns: 'dataset' })} </span>
               </p>
-              <Button
-                className="absolute top-1 -left-11 flex h-8 w-8 items-center justify-center rounded-full p-2"
+              <IconButton
+                aria-label={t(($) => $['operation.back'], { ns: 'common' })}
+                className="absolute top-1 -left-11 rounded-full"
                 variant="tertiary"
+                size="lg"
                 onClick={navBackHandle}
               >
-                <RiArrowLeftLine className="size-4 text-text-tertiary" />
-              </Button>
+                <span aria-hidden className="i-ri-arrow-left-line size-4 text-text-tertiary" />
+              </IconButton>
             </div>
             <KnowledgeBaseInfo
               name={formData.name}
@@ -122,11 +125,11 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
               }
             />
             <div className="flex items-center justify-end gap-2 self-stretch py-2">
-              <Button variant="secondary" onClick={navBackHandle}>
+              <Link href="/datasets" replace className={buttonVariants({ variant: 'secondary' })}>
                 <div className="system-sm-medium text-components-button-secondary-text">
                   {t(($) => $['externalKnowledgeForm.cancel'], { ns: 'dataset' })}
                 </div>
-              </Button>
+              </Link>
               <Button
                 variant="primary"
                 onClick={() => {
@@ -138,7 +141,10 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 <div className="system-sm-medium text-components-button-primary-text">
                   {t(($) => $['externalKnowledgeForm.connect'], { ns: 'dataset' })}
                 </div>
-                <RiArrowRightLine className="size-4 text-components-button-primary-text" />
+                <span
+                  aria-hidden
+                  className="i-ri-arrow-right-line size-4 text-components-button-primary-text"
+                />
               </Button>
             </div>
           </div>

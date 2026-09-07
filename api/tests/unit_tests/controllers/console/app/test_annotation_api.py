@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.app import annotation as annotation_module
-from models.model import App, AppMode, IconType
+from models.account import Account
+from models.model import App, AppAnnotationHitHistory, AppMode, IconType, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
 
 
@@ -31,8 +32,40 @@ def _persist_app(session: Session) -> App:
     return app
 
 
-def _annotation_model(annotation_id: str = "ann-1") -> SimpleNamespace:
-    return SimpleNamespace(id=annotation_id, question="q", content="a", hit_count=0, created_at=None)
+def _account() -> Account:
+    account = Account(name="Owner", email="owner@example.com")
+    account.id = "account-1"
+    return account
+
+
+def _annotation_model(annotation_id: str = "ann-1") -> MessageAnnotation:
+    annotation = MessageAnnotation(
+        app_id="app-1",
+        question="q",
+        content="a",
+        account_id="account-1",
+    )
+    annotation.id = annotation_id
+    annotation.hit_count = 0
+    annotation.created_at = datetime(2026, 1, 1)
+    return annotation
+
+
+def _annotation_hit_history() -> AppAnnotationHitHistory:
+    history = AppAnnotationHitHistory(
+        app_id="app-1",
+        annotation_id="ann-1",
+        source="hit-testing",
+        score=0.9,
+        question="q",
+        annotation_question="q",
+        annotation_content="a",
+        account_id="account-1",
+        message_id="message-1",
+    )
+    history.id = "history-1"
+    history.created_at = datetime(2026, 1, 1)
+    return history
 
 
 def test_annotation_reply_payload_valid():
@@ -130,7 +163,7 @@ def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant(sqlite_s
         patch.object(
             annotation_module,
             "current_account_with_tenant",
-            return_value=(SimpleNamespace(id="account-1"), "tenant-2"),
+            return_value=(_account(), "tenant-2"),
         ),
     ):
         with pytest.raises(NotFound):
@@ -149,7 +182,7 @@ class TestConsoleAnnotationRefBoundaries:
             patch.object(
                 annotation_module,
                 "current_account_with_tenant",
-                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch.object(annotation_module.AppAnnotationService, "delete_app_annotations_in_batch", delete_mock),
         ):
@@ -170,7 +203,7 @@ class TestConsoleAnnotationRefBoundaries:
             patch.object(
                 annotation_module,
                 "current_account_with_tenant",
-                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch.object(annotation_module.AppAnnotationService, "update_app_annotation_directly", update_mock),
         ):
@@ -198,7 +231,7 @@ class TestConsoleAnnotationRefBoundaries:
             patch.object(
                 annotation_module,
                 "current_account_with_tenant",
-                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch.object(annotation_module.AppAnnotationService, "delete_app_annotation", delete_mock),
         ):
@@ -213,15 +246,7 @@ class TestConsoleAnnotationRefBoundaries:
     def test_hit_history_uses_annotation_ref(self, app: Flask, sqlite_session: Session):
         api = annotation_module.AnnotationHitHistoryListApi()
         handler = unwrap(api.get)
-        history = SimpleNamespace(
-            id="history-1",
-            source="hit-testing",
-            score=0.9,
-            question="q",
-            annotation_question="q",
-            annotation_content="a",
-            created_at=None,
-        )
+        history = _annotation_hit_history()
         hit_history_mock = Mock(return_value=([history], 1))
         _persist_app(sqlite_session)
 
@@ -230,7 +255,7 @@ class TestConsoleAnnotationRefBoundaries:
             patch.object(
                 annotation_module,
                 "current_account_with_tenant",
-                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch.object(annotation_module.AppAnnotationService, "get_annotation_hit_histories", hit_history_mock),
         ):

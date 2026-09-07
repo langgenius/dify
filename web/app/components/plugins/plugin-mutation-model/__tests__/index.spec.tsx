@@ -1,7 +1,7 @@
 import type { Plugin } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
 import { render } from '@/test/console/render'
 import { PluginCategoryEnum } from '../../types'

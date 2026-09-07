@@ -12,8 +12,17 @@ async function loadGeneratedConsoleContract(segment: string) {
 }
 
 async function loadEnterpriseContract(): Promise<AnyContractRouter> {
-  const { contract } = await import('@dify/contracts/enterprise/orpc.gen')
-  return { enterprise: contract }
+  const [{ contract: enterpriseContract }, { contract: appDeployContract }] = await Promise.all([
+    import('@dify/contracts/enterprise/orpc.gen'),
+    import('@dify/contracts/enterprise-app-deploy/orpc.gen'),
+  ])
+
+  return {
+    enterprise: {
+      ...enterpriseContract,
+      appDeploy: appDeployContract,
+    },
+  }
 }
 
 async function loadKnowledgeFsContract(): Promise<AnyContractRouter> {

@@ -1,13 +1,14 @@
 import importlib
+import json
 import sys
 import types
 from collections import UserDict
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_chroma_modules():
@@ -175,10 +176,10 @@ def test_search_by_full_text_returns_empty_list(chroma_module):
 
 def test_factory_init_vector_uses_existing_or_generated_collection(chroma_module, monkeypatch: pytest.MonkeyPatch):
     factory = chroma_module.ChromaVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1", index_struct_dict={"vector_store": {"class_prefix": "EXISTING"}}, index_struct=None
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(chroma_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(chroma_module.dify_config, "CHROMA_HOST", "localhost")

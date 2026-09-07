@@ -1,6 +1,5 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ScrollArea,
@@ -57,7 +56,7 @@ export default function AccountSetting({
   onTabChangeAction,
 }: IAccountSettingProps) {
   const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
+  const { enableReplaceWebAppLogo } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -65,7 +64,8 @@ export default function AccountSetting({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
+  const canViewBilling =
+    systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   const activeMenu = (() => {
@@ -145,7 +145,8 @@ export default function AccountSetting({
 
     if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
-    if (enableReplaceWebAppLogo || enableBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
+    if (enableReplaceWebAppLogo || systemFeatures.deployment_edition === 'CLOUD')
+      visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
     if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
 
@@ -171,19 +172,7 @@ export default function AccountSetting({
   ]
 
   return (
-    <MenuDialog show onClose={onCancelAction}>
-      <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
-        <Button
-          variant="tertiary"
-          size="large"
-          className="px-2"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onCancelAction}
-        >
-          <span className="i-ri-close-line size-5" />
-        </Button>
-        <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
-      </div>
+    <MenuDialog title={t(($) => $['settings.settings'], { ns: 'common' })} onClose={onCancelAction}>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">

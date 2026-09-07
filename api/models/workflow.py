@@ -211,6 +211,13 @@ class Workflow(Base):  # bug
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_pkey"),
         sa.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
+        sa.Index(
+            "workflow_app_version_number_idx",
+            "app_id",
+            "version_number",
+            unique=True,
+            postgresql_where=sa.text("version_number IS NOT NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -224,6 +231,9 @@ class Workflow(Base):  # bug
         server_default=sa.text("'standard'"),
     )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
+    # User-facing version number, unique and monotonically increasing within an app, displayed as `#N`.
+    # NULL for draft workflows and for versions published before numbering was introduced.
+    version_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
     graph: Mapped[str] = mapped_column(LongText)
@@ -265,6 +275,7 @@ class Workflow(Base):  # bug
         marked_name: str = "",
         marked_comment: str = "",
         kind: str | None = WorkflowKind.STANDARD.value,
+        version_number: int | None = None,
     ) -> "Workflow":
         workflow = Workflow()
         workflow.id = str(uuid4())
@@ -273,6 +284,7 @@ class Workflow(Base):  # bug
         workflow.type = WorkflowType(type)
         workflow.kind = resolve_workflow_kind(kind)
         workflow.version = version
+        workflow.version_number = version_number
         workflow.graph = graph
         workflow.features = features
         workflow.created_by = created_by
@@ -285,18 +297,16 @@ class Workflow(Base):  # bug
         workflow.updated_at = workflow.created_at
         return workflow
 
-    @property
-    def created_by_account(self) -> Account | None:
-        return self.get_created_by_account(session=db.session())
+    def created_by_account(self, session: orm.Session) -> Account | None:
+        return self.get_created_by_account(session=session)
 
-    def get_created_by_account(self, *, session: orm.Session) -> Account | None:
+    def get_created_by_account(self, session: orm.Session) -> Account | None:
         return session.get(Account, self.created_by)
 
-    @property
-    def updated_by_account(self) -> Account | None:
-        return self.get_updated_by_account(session=db.session())
+    def updated_by_account(self, session: orm.Session) -> Account | None:
+        return self.get_updated_by_account(session=session)
 
-    def get_updated_by_account(self, *, session: orm.Session) -> Account | None:
+    def get_updated_by_account(self, session: orm.Session) -> Account | None:
         return session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
@@ -552,18 +562,17 @@ class Workflow(Base):  # bug
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
-    @property
     @deprecated(
-        "This property is not accurate for determining if a workflow is published as a tool."
+        "This method is not accurate for determining if a workflow is published as a tool."
         "It only checks if there's a WorkflowToolProvider for the app, "
         "not if this specific workflow version is the one being used by the tool."
     )
-    def tool_published(self) -> bool:
-        return self.get_tool_published(session=db.session())
+    def tool_published(self, session: orm.Session) -> bool:
+        return self.get_tool_published(session=session)
 
-    def get_tool_published(self, *, session: orm.Session) -> bool:
+    def get_tool_published(self, session: orm.Session) -> bool:
         """
-        DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
+        DEPRECATED: This method is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
         is the one being used by the tool.
 
@@ -632,11 +641,13 @@ class Workflow(Base):  # bug
             raise ValueError("environment variable require a unique id")
 
         # Compare inputs and origin variables,
-        # if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
+        # if the value is HIDDEN_VALUE, use the origin variable value.
         origin_variables_dictionary = {var.id: var for var in self.environment_variables}
         for i, variable in enumerate(value):
             if variable.id in origin_variables_dictionary and variable.value == HIDDEN_VALUE:
-                value[i] = origin_variables_dictionary[variable.id].model_copy(update={"name": variable.name})
+                value[i] = origin_variables_dictionary[variable.id].model_copy(
+                    update={"name": variable.name, "description": variable.description}
+                )
 
         # encrypt secret variables value
         def encrypt_func(var: VariableBase) -> VariableBase:
@@ -733,6 +744,24 @@ class Workflow(Base):  # bug
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
         return str(d)
+
+
+class WorkflowVersionCounter(Base):
+    """Monotonic per-app allocator for `Workflow.version_number`.
+
+    One row per app, holding the highest number handed out so far. Numbers are never
+    reused, so deleting a published version does not free its number.
+
+    `app_id` mirrors `Workflow.app_id`, which is polymorphic: it holds an app id, a
+    pipeline id or a snippet id depending on the workflow kind. UUID uniqueness across
+    those tables is why no owner-type column is needed here.
+    """
+
+    __tablename__ = "workflow_version_counters"
+    __table_args__ = (sa.PrimaryKeyConstraint("app_id", name="workflow_version_counter_pkey"),)
+
+    app_id: Mapped[str] = mapped_column(StringUUID)
+    last_version_number: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
 
 class WorkflowRunDict(TypedDict):
@@ -1361,17 +1390,15 @@ class WorkflowAppLog(TypeBase):
 
         return None
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: orm.Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     def to_dict(self) -> WorkflowAppLogDict:
         result: WorkflowAppLogDict = {

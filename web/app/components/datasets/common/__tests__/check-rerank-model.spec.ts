@@ -3,7 +3,7 @@ import type {
   ModelItem,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,

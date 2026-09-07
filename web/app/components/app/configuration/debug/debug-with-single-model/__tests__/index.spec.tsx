@@ -125,9 +125,7 @@ function createMockProviderContext(
     ttsDefaultModel: null,
     agentThoughtDefaultModel: null,
     updateModelList: vi.fn(),
-    onPlanInfoChanged: vi.fn(),
     refreshModelProviders: vi.fn(),
-    refreshLicenseLimit: vi.fn(),
     ...overrides,
   } as ProviderContextState
 }
@@ -326,7 +324,6 @@ const mockConsoleState = {
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceDatasetOperator: false,
-  refreshUserProfile: vi.fn(),
 }
 
 const { mockConsoleStateReader } = vi.hoisted(() => ({

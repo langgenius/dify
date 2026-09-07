@@ -14,7 +14,7 @@ from celery.result import AsyncResult
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus

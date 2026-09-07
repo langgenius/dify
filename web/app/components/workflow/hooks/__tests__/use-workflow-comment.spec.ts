@@ -3,6 +3,7 @@ import type {
   WorkflowCommentList,
 } from '@/app/components/workflow/comment/types'
 import { act, waitFor } from '@testing-library/react'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
@@ -54,36 +55,36 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    systemFeatures: {
-      get: () => ({
-        enable_collaboration_mode: globalFeatureState.enableCollaboration,
-      }),
-    },
-    apps: {
-      byAppId: {
-        workflow: {
-          comments: {
-            get: (...args: unknown[]) => mockFetchWorkflowComments(...args),
-            post: (...args: unknown[]) => mockCreateWorkflowComment(...args),
-            byCommentId: {
-              delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
-              get: (...args: unknown[]) => mockFetchWorkflowComment(...args),
-              put: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
-              resolve: {
-                post: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-              },
-              replies: {
-                post: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
-                byReplyId: {
-                  delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
-                  put: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+  return {
+    ...actual,
+    consoleClient: {
+      systemFeatures: {
+        get: () => ({
+          enable_collaboration_mode: globalFeatureState.enableCollaboration,
+        }),
+      },
+      apps: {
+        byAppId: {
+          workflow: {
+            comments: {
+              get: (...args: unknown[]) => mockFetchWorkflowComments(...args),
+              post: (...args: unknown[]) => mockCreateWorkflowComment(...args),
+              byCommentId: {
+                delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
+                get: (...args: unknown[]) => mockFetchWorkflowComment(...args),
+                put: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
+                resolve: {
+                  post: (...args: unknown[]) => mockResolveWorkflowComment(...args),
+                },
+                replies: {
+                  post: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
+                  byReplyId: {
+                    delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
+                    put: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+                  },
                 },
               },
             },
@@ -91,19 +92,9 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
-  },
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['console', 'systemFeatures', 'get'],
-          ...options,
-        }),
-      },
-    },
-  },
-}))
+    consoleQuery: actual.consoleQuery,
+  }
+})
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
@@ -156,6 +147,7 @@ const baseCommentDetail = (): WorkflowCommentDetail => ({
 
 const createSeededQueryClient = () => {
   const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   seedSystemFeatures(queryClient, {
     enable_collaboration_mode: globalFeatureState.enableCollaboration,
   })

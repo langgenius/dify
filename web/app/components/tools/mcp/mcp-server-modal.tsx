@@ -8,7 +8,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
   useCreateMCPServer,
   useInvalidateMCPServerDetail,
@@ -60,21 +59,6 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
     return res
   }
 
-  const emitMcpServerUpdate = (action: 'created' | 'updated') => {
-    const socket = webSocketClient.getSocket(appID)
-    if (!socket) return
-
-    const timestamp = Date.now()
-    socket.emit('collaboration_event', {
-      type: 'mcp_server_update',
-      data: {
-        action,
-        timestamp,
-      },
-      timestamp,
-    })
-  }
-
   const submit = async () => {
     if (!data) {
       const payload: {
@@ -90,7 +74,6 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
       await createMCPServer(payload)
       invalidateMCPServerDetail(appID)
-      emitMcpServerUpdate('created')
       onHide()
     } else {
       const payload: {
@@ -107,7 +90,6 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
       await updateMCPServer(payload)
       invalidateMCPServerDetail(appID)
-      emitMcpServerUpdate('updated')
       onHide()
     }
   }

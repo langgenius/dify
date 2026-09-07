@@ -132,7 +132,6 @@ class ExtractProcessor:
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
-                assert upload_file is not None, "upload_file is required"
                 etl_type = dify_config.ETL_TYPE
                 extractor: BaseExtractor | None = None
                 if etl_type == "Unstructured":
@@ -140,6 +139,7 @@ class ExtractProcessor:
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
 
                     if file_extension in {".xlsx", ".xls"}:
+                        assert upload_file is not None, "upload_file is required"
                         extractor = ExcelExtractor(
                             file_path,
                             upload_file.tenant_id,
@@ -187,6 +187,7 @@ class ExtractProcessor:
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 else:
                     if file_extension in {".xlsx", ".xls"}:
+                        assert upload_file is not None, "upload_file is required"
                         extractor = ExcelExtractor(
                             file_path,
                             upload_file.tenant_id,

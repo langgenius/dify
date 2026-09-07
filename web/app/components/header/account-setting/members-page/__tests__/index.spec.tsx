@@ -1,12 +1,12 @@
 import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -14,15 +14,14 @@ import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
 
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
+let memberFeatures: ConsoleQueryTestOptions['features'] = {}
+
 const mockConsoleState = vi.hoisted(() => ({
   current: {} as Partial<ConsoleStateFixture>,
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
@@ -39,7 +38,9 @@ vi.mock('@/service/use-common')
 
 const renderMembersPage = () =>
   renderWithConsoleQuery(<MembersPage />, {
-    systemFeatures: { is_email_setup: true },
+    features: memberFeatures,
+    accountProfile: mockConsoleState.current.userProfile,
+    systemFeatures: { deployment_edition: deploymentEdition, is_email_setup: true },
   })
 
 const getMemberDetailsButton = (memberId: string) =>
@@ -245,9 +246,9 @@ describe('MembersPage', () => {
       mutateAsync: mockUpdateRolesOfMember,
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
 
+    deploymentEdition = 'COMMUNITY'
     vi.mocked(useProviderContext).mockReturnValue(
       createMockProviderContextValue({
-        enableBilling: false,
         isAllowTransferWorkspace: true,
       }),
     )
@@ -280,7 +281,9 @@ describe('MembersPage', () => {
 
   it('should render plural roles column header when RBAC is enabled', () => {
     renderWithConsoleQuery(<MembersPage />, {
+      features: memberFeatures,
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         is_email_setup: true,
         rbac_enabled: true,
       },
@@ -330,9 +333,9 @@ describe('MembersPage', () => {
   })
 
   it('should show non-interactive owner role when transfer ownership is not allowed', () => {
+    deploymentEdition = 'COMMUNITY'
     vi.mocked(useProviderContext).mockReturnValue(
       createMockProviderContextValue({
-        enableBilling: false,
         isAllowTransferWorkspace: false,
       }),
     )
@@ -398,17 +401,12 @@ describe('MembersPage', () => {
   })
 
   it('should show billing information for limited plan', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: 5 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 5 },
+    }
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -419,17 +417,12 @@ describe('MembersPage', () => {
   })
 
   it('should show unlimited billing information', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: -1 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 0 },
+    }
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -437,22 +430,17 @@ describe('MembersPage', () => {
   })
 
   it('should show non-billing member format for team plan even when billing is enabled', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.team,
-          total: { teamMembers: 50 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'team' } },
+      members: { size: 2, limit: 50 },
+    }
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
     expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
   })
 
@@ -547,17 +535,12 @@ describe('MembersPage', () => {
       data: { accounts: [mockAccounts[0]] },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: 5 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 5 },
+    }
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -688,7 +671,9 @@ describe('MembersPage', () => {
     const user = userEvent.setup()
 
     renderWithConsoleQuery(<MembersPage />, {
+      features: memberFeatures,
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         is_email_setup: true,
         rbac_enabled: true,
       },
@@ -718,17 +703,12 @@ describe('MembersPage', () => {
 
   it('should show the upgrade action without blocking the backend-authoritative invite flow', async () => {
     const user = userEvent.setup()
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: Plan.sandbox,
-          total: { teamMembers: 2 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
+    deploymentEdition = 'CLOUD'
+    memberFeatures = {
+      billing: { subscription: { plan: 'sandbox' } },
+      members: { size: 2, limit: 2 },
+    }
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 

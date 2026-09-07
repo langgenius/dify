@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -15,11 +15,16 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[] | undefined,
+  customTools: [] as ToolWithProvider[] | undefined,
 }))
 const pluginAuthState = vi.hoisted(() => ({
   canOAuth: true as boolean | undefined,
@@ -47,13 +52,6 @@ const pluginInstallState = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
   ToolPickerContent: () => <div>Mock tool picker</div>,
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
-  return {
-    userProfileIdAtom: atom('user-1'),
-  }
-})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ toolIcon }: { toolIcon?: string | { content: string; background: string } }) => (
@@ -113,18 +111,21 @@ vi.mock('@/utils/get-icon', () => ({
 
 vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
   default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
-    if (renderTrigger) {
-      return renderTrigger({
-        isConfigured: false,
-        onClick: () => onUpdate?.(),
-      })
-    }
-
-    return (
+    const trigger = (
       <button type="button" onClick={onUpdate}>
         {buttonText}
       </button>
     )
+
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+        trigger,
+      })
+    }
+
+    return trigger
   },
 }))
 
@@ -159,7 +160,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
-  useAllCustomTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
   useAllWorkflowTools: () => ({ data: [] }),
   useAllMCPTools: () => ({ data: [] }),
   useInvalidateAllBuiltInTools: () => pluginInstallState.invalidateBuiltInTools,
@@ -292,6 +293,29 @@ const reflectedUnauthorizedOAuthCredentialTypeDraft = {
   ],
 } satisfies AgentSoulConfigFormState
 
+const reflectedAuthorizedSwaggerDraft = {
+  ...defaultAgentSoulConfigFormState,
+  tools: [
+    {
+      id: 'weather-api',
+      kind: 'provider',
+      name: 'weather-api',
+      iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: CollectionType.custom,
+      credentialType: 'unauthorized',
+      credentialVariant: 'unauthorized',
+      actions: [
+        {
+          id: 'weather-api:forecast',
+          name: 'forecast',
+          toolName: 'forecast',
+          description: '',
+        },
+      ],
+    },
+  ],
+} satisfies AgentSoulConfigFormState
+
 const googleProvider = {
   id: 'google',
   name: 'google',
@@ -384,6 +408,40 @@ const duckDuckGoProvider = {
   ],
 } satisfies ToolWithProvider
 
+const authorizedSwaggerProvider = {
+  ...googleProvider,
+  id: 'weather-api',
+  name: 'weather-api',
+  label: {
+    en_US: 'Weather API',
+    zh_Hans: '天气 API',
+  },
+  type: CollectionType.custom,
+  team_credentials: {
+    api_key: {
+      type: 'secret-input',
+    },
+  },
+  is_team_authorization: true,
+  tools: [
+    {
+      name: 'forecast',
+      author: 'Weather API',
+      label: {
+        en_US: 'Forecast',
+        zh_Hans: '天气预报',
+      },
+      description: {
+        en_US: 'Get the weather forecast.',
+        zh_Hans: '获取天气预报。',
+      },
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    },
+  ],
+} satisfies ToolWithProvider
+
 function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -392,6 +450,7 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -410,6 +469,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
   store.set(agentComposerSavedDraftAtom, initialDraft)
@@ -428,7 +488,13 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
   }
 }
 
-function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
+function renderReadonlyAgentTools({
+  initialDraft = agentToolsDraft,
+  viewingVersion = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  viewingVersion?: boolean
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -436,13 +502,16 @@ function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agent
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentOrchestrateReadOnlyContext value>
-          <AgentTools />
-        </AgentOrchestrateReadOnlyContext>
+        <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+          <AgentOrchestrateReadOnlyContext value>
+            <AgentTools />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -453,6 +522,7 @@ describe('AgentTools', () => {
     cleanup()
     vi.clearAllMocks()
     toolProviderState.builtInTools = []
+    toolProviderState.customTools = []
     pluginAuthState.canOAuth = true
     pluginAuthState.canApiKey = false
     pluginAuthState.credentials = []
@@ -533,9 +603,9 @@ describe('AgentTools', () => {
       ).toBeInTheDocument()
     })
 
-    it('should hide add, edit, and remove actions when readonly', async () => {
+    it('should hide add, edit, and remove actions when viewing a version', async () => {
       const user = userEvent.setup()
-      renderReadonlyAgentTools()
+      renderReadonlyAgentTools({ viewingVersion: true })
 
       expect(
         screen.queryByRole('button', {
@@ -572,6 +642,16 @@ describe('AgentTools', () => {
       expect(
         screen.queryByRole('button', {
           name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the add action while a build draft is read-only', () => {
+      renderReadonlyAgentTools()
+
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.add',
         }),
       ).not.toBeInTheDocument()
     })
@@ -701,6 +781,22 @@ describe('AgentTools', () => {
         }),
       ).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+    })
+
+    it('should use current team authorization for reflected Swagger API tools', () => {
+      toolProviderState.customTools = [authorizedSwaggerProvider]
+      renderAgentTools(reflectedAuthorizedSwaggerDraft)
+
+      expect(
+        screen.getByRole('button', {
+          name: 'Weather API',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'tools.notAuthorized',
+        }),
+      ).not.toBeInTheDocument()
     })
 
     it('should keep provider credential metadata display-only without dirtying the composer draft', () => {

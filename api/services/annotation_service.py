@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from core.helper.csv_sanitizer import CSVSanitizer
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
@@ -120,7 +121,7 @@ class AppAnnotationService:
 
         raw_message_id = args.get("message_id")
         if raw_message_id:
-            message_id = str(raw_message_id)
+            message_id = raw_message_id
             message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1))
 
             if not message:
@@ -176,19 +177,19 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
+        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
         current_user, current_tenant_id = current_account_with_tenant()
         enable_annotation_reply_task.delay(
-            str(job_id),
+            job_id,
             app_id,
             current_user.id,
             current_tenant_id,
@@ -201,17 +202,17 @@ class AppAnnotationService:
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
         _, current_tenant_id = current_account_with_tenant()
-        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
+        disable_app_annotation_key = f"disable_app_annotation_{app_id}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
+        disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
-        disable_annotation_reply_task.delay(str(job_id), app_id, current_tenant_id)
+        disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
@@ -532,14 +533,14 @@ class AppAnnotationService:
                 )
 
             # Check annotation quota limit
-            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
-            if features.billing.enabled:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
                 annotation_quota_limit = features.annotation_quota_limit
                 if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
                     raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+            indexing_cache_key = f"app_annotation_batch_import_{job_id}"
 
             # Register job in active tasks list for concurrency tracking
             current_time = int(naive_utc_now().timestamp() * 1000)
@@ -549,7 +550,7 @@ class AppAnnotationService:
 
             # Set job status
             redis_client.setnx(indexing_cache_key, "waiting")
-            batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
+            batch_import_annotations_task.delay(job_id, result, app_id, current_tenant_id, current_user.id)
 
         except ValueError as e:
             return {"error_msg": str(e)}

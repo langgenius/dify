@@ -201,9 +201,18 @@ describe('ChatVariablePanel', () => {
 
     expect(screen.getByText('workflow.chatVariable.panelDescription')).toBeInTheDocument()
 
-    const toggleTipButton = screen.getAllByRole('button')[0]!
+    const toggleTipButton = screen.getByRole('button', {
+      name: 'workflow.chatVariable.tips',
+      expanded: true,
+    })
     await user.click(toggleTipButton)
     expect(screen.queryByText('workflow.chatVariable.panelDescription')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'workflow.chatVariable.tips',
+        expanded: false,
+      }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 

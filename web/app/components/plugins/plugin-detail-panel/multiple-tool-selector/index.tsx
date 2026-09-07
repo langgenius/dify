@@ -1,9 +1,9 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -181,19 +181,19 @@ const MultipleToolSelector = ({
             controlledState={selectorOpen}
             onControlledStateChange={setSelectorOpen}
             trigger={
-              <Button
+              <IconButton
                 ref={addToolButtonRef}
                 variant="ghost"
-                size="small"
+                size="md"
                 aria-label={t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}
-                className="mx-1 size-6 min-h-0 p-0"
+                className="mx-1"
                 onClick={() => {
                   setToolsOpen(true)
                   setPanelShowState(true)
                 }}
               >
                 <span className="i-ri-add-line size-4" aria-hidden />
-              </Button>
+              </IconButton>
             }
             panelShowState={panelShowState}
             onPanelShowStateChange={setPanelShowState}

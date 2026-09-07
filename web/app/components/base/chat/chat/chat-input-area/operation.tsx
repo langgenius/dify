@@ -4,9 +4,9 @@ import type { EnableType } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 
 type OperationProps = {
@@ -43,15 +43,15 @@ const Operation: FC<OperationProps> = ({
             <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />
           )}
           {speechToTextConfig?.enabled && onShowVoiceInput && (
-            <ActionButton
-              className="shrink-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-              size="l"
+            <IconButton
+              className="shrink-0"
+              size="lg"
               aria-label={t(($) => $['voiceInput.start'], { ns: 'common' })}
               disabled={readonly}
               onClick={onShowVoiceInput}
             >
               <span className="i-ri-mic-line size-5" aria-hidden="true" />
-            </ActionButton>
+            </IconButton>
           )}
         </div>
         <Button

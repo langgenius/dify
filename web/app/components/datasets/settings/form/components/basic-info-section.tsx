@@ -3,11 +3,11 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
 import type { AppIconType } from '@/types/app'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Input from '@/app/components/base/input'
 import PermissionSelector from '../../permission-selector'
 
 const rowClass = 'flex gap-x-1'
@@ -73,9 +73,10 @@ const BasicInfoSection = ({
             showEditIcon={!readonly}
           />
           <Input
+            aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onValueChange={(nextValue) => setName(nextValue)}
           />
         </div>
       </div>

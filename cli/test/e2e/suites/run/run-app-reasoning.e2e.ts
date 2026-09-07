@@ -15,7 +15,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, inject } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject } from 'vite-plus/test'
 import { assertExitCode, assertJson, assertStderrContains } from '../../helpers/assert.js'
 import { registerConversation } from '../../helpers/cleanup-registry.js'
 import { withAuthFixture } from '../../helpers/cli.js'

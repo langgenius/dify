@@ -241,7 +241,6 @@ def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch
         invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     openapi = {
         "parameters": [],

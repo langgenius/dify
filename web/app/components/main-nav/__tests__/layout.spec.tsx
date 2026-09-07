@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -194,6 +194,31 @@ describe('MainNavLayout', () => {
       screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
+  })
+
+  it('hides the global main nav on a skill detail route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
+
+    render(
+      <MainNavLayout>
+        <div>skill detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('skill detail')
+  })
+
+  it('keeps the global main nav on the skills collection route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills')
+
+    render(
+      <MainNavLayout>
+        <div>skills collection</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
   })
 
   it.each([

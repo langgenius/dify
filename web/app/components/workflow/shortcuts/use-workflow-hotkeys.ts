@@ -1,7 +1,7 @@
 import type { HotkeyCallback, UseHotkeyDefinition, UseHotkeyOptions } from '@tanstack/react-hotkeys'
 import type { WorkflowCanvasHotkeyDefinition, WorkflowCanvasHotkeyMeta } from './definitions'
 import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
@@ -70,8 +70,7 @@ export const useWorkflowHotkeys = (): void => {
   const { zoomTo, getZoom, fitView, getNodes } = useReactFlow()
   const isShiftHeld = useKeyHold(WORKFLOW_CANVAS_SHORTCUTS['workflow.dim-other-nodes'].holdKey)
   const shiftDimmedRef = useRef(false)
-  const undimAllNodesRef = useRef(undimAllNodes)
-  undimAllNodesRef.current = undimAllNodes
+  const undimAllNodesOnUnmount = useEffectEvent(undimAllNodes)
 
   const constrainedZoomOut = useCallback(() => {
     const currentZoom = getZoom()
@@ -230,7 +229,7 @@ export const useWorkflowHotkeys = (): void => {
 
   useEffect(() => {
     return () => {
-      if (shiftDimmedRef.current) undimAllNodesRef.current()
+      if (shiftDimmedRef.current) undimAllNodesOnUnmount()
     }
   }, [])
 }

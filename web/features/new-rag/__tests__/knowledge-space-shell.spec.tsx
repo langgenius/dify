@@ -1,6 +1,6 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeSpaceShell } from '../knowledge-space-shell'
 
 const queryMock = vi.hoisted(() => ({
@@ -34,31 +34,68 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    knowledgeFs: {
-      getKnowledgeSpacesById: {
-        queryOptions: queryOptionsMock,
+vi.mock('@/service/client', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...original,
+    consoleQuery: {
+      ...original.consoleQuery,
+      systemFeatures: original.consoleQuery.systemFeatures,
+      knowledgeFs: {
+        ...original.consoleQuery.knowledgeFs,
+        getKnowledgeSpacesById: {
+          ...original.consoleQuery.knowledgeFs.getKnowledgeSpacesById,
+          queryOptions: queryOptionsMock,
+        },
       },
     },
-  },
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
+  }
+})
 
 describe('KnowledgeSpaceShell', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     queryMock.data = undefined
     queryMock.error = null
     queryMock.isPending = false
     pathnameMock.value = '/datasets/new/space-1/sources'
   })
 
+  it.each([
+    ['/datasets/new/space-1/sources', 'dataset.newKnowledge.sources'],
+    ['/datasets/new/space-1/sources/new', 'dataset.newKnowledge.addSource'],
+    ['/datasets/new/space-1/documents', 'dataset.newKnowledge.documents'],
+  ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
+    pathnameMock.value = pathname
+    queryMock.data = { id: 'space-1', name: 'Support knowledge' }
+
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">content</KnowledgeSpaceShell>,
+    )
+
+    await waitFor(() => {
+      expect(document.title).toBe(`${pageTitle} · Support knowledge - Dify`)
+    })
+  })
+
+  it('delegates a document detail title to the document page', () => {
+    pathnameMock.value = '/datasets/new/space-1/documents/document-1'
+    queryMock.data = { id: 'space-1', name: 'Support knowledge' }
+
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>,
+    )
+
+    expect(document.title).toBe('')
+  })
+
   it('loads the real knowledge space contract by route id', () => {
     queryMock.isPending = true
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">content</KnowledgeSpaceShell>,
+    )
 
     expect(queryOptionsMock).toHaveBeenCalledWith({ input: { params: { id: 'space-1' } } })
     expect(screen.getByRole('status')).toBeInTheDocument()
@@ -67,7 +104,9 @@ describe('KnowledgeSpaceShell', () => {
   it('renders a refresh-safe header and route navigation when loaded', () => {
     queryMock.data = { id: 'space-1', name: 'Support knowledge' }
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>,
+    )
 
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).toHaveAttribute(
@@ -88,7 +127,9 @@ describe('KnowledgeSpaceShell', () => {
   it('shows a not-found state without rendering children', () => {
     queryMock.error = { status: 404 }
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>,
+    )
 
     expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
     expect(screen.queryByText('source content')).not.toBeInTheDocument()
@@ -97,7 +138,9 @@ describe('KnowledgeSpaceShell', () => {
   it('recognizes the nested status shape returned by the ORPC client', () => {
     queryMock.error = { data: { status: 404 } }
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>,
+    )
 
     expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
   })
@@ -105,7 +148,9 @@ describe('KnowledgeSpaceShell', () => {
   it('treats forbidden detail responses as a terminal non-disclosing state', () => {
     queryMock.error = { data: { status: 403 } }
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>,
+    )
 
     expect(screen.getByText('dataset.newKnowledge.notFoundTitle')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
@@ -116,7 +161,9 @@ describe('KnowledgeSpaceShell', () => {
     (error) => {
       queryMock.error = error
 
-      render(<KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>)
+      renderWithConsoleQuery(
+        <KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>,
+      )
 
       const options = useQueryOptionsMock.mock.lastCall?.[0] as {
         retry: (failureCount: number, queryError: unknown) => boolean
@@ -131,7 +178,9 @@ describe('KnowledgeSpaceShell', () => {
     pathnameMock.value = '/datasets/new/space-1/documents'
     queryMock.data = { id: 'space-1', name: 'Support knowledge' }
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>,
+    )
 
     expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).not.toHaveAttribute(
       'aria-current',
@@ -146,7 +195,9 @@ describe('KnowledgeSpaceShell', () => {
     const user = userEvent.setup()
     queryMock.error = new Error('temporary failure')
 
-    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>,
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     expect(queryMock.refetch).toHaveBeenCalledOnce()

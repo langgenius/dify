@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type {
   ExternalKnowledgeBaseHitTesting,
@@ -19,6 +20,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -28,9 +30,9 @@ import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 import {
@@ -67,7 +69,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canRunRetrievalRecall = getDatasetACLCapabilities(currentDataset?.permission_keys, {
     currentUserId,

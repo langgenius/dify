@@ -1,6 +1,7 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { pick } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -10,9 +11,9 @@ import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-la
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -63,7 +64,10 @@ const DocumentTableRow = React.memo(
     const searchParams = useSearchParams()
     const documentNameId = React.useId()
     const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
     const datasetACLCapabilities = React.useMemo(
       () =>
@@ -103,12 +107,8 @@ const DocumentTableRow = React.memo(
         onClick={handleRowClick}
       >
         <td className="text-left align-middle text-xs text-text-tertiary">
-          <div
-            className="flex items-center"
-            role="presentation"
-            onClick={stopPropagation}
-            onKeyDown={stopPropagation}
-          >
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation. */}
+          <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
             <Checkbox className="mr-2 shrink-0" value={doc.id} aria-labelledby={documentNameId} />
             {index + 1}
           </div>

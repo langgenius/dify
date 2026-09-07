@@ -4,8 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 
 
 class FeatureResponseModel(BaseModel):
@@ -13,12 +12,11 @@ class FeatureResponseModel(BaseModel):
 
 
 class SubscriptionModel(FeatureResponseModel):
-    plan: str = CloudPlan.SANDBOX
+    plan: CloudPlan = CloudPlan.SANDBOX
     interval: str = ""
 
 
 class BillingModel(FeatureResponseModel):
-    enabled: bool = False
     subscription: SubscriptionModel = SubscriptionModel()
 
 
@@ -146,6 +144,7 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
 class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
+    enable_skill: bool = True
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel | None = LimitationModel(size=0, limit=5)

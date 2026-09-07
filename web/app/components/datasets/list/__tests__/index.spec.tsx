@@ -2,9 +2,10 @@ import type { ReactElement, ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/storage'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -85,11 +86,6 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock app context
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -193,12 +189,11 @@ vi.mock('../../external-api/external-api-panel', () => ({
   ),
 }))
 
-// Mock SecretKeyModal — it depends on user profile context and service APIs
-// not configured in this test. ServiceApi always mounts the modal (controlled
-// by `isShow`) so we provide a lightweight stub.
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div data-testid="secret-key-modal" /> : null,
+// Mock ApiKeyModal — it depends on user profile context and service APIs
+// not configured in this test. ServiceApi always mounts the controlled modal,
+// so we provide a lightweight stub.
+vi.mock('@/app/components/api-key/api-key-modal', () => ({
+  ApiKeyModal: ({ open }: { open: boolean }) => (open ? <div data-testid="api-key-modal" /> : null),
 }))
 
 // Mock TagManagementModal
@@ -289,17 +284,15 @@ describe('List', () => {
 
       renderWithNuqs(<List />)
 
-      expect(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }),
-      ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.legacy' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
     })
 
     it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
       expect(
-        screen.queryByRole('button', { name: 'dataset.newKnowledge.new' }),
+        screen.queryByRole('radio', { name: 'dataset.newKnowledge.new' }),
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('region', { name: 'dataset.newKnowledge.new' }),
@@ -317,7 +310,7 @@ describe('List', () => {
       mockConsoleState.knowledgeFsEnabled = true
       const { onUrlUpdate } = renderWithNuqs(<List />)
 
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
+      await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' }))
 
       expect(
         await screen.findByRole('region', { name: 'dataset.newKnowledge.new' }),
@@ -335,13 +328,13 @@ describe('List', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
+      await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' }))
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }))
+      await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.legacy' }))
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
 
@@ -351,8 +344,8 @@ describe('List', () => {
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
       expect(screen.getByRole('region', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toHaveAttribute(
-        'aria-pressed',
+      expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.new' })).toHaveAttribute(
+        'aria-checked',
         'true',
       )
     })
@@ -390,14 +383,15 @@ describe('List', () => {
       await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
       firstRender.unmount()
 
-      const store = createStore()
-      seedRegisteredConsoleStateFixture(store)
       const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
-      const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+      const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper({
         systemFeatures: {
           knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
         },
       })
+      const store = createStore()
+      store.set(queryClientAtom, queryClient)
+      seedRegisteredConsoleStateFixture(store)
       const app = (
         <QueryWrapper>
           <Provider store={store}>

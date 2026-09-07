@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { useAtomValue } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { defaultAgentSoulConfigFormState } from '../form-state'
 import { AgentComposerProvider } from '../provider'
 import {

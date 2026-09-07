@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
+import pytest
+from sqlalchemy.orm import Session
+
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from fields.workflow_run_fields import WorkflowRunNodeExecutionListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
+from models.account import Account
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow_node_execution_trace_service import assemble_workflow_node_execution_traces
+
+pytestmark = pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
+
+
+@pytest.fixture(autouse=True)
+def _bind_model_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    monkeypatch.setattr("models.workflow.db", SimpleNamespace(session=sqlite_session))
 
 
 def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
@@ -31,39 +43,31 @@ def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
 
 
 def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
-    return cast(
-        WorkflowNodeExecutionModel,
-        SimpleNamespace(
-            id="exec-1",
-            tenant_id="tenant-1",
-            app_id="app-1",
-            workflow_id="workflow-1",
-            triggered_from="workflow-run",
-            workflow_run_id="run-1",
-            index=3,
-            predecessor_node_id="previous-node",
-            node_execution_id="node-execution-1",
-            node_id="node-1",
-            node_type="http-request",
-            title="HTTP Request",
-            inputs_dict={"attempt": 3},
-            process_data_dict=process_data,
-            outputs_dict={"status_code": 200, "body": "ok"},
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            error=None,
-            elapsed_time=3.5,
-            execution_metadata_dict={"iteration_id": "iteration-1"},
-            extras={},
-            created_at=datetime(2023, 11, 14, tzinfo=UTC),
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="account-1",
-            created_by_account=None,
-            created_by_end_user=None,
-            finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
-            inputs_truncated=False,
-            outputs_truncated=False,
-            process_data_truncated=False,
-        ),
+    return WorkflowNodeExecutionModel(
+        id="exec-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        workflow_run_id="run-1",
+        index=3,
+        predecessor_node_id="previous-node",
+        node_execution_id="node-execution-1",
+        node_id="node-1",
+        node_type="http-request",
+        title="HTTP Request",
+        agent_workspace_binding_id=None,
+        inputs=json.dumps({"attempt": 3}),
+        process_data=json.dumps(process_data),
+        outputs=json.dumps({"status_code": 200, "body": "ok"}),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=3.5,
+        execution_metadata=json.dumps({"iteration_id": "iteration-1"}),
+        created_at=datetime(2023, 11, 14, tzinfo=UTC),
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
     )
 
 

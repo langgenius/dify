@@ -137,7 +137,7 @@ def plugin_data[**P, R](
             try:
                 payload = payload_type.model_validate(data)
             except Exception as e:
-                raise ValueError(f"invalid payload: {str(e)}")
+                raise ValueError(f"invalid payload: {str(e)}") from e
 
             kwargs["payload"] = payload
             return view_func(*args, **kwargs)

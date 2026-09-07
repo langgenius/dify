@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A standalone text input primitive built on Base UI Input. Use it for labelled text boxes outside FieldControl, and keep FieldControl for full Field form composition.',
+          'The standalone Dify text input built on Base UI Input. Compose it with Field for labels, descriptions, and validation; use InputGroupInput for controls inside an InputGroup.',
       },
     },
   },
@@ -38,42 +38,6 @@ export const Basic: Story = {
         autoComplete="organization"
         placeholder="e.g. Acme workspace…"
       />
-    </div>
-  ),
-}
-
-export const Sizes: Story = {
-  render: () => (
-    <div className="grid w-80 gap-3">
-      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="small-input">
-        Small
-        <Input
-          id="small-input"
-          size="small"
-          name="smallInput"
-          placeholder="e.g. tag…"
-          autoComplete="off"
-        />
-      </label>
-      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="medium-input">
-        Medium
-        <Input
-          id="medium-input"
-          name="mediumInput"
-          placeholder="e.g. Production API…"
-          autoComplete="off"
-        />
-      </label>
-      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="large-input">
-        Large
-        <Input
-          id="large-input"
-          size="large"
-          name="largeInput"
-          placeholder="e.g. Customer portal…"
-          autoComplete="off"
-        />
-      </label>
     </div>
   ),
 }

@@ -7,6 +7,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useLearnDifyAppList } from '@/service/use-explore'
 import LearnDifyItem from './item'
@@ -127,7 +128,7 @@ const LearnDifyContent = ({
             </button>
           )}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
+        <div className={cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
           {visibleItems.map((item) => (
             <LearnDifyItem
               key={item.app_id}

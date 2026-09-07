@@ -32,6 +32,34 @@ type FormContentProps = {
   readonly?: boolean
 }
 
+type AddInputFieldConfig = {
+  nodeId: string
+  unavailableVariableNames: string[]
+  handleInsertHITLNode: (onInsert: ShortcutPopupInsertHandler) => (payload: FormInputItem) => void
+}
+
+const AddInputFieldConfigContext = React.createContext<AddInputFieldConfig | null>(null)
+
+const AddInputFieldShortcutPopup = ({
+  onClose,
+  onInsert,
+}: {
+  onClose: () => void
+  onInsert: ShortcutPopupInsertHandler
+}) => {
+  const config = React.use(AddInputFieldConfigContext)
+  if (!config) throw new Error('Missing AddInputFieldConfigContext provider')
+
+  return (
+    <AddInputField
+      nodeId={config.nodeId}
+      unavailableVariableNames={config.unavailableVariableNames}
+      onSave={config.handleInsertHITLNode(onInsert)}
+      onCancel={onClose}
+    />
+  )
+}
+
 const FormContent: FC<FormContentProps> = ({
   nodeId,
   value,
@@ -108,16 +136,14 @@ const FormContent: FC<FormContentProps> = ({
   const unavailableVariableNames = useMemo(() => {
     return formInputs.map((input) => input.output_variable_name)
   }, [formInputs])
-  const addInputFieldConfigRef = useRef({
-    nodeId,
-    unavailableVariableNames,
-    handleInsertHITLNode,
-  })
-  addInputFieldConfigRef.current = {
-    nodeId,
-    unavailableVariableNames,
-    handleInsertHITLNode,
-  }
+  const addInputFieldConfig = useMemo(
+    () => ({
+      nodeId,
+      unavailableVariableNames,
+      handleInsertHITLNode,
+    }),
+    [handleInsertHITLNode, nodeId, unavailableVariableNames],
+  )
   const shortcutPopups = useMemo(() => {
     if (readonly) return []
 
@@ -125,27 +151,7 @@ const FormContent: FC<FormContentProps> = ({
       {
         hotkey: ['mod', '/'],
         displayMode: 'workflow-panel-adjacent-center' as const,
-        // Keep this component type stable while the popup is open; it reads fresh props from a ref.
-        // oxlint-disable-next-line eslint-react/no-nested-component-definitions
-        Popup: ({
-          onClose,
-          onInsert,
-        }: {
-          onClose: () => void
-          onInsert: ShortcutPopupInsertHandler
-        }) => {
-          const { nodeId, unavailableVariableNames, handleInsertHITLNode } =
-            addInputFieldConfigRef.current
-
-          return (
-            <AddInputField
-              nodeId={nodeId}
-              unavailableVariableNames={unavailableVariableNames}
-              onSave={handleInsertHITLNode(onInsert)}
-              onCancel={onClose}
-            />
-          )
-        },
+        Popup: AddInputFieldShortcutPopup,
       },
     ]
   }, [readonly])
@@ -160,35 +166,39 @@ const FormContent: FC<FormContentProps> = ({
       )}
     >
       <div className={cn('max-h-75 overflow-y-auto px-3', isExpand && 'h-0 max-h-full grow')}>
-        <PromptEditor
-          key={editorKey}
-          value={value}
-          onChange={onChange}
-          className={cn('min-h-20', isExpand && 'h-full')}
-          onFocus={setFocus}
-          onBlur={setBlur}
-          placeholder={t(($) => $['nodes.humanInput.formContent.placeholder'], { ns: 'workflow' })}
-          hitlInputBlock={{
-            show: true,
-            formInputs,
-            nodeId,
-            onFormInputsChange,
-            onFormInputItemRename,
-            onFormInputItemRemove,
-            variables: availableVars || [],
-            workflowNodesMap,
-            getVarType,
-            readonly,
-          }}
-          workflowVariableBlock={{
-            show: true,
-            variables: availableVars || [],
-            getVarType,
-            workflowNodesMap,
-          }}
-          editable={!readonly}
-          shortcutPopups={shortcutPopups}
-        />
+        <AddInputFieldConfigContext value={addInputFieldConfig}>
+          <PromptEditor
+            key={editorKey}
+            value={value}
+            onChange={onChange}
+            className={cn('min-h-20', isExpand && 'h-full')}
+            onFocus={setFocus}
+            onBlur={setBlur}
+            placeholder={t(($) => $['nodes.humanInput.formContent.placeholder'], {
+              ns: 'workflow',
+            })}
+            hitlInputBlock={{
+              show: true,
+              formInputs,
+              nodeId,
+              onFormInputsChange,
+              onFormInputItemRename,
+              onFormInputItemRemove,
+              variables: availableVars || [],
+              workflowNodesMap,
+              getVarType,
+              readonly,
+            }}
+            workflowVariableBlock={{
+              show: true,
+              variables: availableVars || [],
+              getVarType,
+              workflowNodesMap,
+            }}
+            editable={!readonly}
+            shortcutPopups={shortcutPopups}
+          />
+        </AddInputFieldConfigContext>
       </div>
       {isFocus && (
         <div className="flex h-8 shrink-0 items-center px-3 system-xs-regular text-components-input-text-placeholder">

@@ -2,7 +2,6 @@
 
 import markdown from '@eslint/markdown'
 import md from 'eslint-markdown'
-import hyoban from 'eslint-plugin-hyoban'
 import jsonc from 'eslint-plugin-jsonc'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import pnpm from 'eslint-plugin-pnpm'
@@ -421,12 +420,11 @@ export default defineConfig([
     files: ['web/i18n/**/*.json'],
     plugins: {
       dify,
-      hyoban,
     },
     rules: {
       'dify/consistent-placeholders': 'error',
+      'dify/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
-      'hyoban/i18n-flat-key': 'error',
       'jsonc/sort-keys': 'error',
     },
   },

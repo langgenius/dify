@@ -49,6 +49,7 @@ _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
 }
 _AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent file upload --help": ("file", "upload"),
+    "dify-agent file public-url --help": ("file", "public-url"),
     "dify-agent file download --help": ("file", "download"),
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}

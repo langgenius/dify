@@ -1,5 +1,4 @@
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -28,6 +27,13 @@ from controllers.console.workspace.models import (
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from models import Account
+
+
+def _account() -> Account:
+    account = Account(name="Model User", email="model-user@example.com")
+    account.id = "u1"
+    return account
 
 
 class TestDefaultModelApi:
@@ -191,7 +197,7 @@ class TestModelProviderModelCredentialApi:
                 api,
                 ParserGetCredentials(model="gpt-4", model_type=ModelType.LLM),
                 "tenant1",
-                SimpleNamespace(id="u1"),
+                _account(),
                 "openai",
             )
 
@@ -232,7 +238,7 @@ class TestModelProviderModelCredentialApi:
                 api,
                 ParserGetCredentials(model="gpt", model_type=ModelType.LLM),
                 "t1",
-                SimpleNamespace(id="u1"),
+                _account(),
                 "openai",
             )
 
