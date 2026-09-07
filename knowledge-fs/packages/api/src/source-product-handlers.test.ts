@@ -51,6 +51,34 @@ describe("source-product handlers", () => {
     );
   });
 
+  it("forwards explicit website selection replacement semantics", async () => {
+    const createCrawlImport = vi.fn(async () => run("crawl-import"));
+    const app = sourceProductApp({ createCrawlImport });
+
+    const response = await app.request(
+      `/knowledge-spaces/${spaceId}/sources/${sourceId}/crawl-import`,
+      {
+        body: JSON.stringify({
+          replaceExistingSelection: true,
+          sourceUrls: ["https://example.test/selected"],
+        }),
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": "replace-website-selection",
+        },
+        method: "POST",
+      },
+    );
+
+    expect(response.status).toBe(202);
+    expect(createCrawlImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        replaceExistingSelection: true,
+        sourceUrls: ["https://example.test/selected"],
+      }),
+    );
+  });
+
   it("validates and forwards durable provider imports with idempotency provenance", async () => {
     const createImport = vi.fn(async () => run("online-drive-import"));
     const app = sourceProductApp({ createImport });
@@ -1009,6 +1037,7 @@ function sourceProductApp(overrides: {
   readonly catchErrors?: boolean | undefined;
   readonly connections?: object | undefined;
   readonly createBulk?: ((input: never) => Promise<SourceWorkflowRun>) | undefined;
+  readonly createCrawlImport?: ((input: never) => Promise<SourceWorkflowRun>) | undefined;
   readonly createImport?: ((input: never) => Promise<SourceWorkflowRun>) | undefined;
   readonly createPreview?: ((input: never) => Promise<SourceWorkflowRun>) | undefined;
   readonly createSync?: ((input: never) => Promise<SourceWorkflowRun>) | undefined;
@@ -1040,6 +1069,7 @@ function sourceProductApp(overrides: {
     workflows: {
       ...overrides.workflows,
       ...(overrides.createBulk ? { createBulk: overrides.createBulk } : {}),
+      ...(overrides.createCrawlImport ? { createCrawlImport: overrides.createCrawlImport } : {}),
       ...(overrides.createImport ? { createImport: overrides.createImport } : {}),
       ...(overrides.createPreview ? { createPreview: overrides.createPreview } : {}),
       ...(overrides.createSync ? { createSync: overrides.createSync } : {}),

@@ -66,7 +66,10 @@ def commit_source_import(
             account_id=account_id,
             control_space_id=control_space_id,
             source_id=source_id,
-            payload=KnowledgeFSCrawlImportPayload(sourceUrls=payload.source_urls),
+            payload=KnowledgeFSCrawlImportPayload(
+                sourceUrls=payload.source_urls,
+                replaceExistingSelection=True,
+            ),
             idempotency_key=idempotency_key,
         )
     elif isinstance(payload, KnowledgeFSAsyncOnlineDocumentImportPayload):

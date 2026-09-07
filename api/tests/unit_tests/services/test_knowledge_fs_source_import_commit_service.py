@@ -116,6 +116,7 @@ def test_commit_website_url_selection_uses_same_async_reconciliation() -> None:
 
     crawl_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
     assert crawl_payload.source_urls == ["https://example.com/a", "https://example.com/a"]
+    assert crawl_payload.replace_existing_selection is True
     pending = facade.update_source.call_args.kwargs["payload"].metadata["pendingImport"]
     assert pending["kind"] == "website-crawl-import"
 

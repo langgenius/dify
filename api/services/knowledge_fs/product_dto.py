@@ -2426,6 +2426,7 @@ class KnowledgeFSCrawlImportPagePayload(BaseModel):
 class KnowledgeFSCrawlImportPayload(BaseModel):
     source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
     pages: list[KnowledgeFSCrawlImportPagePayload] | None = Field(default=None, min_length=1, max_length=200)
+    replace_existing_selection: bool = Field(default=False, alias="replaceExistingSelection")
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 

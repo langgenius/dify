@@ -10,6 +10,8 @@ the edit completed.
 ## Changes
 
 - Mark namespace Website preview consumption explicitly as a replacement-selection import.
+- Carry the same explicit marker from Dify's Website Source edit commit through the public
+  crawl-import contract; unmarked direct API callers retain the previous behavior.
 - Load the active Source inventory only when processing that marked Website `crawl-import`.
 - Publish every newly selected page before reconciling removed provider identities.
 - Tombstone documents outside the replacement selection through the existing durable logical-
@@ -24,10 +26,14 @@ the edit completed.
 - Added a failing regression test proving that a replacement Website import previously left the old
   document active, then made it pass with the cleanup behavior.
 - Added failure-path coverage proving cleanup is not started when replacement publication fails.
-- Focused workflow runtime suite: 60 tests passed.
-- Related workflow, Source-product, and namespace-preview suites: 89 tests passed.
+- Focused workflow runtime suite: 61 tests passed.
+- Related workflow, Source-product, namespace-preview, and HTTP handler suites: 110 tests passed.
+- Dify Source import commit and product DTO suites: 98 tests passed.
 - KnowledgeFS `pnpm check` passed.
 - KnowledgeFS `pnpm build` passed for all 12 packages.
-- Targeted Biome check passed for both changed TypeScript files.
+- KnowledgeFS contract lock update and subsequent `--check` passed.
+- Targeted Ruff check/format and Biome checks passed.
+- Local Dify `basedpyright` was not runnable because the executable is absent from the current API
+  development environment.
 - Repository-wide `pnpm lint` remains blocked by 10 existing formatting/lint diagnostics in
   unrelated files; this change does not modify those files.

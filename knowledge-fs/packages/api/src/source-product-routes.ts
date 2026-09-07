@@ -331,6 +331,7 @@ export const createSourceCrawlImportWorkflowRoute = createRoute({
                 .min(1)
                 .max(200)
                 .optional(),
+              replaceExistingSelection: z.boolean().optional(),
               sourceUrls: z.array(z.string().url().max(4096)).min(1).max(200),
             })
             .strict(),
