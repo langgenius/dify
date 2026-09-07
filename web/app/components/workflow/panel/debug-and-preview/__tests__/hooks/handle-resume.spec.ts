@@ -116,67 +116,6 @@ describe('useChat – handleResume', () => {
     return hook
   }
 
-  it('keeps same-Tool forms independent when resuming', async () => {
-    const { result } = await setupResumeWithTree()
-    const first = {
-      form_id: 'first',
-      node_id: 'tool',
-      node_title: 'Tool',
-      form_content: 'First approval',
-      inputs: [],
-      actions: [],
-      form_token: 'first-token',
-      display_in_ui: true,
-      resolved_default_values: {},
-      expiration_time: 100,
-    }
-    const second = {
-      ...first,
-      form_id: 'second',
-      form_content: 'Second approval',
-      form_token: 'second-token',
-    }
-    act(() => {
-      capturedResumeOptions.onHumanInputRequired({ data: first })
-      capturedResumeOptions.onHumanInputRequired({ data: second })
-      capturedResumeOptions.onHumanInputRequired({ data: { ...second, form_token: 'refreshed' } })
-    })
-    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([
-      first,
-      { ...second, form_token: 'refreshed' },
-    ])
-    act(() => {
-      capturedResumeOptions.onHumanInputFormTimeout({ data: { ...second, expiration_time: 200 } })
-    })
-    expect(
-      result.current.chatList[1]!.humanInputFormDataList?.map((form) => form.expiration_time),
-    ).toEqual([100, 200])
-    const filled = {
-      form_id: 'second',
-      node_id: 'tool',
-      node_title: 'Tool',
-      rendered_content: 'Approved',
-      action_id: 'approve',
-      action_text: 'Approve',
-    }
-    act(() => {
-      capturedResumeOptions.onHumanInputFormFilled({ data: filled })
-      capturedResumeOptions.onHumanInputFormFilled({
-        data: { ...filled, rendered_content: 'Replayed approval' },
-      })
-      capturedResumeOptions.onHumanInputFormTimeout({ data: { ...second, expiration_time: 300 } })
-    })
-    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([first])
-    expect(result.current.chatList[1]!.humanInputFilledFormDataList).toEqual([
-      {
-        ...filled,
-        rendered_content: 'Replayed approval',
-        form_content: 'Second approval',
-        inputs: [],
-      },
-    ])
-  })
-
   it('should call sseGet with the correct URL', () => {
     const { result } = renderHook(() => useChat({}))
 

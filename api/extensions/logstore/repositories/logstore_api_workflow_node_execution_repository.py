@@ -21,7 +21,10 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_node_execution_repository import (
+    DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionSnapshot,
+)
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
@@ -266,112 +269,79 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
 
     @override
     def get_executions_by_workflow_run(
+        self, tenant_id: str, app_id: str, workflow_run_id: str
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """Return visible terminal trace records, newest index first."""
+        executions = self._get_run_executions(tenant_id, app_id, workflow_run_id)
+        return sorted(
+            (execution for execution in executions if execution.status != WorkflowNodeExecutionStatus.PAUSED),
+            key=lambda execution: execution.index,
+            reverse=True,
+        )
+
+    @override
+    def get_execution_snapshots_by_workflow_run(
+        self, tenant_id: str, app_id: str, workflow_id: str, triggered_from: str, workflow_run_id: str
+    ) -> Sequence[WorkflowNodeExecutionSnapshot]:
+        return [
+            WorkflowNodeExecutionSnapshot.from_execution(execution)
+            for execution in self._get_run_executions(
+                tenant_id, app_id, workflow_run_id, workflow_id=workflow_id, triggered_from=triggered_from
+            )
+        ]
+
+    def _get_run_executions(
         self,
         tenant_id: str,
         app_id: str,
         workflow_run_id: str,
-    ) -> Sequence[WorkflowNodeExecutionModel]:
-        """
-        Get all node executions for a specific workflow run.
-
-        Uses query syntax to get raw logs and selects the one with max log_version for each node execution.
-        Ordered by index DESC for trace visualization.
-        """
-        logger.debug(
-            "[LogStore] get_executions_by_workflow_run: tenant_id=%s, app_id=%s, workflow_run_id=%s",
-            tenant_id,
-            app_id,
-            workflow_run_id,
+        *,
+        workflow_id: str | None = None,
+        triggered_from: str | None = None,
+    ) -> list[WorkflowNodeExecutionModel]:
+        """Read latest versions through the shared SQL/SDK adapter; snapshots omit payloads."""
+        scope = {"tenant_id": tenant_id, "app_id": app_id, "workflow_run_id": workflow_run_id}
+        if workflow_id is not None:
+            scope["workflow_id"] = workflow_id
+        filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in scope.items())
+        search = " and ".join(f"{key}: {escape_logstore_query_value(value)}" for key, value in scope.items())
+        origin = (
+            f"triggered_from = '{escape_identifier(triggered_from)}'"
+            if triggered_from is not None
+            else f"(triggered_from IS NULL OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL}')"
         )
-        try:
-            # Escape parameters to prevent SQL injection
-            escaped_tenant_id = escape_identifier(tenant_id)
-            escaped_app_id = escape_identifier(app_id)
-            escaped_workflow_run_id = escape_identifier(workflow_run_id)
-
-            # Check if PG protocol is supported
-            if self.logstore_client.supports_pg_protocol:
-                # Use PG protocol with SQL query (get latest version of each record)
-                sql_query = f"""
-                    SELECT * FROM (
-                        SELECT *,
-                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+        columns = (
+            'id, node_execution_id, node_id, node_type, title, "index", status, elapsed_time, '
+            "created_at, finished_at, execution_metadata"
+            if workflow_id is not None
+            else "*"
+        )
+        executions: list[WorkflowNodeExecutionModel] = []
+        offset = 0
+        to_time = int(time.time())
+        while True:
+            page = self.logstore_client.execute_sql(
+                sql=f"""
+                    SELECT {columns} FROM (
+                        SELECT {columns}, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                         FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE tenant_id = '{escaped_tenant_id}'
-                          AND app_id = '{escaped_app_id}'
-                          AND workflow_run_id = '{escaped_workflow_run_id}'
-                          AND (triggered_from IS NULL
-                               OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}')
-                          AND __time__ > 0
-                    ) AS subquery WHERE rn = 1
-                    LIMIT 1000
-                """
-                results = self.logstore_client.execute_sql(
-                    sql=sql_query,
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                )
-            else:
-                # Use SDK with LogStore query syntax
-                query = (
-                    f"tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id} "
-                    f"and workflow_run_id: {escaped_workflow_run_id}"
-                    " and not triggered_from: "
-                    f"{escape_logstore_query_value(WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value)}"
-                )
-                from_time = 0
-                to_time = int(time.time())  # now
-
-                results = self.logstore_client.get_logs(
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                    from_time=from_time,
-                    to_time=to_time,
-                    query=query,
-                    line=1000,  # Get more results for node executions
-                    reverse=False,
-                )
-
-            if not results:
-                return []
-
-            # For SDK mode, group by id and select the one with max log_version for each group
-            # For PG mode, this is already done by the SQL query
-            models = []
-            if not self.logstore_client.supports_pg_protocol:
-                id_to_results: dict[str, list[dict[str, Any]]] = {}
-                for row in results:
-                    row_id = row.get("id")
-                    if row_id:
-                        if row_id not in id_to_results:
-                            id_to_results[row_id] = []
-                        id_to_results[row_id].append(row)
-
-                # For each id, select the row with max log_version
-                for rows in id_to_results.values():
-                    if len(rows) > 1:
-                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                    else:
-                        max_row = rows[0]
-
-                    model = _dict_to_workflow_node_execution_model(max_row)
-                    if model and model.id:  # Ensure model is valid
-                        models.append(model)
-            else:
-                # For PG mode, results are already deduplicated by the SQL query
-                for row in results:
-                    model = _dict_to_workflow_node_execution_model(row)
-                    if model and model.id:  # Ensure model is valid
-                        models.append(model)
-
-            models = [model for model in models if model.status != WorkflowNodeExecutionStatus.PAUSED]
-
-            # Sort by index DESC for trace visualization
-            models.sort(key=lambda x: x.index, reverse=True)
-
-            return models
-
-        except Exception:
-            logger.exception("Failed to get executions by workflow run from LogStore")
-            raise
+                        WHERE {filters} AND {origin} AND __time__ > 0
+                    ) AS executions WHERE rn = 1 ORDER BY created_at, "index", id LIMIT 1000 OFFSET {offset}
+                """,
+                logstore=AliyunLogStore.workflow_node_execution_logstore,
+                query=search,
+                to_time=to_time,
+            )
+            for row in page:
+                execution = _dict_to_workflow_node_execution_model(row)
+                if workflow_id is not None and row.get("elapsed_time") is None:
+                    execution.elapsed_time = (
+                        (execution.finished_at - execution.created_at).total_seconds() if execution.finished_at else 0.0
+                    )
+                executions.append(execution)
+            if len(page) < 1000:
+                return executions
+            offset += len(page)
 
     @override
     def get_workflow_tool_executions(

@@ -39,6 +39,7 @@ from graphon.nodes.container_effects import (
     ContainerAwaitRequest,
     ContainerExecutionResult,
     ContainerNodeRunResult,
+    ContainerValue,
     CustomContainerRequest,
     build_container_value,
 )
@@ -248,9 +249,8 @@ class WorkflowToolContainerHandler:
         payload = WorkflowToolContainerPayload.model_validate_json(run_state.payload)
         parent_frame = self._frame_registry[run_state.frame_id]
         failure_variable = frame.state.variable_pool.get(self._failure_selector(frame.frame_id))
-        if failure_variable is None:
-            result = self._build_success_result(frame=frame, run_state=run_state)
-        else:
+        error = error_type = ""
+        if failure_variable is not None:
             failure = failure_variable.to_object()
             if (
                 not isinstance(failure, list)
@@ -260,17 +260,21 @@ class WorkflowToolContainerHandler:
             ):
                 raise ValueError("Invalid Workflow Tool failure state")
             error, error_type = failure
-            result = ContainerExecutionResult(
-                metadata={},
-                steps=frame.state.node_run_steps,
-                node_run_result=ContainerNodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    inputs={key: build_container_value(value) for key, value in payload.inputs_for_log.items()},
-                    error=error,
-                    error_type=error_type,
-                    llm_usage=frame.state.llm_usage,
-                ),
-            )
+
+        result = ContainerExecutionResult(
+            metadata={},
+            steps=frame.state.node_run_steps,
+            node_run_result=ContainerNodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED
+                if failure_variable is None
+                else WorkflowNodeExecutionStatus.FAILED,
+                inputs={key: build_container_value(value) for key, value in payload.inputs_for_log.items()},
+                outputs=self._build_tool_outputs(frame.state.outputs) if failure_variable is None else {},
+                error=error,
+                error_type=error_type,
+                llm_usage=frame.state.llm_usage,
+            ),
+        )
 
         parent_frame.state.enqueue_ready_task(ResumeTask(invocation_id=run_state.invocation_id, result=result))
         self._root_runtime_state().pop_container_frame(frame.frame_id)
@@ -461,35 +465,15 @@ class WorkflowToolContainerHandler:
         return variable_pool
 
     @staticmethod
-    def _build_success_result(
-        *,
-        frame: ExecutionFrame,
-        run_state: CustomContainerRunState,
-    ) -> ContainerExecutionResult:
-        payload = WorkflowToolContainerPayload.model_validate_json(run_state.payload)
-        workflow_outputs = frame.state.outputs
+    def _build_tool_outputs(workflow_outputs: Mapping[str, object]) -> dict[str, ContainerValue]:
         json_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(workflow_outputs) or {}
-        files = WorkflowToolContainerHandler._collect_files(workflow_outputs)
         tool_outputs: dict[str, Any] = {
-            key: value for key, value in workflow_outputs.items() if key not in _RESERVED_TOOL_OUTPUTS
+            **{key: value for key, value in workflow_outputs.items() if key not in _RESERVED_TOOL_OUTPUTS},
+            "text": json.dumps(json_outputs, ensure_ascii=False),
+            "files": WorkflowToolContainerHandler._collect_files(workflow_outputs),
+            "json": [json_outputs],
         }
-        tool_outputs.update(
-            {
-                "text": json.dumps(json_outputs, ensure_ascii=False),
-                "files": files,
-                "json": [json_outputs] if json_outputs else [{}],
-            }
-        )
-        return ContainerExecutionResult(
-            metadata={},
-            steps=frame.state.node_run_steps,
-            node_run_result=ContainerNodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={key: build_container_value(value) for key, value in payload.inputs_for_log.items()},
-                outputs={key: build_container_value(value) for key, value in tool_outputs.items()},
-                llm_usage=frame.state.llm_usage,
-            ),
-        )
+        return {key: build_container_value(value) for key, value in tool_outputs.items()}
 
     @staticmethod
     def _collect_files(values: Mapping[str, object]) -> list[File]:

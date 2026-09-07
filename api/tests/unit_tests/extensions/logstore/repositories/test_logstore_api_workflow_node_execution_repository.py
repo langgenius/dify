@@ -74,14 +74,91 @@ def test_sdk_history_queries_exclude_recursive_tool_executions() -> None:
         repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
     repository.logstore_client = MagicMock(supports_pg_protocol=False)
     repository.logstore_client.get_logs.return_value = list[dict[str, object]]()
+    repository.logstore_client.execute_sql.return_value = []
 
     repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
     repository.get_node_last_execution(tenant_id="tenant", app_id="app", workflow_id="workflow", node_id="same-node")
 
-    requests = repository.logstore_client.get_logs.call_args_list
-    assert len(requests) == 2
-    for request in requests:
-        assert 'not triggered_from: "workflow-tool"' in request.kwargs["query"]
+    assert 'not triggered_from: "workflow-tool"' in repository.logstore_client.get_logs.call_args.kwargs["query"]
+    history_query = repository.logstore_client.execute_sql.call_args.kwargs
+    assert "triggered_from != 'workflow-tool'" in history_query["sql"]
+    assert history_query["query"] == 'tenant_id: "tenant" and app_id: "app" and workflow_run_id: "run"'
+
+
+def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope() -> None:
+    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+    with closing(sqlite3.connect(":memory:")) as database:
+        database.row_factory = sqlite3.Row
+        database.execute(
+            "CREATE TABLE workflow_node_execution (id TEXT, node_execution_id TEXT, tenant_id TEXT, app_id TEXT, "
+            "workflow_id TEXT, workflow_run_id TEXT, triggered_from TEXT, node_id TEXT, node_type TEXT, title TEXT, "
+            '"index" INTEGER, status TEXT, elapsed_time REAL, created_at INTEGER, finished_at INTEGER, '
+            "execution_metadata TEXT, log_version INTEGER, __time__ INTEGER)"
+        )
+        base = {
+            "id": "row-id",
+            "node_execution_id": "engine-id",
+            "tenant_id": "tenant",
+            "app_id": "app",
+            "workflow_id": "workflow",
+            "workflow_run_id": "run",
+            "triggered_from": "workflow-run",
+            "node_id": "tool",
+            "node_type": "tool",
+            "title": "Approval",
+            "index": 2,
+            "status": "paused",
+            "elapsed_time": 3.5,
+            "created_at": 100,
+            "finished_at": 104,
+            "execution_metadata": '{"iteration_id":"iteration"}',
+            "log_version": 2,
+            "__time__": 1,
+        }
+        rows = [base, {**base, "log_version": 1, "status": "running"}]
+        rows.extend(
+            {**base, "id": f"page-{index}", "index": index, "execution_metadata": "[]", "elapsed_time": None}
+            for index in range(3, 1003)
+        )
+        for field in ("tenant_id", "app_id", "workflow_id", "workflow_run_id", "triggered_from"):
+            rows.append({**base, "id": f"other-{field}", field: "other", "index": 99})
+        database.executemany(
+            "INSERT INTO workflow_node_execution VALUES (" + ", ".join(f":{key}" for key in base) + ")", rows
+        )
+
+        def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
+            return [dict(row) for row in database.execute(sql)]
+
+        repository.logstore_client.execute_sql.side_effect = execute_query
+        snapshots = repository.get_execution_snapshots_by_workflow_run(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            triggered_from="workflow-run",
+            workflow_run_id="run",
+        )
+    assert len(snapshots) == 1001
+    snapshot = snapshots[0]
+    assert (snapshot.execution_id, snapshot.title, snapshot.index, snapshot.status) == (
+        "engine-id",
+        "Approval",
+        2,
+        "paused",
+    )
+    assert snapshot.iteration_id == "iteration"
+    assert snapshot.elapsed_time == 3.5
+    assert snapshot.created_at == datetime.datetime(1970, 1, 1, 0, 1, 40)
+    assert snapshots[-1].index == 1002
+    assert snapshots[-1].iteration_id is None
+    assert snapshots[-1].elapsed_time == 4
+    assert repository.logstore_client.execute_sql.call_count == 2
+    query = repository.logstore_client.execute_sql.call_args.kwargs
+    assert "SELECT *" not in query["sql"]
+    assert "OFFSET 1000" in query["sql"]
+    assert (
+        query["query"] == 'tenant_id: "tenant" and app_id: "app" and workflow_run_id: "run" and workflow_id: "workflow"'
+    )
 
 
 @pytest.mark.parametrize("requested_id", ["parent-row", "parent-engine"])

@@ -227,7 +227,9 @@ def test_workflow_tool_agent_nodes_persist_in_source_app_under_only_root_run(sql
             node_title="Agent",
             start_at=started_at,
             container_id="source-loop",
-            node_run_result=NodeRunResult(process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "untrusted-app"}),
+            node_run_result=NodeRunResult(
+                process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "untrusted-app"}, metadata={"loop_id": "source-loop"}
+            ),
         )
     )
 
@@ -726,49 +728,6 @@ class TestWorkflowPersistenceLayer:
         )
         layer._handle_node_retry(retry_event)
         assert node_repo.saved_exec_data
-
-    @pytest.mark.parametrize(
-        ("container_id", "expected_iteration_id", "expected_loop_id"),
-        [
-            ("", None, None),
-            ("iteration-node", "iteration-node", None),
-            ("loop-node", None, "loop-node"),
-        ],
-    )
-    def test_handle_node_started_persists_direct_container_owner(
-        self,
-        container_id: str,
-        expected_iteration_id: str | None,
-        expected_loop_id: str | None,
-    ):
-        graph_data = {
-            "nodes": [
-                {"id": "iteration-node", "data": {"type": "iteration", "container_id": "loop-node"}},
-                {"id": "loop-node", "data": {"type": "loop"}},
-            ],
-            "edges": [],
-        }
-        layer, _, node_repo, _ = _make_layer(graph_data=graph_data)
-        layer._handle_graph_run_started()
-
-        layer._handle_node_started(
-            NodeRunStartedEvent(
-                id="exec",
-                node_id="node",
-                node_type=BuiltinNodeTypes.START,
-                node_title="Start",
-                start_at=_naive_utc_now(),
-                container_id=container_id,
-            )
-        )
-
-        execution = node_repo.saved[-1]
-        assert execution.metadata[WorkflowNodeExecutionMetadataKey.ITERATION_ID] == expected_iteration_id
-        assert execution.metadata[WorkflowNodeExecutionMetadataKey.LOOP_ID] == expected_loop_id
-        snapshot = layer._node_snapshots["exec"]
-        assert snapshot.iteration_id == expected_iteration_id
-        assert snapshot.loop_id == expected_loop_id
-        assert not (snapshot.iteration_id and snapshot.loop_id)
 
     def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
         layer, _, node_repo, _ = _make_layer()

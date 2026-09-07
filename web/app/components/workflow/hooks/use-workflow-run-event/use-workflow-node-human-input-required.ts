@@ -2,6 +2,7 @@ import type { HumanInputRequiredResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { applyHumanInputRequired } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -16,18 +17,7 @@ export const useWorkflowNodeHumanInputRequired = () => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
       const newWorkflowRunningData = produce(workflowRunningData!, (draft) => {
-        if (!draft.humanInputFormDataList) {
-          draft.humanInputFormDataList = [data]
-        } else {
-          const currentFormIndex = draft.humanInputFormDataList.findIndex(
-            (item) => item.form_id === data.form_id,
-          )
-          if (currentFormIndex > -1) {
-            draft.humanInputFormDataList[currentFormIndex] = data
-          } else {
-            draft.humanInputFormDataList.push(data)
-          }
-        }
+        applyHumanInputRequired(draft, data)
         const currentIndex = draft.tracing!.findIndex((item) => item.node_id === data.node_id)
         if (currentIndex > -1) {
           draft.tracing![currentIndex] = {

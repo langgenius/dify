@@ -8,7 +8,11 @@ import type {
   WorkflowFinishedResponse,
 } from '@/types/workflow'
 import { produce } from 'immer'
-import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
+import {
+  applyHumanInputFilled,
+  applyHumanInputRequired,
+  applyHumanInputTimeout,
+} from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
@@ -190,15 +194,7 @@ const updateHumanInputRequired = (
   data: NonNullable<WorkflowProcess['humanInputFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (!draft.humanInputFormDataList) {
-      draft.humanInputFormDataList = [data]
-    } else {
-      const currentFormIndex = draft.humanInputFormDataList.findIndex(
-        (item) => item.form_id === data.form_id,
-      )
-      if (currentFormIndex > -1) draft.humanInputFormDataList[currentFormIndex] = data
-      else draft.humanInputFormDataList.push(data)
-    }
+    applyHumanInputRequired(draft, data)
 
     const currentIndex = draft.tracing.findIndex((item) => item.node_id === data.node_id)
     if (currentIndex > -1) draft.tracing[currentIndex]!.status = NodeRunningStatus.Paused
@@ -210,26 +206,7 @@ const updateHumanInputFilled = (
   data: NonNullable<WorkflowProcess['humanInputFilledFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    let requiredFormData: NonNullable<WorkflowProcess['humanInputFormDataList']>[number] | undefined
-    if (draft.humanInputFormDataList?.length) {
-      const currentFormIndex = draft.humanInputFormDataList.findIndex(
-        (item) => item.form_id === data.form_id,
-      )
-      if (currentFormIndex > -1) {
-        requiredFormData = draft.humanInputFormDataList[currentFormIndex]
-        draft.humanInputFormDataList.splice(currentFormIndex, 1)
-      }
-    }
-
-    const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
-    if (!draft.humanInputFilledFormDataList) draft.humanInputFilledFormDataList = [enrichedData]
-    else {
-      const existing = draft.humanInputFilledFormDataList.find(
-        (form) => form.form_id === data.form_id,
-      )
-      if (existing) Object.assign(existing, enrichedData)
-      else draft.humanInputFilledFormDataList.push(enrichedData)
-    }
+    applyHumanInputFilled(draft, data)
   })
 }
 
@@ -238,13 +215,7 @@ const updateHumanInputTimeout = (
   data: HumanInputFormTimeoutData,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (!draft.humanInputFormDataList?.length) return
-
-    const currentFormIndex = draft.humanInputFormDataList.findIndex(
-      (item) => item.form_id === data.form_id,
-    )
-    if (currentFormIndex > -1)
-      draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
+    applyHumanInputTimeout(draft, data)
   })
 }
 

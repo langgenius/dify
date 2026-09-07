@@ -91,7 +91,7 @@ from graphon.engine_events import (
 )
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from graphon.graph import Graph
 from graphon.graph.scoping import resolve_container_id
 from graphon.runtime import RuntimeState, VariablePool
@@ -116,8 +116,6 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
-        self._container_graph_config: Mapping[str, Any] | None = None
-        self._container_node_types: dict[str, object] = {}
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -432,39 +430,6 @@ class WorkflowBasedAppRunner:
             logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
             return None
 
-    def _resolve_container_ids(
-        self,
-        workflow_entry: WorkflowEntry,
-        container_id: str,
-    ) -> tuple[str | None, str | None]:
-        if not container_id:
-            return None, None
-
-        graph_config = workflow_entry.graph_engine.graph.graph_config
-        if graph_config is None:
-            raise ValueError("graph config is required to resolve container ownership")
-        if graph_config is not self._container_graph_config:
-            nodes = graph_config.get("nodes")
-            if not isinstance(nodes, list):
-                raise ValueError("graph config nodes must be a list")
-            self._container_node_types = {
-                node_id: data.get("type")
-                for node in nodes
-                if isinstance(node, Mapping)
-                and isinstance((node_id := node.get("id")), str)
-                and isinstance((data := node.get("data")), Mapping)
-                and data.get("type") in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}
-            }
-            self._container_graph_config = graph_config
-
-        match self._container_node_types.get(container_id):
-            case BuiltinNodeTypes.ITERATION:
-                return container_id, None
-            case BuiltinNodeTypes.LOOP:
-                return None, container_id
-            case _:
-                raise ValueError(f"Unknown workflow container: {container_id}")
-
     def _iter_workflow_events(self, workflow_entry: WorkflowEntry) -> Generator[EngineEvent, None, None]:
         # Engine.run clears pause reasons during resume. Form completion belongs
         # to this response boundary, including forms inside hidden Tool frames.
@@ -562,11 +527,13 @@ class WorkflowBasedAppRunner:
         :param workflow_entry: workflow entry
         :param event: event
         """
-        iteration_id, loop_id = (
-            self._resolve_container_ids(workflow_entry, event.container_id)
+        node_metadata: dict[str, Any] = (
+            {str(key): value for key, value in event.node_run_result.metadata.items()}
             if isinstance(event, NodeEvent)
-            else (None, None)
+            else {}
         )
+        iteration_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
+        loop_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
         match event:
             case GraphRunStartedEvent():
                 self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
@@ -784,7 +751,7 @@ class WorkflowBasedAppRunner:
                         start_at=event.start_at,
                         node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
-                        metadata=event.metadata,
+                        metadata={**event.metadata, **node_metadata},
                     )
                 )
             case NodeRunIterationNextEvent():
@@ -810,7 +777,7 @@ class WorkflowBasedAppRunner:
                         node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
-                        metadata=event.metadata,
+                        metadata={**event.metadata, **node_metadata},
                         steps=event.steps,
                         error=event.error if isinstance(event, NodeRunIterationFailedEvent) else None,
                     )
@@ -825,7 +792,7 @@ class WorkflowBasedAppRunner:
                         start_at=event.start_at,
                         node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
-                        metadata=event.metadata,
+                        metadata={**event.metadata, **node_metadata},
                     )
                 )
             case NodeRunLoopNextEvent():
@@ -851,7 +818,7 @@ class WorkflowBasedAppRunner:
                         node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
-                        metadata=event.metadata,
+                        metadata={**event.metadata, **node_metadata},
                         steps=event.steps,
                         error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
                     )

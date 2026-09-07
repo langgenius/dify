@@ -1,8 +1,11 @@
 import type { NodeTracing } from '@/types/workflow'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { BlockEnum } from '../../types'
+import { WorkflowContext } from '../../context'
+import { createWorkflowStore } from '../../store'
+import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import TracingPanel from '../tracing-panel'
 
 const mockRequest = vi.hoisted(() => vi.fn())
@@ -48,6 +51,91 @@ const jsonResponse = (data: unknown) =>
 describe('Workflow tool tracing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it.each([true, false])(
+    'exposes chat tool internals only with console workflow scope: %s',
+    async (consoleScope) => {
+      const user = userEvent.setup()
+      const root = trace('chat-tool-execution', { expand: true })
+      mockRequest.mockImplementation(() => Promise.resolve(jsonResponse({ data: [] })))
+      const workflowStore = consoleScope
+        ? createWorkflowStore({ injectWorkflowStoreSliceFn: () => ({ appId: 'chat-app' }) })
+        : null
+      renderWithConsoleQuery(
+        <WorkflowContext value={workflowStore}>
+          <WorkflowProcessItem
+            item={{ id: 'answer', isAnswer: true, content: '', workflow_run_id: 'chat-run' }}
+            data={{ tracing: [root], status: WorkflowRunningStatus.Succeeded }}
+            expand
+          />
+        </WorkflowContext>,
+      )
+
+      if (!consoleScope) {
+        expect(screen.queryByRole('button', { name: 'runLog.tracing' })).not.toBeInTheDocument()
+        expect(mockRequest).not.toHaveBeenCalled()
+        return
+      }
+      await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+      await screen.findByText('common.noData')
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '/apps/chat-app/workflow-runs/chat-run/node-executions/chat-tool-execution/children',
+        ),
+        expect.anything(),
+        expect.anything(),
+      )
+    },
+  )
+
+  it.each([
+    [BlockEnum.Iteration, BlockEnum.Loop],
+    [BlockEnum.Loop, BlockEnum.Iteration],
+  ])('preserves internal Tool details through %s → %s ancestry', async (outerType, innerType) => {
+    const user = userEvent.setup()
+    const metadata = { total_tokens: 0, total_price: 0, currency: 'USD' }
+    const outer = trace('outer', {
+      node_type: outerType,
+      expand: true,
+      execution_metadata: { ...metadata, [`${outerType}_duration_map`]: { 0: 1 } },
+    })
+    const inner = trace('inner', {
+      index: 2,
+      node_type: innerType,
+      execution_metadata: {
+        ...metadata,
+        [`${outerType}_id`]: outer.node_id,
+        [`${outerType}_index`]: 0,
+        [`${innerType}_duration_map`]: { 0: 1 },
+      },
+    })
+    const tool = trace('nested-tool', {
+      index: 3,
+      inputs: { request: 'Nested request' },
+      outputs: { result: 'Nested result' },
+      execution_metadata: {
+        ...metadata,
+        [`${outerType}_id`]: outer.node_id,
+        [`${outerType}_index`]: 0,
+        [`${innerType}_id`]: inner.node_id,
+        [`${innerType}_index`]: 0,
+      },
+    })
+    renderWithConsoleQuery(<TracingPanel list={[outer, inner, tool]} />)
+
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`workflow.nodes.${outerType}`) }),
+    )
+    await user.click(screen.getByText(`workflow.singleRun.${outerType} 1`))
+    await user.click(screen.getByText('inner'))
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`workflow.nodes.${innerType}`) }),
+    )
+    await user.click(screen.getByText(`workflow.singleRun.${innerType} 1`))
+    await user.click(screen.getByText('nested-tool'))
+    expect(screen.getByText(/Nested request/)).toBeInTheDocument()
+    expect(screen.getByText(/Nested result/)).toBeInTheDocument()
   })
 
   it('keeps workflow-tool tracing on the execution instead of individual retry attempts', async () => {

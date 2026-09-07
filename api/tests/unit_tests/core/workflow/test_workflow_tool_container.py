@@ -72,7 +72,7 @@ from graphon.nodes.tool.exc import ToolNodeError
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.runtime import RuntimeState, VariablePool
-from graphon.runtime.container_state import CustomContainerRunState, create_container_run_state
+from graphon.runtime.container_state import create_container_run_state
 from graphon.runtime.execution import ROOT_FRAME_ID
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -1003,17 +1003,9 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
 
 
 def test_workflow_tool_empty_outputs_match_direct_invocation() -> None:
-    handler, frame_registry, runtime_state, request, _ = _container_handler()
-    handler.handle_request(invocation_id="invocation", request=request)
+    outputs = WorkflowToolContainerHandler._build_tool_outputs({})
 
-    run_state = runtime_state.get_container_run("invocation")
-    assert isinstance(run_state, CustomContainerRunState)
-    result = handler._build_success_result(
-        frame=frame_registry["invocation:workflow-tool"],
-        run_state=run_state,
-    )
-
-    assert result.node_run_result.outputs["json"].to_object() == [{}]
+    assert outputs["json"].to_object() == [{}]
 
 
 def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
@@ -1060,7 +1052,9 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     initial_node, _, _ = _workflow_tool_node(initial_state, app_id="intermediate-app")
     initial_graph = _outer_graph(initial_node)
     initial_owner_factory = object.__new__(DifyNodeFactory)
-    initial_owner_factory._human_input_run_context = build_test_run_context(app_id="outer-app")
+    initial_owner_factory._human_input_run_context = DifyNodeFactory._resolve_dify_context(
+        build_test_run_context(app_id="outer-app")
+    )
     initial_graph.node_factory = initial_owner_factory
     initial_events = list(
         Engine(
@@ -1105,7 +1099,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
     restored_graph = _outer_graph(restored_node)
     restored_owner_factory = object.__new__(DifyNodeFactory)
-    restored_owner_factory._human_input_run_context = build_test_run_context(app_id="outer-app")
+    restored_owner_factory._human_input_run_context = initial_owner_factory.human_input_run_context
     restored_graph.node_factory = restored_owner_factory
     assert form_repository.form is not None
     form_repository.form.is_submitted = True

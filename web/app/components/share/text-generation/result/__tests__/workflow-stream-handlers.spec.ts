@@ -457,65 +457,6 @@ describe('createWorkflowStreamHandlers', () => {
     }
   }
 
-  it('keeps distinct forms from the same Tool and updates only the addressed form', () => {
-    const setup = setupHandlers({ isPublicAPI: true })
-    const envelope = { task_id: 'task-1', workflow_run_id: 'run-1', event: 'human_input_required' }
-    const first = createHumanInput({
-      node_id: 'tool',
-      form_id: 'first',
-      form_content: 'First approval',
-    })
-    const second = createHumanInput({
-      node_id: 'tool',
-      form_id: 'second',
-      form_content: 'Second approval',
-    })
-
-    setup.handlers.onHumanInputRequired!({ ...envelope, data: first })
-    setup.handlers.onHumanInputRequired!({ ...envelope, data: second })
-    setup.handlers.onHumanInputRequired!({
-      ...envelope,
-      data: { ...second, form_token: 'refreshed' },
-    })
-
-    expect(setup.workflowProcessData()?.humanInputFormDataList).toEqual([
-      first,
-      { ...second, form_token: 'refreshed' },
-    ])
-
-    setup.handlers.onHumanInputFormTimeout!({
-      ...envelope,
-      data: { ...second, expiration_time: 200 },
-    })
-    expect(
-      setup.workflowProcessData()?.humanInputFormDataList?.map((form) => form.expiration_time),
-    ).toEqual([100, 200])
-
-    const filled = {
-      form_id: 'second',
-      node_id: 'tool',
-      node_title: 'Tool',
-      rendered_content: 'Approved',
-      action_id: 'approve',
-      action_text: 'Approve',
-    }
-    setup.handlers.onHumanInputFormFilled!({ ...envelope, data: filled })
-    setup.handlers.onHumanInputFormFilled!({
-      ...envelope,
-      data: { ...filled, rendered_content: 'Replayed approval' },
-    })
-
-    expect(setup.workflowProcessData()?.humanInputFormDataList).toEqual([first])
-    expect(setup.workflowProcessData()?.humanInputFilledFormDataList).toEqual([
-      {
-        ...filled,
-        rendered_content: 'Replayed approval',
-        form_content: 'Second approval',
-        inputs: [],
-      },
-    ])
-  })
-
   it('should process workflow success and paused events', () => {
     const setup = setupHandlers({ isPublicAPI: true })
     const handlers = setup.handlers as Required<
