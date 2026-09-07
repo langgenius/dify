@@ -3,15 +3,20 @@ from typing import Any
 
 WORKFLOW_AGENT_BINDING_ID_KEY = "workflow_agent_binding_id"
 WORKFLOW_TOOL_INVOCATION_ID_KEY = "workflow_tool_invocation_id"
+WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY = "workflow_tool_parent_execution_id"
 
 
 def preserve_workflow_agent_identity(
     identity_source: Mapping[str, Any] | None,
     process_data: Mapping[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """Keep persisted Agent participant identity through node event updates."""
+    """Keep persisted Agent and Workflow Tool ownership through node event updates."""
     merged = dict(process_data or {})
-    for key in (WORKFLOW_AGENT_BINDING_ID_KEY, WORKFLOW_TOOL_INVOCATION_ID_KEY):
+    for key in (
+        WORKFLOW_AGENT_BINDING_ID_KEY,
+        WORKFLOW_TOOL_INVOCATION_ID_KEY,
+        WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+    ):
         source_id = (identity_source or {}).get(key)
         target_id = (process_data or {}).get(key)
         for value in (source_id, target_id):
@@ -37,6 +42,7 @@ def workflow_agent_workspace_scope_key(
 __all__ = [
     "WORKFLOW_AGENT_BINDING_ID_KEY",
     "WORKFLOW_TOOL_INVOCATION_ID_KEY",
+    "WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY",
     "preserve_workflow_agent_identity",
     "workflow_agent_workspace_scope_key",
 ]

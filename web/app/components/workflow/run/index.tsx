@@ -16,6 +16,7 @@ import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
 
 type RunProps = {
+  appId?: string
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
@@ -24,6 +25,7 @@ type RunProps = {
 }
 
 const RunPanel: FC<RunProps> = ({
+  appId,
   hideResult,
   activeTab = 'RESULT',
   getResultCallback,
@@ -179,7 +181,18 @@ const RunPanel: FC<RunProps> = ({
           )}
         </TabsPanel>
         <TabsPanel value="TRACING">
-          {!loading && <TracingPanel className="bg-background-section-burn" list={list} />}
+          {!loading && (
+            <TracingPanel
+              key={runDetail?.id}
+              className="bg-background-section-burn"
+              list={list}
+              workflowRun={
+                appId && runDetail
+                  ? { appId, runId: runDetail.id, status: runDetail.status }
+                  : undefined
+              }
+            />
+          )}
         </TabsPanel>
       </div>
     </Tabs>

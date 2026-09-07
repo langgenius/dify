@@ -14,6 +14,7 @@ from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.engine_events import (
     GraphRunAbortedEvent,
@@ -148,6 +149,34 @@ def _make_sql_layer(session_factory):
         ),
     )
     return layer
+
+
+def test_tool_trace_identity_survives_start_pause_and_resume():
+    layer, _, node_repo, _ = _make_layer()
+    layer.on_event(GraphRunStartedEvent())
+    started_at = _naive_utc_now()
+    layer.on_event(
+        NodeRunStartedEvent(
+            id="tool-exec",
+            node_id="tool",
+            node_type=BuiltinNodeTypes.TOOL,
+            node_title="Nested tool",
+            provider_type="workflow",
+            provider_id="provider",
+            start_at=started_at,
+            node_run_result=NodeRunResult(process_data={WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-exec"}),
+        )
+    )
+    execution = layer._node_execution_cache["tool-exec"]
+    for status in (WorkflowNodeExecutionStatus.PAUSED, WorkflowNodeExecutionStatus.SUCCEEDED):
+        layer._update_node_execution(
+            execution, NodeRunResult(), status, update_outputs=status != WorkflowNodeExecutionStatus.PAUSED
+        )
+        assert execution.process_data[WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY] == "parent-exec"
+        assert execution.metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] == {
+            "provider_type": "workflow",
+            "provider_id": "provider",
+        }
 
 
 def _tool_source():

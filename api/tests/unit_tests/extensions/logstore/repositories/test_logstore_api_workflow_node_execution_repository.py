@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     LogstoreAPIWorkflowNodeExecutionRepository,
     _dict_to_workflow_node_execution_model,
@@ -81,6 +82,48 @@ def test_sdk_history_queries_exclude_recursive_tool_executions() -> None:
     assert len(requests) == 2
     for request in requests:
         assert 'not triggered_from: "workflow-tool"' in request.kwargs["query"]
+
+
+@pytest.mark.parametrize("use_sql", [True, False])
+def test_workflow_tool_children_keep_latest_paused_record_and_exact_parent(use_sql: bool) -> None:
+    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+    repository.logstore_client = MagicMock(supports_pg_protocol=use_sql)
+    rows = [
+        {
+            "id": "parent-row",
+            "node_execution_id": "parent-engine",
+            "node_type": "tool",
+            "log_version": "1",
+            "created_at": 0,
+        },
+        *[
+            {
+                "id": "child",
+                "node_type": "human-input",
+                "triggered_from": "workflow-tool",
+                "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-engine"}),
+                "log_version": str(version),
+                "status": status,
+                "created_at": 1,
+            }
+            for version, status in ((1, "running"), (2, "paused"))
+        ],
+        {
+            "id": "other-call",
+            "triggered_from": "workflow-tool",
+            "process_data": json.dumps({WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "other-engine"}),
+            "created_at": 2,
+        },
+    ]
+    query = repository.logstore_client.execute_sql if use_sql else repository.logstore_client.get_logs
+    query.return_value = rows
+    children = repository.get_workflow_tool_executions("tenant", "run", "parent-engine")
+    assert [child.id for child in children] == ["child"]
+    assert children[0].status.value == "paused"
+    scope = query.call_args.kwargs["sql" if use_sql else "query"]
+    assert ("tenant_id = 'tenant'" if use_sql else 'tenant_id: "tenant"') in scope
+    assert ("workflow_run_id = 'run'" if use_sql else 'workflow_run_id: "run"') in scope
 
 
 def test_load_full_process_data_returns_logstore_mapping() -> None:
