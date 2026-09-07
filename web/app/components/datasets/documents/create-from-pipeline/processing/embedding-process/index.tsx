@@ -13,6 +13,8 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,10 +24,11 @@ import PriorityLabel from '@/app/components/billing/priority-label'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
@@ -46,7 +49,13 @@ const EmbeddingProcess = ({
   retrievalMethod,
 }: EmbeddingProcessProps) => {
   const { t } = useTranslation()
-  const { enableBilling, plan } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>(
     [],
   )
@@ -114,7 +123,8 @@ const EmbeddingProcess = ({
       ),
     [indexingStatusBatchDetail],
   )
-  const showUpgrade = enableBilling && (plan.type === 'sandbox' || plan.type === 'professional')
+  const showUpgrade =
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
 
   const getSourceName = (id: string) => {
     const doc = documents.find((document) => document.id === id)
@@ -166,7 +176,7 @@ const EmbeddingProcess = ({
               planLimitMb={vectorSpaceAdmissionError.vector_space_limit_mb}
             />
           )}
-        {enableBilling && plan.type !== 'team' && (
+        {deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional') && (
           <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
             <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <RiAedFill className="size-4 text-text-primary-on-surface" />
@@ -216,7 +226,7 @@ const EmbeddingProcess = ({
                   <div className="truncate system-xs-medium text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
-                  {enableBilling && <PriorityLabel className="ml-0" />}
+                  <PriorityLabel className="ml-0" />
                 </div>
                 {isSourceEmbedding(indexingStatusDetail) && (
                   <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>

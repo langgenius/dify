@@ -8,7 +8,6 @@ import type {
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { defaultPlan } from '@/app/components/billing/config'
 
@@ -27,11 +26,7 @@ export type ProviderContextState = {
     total: UsagePlanInfo
     reset: UsageResetInfo
   }
-  isFetchedPlan: boolean
-  isFetchedPlanInfo: boolean
-  enableBilling: boolean
   enableSkill: boolean
-  onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
   enableEducationPlan: boolean
@@ -51,11 +46,7 @@ export const baseProviderContextValue: ProviderContextState = {
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
-  isFetchedPlan: false,
-  isFetchedPlanInfo: false,
-  enableBilling: false,
   enableSkill: false,
-  onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
   enableEducationPlan: false,

@@ -14,11 +14,14 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/client'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
@@ -29,9 +32,21 @@ type Props = Readonly<{
 
 const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
   const { t } = useTranslation()
-  const { plan, enableBilling } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: annotationQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.annotation_quota_limit,
+    }),
+  )
+  const isAnnotationQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
-    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
+    deploymentEdition === 'CLOUD' &&
+    annotationQuota !== undefined &&
+    annotationQuota.limit > 0 &&
+    annotationQuota.size >= annotationQuota.limit
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [isCreateNext, setIsCreateNext] = useState(false)
@@ -46,6 +61,7 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
   }
 
   const handleSave = async () => {
+    if (isAnnotationQuotaUnavailable || isAnnotationFull) return
     const payload = {
       question,
       answer,
@@ -123,7 +139,7 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
                         variant="primary"
                         onClick={handleSave}
                         loading={isSaving}
-                        disabled={isAnnotationFull}
+                        disabled={isAnnotationQuotaUnavailable || isAnnotationFull}
                       >
                         {t(($) => $['operation.add'], { ns: 'common' })}
                       </Button>

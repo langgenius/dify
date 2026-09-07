@@ -7,7 +7,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
@@ -16,7 +15,11 @@ const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation()
-  const { plan, enableBilling } = useProviderContext()
+  const { data: canReplaceLogo } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => data.can_replace_logo,
+    }),
+  )
   const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
@@ -28,24 +31,25 @@ const useWebAppBrand = () => {
   const updateCustomConfigMutation = useMutation(
     consoleQuery.workspaces.customConfig.post.mutationOptions(),
   )
-  const isSandbox = enableBilling && plan.type === 'sandbox'
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = customConfig?.replace_webapp_logo || ''
   const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
-  const isCustomConfigUnavailable = customConfigQuery.isPending || customConfigQuery.isError
+  const isCustomConfigUnavailable = customConfig === undefined || canReplaceLogo === undefined
   const uploadDisabled =
-    isCustomConfigUnavailable || isSandbox || webappBrandRemoved || !canManageCustomBrand
+    isCustomConfigUnavailable || !canReplaceLogo || webappBrandRemoved || !canManageCustomBrand
   const workspaceLogo = systemFeatures.branding.enabled
     ? systemFeatures.branding.workspace_logo
     : ''
   const persistWorkspaceBrand = async (body: WorkspaceCustomConfigPayload) => {
+    if (isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand) return
     await updateCustomConfigMutation.mutateAsync({ body })
     await queryClient.invalidateQueries({
       queryKey: consoleQuery.workspaces.customConfig.get.key(),
     })
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (uploadDisabled) return
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > MAX_LOGO_FILE_SIZE) {
@@ -107,7 +111,7 @@ const useWebAppBrand = () => {
     isCustomConfigUnavailable,
     uploadDisabled,
     workspaceLogo,
-    isSandbox,
+    canReplaceLogo,
     canManageCustomBrand,
     handleApply,
     handleCancel,

@@ -107,7 +107,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       credits: 200,
     })
     mocks.permissionQueryFn.mockResolvedValue({
-      workspace: { permission_keys: ['agent.manage'] },
+      workspace: { permission_keys: ['agent.acl.preview'] },
       app: { default_permission_keys: [], overrides: [] },
       dataset: { default_permission_keys: [], overrides: [] },
     })

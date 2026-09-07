@@ -1,18 +1,18 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
-import { mailToSupport } from '@/app/components/header/utils/util'
+import { generateMailToLink, mailToSupport } from '@/app/components/header/utils/util'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 
 export default function SupportMenu() {
   const { t } = useTranslation()
@@ -20,7 +20,12 @@ export default function SupportMenu() {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { enableBilling, plan } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const { data: accountProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => ({
@@ -29,12 +34,22 @@ export default function SupportMenu() {
     }),
   })
   const { setShowPricingModal } = useModalContext()
-  const hasDedicatedChannel = plan.type !== 'sandbox' || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
+  const hasDedicatedChannel =
+    (deploymentEdition === 'CLOUD' && (plan === 'professional' || plan === 'team')) ||
+    Boolean(SUPPORT_EMAIL_ADDRESS.trim())
   const shouldShowUpgradeContact =
-    deploymentEdition === 'CLOUD' &&
-    enableBilling &&
-    plan.type === 'sandbox' &&
-    !hasDedicatedChannel
+    deploymentEdition === 'CLOUD' && plan === 'sandbox' && !hasDedicatedChannel
+  const supportMailLink =
+    deploymentEdition !== 'CLOUD'
+      ? generateMailToLink(SUPPORT_EMAIL_ADDRESS)
+      : plan === undefined
+        ? undefined
+        : mailToSupport(
+            accountProfile.email,
+            plan,
+            accountProfile.currentVersion ?? '',
+            SUPPORT_EMAIL_ADDRESS,
+          )
   const hasZendeskWidget = deploymentEdition === 'CLOUD' && Boolean(ZENDESK_WIDGET_KEY.trim())
 
   return (
@@ -80,15 +95,10 @@ export default function SupportMenu() {
           />
         </DropdownMenuItem>
       )}
-      {!shouldShowUpgradeContact && hasDedicatedChannel && !hasZendeskWidget && (
+      {!shouldShowUpgradeContact && hasDedicatedChannel && !hasZendeskWidget && supportMailLink && (
         <DropdownMenuLinkItem
           className="mx-0 h-8 gap-1 px-3 py-1"
-          href={mailToSupport(
-            accountProfile.email,
-            plan.type,
-            accountProfile.currentVersion ?? '',
-            SUPPORT_EMAIL_ADDRESS,
-          )}
+          href={supportMailLink}
           rel="noopener noreferrer"
           target="_blank"
         >
