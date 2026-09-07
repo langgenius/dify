@@ -52,6 +52,17 @@ class BaseTracingConfig(BaseModel):
         """
         return validate_project_name(v, default_name)
 
+    @classmethod
+    def is_blank_secret(cls, key: str, value: str) -> bool:
+        """Whether a decrypted secret carries nothing worth masking.
+
+        The console masks every secret it echoes back. Masking a value that holds no secret
+        (an empty credential, or an empty JSON container for structured secrets) leaves the
+        user unable to tell a configured credential from an unset one. Providers with
+        structured secrets override this to recognise their own "empty" shape.
+        """
+        return not value.strip()
+
 
 OPS_FILE_PATH = "ops_trace/"
 OPS_TRACE_FAILED_KEY = "FAILED_OPS_TRACE"

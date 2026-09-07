@@ -339,7 +339,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                     return {
                         "config_class": OTelTracingConfig,
                         "secret_keys": ["headers"],
-                        "other_keys": ["endpoint", "service_name", "resource_attributes"],
+                        "other_keys": ["endpoint", "service_name", "resource_attributes", "project_url"],
                         "trace_instance": UnifiedOTelTrace,
                     }
 
@@ -476,7 +476,13 @@ class OpsTraceManager:
         new_config: dict[str, Any] = {}
         for key in secret_keys:
             if key in decrypt_tracing_config:
-                new_config[key] = obfuscated_token(decrypt_tracing_config[key])
+                value = decrypt_tracing_config[key]
+                # Echo back an empty secret as-is so the console can distinguish "not configured"
+                # from a stored credential; only real secrets are masked.
+                if isinstance(value, str) and config_class.is_blank_secret(key, value):
+                    new_config[key] = value
+                else:
+                    new_config[key] = obfuscated_token(value)
 
         for key in other_keys:
             new_config[key] = decrypt_tracing_config.get(key, "")

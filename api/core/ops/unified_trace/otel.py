@@ -41,6 +41,28 @@ def _load_json_object(value: str, field_name: str) -> dict[str, Any]:
     return parsed
 
 
+def _load_headers(value: str) -> dict[str, str]:
+    """Parse the headers field, rejecting anything an OTLP exporter cannot send.
+
+    JSON that is not an object (``[]``, ``"x"``, ``1``, ``null``) and non-string values are
+    refused here rather than at export time, where they would surface as an AttributeError
+    while building the exporter.
+    """
+    headers = _load_json_object(value, "headers")
+    for key, header_value in headers.items():
+        if not isinstance(header_value, str):
+            raise ValueError(f"headers value for {key!r} must be a string")
+    return headers
+
+
+def _is_json(value: str) -> bool:
+    try:
+        json.loads(value)
+    except ValueError:
+        return False
+    return True
+
+
 def _gen_ai_attributes(canonical_span: CanonicalSpan, trace: CanonicalTrace) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {}
     operation_name = _GEN_AI_OPERATION_NAME.get(canonical_span.kind)
@@ -73,12 +95,29 @@ class OTelTracingConfig(BaseTracingConfig):
     headers: str = "{}"
     service_name: str = DEFAULT_SERVICE_NAME
     resource_attributes: str = "{}"
+    # Optional address of the backend's own UI. Unlike the hosted providers, a generic OTLP
+    # collector exposes no discoverable console: the ingest endpoint (…:4318/v1/traces) says
+    # nothing about where traces are read (Jaeger :16686, Grafana, SigNoz, …). Left empty, the
+    # console hides its "view" link instead of offering one that goes nowhere.
+    project_url: str = ""
 
     @field_validator("endpoint")
     @classmethod
     def validate_endpoint(cls, v: str) -> str:
         # Keep the path: users provide the full OTLP/HTTP trace URL (e.g. http://host:4318/v1/traces)
         return validate_url_with_path(v, default_url=DEFAULT_ENDPOINT)
+
+    @field_validator("project_url", mode="before")
+    @classmethod
+    def coerce_project_url(cls, v: Any) -> Any:
+        return "" if v is None else v
+
+    @field_validator("project_url")
+    @classmethod
+    def validate_project_url(cls, v: str) -> str:
+        if not v.strip():
+            return ""
+        return validate_url_with_path(v, default_url="")
 
     @field_validator("service_name")
     @classmethod
@@ -99,9 +138,13 @@ class OTelTracingConfig(BaseTracingConfig):
     def validate_headers(cls, v: str) -> str:
         if is_obfuscated_token(v):
             return v
-        if v.lstrip().startswith("{"):
-            _load_json_object(v, "headers")
-        # Anything else is opaque ciphertext retained by encrypt_tracing_config
+        # Treat the value as user input when it either opens a JSON container (so a botched
+        # "{not-json" is reported instead of silently stored) or parses as JSON at all (so
+        # "[]", "1" and "null" are refused here rather than when the exporter is built).
+        # Everything else is the opaque ciphertext encrypt_tracing_config feeds back through
+        # validation: base64 of an encryption envelope, which is neither.
+        if v.lstrip().startswith(("{", "[")) or _is_json(v):
+            _load_headers(v)
         return v
 
     @field_validator("resource_attributes", mode="before")
@@ -120,10 +163,24 @@ class OTelTracingConfig(BaseTracingConfig):
         _load_json_object(v, "resource_attributes")
         return v
 
+    @classmethod
+    @override
+    def is_blank_secret(cls, key: str, value: str) -> bool:
+        # "{}" is how the console sends "no headers"; masking it would render as a row of
+        # asterisks that looks exactly like a configured credential.
+        if key != "headers":
+            return super().is_blank_secret(key, value)
+        if not value.strip():
+            return True
+        try:
+            return _load_json_object(value, "headers") == {}
+        except ValueError:
+            return False
+
     def parsed_headers(self) -> dict[str, str]:
         if is_obfuscated_token(self.headers):
             raise ValueError("headers are masked; use the decrypted tracing config")
-        return {str(key): str(value) for key, value in _load_json_object(self.headers, "headers").items()}
+        return _load_headers(self.headers)
 
     def parsed_resource_attributes(self) -> dict[str, Any]:
         return _load_json_object(self.resource_attributes, "resource_attributes")

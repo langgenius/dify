@@ -32,6 +32,11 @@ class DummyConfig:
     def __init__(self, **kwargs):
         self._data = kwargs
 
+    @classmethod
+    def is_blank_secret(cls, _key: str, value: str) -> bool:
+        # Mirrors BaseTracingConfig, which every real config class derives from
+        return not value.strip()
+
     def model_dump(self):
         return dict(self._data)
 
@@ -338,6 +343,102 @@ def test_encrypt_never_persists_secrets_in_plaintext(
     # Structured secrets are serialized before encryption
     structured = OpsTraceManager.encrypt_tracing_config("tenant-1", "dummy", {"secret_value": {"x-key": "v"}})
     assert structured["secret_value"] == 'enc-{"x-key": "v"}'
+
+
+def test_obfuscation_leaves_empty_secrets_readable(
+    trace_environment: None,
+    encryption_functions: tuple[EncryptTokenRecorder, BatchDecryptTokenRecorder, ObfuscatedTokenRecorder],
+) -> None:
+    # A blank secret carries nothing to hide; masking it would look identical to a
+    # configured credential in the console.
+    blank = OpsTraceManager.obfuscated_decrypt_token("dummy", {"secret_value": "", "other_value": "info"})
+    assert blank["secret_value"] == ""
+
+    real = OpsTraceManager.obfuscated_decrypt_token("dummy", {"secret_value": "s3cret-value", "other_value": "info"})
+    assert real["secret_value"] == "ob-s3cret-value"
+
+
+@pytest.mark.parametrize("raw", ["[]", '["a"]', '"x"', "1", "1.5", "true", "null"])
+def test_otel_rejects_non_object_json_config(raw: str) -> None:
+    """JSON that is not an object must be refused at the API boundary, not at export time."""
+    from core.ops.unified_trace.otel import OTelTracingConfig
+
+    endpoint = "http://collector:4318/v1/traces"
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        OTelTracingConfig(endpoint=endpoint, headers=raw)
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        OTelTracingConfig(endpoint=endpoint, resource_attributes=raw)
+
+
+@pytest.mark.parametrize("value", [1, 1.5, True, None, ["a"], {"nested": "x"}])
+def test_otel_rejects_non_string_header_values(value: object) -> None:
+    # An OTLP exporter can only send string header values; coercing them would silently
+    # turn a list into "['a']" on the wire.
+    from core.ops.unified_trace.otel import OTelTracingConfig
+
+    with pytest.raises(ValueError, match="must be a string"):
+        OTelTracingConfig(
+            endpoint="http://collector:4318/v1/traces",
+            headers=json.dumps({"authorization": value}),
+        )
+
+
+def test_otel_accepts_object_config_and_opaque_ciphertext() -> None:
+    from core.ops.unified_trace.otel import OTelTracingConfig
+
+    endpoint = "http://collector:4318/v1/traces"
+    cfg = OTelTracingConfig(endpoint=endpoint, headers='{"authorization": "Bearer x"}')
+    assert cfg.parsed_headers() == {"authorization": "Bearer x"}
+
+    # encrypt_tracing_config round-trips the stored ciphertext back through validation;
+    # it is base64 of a "HYBRID:"-prefixed payload, so it never parses as JSON.
+    ciphertext = "SFlCUklEOrcSXy04dwQE1lBeGvwsDJVNyvBR/Sly58hksX1y3nQ88PECB+2BIfE0I0Md"
+    assert OTelTracingConfig(endpoint=endpoint, headers=ciphertext).headers == ciphertext
+
+    # The masked display value the console echoes back is also not user JSON
+    masked = '{"auth************"}'
+    assert OTelTracingConfig(endpoint=endpoint, headers=masked).headers == masked
+
+
+def test_otel_rejects_malformed_json_headers() -> None:
+    # A botched JSON attempt opens a container, so it must not be mistaken for ciphertext
+    from core.ops.unified_trace.otel import OTelTracingConfig
+
+    endpoint = "http://collector:4318/v1/traces"
+    with pytest.raises(ValueError, match="Expecting property name"):
+        OTelTracingConfig(endpoint=endpoint, headers="{not-json")
+    with pytest.raises(ValueError, match="Expecting value"):
+        OTelTracingConfig(endpoint=endpoint, headers="[not-json")
+
+
+def test_otel_project_url_is_optional_and_validated() -> None:
+    from core.ops.unified_trace.otel import OTelTracingConfig
+
+    endpoint = "http://collector:4318/v1/traces"
+    # A generic collector exposes no discoverable console, so the field stays empty by default
+    # and the console hides its "view" link rather than opening nothing.
+    assert OTelTracingConfig(endpoint=endpoint).project_url == ""
+    assert OTelTracingConfig(endpoint=endpoint, project_url="   ").project_url == ""
+    assert OTelTracingConfig(endpoint=endpoint, project_url=None).project_url == ""  # type: ignore[arg-type]
+
+    configured = OTelTracingConfig(endpoint=endpoint, project_url="http://localhost:16686")
+    assert configured.project_url == "http://localhost:16686"
+
+    with pytest.raises(ValueError, match="URL must start with"):
+        OTelTracingConfig(endpoint=endpoint, project_url="localhost:16686")
+
+
+def test_otel_treats_empty_headers_object_as_blank_secret() -> None:
+    from core.ops.unified_trace.otel import OTelTracingConfig
+
+    assert OTelTracingConfig.is_blank_secret("headers", "{}") is True
+    assert OTelTracingConfig.is_blank_secret("headers", "  {}  ") is True
+    assert OTelTracingConfig.is_blank_secret("headers", "") is True
+    assert OTelTracingConfig.is_blank_secret("headers", '{"authorization": "Bearer x"}') is False
+    # Retained ciphertext is not JSON and must stay masked
+    assert OTelTracingConfig.is_blank_secret("headers", "SFlCUklEOg==") is False
+    # Other fields keep the base behaviour
+    assert OTelTracingConfig.is_blank_secret("endpoint", "{}") is False
 
 
 def test_decrypted_config_reads_real_trace_and_app_rows(
