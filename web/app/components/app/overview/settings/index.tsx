@@ -28,6 +28,8 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -36,9 +38,10 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 
 type ISettingsModalProps = {
@@ -92,10 +95,10 @@ export type ConfigParams = {
   chat_color_theme: string
   chat_color_theme_inverted: boolean
   prompt_public: boolean
-  copyright: string
+  copyright?: string
   privacy_policy: string
   custom_disclaimer: string
-  input_placeholder: string
+  input_placeholder?: string
   icon_type: AppIconType
   icon: string
   icon_background?: string
@@ -203,24 +206,29 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
-  const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: webappCopyrightEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => data.webapp_copyright_enabled,
+    }),
+  )
   const { setShowPricingModal } = useModalContext()
-  const isCloudSandboxPlan = enableBilling && plan.type === 'sandbox'
+  const canCustomizePlaceholder = deploymentEdition !== 'CLOUD' || webappCopyrightEnabled === true
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
-  const inputPlaceholderValue = isCloudSandboxPlan ? '' : (inputInfo.inputPlaceholder ?? '')
-  const copyrightSwitchValue = isCloudSandboxPlan ? false : inputInfo.copyrightSwitchValue
+  const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
+  const copyrightSwitchValue = inputInfo.copyrightSwitchValue
   const showInputPlaceholderPreview =
-    !isCloudSandboxPlan && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
+    canCustomizePlaceholder && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
   const inputPlaceholderField = (
     <div
       className={cn(
         'mt-2 flex h-10 items-center gap-2 rounded-lg border border-components-input-border-hover bg-components-input-bg-normal pr-1 pl-3 transition-colors',
-        !isCloudSandboxPlan &&
+        canCustomizePlaceholder &&
           inputPlaceholderFocused &&
           'border-components-input-border-active bg-components-input-bg-active',
-        isCloudSandboxPlan && 'cursor-not-allowed opacity-60',
+        !canCustomizePlaceholder && 'cursor-not-allowed opacity-60',
       )}
     >
       <input
@@ -230,7 +238,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         onChange={(e) => setInputInfo((item) => ({ ...item, inputPlaceholder: e.target.value }))}
         onFocus={() => setInputPlaceholderFocused(true)}
         onBlur={() => setInputPlaceholderFocused(false)}
-        disabled={isCloudSandboxPlan}
+        disabled={!canCustomizePlaceholder}
         maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
         autoComplete="off"
         aria-labelledby={inputPlaceholderLabelId}
@@ -243,7 +251,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         className={cn(
           'flex-1 bg-transparent body-md-regular outline-hidden',
           showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
-          isCloudSandboxPlan && 'cursor-not-allowed',
+          !canCustomizePlaceholder && 'cursor-not-allowed',
         )}
       />
       <span
@@ -318,16 +326,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright:
-        !webappCopyrightEnabled || isCloudSandboxPlan
-          ? ''
-          : copyrightSwitchValue
-            ? inputInfo.copyright
-            : '',
+      copyright: !webappCopyrightEnabled
+        ? undefined
+        : copyrightSwitchValue
+          ? inputInfo.copyright
+          : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
-      input_placeholder:
-        isCloudSandboxPlan || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
+      input_placeholder: !canCustomizePlaceholder
+        ? undefined
+        : !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode)
           ? ''
           : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
       icon_type: appIcon.type,
@@ -588,7 +596,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 ns: 'appOverview',
                               })}
                             </div>
-                            {isCloudSandboxPlan && (
+                            {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
                               <div className="h-4.5 select-none">
                                 <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                   <span
@@ -613,7 +621,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             ns: 'appOverview',
                           })}
                         </p>
-                        {isCloudSandboxPlan ? (
+                        {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false ? (
                           <Tooltip>
                             <TooltipTrigger render={inputPlaceholderField} />
                             <TooltipContent className="w-45">
@@ -625,7 +633,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         ) : (
                           inputPlaceholderField
                         )}
-                        {!isCloudSandboxPlan && (
+                        {canCustomizePlaceholder && (
                           <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                             {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
                           </div>
@@ -640,7 +648,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             {t(($) => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                           </div>
                           {/* upgrade button */}
-                          {isCloudSandboxPlan && (
+                          {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
                             <div className="h-4.5 select-none">
                               <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                 <span
@@ -656,8 +664,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             </div>
                           )}
                         </div>
-                        {webappCopyrightEnabled ? (
+                        {webappCopyrightEnabled !== false ? (
                           <Switch
+                            disabled={webappCopyrightEnabled !== true}
                             aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
                               ns: 'appOverview',
                             })}
@@ -701,6 +710,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             ns: 'appOverview',
                           })}
                           className="mt-2 h-10"
+                          disabled={webappCopyrightEnabled !== true}
                           value={inputInfo.copyright}
                           onChange={onChange('copyright')}
                           placeholder={

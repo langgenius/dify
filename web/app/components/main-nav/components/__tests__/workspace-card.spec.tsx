@@ -177,7 +177,6 @@ describe('WorkspaceCard', () => {
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: false,
       plan: { type: 'sandbox' },
     } as ProviderContextState)
@@ -343,7 +342,6 @@ describe('WorkspaceCard', () => {
       plan: 'team',
     })
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
       enableEducationPlan: false,
       plan: { type: 'sandbox' },
     } as ProviderContextState)

@@ -4,13 +4,16 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine, RiLoader2Fill, RiTerminalBoxLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import IndexingProgressItem from './indexing-progress-item'
@@ -85,7 +88,13 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { enableBilling, plan } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const invalidDocumentList = useInvalidDocumentList()
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -104,9 +113,10 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
 
   const documentsHref = `/datasets/${datasetId}/documents`
 
-  const showUpgradeBanner = enableBilling && plan.type !== 'team'
+  const showUpgradeBanner =
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
   const showVectorSpaceUpgrade =
-    enableBilling && (plan.type === 'sandbox' || plan.type === 'professional')
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
   const vectorSpaceAdmissionError = statusList.find(
     (detail) => detail.error_code === 'vector_space_estimate_exceeded',
   )
@@ -135,7 +145,6 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
               name={documentLookup.getName(detail.id)}
               sourceType={documentLookup.getSourceType(detail.id)}
               notionIcon={documentLookup.getNotionIcon(detail.id)}
-              enableBilling={enableBilling}
             />
           ))}
         </div>

@@ -16,7 +16,7 @@ export const baseProviderContextValue: ProviderContextState = {
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
-  enableBilling: false,
+
   enableSkill: false,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,

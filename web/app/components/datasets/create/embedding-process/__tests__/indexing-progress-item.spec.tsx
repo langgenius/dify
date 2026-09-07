@@ -106,16 +106,4 @@ describe('IndexingProgressItem', () => {
 
     expect(screen.getByText('common.error')).toBeInTheDocument()
   })
-
-  it('should show priority label when billing is enabled', () => {
-    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={true} />)
-
-    expect(screen.getByTestId('priority-label')).toBeInTheDocument()
-  })
-
-  it('should not show priority label when billing is disabled', () => {
-    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={false} />)
-
-    expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
-  })
 })

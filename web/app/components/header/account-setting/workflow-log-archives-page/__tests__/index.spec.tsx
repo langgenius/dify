@@ -2,10 +2,7 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { defaultPlan } from '@/app/components/billing/config'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import WorkflowLogArchivesPage from '../index'
@@ -17,14 +14,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
-
 vi.mock('@/context/modal-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/modal-context')>()
   return {
@@ -33,7 +22,6 @@ vi.mock('@/context/modal-context', async (importOriginal) => {
   }
 })
 
-const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
 
 const archiveData: GetWorkflowRunArchivesResponse = {
@@ -57,17 +45,7 @@ const archiveData: GetWorkflowRunArchivesResponse = {
   ],
 }
 
-function mockPlan(planType: CloudPlan) {
-  mockUseProviderContext.mockReturnValue(
-    createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        ...defaultPlan,
-        type: planType,
-      },
-    }),
-  )
-}
+let plan: CloudPlan = 'professional'
 
 function renderPage() {
   const queryClient = createConsoleQueryClient()
@@ -76,6 +54,7 @@ function renderPage() {
   return renderWithConsoleQuery(<WorkflowLogArchivesPage />, {
     queryClient,
     systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { billing: { subscription: { plan } } },
   })
 }
 
@@ -84,7 +63,7 @@ describe('WorkflowLogArchivesPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlan('professional')
+    plan = 'professional'
     mockUseModalContext.mockReturnValue({
       setShowPricingModal,
     } as unknown as ReturnType<typeof useModalContext>)
@@ -93,7 +72,7 @@ describe('WorkflowLogArchivesPage', () => {
   describe('Plan access', () => {
     it('should show upgrade guidance instead of archive content for sandbox workspaces', () => {
       // Arrange
-      mockPlan('sandbox')
+      plan = 'sandbox'
 
       // Act
       renderPage()
@@ -105,7 +84,7 @@ describe('WorkflowLogArchivesPage', () => {
 
     it('should open pricing modal from the sandbox upgrade guidance', () => {
       // Arrange
-      mockPlan('sandbox')
+      plan = 'sandbox'
       renderPage()
 
       // Act
@@ -117,7 +96,7 @@ describe('WorkflowLogArchivesPage', () => {
 
     it('should show archive content for paid workspaces', () => {
       // Arrange
-      mockPlan('professional')
+      plan = 'professional'
 
       // Act
       renderPage()

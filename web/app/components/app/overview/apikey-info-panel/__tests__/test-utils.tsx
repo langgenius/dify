@@ -46,7 +46,7 @@ const defaultProviderContext = {
   supportRetrievalMethods: [],
   isAPIKeySet: false,
   plan: defaultPlan,
-  enableBilling: false,
+
   enableSkill: false,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,

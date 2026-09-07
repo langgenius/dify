@@ -45,7 +45,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const render = (ui: ReactElement) => {
+function render(ui: ReactElement) {
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: false },
   })
@@ -217,7 +217,6 @@ vi.mock('@/context/provider-context', () => ({
     moderationModelList: [],
     hasSettedApiKey: true,
     plan: { type: 'free' },
-    enableBilling: false,
   }),
 }))
 

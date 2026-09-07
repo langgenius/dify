@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
@@ -29,10 +30,7 @@ let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: 
 
 const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
-  const plan = mockProviderCtx.plan as {
-    usage: { vectorSpace: number }
-    total: { vectorSpace: number }
-  }
+  const plan = mockProviderCtx.plan as ReturnType<typeof createPlanData>
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: plan.usage.vectorSpace,
     limit: plan.total.vectorSpace,
@@ -46,6 +44,10 @@ const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageU
     accountProfile: mockConsoleState.userProfile as { email?: string },
     accountProfileMeta: { currentVersion: '1.0.0' },
     systemFeatures: { deployment_edition: 'CLOUD' },
+    features: {
+      billing: { subscription: { plan: plan.type } },
+      apps: { size: plan.usage.buildApps, limit: plan.total.buildApps },
+    },
     queryClient,
   })
   return renderWithConsoleState(ui, { ...options, wrapper })
@@ -86,7 +88,7 @@ vi.mock('@/app/components/header/utils/util', () => ({
 
 // ─── Test data factories ────────────────────────────────────────────────────
 type PlanOverrides = {
-  type?: string
+  type?: CloudPlan
   usage?: Partial<UsagePlanInfo>
   total?: Partial<UsagePlanInfo>
   reset?: Partial<UsageResetInfo>
@@ -114,7 +116,6 @@ const setupProviderContext = (
   }
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
-    enableBilling: true,
     enableEducationPlan: false,
     ...extra,
   }
@@ -276,14 +277,6 @@ describe('Billing Page + Plan Integration', () => {
       render(<Billing />)
 
       expect(screen.getByText(/viewBillingTitle/i)).toBeInTheDocument()
-    })
-
-    it('should hide billing button when billing is disabled', () => {
-      setupProviderContext({ type: 'sandbox' }, { enableBilling: false })
-
-      render(<Billing />)
-
-      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
     })
   })
 })

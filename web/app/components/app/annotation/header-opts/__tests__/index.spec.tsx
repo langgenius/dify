@@ -1,14 +1,16 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItemBasic } from '../../type'
 import type { Locale } from '@/i18n-config'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
+
+/* oxlint-disable typescript/no-explicit-any */
 
 const mockJsonToCSV = vi.fn((_: unknown) => 'csv-content')
 const mockCSVDownloader = vi.fn(({ children }) => <>{children}</>)
@@ -32,7 +34,6 @@ vi.mock('@/context/provider-context', () => ({
       usage: { annotatedResponse: 0 },
       total: { annotatedResponse: 10 },
     },
-    enableBilling: false,
   }),
 }))
 

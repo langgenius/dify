@@ -5,25 +5,26 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
 import PlanComp from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { enableBilling } = useProviderContext()
-  const canManageBilling = enableBilling && isCurrentWorkspaceManager
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: billing } = useQuery(
-    consoleQuery.billing.invoices.get.queryOptions({ enabled: canManageBilling }),
+    consoleQuery.billing.invoices.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager,
+    }),
   )
   const billingUrl = billing?.url
 
   return (
     <div>
       <PlanComp loc="billing-page" />
-      {canManageBilling && (
+      {deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager && (
         <a
           className={cn(
             'mt-3 flex w-full items-center justify-between rounded-xl bg-background-section-burn px-4 py-3 outline-hidden',

@@ -26,7 +26,6 @@ export type ProviderContextState = {
     total: UsagePlanInfo
     reset: UsageResetInfo
   }
-  enableBilling: boolean
   enableSkill: boolean
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
@@ -47,7 +46,6 @@ export const baseProviderContextValue: ProviderContextState = {
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
-  enableBilling: false,
   enableSkill: false,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
