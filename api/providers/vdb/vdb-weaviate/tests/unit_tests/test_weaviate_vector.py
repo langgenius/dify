@@ -805,7 +805,50 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv.text_exists("segment-1") is False
         assert wv.text_exists("segment-1") is True
 
-    def test_delete_by_ids_handles_missing_collections_and_404s(self):
+    def test_delete_by_ids_returns_when_collection_is_missing(self):
+        wv = WeaviateVector.__new__(WeaviateVector)
+        wv._collection_name = self.collection_name
+        wv._client = MagicMock()
+        wv._client.collections.exists.return_value = False
+
+        wv.delete_by_ids(["segment-1"])
+
+        wv._client.collections.use.assert_not_called()
+
+    def test_delete_by_ids_deletes_by_doc_id_property_in_batches(self):
+        """
+        Regression test for #40457.
+
+        ``delete_by_ids`` receives Dify segment IDs (``index_node_id``), which are
+        stored in the object's ``doc_id`` property. Weaviate objects are keyed by
+        ``uuid5(URL_NAMESPACE, page_content)``, so deleting by raw object UUID can
+        never match and silently leaves orphan vectors behind. Deletion must go
+        through a batched ``delete_many`` with a ``doc_id`` property filter.
+        """
+        wv = WeaviateVector.__new__(WeaviateVector)
+        wv._collection_name = self.collection_name
+        wv._client = MagicMock()
+        wv._client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        wv._client.collections.use.return_value = mock_col
+
+        ids = [f"segment-{i:03d}" for i in range(250)]
+        wv.delete_by_ids(ids)
+
+        # The old per-id delete_by_id path passes segment IDs as object UUIDs,
+        # which never coincide, so it must not be used at all.
+        mock_col.data.delete_by_id.assert_not_called()
+
+        # 250 ids are deleted in batches of 100 via a doc_id property filter.
+        assert mock_col.data.delete_many.call_count == 3
+        for call in mock_col.data.delete_many.call_args_list:
+            where = call.kwargs["where"]
+            assert where is not None
+            assert all(getattr(f, "target", None) == "doc_id" for f in where.filters)
+
+    def test_delete_by_ids_swallows_404_errors(self):
+        """A 404 from a concurrently dropped collection is still ignored."""
+
         class FakeUnexpectedStatusCodeError(Exception):
             def __init__(self, status_code):
                 super().__init__(f"status={status_code}")
@@ -814,16 +857,15 @@ class TestWeaviateVector(unittest.TestCase):
         wv = WeaviateVector.__new__(WeaviateVector)
         wv._collection_name = self.collection_name
         wv._client = MagicMock()
-        wv._client.collections.exists.side_effect = [False, True]
+        wv._client.collections.exists.return_value = True
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
-        mock_col.data.delete_by_id.side_effect = [FakeUnexpectedStatusCodeError(404), None]
+        mock_col.data.delete_many.side_effect = FakeUnexpectedStatusCodeError(404)
 
         with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError):
-            wv.delete_by_ids(["ignored"])
-            wv.delete_by_ids(["missing-id", "ok-id"])
+            wv.delete_by_ids(["segment-1"])  # must not raise
 
-        assert mock_col.data.delete_by_id.call_count == 2
+        mock_col.data.delete_many.assert_called_once()
 
     def test_delete_by_ids_reraises_non_404_errors(self):
         class FakeUnexpectedStatusCodeError(Exception):
@@ -837,13 +879,13 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client.collections.exists.return_value = True
         mock_col = MagicMock()
         wv._client.collections.use.return_value = mock_col
-        mock_col.data.delete_by_id.side_effect = FakeUnexpectedStatusCodeError(500)
+        mock_col.data.delete_many.side_effect = FakeUnexpectedStatusCodeError(500)
 
         with (
             patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError),
             pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"),
         ):
-            wv.delete_by_ids(["bad-id"])
+            wv.delete_by_ids(["segment-1"])
 
     def test_json_serializable_converts_datetime(self):
         wv = WeaviateVector.__new__(WeaviateVector)
