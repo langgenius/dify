@@ -145,9 +145,15 @@ def test_retry_restores_failed_items_and_unreleased_file_lease(
 
     assert retried.status is KnowledgeFSUpgradeJobStatus.QUEUED
     with sqlite_session_factory() as session:
-        assert session.get(KnowledgeFSUpgradeDocument, document.id).status is KnowledgeFSUpgradeItemStatus.PENDING
-        assert session.get(KnowledgeFSUpgradeSource, source.id).status is KnowledgeFSUpgradeItemStatus.PENDING
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeItemStatus.PENDING
+        persisted = session.get(KnowledgeFSUpgradeSource, source.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeItemStatus.PENDING
         persisted_lease = session.get(KnowledgeFSUpgradeFileLease, lease.id)
+        assert persisted_lease is not None
+        assert persisted_lease is not None
         assert persisted_lease.status is KnowledgeFSUpgradeFileLeaseStatus.ACTIVE
         assert persisted_lease.expires_at > naive_utc_now()
 
@@ -725,6 +731,7 @@ def test_configuration_prefers_active_legacy_models_and_uses_default_reasoning(
         "model": "text-embedding-3-large",
     }
     retrieval = resolved["retrieval"]
+    assert isinstance(retrieval, dict)
     assert retrieval["reasoningModel"] == {
         "pluginId": "langgenius/anthropic",
         "provider": "anthropic",
@@ -770,10 +777,18 @@ def test_configuration_falls_back_to_active_workspace_defaults(monkeypatch: pyte
 
     resolved = upgrade_module._resolve_configuration(job)
 
-    assert resolved["embedding"]["model"] == "embedding-default"
-    assert resolved["retrieval"]["rerank"]["model"]["model"] == "rerank-default"
-    assert resolved["retrieval"]["reasoningModel"]["model"] == "reasoning-default"
-    assert resolved["retrieval"]["topK"] == 4
+    embedding = resolved["embedding"]
+    assert isinstance(embedding, dict)
+    assert embedding["model"] == "embedding-default"
+    retrieval = resolved["retrieval"]
+    assert isinstance(retrieval, dict)
+    assert retrieval["rerank"]["model"]["model"] == "rerank-default"
+    retrieval = resolved["retrieval"]
+    assert isinstance(retrieval, dict)
+    assert retrieval["reasoningModel"]["model"] == "reasoning-default"
+    retrieval = resolved["retrieval"]
+    assert isinstance(retrieval, dict)
+    assert retrieval["topK"] == 4
 
 
 def test_configuration_fails_when_workspace_default_reasoning_model_is_missing(
@@ -784,7 +799,7 @@ def test_configuration_fails_when_workspace_default_reasoning_model_is_missing(
     models_by_type = {
         ModelType.TEXT_EMBEDDING: [embedding],
         ModelType.RERANK: [rerank],
-        ModelType.LLM: [],
+        ModelType.LLM: list[str](),
     }
     configurations = MagicMock()
     configurations.get_models.side_effect = lambda *, model_type, **_kwargs: models_by_type[model_type]
@@ -860,7 +875,9 @@ def test_access_migration_maps_visibility_members_apps_api_and_tags(
     ]
     assert runtime.space_tags.replace_tags.call_args.kwargs["tag_ids"] == job.tag_ids_snapshot
     with sqlite_session_factory() as session:
-        assert session.get(KnowledgeFSUpgradeJob, job.id).stage is KnowledgeFSUpgradeStage.FINALIZING
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.stage is KnowledgeFSUpgradeStage.FINALIZING
 
 
 @pytest.mark.parametrize(
@@ -1025,7 +1042,9 @@ def test_runner_creates_space_and_advances_after_activation(
     job.new_control_space_id = control_space_id
     runner._advance_when_space_is_active(job)
     with sqlite_session_factory() as session:
-        assert session.get(KnowledgeFSUpgradeJob, job.id).stage is KnowledgeFSUpgradeStage.CREATING_SOURCES
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.stage is KnowledgeFSUpgradeStage.CREATING_SOURCES
 
 
 def test_runner_waiting_for_space_reports_each_invalid_state(
@@ -1149,7 +1168,9 @@ def test_runner_creates_source_and_marks_its_documents_handed_off(
 
     assert runner._create_next_source(job) is True
     with sqlite_session_factory() as session:
-        assert session.get(KnowledgeFSUpgradeJob, job.id).stage is KnowledgeFSUpgradeStage.SUBMITTING_DOCUMENTS
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.stage is KnowledgeFSUpgradeStage.SUBMITTING_DOCUMENTS
 
 
 @pytest.mark.parametrize("not_ready", [True, False])
@@ -1311,7 +1332,7 @@ def test_upgrade_helper_source_identities_payloads_and_validation() -> None:
     with pytest.raises(KnowledgeFSUpgradeConflictError):
         upgrade_module._website_source_group_key({"provider": "firecrawl"})
 
-    notion_document = SimpleNamespace(
+    notion_document = Document(
         data_source_type="notion_import",
         name="Page",
     )
@@ -1322,7 +1343,7 @@ def test_upgrade_helper_source_identities_payloads_and_validation() -> None:
     assert notion_payload["kind"] == "online_document"
     website_payload = upgrade_module._source_payload_snapshot(
         "Dataset",
-        [(SimpleNamespace(data_source_type="website_crawl", name="Page"), {"provider": "firecrawl", "url": "u"})],
+        [(Document(data_source_type="website_crawl", name="Page"), {"provider": "firecrawl", "url": "u"})],
     )
     assert website_payload["kind"] == "website_crawl"
     assert upgrade_module._chunks([1, 2, 3], 2) == [[1, 2], [3]]

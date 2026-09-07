@@ -4,49 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Literal, NamedTuple, Protocol
+from typing import NamedTuple, Protocol
 
 from pydantic import JsonValue
 
-from services.knowledge_fs.product_dto import KnowledgeFSPublicFailureResponse, KnowledgeFSTechnicalSummary
+from core.knowledge_fs.errors import (
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
+)
+from services.knowledge_fs.product_dto import KnowledgeFSTechnicalSummary
 
 KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER = "X-Knowledge-FS-Query-Image-Grants"
 KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER_MAX_BYTES = 6 * 1024
-
-
-class KnowledgeFSProductRemoteError(RuntimeError):
-    """KnowledgeFS could not provide an authoritative product response."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        failure: KnowledgeFSPublicFailureResponse | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.failure = failure
-
-
-class KnowledgeFSProductResourceNotFoundError(KnowledgeFSProductRemoteError):
-    """KnowledgeFS authoritatively reported that an authorized child resource is absent."""
-
-
-class KnowledgeFSOperationUnavailableError(RuntimeError):
-    """The Dify/KFS/Capability operation manifests are not yet aligned."""
-
-
-class KnowledgeFSProductRequestRejectedError(RuntimeError):
-    """A bounded product request was rejected locally or by authoritative KFS validation."""
-
-    def __init__(
-        self,
-        *,
-        status_code: Literal[400, 403, 409, 413, 422, 429],
-        failure: KnowledgeFSPublicFailureResponse | None = None,
-    ) -> None:
-        super().__init__(f"KnowledgeFS rejected the product request with HTTP {status_code}")
-        self.status_code = status_code
-        self.failure = failure
 
 
 class KnowledgeFSRemoteJSONRequest(NamedTuple):

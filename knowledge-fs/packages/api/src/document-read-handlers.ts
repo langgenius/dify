@@ -345,6 +345,15 @@ export function registerDocumentReadHandlers({
       return context.json({ error: "Document multimodal item asset not found" }, 404);
     }
 
+    // Pin the bytes to the evidence that authorized this read, not whichever
+    // document revision happens to be current after a manifest request.
+    if (query.expectedArtifactHash && artifact.artifactHash !== query.expectedArtifactHash) {
+      return context.json(
+        { error: "Document evidence changed; reopen it before reading its image" },
+        409,
+      );
+    }
+
     const manifest = await buildReadableDocumentMultimodalManifest({
       artifact,
       asset,

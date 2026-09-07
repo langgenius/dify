@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import cast, override
 
 from sqlalchemy import select, update
@@ -52,6 +53,7 @@ class SQLAlchemyKnowledgeFSCleanupAuthorizationRepository(KnowledgeFSCleanupAuth
             "status": update_values.new_status,
             "row_version": KnowledgeFSCleanupAuthorization.row_version + 1,
         }
+        update_fields = asdict(update_values)
         for field_name in (
             "approved_by_account_id",
             "approved_at",
@@ -65,7 +67,7 @@ class SQLAlchemyKnowledgeFSCleanupAuthorizationRepository(KnowledgeFSCleanupAuth
             "completion_evidence",
             "completed_ledger_cas_version",
         ):
-            value = getattr(update_values, field_name)
+            value = update_fields[field_name]
             if value is not None:
                 values[field_name] = value
         statement = (

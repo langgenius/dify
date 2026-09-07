@@ -20,7 +20,7 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 122);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 124);
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "getDocumentMultimodalManifest",
@@ -129,6 +129,12 @@ test("Capability v2 operation export is deterministic and includes internal life
           method: "GET",
           operationId: "listKnowledgeFs",
           path: "/knowledge-spaces/{id}/fs/ls",
+        },
+        {
+          action: "knowledge_fs.open_node",
+          method: "GET",
+          operationId: "openNodeKnowledgeFs",
+          path: "/knowledge-spaces/{id}/fs/open_node",
         },
         {
           action: "knowledge_fs.stat",

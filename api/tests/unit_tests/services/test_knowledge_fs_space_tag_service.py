@@ -63,9 +63,9 @@ def test_replace_tags_is_idempotent_and_lists_final_set(sqlite_session_factory: 
 
     assert [tag.id for tag in first] == ["tag-2", "tag-1"]
     assert [tag.id for tag in second] == ["tag-1"]
-    assert [tag.id for tag in service.list_tags(
-        tenant_id="tenant-1", account_id="account-1", control_space_id="control-1"
-    )] == ["tag-1"]
+    assert [
+        tag.id for tag in service.list_tags(tenant_id="tenant-1", account_id="account-1", control_space_id="control-1")
+    ] == ["tag-1"]
     with sqlite_session_factory() as session:
         assert session.scalar(sa.select(sa.func.count(KnowledgeFSSpaceTagBinding.id))) == 1
     first_authorization = product.authorize_control_space_in_session.call_args_list[0]

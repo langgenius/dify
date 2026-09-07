@@ -66,6 +66,8 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "getDocument",
         "getDocumentChunk",
         "getDocumentMultimodalManifest",
+        "getDocumentMultimodalAsset",
+        "openNodeKnowledgeFs",
         "getDocumentOutline",
         "getQualityBadCase",
         "getQualityBadCaseTraceReference",

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import patch
 
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -26,7 +28,7 @@ _MODELS = (
 )
 
 
-def _load_migration_module():
+def _load_migration_module() -> ModuleType:
     spec = importlib.util.spec_from_file_location("knowledge_fs_upgrade_jobs", _MIGRATION_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
@@ -35,15 +37,11 @@ def _load_migration_module():
     return module
 
 
-def _run_step(module: object, engine: sa.Engine, step_name: str) -> None:
+def _run_step(module: ModuleType, engine: sa.Engine, step_name: str) -> None:
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
-        original_op = module.op
-        module.op = operations
-        try:
-            getattr(module, step_name)()
-        finally:
-            module.op = original_op
+        with patch.object(module, "op", operations):
+            {"upgrade": module.upgrade, "downgrade": module.downgrade}[step_name]()
 
 
 def test_upgrade_schema_matches_upgrade_models_and_downgrades_cleanly() -> None:

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
 
+from flask import current_app
 from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -1011,3 +1012,9 @@ def build_dify_llm_file_saver(
         file_reference_factory=DifyFileReferenceFactory(run_context),
         http_client=http_client,
     )
+
+
+def build_knowledge_fs_node_dependencies() -> dict[str, object]:
+    """Resolve the retrieval capabilities registered by the application composition root."""
+    factory = cast(Callable[[], dict[str, object]], current_app.extensions["knowledge_fs_node_dependencies"])
+    return factory()

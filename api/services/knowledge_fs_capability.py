@@ -382,6 +382,20 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/fs/stat",
             "knowledge_space",
         ),
+        "openNodeKnowledgeFs": KnowledgeFSCapabilityOperation(
+            "knowledge_fs.open_node",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/fs/open_node",
+            "knowledge_space",
+        ),
+        "getDocumentMultimodalAsset": KnowledgeFSCapabilityOperation(
+            "documents.multimodal.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/documents/{documentId}/multimodal/{itemId}/asset",
+            "document",
+        ),
         "updateKnowledgeSpace": KnowledgeFSCapabilityOperation(
             "knowledge_spaces.update",
             _STANDARD_CALLERS,

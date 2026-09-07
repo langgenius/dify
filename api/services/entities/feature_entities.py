@@ -205,3 +205,5 @@ class SystemFeatureModel(FeatureResponseModel):
     rbac_enabled: bool = False
     knowledge_fs_enabled: bool = False
     knowledge_fs_upload_enabled: bool = False
+    # Deployment configuration only; sandbox protocol readiness is checked at run admission.
+    agent_knowledge_fs_enabled: bool = False

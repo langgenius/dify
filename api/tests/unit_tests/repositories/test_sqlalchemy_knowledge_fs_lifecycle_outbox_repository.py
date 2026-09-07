@@ -31,11 +31,10 @@ def _outbox(control_space: KnowledgeFSControlSpace) -> KnowledgeFSLifecycleOutbo
             "expected_revision": 0,
             "icon": None,
             "idempotency_key": "provision:one",
-            "model_intent": {},
             "name": "One",
-            "profile_intent": {},
             "schema_version": 1,
             "slug": "one",
+            "provisioning_key": "provision:one",
         },
         expected_control_space_version=0,
     )

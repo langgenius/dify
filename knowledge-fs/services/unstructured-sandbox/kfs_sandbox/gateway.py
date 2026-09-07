@@ -15,6 +15,7 @@ import signal
 import sys
 import tempfile
 import time
+from contextlib import suppress
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -79,8 +80,14 @@ async def respond(send, status: int, reason: str) -> None:
     ]
     if status == 429:
         headers.append((b"retry-after", b"1"))
-    await send({"type": "http.response.start", "status": status, "headers": headers})
-    await send({"type": "http.response.body", "body": payload})
+    # Error delivery is best-effort: a disconnected or stalled client must not
+    # retain a parser admission slot after resource enforcement has finished.
+    with suppress(TimeoutError):
+        async with asyncio.timeout(1):
+            await send(
+                {"type": "http.response.start", "status": status, "headers": headers}
+            )
+            await send({"type": "http.response.body", "body": payload})
 
 
 class Gateway:

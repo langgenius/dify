@@ -3,14 +3,15 @@ from __future__ import annotations
 import base64
 import json
 from datetime import UTC, datetime
-from types import SimpleNamespace
+from typing import override
 
 import pytest
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs import app_execution_capability
+from services.knowledge_fs.app_admission_service import KnowledgeFSAppPrincipalProfile
 from services.knowledge_fs.app_execution_capability import (
     KnowledgeFSAppExecutionCapabilityService,
     KnowledgeResourceRef,
@@ -25,15 +26,29 @@ from services.knowledge_fs.product_remote import (
     KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER,
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSRemoteJSONRequest,
+    UnavailableKnowledgeFSProductRemote,
 )
 
 
 class Admission:
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
-        self.profile = SimpleNamespace(app_id="app-1")
+        self.profile = KnowledgeFSAppPrincipalProfile(
+            tenant_id="tenant-1",
+            control_space_id="control-1",
+            app_id="app-1",
+            join_id="join-1",
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            action="read",
+            knowledge_space_id="space-1",
+            knowledge_space_revision=2,
+            membership_epoch=1,
+            space_acl_epoch=1,
+            external_access_epoch=1,
+            content_policy_revision=1,
+        )
 
-    def admit(self, **kwargs: object) -> object:
+    def admit(self, **kwargs: object) -> KnowledgeFSAppPrincipalProfile:
         self.calls.append(kwargs)
         return self.profile
 
@@ -54,11 +69,12 @@ class Broker:
         )
 
 
-class Remote:
+class Remote(UnavailableKnowledgeFSProductRemote):
     def __init__(self) -> None:
         self.calls: list[KnowledgeFSRemoteJSONRequest] = []
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
         self.calls.append(request)
         if request.operation_id == "captureWorkflowFailedRetrieval":
             return {
@@ -115,7 +131,8 @@ class Remote:
 
 
 class FailingRemote(Remote):
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
         self.calls.append(request)
         raise RuntimeError("remote failed")
 

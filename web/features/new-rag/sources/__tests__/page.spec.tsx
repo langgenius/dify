@@ -1436,73 +1436,179 @@ describe('SourcesPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('edits a source name and sync policy from the row menu', async () => {
-    const user = userEvent.setup()
-    const manualPolicy: SourceSyncPolicy = {
-      createdAt: '2026-07-20T10:00:00Z',
-      enabled: false,
-      expectedSourceVersion: 3,
-      id: 'policy-1',
-      knowledgeSpaceId: 'space-1',
-      mode: 'manual',
-      revision: 1,
-      sourceId: 'source-1',
-      updatedAt: '2026-07-20T10:00:00Z',
-    }
-    const dailyPolicy: SourceSyncPolicy = {
-      ...manualPolicy,
-      enabled: true,
-      expectedSourceVersion: 4,
-      mode: 'interval',
-      revision: 2,
-      updatedAt: '2026-07-20T10:01:00Z',
-    }
-    sourcesQuery.data = {
-      pages: [{ items: [source({ syncPolicy: manualPolicy, type: 'upload', uri: 'upload://1' })] }],
-    }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        name: 'Renamed documentation',
-        syncPolicy: dailyPolicy,
-        type: 'upload',
-        version: 4,
-      }),
-    )
-
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', {
-        name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
-      }),
-    )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-
-    const nameInput = screen.getByRole('textbox', {
-      name: 'knowledgeSpace.sourceName',
-    })
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Renamed documentation')
-    await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' }))
-    await user.click(screen.getByRole('option', { name: 'knowledgeSpace.syncPolicyDaily' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    await waitFor(() =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
-        body: {
-          expectedVersion: 3,
+  it.each(['upload', 'web'] as const)(
+    'edits a %s source name and sync policy without previewing',
+    async (type) => {
+      const user = userEvent.setup()
+      datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+      const manualPolicy: SourceSyncPolicy = {
+        createdAt: '2026-07-20T10:00:00Z',
+        enabled: false,
+        expectedSourceVersion: 3,
+        id: 'policy-1',
+        knowledgeSpaceId: 'space-1',
+        mode: 'manual',
+        revision: 1,
+        sourceId: 'source-1',
+        updatedAt: '2026-07-20T10:00:00Z',
+      }
+      const dailyPolicy: SourceSyncPolicy = {
+        ...manualPolicy,
+        enabled: true,
+        expectedSourceVersion: 4,
+        mode: 'interval',
+        revision: 2,
+        updatedAt: '2026-07-20T10:01:00Z',
+      }
+      sourcesQuery.data = {
+        pages: [
+          {
+            items: [
+              source({
+                ...(type === 'web'
+                  ? {
+                      connectionId: 'connection-1',
+                      metadata: {
+                        datasourceParameterMode: 'exact',
+                        parameters: { url: 'https://docs.example.com/' },
+                        providerName: 'Firecrawl',
+                      },
+                    }
+                  : {}),
+                syncPolicy: manualPolicy,
+                type,
+                uri: type === 'web' ? 'https://docs.example.com/' : 'upload://1',
+              }),
+            ],
+          },
+        ],
+      }
+      clientMock.patchSource.mockResolvedValue(
+        source({
           name: 'Renamed documentation',
-          syncPolicy: { enabled: true, mode: 'interval' },
-        },
-        params: { control_space_id: 'space-1', source_id: 'source-1' },
-      }),
-    )
-    expect(screen.getByRole('row', { name: /Renamed documentation/ })).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('row', { name: /Renamed documentation/ })).getByText(
-        'knowledgeSpace.syncPolicyDaily',
-      ),
-    ).toBeInTheDocument()
-  })
+          syncPolicy: dailyPolicy,
+          type,
+          version: 4,
+        }),
+      )
+
+      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
+        }),
+      )
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+      const nameInput = screen.getByRole('textbox', {
+        name: 'knowledgeSpace.sourceName',
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Renamed documentation')
+      await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' }))
+      await user.click(screen.getByRole('option', { name: 'knowledgeSpace.syncPolicyDaily' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() =>
+        expect(clientMock.patchSource).toHaveBeenCalledWith({
+          body: {
+            expectedVersion: 3,
+            name: 'Renamed documentation',
+            syncPolicy: { enabled: true, mode: 'interval' },
+          },
+          params: { control_space_id: 'space-1', source_id: 'source-1' },
+        }),
+      )
+      expect(clientMock.startPreviewJob).not.toHaveBeenCalled()
+      expect(screen.getByRole('row', { name: /Renamed documentation/ })).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('row', { name: /Renamed documentation/ })).getByText(
+          'knowledgeSpace.syncPolicyDaily',
+        ),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it.each(['missing required parameter', 'out-of-range parameter'] as const)(
+    'saves metadata without previewing despite a provider constraint: %s',
+    async (invalidParameter) => {
+      const user = userEvent.setup()
+      const plugin = structuredClone(firecrawlDatasourcePlugin)
+      const datasource = plugin.declaration.datasources[0]
+      if (!datasource) throw new Error('Expected the Firecrawl datasource fixture')
+      datasource.parameters.push({
+        label: { en_US: 'New required parameter' },
+        name: 'new_parameter',
+        required: true,
+        type: 'string',
+      })
+      datasourcePluginsQuery.data = [plugin]
+      sourcesQuery.data = {
+        pages: [
+          {
+            items: [
+              source({
+                connectionId: 'connection-1',
+                metadata: {
+                  datasourceParameterMode: 'exact',
+                  providerName: 'Firecrawl',
+                  parameters: {
+                    url: 'https://docs.example.com/',
+                    ...(invalidParameter === 'out-of-range parameter'
+                      ? { new_parameter: 'existing value', limit: 500 }
+                      : {}),
+                  },
+                },
+              }),
+            ],
+          },
+        ],
+      }
+      clientMock.patchSource.mockResolvedValue(
+        source({ name: 'Renamed documentation', version: 4 }),
+      )
+
+      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'knowledgeSpace.sourceActions:{"name":"Product documentation"}',
+        }),
+      )
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+      if (invalidParameter === 'out-of-range parameter')
+        await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlOptions' }))
+      expect(
+        screen.getByRole(
+          invalidParameter === 'missing required parameter' ? 'textbox' : 'spinbutton',
+          {
+            name:
+              invalidParameter === 'missing required parameter'
+                ? 'New required parameter'
+                : 'Page cap',
+          },
+        ),
+      ).toBeInvalid()
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.preview' })).toBeDisabled()
+      const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.sourceName' })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Renamed documentation')
+      await user.click(screen.getByRole('combobox', { name: 'knowledgeSpace.syncPolicy' }))
+      await user.click(screen.getByRole('option', { name: 'knowledgeSpace.syncPolicyDaily' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() =>
+        expect(clientMock.patchSource).toHaveBeenCalledWith({
+          body: {
+            expectedVersion: 3,
+            name: 'Renamed documentation',
+            syncPolicy: { enabled: true, mode: 'interval' },
+          },
+          params: { control_space_id: 'space-1', source_id: 'source-1' },
+        }),
+      )
+      expect(clientMock.startPreviewJob).not.toHaveBeenCalled()
+    },
+  )
 
   it('edits website source parameters from the row menu', async () => {
     const user = userEvent.setup()
@@ -1741,7 +1847,7 @@ describe('SourcesPage', () => {
     )
   })
 
-  it('requires a current website preview selection before saving', async () => {
+  it('requires a new selection only after changing crawl parameters or requesting a preview', async () => {
     const user = userEvent.setup()
     datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
     useWebsitePreview()
@@ -1774,16 +1880,19 @@ describe('SourcesPage', () => {
     const followLinks = screen.getByRole('checkbox', { name: 'Follow links' })
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
     expect(followLinks).toBeChecked()
-    expect(saveButton).toBeDisabled()
+    expect(saveButton).toBeEnabled()
 
     await user.click(followLinks)
     expect(saveButton).toBeDisabled()
     await user.click(followLinks)
-    expect(saveButton).toBeDisabled()
+    expect(saveButton).toBeEnabled()
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    expect(saveButton).toBeDisabled()
     await user.click(await screen.findByRole('checkbox', { name: /Guide/ }))
     expect(saveButton).toBeEnabled()
+    await user.click(followLinks)
+    expect(saveButton).toBeDisabled()
   })
 
   it('keeps the opening edit snapshot when the source refreshes in the background', async () => {
@@ -1961,7 +2070,7 @@ describe('SourcesPage', () => {
     })
     await user.clear(nameInput)
     await user.type(nameInput, 'Renamed documentation')
-    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeEnabled()
   })
 
   it('reports provider declaration failures without falling back to legacy fields', async () => {

@@ -22,6 +22,7 @@ from models.knowledge_fs import (
 )
 from services.account_service import TenantService
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 _TABLES = (
     Account,
@@ -66,8 +67,8 @@ def test_update_workspace_role_revokes_late_durable_grants_in_same_commit(sqlite
     command = sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox))
     assert revision.membership_epoch == 1
     assert command is not None
-    assert command.command_payload["principal"] == f"dify-account:{member.id}"
-    assert command.command_payload["reason_code"] == "workspace_role_changed"
+    assert revoke_payload(command)["principal"] == f"dify-account:{member.id}"
+    assert revoke_payload(command)["reason_code"] == "workspace_role_changed"
 
 
 @pytest.mark.parametrize("sqlite_session", [_TABLES], indirect=True)
@@ -99,7 +100,7 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
     assert revision.membership_epoch == 1
     assert revision.space_acl_epoch == 1
     assert command is not None
-    assert command.command_payload["reason_code"] == "workspace_membership_removed"
+    assert revoke_payload(command)["reason_code"] == "workspace_membership_removed"
     assert (
         sqlite_session.scalar(
             select(TenantAccountJoin).where(
@@ -156,9 +157,11 @@ def _audit(
         control_space_id=space.id,
         trace_id=f"trace-membership-{suffix}",
         jti_hash=f"sha256:{sha256(grant_id.encode()).hexdigest()}",
-        claims_summary={
-            "caller_kind": "interactive",
-            "grant_id": grant_id,
-            "subject": f"dify-account:{account_id}",
-        },
+        claims_summary=claims_summary(
+            tenant_id=tenant.id,
+            control_space_id=space.id,
+            caller_kind="interactive",
+            grant_id=grant_id,
+            subject=f"dify-account:{account_id}",
+        ),
     )

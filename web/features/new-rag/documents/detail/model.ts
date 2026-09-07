@@ -12,12 +12,12 @@ export type DocumentChunkTreeNode = {
   targetChunkId: string
 }
 
-export type DocumentChunkTree = {
+type DocumentChunkTree = {
   byId: Map<string, DocumentChunkTreeNode>
   roots: DocumentChunkTreeNode[]
 }
 
-export type DocumentContentBlock = {
+type DocumentContentBlock = {
   body: string
   chunk: DocumentRevisionChunk
   heading?: {
@@ -565,21 +565,4 @@ export function chunkCharacterCount(text: string) {
   for (const _segment of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text))
     count++
   return count
-}
-
-function metadataValue(value: unknown) {
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean' || value === null)
-    return String(value)
-  try {
-    return JSON.stringify(value) ?? ''
-  } catch {
-    return String(value)
-  }
-}
-
-export function chunkMetadataEntries(metadata: Record<string, unknown>) {
-  return Object.entries(metadata)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => [key, metadataValue(value)] as const)
 }

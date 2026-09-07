@@ -124,29 +124,6 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 )
 
 /**
- * BlockingRetrieverResourceResponse
- */
-export const zBlockingRetrieverResourceResponse = z.object({
-  content: z.string().nullish(),
-  created_at: z.int().nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_id: z.uuid().nullish(),
-  dataset_name: z.string().nullish(),
-  document_id: z.uuid().nullish(),
-  document_name: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.uuid().nullish(),
-  index_node_hash: z.string().nullish(),
-  message_id: z.uuid().nullish(),
-  position: z.int(),
-  score: z.number().nullish(),
-  segment_id: z.uuid().nullish(),
-  segment_position: z.int().nullish(),
-  summary: z.string().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
  * BlockingUsageResponse
  */
 export const zBlockingUsageResponse = z.object({
@@ -165,34 +142,11 @@ export const zBlockingUsageResponse = z.object({
 })
 
 /**
- * BlockingMetadataResponse
- */
-export const zBlockingMetadataResponse = z.object({
-  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
-  usage: zBlockingUsageResponse.nullish(),
-})
-
-/**
  * ButtonStyle
  *
  * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
-
-/**
- * ChatMessageBlockingResponse
- */
-export const zChatMessageBlockingResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  event: z.literal('message'),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
-})
 
 /**
  * ChatRequestPayload
@@ -340,20 +294,6 @@ export const zChildChunkListResponse = z.object({
  */
 export const zChildChunkUpdatePayload = z.object({
   content: z.string(),
-})
-
-/**
- * CompletionBlockingResponse
- */
-export const zCompletionBlockingResponse = z.object({
-  answer: z.string(),
-  created_at: z.int(),
-  event: z.string(),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
 })
 
 /**
@@ -1307,53 +1247,6 @@ export const zChatPauseReasonResponse = z.object({
   node_title: z.string().nullish(),
   resolved_default_values: z.record(z.string(), z.unknown()).optional(),
 })
-
-/**
- * ChatPausedBlockingDataResponse
- */
-export const zChatPausedBlockingDataResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  elapsed_time: z.number(),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  paused_nodes: z.array(z.string()),
-  reasons: z.array(zChatPauseReasonResponse),
-  status: z.literal('paused'),
-  total_steps: z.int(),
-  total_tokens: z.int(),
-  workflow_run_id: z.uuid(),
-})
-
-/**
- * ChatPausedBlockingResponse
- */
-export const zChatPausedBlockingResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  data: zChatPausedBlockingDataResponse,
-  event: z.literal('workflow_paused'),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
-  workflow_run_id: z.uuid(),
-})
-
-/**
- * ChatBlockingResponse
- *
- * Blocking chat response for a completed message or paused Chatflow.
- */
-export const zChatBlockingResponse = z.discriminatedUnion('event', [
-  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
-  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
-])
 
 export const zJsonValue = z.unknown()
 
@@ -2954,6 +2847,135 @@ export const zKnowledgeFsTraceListResponse = z.object({
 })
 
 /**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
+ * BlockingRetrieverResourceResponse
+ */
+export const zBlockingRetrieverResourceResponse = z.object({
+  content: z.string().nullish(),
+  created_at: z.int().nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
+  dataset_name: z.string().nullish(),
+  document_id: z.uuid().nullish(),
+  document_name: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.uuid().nullish(),
+  index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
+  message_id: z.uuid().nullish(),
+  position: z.int(),
+  score: z.number().nullish(),
+  segment_id: z.uuid().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * BlockingMetadataResponse
+ */
+export const zBlockingMetadataResponse = z.object({
+  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
+  usage: zBlockingUsageResponse.nullish(),
+})
+
+/**
+ * ChatMessageBlockingResponse
+ */
+export const zChatMessageBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  event: z.literal('message'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+})
+
+/**
+ * ChatPausedBlockingDataResponse
+ */
+export const zChatPausedBlockingDataResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  elapsed_time: z.number(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  paused_nodes: z.array(z.string()),
+  reasons: z.array(zChatPauseReasonResponse),
+  status: z.literal('paused'),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * ChatPausedBlockingResponse
+ */
+export const zChatPausedBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  data: zChatPausedBlockingDataResponse,
+  event: z.literal('workflow_paused'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * ChatBlockingResponse
+ *
+ * Blocking chat response for a completed message or paused Chatflow.
+ */
+export const zChatBlockingResponse = z.discriminatedUnion('event', [
+  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
+  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+])
+
+/**
+ * CompletionBlockingResponse
+ */
+export const zCompletionBlockingResponse = z.object({
+  answer: z.string(),
+  created_at: z.int(),
+  event: z.string(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+})
+
+/**
  * KnowledgeTagResponse
  */
 export const zKnowledgeTagResponse = z.object({
@@ -3321,6 +3343,7 @@ export const zRetrieverResource = z.object({
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
   message_id: z.uuid().optional(),
   position: z.int(),
   score: z.number().nullish(),

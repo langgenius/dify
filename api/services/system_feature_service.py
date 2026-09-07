@@ -168,6 +168,9 @@ class SystemFeatureService:
             and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID
             and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM
         )
+        system_features.agent_knowledge_fs_enabled = bool(
+            system_features.knowledge_fs_upload_enabled and dify_config.AGENT_SHELL_ENABLED
+        )
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: feature_entities.SystemFeatureModel) -> None:

@@ -46,7 +46,7 @@ export class KnowledgeCreationError extends Error {
 const KNOWLEDGE_SPACE_READY_POLL_INTERVAL_MS = 1_000
 const KNOWLEDGE_SPACE_READY_TIMEOUT_MS = 120_000
 
-export class KnowledgeSpaceProvisioningError extends Error {
+class KnowledgeSpaceProvisioningError extends Error {
   readonly state?: KnowledgeFsSpaceDetailResponse['state']
 
   constructor(message: string, state?: KnowledgeFsSpaceDetailResponse['state']) {

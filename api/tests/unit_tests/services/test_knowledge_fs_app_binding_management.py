@@ -424,3 +424,36 @@ def test_workflow_binding_sync_can_join_the_publish_transaction(binding_session:
     assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is not None
     binding_session.rollback()
     assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is None
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSExternalAccessPolicy,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSCapabilityIssuanceAudit,
+            KnowledgeFSLifecycleOutbox,
+            AppKnowledgeFSSpaceJoin,
+        )
+    ],
+    indirect=True,
+)
+def test_agent_sync_preserves_workflow_channel_and_rolls_back_with_publish(binding_session: Session) -> None:
+    service = _service(binding_session)
+    space = binding_session.scalar(select(KnowledgeFSControlSpace))
+    assert space is not None
+    args = {"tenant_id": "tenant-1", "actor_account_id": "owner-1", "app_id": "app-1", "control_space_ids": [space.id]}
+    service.sync_workflow_bindings(**args)
+    service.sync_agent_bindings(**args, session=binding_session)
+    assert len(list(binding_session.scalars(select(AppKnowledgeFSSpaceJoin)))) == 2
+    binding_session.rollback()
+    assert [row.join_type for row in binding_session.scalars(select(AppKnowledgeFSSpaceJoin))] == [
+        KnowledgeFSAppSpaceJoinType.WORKFLOW
+    ]
+    service.sync_agent_bindings(**args)
+    service.sync_agent_bindings(**{**args, "control_space_ids": []})
+    rows = {row.join_type: row for row in binding_session.scalars(select(AppKnowledgeFSSpaceJoin))}
+    assert rows[KnowledgeFSAppSpaceJoinType.WORKFLOW].status is KnowledgeFSAppSpaceJoinStatus.ACTIVE
+    assert rows[KnowledgeFSAppSpaceJoinType.AGENT].status is KnowledgeFSAppSpaceJoinStatus.REVOKED

@@ -102,7 +102,7 @@ export function DocumentUploadFileList({
                 </span>
                 <span className="mt-0.5 flex min-h-3 items-center gap-1 system-2xs-medium text-text-tertiary">
                   {extension} · {formatFileSize(item.file.size, i18n.language)}
-                  {status && (
+                  {Boolean(status) && (
                     <>
                       <span aria-hidden className="text-text-quaternary">
                         ·

@@ -24,6 +24,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
+    build_knowledge_layer_config,
     build_shell_layer_config,
 )
 from graphon.file import File, FileTransferMethod, FileType
@@ -810,13 +811,14 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder().build(context)
-
-    dumped = result.request.model_dump(mode="json")
-    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    knowledge_layer = layers["knowledge"]
-    assert knowledge_layer["type"] == "dify.knowledge_base"
-    assert knowledge_layer["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    with pytest.raises(WorkflowAgentRuntimeRequestBuildError) as exc:
+        WorkflowAgentRuntimeRequestBuilder().build(context)
+    assert exc.value.error_code == "KNOWLEDGE_REBIND_REQUIRED"
+    # The legacy adapter remains decodable for historical consumers, but is no
+    # longer executed by modern Agents.
+    legacy = build_knowledge_layer_config(AgentSoulConfig.model_validate(snapshot.config_snapshot_dict))
+    assert legacy is not None
+    knowledge_layer = {"config": legacy.model_dump(mode="json")}
     assert knowledge_layer["config"]["sets"] == [
         {
             "id": "support",
@@ -921,11 +923,9 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder().build(context)
-
-    dumped = result.request.model_dump(mode="json")
-    knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
-    assert knowledge_layer["config"]["sets"][0]["retrieval"]["score_threshold"] == 0.0
+    legacy = build_knowledge_layer_config(AgentSoulConfig.model_validate(snapshot.config_snapshot_dict))
+    assert legacy is not None
+    assert legacy.model_dump(mode="json")["sets"][0]["retrieval"]["score_threshold"] == 0.0
 
 
 def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
@@ -1686,7 +1686,7 @@ def test_feature_manifest_marks_knowledge_supported_without_warning_when_configu
     manifest = build_runtime_feature_manifest(soul)
     assert "knowledge" in manifest["supported"]
     assert "knowledge" not in manifest["reserved"]
-    assert manifest["reserved_status"]["knowledge"] == "supported_by_knowledge_layer"
+    assert manifest["reserved_status"]["knowledge"] == "legacy_rebind_required"
     assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
 
 

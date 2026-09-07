@@ -3,9 +3,9 @@ import { datasourceParameterRecord } from './datasource-parameter-model'
 
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 type NewKnowledgeSyncPolicy = 'custom' | 'daily' | 'manual'
-export type NewKnowledgeWebsiteProvider = string
-export type NewKnowledgeOnlineDocumentsProvider = string
-export type NewKnowledgeOnlineDriveProvider = string
+type NewKnowledgeWebsiteProvider = string
+type NewKnowledgeOnlineDocumentsProvider = string
+type NewKnowledgeOnlineDriveProvider = string
 export type NewKnowledgeSourceProvider =
   | NewKnowledgeOnlineDocumentsProvider
   | NewKnowledgeOnlineDriveProvider
@@ -43,7 +43,7 @@ export type NewKnowledgeSourceDraft =
   | NewKnowledgeWebsiteSourceDraft
 
 export const NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH = 200
-export const NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH = 2048
+const NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH = 2048
 const NEW_KNOWLEDGE_PROVIDER_NAME_MAX_LENGTH = 200
 const NEW_KNOWLEDGE_PROVIDER_KEY_MAX_LENGTH = 1024
 const NEW_KNOWLEDGE_SOURCE_DRAFT_STORAGE_PREFIX = 'new-knowledge-source-draft:'
@@ -98,28 +98,6 @@ export function normalizeWebsiteSourceUrl(value: string) {
   } catch {
     return undefined
   }
-}
-
-export function isValidWebsiteSourceDraft(
-  draft: NewKnowledgeWebsiteSourceDraft,
-  { allowEmpty = false }: { allowEmpty?: boolean } = {},
-) {
-  const hasInput = Boolean(
-    draft.rootUrl.length ||
-    draft.sourceName.length ||
-    !draft.includeSubpages ||
-    draft.maxPages !== 100,
-  )
-  if (allowEmpty && !hasInput) return true
-  const sourceName = draft.sourceName.trim()
-  return Boolean(
-    normalizeWebsiteSourceUrl(draft.rootUrl) &&
-    sourceName &&
-    sourceName.length <= NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH &&
-    Number.isInteger(draft.maxPages) &&
-    draft.maxPages > 0 &&
-    draft.maxPages <= 200,
-  )
 }
 
 export function newKnowledgeSourceDraftStorageKey(draftKey: string) {

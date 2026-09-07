@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import patch
 
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -15,7 +17,7 @@ _MIGRATION_PATH = (
 )
 
 
-def _load_migration():
+def _load_migration() -> ModuleType:
     spec = importlib.util.spec_from_file_location(_MIGRATION_PATH.stem, _MIGRATION_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load KnowledgeFS icon-background migration")
@@ -24,15 +26,11 @@ def _load_migration():
     return module
 
 
-def _run(module: object, engine: sa.Engine, step: str) -> None:
+def _run(module: ModuleType, engine: sa.Engine, step: str) -> None:
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
-        original_op = module.op
-        module.op = operations
-        try:
-            getattr(module, step)()
-        finally:
-            module.op = original_op
+        with patch.object(module, "op", operations):
+            {"upgrade": module.upgrade, "downgrade": module.downgrade}[step]()
 
 
 def test_icon_background_migration_matches_model_and_merges_heads() -> None:
@@ -48,8 +46,12 @@ def test_icon_background_migration_matches_model_and_merges_heads() -> None:
     }
     icon_background = columns["icon_background"]
     assert icon_background["nullable"] is False
+    assert isinstance(icon_background["type"], sa.String)
+    assert isinstance(icon_background["type"], sa.String)
     assert icon_background["type"].length == 7
-    assert "F0F9FF" in icon_background["default"]
+    default = icon_background["default"]
+    assert default is not None
+    assert "F0F9FF" in default
     assert migration.revision == "4f8b2c7d9e10"
     assert migration.down_revision == ("9d4e6f8a1b2c", "56124e050600")
 

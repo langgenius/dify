@@ -18,7 +18,7 @@ def test_enterprise_knowledge_fs_permissions_use_one_batch_request() -> None:
     response = {
         "data": [
             {"control_space_id": "control-1", "permission_keys": ["dataset_readonly"]},
-            {"control_space_id": "control-2", "permission_keys": []},
+            {"control_space_id": "control-2", "permission_keys": list[str]()},
         ]
     }
     with (

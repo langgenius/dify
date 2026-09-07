@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import Never, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -32,12 +33,13 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSRemoteJSONRequest,
+    UnavailableKnowledgeFSProductRemote,
 )
 from services.knowledge_fs.product_service import KnowledgeFSProductService
 
 
 class FakeRBAC:
-    def __init__(self, denied_ids: set[str] | None = None):
+    def __init__(self, denied_ids: set[str] | None = None) -> None:
         self.denied_ids = denied_ids or set()
         self.batch_calls: list[tuple[str, ...]] = []
 
@@ -89,13 +91,14 @@ class FakeRBAC:
         return True
 
 
-class FakeRemote:
-    def __init__(self, summaries: dict[str, KnowledgeFSTechnicalSummary], *, fail: bool = False):
+class FakeRemote(UnavailableKnowledgeFSProductRemote):
+    def __init__(self, summaries: dict[str, KnowledgeFSTechnicalSummary], *, fail: bool = False) -> None:
         self.summaries = summaries
         self.fail = fail
         self.batch_calls: list[tuple[str, ...]] = []
         self.json_calls: list[KnowledgeFSRemoteJSONRequest] = []
 
+    @override
     def batch_space_summaries(
         self,
         *,
@@ -111,7 +114,8 @@ class FakeRemote:
             raise RuntimeError("summary service unavailable")
         return dict(self.summaries)
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> Never:
         self.json_calls.append(request)
         raise AssertionError("not used")
 

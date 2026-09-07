@@ -420,7 +420,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert llm.config.plugin_id == "langgenius/openai"
         assert llm.config.model_provider == "openai"
 
-    def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
+    def test_build_rejects_legacy_knowledge_without_silently_running_it(self):
         soul = AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -449,18 +449,9 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul))
-
-        knowledge = next(layer for layer in result.request.composition.layers if layer.name == "knowledge")
-        assert knowledge.type == "dify.knowledge_base"
-        assert knowledge.deps == {"execution_context": "execution_context"}
-        dumped_config = knowledge.config.model_dump(mode="json", by_alias=True)
-        knowledge_set = dumped_config["sets"][0]
-        assert [dataset["id"] for dataset in knowledge_set["datasets"]] == ["dataset-1", "dataset-2"]
-        assert knowledge_set["query"] == {"mode": "generated_query", "value": None}
-        assert knowledge_set["retrieval"]["mode"] == "multiple"
-        assert knowledge_set["retrieval"]["top_k"] == 3
-        assert knowledge_set["retrieval"]["score_threshold"] == 0.0
+        with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
+            builder.build(_ctx(soul))
+        assert exc.value.error_code == "KNOWLEDGE_REBIND_REQUIRED"
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(

@@ -1368,7 +1368,7 @@ export function WebsiteCrawlPreview({
           </div>
         )}
       </div>
-      {!showSuccess && syncPolicyField && <div className="mt-4">{syncPolicyField}</div>}
+      {!showSuccess && Boolean(syncPolicyField) && <div className="mt-4">{syncPolicyField}</div>}
       {!showSuccess && (
         <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
           <Button type="button" loading={discarding} onClick={cancel}>

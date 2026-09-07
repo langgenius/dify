@@ -1,14 +1,6 @@
-import { parseMetadataFilterValues, toggleControlSpaceId } from '../config-helpers'
+import { toggleControlSpaceId } from '../config-helpers'
 
 describe('knowledge-retrieval-v2/config-helpers', () => {
-  it('trims, de-duplicates, and removes empty filter values', () => {
-    expect(parseMetadataFilterValues(' policy,zh-CN, policy, ,invoice ')).toEqual([
-      'policy',
-      'zh-CN',
-      'invoice',
-    ])
-  })
-
   it('adds and removes a space while preserving selection order', () => {
     expect(toggleControlSpaceId(['space-1'], 'space-2')).toEqual(['space-1', 'space-2'])
     expect(toggleControlSpaceId(['space-1', 'space-2'], 'space-1')).toEqual(['space-2'])

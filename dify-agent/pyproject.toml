@@ -19,6 +19,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
 server = [
+    "pillow>=11.3.0,<13",
     "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
@@ -61,6 +62,7 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 
 [dependency-groups]
 dev = [
+    "fakeredis[lua]>=2.31.0",
     "coverage[toml]>=7.10.7",
     "pyrefly>=1.2.0",
     "pytest>=9.0.3",

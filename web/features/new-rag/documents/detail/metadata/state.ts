@@ -3,7 +3,7 @@ import type { LogicalDocument } from '../../models'
 import { atom } from 'jotai'
 import { documentMetadataType, editableDocumentMetadataEntries } from '../../metadata/editor-model'
 
-export type MetadataDraft = {
+type MetadataDraft = {
   id: string
   name: string
   type: DocumentMetadataType

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from configs.app_config import DifyConfig
 from configs.extra.knowledge_fs_config import KnowledgeFSConfig as _KnowledgeFSConfig
 from tests.unit_tests.configs._isolated_settings import InitSettingsOnly
 
@@ -13,7 +14,7 @@ class KnowledgeFSConfig(InitSettingsOnly, _KnowledgeFSConfig):
     """KnowledgeFS settings isolated from the developer's local environment."""
 
 
-class _DeployedKnowledgeFSConfig(KnowledgeFSConfig):
+class _DeployedKnowledgeFSConfig(InitSettingsOnly, DifyConfig):
     DEPLOY_ENV: str = "PRODUCTION"
 
 

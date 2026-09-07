@@ -63,6 +63,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
@@ -1042,6 +1043,41 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     assert rows[1].tool == ""
     assert rows[1].tool_input == ""
     assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    receipt = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+        "document_title": "manual.pdf",
+        "document_version": 2,
+    }
+    part = ToolReturnPart(
+        tool_name="shell_run",
+        tool_call_id="shell-call-1",
+        content={"knowledge_results": [{"data": {"receipt_id": receipt["id"], "text": "evidence"}}]},
+        metadata={"knowledge_fs_citations": [receipt]},
+    )
+    event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+    internal = AgentBackendStreamInternalEvent(run_id="run-1", data=event.model_dump(mode="json")["data"])
+    recorder.handle_stream_event(internal)
+    recorder.handle_stream_event(internal)
+    sources = [event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent)]
+    assert len(sources) == 1
+    assert sources[0].retriever_resources[0].document_name == "manual.pdf"
+    assert sources[0].retriever_resources[0].knowledge_fs_citation.id == receipt["id"]
+    assert sources[0].retriever_resources[0].content == "evidence"
+    assert _thought_rows(sqlite_session)[0].tool == "shell_run"
 
 
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:

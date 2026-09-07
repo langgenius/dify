@@ -29,7 +29,10 @@ def test_auditor_commits_sanitized_event_before_returning() -> None:
     engine = create_engine("sqlite:///:memory:")
     KnowledgeFSControlSpace.metadata.create_all(
         engine,
-        tables=[KnowledgeFSControlSpace.__table__, KnowledgeFSCapabilityIssuanceAudit.__table__],
+        tables=[
+            KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__],
+            KnowledgeFSCapabilityIssuanceAudit.metadata.tables[KnowledgeFSCapabilityIssuanceAudit.__tablename__],
+        ],
     )
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     with session_maker.begin() as session:
@@ -106,7 +109,10 @@ def test_auditor_persists_namespace_issuance_without_a_control_space_foreign_key
     engine = create_engine("sqlite:///:memory:")
     KnowledgeFSControlSpace.metadata.create_all(
         engine,
-        tables=[KnowledgeFSControlSpace.__table__, KnowledgeFSCapabilityIssuanceAudit.__table__],
+        tables=[
+            KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__],
+            KnowledgeFSCapabilityIssuanceAudit.metadata.tables[KnowledgeFSCapabilityIssuanceAudit.__tablename__],
+        ],
     )
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     auditor = SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(session_maker)
@@ -151,7 +157,12 @@ def test_terminal_reservation_cleanup_never_removes_an_active_fence() -> None:
     engine = create_engine("sqlite:///:memory:")
     KnowledgeFSControlSpace.metadata.create_all(
         engine,
-        tables=[KnowledgeFSControlSpace.__table__, KnowledgeFSCapabilityIssuanceReservation.__table__],
+        tables=[
+            KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__],
+            KnowledgeFSCapabilityIssuanceReservation.metadata.tables[
+                KnowledgeFSCapabilityIssuanceReservation.__tablename__
+            ],
+        ],
     )
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     with session_maker.begin() as session:

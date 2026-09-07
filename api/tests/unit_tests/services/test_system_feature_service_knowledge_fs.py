@@ -14,6 +14,7 @@ def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
 
     assert features.knowledge_fs_enabled is False
     assert features.knowledge_fs_upload_enabled is False
+    assert features.agent_knowledge_fs_enabled is False
 
 
 @pytest.mark.parametrize(
@@ -41,11 +42,13 @@ def test_get_system_features_reads_knowledge_fs_availability(
         KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=capability_enabled,
         KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="signing-key" if signing_ready else None,
         KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=object() if signing_ready else None,
+        AGENT_SHELL_ENABLED=True,
     )
     result = SystemFeatureService.get_public_system_features()
 
     assert result.knowledge_fs_enabled is enabled
     assert result.knowledge_fs_upload_enabled is upload_enabled
+    assert result.agent_knowledge_fs_enabled is upload_enabled
     assert result.model_dump()["knowledge_fs_enabled"] is enabled
     assert result.model_dump()["knowledge_fs_upload_enabled"] is upload_enabled
 

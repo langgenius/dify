@@ -7,6 +7,7 @@ import re
 import uuid
 from collections import defaultdict
 from datetime import timedelta
+from enum import Enum
 from hashlib import sha256
 from typing import Any, cast
 
@@ -1286,7 +1287,7 @@ def _chunks[T](items: list[T], size: int) -> list[list[T]]:
 
 
 def _enum_value(value: object) -> str:
-    return str(getattr(value, "value", value))
+    return str(value.value if isinstance(value, Enum) else value)
 
 
 def _required_space_id(job: KnowledgeFSUpgradeJob) -> str:

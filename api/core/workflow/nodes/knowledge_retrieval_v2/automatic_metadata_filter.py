@@ -19,6 +19,10 @@ from pydantic import ValidationError
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
 from core.app.llm.model_access import DifyModelFactory, fetch_model_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.knowledge_fs.retrieval_contracts import (
+    KnowledgeFSMetadataFieldResponse,
+    KnowledgeFSRetrievalCustomMetadataCondition,
+)
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
@@ -40,10 +44,6 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.protocols import CredentialsProvider
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from services.knowledge_fs.product_dto import (
-    KnowledgeFSMetadataFieldResponse,
-    KnowledgeFSRetrievalCustomMetadataCondition,
-)
 
 from .exc import KnowledgeFSRetrievalConfigurationError
 

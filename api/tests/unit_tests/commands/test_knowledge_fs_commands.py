@@ -470,12 +470,12 @@ def test_operator_commands_delegate_cutover_mutations_with_validated_timestamps(
         "open_issues": 0,
         "unresolved_cutover_quarantine": 0,
     }
-    for method_name in (
-        "inventory",
-        "record_shadow_report",
-        "legacy_dependency_dashboard",
+    for method_name, method in (
+        ("inventory", service.inventory),
+        ("record_shadow_report", service.record_shadow_report),
+        ("legacy_dependency_dashboard", service.legacy_dependency_dashboard),
     ):
-        getattr(service, method_name).return_value = _report(operation=method_name)
+        method.return_value = _report(operation=method_name)
     runner = CliRunner()
 
     with (

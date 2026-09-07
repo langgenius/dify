@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
+from typing import Never, override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import BaseModel, JsonValue
 
 from services.knowledge_fs import data_facade as data_facade_module
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
@@ -36,6 +38,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSStatQuery,
+    KnowledgeFSTechnicalSummary,
     KnowledgeFSTreeQuery,
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionAbortPayload,
@@ -55,13 +58,15 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteSSEResponse,
 )
 from services.knowledge_fs.query_images import KnowledgeFSQueryImagePreview
+from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedCapabilityIssuer
 
 
-class FailingBroker:
+class FailingBroker(UnexpectedCapabilityIssuer):
     def __init__(self) -> None:
         self.calls = 0
 
-    def issue_interactive(self, **kwargs):
+    @override
+    def issue_interactive(self, **kwargs: object) -> Never:
         _ = kwargs
         self.calls += 1
         raise AssertionError("manifest gaps must fail before capability issuance")
@@ -71,39 +76,41 @@ class FailingRemote:
     def __init__(self) -> None:
         self.calls = 0
 
-    def batch_space_summaries(self, **kwargs):
+    def batch_space_summaries(self, **kwargs: object) -> Never:
         _ = kwargs
         self.calls += 1
         raise AssertionError("not used")
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> Never:
         _ = request
         self.calls += 1
         raise AssertionError("manifest gaps must fail before external I/O")
 
-    def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest):
+    def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest) -> Never:
         _ = request
         self.calls += 1
         raise AssertionError("must not perform binary I/O")
 
-    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest):
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> Never:
         _ = request
         self.calls += 1
         raise AssertionError("must not perform multipart I/O")
 
-    def execute_sse(self, request: KnowledgeFSRemoteSSERequest):
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest) -> Never:
         _ = request
         self.calls += 1
         raise AssertionError("must not perform SSE I/O")
 
 
-class RecordingBroker:
+class RecordingBroker(UnexpectedCapabilityIssuer):
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
 
-    def issue_interactive(self, **kwargs) -> KnowledgeFSIssuedProductCapability:
+    @override
+    def issue_interactive(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
         self.calls.append(kwargs)
         operation_id = kwargs["operation_id"]
+        assert isinstance(operation_id, str)
         return KnowledgeFSIssuedProductCapability(
             token="capability-token",
             expires_at=datetime(2030, 1, 1, tzinfo=UTC),
@@ -125,18 +132,19 @@ class MutableClock:
         self.current += timedelta(seconds=seconds)
 
 
-class ExpiringRecordingBroker:
+class ExpiringRecordingBroker(UnexpectedCapabilityIssuer):
     def __init__(self, *, clock: MutableClock) -> None:
         self._clock = clock
         self.calls: list[dict[str, object]] = []
 
-    def issue_interactive(self, **kwargs) -> KnowledgeFSIssuedProductCapability:
+    @override
+    def issue_interactive(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
         self.calls.append(kwargs)
         sequence = len(self.calls)
         return KnowledgeFSIssuedProductCapability(
             token=f"capability-token-{sequence}",
             expires_at=self._clock() + timedelta(seconds=60),
-            operation_id=kwargs["operation_id"],
+            operation_id=str(kwargs["operation_id"]),
             knowledge_space_id=f"space-{sequence}",
             knowledge_space_revision=sequence,
             trace_id=str(kwargs.get("trace_id") or "trace-1"),
@@ -150,11 +158,11 @@ class RecordingRemote:
         self.multipart_requests: list[KnowledgeFSRemoteMultipartRequest] = []
         self.sse_requests: list[KnowledgeFSRemoteSSERequest] = []
 
-    def batch_space_summaries(self, **kwargs):
+    def batch_space_summaries(self, **kwargs: object) -> dict[str, KnowledgeFSTechnicalSummary]:
         _ = kwargs
         return {}
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
         self.requests.append(request)
         if request.operation_id in {"listKnowledgeFs", "findKnowledgeFs"}:
             return {"items": [], "path": "/knowledge", "truncated": False}
@@ -418,7 +426,7 @@ class RecordingRemote:
             }
         return {"id": "space-1"}
 
-    def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest):
+    def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest) -> dict[str, JsonValue]:
         self.binary_requests.append(request)
         return {
             "session": {
@@ -433,7 +441,7 @@ class RecordingRemote:
             }
         }
 
-    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest):
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> dict[str, JsonValue]:
         self.multipart_requests.append(request)
         return {
             "asset": {
@@ -459,7 +467,7 @@ class RecordingRemote:
             "statusUrl": "/knowledge-spaces/space-1/logical-documents/document-1/tasks/job-1",
         }
 
-    def execute_sse(self, request: KnowledgeFSRemoteSSERequest):
+    def execute_sse(self, request: KnowledgeFSRemoteSSERequest) -> KnowledgeFSRemoteSSEResponse:
         self.sse_requests.append(request)
         return KnowledgeFSRemoteSSEResponse(
             status_code=200,
@@ -490,12 +498,13 @@ class ActiveSettingsRemote(RecordingRemote):
         self.configuration_state = configuration_state
         self.rerank_enabled = rerank_enabled
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
         if request.operation_id == "getSettings":
             self.requests.append(request)
             return {
                 "activeProfileAvailable": self.active_profile_available,
-                "activeProfileRevisions": self.active_profile_revisions,
+                "activeProfileRevisions": dict[str, JsonValue](self.active_profile_revisions),
                 "capabilities": {
                     "deep": self.active_profile_available,
                     "index": self.active_profile_available,
@@ -572,8 +581,9 @@ class ActiveSettingsRemote(RecordingRemote):
 class QueryImageRemote(RecordingRemote):
     UPLOAD_FILE_ID = "00000000-0000-4000-8000-000000000001"
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
-        gateway_image = {
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+        gateway_image: dict[str, JsonValue] = {
             "byteSize": 2048,
             "mimeType": "image/png",
             "sha256": "a" * 64,
@@ -640,7 +650,9 @@ def test_trace_and_research_history_carry_signed_query_image_previews() -> None:
     broker = RecordingBroker()
     preview_requests: list[tuple[str, str, list[str]]] = []
 
-    def previews(*, tenant_id: str, account_id: str, upload_file_ids):
+    def previews(
+        *, tenant_id: str, account_id: str, upload_file_ids: Sequence[str]
+    ) -> dict[str, KnowledgeFSQueryImagePreview]:
         preview_requests.append((tenant_id, account_id, list(upload_file_ids)))
         return {
             QueryImageRemote.UPLOAD_FILE_ID: KnowledgeFSQueryImagePreview(
@@ -805,7 +817,8 @@ def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_requ
                 observed.append("release")
 
     class OrderedRemote(RecordingRemote):
-        def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest):
+        @override
+        def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> dict[str, JsonValue]:
             observed.append("remote")
             return super().execute_multipart(request)
 
@@ -1122,7 +1135,8 @@ def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_requ
                 observed.append("release")
 
     class OrderedRemote(RecordingRemote):
-        def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest):
+        @override
+        def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest) -> dict[str, JsonValue]:
             observed.append("remote")
             return super().execute_binary(request)
 
@@ -1222,8 +1236,9 @@ def test_small_file_fallback_refreshes_capability_after_a_slow_body_read() -> No
 
 
 def test_small_file_fallback_denial_and_size_limit_stop_before_bytes_or_remote_io() -> None:
-    class DenyingBroker:
-        def issue_interactive(self, **kwargs):
+    class DenyingBroker(UnexpectedCapabilityIssuer):
+        @override
+        def issue_interactive(self, **kwargs: object) -> Never:
             _ = kwargs
             raise PermissionError("document write denied")
 
@@ -1442,7 +1457,7 @@ def test_metadata_field_facade_uses_catalog_routes_and_row_version_cas() -> None
     )
 
     assert listed.data[0].name == "category"
-    assert deleted.deleted is True
+    assert deleted.deleted
     assert [request.operation_id for request in remote.requests] == [
         "listMetadataFields",
         "createMetadataField",
@@ -1569,7 +1584,8 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
 
 def test_active_settings_accept_direct_unpublished_profile_activation() -> None:
     class DirectActivationRemote(ActiveSettingsRemote):
-        def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+        @override
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
             if request.operation_id == "updateRetrievalProfile":
                 self.requests.append(request)
                 return {
@@ -1757,7 +1773,9 @@ def test_setup_required_settings_with_existing_profiles_use_migration_route() ->
         "getSettings",
         "updateRetrievalProfile",
     ]
-    assert remote.requests[1].payload["expectedRevision"] == 1
+    payload = remote.requests[1].payload
+    assert isinstance(payload, dict)
+    assert payload["expectedRevision"] == 1
 
 
 def test_failed_candidate_with_active_profiles_uses_the_migration_route() -> None:
@@ -2221,27 +2239,45 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
 
 
 @pytest.mark.parametrize(
-    ("method_name", "response_name", "operation_id", "specific_kwargs", "child_resource_id"),
+    (
+        "method_name",
+        "response_name",
+        "operation_id",
+        "specific_kwargs",
+        "child_resource_id",
+    ),
     [
-        ("get_overview_stats", "KnowledgeFSOverviewBaseStatsResponse", "getOverviewStats", {}, None),
         (
-            "get_overview_query_outcomes",
-            "KnowledgeFSOverviewQueryOutcomesResponse",
+            KnowledgeFSDataFacade.get_overview_stats,
+            data_facade_module.KnowledgeFSOverviewBaseStatsResponse,
+            "getOverviewStats",
+            {},
+            None,
+        ),
+        (
+            KnowledgeFSDataFacade.get_overview_query_outcomes,
+            data_facade_module.KnowledgeFSOverviewQueryOutcomesResponse,
             "getOverviewQueryOutcomes",
             {"window": "7d"},
             None,
         ),
-        ("get_overview_inventory", "KnowledgeFSOverviewInventoryResponse", "getOverviewInventory", {}, None),
         (
-            "list_overview_attention",
-            "KnowledgeFSOverviewAttentionListResponse",
+            KnowledgeFSDataFacade.get_overview_inventory,
+            data_facade_module.KnowledgeFSOverviewInventoryResponse,
+            "getOverviewInventory",
+            {},
+            None,
+        ),
+        (
+            KnowledgeFSDataFacade.list_overview_attention,
+            data_facade_module.KnowledgeFSOverviewAttentionListResponse,
             "listOverviewAttention",
             {"include_dismissed": False, "limit": 20},
             None,
         ),
         (
-            "list_overview_activity",
-            "KnowledgeFSOverviewActivityListResponse",
+            KnowledgeFSDataFacade.list_overview_activity,
+            data_facade_module.KnowledgeFSOverviewActivityListResponse,
             "listOverviewActivity",
             {
                 "action": None,
@@ -2256,32 +2292,44 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             },
             None,
         ),
-        ("get_overview_health", "KnowledgeFSOverviewHealthResponse", "getOverviewHealth", {}, None),
-        ("list_documents", "KnowledgeFSDocumentListResponse", "listDocuments", {"cursor": "cursor-1"}, None),
         (
-            "list_logical_documents",
-            "KnowledgeFSLogicalDocumentListResponse",
+            KnowledgeFSDataFacade.get_overview_health,
+            data_facade_module.KnowledgeFSOverviewHealthResponse,
+            "getOverviewHealth",
+            {},
+            None,
+        ),
+        (
+            KnowledgeFSDataFacade.list_documents,
+            data_facade_module.KnowledgeFSDocumentListResponse,
+            "listDocuments",
+            {"cursor": "cursor-1"},
+            None,
+        ),
+        (
+            KnowledgeFSDataFacade.list_logical_documents,
+            data_facade_module.KnowledgeFSLogicalDocumentListResponse,
             "listLogicalDocuments",
             {"cursor": "cursor-1"},
             None,
         ),
         (
-            "resolve_document_reference",
-            "KnowledgeFSResolvedDocumentReferenceResponse",
+            KnowledgeFSDataFacade.resolve_document_reference,
+            data_facade_module.KnowledgeFSResolvedDocumentReferenceResponse,
             "resolveDocumentReference",
             {"document_asset_id": "asset-1", "document_asset_version": 7},
             None,
         ),
         (
-            "get_logical_document",
-            "KnowledgeFSLogicalDocumentResponse",
+            KnowledgeFSDataFacade.get_logical_document,
+            data_facade_module.KnowledgeFSLogicalDocumentResponse,
             "getLogicalDocument",
             {"document_id": "document-1"},
             "document-1",
         ),
         (
-            "delete_logical_document",
-            "KnowledgeFSDurableDeletionAcceptedResponse",
+            KnowledgeFSDataFacade.delete_logical_document,
+            data_facade_module.KnowledgeFSDurableDeletionAcceptedResponse,
             "deleteLogicalDocument",
             {
                 "document_id": "document-1",
@@ -2290,145 +2338,163 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             },
             "document-1",
         ),
-        ("get_document", "KnowledgeFSDocumentResponse", "getDocument", {"document_id": "document-1"}, "document-1"),
         (
-            "get_document_outline",
-            "KnowledgeFSDocumentOutlineResponse",
+            KnowledgeFSDataFacade.get_document,
+            data_facade_module.KnowledgeFSDocumentResponse,
+            "getDocument",
+            {"document_id": "document-1"},
+            "document-1",
+        ),
+        (
+            KnowledgeFSDataFacade.get_document_outline,
+            data_facade_module.KnowledgeFSDocumentOutlineResponse,
             "getDocumentOutline",
             {"document_id": "document-1"},
             "document-1",
         ),
         (
-            "get_document_multimodal_manifest",
-            "KnowledgeFSDocumentMultimodalManifest",
+            KnowledgeFSDataFacade.get_document_multimodal_manifest,
+            data_facade_module.KnowledgeFSDocumentMultimodalManifest,
             "getDocumentMultimodalManifest",
             {"document_id": "document-1"},
             "document-1",
         ),
         (
-            "list_document_revisions",
-            "KnowledgeFSDocumentRevisionListResponse",
+            KnowledgeFSDataFacade.list_document_revisions,
+            data_facade_module.KnowledgeFSDocumentRevisionListResponse,
             "listDocumentRevisions",
             {"document_id": "document-1", "cursor": "cursor-1", "limit": 1},
             "document-1",
         ),
         (
-            "update_document_metadata",
-            "KnowledgeFSLogicalDocumentResponse",
+            KnowledgeFSDataFacade.update_document_metadata,
+            data_facade_module.KnowledgeFSLogicalDocumentResponse,
             "updateDocumentMetadata",
             {"document_id": "document-1", "payload": MagicMock()},
             "document-1",
         ),
         (
-            "list_document_chunks",
-            "KnowledgeFSDocumentChunkListResponse",
+            KnowledgeFSDataFacade.list_document_chunks,
+            data_facade_module.KnowledgeFSDocumentChunkListResponse,
             "listDocumentChunks",
             {"document_id": "document-1", "revision": 2, "cursor": "cursor-1", "query_text": "risk"},
             "document-1",
         ),
         (
-            "get_document_chunk",
-            "KnowledgeFSDocumentChunkResponse",
+            KnowledgeFSDataFacade.get_document_chunk,
+            data_facade_module.KnowledgeFSDocumentChunkResponse,
             "getDocumentChunk",
             {"document_id": "document-1", "revision": 2, "chunk_id": "chunk-1"},
             "document-1",
         ),
         (
-            "bulk_delete_documents",
-            "KnowledgeFSBulkDeletionAcceptedResponse",
+            KnowledgeFSDataFacade.bulk_delete_documents,
+            data_facade_module.KnowledgeFSBulkDeletionAcceptedResponse,
             "bulkDeleteDocuments",
             {"payload": MagicMock(), "idempotency_key": "bulk-delete-once"},
             None,
         ),
         (
-            "reindex_documents",
-            "KnowledgeFSDocumentReindexResponse",
+            KnowledgeFSDataFacade.reindex_documents,
+            data_facade_module.KnowledgeFSDocumentReindexResponse,
             "reindexDocuments",
             {"payload": MagicMock()},
             None,
         ),
         (
-            "cancel_compilation_job",
-            "KnowledgeFSDocumentCompilationJobResponse",
+            KnowledgeFSDataFacade.cancel_compilation_job,
+            data_facade_module.KnowledgeFSDocumentCompilationJobResponse,
             "cancelCompilationJob",
             {"job_id": "job-1"},
             "job-1",
         ),
         (
-            "retry_compilation_job",
-            "KnowledgeFSDocumentCompilationJobResponse",
+            KnowledgeFSDataFacade.retry_compilation_job,
+            data_facade_module.KnowledgeFSDocumentCompilationJobResponse,
             "retryCompilationJob",
             {"job_id": "job-1"},
             "job-1",
         ),
-        ("get_bulk_job", "KnowledgeFSBulkJobResponse", "getBulkJob", {"job_id": "job-1"}, "job-1"),
         (
-            "list_background_tasks",
-            "KnowledgeFSBackgroundTaskListResponse",
+            KnowledgeFSDataFacade.get_bulk_job,
+            data_facade_module.KnowledgeFSBulkJobResponse,
+            "getBulkJob",
+            {"job_id": "job-1"},
+            "job-1",
+        ),
+        (
+            KnowledgeFSDataFacade.list_background_tasks,
+            data_facade_module.KnowledgeFSBackgroundTaskListResponse,
             "listBackgroundTasks",
             {"cursor": "cursor-1", "limit": 25},
             None,
         ),
         (
-            "list_golden_questions",
-            "KnowledgeFSGoldenQuestionListResponse",
+            KnowledgeFSDataFacade.list_golden_questions,
+            data_facade_module.KnowledgeFSGoldenQuestionListResponse,
             "listGoldenQuestions",
             {"cursor": "cursor-1", "limit": 25},
             None,
         ),
         (
-            "list_bad_cases",
-            "KnowledgeFSBadCaseListResponse",
+            KnowledgeFSDataFacade.list_bad_cases,
+            data_facade_module.KnowledgeFSBadCaseListResponse,
             "listQualityBadCases",
             {"cursor": "cursor-1", "limit": 25},
             None,
         ),
         (
-            "get_bad_case",
-            "KnowledgeFSBadCaseResponse",
+            KnowledgeFSDataFacade.get_bad_case,
+            data_facade_module.KnowledgeFSBadCaseResponse,
             "getQualityBadCase",
             {"bad_case_id": "bad-case-1"},
             "bad-case-1",
         ),
         (
-            "create_quality_replay",
-            "KnowledgeFSQualityReplayResponse",
+            KnowledgeFSDataFacade.create_quality_replay,
+            data_facade_module.KnowledgeFSQualityReplayResponse,
             "createQualityReplay",
             {"payload": MagicMock(), "idempotency_key": "quality-replay-once"},
             None,
         ),
         (
-            "list_quality_replays",
-            "KnowledgeFSQualityReplayListResponse",
+            KnowledgeFSDataFacade.list_quality_replays,
+            data_facade_module.KnowledgeFSQualityReplayListResponse,
             "listQualityReplays",
             {"cursor": "cursor-1", "limit": 25, "mode": "deep", "state": "passed"},
             None,
         ),
         (
-            "get_quality_replay",
-            "KnowledgeFSQualityReplayResponse",
+            KnowledgeFSDataFacade.get_quality_replay,
+            data_facade_module.KnowledgeFSQualityReplayResponse,
             "getQualityReplay",
             {"run_id": "replay-run-1", "evidence_item_id": "replay-item-1"},
             "replay-run-1",
         ),
         (
-            "cancel_background_task",
-            "KnowledgeFSBackgroundTaskResponse",
+            KnowledgeFSDataFacade.cancel_background_task,
+            data_facade_module.KnowledgeFSBackgroundTaskResponse,
             "cancelBackgroundTask",
             {"task_kind": "source", "task_id": "task-1"},
             "task-1",
         ),
         (
-            "retry_background_task",
-            "KnowledgeFSBackgroundTaskResponse",
+            KnowledgeFSDataFacade.retry_background_task,
+            data_facade_module.KnowledgeFSBackgroundTaskResponse,
             "retryBackgroundTask",
             {"task_kind": "document_bulk", "task_id": "task-1"},
             "task-1",
         ),
-        ("get_source", "KnowledgeFSSourceResponse", "getSource", {"source_id": "source-1"}, "source-1"),
         (
-            "delete_source",
-            "KnowledgeFSDurableDeletionAcceptedResponse",
+            KnowledgeFSDataFacade.get_source,
+            data_facade_module.KnowledgeFSSourceResponse,
+            "getSource",
+            {"source_id": "source-1"},
+            "source-1",
+        ),
+        (
+            KnowledgeFSDataFacade.delete_source,
+            data_facade_module.KnowledgeFSDurableDeletionAcceptedResponse,
             "deleteSource",
             {
                 "source_id": "source-1",
@@ -2439,50 +2505,50 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "source-1",
         ),
         (
-            "sync_source",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.sync_source,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "syncSource",
             {"source_id": "source-1", "idempotency_key": "sync-source-once"},
             "source-1",
         ),
         (
-            "list_source_providers",
-            "KnowledgeFSSourceProviderListResponse",
+            KnowledgeFSDataFacade.list_source_providers,
+            data_facade_module.KnowledgeFSSourceProviderListResponse,
             "listSourceProviders",
             {},
             None,
         ),
         (
-            "create_source_connection",
-            "KnowledgeFSSourceConnectionResponse",
+            KnowledgeFSDataFacade.create_source_connection,
+            data_facade_module.KnowledgeFSSourceConnectionResponse,
             "createSourceConnection",
             {"payload": MagicMock()},
             None,
         ),
         (
-            "list_source_connections",
-            "KnowledgeFSSourceConnectionListResponse",
+            KnowledgeFSDataFacade.list_source_connections,
+            data_facade_module.KnowledgeFSSourceConnectionListResponse,
             "listSourceConnections",
             {"cursor": "cursor-1", "limit": 25},
             None,
         ),
         (
-            "refresh_source_connection",
-            "KnowledgeFSSourceConnectionResponse",
+            KnowledgeFSDataFacade.refresh_source_connection,
+            data_facade_module.KnowledgeFSSourceConnectionResponse,
             "refreshSourceConnection",
             {"connection_id": "connection-1", "payload": MagicMock()},
             None,
         ),
         (
-            "preview_source_crawl",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.preview_source_crawl,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "previewSourceCrawl",
             {"source_id": "source-1", "idempotency_key": "preview-source-once"},
             "source-1",
         ),
         (
-            "import_source_workflow",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.import_source_workflow,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "importSourceWorkflow",
             {
                 "source_id": "source-1",
@@ -2492,113 +2558,113 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "source-1",
         ),
         (
-            "get_source_sync_policy",
-            "KnowledgeFSSourceSyncPolicyResponse",
+            KnowledgeFSDataFacade.get_source_sync_policy,
+            data_facade_module.KnowledgeFSSourceSyncPolicyResponse,
             "getSourceSyncPolicy",
             {"source_id": "source-1"},
             "source-1",
         ),
         (
-            "update_source_sync_policy",
-            "KnowledgeFSSourceSyncPolicyResponse",
+            KnowledgeFSDataFacade.update_source_sync_policy,
+            data_facade_module.KnowledgeFSSourceSyncPolicyResponse,
             "updateSourceSyncPolicy",
             {"source_id": "source-1", "payload": MagicMock()},
             "source-1",
         ),
         (
-            "get_source_workflow",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.get_source_workflow,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "getSourceWorkflow",
             {"run_id": "run-1"},
             "run-1",
         ),
         (
-            "cancel_source_workflow",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.cancel_source_workflow,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "cancelSourceWorkflow",
             {"run_id": "run-1", "payload": MagicMock()},
             "run-1",
         ),
         (
-            "retry_source_workflow",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.retry_source_workflow,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "retrySourceWorkflow",
             {"run_id": "run-1"},
             "run-1",
         ),
         (
-            "list_crawl_preview_pages",
-            "KnowledgeFSCrawlPreviewPageListResponse",
+            KnowledgeFSDataFacade.list_crawl_preview_pages,
+            data_facade_module.KnowledgeFSCrawlPreviewPageListResponse,
             "listCrawlPreviewPages",
             {"run_id": "run-1", "cursor": "cursor-1", "limit": 25},
             "run-1",
         ),
         (
-            "select_crawl_preview_pages",
-            "KnowledgeFSSourceWorkflowResponse",
+            KnowledgeFSDataFacade.select_crawl_preview_pages,
+            data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "selectCrawlPreviewPages",
             {"run_id": "run-1", "payload": MagicMock(), "idempotency_key": "selection-once"},
             "run-1",
         ),
         (
-            "crawl_source",
-            "KnowledgeFSSourceCrawlResponse",
+            KnowledgeFSDataFacade.crawl_source,
+            data_facade_module.KnowledgeFSSourceCrawlResponse,
             "crawlSource",
             {"source_id": "source-1"},
             "source-1",
         ),
         (
-            "list_source_pages",
-            "KnowledgeFSSourcePagesResponse",
+            KnowledgeFSDataFacade.list_source_pages,
+            data_facade_module.KnowledgeFSSourcePagesResponse,
             "listSourcePages",
             {"source_id": "source-1", "cursor": "cursor-1", "limit": 25},
             "source-1",
         ),
         (
-            "import_source_pages",
-            "KnowledgeFSSourceImportResponse",
+            KnowledgeFSDataFacade.import_source_pages,
+            data_facade_module.KnowledgeFSSourceImportResponse,
             "importSourcePages",
             {"source_id": "source-1", "payload": MagicMock()},
             "source-1",
         ),
         (
-            "list_source_files",
-            "KnowledgeFSSourceFilesResponse",
+            KnowledgeFSDataFacade.list_source_files,
+            data_facade_module.KnowledgeFSSourceFilesResponse,
             "listSourceFiles",
             {"source_id": "source-1", "query": (("cursor", "cursor-1"),)},
             "source-1",
         ),
         (
-            "import_source_files",
-            "KnowledgeFSSourceImportResponse",
+            KnowledgeFSDataFacade.import_source_files,
+            data_facade_module.KnowledgeFSSourceImportResponse,
             "importSourceFiles",
             {"source_id": "source-1", "payload": MagicMock()},
             "source-1",
         ),
         (
-            "plan_research_task",
-            "KnowledgeFSResearchTaskPlanResponse",
+            KnowledgeFSDataFacade.plan_research_task,
+            data_facade_module.KnowledgeFSResearchTaskPlanResponse,
             "planResearchTask",
             {"payload": MagicMock()},
             None,
         ),
         (
-            "get_research_task",
-            "KnowledgeFSResearchTaskResponse",
+            KnowledgeFSDataFacade.get_research_task,
+            data_facade_module.KnowledgeFSResearchTaskResponse,
             "getResearchTask",
             {"task_id": "task-1"},
             "task-1",
         ),
         (
-            "list_research_task_partials",
-            "KnowledgeFSResearchTaskPartialListResponse",
+            KnowledgeFSDataFacade.list_research_task_partials,
+            data_facade_module.KnowledgeFSResearchTaskPartialListResponse,
             "listResearchTaskPartials",
             {"task_id": "task-1", "cursor": "cursor-1", "limit": 10},
             "task-1",
         ),
         (
-            "cancel_research_task",
-            "KnowledgeFSResearchTaskResponse",
+            KnowledgeFSDataFacade.cancel_research_task,
+            data_facade_module.KnowledgeFSResearchTaskResponse,
             "cancelResearchTask",
             {"task_id": "task-1"},
             "task-1",
@@ -2606,8 +2672,8 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
     ],
 )
 def test_facade_public_methods_preserve_the_registered_operation_and_child_binding(
-    method_name: str,
-    response_name: str,
+    method_name: Callable[..., object],
+    response_name: type[BaseModel],
     operation_id: str,
     specific_kwargs: dict[str, object],
     child_resource_id: str | None,
@@ -2615,8 +2681,8 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
     interactive = MagicMock(return_value={})
     interactive_child = MagicMock(return_value={})
-    response_type = getattr(data_facade_module, response_name)
-    expected_response = object()
+    response_type = response_name
+    expected_response = MagicMock(query_images=[])
     common_kwargs = {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
@@ -2628,7 +2694,7 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
         patch.object(facade, "_interactive_child", interactive_child),
         patch.object(response_type, "model_validate", return_value=expected_response) as validate,
     ):
-        result = getattr(facade, method_name)(**common_kwargs, **specific_kwargs)
+        result = method_name(facade, **common_kwargs, **specific_kwargs)
 
     assert result is expected_response
     validate.assert_called_once_with({})

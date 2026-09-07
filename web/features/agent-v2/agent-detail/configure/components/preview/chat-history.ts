@@ -120,6 +120,24 @@ export function getFormattedAgentDebugChatTree(
     chatList.push({
       id: item.id,
       content: answer,
+      citation: item.retriever_resources?.map((source) => ({
+        knowledge_fs_citation: source.knowledge_fs_citation,
+        content: source.content ?? '',
+        data_source_type: source.data_source_type ?? '',
+        dataset_name: source.dataset_name ?? '',
+        dataset_id: source.dataset_id ?? '',
+        document_asset_id: source.document_asset_id,
+        document_id: source.document_id ?? '',
+        document_name: source.document_name ?? '',
+        document_revision: source.document_revision,
+        document_version: source.document_version,
+        index_node_hash: source.index_node_hash ?? '',
+        segment_id: source.segment_id ?? '',
+        segment_position: source.segment_position ?? 0,
+        hit_count: source.hit_count ?? 0,
+        score: source.score ?? 0,
+        word_count: source.word_count ?? 0,
+      })),
       agent_thoughts: addFileInfos(
         sortAgentSorts(
           (item.agent_thoughts ?? []).map((thought) =>

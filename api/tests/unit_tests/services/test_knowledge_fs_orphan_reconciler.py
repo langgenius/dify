@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import override
+
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -13,26 +15,31 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSRemoteSpace,
 )
 from services.knowledge_fs.orphan_reconciler import KnowledgeFSOrphanReconciler
+from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedLifecycleRemote
 
 
-class FakeRemote:
-    def __init__(self, spaces: tuple[KnowledgeFSRemoteSpace, ...]):
+class FakeRemote(UnexpectedLifecycleRemote):
+    def __init__(self, spaces: tuple[KnowledgeFSRemoteSpace, ...]) -> None:
         self.spaces = spaces
         self.list_requests: list[tuple[str, str]] = []
 
+    @override
     def provision_integrated_space(self, request: KnowledgeFSIntegratedProvisionRequest) -> KnowledgeFSRemoteSpace:
         del request
         raise AssertionError("not used")
 
+    @override
     def request_integrated_deletion(self, request: KnowledgeFSIntegratedDeletionRequest) -> KnowledgeFSDeletionProgress:
         del request
         raise AssertionError("not used")
 
+    @override
     def revoke_capability_grant(
         self, request: KnowledgeFSCapabilityGrantRevokeRequest
     ) -> KnowledgeFSCapabilityGrantRevokeAck:
         raise AssertionError(request)
 
+    @override
     def find_by_provisioning_key(
         self,
         *,
@@ -42,6 +49,7 @@ class FakeRemote:
         del control_space_id
         return next((space for space in self.spaces if space.provisioning_key == provisioning_key), None)
 
+    @override
     def list_spaces(
         self,
         *,

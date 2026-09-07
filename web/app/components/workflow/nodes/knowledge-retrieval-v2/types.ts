@@ -35,7 +35,7 @@ export type KnowledgeRetrievalV2SpaceSummary = {
   top_k?: number
 }
 
-export type KnowledgeRetrievalV2MetadataFilteringConditions = Omit<
+type KnowledgeRetrievalV2MetadataFilteringConditions = Omit<
   MetadataFilteringConditions,
   'conditions'
 > & {

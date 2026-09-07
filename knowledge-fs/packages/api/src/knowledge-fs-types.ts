@@ -124,6 +124,8 @@ export interface KnowledgeFsOpenNodeResult {
   readonly citation: {
     readonly artifactHash: string;
     readonly documentAssetId: string;
+    readonly documentTitle?: string;
+    readonly documentVersion?: number;
     readonly endOffset: number;
     readonly pageNumber?: number;
     readonly parseArtifactId: string;

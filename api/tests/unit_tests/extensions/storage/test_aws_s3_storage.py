@@ -11,7 +11,7 @@ from extensions.storage.aws_s3_storage import AwsS3Storage
 @pytest.fixture
 def s3_storage(config_overrides: Callable[..., None]) -> tuple[AwsS3Storage, MagicMock]:
     client = MagicMock()
-    client.head_bucket.return_value = {}
+    client.head_bucket.return_value = dict[str, object]()
     config_overrides(S3_USE_AWS_MANAGED_IAM=False, S3_BUCKET_NAME="dify-files")
     with patch("extensions.storage.aws_s3_storage.boto3.client", return_value=client):
         storage = AwsS3Storage()

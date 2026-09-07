@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock
 
 import jwt
@@ -75,7 +76,7 @@ def _signing_key(kid: str) -> CapabilitySigningKey:
 def _request(
     *,
     actor: str = "dify-account:account-1",
-    caller_kind: str = "interactive",
+    caller_kind: Literal["agent", "interactive", "internal_worker", "mcp", "service", "workflow"] = "interactive",
     operation_id: str = "getKnowledgeSpace",
     principal_id: str = "account-1",
     resource: CapabilityResource | None = None,
@@ -316,7 +317,7 @@ def test_capability_metric_export_failure_never_changes_issuance() -> None:
     ],
 )
 def test_issuance_profiles_keep_principal_types_distinct(
-    caller_kind: str,
+    caller_kind: Literal["agent", "interactive", "internal_worker", "mcp", "service", "workflow"],
     principal_id: str,
     expected_subject: str,
     expected_azp: str,

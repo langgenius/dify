@@ -76,11 +76,3 @@ export function queryKeyMatchesKnowledgeSpace(
     params.control_space_id === knowledgeSpaceId,
   )
 }
-
-export function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
-  return {
-    ...task,
-    errorCode: task.errorCode,
-    errorMessage: task.errorMessage,
-  }
-}

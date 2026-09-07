@@ -1,7 +1,7 @@
 import { createParser, parseAsString } from 'nuqs'
 import { createQueryAtoms } from 'nuqs-jotai'
 
-export const documentDetailRevisionParser = createParser<number>({
+const documentDetailRevisionParser = createParser<number>({
   parse: (value) => {
     const revision = Number(value)
     return Number.isInteger(revision) && revision > 0 ? revision : null
@@ -9,7 +9,7 @@ export const documentDetailRevisionParser = createParser<number>({
   serialize: String,
 }).withOptions({ history: 'push' })
 
-export const documentDetailChunkParser = parseAsString.withOptions({ history: 'replace' })
+const documentDetailChunkParser = parseAsString.withOptions({ history: 'replace' })
 
 export const documentDetailLocationQuery = createQueryAtoms(
   {

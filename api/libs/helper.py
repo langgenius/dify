@@ -225,8 +225,8 @@ def current_timestamp() -> int:
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
-    # Check if the email matches the pattern
-    if re.match(pattern, email) is not None:
+    # Reject trailing newlines as well as other unconsumed input.
+    if re.fullmatch(pattern, email) is not None:
         return email
 
     error = f"{email} is not a valid email."

@@ -158,5 +158,4 @@ export const tasksQueryIsFetchingNextPageAtom = selectAtom(
   (query) => query.isFetchingNextPage,
 )
 export const tasksQueryIsPendingAtom = selectAtom(tasksQueryAtom, (query) => query.isPending)
-export const tasksQueryPageCountAtom = atom((get) => get(tasksQueryDataAtom)?.pages.length ?? 0)
 export const tasksQueryRefetchAtom = selectAtom(tasksQueryAtom, (query) => query.refetch)

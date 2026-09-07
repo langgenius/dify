@@ -55,7 +55,7 @@ export const unresolvedDocumentSourceIdsAtom = atom((get) => {
   )
 })
 
-export const taskByDocumentAtom = atom((get) => newestTaskByDocument(get(effectiveTasksAtom)))
+const taskByDocumentAtom = atom((get) => newestTaskByDocument(get(effectiveTasksAtom)))
 
 export const documentStatusesAtom = atom((get) => {
   const taskByDocument = get(taskByDocumentAtom)
@@ -68,7 +68,7 @@ export const documentStatusesAtom = atom((get) => {
   )
 })
 
-export const documentFailureMessageKeysAtom = atom((get) => {
+const documentFailureMessageKeysAtom = atom((get) => {
   const statuses = get(documentStatusesAtom)
   const taskByDocument = get(taskByDocumentAtom)
 
@@ -111,7 +111,7 @@ export const taskResultsIncompleteAtom = atom(
   (get) => !get(tasksQueryHasDataAtom) || get(tasksQueryIsPendingAtom),
 )
 
-export const sourceResultsIncompleteAtom = atom((get) => {
+const sourceResultsIncompleteAtom = atom((get) => {
   return Boolean(
     !get(sourcesQueryHasDataAtom) ||
     get(sourcesQueryIsPendingAtom) ||
@@ -166,7 +166,7 @@ export const documentListPaginationAtom = atom((get) => {
   }
 })
 
-export const dependencyResultsIncompleteAtom = atom(
+const dependencyResultsIncompleteAtom = atom(
   (get) => get(taskResultsIncompleteAtom) || get(sourceResultsIncompleteAtom),
 )
 
@@ -239,7 +239,7 @@ export const createDocumentRowActionFactsAtom = (documentId: string) => {
   )
 }
 
-export const documentQueryWarningAtom = atom(
+const documentQueryWarningAtom = atom(
   (get) => Boolean(get(documentsQueryErrorAtom)) && get(documentsQueryHasDataAtom),
 )
 
@@ -284,12 +284,12 @@ export const reindexUnavailabilityAtom = atom<ReindexUnavailability>((get) => {
   if (get(filteredResultsIncompleteAtom)) return 'partial'
 })
 
-export const attentionTasksAtom = atom((get) => get(drawerTasksAtom).filter(taskNeedsAttention))
-export const activeTaskCountAtom = atom((get) => get(activeTasksAtom).length)
-export const hasTaskErrorAtom = atom((get) =>
+const attentionTasksAtom = atom((get) => get(drawerTasksAtom).filter(taskNeedsAttention))
+const activeTaskCountAtom = atom((get) => get(activeTasksAtom).length)
+const hasTaskErrorAtom = atom((get) =>
   get(attentionTasksAtom).some((task) => task.state === 'failed' || task.state === 'canceled'),
 )
-export const showTasksAtom = atom((get) => {
+const showTasksAtom = atom((get) => {
   return Boolean(
     get(drawerTasksAtom).length ||
     get(tasksQueryIsFetchNextPageErrorAtom) ||

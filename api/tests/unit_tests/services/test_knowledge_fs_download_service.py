@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from types import SimpleNamespace
+from typing import override
+from unittest.mock import MagicMock
 from zipfile import ZipFile
 
 import pytest
@@ -14,26 +16,38 @@ from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadUnavailableError,
 )
 from services.knowledge_fs.object_storage import (
+    KnowledgeFSObjectMetadata,
     KnowledgeFSObjectStorageCorruptError,
+    KnowledgeFSObjectStorageService,
     KnowledgeFSObjectStorageUnavailableError,
 )
 from services.knowledge_fs.product_dto import KnowledgeFSDocumentDownloadDescriptor
 
 
-class FakeObjectStorage:
+class FakeObjectStorage(KnowledgeFSObjectStorageService):
     def __init__(self, objects: dict[str, bytes]) -> None:
         self.objects = objects
 
-    def head_object(self, *, key: str):
+    @override
+    def head_object(self, *, key: str) -> KnowledgeFSObjectMetadata | None:
         body = self.objects.get(key)
-        return None if body is None else SimpleNamespace(size_bytes=len(body))
+        return (
+            None
+            if body is None
+            else KnowledgeFSObjectMetadata(
+                checksum_sha256_base64="", content_type="text/plain", key=key, metadata={}, size_bytes=len(body)
+            )
+        )
 
-    def load_stream(self, *, key: str):
+    @override
+    def load_stream(self, *, key: str) -> Generator[bytes, None, None] | None:
         body = self.objects.get(key)
-        return None if body is None else iter((body[:2], body[2:]))
+        return None if body is None else (chunk for chunk in (body[:2], body[2:]))
 
 
-def descriptor(*, document_id: str, filename: str, object_key: str, size_bytes: int):
+def descriptor(
+    *, document_id: str, filename: str, object_key: str, size_bytes: int
+) -> KnowledgeFSDocumentDownloadDescriptor:
     return KnowledgeFSDocumentDownloadDescriptor(
         document_id=document_id,
         filename=filename,
@@ -78,9 +92,8 @@ def test_load_stream_translates_object_storage_errors(
     storage_error: Exception,
     expected_error: type[Exception],
 ) -> None:
-    object_storage = SimpleNamespace(
-        head_object=lambda **_: (_ for _ in ()).throw(storage_error),
-    )
+    object_storage = MagicMock(spec=KnowledgeFSObjectStorageService)
+    object_storage.head_object.side_effect = storage_error
     service = KnowledgeFSDownloadService(object_storage=object_storage)
 
     with pytest.raises(expected_error):

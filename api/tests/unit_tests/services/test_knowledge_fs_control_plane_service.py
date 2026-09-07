@@ -27,10 +27,11 @@ from services.knowledge_fs.product_dto import (
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 from services.knowledge_fs.product_service import AuthorizedKnowledgeFSControlSpace
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandError
+from tests.unit_tests.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 
 class FakeProduct:
-    def __init__(self, control_space: KnowledgeFSControlSpace):
+    def __init__(self, control_space: KnowledgeFSControlSpace) -> None:
         self.control_space = control_space
         self.calls: list[KnowledgeFSProductPermission] = []
 
@@ -49,7 +50,7 @@ class FakeProduct:
 
 
 class FakeMembers:
-    def __init__(self, account_ids: Sequence[str]):
+    def __init__(self, account_ids: Sequence[str]) -> None:
         self.account_ids = frozenset(account_ids)
 
     def are_active_members(self, *, session: Session, tenant_id: str, account_ids: Sequence[str]) -> bool:
@@ -154,11 +155,13 @@ def _issuance_audit(
         control_space_id=control_space_id,
         trace_id=f"trace-{marker}",
         jti_hash=f"sha256:{marker * 64}",
-        claims_summary={
-            "caller_kind": caller_kind,
-            "grant_id": grant_id,
-            "subject": subject,
-        },
+        claims_summary=claims_summary(
+            tenant_id="tenant-1",
+            control_space_id=control_space_id,
+            caller_kind=caller_kind,
+            grant_id=grant_id,
+            subject=subject,
+        ),
     )
 
 
@@ -380,21 +383,21 @@ def test_visibility_and_external_access_narrowing_revoke_only_newly_affected_gra
         select(KnowledgeFSAuthorizationRevision).where(KnowledgeFSAuthorizationRevision.control_space_id == space.id)
     )
     commands = tuple(sqlite_session.scalars(select(KnowledgeFSLifecycleOutbox)))
-    payloads = sorted(commands, key=lambda command: command.command_payload["revoke_sequence"])
-    assert [command.command_payload["grant_id"] for command in payloads] == [
+    payloads = sorted(commands, key=lambda command: revoke_payload(command)["revoke_sequence"])
+    assert [revoke_payload(command)["grant_id"] for command in payloads] == [
         "20000000-0000-4000-8000-000000000012",
         "20000000-0000-4000-8000-000000000011",
         "20000000-0000-4000-8000-000000000014",
         "20000000-0000-4000-8000-000000000013",
     ]
-    assert [command.command_payload["revoke_sequence"] for command in payloads] == [1, 2, 3, 4]
-    assert [command.command_payload["reason_code"] for command in payloads] == [
+    assert [revoke_payload(command)["revoke_sequence"] for command in payloads] == [1, 2, 3, 4]
+    assert [revoke_payload(command)["reason_code"] for command in payloads] == [
         "visibility_narrowed",
         "visibility_narrowed",
         "external_access_revoked",
         "external_access_revoked",
     ]
-    assert all(command.command_payload["principal"] != "dify-account:owner-1" for command in payloads)
+    assert all(revoke_payload(command)["principal"] != "dify-account:owner-1" for command in payloads)
     assert revision is not None
     assert revision.space_acl_epoch == 2
     assert revision.external_access_epoch == 1
@@ -513,11 +516,13 @@ def test_member_revoke_atomically_enqueues_exact_grants_once(sqlite_session: Ses
                 control_space_id=space.id,
                 trace_id="trace-member",
                 jti_hash=f"sha256:{'a' * 64}",
-                claims_summary={
-                    "caller_kind": "interactive",
-                    "grant_id": "20000000-0000-4000-8000-000000000001",
-                    "subject": "dify-account:member-1",
-                },
+                claims_summary=claims_summary(
+                    tenant_id="tenant-1",
+                    control_space_id=space.id,
+                    caller_kind="interactive",
+                    grant_id="20000000-0000-4000-8000-000000000001",
+                    subject="dify-account:member-1",
+                ),
             ),
         ]
     )
@@ -547,8 +552,8 @@ def test_member_revoke_atomically_enqueues_exact_grants_once(sqlite_session: Ses
         select(KnowledgeFSAuthorizationRevision).where(KnowledgeFSAuthorizationRevision.control_space_id == space.id)
     )
     assert command is not None
-    assert command.command_payload["principal"] == "dify-account:member-1"
-    assert command.command_payload["revoke_sequence"] == 1
+    assert revoke_payload(command)["principal"] == "dify-account:member-1"
+    assert revoke_payload(command)["revoke_sequence"] == 1
     assert member.status is KnowledgeFSControlSpacePermissionStatus.REVOKED
     assert revision is not None
     assert revision.revoke_sequence == 1
@@ -592,11 +597,13 @@ def test_member_role_downgrade_atomically_revokes_existing_write_grants_once(sql
                 control_space_id=space.id,
                 trace_id="trace-role-downgrade",
                 jti_hash=f"sha256:{'e' * 64}",
-                claims_summary={
-                    "caller_kind": "interactive",
-                    "grant_id": "20000000-0000-4000-8000-000000000003",
-                    "subject": "dify-account:member-1",
-                },
+                claims_summary=claims_summary(
+                    tenant_id="tenant-1",
+                    control_space_id=space.id,
+                    caller_kind="interactive",
+                    grant_id="20000000-0000-4000-8000-000000000003",
+                    subject="dify-account:member-1",
+                ),
             ),
         ]
     )
@@ -632,8 +639,8 @@ def test_member_role_downgrade_atomically_revokes_existing_write_grants_once(sql
     assert persisted_member.role is KnowledgeFSControlSpacePermissionRole.VIEWER
     assert persisted_member.status is KnowledgeFSControlSpacePermissionStatus.ACTIVE
     assert command is not None
-    assert command.command_payload["principal"] == "dify-account:member-1"
-    assert command.command_payload["reason_code"] == "permission_role_narrowed"
+    assert revoke_payload(command)["principal"] == "dify-account:member-1"
+    assert revoke_payload(command)["reason_code"] == "permission_role_narrowed"
     assert revision is not None
     assert revision.revoke_sequence == 1
 
@@ -676,11 +683,13 @@ def test_member_role_downgrade_rolls_back_when_revoke_enqueue_fails(sqlite_sessi
                 control_space_id=space.id,
                 trace_id="trace-role-downgrade-invalid",
                 jti_hash=f"sha256:{'f' * 64}",
-                claims_summary={
-                    "caller_kind": "interactive",
-                    "grant_id": "invalid-grant-id",
-                    "subject": "dify-account:member-1",
-                },
+                claims_summary=claims_summary(
+                    tenant_id="tenant-1",
+                    control_space_id=space.id,
+                    caller_kind="interactive",
+                    grant_id="invalid-grant-id",
+                    subject="dify-account:member-1",
+                ),
             ),
         ]
     )
@@ -753,11 +762,13 @@ def test_member_revoke_rolls_back_source_state_when_outbox_production_fails(sqli
                 control_space_id=space.id,
                 trace_id="trace-invalid-grant",
                 jti_hash=f"sha256:{'d' * 64}",
-                claims_summary={
-                    "caller_kind": "interactive",
-                    "grant_id": "legacy-non-uuid-grant",
-                    "subject": "dify-account:member-1",
-                },
+                claims_summary=claims_summary(
+                    tenant_id="tenant-1",
+                    control_space_id=space.id,
+                    caller_kind="interactive",
+                    grant_id="legacy-non-uuid-grant",
+                    subject="dify-account:member-1",
+                ),
             ),
         ]
     )

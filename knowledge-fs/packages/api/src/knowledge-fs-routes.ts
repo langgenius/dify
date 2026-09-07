@@ -238,6 +238,7 @@ export const diffKnowledgeFsRoute = createRoute({
 
 export const openNodeKnowledgeFsRoute = createRoute({
   method: "get",
+  operationId: "openNodeKnowledgeFs",
   path: "/knowledge-spaces/{id}/fs/open_node",
   request: {
     params: KnowledgeSpaceParamsSchema,

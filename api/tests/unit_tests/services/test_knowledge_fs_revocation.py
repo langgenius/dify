@@ -4,7 +4,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from operator import itemgetter
 from types import SimpleNamespace
-from typing import cast
+from typing import Never, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,6 +18,7 @@ from models.knowledge_fs import (
     KnowledgeFSCapabilityIssuanceReservation,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
     KnowledgeFSLifecycleOutboxStatus,
     KnowledgeFSRevokeCommandPayload,
@@ -36,33 +37,39 @@ from services.knowledge_fs.revocation_commands import (
     KnowledgeFSRevocationCommandProducer,
 )
 from services.knowledge_fs.revocation_reconciler import KnowledgeFSRevocationReconciler
+from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedLifecycleRemote, revoke_payload
 
 _SPACE_ID = "10000000-0000-4000-8000-000000000001"
 _GRANT_A = "20000000-0000-4000-8000-000000000001"
 _GRANT_B = "20000000-0000-4000-8000-000000000002"
 
 
-class FakeRemote:
+class FakeRemote(UnexpectedLifecycleRemote):
     def __init__(self) -> None:
         self.revoke_requests: list[KnowledgeFSCapabilityGrantRevokeRequest] = []
         self.revoke_acks: deque[KnowledgeFSCapabilityGrantRevokeAck] = deque()
 
+    @override
     def revoke_capability_grant(
         self, request: KnowledgeFSCapabilityGrantRevokeRequest
     ) -> KnowledgeFSCapabilityGrantRevokeAck:
         self.revoke_requests.append(request)
         return self.revoke_acks.popleft()
 
+    @override
     def provision_integrated_space(self, request: KnowledgeFSIntegratedProvisionRequest) -> KnowledgeFSRemoteSpace:
         raise AssertionError(request)
 
-    def request_integrated_deletion(self, request: KnowledgeFSIntegratedDeletionRequest):
+    @override
+    def request_integrated_deletion(self, request: KnowledgeFSIntegratedDeletionRequest) -> Never:
         raise AssertionError(request)
 
-    def find_by_provisioning_key(self, *, provisioning_key: str, control_space_id: str):
+    @override
+    def find_by_provisioning_key(self, *, provisioning_key: str, control_space_id: str) -> Never:
         raise AssertionError((provisioning_key, control_space_id))
 
-    def list_spaces(self, *, namespace_id: str, control_space_id: str):
+    @override
+    def list_spaces(self, *, namespace_id: str, control_space_id: str) -> Never:
         raise AssertionError((namespace_id, control_space_id))
 
 
@@ -476,8 +483,12 @@ def test_control_space_revocation_validates_callers_and_deduplicates_grants(
         ),
     )
     commands_by_subject = {
-        "member-a": (SimpleNamespace(command_payload={"grant_id": _GRANT_A}),),
-        "member-b": (SimpleNamespace(command_payload={"grant_id": _GRANT_B}),),
+        "member-a": (
+            SimpleNamespace(operation=KnowledgeFSLifecycleOperation.REVOKE, command_payload={"grant_id": _GRANT_A}),
+        ),
+        "member-b": (
+            SimpleNamespace(operation=KnowledgeFSLifecycleOperation.REVOKE, command_payload={"grant_id": _GRANT_B}),
+        ),
     }
     enqueue = MagicMock(side_effect=lambda **kwargs: commands_by_subject[kwargs["subject"]])
     monkeypatch.setattr(producer, "enqueue_principal_grants", enqueue)
@@ -491,5 +502,5 @@ def test_control_space_revocation_validates_callers_and_deduplicates_grants(
         excluded_subjects=("excluded",),
     )
 
-    assert [command.command_payload["grant_id"] for command in commands] == [_GRANT_A, _GRANT_B]
+    assert [revoke_payload(command)["grant_id"] for command in commands] == [_GRANT_A, _GRANT_B]
     assert [call.kwargs["subject"] for call in enqueue.call_args_list] == ["member-a", "member-b"]

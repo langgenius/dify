@@ -1113,3 +1113,34 @@ def test_agent_node_records_stream_usage_metadata():
     assert agent_backend["last_stream_event_id"] == "1-1"
     assert agent_backend["last_stream_event_kind"] == "model_response"
     assert agent_backend["usage"] == {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}
+
+
+def test_agent_node_records_only_trusted_knowledge_sources_and_deduplicates():
+    from dify_agent.protocol import PydanticAIStreamRunEvent
+    from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
+
+    citation = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+    }
+    metadata = {}
+    for trusted in (False, True, True):
+        part = ToolReturnPart(
+            tool_name="shell_run",
+            tool_call_id="call-1",
+            content={"knowledge_fs_citations": [citation]},
+            metadata={"knowledge_fs_citations": [citation]} if trusted else {},
+        )
+        event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+        DifyAgentNode._record_stream_metadata(
+            metadata, AgentBackendStreamInternalEvent(run_id="run-1", data=event.model_dump(mode="json")["data"])
+        )
+        if not trusted:
+            assert "knowledge_fs_sources" not in metadata
+    sources = metadata["knowledge_fs_sources"]
+    assert len(sources) == 1
+    assert sources[0]["knowledge_fs_citation"]["id"] == citation["id"]

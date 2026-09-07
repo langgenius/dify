@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
+  agent_knowledge_fs_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean

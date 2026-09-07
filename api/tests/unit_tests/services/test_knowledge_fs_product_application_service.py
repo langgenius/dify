@@ -107,7 +107,9 @@ def test_space_payloads_share_the_40_character_name_limit() -> None:
             KnowledgeFSSpaceUpdatePayload(icon_background=icon_background)
 
 
-def _application(*, allowed: bool = True):
+def _application(
+    *, allowed: bool = True
+) -> tuple[KnowledgeFSProductApplicationService, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock]:
     product = MagicMock()
     control_plane = MagicMock()
     commands = MagicMock()

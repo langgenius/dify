@@ -115,6 +115,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
+    KnowledgeFSDocumentCreateAcceptedResponse,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentListResponse,
@@ -378,6 +379,7 @@ register_response_schema_models(
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
+    KnowledgeFSDocumentCreateAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSGoldenQuestionBulkImportResponse,
     KnowledgeFSGoldenQuestionEvidenceMatchResponse,
@@ -771,7 +773,7 @@ def _source_edit_requires_import(source: KnowledgeFSSourceResponse, payload: Kno
         configured_kind = {"online-document": "online_document", "online-drive": "online_drive"}.get(provider_kind)
     if configured_kind is not None and selection.kind != configured_kind:
         raise ValueError("Source selection kind cannot be changed")
-    if getattr(source, "status", None) == "error":
+    if source.status == "error":
         return True
     if payload.uri is not None and payload.uri != source.uri:
         return True
@@ -1850,7 +1852,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
     @console_ns.response(
         HTTPStatus.ACCEPTED,
         "KnowledgeFS document accepted for processing",
-        console_ns.models[KnowledgeFSDocumentStagedUploadAcceptedResponse.__name__],
+        console_ns.models[KnowledgeFSDocumentCreateAcceptedResponse.__name__],
     )
     @setup_required
     @login_required
@@ -1867,7 +1869,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
                 payload=_payload(KnowledgeFSDocumentStagedUploadPayload),
             )
             return (
-                dump_response(KnowledgeFSDocumentStagedUploadAcceptedResponse, result),
+                dump_response(KnowledgeFSDocumentCreateAcceptedResponse, result),
                 HTTPStatus.ACCEPTED,
             )
         legacy_result = _console_services().facade.create_document(
@@ -1876,7 +1878,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
             control_space_id=control_space_id,
             body_reader=_read_document_upload,
         )
-        return dump_response(KnowledgeFSDocumentUploadAcceptedResponse, legacy_result), HTTPStatus.ACCEPTED
+        return dump_response(KnowledgeFSDocumentCreateAcceptedResponse, legacy_result), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/metadata")
@@ -3203,7 +3205,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
         validate_query_image_references(
             tenant_id=tenant_id,
             account_id=actor_id,
-            upload_file_ids=[image.upload_file_id for image in getattr(payload, "query_images", ())],
+            upload_file_ids=[image.upload_file_id for image in payload.query_images],
             mark_used=True,
         )
         issued = _console_services().broker.issue_interactive(
@@ -3290,7 +3292,7 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
         validate_query_image_references(
             tenant_id=tenant_id,
             account_id=actor_id,
-            upload_file_ids=[image.upload_file_id for image in getattr(payload, "query_images", ())],
+            upload_file_ids=[image.upload_file_id for image in payload.query_images],
             mark_used=True,
         )
         result = _console_services().facade.create_research_task(
@@ -3321,7 +3323,7 @@ class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
         validate_query_image_references(
             tenant_id=tenant_id,
             account_id=actor_id,
-            upload_file_ids=[image.upload_file_id for image in getattr(payload, "query_images", ())],
+            upload_file_ids=[image.upload_file_id for image in payload.query_images],
             mark_used=False,
         )
         result = _console_services().facade.plan_research_task(

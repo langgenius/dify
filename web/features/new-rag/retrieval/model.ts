@@ -6,9 +6,9 @@ import type {
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 
 /** Who produced a persisted trace: the console retrieval test or another caller. */
-export type RetrievalTestSource = KnowledgeFsTraceSource
+type RetrievalTestSource = KnowledgeFsTraceSource
 
-export function retrievalTestSource(source?: KnowledgeFsTraceSource | null): RetrievalTestSource {
+function retrievalTestSource(source?: KnowledgeFsTraceSource | null): RetrievalTestSource {
   return source ?? 'retrieval_test'
 }
 
@@ -378,7 +378,7 @@ export function extractStreamError(value: unknown): string | undefined {
   return undefined
 }
 
-export function researchTaskStatus(
+function researchTaskStatus(
   stage: KnowledgeFsResearchTaskResponse['stage'],
 ): Extract<RetrievalTestRecord, { kind: 'research' }>['status'] {
   if (stage === 'completed') return 'completed'

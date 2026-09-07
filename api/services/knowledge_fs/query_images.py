@@ -8,12 +8,18 @@ import hmac
 import json
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from dataclasses import dataclass
+from typing import Literal, Protocol, runtime_checkable
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
+from core.knowledge_fs.errors import (
+    QUERY_IMAGE_MAX_COUNT,
+    QUERY_IMAGE_MAX_TOTAL_BYTES,
+    KnowledgeFSQueryImageError,
+    KnowledgeFSWorkflowQueryImageReference,
+)
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, FileType
@@ -24,21 +30,11 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.file_service import FileService
 
-QUERY_IMAGE_MAX_COUNT = 4
 QUERY_IMAGE_MAX_BYTES = 10 * 1024 * 1024
-QUERY_IMAGE_MAX_TOTAL_BYTES = 32 * 1024 * 1024
 QUERY_IMAGE_MIME_TYPES = frozenset({"image/gif", "image/jpeg", "image/png", "image/webp"})
 WORKFLOW_QUERY_IMAGE_GRANT_TTL_SECONDS = 5 * 60
 _WORKFLOW_QUERY_IMAGE_GRANT_DOMAIN = b"knowledge-fs-workflow-query-image-v1"
 _WORKFLOW_QUERY_IMAGE_GRANT_VERSION = 1
-
-
-class KnowledgeFSQueryImageError(ValueError):
-    """A safe validation error raised before query model or retrieval work starts."""
-
-    def __init__(self, code: str, message: str) -> None:
-        super().__init__(message)
-        self.code = code
 
 
 @dataclass(frozen=True)
@@ -69,16 +65,6 @@ class KnowledgeFSQueryImagePreviewPort(Protocol):
     def __call__(
         self, *, tenant_id: str, account_id: str, upload_file_ids: Sequence[str]
     ) -> Mapping[str, KnowledgeFSQueryImagePreview]: ...
-
-
-@dataclass(frozen=True)
-class KnowledgeFSWorkflowQueryImageReference:
-    """One workflow-authorized Dify file reference safe to forward through KnowledgeFS."""
-
-    upload_file_id: str
-    access_grant: str = field(repr=False)
-    byte_size: int
-    mime_type: str
 
 
 @dataclass(frozen=True)
@@ -306,6 +292,11 @@ def load_query_image(
     )
 
 
+@runtime_checkable
+class _ClosableStream(Protocol):
+    def close(self) -> None: ...
+
+
 def _load_bounded_body(*, object_key: str, expected_size: int) -> bytes:
     chunks: list[bytes] = []
     total_bytes = 0
@@ -322,9 +313,8 @@ def _load_bounded_body(*, object_key: str, expected_size: int) -> bytes:
                 )
             chunks.append(body_chunk)
     finally:
-        close = getattr(stream, "close", None)
-        if callable(close):
-            close()
+        if isinstance(stream, _ClosableStream):
+            stream.close()
 
     if total_bytes != expected_size:
         raise KnowledgeFSQueryImageError("QUERY_IMAGE_SIZE_INVALID", "Query image size does not match its metadata")
@@ -482,3 +472,22 @@ def _detect_image_mime_type(body: bytes) -> str:
     if len(body) >= 12 and body.startswith(b"RIFF") and body[8:12] == b"WEBP":
         return "image/webp"
     raise KnowledgeFSQueryImageError("QUERY_IMAGE_CONTENT_UNSUPPORTED", "Query image content is not supported")
+
+
+__all__ = [
+    "QUERY_IMAGE_MAX_BYTES",
+    "QUERY_IMAGE_MAX_COUNT",
+    "QUERY_IMAGE_MAX_TOTAL_BYTES",
+    "QUERY_IMAGE_MIME_TYPES",
+    "WORKFLOW_QUERY_IMAGE_GRANT_TTL_SECONDS",
+    "KnowledgeFSQueryImageError",
+    "KnowledgeFSQueryImageMetadata",
+    "KnowledgeFSQueryImagePreview",
+    "KnowledgeFSQueryImagePreviewPort",
+    "KnowledgeFSResolvedQueryImage",
+    "KnowledgeFSWorkflowQueryImageReference",
+    "issue_workflow_query_image_reference",
+    "load_query_image",
+    "load_query_image_previews",
+    "validate_query_image_references",
+]

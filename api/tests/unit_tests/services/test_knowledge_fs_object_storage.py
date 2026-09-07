@@ -25,7 +25,7 @@ class FakeStorage:
         self.scan_supported = scan_supported
 
     def save(self, filename: str, data: bytes) -> None:
-        self.objects[filename] = bytes(data)
+        self.objects[filename] = data
 
     def load_once(self, filename: str) -> bytes:
         try:

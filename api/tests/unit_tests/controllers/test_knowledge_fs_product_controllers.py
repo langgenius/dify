@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from types import FunctionType, SimpleNamespace
+from typing import Never
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,6 +34,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSNamespacePreviewJobResponse,
     KnowledgeFSNamespacePreviewPageResponse,
     KnowledgeFSSmallFileUploadResponse,
@@ -56,12 +58,14 @@ _API_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _rbac_wrapper(view: FunctionType) -> FunctionType:
-    current = view
-    while "rbac_permission_required" not in current.__code__.co_qualname:
-        wrapped = getattr(current, "__wrapped__", None)
-        if not isinstance(wrapped, FunctionType):
-            raise AssertionError("RBAC permission wrapper is missing")
-        current = wrapped
+    current = inspect.unwrap(
+        view,
+        stop=lambda candidate: (
+            isinstance(candidate, FunctionType) and "rbac_permission_required" in candidate.__code__.co_qualname
+        ),
+    )
+    assert isinstance(current, FunctionType)
+    assert "rbac_permission_required" in current.__code__.co_qualname, "RBAC permission wrapper is missing"
     return current
 
 
@@ -253,12 +257,12 @@ def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
     [
         (
             console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi,
-            "get",
+            console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get,
             {"control_space_id": "control-1", "document_id": "document-1"},
         ),
         (
             console_resources.KnowledgeFSSpaceLogicalDocumentsDownloadApi,
-            "post",
+            console_resources.KnowledgeFSSpaceLogicalDocumentsDownloadApi.post,
             {"control_space_id": "control-1"},
         ),
     ],
@@ -266,7 +270,7 @@ def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
 def test_document_download_routes_deny_callers_without_dataset_download_permission(
     monkeypatch: pytest.MonkeyPatch,
     api_class: type,
-    method_name: str,
+    method_name: FunctionType,
     path_args: dict[str, str],
 ) -> None:
     permission_gate = MagicMock(side_effect=Forbidden())
@@ -285,7 +289,7 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
         lambda: pytest.fail("permission denial must happen before KnowledgeFS access"),
     )
 
-    permission_wrapper = _rbac_wrapper(getattr(api_class, method_name))
+    permission_wrapper = _rbac_wrapper(method_name)
     with pytest.raises(Forbidden):
         permission_wrapper(api_class(), **path_args)
 
@@ -734,9 +738,11 @@ def test_small_file_console_bff_reads_only_through_facade_and_returns_no_capabil
     calls: list[dict[str, object]] = []
 
     class Facade:
-        def upload_small_file(self, **kwargs):
+        def upload_small_file(self, **kwargs: object) -> KnowledgeFSSmallFileUploadResponse:
             calls.append({name: value for name, value in kwargs.items() if name != "body_reader"})
-            assert kwargs["body_reader"](8 * 1024 * 1024) == b"tiny"
+            body_reader = kwargs["body_reader"]
+            assert callable(body_reader)
+            assert body_reader(8 * 1024 * 1024) == b"tiny"
             return KnowledgeFSSmallFileUploadResponse.model_validate(
                 {
                     "session": {
@@ -783,9 +789,11 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
     calls: list[dict[str, object]] = []
 
     class Facade:
-        def create_document(self, **kwargs):
+        def create_document(self, **kwargs: object) -> KnowledgeFSDocumentUploadAcceptedResponse:
             calls.append({name: value for name, value in kwargs.items() if name != "body_reader"})
-            assert kwargs["body_reader"](15 * 1024 * 1024) == KnowledgeFSRemoteMultipartFile(
+            body_reader = kwargs["body_reader"]
+            assert callable(body_reader)
+            assert body_reader(15 * 1024 * 1024) == KnowledgeFSRemoteMultipartFile(
                 filename="notes.md",
                 content_type="text/markdown",
                 body=b"# Notes",
@@ -940,7 +948,7 @@ def test_workspace_staging_zero_byte_plan_limit_returns_request_too_large_before
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FailingAdmission:
-        def admit(self, *, reserved_bytes: int):
+        def admit(self, *, reserved_bytes: int) -> Never:
             _ = reserved_bytes
             raise AssertionError("a disabled upload limit must fail before admission")
 
@@ -975,9 +983,11 @@ def test_logical_document_delete_accepts_initial_row_version(
     calls: list[dict[str, object]] = []
 
     class Facade:
-        def delete_logical_document(self, **kwargs):
+        def delete_logical_document(self, **kwargs: object) -> KnowledgeFSDurableDeletionAcceptedResponse:
             calls.append(kwargs)
-            assert kwargs["payload"].expected_revision == 0
+            payload = kwargs["payload"]
+            assert isinstance(payload, KnowledgeFSLogicalDocumentDeletePayload)
+            assert payload.expected_revision == 0
             return KnowledgeFSDurableDeletionAcceptedResponse.model_validate(
                 {
                     "job": {
@@ -1034,7 +1044,7 @@ def test_small_file_console_bff_maps_oversize_to_413() -> None:
     assert oversized.value.status_code == 413
 
     @console_resources._knowledge_fs_errors
-    def reject():
+    def reject() -> Never:
         raise KnowledgeFSProductRequestRejectedError(status_code=413)
 
     with pytest.raises(KnowledgeFSRequestTooLargeHTTPError):
@@ -1136,11 +1146,15 @@ def test_space_create_profile_intent_matches_the_exact_kfs_pending_configuration
         }
     )
 
+    assert payload.embedding is not None
+    assert payload.embedding is not None
     assert payload.embedding.model_dump(mode="json", by_alias=True) == {
         "pluginId": "langgenius/openai",
         "provider": "openai",
         "model": "text-embedding-3-small",
     }
+    assert payload.retrieval is not None
+    assert payload.retrieval is not None
     assert payload.retrieval.model_dump(mode="json", by_alias=True) == {
         "defaultMode": "deep",
         "reasoningModel": {
@@ -1365,7 +1379,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
     calls: list[dict[str, object]] = []
 
     class Broker:
-        def issue_interactive(self, **kwargs):
+        def issue_interactive(self, **kwargs: object) -> SimpleNamespace:
             calls.append(kwargs)
             return SimpleNamespace(
                 token="query-capability",
@@ -1407,7 +1421,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
     calls: list[dict[str, object]] = []
 
     class Broker:
-        def issue_interactive(self, **kwargs):
+        def issue_interactive(self, **kwargs: object) -> SimpleNamespace:
             calls.append(kwargs)
             return SimpleNamespace(
                 token="query-capability",
@@ -1571,7 +1585,7 @@ def test_task_stream_capability_uses_broker(
     calls: list[dict[str, object]] = []
 
     class Broker:
-        def issue_interactive(self, **kwargs):
+        def issue_interactive(self, **kwargs: object) -> SimpleNamespace:
             calls.append(kwargs)
             return SimpleNamespace(
                 token="direct-capability",
@@ -1608,7 +1622,7 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
     authorization.authorize.return_value = profile
 
     class Broker:
-        def issue_service(self, **kwargs):
+        def issue_service(self, **kwargs: object) -> SimpleNamespace:
             calls.append(kwargs)
             return SimpleNamespace(
                 token="service-capability",

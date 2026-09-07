@@ -274,6 +274,9 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                     if mention.ref_id in (cli_tool.id, cli_tool.name):
                         return cli_tool.name or cli_tool.id
             case MentionKind.KNOWLEDGE:
+                for space in agent_soul.knowledge.spaces:
+                    if mention.ref_id == space.id:
+                        return space.name
                 for knowledge_set in agent_soul.knowledge.sets:
                     if mention.ref_id == knowledge_set.id:
                         return knowledge_set.name or knowledge_set.id

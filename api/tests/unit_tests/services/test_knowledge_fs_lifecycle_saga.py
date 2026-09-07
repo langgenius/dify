@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import datetime, timedelta
+from typing import override
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -30,9 +31,10 @@ from services.knowledge_fs.lifecycle_port import (
 )
 from services.knowledge_fs.lifecycle_saga import KnowledgeFSLifecycleSagaRunner
 from services.knowledge_fs.observability import KnowledgeFSLifecycleTaskMetric
+from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedLifecycleRemote
 
 
-class FakeKnowledgeFSLifecycleRemote:
+class FakeKnowledgeFSLifecycleRemote(UnexpectedLifecycleRemote):
     def __init__(self) -> None:
         self.provision_requests: list[KnowledgeFSIntegratedProvisionRequest] = []
         self.deletion_requests: list[KnowledgeFSIntegratedDeletionRequest] = []
@@ -40,6 +42,7 @@ class FakeKnowledgeFSLifecycleRemote:
         self.spaces: dict[str, KnowledgeFSRemoteSpace] = {}
         self.find_requests: list[tuple[str, str]] = []
 
+    @override
     def provision_integrated_space(self, request: KnowledgeFSIntegratedProvisionRequest) -> KnowledgeFSRemoteSpace:
         self.provision_requests.append(request)
         return self.spaces.setdefault(
@@ -47,15 +50,18 @@ class FakeKnowledgeFSLifecycleRemote:
             KnowledgeFSRemoteSpace(request.namespace_id, "space-1", request.provisioning_key, 1),
         )
 
+    @override
     def request_integrated_deletion(self, request: KnowledgeFSIntegratedDeletionRequest) -> KnowledgeFSDeletionProgress:
         self.deletion_requests.append(request)
         return self.deletion_progress.popleft()
 
+    @override
     def revoke_capability_grant(
         self, request: KnowledgeFSCapabilityGrantRevokeRequest
     ) -> KnowledgeFSCapabilityGrantRevokeAck:
         raise AssertionError(request)
 
+    @override
     def find_by_provisioning_key(
         self,
         *,
@@ -65,6 +71,7 @@ class FakeKnowledgeFSLifecycleRemote:
         self.find_requests.append((provisioning_key, control_space_id))
         return self.spaces.get(provisioning_key)
 
+    @override
     def list_spaces(
         self,
         *,
@@ -142,7 +149,9 @@ def test_integrated_provision_saga_registers_remote_space_and_acks(sqlite_sessio
     assert control_space.knowledge_space_revision == 1
     assert command is not None
     assert command.status is KnowledgeFSLifecycleOutboxStatus.SUCCEEDED
+    assert remote.provision_requests[0].model_intent is not None
     assert remote.provision_requests[0].model_intent["pluginId"] == "langgenius/openai"
+    assert remote.provision_requests[0].profile_intent is not None
     assert remote.provision_requests[0].profile_intent["defaultMode"] == "fast"
     assert metrics.record_lifecycle_task.call_args_list == [
         call(KnowledgeFSLifecycleTaskMetric(None, "provision", "running")),

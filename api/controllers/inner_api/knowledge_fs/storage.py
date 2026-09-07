@@ -117,9 +117,9 @@ register_response_schema_models(
 class KnowledgeFSQueryImageApi(Resource):
     """Resolve one actor-owned or workflow-granted Dify file for a bounded KFS query run."""
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSQueryImageQuery))
     @inner_api_ns.produces(["image/gif", "image/jpeg", "image/png", "image/webp"])
+    @knowledge_fs_inner_api_only
     def get(self) -> Response:
         try:
             query = KnowledgeFSQueryImageQuery.model_validate(request.args.to_dict(flat=True))
@@ -161,9 +161,9 @@ class KnowledgeFSQueryImageApi(Resource):
 class KnowledgeFSRemoteImageApi(Resource):
     """Resolve one bounded document image through Dify's SSRF-protected network client."""
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSRemoteImageQuery))
     @inner_api_ns.produces(["image/gif", "image/jpeg", "image/png", "image/webp"])
+    @knowledge_fs_inner_api_only
     def get(self) -> Response:
         try:
             query = KnowledgeFSRemoteImageQuery.model_validate(request.args.to_dict(flat=True))
@@ -183,13 +183,13 @@ class KnowledgeFSRemoteImageApi(Resource):
 class KnowledgeFSObjectApi(Resource):
     """Read, write, or delete one logical KnowledgeFS object."""
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSObjectQuery))
     @inner_api_ns.response(
         HTTPStatus.OK,
         "Object stored",
         inner_api_ns.models[KnowledgeFSObjectMetadataResponse.__name__],
     )
+    @knowledge_fs_inner_api_only
     def put(self) -> dict[str, object]:
         try:
             query = KnowledgeFSObjectQuery.model_validate(request.args.to_dict(flat=True))
@@ -210,9 +210,9 @@ class KnowledgeFSObjectApi(Resource):
             _raise_http_error(exc)
         return _metadata_response(result)
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSObjectQuery))
     @inner_api_ns.produces(["application/octet-stream"])
+    @knowledge_fs_inner_api_only
     def get(self) -> Response:
         try:
             query = KnowledgeFSObjectQuery.model_validate(request.args.to_dict(flat=True))
@@ -236,9 +236,9 @@ class KnowledgeFSObjectApi(Resource):
         response.headers[_CHECKSUM_HEADER] = metadata.checksum_sha256_base64
         return response
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSObjectQuery))
     @inner_api_ns.response(HTTPStatus.NO_CONTENT, "Object deleted")
+    @knowledge_fs_inner_api_only
     def delete(self) -> tuple[str, int]:
         try:
             query = KnowledgeFSObjectQuery.model_validate(request.args.to_dict(flat=True))
@@ -254,13 +254,13 @@ class KnowledgeFSObjectApi(Resource):
 class KnowledgeFSObjectMetadataApi(Resource):
     """Read portable metadata for one logical KnowledgeFS object."""
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSObjectQuery))
     @inner_api_ns.response(
         HTTPStatus.OK,
         "Object metadata",
         inner_api_ns.models[KnowledgeFSObjectMetadataResponse.__name__],
     )
+    @knowledge_fs_inner_api_only
     def get(self) -> dict[str, object]:
         try:
             query = KnowledgeFSObjectQuery.model_validate(request.args.to_dict(flat=True))
@@ -278,13 +278,13 @@ class KnowledgeFSObjectMetadataApi(Resource):
 class KnowledgeFSObjectListApi(Resource):
     """List logical KnowledgeFS objects with bounded keyset pagination."""
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSObjectListQuery))
     @inner_api_ns.response(
         HTTPStatus.OK,
         "Object page",
         inner_api_ns.models[KnowledgeFSObjectListResponse.__name__],
     )
+    @knowledge_fs_inner_api_only
     def get(self) -> dict[str, object]:
         try:
             query = KnowledgeFSObjectListQuery.model_validate(request.args.to_dict(flat=True))
@@ -304,13 +304,13 @@ class KnowledgeFSObjectListApi(Resource):
 class KnowledgeFSObjectHealthApi(Resource):
     """Report whether Dify storage satisfies KnowledgeFS portable requirements."""
 
-    @knowledge_fs_inner_api_only
     @inner_api_ns.response(
         HTTPStatus.OK,
         "Storage available",
         inner_api_ns.models[KnowledgeFSObjectHealthResponse.__name__],
     )
     @inner_api_ns.response(HTTPStatus.SERVICE_UNAVAILABLE, "Storage unavailable")
+    @knowledge_fs_inner_api_only
     def get(self) -> dict[str, bool] | tuple[dict[str, bool], int]:
         if KnowledgeFSObjectStorageService().health():
             return {"ok": True}

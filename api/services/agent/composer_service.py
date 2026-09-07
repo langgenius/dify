@@ -52,6 +52,7 @@ from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
 )
+from services.agent.knowledge_spaces import sync_agent_app_knowledge_bindings, validate_agent_knowledge_spaces
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
@@ -203,6 +204,13 @@ class AgentComposerService:
 
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
+        if payload.agent_soul is not None:
+            validate_agent_knowledge_spaces(
+                session=session,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                agent_soul=payload.agent_soul,
+            )
         if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
             cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
@@ -481,6 +489,13 @@ class AgentComposerService:
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
 
+        validate_agent_knowledge_spaces(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent_soul=payload.agent_soul,
+        )
+
         agent = cls._get_agent_app_agent(session=session, tenant_id=tenant_id, app_id=app_id)
         if not agent:
             agent = Agent(
@@ -533,6 +548,12 @@ class AgentComposerService:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
+        validate_agent_knowledge_spaces(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent_soul=payload.agent_soul,
+        )
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         return cls._save_agent_composer_for_agent(
             session=session,
@@ -627,6 +648,19 @@ class AgentComposerService:
         if not agent_soul_has_model(agent_soul):
             raise AgentModelNotConfiguredError()
         cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=agent_soul)
+        validate_agent_knowledge_spaces(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+        )
+        sync_agent_app_knowledge_bindings(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent=agent,
+            agent_soul=agent_soul,
+        )
         validate_home_snapshot_binding(
             session=session,
             agent=agent,
@@ -820,6 +854,12 @@ class AgentComposerService:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_draft_save_payload(payload)
+        validate_agent_knowledge_spaces(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent_soul=payload.agent_soul,
+        )
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._save_agent_draft(
             session=session,
@@ -879,6 +919,12 @@ class AgentComposerService:
             )
         )
         cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=applied_agent_soul)
+        validate_agent_knowledge_spaces(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent_soul=applied_agent_soul,
+        )
         source_binding_id = build_draft.agent_workspace_binding_id
         if source_binding_id is None:
             raise AgentBuildSandboxNotFoundError()
@@ -1044,7 +1090,7 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         """Collect non-blocking composer validation findings."""
         existing_knowledge_set_ids = (
-            {knowledge_set.id for knowledge_set in payload.agent_soul.knowledge.sets}
+            {binding.id for binding in [*payload.agent_soul.knowledge.sets, *payload.agent_soul.knowledge.spaces]}
             if payload.agent_soul is not None
             else None
         )
@@ -1504,6 +1550,14 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        if agent.scope == AgentScope.ROSTER and agent.app_id:
+            sync_agent_app_knowledge_bindings(
+                session=session,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                agent=agent,
+                agent_soul=payload.agent_soul,
+            )
         SkillManagementService(session=session).publish_agent_bindings(
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -1550,6 +1604,14 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        if agent.scope == AgentScope.ROSTER and agent.app_id:
+            sync_agent_app_knowledge_bindings(
+                session=session,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                agent=agent,
+                agent_soul=payload.agent_soul,
+            )
         SkillManagementService(session=session).publish_agent_bindings(
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -1796,6 +1858,13 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        sync_agent_app_knowledge_bindings(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            agent=agent,
+            agent_soul=agent_soul,
+        )
         return agent
 
     @classmethod

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
+from uvicorn.importer import import_from_string
 import json
 import os
 import resource
@@ -83,8 +83,7 @@ async def execute(directory: Path, envelope: dict) -> None:
     initialize_budget(
         directory, budget, wall_seconds=envelope["settings"]["wall_seconds"]
     )
-    module, name = envelope["app_target"].split(":", 1)
-    app = getattr(importlib.import_module(module), name)
+    app = import_from_string(envelope["app_target"])
     supplied = False
     response_size = 0
     start = None

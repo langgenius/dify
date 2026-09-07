@@ -4,6 +4,7 @@ import threading
 import time
 from collections.abc import Mapping
 from pathlib import Path
+from typing import override
 
 import pytest
 import yaml
@@ -23,6 +24,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import FileSegment, StringSegment
+from services.knowledge_fs import query_images as query_image_dependencies
 from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppAdmissionError,
     KnowledgeFSAppAuthorizationNotReadyError,
@@ -35,6 +37,7 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.query_images import KnowledgeFSWorkflowQueryImageReference
+from tasks import knowledge_fs_failed_retrieval_tasks as failed_retrieval_dependencies
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -178,6 +181,7 @@ class ConcurrentCapabilityService(RecordingCapabilityService):
         self.active = 0
         self.max_active = 0
 
+    @override
     def run_retrieval(self, **kwargs: object) -> KnowledgeFSRetrievalTestResponse:
         with self._lock:
             self.active += 1
@@ -277,6 +281,19 @@ def _node(
             user_from=user_from,
         ),
         graph_runtime_state=runtime_state or _runtime_state(),
+        query_image_issuer=lambda app_id, file, tenant_id: (
+            query_image_dependencies.issue_workflow_query_image_reference(app_id=app_id, file=file, tenant_id=tenant_id)
+        ),
+        failed_retrieval_dispatcher=lambda tenant_id, app_id, control_space_id, query, mode, retrieval_trace_id: (
+            failed_retrieval_dependencies.enqueue_workflow_failed_retrieval_capture(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                control_space_id=control_space_id,
+                query=query,
+                mode=mode,
+                retrieval_trace_id=retrieval_trace_id,
+            )
+        ),
         capability_service=service,  # type: ignore[arg-type]
         binding_service=binding_service,  # type: ignore[arg-type]
         rerank_model_manager=rerank_model_manager or RecordingRerankModelManager(),  # type: ignore[arg-type]
@@ -471,7 +488,7 @@ def test_workflow_query_image_is_forwarded_to_every_space_with_independent_degra
         ),
     )
     monkeypatch.setattr(
-        node_module,
+        query_image_dependencies,
         "issue_workflow_query_image_reference",
         lambda **_kwargs: KnowledgeFSWorkflowQueryImageReference(
             upload_file_id="00000000-0000-4000-8000-000000000001",
@@ -560,9 +577,9 @@ def test_node_data_requires_a_query_text_or_a_query_image_variable() -> None:
     assert text_only.query_attachment_selector is None
 
     for selectors in (
-        {},
-        {"query_variable_selector": []},
-        {"query_variable_selector": [], "query_attachment_selector": []},
+        dict[str, object](),
+        {"query_variable_selector": list[str]()},
+        {"query_variable_selector": list[str](), "query_attachment_selector": list[str]()},
     ):
         with pytest.raises(ValidationError, match="query text or a query image"):
             KnowledgeRetrievalV2NodeData.model_validate(
@@ -593,7 +610,7 @@ def test_image_only_query_retrieves_without_text_and_skips_the_text_reranker(
         ),
     )
     monkeypatch.setattr(
-        node_module,
+        query_image_dependencies,
         "issue_workflow_query_image_reference",
         lambda **_kwargs: KnowledgeFSWorkflowQueryImageReference(
             upload_file_id="00000000-0000-4000-8000-000000000001",
@@ -977,6 +994,7 @@ def test_automatic_metadata_filter_fails_closed_on_missing_model_or_catalog_reje
 
 def test_automatic_metadata_catalog_follows_pagination_cursors() -> None:
     class PagedCapabilityService(RecordingCapabilityService):
+        @override
         def list_metadata_fields(self, **kwargs: object) -> KnowledgeFSMetadataFieldListResponse:
             self.metadata_calls.append(kwargs)
             if kwargs["cursor"] is None:
@@ -1008,7 +1026,7 @@ def test_empty_retrieval_is_successful_and_dispatches_quality_capture(
 ) -> None:
     dispatched: list[dict[str, object]] = []
     monkeypatch.setattr(
-        node_module,
+        failed_retrieval_dependencies,
         "enqueue_workflow_failed_retrieval_capture",
         lambda **kwargs: dispatched.append(kwargs),
     )
@@ -1047,7 +1065,7 @@ def test_quality_capture_runs_per_space_only_when_the_merged_result_is_empty(
 ) -> None:
     dispatched: list[dict[str, object]] = []
     monkeypatch.setattr(
-        node_module,
+        failed_retrieval_dependencies,
         "enqueue_workflow_failed_retrieval_capture",
         lambda **kwargs: dispatched.append(kwargs),
     )
@@ -1085,7 +1103,7 @@ def test_quality_capture_dispatch_failure_never_fails_an_empty_retrieval(
     def fail_dispatch(**_kwargs: object) -> None:
         raise RuntimeError("broker unavailable")
 
-    monkeypatch.setattr(node_module, "enqueue_workflow_failed_retrieval_capture", fail_dispatch)
+    monkeypatch.setattr(failed_retrieval_dependencies, "enqueue_workflow_failed_retrieval_capture", fail_dispatch)
 
     result = _node(
         service=RecordingCapabilityService({"space-a": _empty_response(mode="fast", space="a")}),
@@ -1101,7 +1119,7 @@ def test_custom_workflow_reranker_applies_threshold_and_top_k_without_recording_
 ) -> None:
     dispatched: list[dict[str, object]] = []
     monkeypatch.setattr(
-        node_module,
+        failed_retrieval_dependencies,
         "enqueue_workflow_failed_retrieval_capture",
         lambda **kwargs: dispatched.append(kwargs),
     )
@@ -1145,7 +1163,7 @@ def test_threshold_filtered_results_are_not_recorded_as_a_raw_retrieval_miss(
 ) -> None:
     dispatched: list[dict[str, object]] = []
     monkeypatch.setattr(
-        node_module,
+        failed_retrieval_dependencies,
         "enqueue_workflow_failed_retrieval_capture",
         lambda **kwargs: dispatched.append(kwargs),
     )
@@ -1168,6 +1186,7 @@ def test_threshold_filtered_results_are_not_recorded_as_a_raw_retrieval_miss(
 
 def test_missing_system_reranker_is_an_actionable_configuration_failure() -> None:
     class MissingDefaultRerankManager(RecordingRerankModelManager):
+        @override
         def get_default_model_instance(self, tenant_id: str, model_type: object) -> RecordingRerankModel:
             _ = tenant_id, model_type
             raise node_module.ProviderTokenNotInitError("Default rerank model is missing")
@@ -1185,6 +1204,7 @@ def test_missing_system_reranker_is_an_actionable_configuration_failure() -> Non
 
 def test_invalid_global_rerank_indices_fail_closed_as_a_contract_error() -> None:
     class InvalidRerankModel(RecordingRerankModel):
+        @override
         def invoke_rerank(self, **kwargs: object) -> RerankResult:
             self.calls.append(kwargs)
             return RerankResult(
@@ -1232,8 +1252,10 @@ def test_balanced_pool_does_not_let_one_space_fill_the_global_rerank_budget() ->
     )._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert rerank_model.calls[0]["docs"][:6] == ["a-0", "b-0", "a-1", "b-1", "a-2", "b-2"]
-    assert len(rerank_model.calls[0]["docs"]) == 40
+    docs = rerank_model.calls[0]["docs"]
+    assert isinstance(docs, list)
+    assert docs[:6] == ["a-0", "b-0", "a-1", "b-1", "a-2", "b-2"]
+    assert len(docs) == 40
 
 
 def test_node_fails_closed_for_binding_rejection_and_invalid_query_type() -> None:
@@ -1369,7 +1391,7 @@ def test_quality_capture_prefers_the_recorded_history_trace_over_the_transport_t
     """Newer gateways return the AnswerTrace id so the capture attaches to the same history record."""
     dispatched: list[dict[str, object]] = []
     monkeypatch.setattr(
-        node_module,
+        failed_retrieval_dependencies,
         "enqueue_workflow_failed_retrieval_capture",
         lambda **kwargs: dispatched.append(kwargs),
     )

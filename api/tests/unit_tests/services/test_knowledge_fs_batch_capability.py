@@ -22,7 +22,7 @@ class FakeIssuer:
     def __init__(self) -> None:
         self.requests: list[CapabilityIssueRequest] = []
 
-    def issue(self, request: CapabilityIssueRequest):
+    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
         self.requests.append(request)
         return SimpleNamespace(token="batch-token", claims=SimpleNamespace(exp=2_000_000_000))
 

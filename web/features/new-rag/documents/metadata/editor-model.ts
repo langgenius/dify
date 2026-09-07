@@ -12,7 +12,7 @@ const reservedDocumentMetadataNames = new Set([
   'system',
 ])
 
-export function isEditableDocumentMetadata(name: string) {
+function isEditableDocumentMetadata(name: string) {
   return !reservedDocumentMetadataNames.has(name)
 }
 

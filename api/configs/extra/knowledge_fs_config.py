@@ -103,9 +103,6 @@ class KnowledgeFSConfig(BaseSettings):
 
     @model_validator(mode="after")
     def validate_enabled_connection(self) -> "KnowledgeFSConfig":
-        if str(getattr(self, "DEPLOY_ENV", "")).strip().upper() == "PRODUCTION":
-            if self.KNOWLEDGE_FS_BASE_URL and not self._is_secure_or_loopback_origin(self.KNOWLEDGE_FS_BASE_URL):
-                raise ValueError("KNOWLEDGE_FS_BASE_URL must use HTTPS in production unless it targets loopback")
         if self.KNOWLEDGE_FS_ENABLED:
             if not self.KNOWLEDGE_FS_BASE_URL:
                 raise ValueError("KnowledgeFS base URL is required when the integration is enabled")

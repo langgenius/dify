@@ -112,6 +112,7 @@ export const zWebAppAuthModel = z.object({
  * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
+  agent_knowledge_fs_enabled: z.boolean().default(false),
   branding: zBrandingModel.default({
     application_title: '',
     enabled: false,

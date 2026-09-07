@@ -1,3 +1,4 @@
+import inspect
 from unittest.mock import patch
 
 import pytest
@@ -75,12 +76,8 @@ def _guard_wrapper_code():
 
 def _has_agent_manage_guard(view) -> bool:
     guard_wrapper_code = _guard_wrapper_code()
-    current = view
-    while current is not None:
-        if current.__code__ is guard_wrapper_code:
-            return True
-        current = getattr(current, "__wrapped__", None)
-    return False
+    current = inspect.unwrap(view, stop=lambda candidate: candidate.__code__ is guard_wrapper_code)
+    return current.__code__ is guard_wrapper_code
 
 
 class TestAgentManageRequiredForAgentApp:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime
 from typing import cast, override
 
@@ -61,6 +62,7 @@ class SQLAlchemyKnowledgeFSCutoverRepository(KnowledgeFSCutoverRepository):
             "phase": update_values.new_phase,
             "cas_version": KnowledgeFSWorkspaceCutoverLedger.cas_version + 1,
         }
+        update_fields = asdict(update_values)
         for field_name in (
             "source_revision_watermark",
             "final_revision_watermark",
@@ -117,7 +119,7 @@ class SQLAlchemyKnowledgeFSCutoverRepository(KnowledgeFSCutoverRepository):
             "integrated_mode_enabled",
             "legacy_acl_read_only",
         ):
-            value = getattr(update_values, field_name)
+            value = update_fields[field_name]
             if value is not None:
                 values[field_name] = value
         if update_values.clear_smoke_results:

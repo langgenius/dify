@@ -778,6 +778,35 @@ describe('ConnectedSourceWorkflow', () => {
     ).toBeEnabled()
   })
 
+  it.each(['', 'Saved wiki'])(
+    'allows clearing and replacing the source name from %j',
+    async (sourceName) => {
+      const user = userEvent.setup()
+      clientMock.listDatasourceAuth.mockResolvedValue({
+        result: [notionDatasourceAuth([notionCredential])],
+      })
+      clientMock.listConnections.mockResolvedValue({
+        data: [connectionResponse()],
+        next_cursor: null,
+      })
+      renderStatefulSetup({ ...defaultDraft, sourceName })
+
+      const input = await screen.findByRole('textbox', { name: /knowledgeSpace.sourceName/ })
+      expect(input).not.toHaveValue('')
+
+      await user.clear(input)
+      expect(input).toHaveValue('')
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
+
+      await user.type(input, 'My wiki')
+      expect(input).toHaveValue('My wiki')
+      await user.keyboard(
+        '{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}',
+      )
+      expect(input).toHaveValue('')
+    },
+  )
+
   it('starts the selected Notion import and completes setup without waiting for indexing', async () => {
     const user = userEvent.setup()
     clientMock.listDatasourceAuth.mockResolvedValue({

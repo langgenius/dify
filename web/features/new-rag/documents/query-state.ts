@@ -1,13 +1,6 @@
 import { debounce, parseAsString, parseAsStringLiteral } from 'nuqs'
 
-export const DOCUMENT_FILTERS = [
-  'all',
-  'ready',
-  'queued',
-  'processing',
-  'failed',
-  'disabled',
-] as const
+const DOCUMENT_FILTERS = ['all', 'ready', 'queued', 'processing', 'failed', 'disabled'] as const
 
 export type DocumentFilter = (typeof DOCUMENT_FILTERS)[number]
 

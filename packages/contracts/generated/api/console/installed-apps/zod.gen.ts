@@ -696,6 +696,32 @@ export const zSavedMessageInfiniteScrollPagination = z.object({
 })
 
 /**
+ * ExecutionContentType
+ */
+export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
@@ -712,6 +738,7 @@ export const zRetrieverResource = z.object({
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
   message_id: z.uuid().optional(),
   position: z.int(),
   score: z.number().nullish(),
@@ -720,11 +747,6 @@ export const zRetrieverResource = z.object({
   summary: z.string().nullish(),
   word_count: z.int().nullish(),
 })
-
-/**
- * ExecutionContentType
- */
-export const zExecutionContentType = z.enum(['human_input'])
 
 export const zJsonValue2 = z.unknown()
 

@@ -6,7 +6,6 @@ import unittest
 from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import patch
-from types import SimpleNamespace
 
 from kfs_sandbox.admission import Rejected
 from kfs_sandbox.conversion import record_failure
@@ -74,8 +73,8 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
             path = Path(directory)
             (path / "request.body").write_bytes(multipart())
             with patch(
-                "kfs_sandbox.worker.importlib.import_module",
-                return_value=SimpleNamespace(app=no_response),
+                "kfs_sandbox.worker.import_from_string",
+                return_value=no_response,
             ):
                 with self.assertRaisesRegex(RuntimeError, "Missing ASGI response"):
                     await execute(
@@ -129,8 +128,8 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "kfs_sandbox.worker.importlib.import_module",
-                    return_value=SimpleNamespace(app=swallowed_error),
+                    "kfs_sandbox.worker.import_from_string",
+                    return_value=swallowed_error,
                 ),
                 self.assertRaisesRegex(Rejected, "worker_resource_limit"),
             ):

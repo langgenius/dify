@@ -18,7 +18,7 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     config.LOG_FORMAT = "%(message)s"
     config.LOG_TZ = "UTC"
     config.LOG_FILE = None
-    config.CELERY_TASK_ANNOTATIONS = {}
+    config.CELERY_TASK_ANNOTATIONS = dict[str, object]()
     config.CELERY_BEAT_SCHEDULER_TIME = 1
     config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS = 2
     config.ENABLE_CONVERSATION_CLEANUP_TASK = True

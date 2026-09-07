@@ -6,12 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.knowledge_retrieval_v2.validation import collect_control_space_ids
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.knowledge_fs import AppKnowledgeFSSpaceJoin, KnowledgeFSAppSpaceJoinType
 from models.model import App
 from models.workflow import Workflow
+from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 
@@ -21,6 +23,24 @@ def handle(sender: object, **kwargs: object) -> None:
     published_workflow = cast(Workflow, kwargs["published_workflow"])
     publish_session = cast(Session | None, kwargs.get("session"))
     control_space_ids = get_control_space_ids_from_workflow(published_workflow)
+
+    # Agent bindings are copied to the published Workflow before this signal.
+    # Flush them so the union cannot silently omit an Agent node in this transaction.
+    graph = published_workflow.graph_dict
+    if isinstance(graph, dict) and any(
+        isinstance(node, dict) and isinstance(node.get("data"), dict) and is_dify_agent_node_data(node["data"])
+        for node in graph.get("nodes", [])
+    ):
+        lookup_session = publish_session if publish_session is not None else cast(Session, db.session)
+        lookup_session.flush()
+        control_space_ids = tuple(
+            dict.fromkeys(
+                (
+                    *control_space_ids,
+                    *collect_workflow_agent_knowledge_space_ids(session=lookup_session, workflow=published_workflow),
+                )
+            )
+        )
 
     if not control_space_ids:
         lookup_session = publish_session if publish_session is not None else db.session

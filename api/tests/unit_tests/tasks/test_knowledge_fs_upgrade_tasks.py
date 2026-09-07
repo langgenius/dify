@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from celery.app.task import Context
 
 from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeNotReadyError
 from tasks.knowledge_fs_upgrade_tasks import (
@@ -11,12 +12,13 @@ from tasks.knowledge_fs_upgrade_tasks import (
     reconcile_knowledge_fs_upgrade_documents,
     run_knowledge_fs_upgrade,
 )
+from tests.unit_tests.tasks.task_options import task_options
 
 
 def test_upgrade_tasks_are_pinned_to_the_dedicated_queue() -> None:
-    assert run_knowledge_fs_upgrade._get_exec_options()["queue"] == KNOWLEDGE_FS_UPGRADE_QUEUE
-    assert reconcile_knowledge_fs_upgrade_documents._get_exec_options()["queue"] == KNOWLEDGE_FS_UPGRADE_QUEUE
-    assert cleanup_deferred_knowledge_fs_upgrade_files._get_exec_options()["queue"] == KNOWLEDGE_FS_UPGRADE_QUEUE
+    assert task_options(run_knowledge_fs_upgrade)["queue"] == KNOWLEDGE_FS_UPGRADE_QUEUE
+    assert task_options(reconcile_knowledge_fs_upgrade_documents)["queue"] == KNOWLEDGE_FS_UPGRADE_QUEUE
+    assert task_options(cleanup_deferred_knowledge_fs_upgrade_files)["queue"] == KNOWLEDGE_FS_UPGRADE_QUEUE
 
 
 def test_deferred_file_cleanup_uses_the_upgrade_session_factory() -> None:
@@ -68,7 +70,7 @@ def test_worker_marks_parent_failed_when_provisioning_retries_are_exhausted() ->
     runner = MagicMock()
     error = KnowledgeFSUpgradeNotReadyError("Space is still provisioning")
     runner.run_next.side_effect = error
-    run_knowledge_fs_upgrade.push_request(retries=run_knowledge_fs_upgrade.max_retries)
+    run_knowledge_fs_upgrade.request_stack.push(Context(retries=run_knowledge_fs_upgrade.max_retries))
     try:
         with (
             patch("tasks.knowledge_fs_upgrade_tasks.session_factory.get_session_maker", return_value="maker"),

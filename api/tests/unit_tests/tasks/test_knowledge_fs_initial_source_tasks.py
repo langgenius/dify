@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -178,7 +179,7 @@ def _runtime(
     credential: SimpleNamespace | None | object = _DEFAULT_CREDENTIAL,
     state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE,
     knowledge_space_id: str | None = "space-1",
-):
+) -> Generator[MagicMock, None, None]:
     session_context = MagicMock()
     session = MagicMock()
     session.scalar.return_value = (

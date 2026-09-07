@@ -10,37 +10,31 @@ from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, override
 
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, UserFrom
 from core.app.llm.model_access import build_dify_model_access
-from core.db.session_factory import session_factory
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
-from core.model_manager import ModelInstance, ModelManager
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.rerank_entities import RerankResult
-from graphon.node_events import NodeRunResult
-from graphon.nodes.base.node import Node
-from graphon.variables import ArrayFileSegment, FileSegment, StringSegment
-from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
-from graphon.variables.template_resolution import convert_template
-from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
-from services.knowledge_fs.app_admission_service import (
+from core.knowledge_fs.errors import (
+    QUERY_IMAGE_MAX_COUNT,
+    QUERY_IMAGE_MAX_TOTAL_BYTES,
     KnowledgeFSAppAdmissionError,
     KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppBindingManagementError,
     KnowledgeFSAppChannelDisabledError,
     KnowledgeFSAppSpaceUnavailableError,
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSQueryImageError,
+    KnowledgeFSWorkflowQueryImageReference,
 )
-from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
-from services.knowledge_fs.app_execution_capability import (
+from core.knowledge_fs.resource import (
     KnowledgeResourceRef,
 )
-from services.knowledge_fs.product_dto import (
+from core.knowledge_fs.retrieval_contracts import (
     KnowledgeFSAppBindingPayload,
     KnowledgeFSMetadataFieldListResponse,
     KnowledgeFSMetadataFieldResponse,
@@ -52,19 +46,19 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSRetrievalTestResponse,
 )
-from services.knowledge_fs.product_remote import (
-    KnowledgeFSOperationUnavailableError,
-    KnowledgeFSProductRemoteError,
-    KnowledgeFSProductRequestRejectedError,
-)
-from services.knowledge_fs.query_images import (
-    QUERY_IMAGE_MAX_COUNT,
-    QUERY_IMAGE_MAX_TOTAL_BYTES,
-    KnowledgeFSQueryImageError,
-    issue_workflow_query_image_reference,
-)
-from services.knowledge_fs.runtime import get_knowledge_fs_runtime
-from tasks.knowledge_fs_failed_retrieval_tasks import enqueue_workflow_failed_retrieval_capture
+from core.model_manager import ModelInstance, ModelManager
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.file import File
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.rerank_entities import RerankResult
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+from graphon.variables import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
+from graphon.variables.template_resolution import convert_template
+from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 
 from .automatic_metadata_filter import (
     KnowledgeFSAutomaticMetadataFilterExtractor,
@@ -99,6 +93,23 @@ def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None
     if isinstance(value, int) and not isinstance(value, bool):
         return value
     return str(value)
+
+
+class QueryImageIssuer(Protocol):
+    def __call__(self, *, app_id: str, file: File, tenant_id: str) -> KnowledgeFSWorkflowQueryImageReference: ...
+
+
+class FailedRetrievalDispatcher(Protocol):
+    def __call__(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        control_space_id: str,
+        query: str,
+        mode: Literal["fast", "deep", "research"],
+        retrieval_trace_id: str,
+    ) -> object: ...
 
 
 class _RetrievalCapability(Protocol):
@@ -168,6 +179,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         rerank_model_manager: _RerankModelManager | None = None,
         metadata_filter_extractor: KnowledgeFSMetadataFilterExtractor | None = None,
         max_concurrency: int = 4,
+        query_image_issuer: QueryImageIssuer | None = None,
+        failed_retrieval_dispatcher: FailedRetrievalDispatcher | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -182,6 +195,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         self._rerank_model_manager = rerank_model_manager
         self._metadata_filter_extractor = metadata_filter_extractor
         self._max_concurrency = max_concurrency
+        self._query_image_issuer = query_image_issuer
+        self._failed_retrieval_dispatcher = failed_retrieval_dispatcher
 
     @classmethod
     @override
@@ -304,7 +319,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         seen_ids: set[str] = set()
         try:
             for file in files:
-                reference = issue_workflow_query_image_reference(
+                reference = self._issue_query_image_reference(
                     app_id=run_context.app_id,
                     file=file,
                     tenant_id=run_context.tenant_id,
@@ -338,21 +353,24 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             raise KnowledgeFSRetrievalConfigurationError(str(exc)) from exc
         return references, inputs
 
+    def _issue_query_image_reference(
+        self, *, app_id: str, file: File, tenant_id: str
+    ) -> KnowledgeFSWorkflowQueryImageReference:
+        if self._query_image_issuer is None:
+            raise KnowledgeFSRetrievalConfigurationError("Workflow query-image issuer is not configured")
+        return self._query_image_issuer(app_id=app_id, file=file, tenant_id=tenant_id)
+
     def _service(self) -> _RetrievalCapability:
-        if self._capability_service is not None:
-            return self._capability_service
-        return get_knowledge_fs_runtime(session_factory.get_session_maker()).app_capabilities
+        if self._capability_service is None:
+            raise KnowledgeFSRetrievalConfigurationError("KnowledgeFS retrieval capability is not configured")
+        return self._capability_service
 
     def _ensure_draft_bindings(self, run_context: DifyRunContext) -> None:
         if not run_context.invoke_from.runs_as_account() or run_context.user_from is not UserFrom.ACCOUNT:
             return
         binding_service = self._binding_service
         if binding_service is None:
-            # A separately injected retrieval port is a unit-test/custom boundary. Production nodes
-            # resolve both capabilities from the same cached runtime.
-            if self._capability_service is not None:
-                return
-            binding_service = get_knowledge_fs_runtime(session_factory.get_session_maker()).app_bindings
+            return
         try:
             for control_space_id in self._node_data.control_space_ids:
                 binding_service.upsert(
@@ -787,8 +805,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             ranked.append((document.score, candidates[document.index]))
         return ranked
 
-    @staticmethod
     def _enqueue_failed_retrieval_captures(
+        self,
         *,
         run_context: DifyRunContext,
         query: str,
@@ -796,12 +814,12 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
     ) -> None:
         """Best-effort quality capture after every selected space returned no evidence."""
 
-        if not query:
+        if not query or self._failed_retrieval_dispatcher is None:
             # Failed-query triage is text-based; an image-only miss has no query to capture.
             return
         for control_space_id, response in responses:
             try:
-                enqueue_workflow_failed_retrieval_capture(
+                self._failed_retrieval_dispatcher(
                     tenant_id=run_context.tenant_id,
                     app_id=run_context.app_id,
                     control_space_id=control_space_id,
