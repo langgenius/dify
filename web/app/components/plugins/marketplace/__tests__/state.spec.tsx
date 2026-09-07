@@ -163,6 +163,34 @@ describe('useMarketplaceData', () => {
     document.body.removeChild(container)
   })
 
+  it('restores collections and clears pending results when switching Models back to All', async () => {
+    const { useMarketplaceData } = await import('../state')
+    const { useActivePluginType } = await import('../atoms')
+    const { Wrapper } = createWrapper('?category=model')
+    const { result } = renderHook(
+      () => ({
+        data: useMarketplaceData(),
+        setCategory: useActivePluginType()[1],
+      }),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data.plugins).toHaveLength(1)
+    })
+
+    await act(async () => {
+      await result.current.setCategory(PLUGIN_TYPE_SEARCH_MAP.all)
+    })
+
+    await waitFor(() => {
+      expect(result.current.data.marketplaceCollections).toHaveLength(1)
+      expect(result.current.data.plugins).toBeUndefined()
+      expect(result.current.data.pluginsTotal).toBeUndefined()
+      expect(result.current.data.isRefreshing).toBe(false)
+    })
+  })
+
   it('should use the server route category for hydrated standalone search', async () => {
     const { useMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?q=openai')
