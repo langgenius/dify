@@ -1029,7 +1029,7 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
 
     def mint(bearer: Bearer, prefix: str, *, account_id: str | None, email: str) -> None:
         """Register a bearer with the fake resolver *and* persist the session row it
-        names, so `CheckSessionOwnership` has something real to match against.
+        names, so the access service's ownership check has something real to match against.
         """
         raw = prefix + uuid.uuid4().hex
         token_id = uuid.uuid4()
@@ -1143,7 +1143,7 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
     ids = {
         "app_id": app_id,
         "workspace_id": world.workspace_id,
-        # The caller's own session: `CheckSessionOwnership` 404s any other id.
+        # The caller's own session: the access service 404s any other id.
         "session_id": world.session_ids.get(bearer, str(uuid.uuid4())) if bearer else str(uuid.uuid4()),
         "member_id": str(uuid.uuid4()),
         "import_id": str(uuid.uuid4()),

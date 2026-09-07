@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import pytest
-from flask import Flask, request
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -13,7 +13,6 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.requirements import CheckSessionOwnership
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import TokenType
 from models import Account
@@ -123,8 +122,6 @@ class TestSessionRevoke:
             token_id=mint.token_id,
         )
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            request.view_args = {"session_id": session_id}
-            CheckSessionOwnership().run(ctx.subject, ctx, db_session_with_containers)
             result = api.delete.__handler__(api, ctx, session_id)
 
         assert result.status == "revoked"
@@ -133,11 +130,8 @@ class TestSessionRevoke:
         self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
     ) -> None:
         """A token id owned by another subject must be indistinguishable from a
-        missing one (404), so token ids can't be probed across subjects.
-
-        The refusal is `CheckSessionOwnership`'s, so it is exercised where the
-        router runs it — ahead of the handler, which no longer checks.
-        """
+        missing one (404), so token ids can't be probed across subjects. The
+        access service makes that call; the handler only maps it to 404."""
         owner = make_account()
         outsider = make_account()
         foreign = _mint_account_token(db_session_with_containers, owner)
@@ -145,6 +139,6 @@ class TestSessionRevoke:
         session_id = str(foreign.token_id)
         ctx = context_for(outsider, session=db_session_with_containers, view_args={"session_id": session_id})
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            request.view_args = {"session_id": session_id}
+            api = AccountSessionByIdApi()
             with pytest.raises(NotFound):
-                CheckSessionOwnership().run(ctx.subject, ctx, db_session_with_containers)
+                api.delete.__handler__(api, ctx, session_id)

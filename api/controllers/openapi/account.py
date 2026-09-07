@@ -22,7 +22,6 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckEnterpriseLicense,
     CheckScope,
-    CheckSessionOwnership,
     CheckSubject,
 )
 from controllers.openapi.auth.subjects import AccountSubject
@@ -97,12 +96,7 @@ class AccountSessionsApi(Resource):
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
     @endpoint(
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckEnterpriseLicense(),
-            CheckScope(Scope.FULL),
-            CheckSessionOwnership(),
-        ),
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckEnterpriseLicense(), CheckScope(Scope.FULL)),
         returns=(200, RevokeResponse, "Session revoked"),
     )
     def delete(self, ctx: Context, session_id: str):

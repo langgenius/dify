@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +13,6 @@ from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckEnterpriseLicense,
     CheckRBACPermission,
-    CheckSessionOwnership,
     CheckSubject,
     CheckWorkspaceRole,
     Requirement,
@@ -24,9 +21,7 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
-from libs.oauth_bearer import TokenType
 from models.account import AccountStatus, TenantAccountRole
-from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.entities.feature_entities import (
     LicenseStatus,
@@ -37,7 +32,6 @@ from ._world import (
     ACCOUNT_ID,
     APP_ID,
     CLIENT_ID,
-    SESSION_ID,
     TOKEN_ID,
     account_subject,
     make_account,
@@ -306,46 +300,3 @@ class TestCheckAppAccess:
                     CheckAppAccess().run(subject, ctx, sqlite_session)
 
         permitted.assert_called_once_with(user_id=ACCOUNT_ID, app_id=APP_ID)
-
-
-class TestCheckSessionOwnership:
-    @staticmethod
-    def _token(session_id: str, *, account_id: str | None, email: str, issuer: str | None) -> OAuthAccessToken:
-        row = OAuthAccessToken(
-            token_hash=session_id,
-            prefix=TokenType.OAUTH_ACCOUNT.prefix,
-            account_id=account_id,
-            subject_email=email,
-            subject_issuer=issuer,
-            client_id=CLIENT_ID,
-            device_label="test",
-            expires_at=datetime.now(UTC) + timedelta(days=1),
-        )
-        row.id = session_id
-        return row
-
-    def test_admits_the_callers_own_session(self, sqlite_session: Session) -> None:
-        subject = account_subject()
-        persist(
-            sqlite_session,
-            self._token(SESSION_ID, account_id=ACCOUNT_ID, email="account@example.com", issuer="dify:account"),
-        )
-
-        ctx = make_ctx(sqlite_session, subject=subject, session_id=SESSION_ID)
-        CheckSessionOwnership().run(subject, ctx, sqlite_session)
-
-    @pytest.mark.parametrize("persist_foreign", [True, False])
-    def test_404s_a_session_the_caller_does_not_own(self, sqlite_session: Session, persist_foreign: bool) -> None:
-        """A token id owned by another subject is indistinguishable from one that
-        does not exist, so session ids cannot be probed across subjects.
-        """
-        subject = account_subject()
-        if persist_foreign:
-            persist(
-                sqlite_session,
-                self._token(SESSION_ID, account_id=str(uuid.uuid4()), email="other@example.com", issuer="dify:account"),
-            )
-
-        ctx = make_ctx(sqlite_session, subject=subject, session_id=SESSION_ID)
-        with pytest.raises(NotFound, match="session not found"):
-            CheckSessionOwnership().run(subject, ctx, sqlite_session)
