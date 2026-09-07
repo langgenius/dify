@@ -278,7 +278,7 @@ class WeaviateVector(BaseVector):
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
     @override
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
         """
         Generate canonical Weaviate object ids for each document.
 
@@ -299,7 +299,7 @@ class WeaviateVector(BaseVector):
         ``add_texts`` keeps matching the input documents one-for-one.
         """
         uuids: list[str] = []
-        for doc in documents:
+        for doc in texts:
             doc_id = (doc.metadata or {}).get("doc_id")
             if isinstance(doc_id, str) and doc_id:
                 uuids.append(doc_id)
