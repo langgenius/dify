@@ -1209,6 +1209,116 @@ describe("source-product workflow provider imports", () => {
     });
   });
 
+  it("tombstones website documents removed by a replacement crawl import", async () => {
+    const previousUrl = "https://example.test/previous";
+    const selectedUrl = "https://example.test/selected";
+    const previousProviderItemId = createHash("sha256").update(previousUrl, "utf8").digest("hex");
+    const selectedProviderItemId = createHash("sha256").update(selectedUrl, "utf8").digest("hex");
+    const body = new TextEncoder().encode("selected preview body");
+    const contentHash = createHash("sha256").update(body).digest("hex");
+    const contentObjectKey = "staged/selected-replacement";
+    const source = sourceRecord("replacement-website-crawl-import", {
+      metadata: websiteSelectionMetadata([previousUrl]),
+      type: "web",
+    });
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: 1, hasMore: false })),
+        get: vi.fn(async ({ contentObjectKey: key }) => (key === contentObjectKey ? body : null)),
+        put: vi.fn(async () => contentObjectKey),
+      },
+      inventory: [inventoryItem(previousProviderItemId, "website")],
+      run: providerRun(source.id, "crawl-import", {
+        replaceExistingSelection: true,
+        selectedSourceUrls: [selectedUrl],
+        stagedPageReferences: [
+          {
+            contentHash,
+            contentObjectKey,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            pageId: selectedProviderItemId,
+            sourceUrl: selectedUrl,
+            title: "Selected",
+          },
+        ],
+      }),
+      source,
+      websiteCrawl: { crawl: vi.fn() },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(fixture.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ providerItemId: selectedProviderItemId }),
+      expect.any(Object),
+    );
+    expect(fixture.markRemoteMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: `document-${previousProviderItemId}`,
+        policy: "tombstone",
+        providerItemId: previousProviderItemId,
+        workflowId: fixture.run.id,
+      }),
+      expect.any(Object),
+    );
+    expect(fixture.sourceUpdates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          __knowledgeFsWebsiteSelection: {
+            sourceUrls: [selectedUrl],
+            version: 1,
+          },
+        }),
+      }),
+    );
+    expect(fixture.publish.mock.invocationCallOrder[0]).toBeLessThan(
+      fixture.markRemoteMissing.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+    expect(fixture.markRemoteMissing.mock.invocationCallOrder[0]).toBeLessThan(
+      fixture.sourceUpdates.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it("does not reconcile existing documents for an unmarked crawl import", async () => {
+    const previousUrl = "https://example.test/previous";
+    const selectedUrl = "https://example.test/selected";
+    const previousProviderItemId = createHash("sha256").update(previousUrl, "utf8").digest("hex");
+    const selectedProviderItemId = createHash("sha256").update(selectedUrl, "utf8").digest("hex");
+    const body = new TextEncoder().encode("selected preview body");
+    const contentHash = createHash("sha256").update(body).digest("hex");
+    const contentObjectKey = "staged/unmarked-crawl-import";
+    const source = sourceRecord("unmarked-website-crawl-import", { type: "web" });
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: 1, hasMore: false })),
+        get: vi.fn(async ({ contentObjectKey: key }) => (key === contentObjectKey ? body : null)),
+        put: vi.fn(async () => contentObjectKey),
+      },
+      inventory: [inventoryItem(previousProviderItemId, "website")],
+      run: providerRun(source.id, "crawl-import", {
+        selectedSourceUrls: [selectedUrl],
+        stagedPageReferences: [
+          {
+            contentHash,
+            contentObjectKey,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            pageId: selectedProviderItemId,
+            sourceUrl: selectedUrl,
+            title: "Selected",
+          },
+        ],
+      }),
+      source,
+      websiteCrawl: { crawl: vi.fn() },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(fixture.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ providerItemId: selectedProviderItemId }),
+      expect.any(Object),
+    );
+    expect(fixture.markRemoteMissing).not.toHaveBeenCalled();
+  });
+
   it("fetches every selected URL even when multiple selections resolve to the same page", async () => {
     const source = sourceRecord("ambiguous-crawl-import", { type: "web" });
     const crawl = vi.fn(async (_input: WebsiteCrawlInput) => ({
@@ -1321,6 +1431,9 @@ describe("source-product workflow provider imports", () => {
   it("keeps the previous website selection when a replacement import fails", async () => {
     const previousSelection = ["https://example.test/previous"];
     const replacementSelection = ["https://example.test/replacement"];
+    const previousProviderItemId = createHash("sha256")
+      .update(previousSelection[0] ?? "", "utf8")
+      .digest("hex");
     const bodies = new Map<string, Uint8Array>();
     const source = sourceRecord("failed-website-selection-replacement", {
       metadata: websiteSelectionMetadata(previousSelection),
@@ -1336,9 +1449,10 @@ describe("source-product workflow provider imports", () => {
           return key;
         }),
       },
-      inventory: [],
+      inventory: [inventoryItem(previousProviderItemId, "website")],
       publishError: new Error("replacement publication failed"),
       run: providerRun(source.id, "crawl-import", {
+        replaceExistingSelection: true,
         selectedSourceUrls: replacementSelection,
       }),
       source,
@@ -1350,6 +1464,7 @@ describe("source-product workflow provider imports", () => {
     });
 
     await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    expect(fixture.markRemoteMissing).not.toHaveBeenCalled();
     expect(fixture.sourceUpdates).not.toHaveBeenCalled();
     expect(source.metadata).toEqual(websiteSelectionMetadata(previousSelection));
   });

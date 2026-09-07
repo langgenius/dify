@@ -803,6 +803,25 @@ async function processSelectedCrawlImport(
   source: Source,
 ): Promise<readonly string[]> {
   const requestedUrls = selectedSourceUrls(execution.run());
+  const shouldReplaceExistingSelection = execution.run().payload.replaceExistingSelection === true;
+  const inventory = shouldReplaceExistingSelection
+    ? await loadSourceInventory(input, execution, source, input.maxSyncItems ?? 1_000)
+    : undefined;
+  const replaceSelection = async (
+    selectedPages: readonly SourceCrawlPreviewPage[],
+  ): Promise<readonly string[]> => {
+    await importCrawlPages(input, execution, source, selectedPages);
+    if (inventory) {
+      await removeItemsOutsideSelection(
+        input,
+        execution,
+        source,
+        inventory,
+        new Set(selectedPages.map((page) => page.pageId)),
+      );
+    }
+    return requestedUrls;
+  };
   const referencedPages = selectedStagedPageReferences(execution.run());
   if (referencedPages.length) {
     await execution.mutate((current) =>
@@ -817,8 +836,7 @@ async function processSelectedCrawlImport(
         state: "importing",
       }),
     );
-    await importCrawlPages(input, execution, source, referencedPages);
-    return requestedUrls;
+    return replaceSelection(referencedPages);
   }
   const stagedPages = selectedStagedPages(execution.run());
   if (stagedPages.length) {
@@ -837,8 +855,7 @@ async function processSelectedCrawlImport(
         state: "importing",
       }),
     );
-    await importCrawlPages(input, execution, source, selectedPages);
-    return requestedUrls;
+    return replaceSelection(selectedPages);
   }
   if (!input.websiteCrawl) {
     throw runtimeError(
@@ -890,8 +907,7 @@ async function processSelectedCrawlImport(
       state: "importing",
     }),
   );
-  await importCrawlPages(input, execution, source, selectedPages);
-  return requestedUrls;
+  return replaceSelection(selectedPages);
 }
 
 async function importCrawlPages(

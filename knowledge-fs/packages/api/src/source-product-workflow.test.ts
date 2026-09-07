@@ -119,6 +119,7 @@ describe("source product workflows", () => {
         }),
       ],
     });
+    expect(created.payload).not.toHaveProperty("replaceExistingSelection");
     expect(objects.size).toBe(1);
 
     await expect(service.createCrawlImport(request)).resolves.toMatchObject({ id: created.id });
@@ -160,6 +161,7 @@ describe("source product workflows", () => {
           title: "Page",
         },
       ],
+      replaceExistingSelection: true,
       sourceId: source.id,
       sourceUrls: ["https://example.test/page"],
       subject: editor,
@@ -172,6 +174,7 @@ describe("source product workflows", () => {
       }),
     );
     expect(run.payload).toMatchObject({
+      replaceExistingSelection: true,
       stagedPageReferences: [
         expect.objectContaining({
           contentObjectKey: "crawl-import-reference/copied-preview",

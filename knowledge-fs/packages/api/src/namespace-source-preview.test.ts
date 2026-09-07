@@ -93,6 +93,7 @@ describe("namespace website source preview", () => {
           grantId: "preview-grant",
         },
         subject,
+        replaceExistingSelection: true,
         sourceUrls: ["https://example.com/a"],
         pageReferences: [
           expect.objectContaining({
@@ -141,6 +142,7 @@ describe("namespace website source preview", () => {
     const recovered = {
       id: "22222222-2222-4222-8222-222222222222",
       payload: {
+        replaceExistingSelection: true,
         selectedSourceUrls: [page.sourceUrl],
         stagedPageReferences: [{ contentHash: page.contentHash, sourceUrl: page.sourceUrl }],
       },

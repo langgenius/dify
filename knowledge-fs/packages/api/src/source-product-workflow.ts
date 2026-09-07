@@ -575,6 +575,7 @@ export interface SourceProductWorkflowService {
         readonly sourceUrl: string;
         readonly title?: string | null;
       }[];
+      readonly replaceExistingSelection?: boolean;
       readonly sourceId: string;
       readonly sourceUrls: readonly string[];
     },
@@ -893,7 +894,10 @@ export function createSourceProductWorkflowService(input: {
         idempotencyKey: request.idempotencyKey,
         knowledgeSpaceId: request.knowledgeSpaceId,
         kind: "crawl-import",
-        payload: { selectedSourceUrls: sourceUrls },
+        payload: {
+          ...(request.replaceExistingSelection ? { replaceExistingSelection: true } : {}),
+          selectedSourceUrls: sourceUrls,
+        },
         progressTotal: sourceUrls.length,
         requiredPermissionScope: requiredSourceScope(source),
         sourceId: request.sourceId,

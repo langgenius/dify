@@ -659,6 +659,7 @@ export function createNamespaceSourcePreviewService(input: {
             knowledgeSpaceId: request.knowledgeSpaceId,
             sourceId: request.sourceId,
             idempotencyKey: request.idempotencyKey,
+            replaceExistingSelection: true,
             sourceUrls: selected.map((page) => page.sourceUrl),
             pageReferences: selected.map((page) => ({
               contentHash: page.contentHash,
