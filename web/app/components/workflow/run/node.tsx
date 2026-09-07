@@ -7,6 +7,7 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -17,7 +18,7 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { use, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
@@ -32,6 +33,7 @@ import { AgentLogTrigger } from './agent-log/agent-log-trigger'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
+import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
 type Props = {
   readonly className?: string
@@ -69,6 +71,7 @@ const NodePanel: FC<Props> = ({
   notShowIterationNav,
   notShowLoopNav,
 }) => {
+  const workflowToolTracing = use(WorkflowToolTracingContext)
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback(
     (state: boolean) => {
@@ -228,6 +231,18 @@ const NodePanel: FC<Props> = ({
             {(isAgentNode || isToolNode) && onShowAgentOrToolLog && (
               <AgentLogTrigger nodeInfo={nodeInfo} onShowAgentOrToolLog={onShowAgentOrToolLog} />
             )}
+            {nodeInfo.node_type === BlockEnum.Tool &&
+              nodeInfo.extras?.workflow_tool === true &&
+              workflowToolTracing && (
+                <Button
+                  variant="ghost"
+                  className="mb-1 w-full justify-between"
+                  onClick={() => workflowToolTracing.onShowWorkflowTool(nodeInfo)}
+                >
+                  {t(($) => $.tracing, { ns: 'runLog' })}
+                  <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                </Button>
+              )}
             <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
               {nodeInfo.status === 'stopped' && (
                 <StatusContainer status="stopped">

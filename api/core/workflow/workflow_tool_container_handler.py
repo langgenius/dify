@@ -10,6 +10,10 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
@@ -327,7 +331,21 @@ class WorkflowToolContainerHandler:
             root_node_id=root_node_id,
         )
         if self._event_listener_factory is not None:
-            self._event_listeners[frame_id] = self._event_listener_factory(source)
+            listener = self._event_listener_factory(source)
+            parent_execution_id = parent_frame.state.graph_execution.get_or_create_node_execution(
+                frame_id=run_state.frame_id,
+                node_id=run_state.node_id,
+            ).execution_id
+
+            def persist_child_event(event: NodeEvent) -> None:
+                event.node_run_result.process_data = {
+                    **event.node_run_result.process_data,
+                    WORKFLOW_TOOL_INVOCATION_ID_KEY: run_state.invocation_id,
+                    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: parent_execution_id,
+                }
+                listener(event)
+
+            self._event_listeners[frame_id] = persist_child_event
         return self._frame_registry.create(
             frame_id=frame_id,
             container_id=run_state.node_id,
