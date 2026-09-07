@@ -1,5 +1,4 @@
 {
-  "agent.manage": "Управление Agents",
   "api_extension.manage": "Управление конфигурацией API-расширений",
   "app.access_config": "Настройка прав доступа к приложению",
   "app.acl.access_config": "Просмотр и управление правами доступа",

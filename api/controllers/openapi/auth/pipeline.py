@@ -17,11 +17,11 @@ from flask_login import user_logged_in
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from configs import dify_config
+from controllers.common.rbac import RBACCheck
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.data import (
     AuthData,
     ExternalIdentity,
-    RBACRequirement,
     RequestContext,
 )
 from controllers.openapi.auth.flow import When
@@ -61,7 +61,7 @@ class AuthPipeline:
         scope: Scope | None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
-        rbac: RBACRequirement | None = None,
+        rbac: RBACCheck | None = None,
     ) -> Any:
         req_ctx = RequestContext(
             token_type=identity.token_type,
@@ -135,7 +135,7 @@ class PipelineRouter:
         require_valid_enterprise_license: bool = False,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
-        rbac: RBACRequirement | None = None,
+        rbac: RBACCheck | None = None,
     ) -> Callable:
         return self._make_decorator(
             scope=scope,
@@ -155,7 +155,7 @@ class PipelineRouter:
         edition: frozenset[DeploymentEdition] | None = None,
         require_valid_enterprise_license: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
-        rbac: RBACRequirement | None = None,
+        rbac: RBACCheck | None = None,
     ) -> Callable:
         return self._make_decorator(
             scope=scope,
@@ -176,7 +176,7 @@ class PipelineRouter:
         require_valid_enterprise_license: bool,
         workspace_membership: bool,
         allowed_roles: frozenset[TenantAccountRole] | None,
-        rbac: RBACRequirement | None,
+        rbac: RBACCheck | None,
     ) -> Callable:
         def decorator(view: Callable) -> Callable:
             @wraps(view)
@@ -210,7 +210,7 @@ class PipelineRouter:
         require_valid_enterprise_license: bool,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
-        rbac: RBACRequirement | None = None,
+        rbac: RBACCheck | None = None,
     ) -> Any:
         # 404 not 403 — this edition doesn't expose the feature at all
         if edition is not None and dify_config.DEPLOYMENT_EDITION not in edition:

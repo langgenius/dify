@@ -1,5 +1,4 @@
 {
-  "agent.manage": "Zarządzaj Agents",
   "api_extension.manage": "Zarządzaj konfiguracją rozszerzenia API",
   "app.access_config": "Konfiguruj uprawnienia dostępu do aplikacji",
   "app.acl.access_config": "Wyświetlaj uprawnienia dostępu i zarządzaj nimi",

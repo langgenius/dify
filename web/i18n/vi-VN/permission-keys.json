@@ -1,5 +1,4 @@
 {
-  "agent.manage": "Quản lý Agents",
   "api_extension.manage": "Quản lý cấu hình phần mở rộng API",
   "app.access_config": "Cấu hình quyền truy cập ứng dụng",
   "app.acl.access_config": "Xem và quản lý quyền truy cập",

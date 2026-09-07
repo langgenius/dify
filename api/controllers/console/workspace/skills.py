@@ -10,13 +10,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import BinaryFileResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     edit_permission_required,
 )
 from fields.base import ResponseModel
@@ -298,9 +298,7 @@ class WorkspaceSkillsApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkspaceSkillsQuery))
     @console_ns.response(200, "Workspace skills", console_ns.models[SkillListResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext):
@@ -325,9 +323,7 @@ class WorkspaceSkillsApi(Resource):
     @console_ns.expect(console_ns.models[SkillCreatePayload.__name__])
     @console_ns.response(201, "Skill created", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -391,9 +387,7 @@ class WorkspaceSkillImportApi(Resource):
     @console_ns.doc(description="Import a Skill zip package from multipart form field `file`.")
     @console_ns.response(201, "Skill imported", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -419,9 +413,7 @@ class WorkspaceSkillImportApi(Resource):
 class WorkspaceSkillApi(Resource):
     @console_ns.response(200, "Skill detail", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
@@ -436,9 +428,7 @@ class WorkspaceSkillApi(Resource):
     @console_ns.expect(console_ns.models[SkillMetadataPayload.__name__])
     @console_ns.response(200, "Skill updated", console_ns.models[SkillResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -462,9 +452,7 @@ class WorkspaceSkillApi(Resource):
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_DELETE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -487,9 +475,7 @@ class WorkspaceSkillApi(Resource):
 class WorkspaceSkillDuplicateApi(Resource):
     @console_ns.response(201, "Skill duplicated", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -509,9 +495,7 @@ class WorkspaceSkillDuplicateApi(Resource):
 class WorkspaceSkillExportApi(Resource):
     @console_ns.response(200, "Published Skill zip archive")
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
@@ -696,9 +680,7 @@ class WorkspaceSkillPublishApi(Resource):
     @console_ns.expect(console_ns.models[SkillPublishPayload.__name__])
     @console_ns.response(200, "Skill published", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_PUBLISH,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -723,9 +705,7 @@ class WorkspaceSkillRestoreApi(Resource):
     @console_ns.expect(console_ns.models[SkillRestorePayload.__name__])
     @console_ns.response(200, "Skill version restored to draft", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_PUBLISH,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
     )
     @edit_permission_required
     @with_session
