@@ -450,8 +450,9 @@ async function objectBackedImageSource({
   readonly objectStorage: KnowledgeGatewayOptions["adapter"]["objectStorage"];
 }): Promise<{ base64Data: string; mimeType: string } | undefined> {
   const assetRef = input.item.assetRef;
-  const thumbnail = assetRef?.variants?.thumbnail;
-  const candidate = thumbnail?.objectKey ? thumbnail : assetRef;
+  if (assetRef?.analysisUnavailable !== undefined) return undefined;
+  const analysis = assetRef?.variants?.analysis;
+  const candidate = analysis?.objectKey ? analysis : assetRef;
   const objectKey = candidate?.objectKey;
   const contentType = candidate?.contentType;
 

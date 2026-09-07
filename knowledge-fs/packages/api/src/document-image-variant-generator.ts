@@ -2,9 +2,19 @@ export interface GenerateDocumentImageVariantsInput {
   readonly body: Uint8Array;
   readonly contentType: string;
   readonly elementId: string;
+  readonly signal?: AbortSignal | undefined;
 }
 
 export interface GeneratedDocumentImageVariant {
+  readonly execution?:
+    | {
+        readonly isolation: "child-process";
+        readonly inputBytes: number;
+        readonly outputBytes: number;
+        readonly wallMs: number;
+        readonly peakRssKiB: number;
+      }
+    | undefined;
   readonly body: Uint8Array;
   readonly contentType: string;
   readonly height?: number | undefined;
@@ -19,6 +29,8 @@ export interface DocumentImageVariantGenerator {
 }
 
 export interface SharpImageThumbnailVariantGeneratorOptions {
+  /** Separate vision input; preview dimensions must never become model input resolution. */
+  readonly analysisMaxDimension?: number | undefined;
   readonly maxDimension?: number | undefined;
   readonly maxInputPixels?: number | undefined;
   readonly maxOutputBytes?: number | undefined;
@@ -31,6 +43,7 @@ const defaultThumbnailMaxOutputBytes = 8 * 1024 * 1024;
 const defaultThumbnailVariantName = "thumbnail";
 
 export function createSharpImageThumbnailVariantGenerator({
+  analysisMaxDimension,
   maxDimension = defaultThumbnailMaxDimension,
   maxInputPixels = defaultThumbnailMaxInputPixels,
   maxOutputBytes = defaultThumbnailMaxOutputBytes,
@@ -52,8 +65,50 @@ export function createSharpImageThumbnailVariantGenerator({
     throw new Error("Sharp image thumbnail variantName must be non-empty");
   }
 
+  if (
+    analysisMaxDimension !== undefined &&
+    (!Number.isSafeInteger(analysisMaxDimension) ||
+      analysisMaxDimension < maxDimension ||
+      analysisMaxDimension > 4096 ||
+      variantName === "analysis")
+  ) {
+    throw new Error(
+      "Sharp image analysis dimension must be between thumbnail dimension and 4096, with distinct variant names",
+    );
+  }
+
+  if (analysisMaxDimension !== undefined) {
+    const analysisGenerator = createSharpImageThumbnailVariantGenerator({
+      maxDimension: analysisMaxDimension,
+      maxInputPixels,
+      maxOutputBytes,
+      variantName: "analysis",
+    });
+    const previewGenerator = createSharpImageThumbnailVariantGenerator({
+      maxDimension,
+      maxInputPixels,
+      maxOutputBytes,
+      variantName,
+    });
+    return {
+      generate: async (input) => {
+        input.signal?.throwIfAborted();
+        const analysis = await analysisGenerator.generate(input);
+        const main = analysis[0];
+        if (!main) return [];
+        const preview = await previewGenerator.generate({
+          ...input,
+          body: main.body,
+          contentType: main.contentType,
+        });
+        return [...preview, ...analysis];
+      },
+    };
+  }
+
   return {
-    generate: async ({ body, contentType }) => {
+    generate: async ({ body, contentType, signal }) => {
+      signal?.throwIfAborted();
       if (!contentType.toLowerCase().startsWith("image/") || body.byteLength === 0) {
         return [];
       }
@@ -69,6 +124,7 @@ export function createSharpImageThumbnailVariantGenerator({
         })
         .png()
         .toBuffer({ resolveWithObject: true });
+      signal?.throwIfAborted();
 
       if (data.byteLength > maxOutputBytes) {
         throw new Error(

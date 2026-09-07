@@ -92,6 +92,7 @@ the service:
 | `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS` | Maximum continuous idle interval while reading a direct multipart or small-file fallback body. Defaults to `30000`; expiry cancels the reader, returns 408, and releases admission. |
 | `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS` | Generous total body-read deadline for a direct multipart or small-file fallback request. Defaults to `600000`, must be at least the idle timeout, and returns 408 on expiry. |
 | `UNSTRUCTURED_API_URL` | Parser endpoint for complex formats. |
+| `UNSTRUCTURED_BACKEND_REVISION` | Non-secret identity of the actual parser image, models and output policy. Bump it on semantic backend changes to invalidate raw parse checkpoint identity. An unset revision is explicitly `external-unversioned`, not proof of reproducibility. Admission-only limits need no revision bump. |
 | `UNSTRUCTURED_API_KEY` | Optional parser authentication. |
 | `UNSTRUCTURED_MAX_CONCURRENCY` | Process-wide limit shared by every remote parser request; defaults to `2`. |
 | `UNSTRUCTURED_HEAVY_MAX_CONCURRENCY` | Nested limit for every PDF and structurally/byte-heavy Office, email, EPUB, ODT, or RTF request. The bundled parser profile uses `1`; it must not exceed `UNSTRUCTURED_MAX_CONCURRENCY`. The materialization pre-admission lane follows this value but is capped at `KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY - 1` (minimum `1`) to preserve ordinary-document progress. `UNSTRUCTURED_PDF_MAX_CONCURRENCY` remains a lower-precedence compatibility alias. |
@@ -118,7 +119,8 @@ including response consumption. It defaults to `60000`; transport failures and
 The optional `knowledge-fs-unstructured` Compose profile starts an isolated parser service with six
 pages per child request, three child workers, and zero child retries. It does not modify Dify's
 existing `unstructured` service or legacy ETL traffic. The tracked
-`knowledge-fs-unstructured-service.defaults` file contains only service-side page-parallel values;
+`knowledge-fs-unstructured-service.defaults` file contains service-side page-parallel and PDF
+raster-safety values;
 operator-owned `knowledge-fs-unstructured.env` is loaded afterwards and can override it. The
 required file deliberately uses a non-`.env` suffix so it remains tracked in clean checkouts.
 The `.env.example` files remain copy-only templates and are never loaded as runtime configuration.
@@ -126,6 +128,30 @@ Compose pins the isolated multi-architecture image to the digest used by the out
 resource benchmarks; review the same contracts before intentionally changing that digest. Child
 requests are at or below the split size and therefore partition locally instead of recursively
 spawning more requests.
+
+PDF import also checks page geometry before sending the file to Unstructured. Compressed file
+size and page count alone cannot bound raster memory: an 80 × 180 cm single-page PDF needs about
+273 million pixels at the pinned parser's 350 DPI even if the file is only 248 KB. The client
+checks every page with bounded Poppler metadata inspection, estimates its raster size at 350 DPI,
+and rejects pages above 25 million pixels or 10,000 pixels on either side. It also rejects files
+whose geometry cannot be safely inspected. Oversized documents must be exported at smaller page
+dimensions or tiled into smaller pages before import; splitting only between existing giant pages
+does not reduce the per-page risk. The original file, parsing strategy, text, and image extraction
+remain unchanged for admitted documents. The client does not silently switch to text-only parsing.
+
+The isolated service explicitly keeps `PDF_RENDER_DPI=350` (the pinned image's existing default)
+and sets `PDF_RENDER_MAX_PIXELS_PER_PAGE=25000000`. The latter is a second guard in the pinned
+`unstructured-inference` renderer: it rejects an oversized page before allocating its bitmap.
+That renderer is shared by `hi_res` layout inference, PDF OCR (including `auto` fallback), and
+image-block extraction. Its PDF rendering uses PDFium; Poppler in this upstream path is used for
+metadata inspection. These process settings are not HTTP request parameters: the pinned API does
+not expose `pdf_image_dpi`. Do not raise the service DPI above 350, increase the pixel ceiling, or
+disable the guard (`0`) without changing and validating the client policy. Operator env overrides
+still take precedence, so existing deployments must remove conflicting overrides and recreate
+the parser service as well as deploy the new KnowledgeFS image. The Kubernetes baseline does not
+deploy Unstructured; configure the same settings on its external parser service. Geometry bounds
+address oversized page rasters, not every possible embedded-image decompression or PDF complexity
+attack; the service memory limit and workload admission remain necessary.
 
 The KnowledgeFS client keeps a process-wide limit of `2` and adds a heavy-workload nested limit of
 `1`. Every PDF remains heavy because compressed PDF object streams make a bounded page-count scan
@@ -145,6 +171,28 @@ Multi-replica deployments need a shared admission layer because each incoming re
 own child thread pool. The Kubernetes baseline does not own an Unstructured deployment and retains
 generic client limits. Operators with a different resource envelope must benchmark representative
 narrative, table, and scanned pages before changing either concurrency limit.
+
+### Document structure admission
+
+Before sending ZIP-backed Office, ODT or EPUB documents to the service, KnowledgeFS also streams
+their actual expanded entries within the same admission slot. This checks XML structure and
+spreadsheet cell spans, not just compressed upload size. Default limits include 512 MiB total
+expansion, 64 MiB XML (16 MiB per part), XML depth 128, 256 worksheets, and 250,000 dense cells per
+worksheet / 500,000 per workbook. Sparse distant cells and repeated worksheet references count
+toward the dense-cell cost; harmless whole-column formatting does not. Unsafe paths, damaged
+archives/XML, or missing/external worksheet relationships fail before a provider request. Standard
+EPUB 2 XHTML declarations and optional image-relationship fallbacks remain supported.
+
+Native structured parsing shares the admitted upload-byte limit (15 MiB by default), so an upload
+above 10 MiB no longer silently switches JSON/CSV to a different parser. Decoded structure,
+document-wide table expansion, and projected output have independent finite budgets. Exceeding a
+budget is an explicit non-retryable error, not truncated content. Split unusually complex inputs
+before retrying; these are resource limits, not the file formats' theoretical maximum sizes.
+
+These checks do not replace process isolation or memory limits. Legacy DOC/PPT/XLS conversion,
+nested mail attachments, native image decoding, and synchronous in-process parsing still require
+further isolation work. Existing indexes are unchanged until re-indexing; new parses use the
+updated parser policy identity. No new database migration or model setting is required.
 
 ## PDF image rasterization
 

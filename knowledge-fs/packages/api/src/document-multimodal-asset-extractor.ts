@@ -1,14 +1,22 @@
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { open, realpath } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type ParseArtifact, ParseArtifactSchema, type PlatformAdapter } from "@knowledge/core";
+import {
+  type DocumentMultimodalAssetRef,
+  type ParseArtifact,
+  ParseArtifactSchema,
+  type ParseElement,
+  type PlatformAdapter,
+} from "@knowledge/core";
 
 import type {
   DocumentImageVariantGenerator,
   GeneratedDocumentImageVariant,
 } from "./document-image-variant-generator";
+import { createDocumentRemoteMediaBudget } from "./document-remote-media-budget";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import {
   createDocumentMultimodalAssetObjectKey,
@@ -23,6 +31,13 @@ export interface ExtractDocumentMultimodalAssetsInput {
   readonly maxExtractedAssets?: number | undefined;
   readonly maxLocalAssetBytes?: number | undefined;
   readonly maxRemoteAssetBytes?: number | undefined;
+  readonly maxRemoteAssetAttempts?: number | undefined;
+  readonly maxTotalRemoteAssetBytes?: number | undefined;
+  readonly remoteAssetTimeoutMs?: number | undefined;
+  readonly maxTotalAssetBytes?: number | undefined;
+  readonly maxVariantPixels?: number | undefined;
+  readonly maxTotalVariantPixels?: number | undefined;
+  readonly maxVariantDurationMs?: number | undefined;
   readonly imageVariantGenerator?: DocumentImageVariantGenerator | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly remoteAssetFetcher?: DocumentRemoteAssetFetcher | undefined;
@@ -58,6 +73,10 @@ interface ImageDimensions {
   readonly width: number;
 }
 
+type AnalysisUnavailableReason = NonNullable<
+  DocumentMultimodalAssetRef["analysisUnavailable"]
+>["reason"];
+
 const dataUriPattern = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/iu;
 const defaultMaxEmbeddedAssetBytes = 10 * 1024 * 1024;
 const defaultMaxExtractedAssets = 1_000;
@@ -78,6 +97,13 @@ export async function extractDocumentMultimodalAssets({
   maxExtractedAssets = defaultMaxExtractedAssets,
   maxLocalAssetBytes = defaultMaxLocalAssetBytes,
   maxRemoteAssetBytes = defaultMaxRemoteAssetBytes,
+  maxRemoteAssetAttempts = 100,
+  maxTotalRemoteAssetBytes = 32 * 1024 * 1024,
+  remoteAssetTimeoutMs = 60_000,
+  maxTotalAssetBytes = 64 * 1024 * 1024,
+  maxVariantPixels = 20_000_000,
+  maxTotalVariantPixels = 100_000_000,
+  maxVariantDurationMs = 60_000,
   imageVariantGenerator,
   objectStorage,
   remoteAssetFetcher,
@@ -100,14 +126,38 @@ export async function extractDocumentMultimodalAssets({
   if (!Number.isSafeInteger(maxRemoteAssetBytes) || maxRemoteAssetBytes < 1) {
     throw new Error("Document multimodal remote asset max bytes must be at least 1");
   }
+  for (const [name, value] of Object.entries({
+    maxTotalAssetBytes,
+    maxVariantPixels,
+    maxTotalVariantPixels,
+    maxVariantDurationMs,
+  })) {
+    if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name} must be at least 1`);
+  }
 
   let extractedCount = 0;
   let skippedForCapCount = 0;
+  let materializedBytes = 0;
+  let variantPixels = 0;
+  const variantDeadline = performance.now() + maxVariantDurationMs;
+  const mediaReasons = new Set<string>();
+  const remoteBudget = createDocumentRemoteMediaBudget({
+    fetcher: remoteAssetFetcher,
+    maxAttempts: maxRemoteAssetAttempts,
+    maxBytes: maxRemoteAssetBytes,
+    maxTotalBytes: maxTotalRemoteAssetBytes,
+    signal,
+    timeoutMs: remoteAssetTimeoutMs,
+  });
   const extractionSources = new Set<string>();
   const elements = [];
   const allowedLocalRoots = normalizeAllowedLocalAssetPaths(allowLocalAssetPaths);
+  const canonicalAllowedLocalRoots = (
+    await Promise.all(allowedLocalRoots.map((root) => realpath(root).catch(() => null)))
+  ).filter((root): root is string => root !== null);
 
   for (const element of artifact.elements) {
+    signal?.throwIfAborted();
     if (element.type !== "image" && element.type !== "table") {
       elements.push(element);
       continue;
@@ -115,32 +165,34 @@ export async function extractDocumentMultimodalAssets({
 
     const assetRef = isPlainObject(element.metadata.assetRef) ? element.metadata.assetRef : null;
     const uri = typeof assetRef?.uri === "string" ? assetRef.uri.trim() : "";
+    if (
+      extractedCount >= maxExtractedAssets &&
+      (dataUriPattern.test(uri) ||
+        isRemoteHttpUri(uri) ||
+        (allowedLocalRoots.length > 0 && localPathFromUri(uri)))
+    ) {
+      skippedForCapCount += 1;
+      elements.push(withAnalysisUnavailable(element, "asset-count-budget"));
+      continue;
+    }
+    if (materializedBytes >= maxTotalAssetBytes && uri) {
+      mediaReasons.add("materialized-byte-budget");
+      elements.push(withAnalysisUnavailable(element, "materialized-byte-budget"));
+      continue;
+    }
     let image =
       parseDataUriImage(uri, maxEmbeddedAssetBytes) ??
       (await readLocalImageAsset({
         allowedRoots: allowedLocalRoots,
+        canonicalAllowedRoots: canonicalAllowedLocalRoots,
         assetRef,
         maxLocalAssetBytes,
         uri,
       }));
 
-    if (!image && remoteAssetFetcher && isRemoteHttpUri(uri)) {
-      if (extractedCount >= maxExtractedAssets) {
-        skippedForCapCount += 1;
-        elements.push(element);
-        continue;
-      }
-      const fetched = await remoteAssetFetcher.fetch({
-        maxBytes: maxRemoteAssetBytes,
-        ...(signal ? { signal } : {}),
-        url: uri,
-      });
+    if (!image && isRemoteHttpUri(uri)) {
+      const fetched = await remoteBudget.fetch(uri);
       if (fetched) {
-        if (fetched.body.byteLength > maxRemoteAssetBytes) {
-          throw new Error(
-            `Document multimodal remote asset exceeds maxRemoteAssetBytes=${maxRemoteAssetBytes}`,
-          );
-        }
         const contentType = normalizeRemoteImageContentType(fetched.contentType);
         if (!contentType) {
           throw new Error("Document multimodal remote asset content type is unsupported");
@@ -163,13 +215,12 @@ export async function extractDocumentMultimodalAssets({
       continue;
     }
 
-    if (extractedCount >= maxExtractedAssets) {
-      // Soft cap: leave the remaining extractable images inline instead of throwing (which would
-      // abort ingestion and orphan the assets already written to object storage this run).
-      skippedForCapCount += 1;
-      elements.push(element);
+    if (image.body.byteLength > maxTotalAssetBytes - materializedBytes) {
+      mediaReasons.add("materialized-byte-budget");
+      elements.push(withAnalysisUnavailable(element, "materialized-byte-budget"));
       continue;
     }
+    materializedBytes += image.body.byteLength;
 
     const sha256 = sha256Hex(image.body);
     const objectKey = createDocumentMultimodalAssetObjectKey({
@@ -195,18 +246,47 @@ export async function extractDocumentMultimodalAssets({
         ...(writeOwnerId ? { writeOwnerId } : {}),
       },
     });
-    const variants = imageVariantGenerator
-      ? await storeGeneratedImageVariants({
-          assetId: artifact.documentAssetId,
-          elementId: element.id,
-          generator: imageVariantGenerator,
-          image,
-          knowledgeSpaceId,
-          objectStorage,
-          tenantId,
-          ...(writeOwnerId ? { writeOwnerId } : {}),
-        })
-      : {};
+    signal?.throwIfAborted();
+    let analysisUnavailableReason: AnalysisUnavailableReason | undefined;
+    const markAnalysisUnavailable = (reason: AnalysisUnavailableReason) => {
+      analysisUnavailableReason = reason;
+      mediaReasons.add(reason);
+    };
+    const imagePixels = image.dimensions
+      ? image.dimensions.width * image.dimensions.height
+      : maxVariantPixels;
+    const canGenerateVariants =
+      imageVariantGenerator &&
+      imagePixels > 0 &&
+      Number.isSafeInteger(imagePixels) &&
+      imagePixels <= maxVariantPixels &&
+      imagePixels <= maxTotalVariantPixels - variantPixels;
+    if (imageVariantGenerator && !canGenerateVariants)
+      markAnalysisUnavailable("variant-pixel-budget");
+    if (canGenerateVariants) variantPixels += imagePixels;
+    const variantTimeRemaining = Math.ceil(variantDeadline - performance.now());
+    if (canGenerateVariants && variantTimeRemaining <= 0)
+      markAnalysisUnavailable("variant-deadline");
+    const variants =
+      canGenerateVariants && variantTimeRemaining > 0
+        ? await storeGeneratedImageVariants({
+            assetId: artifact.documentAssetId,
+            elementId: element.id,
+            generator: imageVariantGenerator,
+            image,
+            knowledgeSpaceId,
+            objectStorage,
+            onUnavailable: markAnalysisUnavailable,
+            onMaterializedBytes: (bytes) => {
+              materializedBytes += bytes;
+            },
+            remainingBytes: maxTotalAssetBytes - materializedBytes,
+            timeoutMs: variantTimeRemaining,
+            tenantId,
+            ...(signal ? { signal } : {}),
+            ...(writeOwnerId ? { writeOwnerId } : {}),
+          })
+        : {};
 
     extractedCount += 1;
     extractionSources.add(image.source);
@@ -220,6 +300,9 @@ export async function extractDocumentMultimodalAssets({
         ...cloneJsonObject(element.metadata),
         assetRef: {
           ...remainingAssetRef,
+          ...(analysisUnavailableReason
+            ? { analysisUnavailable: { reason: analysisUnavailableReason } }
+            : {}),
           contentType: image.contentType,
           ...(image.dimensions ? image.dimensions : {}),
           objectKey,
@@ -241,7 +324,12 @@ export async function extractDocumentMultimodalAssets({
     });
   }
 
-  if (extractedCount === 0) {
+  if (
+    extractedCount === 0 &&
+    remoteBudget.reasons.size === 0 &&
+    mediaReasons.size === 0 &&
+    skippedForCapCount === 0
+  ) {
     return { artifact, extractedCount, skippedForCapCount };
   }
 
@@ -251,8 +339,17 @@ export async function extractDocumentMultimodalAssets({
       elements,
       metadata: {
         ...artifact.metadata,
+        ...mediaCoverageMetadata(artifact, [
+          ...remoteBudget.reasons,
+          ...mediaReasons,
+          ...(skippedForCapCount > 0 ? ["asset-count-budget"] : []),
+        ]),
         multimodalAssets: {
           extractedCount,
+          remoteAttempts: remoteBudget.attempts,
+          remoteDownloadedBytes: remoteBudget.downloadedBytes,
+          materializedBytes,
+          variantPixels,
           ...(skippedForCapCount > 0 ? { skippedForCapCount } : {}),
           sources: [...extractionSources].sort(),
         },
@@ -260,6 +357,43 @@ export async function extractDocumentMultimodalAssets({
     }),
     extractedCount,
     skippedForCapCount,
+  };
+}
+
+function withAnalysisUnavailable(
+  element: ParseElement,
+  reason: AnalysisUnavailableReason,
+): ParseElement {
+  return {
+    ...element,
+    metadata: {
+      ...element.metadata,
+      assetRef: {
+        ...(isPlainObject(element.metadata.assetRef) ? element.metadata.assetRef : {}),
+        analysisUnavailable: { reason },
+      },
+    },
+  };
+}
+
+function mediaCoverageMetadata(artifact: ParseArtifact, reasons: readonly string[]) {
+  if (reasons.length === 0) return {};
+  const previous = isPlainObject(artifact.metadata.parseCoverage)
+    ? artifact.metadata.parseCoverage
+    : {};
+  const media = isPlainObject(previous.media) ? previous.media : {};
+  const existingReasons = Array.isArray(media.reasons)
+    ? media.reasons.filter((item): item is string => typeof item === "string").slice(0, 32)
+    : [];
+  return {
+    parseCoverage: {
+      ...previous,
+      media: {
+        ...media,
+        status: "partial",
+        reasons: [...new Set([...existingReasons, ...reasons])],
+      },
+    },
   };
 }
 
@@ -288,7 +422,12 @@ async function storeGeneratedImageVariants({
   image,
   knowledgeSpaceId,
   objectStorage,
+  onUnavailable,
+  onMaterializedBytes,
+  remainingBytes,
+  timeoutMs,
   tenantId,
+  signal,
   writeOwnerId,
 }: {
   readonly assetId: string;
@@ -297,15 +436,61 @@ async function storeGeneratedImageVariants({
   readonly image: DataUriImage;
   readonly knowledgeSpaceId: string;
   readonly objectStorage: PlatformAdapter["objectStorage"];
+  readonly onUnavailable: (reason: AnalysisUnavailableReason) => void;
+  readonly onMaterializedBytes: (bytes: number) => void;
+  readonly remainingBytes: number;
+  readonly timeoutMs: number;
   readonly tenantId: string;
+  readonly signal?: AbortSignal | undefined;
   readonly writeOwnerId?: string | undefined;
 }): Promise<Record<string, Record<string, unknown>>> {
   const variants: Record<string, Record<string, unknown>> = {};
-  const generated = await generator.generate({
-    body: image.body,
-    contentType: image.contentType,
-    elementId,
-  });
+  const controller = new AbortController();
+  const cancel = () => controller.abort(signal?.reason);
+  signal?.addEventListener("abort", cancel, { once: true });
+  const timer = setTimeout(() => controller.abort(new Error("variant-deadline")), timeoutMs);
+  let generated: readonly GeneratedDocumentImageVariant[];
+  try {
+    signal?.throwIfAborted();
+    generated = await generator.generate({
+      body: image.body,
+      contentType: image.contentType,
+      elementId,
+      signal: controller.signal,
+    });
+    signal?.throwIfAborted();
+    if (controller.signal.aborted) {
+      onUnavailable("variant-deadline");
+      return {};
+    }
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (controller.signal.aborted) {
+      onUnavailable("variant-deadline");
+      return {};
+    }
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error.code === "provider_input" || error.code === "provider_timeout") &&
+      "retryable" in error &&
+      error.retryable === false
+    ) {
+      onUnavailable("variant-input-rejected");
+      return {};
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", cancel);
+  }
+  if (generated.length === 0) onUnavailable("variant-unavailable");
+  const generatedBytes = generated.reduce((sum, variant) => sum + variant.body.byteLength, 0);
+  if (!Number.isSafeInteger(generatedBytes) || generatedBytes > remainingBytes) {
+    onUnavailable("materialized-byte-budget");
+    return {};
+  }
+  onMaterializedBytes(generatedBytes);
 
   for (const variant of generated) {
     const stored = await storeGeneratedImageVariant({
@@ -369,6 +554,7 @@ async function storeGeneratedImageVariant({
 
   return {
     contentType: variant.contentType,
+    ...(variant.execution ? { execution: { ...variant.execution } } : {}),
     ...(variant.height !== undefined ? { height: variant.height } : {}),
     objectKey,
     sha256,
@@ -407,11 +593,13 @@ function parseDataUriImage(uri: string, maxEmbeddedAssetBytes: number): DataUriI
 
 async function readLocalImageAsset({
   allowedRoots,
+  canonicalAllowedRoots,
   assetRef,
   maxLocalAssetBytes,
   uri,
 }: {
   readonly allowedRoots: readonly string[];
+  readonly canonicalAllowedRoots: readonly string[];
   readonly assetRef: Readonly<Record<string, unknown>> | null;
   readonly maxLocalAssetBytes: number;
   readonly uri: string;
@@ -432,27 +620,49 @@ async function readLocalImageAsset({
     return null;
   }
 
-  const metadata = await stat(localPath);
+  // Resolve both roots and the target before opening; O_NOFOLLOW also rejects replacement of
+  // the final component with a symlink between realpath and open.
+  const canonicalPath = await realpath(localPath);
+  if (!pathIsWithinAllowedRoots(canonicalPath, canonicalAllowedRoots)) return null;
+  const handle = await open(canonicalPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const metadata = await handle.stat();
 
-  if (!metadata.isFile()) {
-    return null;
+    if (!metadata.isFile()) {
+      return null;
+    }
+
+    if (metadata.size > maxLocalAssetBytes) {
+      throw new Error(
+        `Document multimodal local asset exceeds maxLocalAssetBytes=${maxLocalAssetBytes}`,
+      );
+    }
+
+    const buffer = Buffer.alloc(Math.min(metadata.size, maxLocalAssetBytes) + 1);
+    let bytesRead = 0;
+    while (bytesRead < buffer.length) {
+      const read = await handle.read(buffer, bytesRead, buffer.length - bytesRead, null);
+      if (read.bytesRead === 0) break;
+      bytesRead += read.bytesRead;
+    }
+    if (bytesRead > maxLocalAssetBytes)
+      throw new Error(
+        `Document multimodal local asset exceeds maxLocalAssetBytes=${maxLocalAssetBytes}`,
+      );
+    if (bytesRead !== metadata.size)
+      throw new Error("Document multimodal local asset changed during read");
+    const body = new Uint8Array(buffer.subarray(0, bytesRead));
+    const dimensions = readImageDimensions(body, contentType);
+
+    return {
+      body,
+      contentType,
+      ...(dimensions ? { dimensions } : {}),
+      source: "local-file",
+    };
+  } finally {
+    await handle.close();
   }
-
-  if (metadata.size > maxLocalAssetBytes) {
-    throw new Error(
-      `Document multimodal local asset exceeds maxLocalAssetBytes=${maxLocalAssetBytes}`,
-    );
-  }
-
-  const body = new Uint8Array(await readFile(localPath));
-  const dimensions = readImageDimensions(body, contentType);
-
-  return {
-    body,
-    contentType,
-    ...(dimensions ? { dimensions } : {}),
-    source: "local-file",
-  };
 }
 
 function readImageDimensions(body: Uint8Array, contentType: string): ImageDimensions | undefined {

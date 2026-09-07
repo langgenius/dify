@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import { ProviderInputError } from "@knowledge/parsers";
 
 import type { Dispatcher } from "undici";
 
@@ -7,40 +9,109 @@ import {
   createApiUnstructuredConcurrencyOptions,
   createNodeUnstructuredFetch,
 } from "./parser-options";
+import { createPdfParserPreflight } from "./pdf-parser-preflight";
+
+// Parser routing/timeout tests use tiny transport fixtures. Real PDF inspection, child process
+// limits and page geometry are exercised independently in pdf-parser-preflight.test.ts.
+vi.mock("./pdf-parser-preflight", () => ({
+  createPdfParserPreflight: vi.fn(() => ({
+    check: vi.fn(async () => {}),
+    policyFingerprint: "pdf-preflight-test",
+  })),
+}));
 
 const encoder = new TextEncoder();
 
 function ordinaryDocx(): Uint8Array {
-  const filename = encoder.encode("word/document.xml");
-  const localHeader = new Uint8Array(30);
-  const centralDirectory = new Uint8Array(46 + filename.byteLength);
-  const endOfCentralDirectory = new Uint8Array(22);
-  const localView = new DataView(localHeader.buffer);
-  const centralView = new DataView(centralDirectory.buffer);
-  const endView = new DataView(endOfCentralDirectory.buffer);
-
-  localView.setUint32(0, 0x04034b50, true);
-  centralView.setUint32(0, 0x02014b50, true);
-  centralView.setUint32(20, 1, true);
-  centralView.setUint32(24, 1, true);
-  centralView.setUint16(28, filename.byteLength, true);
-  centralDirectory.set(filename, 46);
-  endView.setUint32(0, 0x06054b50, true);
-  endView.setUint16(8, 1, true);
-  endView.setUint16(10, 1, true);
-  endView.setUint32(12, centralDirectory.byteLength, true);
-  endView.setUint32(16, localHeader.byteLength, true);
-
-  const body = new Uint8Array(
-    localHeader.byteLength + centralDirectory.byteLength + endOfCentralDirectory.byteLength,
+  // Real deflated OOXML ZIP, generated with fflate.zipSync (fixed mtime), containing
+  // [Content_Types].xml, _rels/.rels and a one-paragraph word/document.xml.
+  return new Uint8Array(
+    Buffer.from(
+      "UEsDBBQAAAAIAACYn090JJxTuwAAAD4BAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbJWQuQ7CMAyGX6XKiqgRAwNquwArMPACVuq2EbkUm+vtSTk6sDHa//FZrk6PSFzcnfVcq0EkrgFYD+SQyxDJZ6ULyaHkMfUQUZ+xJ1guFivQwQt5mcvYoZpqSx1erBS7e16zCb5WiSyrYvM2jqxaYYzWaJSsw9W3P5T5h1Dm5MvDg4k8ywYFTXW4UkqmpeKISfboch3cQmqhDfriMqIcjX/xQtcZTVN+bIspaGI2vne2nBSHxn/vgNfbmidQSwMEFAAAAAgAAJifT2F7L0OIAAAA8gAAAAsAAABfcmVscy8ucmVsc43POQ7CMBAF0KtEPkAmUFCg2BVNWsQFLHu8iHjReBBwe1xQEERBOYve15/PuGqOJbcQaxseac1NisBcjwDNBEy6jaVi7hdXKGnuI3mo2ly1R9hP0wHo0xBqYw6LlYIWuxPD5VnxH7s4Fw2eirklzPwj4uujy5o8shT3Qhbsez12VoCaYVNRvQBQSwMEFAAAAAgAAJifT/fkxAV3AAAAowAAABEAAAB3b3JkL2RvY3VtZW50LnhtbDWNXQ6DIAyAr2I8wGr2sAfiuMLOwIApiW1JYUFvb4nx5evf13ZuJrD/Y6Q67LhRMe09rrVmA1D8GtGVB+dIOvuxoKtaygKNJWRhH0tJtOAGz2l6AbpEo9WTXw5Hj7lDOqr9SEjk5BjufzP0dqcaSpWV16omt2ZPUEsBAhQAFAAAAAgAAJifT3QknFO7AAAAPgEAABMAAAAAAAAAAAAAAAAAAAAAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAAUAAAACAAAmJ9PYXsvQ4gAAADyAAAACwAAAAAAAAAAAAAAAADsAAAAX3JlbHMvLnJlbHNQSwECFAAUAAAACAAAmJ9P9+TEBXcAAACjAAAAEQAAAAAAAAAAAAAAAACdAQAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAMAAwC5AAAAQwIAAAAA",
+      "base64",
+    ),
   );
-  body.set(localHeader);
-  body.set(centralDirectory, localHeader.byteLength);
-  body.set(endOfCentralDirectory, localHeader.byteLength + centralDirectory.byteLength);
-  return body;
 }
 
 describe("createApiDocumentParser", () => {
+  it("includes the configured provider semantic revision in checkpoint identity", () => {
+    const input = {
+      body: ordinaryDocx(),
+      documentAssetId: "00000000-0000-4000-8000-000000000001",
+      filename: "a.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      version: 1,
+    };
+    const make = (revision: string) =>
+      createApiDocumentParser({
+        env: {
+          UNSTRUCTURED_API_URL: "https://parser.example.test",
+          UNSTRUCTURED_BACKEND_REVISION: revision,
+        },
+      });
+    expect(make("parser-policy-v1").policyFingerprint?.(input)).not.toBe(
+      make("parser-policy-v2").policyFingerprint?.(input),
+    );
+  });
+  it("keeps a structured upload above 10 MiB on the native parser within the 15 MiB admission limit", async () => {
+    const fetch = vi.fn(async () => new Response("[]"));
+    const parser = createApiDocumentParser({
+      env: { UNSTRUCTURED_API_URL: "https://unstructured.example.test" },
+      fetch,
+    });
+    const artifact = await parser.parse({
+      body: encoder.encode(`${" ".repeat(10 * 1024 * 1024)}{"id":9007199254740993}`),
+      documentAssetId: "00000000-0000-4000-8000-000000000001",
+      filename: "large.json",
+      mimeType: "application/json",
+      version: 1,
+    });
+    expect(artifact.metadata.routedParser).toBe("native-structured");
+    expect(artifact.metadata.parserExecution).toMatchObject({ isolation: "child-process" });
+    expect(artifact.elements[0]?.text).toContain("9007199254740993");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("applies a configured input limit to native structured parsing even without a remote endpoint", async () => {
+    const parser = createApiDocumentParser({ env: { UNSTRUCTURED_MAX_INPUT_BYTES: "8" } });
+    await expect(
+      parser.parse({
+        body: encoder.encode('{"value":123}'),
+        documentAssetId: "00000000-0000-4000-8000-000000000001",
+        filename: "data.json",
+        mimeType: "application/json",
+        version: 1,
+      }),
+    ).rejects.toThrow("maxInputBytes=8");
+  });
+
+  it("always runs PDF safety inspection before the configured remote transport", async () => {
+    const check = vi.fn(async () => {
+      throw new ProviderInputError("PDF page 1 exceeds the raster pixel budget");
+    });
+    vi.mocked(createPdfParserPreflight).mockReturnValueOnce({
+      check,
+      policyFingerprint: "pdf-preflight-test",
+    });
+    const fetch = vi.fn(async () => new Response("[]"));
+    const parser = createApiDocumentParser({
+      env: { UNSTRUCTURED_API_URL: "https://unstructured.example.test" },
+      fetch,
+    });
+
+    await expect(
+      parser.parse({
+        body: encoder.encode("%PDF-1.7"),
+        documentAssetId: "00000000-0000-4000-8000-000000000001",
+        filename: "80x180cm.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).rejects.toMatchObject({ code: "provider_input", retryable: false });
+    expect(check).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("resolves parser lane widths and preserves the legacy heavy alias", () => {
     expect(createApiUnstructuredConcurrencyOptions({})).toEqual({
       heavyMaxConcurrency: 2,
@@ -136,7 +207,7 @@ describe("createApiDocumentParser", () => {
     expect(fetchCalls).toBe(0);
   });
 
-  it("routes an admitted 11 MiB structured upload to the remote parser", async () => {
+  it("preserves native CSV semantics for an admitted 11 MiB structured upload", async () => {
     let fetchCalls = 0;
     const parser = createApiDocumentParser({
       env: { UNSTRUCTURED_API_URL: "https://unstructured.example.test" },
@@ -147,18 +218,19 @@ describe("createApiDocumentParser", () => {
     });
 
     const artifact = await parser.parse({
-      body: new Uint8Array(11 * 1024 * 1024),
+      body: encoder.encode(`${"\n".repeat(11 * 1024 * 1024)}name\nAda`),
       documentAssetId: "00000000-0000-4000-8000-000000000020",
       filename: "large.csv",
       mimeType: "text/csv",
       version: 1,
     });
 
-    expect(fetchCalls).toBe(1);
+    expect(fetchCalls).toBe(0);
     expect(artifact).toMatchObject({
-      metadata: { routeReason: "native-size-limit", routedParser: "unstructured" },
-      parser: "unstructured",
+      metadata: { routeReason: "structured-file-type", routedParser: "native-structured" },
+      parser: "native-structured",
     });
+    expect(artifact.elements[0]?.text).toBe("name: Ada");
   });
 
   it("routes complex documents to the configured Unstructured API", async () => {

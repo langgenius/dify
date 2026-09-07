@@ -20,6 +20,21 @@ import {
 } from "./document-upload-utils";
 
 describe("document upload utilities", () => {
+  it.each(["constructor", "__proto__"])(
+    "rejects inherited-key extension %s as unsupported instead of crashing",
+    async (extension) => {
+      await expect(
+        readDocumentUpload(
+          {
+            parseBody: async () => ({
+              file: new File(["x"], `x.${extension}`, { type: "text/plain" }),
+            }),
+          },
+          10,
+        ),
+      ).rejects.toBeInstanceOf(DocumentUploadValidationError);
+    },
+  );
   it("reads a single multipart file with bounded bytes and optional source id", async () => {
     const file = new File(["hello"], "note.md", { type: "text/markdown" });
 

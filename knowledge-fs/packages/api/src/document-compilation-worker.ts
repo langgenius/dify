@@ -53,6 +53,11 @@ import {
   buildDocumentOutlineKnowledgePath,
   buildDocumentSectionKnowledgePaths,
 } from "./document-knowledge-paths";
+import {
+  createDocumentMediaExecutionPlan,
+  documentParserHints,
+  withDocumentMediaExecutionPlan,
+} from "./document-media-execution-plan";
 import type { DocumentModelBudget } from "./document-model-budget";
 import { finalizeDocumentMultimodalArtifact } from "./document-multimodal-artifact";
 import {
@@ -465,14 +470,14 @@ export function createDocumentCompilationWorker({
               signal ? { signal } : undefined,
             );
           } else {
-            const requiresImages =
-              profileImageExtractionEnabled ??
-              Boolean(
-                visualEmbeddingMode === "profile" ||
-                  visualEmbeddingModel ||
-                  multimodalImageVariantGenerator ||
-                  pdfRasterizer,
-              );
+            const mediaPlan = createDocumentMediaExecutionPlan({
+              profileImageExtractionEnabled,
+              hasPdfRasterizer: Boolean(pdfRasterizer),
+              hasImageVariantGenerator: Boolean(multimodalImageVariantGenerator),
+              visualEmbeddingEnabled:
+                visualEmbeddingMode === "profile" || Boolean(visualEmbeddingModel),
+            });
+            const requiresImages = mediaPlan.requestParserImages;
             const externalPdfImages = Boolean(pdfRasterizer) && isPdfDocument(activeAsset.mimeType);
             const primaryParserHints = documentParserHints({
               assetMetadata: activeAsset.metadata,
@@ -629,7 +634,10 @@ export function createDocumentCompilationWorker({
               let multimodalArtifact: ParseArtifact;
 
               try {
-                if (activeParserOutput.route === "provider-fallback") {
+                if (
+                  activeParserOutput.route === "provider-fallback" ||
+                  !mediaPlan.materializeImages
+                ) {
                   multimodalArtifact = activeParserOutput.artifact;
                 } else {
                   const rasterized = await rasterizeDocumentPdfMultimodalAssets({
@@ -672,31 +680,35 @@ export function createDocumentCompilationWorker({
                 multimodalArtifact = activeParserOutput.artifact;
               }
               await assertWritable();
-              const { artifact } = await extractDocumentMultimodalAssets({
-                ...(multimodalLocalAssetAllowlist
-                  ? { allowLocalAssetPaths: multimodalLocalAssetAllowlist }
-                  : {}),
-                artifact: multimodalArtifact,
-                knowledgeSpaceId: input.knowledgeSpaceId,
-                ...(multimodalMaxExtractedAssets
-                  ? { maxExtractedAssets: multimodalMaxExtractedAssets }
-                  : {}),
-                ...(multimodalMaxLocalAssetBytes
-                  ? { maxLocalAssetBytes: multimodalMaxLocalAssetBytes }
-                  : {}),
-                ...(multimodalImageVariantGenerator
-                  ? { imageVariantGenerator: multimodalImageVariantGenerator }
-                  : {}),
-                objectStorage: multimodalObjectStorage,
-                ...(multimodalRemoteAssetFetcher
-                  ? { remoteAssetFetcher: multimodalRemoteAssetFetcher }
-                  : {}),
-                ...(signal ? { signal } : {}),
-                tenantId: input.tenantId,
-                writeOwnerId: multimodalWriteOwnerId,
-              });
+              const { artifact } = mediaPlan.materializeImages
+                ? await extractDocumentMultimodalAssets({
+                    ...(multimodalLocalAssetAllowlist
+                      ? { allowLocalAssetPaths: multimodalLocalAssetAllowlist }
+                      : {}),
+                    artifact: multimodalArtifact,
+                    knowledgeSpaceId: input.knowledgeSpaceId,
+                    ...(multimodalMaxExtractedAssets
+                      ? { maxExtractedAssets: multimodalMaxExtractedAssets }
+                      : {}),
+                    ...(multimodalMaxLocalAssetBytes
+                      ? { maxLocalAssetBytes: multimodalMaxLocalAssetBytes }
+                      : {}),
+                    ...(multimodalImageVariantGenerator
+                      ? { imageVariantGenerator: multimodalImageVariantGenerator }
+                      : {}),
+                    objectStorage: multimodalObjectStorage,
+                    ...(multimodalRemoteAssetFetcher
+                      ? { remoteAssetFetcher: multimodalRemoteAssetFetcher }
+                      : {}),
+                    ...(signal ? { signal } : {}),
+                    tenantId: input.tenantId,
+                    writeOwnerId: multimodalWriteOwnerId,
+                  })
+                : { artifact: multimodalArtifact };
               await assertWritable();
-              const finalizedArtifact = finalizeDocumentMultimodalArtifact(artifact);
+              const finalizedArtifact = finalizeDocumentMultimodalArtifact(
+                withDocumentMediaExecutionPlan(artifact, mediaPlan),
+              );
               const checkpointPolicyFingerprint =
                 activeParserOutput.rawCheckpointPolicyFingerprint ??
                 persistedCheckpoint?.policyFingerprint;
@@ -948,12 +960,18 @@ export function createDocumentCompilationWorker({
             : (resolvedEmbedding?.vectorSpaceId ?? denseEmbeddingModel);
           await assertWritable();
           const resolvedVisualEmbeddingModel =
-            visualEmbeddingMode === "profile"
-              ? frozenEmbeddingProfile?.model
-              : visualEmbeddingMode === "disabled"
-                ? undefined
-                : visualEmbeddingModel;
-          if (visualEmbeddingMode === "profile" && !resolvedVisualEmbeddingModel) {
+            profileImageExtractionEnabled === false
+              ? undefined
+              : visualEmbeddingMode === "profile"
+                ? frozenEmbeddingProfile?.model
+                : visualEmbeddingMode === "disabled"
+                  ? undefined
+                  : visualEmbeddingModel;
+          if (
+            profileImageExtractionEnabled !== false &&
+            visualEmbeddingMode === "profile" &&
+            !resolvedVisualEmbeddingModel
+          ) {
             throw new Error("Profile-driven visual embedding requires a frozen embedding profile");
           }
           const reindexResult = await reindexer.reindex({
@@ -985,7 +1003,7 @@ export function createDocumentCompilationWorker({
             tenantId: input.tenantId,
             ...(resolvedVisualEmbeddingModel
               ? { visualModel: resolvedVisualEmbeddingModel }
-              : visualEmbeddingMode === "disabled"
+              : visualEmbeddingMode === "disabled" || profileImageExtractionEnabled === false
                 ? { skipVisual: true as const }
                 : {}),
           });
@@ -1305,30 +1323,6 @@ const defaultRetainedParseArtifactAdmission = createRetainedParseArtifactAdmissi
 
 function isPdfDocument(mimeType: string): boolean {
   return mimeType.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf";
-}
-
-function documentParserHints(input: {
-  readonly assetMetadata: Readonly<Record<string, unknown>>;
-  readonly imagesHandledExternally: boolean;
-  readonly requiresImages: boolean;
-}): ParserRouteHints {
-  const language =
-    typeof input.assetMetadata.language === "string" && input.assetMetadata.language.trim()
-      ? input.assetMetadata.language.trim()
-      : undefined;
-  const layoutComplexity =
-    input.assetMetadata.layoutComplexity === "complex" ||
-    input.assetMetadata.layoutComplexity === "simple"
-      ? input.assetMetadata.layoutComplexity
-      : undefined;
-  return {
-    imagesHandledExternally: input.imagesHandledExternally,
-    ...(language ? { language } : {}),
-    ...(layoutComplexity ? { layoutComplexity } : {}),
-    requiresImages: input.requiresImages,
-    ...(input.assetMetadata.requiresOcr === true ? { requiresOcr: true } : {}),
-    ...(input.assetMetadata.requiresTables === true ? { requiresTables: true } : {}),
-  };
 }
 
 type ParseCheckpointRoute = "primary" | "provider-fallback";

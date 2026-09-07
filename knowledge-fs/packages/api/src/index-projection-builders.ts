@@ -1047,6 +1047,7 @@ export function createObjectStorageVisualEmbeddingProvider({
 
       for (const asset of assets) {
         signal?.throwIfAborted();
+        if (asset.assetRef.analysisUnavailable !== undefined) continue;
         // We cannot know the next object's exact byte length without an extra HEAD request. Flush
         // whenever the remaining raw-byte budget cannot admit the configured per-asset maximum;
         // the following bounded GET therefore cannot create a currentBatchBytes + maxAssetBytes
@@ -1313,7 +1314,7 @@ function visualEmbeddingAssetCandidateFromNode(
   const modality =
     metadataString(multimodal ?? {}, "modality") ?? multimodalProjectionModality(node);
 
-  if (!assetRef || !modality) {
+  if (!assetRef || assetRef.analysisUnavailable !== undefined || !modality) {
     return null;
   }
 

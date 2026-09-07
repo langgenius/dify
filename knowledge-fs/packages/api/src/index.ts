@@ -456,6 +456,7 @@ import {
   createInMemoryDocumentAssetRepository,
 } from "./document-asset-repository";
 import { registerDocumentCompilationHandlers } from "./document-compilation-handlers";
+import { createProfileDocumentMediaCapabilityResolver } from "./document-media-execution-plan";
 import { createDocumentMultimodalManifestBuilder } from "./document-multimodal-manifest-builder";
 import { createCachedDocumentMultimodalManifestEnhancer } from "./document-multimodal-manifest-enhancer";
 import { createInMemoryDocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
@@ -2036,6 +2037,13 @@ export function createKnowledgeGateway({
       })
     : undefined;
 
+  const resolveDocumentMediaCapabilities =
+    knowledgeSpaceProfiles && modelInputModalityResolver
+      ? createProfileDocumentMediaCapabilityResolver({
+          profiles: knowledgeSpaceProfiles,
+          modalities: modelInputModalityResolver,
+        })
+      : undefined;
   registerDocumentWriteHandlers({
     access: accessService,
     adapter,
@@ -2069,6 +2077,7 @@ export function createKnowledgeGateway({
       : {}),
     documentMultimodalManifests: multimodalManifestRepository,
     documentParser,
+    resolveDocumentMediaCapabilities,
     ...(documentPdfRasterizer ? { documentPdfRasterizer } : {}),
     effectiveMaxBulkUploadBytes,
     generateArtifactSegmentId,
@@ -2109,6 +2118,7 @@ export function createKnowledgeGateway({
   });
 
   const sourceDocumentMaterializer = createSourceDocumentMaterializer({
+    resolveDocumentMediaCapabilities,
     artifacts,
     artifactSegments: segments,
     assets,

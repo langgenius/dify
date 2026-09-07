@@ -74,6 +74,45 @@ function createRecordingProjectionRepository() {
 }
 
 describe("index projection builders", () => {
+  it("excludes rejected image nodes before invoking any visual provider", async () => {
+    const { repository } = createRecordingProjectionRepository();
+    const calls: EmbedVisualAssetsInput[] = [];
+    const builder = createVisualEmbeddingProjectionBuilder({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f9006",
+      maxBatchSize: 2,
+      projections: repository,
+      provider: {
+        embedAssets: async (input) => {
+          calls.push(input);
+          return {
+            dense: [[0.2, 0.8]],
+            metadata: { provider: "test", model: "vision" },
+            model: "vision",
+          };
+        },
+      },
+    });
+    await expect(
+      builder.build({
+        model: "vision",
+        projectionVersion: 1,
+        nodes: [
+          knowledgeNode({
+            kind: "image",
+            metadata: {
+              assetRef: {
+                contentType: "image/png",
+                objectKey: "tenant/assets/image.png",
+                analysisUnavailable: { reason: "variant-pixel-budget" },
+              },
+              elementTypes: ["image"],
+            },
+          }),
+        ],
+      }),
+    ).resolves.toEqual([]);
+    expect(calls).toEqual([]);
+  });
   it("propagates cancellation to embedding calls and never persists an aborted batch", async () => {
     const controller = new AbortController();
     const { created, repository } = createRecordingProjectionRepository();

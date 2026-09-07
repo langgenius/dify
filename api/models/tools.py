@@ -9,7 +9,7 @@ from uuid import uuid4
 import sqlalchemy as sa
 from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func, select
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
@@ -203,9 +203,8 @@ class ApiToolProvider(TypeBase):
             return None
         return db.session.scalar(select(Account).where(Account.id == self.user_id))
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
 
 class ToolLabelBinding(TypeBase):
@@ -277,13 +276,11 @@ class WorkflowToolProvider(TypeBase):
         init=False,
     )
 
-    @property
-    def user(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.user_id))
+    def user(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.user_id))
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
     @property
     def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
@@ -292,9 +289,8 @@ class WorkflowToolProvider(TypeBase):
             for config in json.loads(self.parameter_configuration)
         ]
 
-    @property
-    def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+    def app(self, session: Session) -> App | None:
+        return session.scalar(select(App).where(App.id == self.app_id))
 
 
 class MCPToolProvider(TypeBase):

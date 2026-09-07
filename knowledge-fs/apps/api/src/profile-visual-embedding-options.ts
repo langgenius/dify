@@ -85,7 +85,7 @@ export function createApiProfileVisualEmbeddingOptions({
           "KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES",
         ),
         objectStorage,
-        preferredVariant: env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT?.trim() || "thumbnail",
+        preferredVariant: env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT?.trim() || "analysis",
         provider: imageEmbeddingProviderFactory(profile),
       });
       return lifecycleGate.run(() => objectProvider.embedAssets(input), { signal: input.signal });

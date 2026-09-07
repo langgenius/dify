@@ -8,6 +8,9 @@ import {
 } from "@knowledge/parsers";
 import { Agent, type Dispatcher, fetch as undiciFetch } from "undici";
 
+import { createNativeParserIsolation } from "./native-parser-isolation";
+import { createPdfParserPreflight } from "./pdf-parser-preflight";
+
 const defaultUnstructuredRequestTimeoutMs = 600_000;
 const defaultUnstructuredMaxConcurrency = 2;
 const defaultUnstructuredMaxInputBytes = 15 * 1024 * 1024;
@@ -34,6 +37,7 @@ export interface ApiParserEnv {
   readonly NODE_ENV?: string | undefined;
   readonly UNSTRUCTURED_API_KEY?: string | undefined;
   readonly UNSTRUCTURED_API_URL?: string | undefined;
+  readonly UNSTRUCTURED_BACKEND_REVISION?: string | undefined;
   readonly UNSTRUCTURED_DEFAULT_LANGUAGE?: string | undefined;
   readonly UNSTRUCTURED_HEAVY_MAX_CONCURRENCY?: string | undefined;
   readonly UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS?: string | undefined;
@@ -100,11 +104,14 @@ export function createApiDocumentParser({
     env,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
+  const nativeOptions = Object.freeze({ maxInputBytes: resolveParserMaxInputBytes(env) });
+  const isolation = createNativeParserIsolation({ maxInputBytes: nativeOptions.maxInputBytes });
 
   return createParserRouter({
-    html: createNativeHtmlParser(),
-    markdown: createNativeMarkdownParser(),
-    structured: createNativeStructuredDataParser(),
+    html: isolation.wrap(createNativeHtmlParser(nativeOptions), nativeOptions),
+    markdown: isolation.wrap(createNativeMarkdownParser(nativeOptions), nativeOptions),
+    structured: isolation.wrap(createNativeStructuredDataParser(nativeOptions), nativeOptions),
+    maxNativeInputBytes: nativeOptions.maxInputBytes,
     unstructured,
   });
 }
@@ -157,6 +164,10 @@ function createApiUnstructuredParser({
   const concurrency = createApiUnstructuredConcurrencyOptions(env);
 
   return createUnstructuredParserClient({
+    ...(env.UNSTRUCTURED_BACKEND_REVISION?.trim()
+      ? { backendRevision: env.UNSTRUCTURED_BACKEND_REVISION.trim() }
+      : {}),
+    requestPreflight: createPdfParserPreflight(),
     ...(env.UNSTRUCTURED_DEFAULT_LANGUAGE?.trim()
       ? { defaultLanguage: env.UNSTRUCTURED_DEFAULT_LANGUAGE.trim() }
       : {}),
@@ -179,14 +190,7 @@ function createApiUnstructuredParser({
           ),
         }
       : {}),
-    maxInputBytes:
-      env.UNSTRUCTURED_MAX_INPUT_BYTES === undefined
-        ? defaultUnstructuredMaxInputBytes
-        : parseBoundedPositiveInteger(
-            env.UNSTRUCTURED_MAX_INPUT_BYTES,
-            "UNSTRUCTURED_MAX_INPUT_BYTES",
-            maxUnstructuredInputBytes,
-          ),
+    maxInputBytes: resolveParserMaxInputBytes(env),
     ...(env.UNSTRUCTURED_MAX_RETRIES !== undefined
       ? {
           maxRetries: parseNonNegativeInteger(
@@ -205,6 +209,16 @@ function createApiUnstructuredParser({
       : {}),
     requestTimeoutMs,
   });
+}
+
+function resolveParserMaxInputBytes(env: ApiParserEnv): number {
+  return env.UNSTRUCTURED_MAX_INPUT_BYTES === undefined
+    ? defaultUnstructuredMaxInputBytes
+    : parseBoundedPositiveInteger(
+        env.UNSTRUCTURED_MAX_INPUT_BYTES,
+        "UNSTRUCTURED_MAX_INPUT_BYTES",
+        maxUnstructuredInputBytes,
+      );
 }
 
 export function createNodeUnstructuredFetch({

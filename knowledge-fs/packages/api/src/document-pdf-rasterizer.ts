@@ -1346,7 +1346,7 @@ async function renderPopplerPage({
 }): Promise<PopplerRenderedPage | null> {
   const outputName = `page-${pageNumber}-dpi-${dpi}`;
   const outputPrefix = join(workDir, outputName);
-  const scaleTo = popplerScaleToForPage({ dpi, maxPageDimension, pageSize });
+  const scaleTo = popplerScaleToForPage({ dpi, maxPageDimension, maxPagePixels, pageSize });
   await renderPopplerPng({
     command,
     dpi,
@@ -1456,15 +1456,39 @@ async function readPopplerPdfPageSize({
   const { stdout } = await execFileAsync(
     command,
     ["-f", String(pageNumber), "-l", String(pageNumber), "-box", inputPath],
-    { signal, timeout: timeoutMs, windowsHide: true },
+    {
+      env: { ...process.env, LANG: "C", LC_ALL: "C" },
+      signal,
+      timeout: timeoutMs,
+      windowsHide: true,
+    },
   );
-  const match = /Page(?:\s+\d+)?\s+size:\s*([\d.]+)\s+x\s+([\d.]+)\s+pts/iu.exec(String(stdout));
-  const widthPoints = Number(match?.[1]);
-  const heightPoints = Number(match?.[2]);
+  // pdftoppm deliberately retains its default MediaBox rendering so provider coordinates keep
+  // their established displayed-page frame. pdfinfo's "Page size" reports the CropBox instead:
+  // budgeting from it can admit a small visible crop while allocating a much larger MediaBox.
+  // Subtract endpoints rather than assuming a zero origin. Rotation only swaps the axes, which
+  // cannot change the area, longest edge or aspect ratio used by the pre-render pixel budget.
+  const boxes = [
+    ...String(stdout).matchAll(
+      new RegExp(`^Page(?:\\s+${pageNumber})?\\s+MediaBox:\\s*(.*?)\\s*$`, "gmu"),
+    ),
+  ];
+  const coordinates = boxes[0]?.[1]?.trim().split(/\s+/u).map(Number) ?? [];
+  const [left = Number.NaN, bottom = Number.NaN, right = Number.NaN, top = Number.NaN] =
+    coordinates;
+  const widthPoints = right - left;
+  const heightPoints = top - bottom;
 
-  if (!(widthPoints > 0) || !(heightPoints > 0)) {
+  if (
+    boxes.length !== 1 ||
+    coordinates.length !== 4 ||
+    !coordinates.every(Number.isFinite) ||
+    !(widthPoints > 0) ||
+    !(heightPoints > 0) ||
+    !Number.isFinite(widthPoints * heightPoints)
+  ) {
     throw new DocumentPdfRenderError(
-      `Poppler PDF rasterizer could not determine page size for pageNumber=${pageNumber}`,
+      `Poppler PDF rasterizer could not determine MediaBox size for pageNumber=${pageNumber}`,
     );
   }
 
@@ -1474,15 +1498,50 @@ async function readPopplerPdfPageSize({
 function popplerScaleToForPage({
   dpi,
   maxPageDimension,
+  maxPagePixels,
   pageSize,
 }: {
   readonly dpi: number;
   readonly maxPageDimension: number;
+  readonly maxPagePixels: number;
   readonly pageSize: PopplerPdfPageSize;
 }): number | undefined {
-  const naturalMaxDimension = (Math.max(pageSize.widthPoints, pageSize.heightPoints) * dpi) / 72;
+  // pdfinfo prints box endpoints to two decimal places. Each difference can hide up to 0.01 pt.
+  // Use upper dimensions for allocation and the worst-case aspect ratio for scale-to; otherwise
+  // a rounded 100.00 x 200.00 box can render a 101 x 200 bitmap just past the pixel ceiling.
+  const roundingAllowance = 0.01;
+  const naturalWidth = ((pageSize.widthPoints + roundingAllowance) * dpi) / 72;
+  const naturalHeight = ((pageSize.heightPoints + roundingAllowance) * dpi) / 72;
 
-  return naturalMaxDimension > maxPageDimension ? maxPageDimension : undefined;
+  if (
+    Math.max(naturalWidth, naturalHeight) <= maxPageDimension &&
+    Math.ceil(naturalWidth) * Math.ceil(naturalHeight) <= maxPagePixels
+  ) {
+    return undefined;
+  }
+
+  const shortEdgeUpper = Math.min(pageSize.widthPoints, pageSize.heightPoints) + roundingAllowance;
+  const longEdgeLower = Math.max(pageSize.widthPoints, pageSize.heightPoints) - roundingAllowance;
+  const aspectRatio = longEdgeLower > 0 ? Math.min(1, shortEdgeUpper / longEdgeLower) : 1;
+  let lower = 1;
+  let upper = Math.floor(
+    Math.min(maxPageDimension, maxPagePixels, Math.sqrt(maxPagePixels / aspectRatio)),
+  );
+
+  // Poppler rounds the shorter edge up. A square-root area cap alone can therefore exceed
+  // the pixel budget; find the largest integer edge whose rounded bitmap is still bounded.
+  while (lower < upper) {
+    const candidate = lower + Math.ceil((upper - lower) / 2);
+    const shortEdge = Math.max(1, Math.ceil(candidate * aspectRatio));
+
+    if (candidate * shortEdge <= maxPagePixels) {
+      lower = candidate;
+    } else {
+      upper = candidate - 1;
+    }
+  }
+
+  return lower;
 }
 
 async function renderPopplerPng({

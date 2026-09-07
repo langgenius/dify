@@ -1,6 +1,13 @@
-# Component Architecture Rules
+# Component Architecture Review
 
-Use these rules for React component structure, ownership, state, props, effects, and module organization.
+Use the canonical reference for the changed concern. These links share rules; they do not activate the implementation skill or its workflow.
+
+| Concern | Canonical rules |
+| --- | --- |
+| Vertical modules, public entrypoints, data/handler placement, wrappers, Props, and types | [Ownership] |
+| Local/Jotai state, form drafts, route identity, URL state, and persistence | [State] |
+| Effects, navigation, memoization, and subscriptions | [Runtime] |
+| Hotkeys, focus, and secondary surfaces | [Interactions] |
 
 ## Root-To-Leaf State And Props Audit
 
@@ -8,109 +15,30 @@ For a file-focused component review, use the named component as the root. For a 
 
 1. Build the locally owned rendered component tree from each root to every leaf. Follow imported feature components, conditional branches, lists, portals, dialogs, drawers, and popovers. Stop at third-party or Dify UI primitives and explicit stable public feature boundaries, but record the props passed across that final edge.
 2. At every component, inventory state sources: React state/reducers, form state, URL state, context/store/Jotai reads and writes, queries, mutations, refs that hold workflow state, and custom-hook results.
-3. For every state value, derived fact, and handler, identify all descendant branches that consume it. If only one branch consumes it, verify that it is declared in the lowest owner in that branch. If several siblings consume it, verify that the parent genuinely derives or coordinates one shared snapshot or lifecycle.
+3. For every state value, derived fact, and handler, record its consuming branches and required lifetime, including persistence across descendant unmounts. Assess its placement against [Ownership] and [State], including their coordination and persistence exceptions.
 4. Inspect every props edge. Mark values that are read by the child, forwarded unchanged, renamed, recomputed, mirrored into local state, or paired with lifecycle fields such as `data/pending/error/retry` and `open/onOpenChange`.
-5. Treat a parent as a switchboard when it mainly destructures a workflow hook and redistributes fields without rendering or coordinating them. Flag moving single-branch state down; when sibling surfaces share the workflow, flag exposing focused feature facts and commands instead of routing the internal state machine through the parent.
+5. Trace what each forwarding parent actually owns before reporting an unnecessary intermediary. Apply [Ownership] to distinguish required coordination or persistence from merely redistributing workflow fields, and [State] to determine whether a feature graph is warranted.
 6. Remove unused or redundant props at their source. Do not accept replacing many props with a props bag, context, or hook result unless that abstraction becomes the real owner and gives consumers a narrower contract.
 
 Review the complete paths before concluding that a state or prop is necessary. When several edges share one ownership defect, report one finding at the highest incorrect owner and include a representative path such as `Root -> Section -> Leaf`; do not emit a duplicate finding for every child.
 
-## Ownership
+## Apply Rules In Their Actual Scope
 
-Flag:
+Explicit team conventions are reviewable contracts, including module organization and public API boundaries. Check the documented exception before reporting a violation. Do not infer an exception solely because the code appears to work, or invent a user-facing failure for a convention finding.
 
-- State, query, mutation, or handlers hoisted above the lowest component that actually uses them.
-- Parent components owning row/item actions that do not coordinate a workflow.
-- Prop drilling through multiple pass-through layers.
-- A page/tab-level section component becoming the data owner without needing a shared snapshot or shared loading/error/empty UI.
-- Feature code promoted to shared only because it appears once or might be reused later.
+- For owner placement, trace the consumers and required lifetime. Establish whether the parent coordinates a snapshot, submission, navigation, shared UI, or persistence before asking to move state or handlers.
+- For component boundaries, identify the ownership or encapsulation the proposed extraction would improve; file length alone establishes neither.
+- For props and types, check the domain contract and public API. Do not report private props typing style alone; declaration/export syntax matters only for a documented package rule or concrete type, export, or framework defect.
+- For state and Effects, trace the source of truth, external synchronization target, and mount/reset boundary. Controlledness alone does not prove that a draft is lifted or persisted; follow the form and overlay contracts linked by [State].
+- For navigation, distinguish ordinary links from mutation success, guarded redirects, command flows, and submission side effects.
 
-Accept repeated TanStack Query hooks for the same key and input in Client Component siblings under one QueryClient;
-shared cache is not a reason to hoist. Separate Server Component QueryClients do not share it, so request-level
-deduplication needs an identified request-local cache or verified framework or transport owner.
+## Preserve Existing Product Contracts
 
-## Component Boundaries
+During refactors, trace the interaction being moved through its real consumer. Navigation, sidebar, dropdown, webapp-list, and app-switching changes must preserve expansion controls, hover persistence, pin/delete actions, routing, keyboard/focus handling, and open-state ownership where present.
 
-Flag:
+Check that the changed owner still handles reachable empty, loading, and missing optional-data states, and that primitive wrappers preserve accessible semantics and the public controlled-state contract. Report the actual lost behavior or explicit rule violation; use the package testing policy when assessing regression coverage.
 
-- React component files over 300 lines when the file mixes multiple responsibilities that can be split into focused colocated components, hooks, or utilities.
-- Shallow wrappers that only rename props or hide the real primitive.
-- Extra DOM wrappers that do not provide layout, semantics, accessibility, state ownership, or library integration.
-- Dialog/dropdown/popover hidden surfaces that obscure the parent flow when they should be extracted into a small local component.
-- Business forms, menu bodies, or one-off helpers moved away from their owner without reuse or semantic value.
-
-Prefer colocated components split by actual data and state needs.
-
-## Bad Component Design Patterns
-
-Flag:
-
-- Refactors of existing navigation, sidebar, dropdown, webapp list, or app-switching UI that do not preserve behavior-sensitive interactions such as expand/collapse arrows, hover persistence, pin/delete controls, routing, keyboard/focus handling, or open-state ownership.
-- Components that mix data fetching, mutation side effects, popup state, form validation, layout, and row rendering without a clear owner.
-- Generic components with many boolean props that encode one feature's workflow.
-- A shared component that imports feature-specific copy, routes, or API contracts.
-- A feature component that accepts pre-rendered fragments only to avoid placing ownership correctly.
-- A child component that receives both raw server data and separately derived flags for the same concept.
-- A wrapper that changes accessible semantics of the primitive it wraps.
-- A component that exposes controlled props but still keeps a competing private state for the same value.
-- A component that cannot render empty, loading, or missing optional API fields without caller-side preprocessing.
-
-When existing components already own interaction logic, prefer reusing or extending them. If a refactor is necessary, preserve the old interaction contract and add or update focused tests for changed behavior.
-
-## Props And Types
-
-Flag:
-
-- Declaration or export rewrites made only for stylistic uniformity, without changing an owned behavior or contract.
-- Named `Props` types for trivial one-off props where inline typing is clearer.
-- Props named by UI implementation instead of domain/API role.
-- API data converted too early or under a generic name that breaks traceability.
-- Callers duplicating fallback checks that the lowest rendering component already handles.
-
-Do not flag `FC`, `React.FC`, function declarations, arrow functions, named exports, or default exports by syntax alone. Report them only when the chosen form causes a concrete type, lifecycle, export, framework, or enforced package-contract defect.
-
-## Effects
-
-Flag effects that:
-
-- Transform props/state for rendering.
-- Copy one state value into another representing the same concept.
-- Handle user actions that belong in event handlers.
-- Reset local state from props or visibility when derivation, a stable semantic identity, or the intended mounted owner already expresses the lifecycle.
-- Fetch data that belongs in framework APIs or TanStack Query.
-
-If an effect remains, it must synchronize with a named external system: browser API, subscription, timer, analytics-on-visibility, non-React widget, or imperative DOM integration.
-
-## State Modeling
-
-Flag:
-
-- Storing derived booleans, disabled flags, default tabs, or loading labels that can be calculated from current query/feature state.
-- Per-session state held by a longer-lived visibility coordinator and cleared through an open-state Effect or a generated key when the primitive's mounted-content lifecycle already matches the intended state lifetime.
-- A DOM field mirrored into competing prop, default, and React state sources when editing does not require those sources to synchronize.
-- Local state used to fake server data or generated contract fields.
-- UI state persisted to localStorage when it is live app state.
-- Feature-local mock shells wired to unrelated existing APIs before the real API is confirmed.
-
-Review state lifetime before its storage mechanism. For a hidden surface, distinguish the
-visibility coordinator from mounted content. State private to one mounted session belongs in that
-content owner; promote it only when the draft must survive that content owner's unmount or another
-owner coordinates it. A stable semantic identity key may create a new snapshot when the represented
-identity changes; a generated key is not a routine reset command.
-
-Prefer render-time derivation. Keep true local state for user choices, transient input, controlled
-popups, and feature UI state that has no server source. Submit-only DOM fields may remain
-uncontrolled; use local controlled state when React must own the current value to drive rendering
-or coordination. Observing change events or tracking a derived fact such as dirty state does not
-require mirroring the field value. Do not flag controlled state by itself without a concrete
-competing-source, stale-state, or ownership defect.
-
-## Navigation
-
-Flag:
-
-- Imperative router navigation for ordinary links.
-- Button semantics used for navigation.
-- Navigation state hidden in component state when URL state is required for shareable filters, tabs, or pagination.
-
-Use `Link` for normal navigation. Use router APIs for mutation success, guarded redirects, command flows, or form submission side effects.
+[Interactions]: ../../how-to-write-component/references/interactions.md
+[Ownership]: ../../how-to-write-component/references/ownership.md
+[Runtime]: ../../how-to-write-component/references/runtime.md
+[State]: ../../how-to-write-component/references/state.md

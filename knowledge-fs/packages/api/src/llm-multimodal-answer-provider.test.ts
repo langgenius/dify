@@ -272,6 +272,11 @@ describe("createObjectStorageContentBlockMultimodalAnswerProvider", () => {
     await adapter.objectStorage.putObject({
       body: new Uint8Array([1, 2, 3]),
       contentType: "image/png",
+      key: "tenant/spaces/space/documents/doc/assets/chart.png",
+    });
+    await adapter.objectStorage.putObject({
+      body: new Uint8Array([9]),
+      contentType: "image/png",
       key: "tenant/spaces/space/documents/doc/assets/chart-thumbnail.png",
     });
     const calls: GenerateMultimodalAnswerContentInput[] = [];

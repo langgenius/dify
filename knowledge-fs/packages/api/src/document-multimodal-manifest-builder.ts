@@ -127,7 +127,8 @@ function documentMultimodalItemFromElement({
   const caption = metadataString(element.metadata, "caption");
   const ocrText = metadataString(element.metadata, "ocrText");
   const title = metadataString(element.metadata, "title") ?? caption;
-  const assetRef = parseAssetRef(element.metadata);
+  const sourceMetadata = boundedMultimodalSourceMetadata(element.metadata);
+  const assetRef = parseAssetRef(sourceMetadata);
   const boundingBox = parseBoundingBox(element.metadata.boundingBox);
   const textPreview = textPreviewForElement(element, ocrText, maxTextPreviewChars);
   const positionUnknown = element.metadata.positionUnknown === true;
@@ -148,11 +149,33 @@ function documentMultimodalItemFromElement({
     ...(element.pageNumber ? { pageNumber: element.pageNumber } : {}),
     parseElementId: element.id,
     sectionPath: [...element.sectionPath],
-    sourceMetadata: cloneJsonObject(element.metadata),
+    sourceMetadata,
     ...(startOffset !== undefined ? { startOffset } : {}),
     ...(textPreview ? { textPreview } : {}),
     ...(title ? { title } : {}),
   };
+}
+
+function boundedMultimodalSourceMetadata(
+  metadata: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const sourceMetadata = cloneJsonObject(metadata);
+  const ref = isPlainObject(sourceMetadata.assetRef) ? sourceMetadata.assetRef : undefined;
+  if (
+    ref?.analysisUnavailable !== undefined &&
+    typeof ref.uri === "string" &&
+    ref.uri.length > 2048 &&
+    ref.uri.trimStart().slice(0, 5).toLowerCase() === "data:"
+  ) {
+    // The original parse element remains the recovery source. Manifests are descriptors, not a
+    // second copy of rejected image bytes; parseArtifactId + parseElementId preserve provenance.
+    const { uri, ...boundedRef } = ref;
+    sourceMetadata.assetRef = {
+      ...boundedRef,
+      sourceUriSha256: createHash("sha256").update(uri).digest("hex"),
+    };
+  }
+  return sourceMetadata;
 }
 
 function multimodalModality(element: ParseElement): DocumentMultimodalItem["modality"] | null {
@@ -182,17 +205,20 @@ function enrichmentForElement({
   readonly ocrText: string | undefined;
 }): DocumentMultimodalItem["enrichment"] {
   return {
-    asset: assetRef
-      ? "provided"
-      : element.type === "image" || element.type === "table"
-        ? "missing"
-        : "unsupported",
+    asset:
+      assetRef && (assetRef.objectKey || assetRef.uri || assetRef.sha256)
+        ? "provided"
+        : element.type === "image" || element.type === "table"
+          ? "missing"
+          : "unsupported",
     caption: caption ? "provided" : element.type === "image" ? "missing" : "unsupported",
     ocr:
       ocrText || element.text ? "provided" : element.type === "image" ? "missing" : "unsupported",
     tableStructure: element.type === "table" ? tableStructureStatus(element) : "unsupported",
     visualEmbedding:
-      assetRef && isVisualEmbeddingEligibleElement(element) ? "missing" : "unsupported",
+      assetRef && !assetRef.analysisUnavailable && isVisualEmbeddingEligibleElement(element)
+        ? "missing"
+        : "unsupported",
   };
 }
 
@@ -246,11 +272,18 @@ function parseAssetRef(
   const contentType =
     metadataString(candidate, "contentType") ?? metadataString(candidate, "mimeType");
 
-  if (!objectKey && !uri && !sha256) {
+  if (!objectKey && !uri && !sha256 && candidate.analysisUnavailable === undefined) {
     return undefined;
   }
 
   return {
+    ...(candidate.analysisUnavailable !== undefined
+      ? {
+          analysisUnavailable: DocumentMultimodalAssetRefSchema.shape.analysisUnavailable.parse(
+            candidate.analysisUnavailable,
+          ),
+        }
+      : {}),
     ...(contentType ? { contentType } : {}),
     ...(objectKey ? { objectKey } : {}),
     ...(sha256 ? { sha256 } : {}),

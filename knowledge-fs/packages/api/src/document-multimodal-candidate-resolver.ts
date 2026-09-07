@@ -134,6 +134,10 @@ function metadataInteger(
 
 function cloneAssetRef(assetRef: DocumentMultimodalAssetRef): DocumentMultimodalAssetRef {
   return {
+    ...(assetRef.analysisUnavailable
+      ? { analysisUnavailable: { ...assetRef.analysisUnavailable } }
+      : {}),
+    ...(assetRef.variants ? { variants: structuredClone(assetRef.variants) } : {}),
     ...(assetRef.contentType ? { contentType: assetRef.contentType } : {}),
     ...(assetRef.objectKey ? { objectKey: assetRef.objectKey } : {}),
     ...(assetRef.sha256 ? { sha256: assetRef.sha256 } : {}),

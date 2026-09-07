@@ -13,12 +13,11 @@ Read this document when auditing, adding, moving, splitting, or refactoring Reac
 ## Component Ownership
 
 - Before declaring state, a query, or a workflow hook in a page or parent, identify the direct descendant branches that consume each returned value.
-- If only one branch consumes a value, declare it in the lowest owner in that branch. The parent may pass stable identity or the smallest boundary input, but must not own child state merely to construct props.
-- A parent may own a value when several sibling branches require one live snapshot and the parent genuinely derives or coordinates submission, selection, navigation, lifecycle, loading, or errors. If it only destructures, renames, and forwards fields, it is a switchboard rather than an owner; put the shared workflow in a feature-local state graph so each surface consumes only its named facts and commands. Use a provider only when it becomes the authoritative input, scope, or external-dependency owner.
+- If only one branch consumes a value, declare it in the lowest owner in that branch whose mounted lifetime matches the required persistence. The parent may pass stable identity or the smallest boundary input, but must not own child state merely to construct props.
+- A parent may own a value when it must intentionally survive the local owner's unmount, or when several sibling branches require one live snapshot and the parent genuinely derives or coordinates submission, selection, batch behavior, navigation, lifecycle, loading, or errors. If it only destructures, renames, and forwards fields, it is a switchboard rather than an owner; put the shared workflow in a feature-local state graph so each surface consumes only its named facts and commands. Use a provider only when it becomes the authoritative input, scope, or external-dependency owner.
 - A provider is a real boundary only when it establishes authoritative input, scope/isolation, or a stable external dependency. A provider that calls a large hook and repackages its return value into Context remains a switchboard.
 - A page or feature root may wire route identity, providers, layout, navigation, and genuine cross-surface coordination. It must not call a child-specific state or query hook merely to assemble that child's props.
 - Keep child contracts at the ownership boundary: stable domain identity, a small immutable snapshot, placement options, or named cross-boundary commands. Do not pass an internal state machine as separate `data`, `pending`, `error`, `retry`, `open`, setter, and callback props when the parent does not use them, and do not hide the same fan-out in a props bag or hook result object.
-- Repeated TanStack Query calls in siblings are acceptable when each sibling independently consumes the data; the cache already deduplicates requests.
 - Repeated TanStack Query hooks for the same key and input in Client Component siblings under one QueryClient share that cache. Separate Server Component QueryClients do not, so request-level deduplication needs an identified request-local cache or verified framework or transport owner.
 - Treat parent input according to what the child boundary does with it:
   - If the child only renders or performs a light local decision, pass the snapshot as props. It does not become a new state owner.
@@ -27,24 +26,28 @@ Read this document when auditing, adding, moving, splitting, or refactoring Reac
 - One pass-through layer is acceptable for stable identity and placement. It is not permission to relay workflow state and handlers through an unrelated component.
 - Route identity may pass once from a framework route into its feature boundary. If multiple descendants, queries, facts, or commands need it, bridge it into the feature graph and stop passing it as props.
 - A query snapshot may cross once as immutable display input. Query keys, observer methods, retry/loading/error groups, and invalidation mechanics belong to the query surface or feature graph and must not be decomposed into props.
+- Revisit prop forwarding when intermediate components obscure the behavior owner; keep clear data flow rather than introducing shared state merely to avoid passing props.
 - Do not replace prop drilling with one large view-model hook. Move each query, derived value, and handler to the concrete owner that consumes it.
 - Keep source selection, defaults, validation, dirty checks, and payload shaping beside the workflow that owns submission.
 
 ## Boundaries
 
+- Prefer reusing or extending the component that already owns an interaction over rebuilding that behavior in a parallel component.
 - State-heavy wizards, drawers, modals, and secondary workflows can form a small vertical surface with an entrypoint, optional feature-local state, and shallow owners matching real visual regions.
 - The entrypoint owns route integration, provider wiring, placement, and open-state coordination. A content or session owner keeps state scoped to that mounted surface.
 - Judge hook lifetime by the component that declares the hook and the primitive's mount contract, not only by where its rendered controls appear in JSX.
 - Separate hidden dialogs, dropdowns, and popovers into small local owners when their content obscures the parent flow.
 - Keep cohesive forms, menu bodies, and one-off helpers local unless they have their own state, reuse, or semantic boundary.
+- Extract components or hooks when they clarify ownership or hide a cohesive implementation; keep logic local when extraction only shortens the file or relocates the same coordination.
 - Avoid wrapper components and wrapper DOM that only rename props, pass children through, or hide the real primitive. A wrapper must own behavior, validation, state, accessibility, layout, or library integration.
+- Keep feature workflows out of shared components: do not encode one feature through many boolean props or import its copy, routes, and API contracts into a generic component. Do not pass pre-rendered fragments merely to avoid assigning the behavior to its owner.
 - Loading states for page sections, cards, lists, tables, forms, and drawers should use skeletons scoped to the loaded content. Reserve spinners for small inline busy indicators.
 
 ## Components And Types
 
 - Choose component declaration and export forms from the actual component contract, framework requirements, and enforced package rules. Existing style is context, not authority; do not rewrite unaffected code solely to normalize `FC`, `function`, arrow-function, named-export, or default-export forms.
-- Type simple one-off props inline. Name a `Props` type when it is reused, exported, complex, or materially clearer.
 - Use API-generated or API-returned types at component boundaries. Keep one-off UI refinements and conversions beside their owner.
+- Name props and converted data after their domain/API role, preserving traceability to the original contract.
 - Preserve domain value types for selections. Do not widen enums, unions, booleans, numbers, objects, or nullable values to `string` before a real boundary requires it.
 - Avoid generic `common.tsx` buckets and aliases that only rename another type. Name files, values, and public types after their domain role.
 - Put fallback and invariant checks in the lowest component that already renders that state. Do not extract helpers whose only purpose is hiding missing display data.

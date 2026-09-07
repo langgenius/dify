@@ -38,11 +38,18 @@ describe("document multimodal candidate resolver", () => {
             id: "figure-1",
             metadata: {
               assetRef: {
+                analysisUnavailable: { reason: "variant-pixel-budget" },
                 contentType: "image/png",
                 objectKey:
                   "tenant-dev/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/assets/figure-1.png",
                 sha256: "c".repeat(64),
                 uri: "data:image/png;base64,AAAA",
+                variants: {
+                  analysis: {
+                    contentType: "image/png",
+                    objectKey: "tenant-dev/assets/analysis.png",
+                  },
+                },
               },
               boundingBox: { height: 120, width: 240, x: 10, y: 20 },
               caption: "Revenue bridge",
@@ -95,10 +102,14 @@ describe("document multimodal candidate resolver", () => {
       assetDescriptorPath:
         "/knowledge/docs/Quarterly-Report.pdf--018f0d60/assets/image-Revenue-bridge--018f0d60.json",
       assetRef: {
+        analysisUnavailable: { reason: "variant-pixel-budget" },
         contentType: "image/png",
         objectKey:
           "tenant-dev/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/assets/figure-1.png",
         sha256: "c".repeat(64),
+        variants: {
+          analysis: { contentType: "image/png", objectKey: "tenant-dev/assets/analysis.png" },
+        },
       },
       assetRoute:
         "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/multimodal/018f0d60-7a49-7cc2-9c1b-5b36f18f2c44%3A0%3Afigure-1/asset",

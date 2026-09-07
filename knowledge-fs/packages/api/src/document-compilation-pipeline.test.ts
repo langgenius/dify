@@ -26,6 +26,134 @@ const firstArtifactId = "30000000-0000-4000-8000-000000000001";
 const retryArtifactId = "30000000-0000-4000-8000-000000000002";
 
 describe("compileDocumentArtifact canonical artifact", () => {
+  it("uses provider fallback when synchronous external PDF images cannot be resolved", async () => {
+    const hints: unknown[] = [];
+    const deps = pipelineDeps();
+    const artifact = await compileDocumentArtifact(
+      {
+        asset: {
+          ...documentAsset(),
+          mimeType: "application/pdf",
+          filename: "image.pdf",
+          metadata: { language: "zh", requiresTables: true },
+        },
+        body: new TextEncoder().encode("%PDF"),
+        knowledgeSpaceId,
+        permissionScope: [],
+        tenantId: "tenant-1",
+        traceId: randomUUID(),
+      },
+      {
+        ...deps,
+        profileImageExtractionEnabled: true,
+        documentPdfRasterizer: {
+          render: async () => {
+            throw new Error("Missing page cannot render");
+          },
+        },
+        documentParser: {
+          kind: "unstructured",
+          parse: async (input) => {
+            hints.push(input.parserHints);
+            return ParseArtifactSchema.parse({
+              artifactHash: "a".repeat(64),
+              contentType: "mixed",
+              createdAt: "2026-07-13T00:00:00.000Z",
+              documentAssetId,
+              elements: [
+                {
+                  id: "figure",
+                  type: "image",
+                  sectionPath: [],
+                  metadata: input.parserHints?.imagesHandledExternally
+                    ? {}
+                    : { assetRef: { uri: "data:image/png;base64,AQIDBA==" } },
+                },
+              ],
+              id: firstArtifactId,
+              metadata: {},
+              parser: "unstructured",
+              version: 1,
+            });
+          },
+        },
+      },
+    );
+    expect(hints).toEqual([
+      expect.objectContaining({
+        imagesHandledExternally: true,
+        requiresImages: true,
+        language: "zh",
+        requiresTables: true,
+      }),
+      expect.objectContaining({
+        imagesHandledExternally: false,
+        requiresImages: true,
+        language: "zh",
+        requiresTables: true,
+      }),
+    ]);
+    expect(artifact.elements[0]?.metadata.assetRef).toMatchObject({
+      objectKey: expect.any(String),
+    });
+  });
+
+  it("uses resolved text-only capabilities for synchronous parsing without losing source references", async () => {
+    const deps = pipelineDeps();
+    const artifact = await compileDocumentArtifact(
+      {
+        asset: documentAsset(),
+        body: new Uint8Array([1]),
+        knowledgeSpaceId,
+        permissionScope: [],
+        tenantId: "tenant-1",
+        traceId: randomUUID(),
+      },
+      {
+        ...deps,
+        resolveDocumentMediaCapabilities: async () => ({
+          imageExtractionEnabled: false,
+          visualEmbeddingEnabled: false,
+        }),
+        documentMultimodalRemoteAssetFetcher: {
+          fetch: async () => {
+            throw new Error("Text-only profile must not download");
+          },
+        },
+        documentParser: {
+          kind: "native-markdown",
+          parse: async (input) => {
+            expect(input.parserHints).toMatchObject({ requiresImages: false });
+            return ParseArtifactSchema.parse({
+              artifactHash: "a".repeat(64),
+              contentType: "mixed",
+              createdAt: "2026-07-13T00:00:00.000Z",
+              documentAssetId,
+              elements: [
+                {
+                  id: "figure",
+                  type: "image",
+                  sectionPath: [],
+                  metadata: { assetRef: { uri: "https://example.test/image.png" } },
+                },
+              ],
+              id: firstArtifactId,
+              metadata: {},
+              parser: "native-markdown",
+              version: 1,
+            });
+          },
+        },
+      },
+    );
+    expect(artifact.elements[0]?.metadata.assetRef).toEqual({
+      uri: "https://example.test/image.png",
+    });
+    expect(artifact.metadata).toMatchObject({
+      mediaExecutionPlan: { materializeImages: false },
+      parseCoverage: { media: { status: "not-requested" } },
+    });
+  });
   it("materializes parser-provided remote image refs before persisting the manifest", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
@@ -107,7 +235,11 @@ describe("compileDocumentArtifact canonical artifact", () => {
     );
 
     expect(remoteFetches).toEqual([
-      { maxBytes: 10 * 1024 * 1024, url: "https://cdn.example.test/office-linked.png" },
+      {
+        maxBytes: 10 * 1024 * 1024,
+        signal: expect.any(AbortSignal),
+        url: "https://cdn.example.test/office-linked.png",
+      },
     ]);
     expect(artifact.elements[0]?.metadata).toMatchObject({
       assetRef: {
@@ -340,5 +472,34 @@ function documentAsset(): DocumentAsset {
     sha256: "b".repeat(64),
     sizeBytes: 11,
     version: 1,
+  };
+}
+
+function pipelineDeps(): Omit<CompileDocumentArtifactDeps, "documentParser"> {
+  return {
+    artifacts: createInMemoryParseArtifactRepository({ maxArtifacts: 4 }),
+    artifactSegments: createInMemoryArtifactSegmentRepository({
+      maxBatchSize: 10,
+      maxListLimit: 10,
+      maxSegments: 10,
+    }),
+    documentMultimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 4,
+    }),
+    generateArtifactSegmentId: randomUUID,
+    generateKnowledgePathId: randomUUID,
+    knowledgePaths: createInMemoryKnowledgePathRepository({ maxListLimit: 20, maxPaths: 20 }),
+    now: () => "2026-07-13T00:00:00.000Z",
+    objectStorage: createNodePlatformAdapter({ env: {} }).objectStorage,
+    outlineBuilder: createDocumentOutlineBuilder({
+      generateId: randomUUID,
+      maxElements: 10,
+      maxNodes: 10,
+      maxSummaryChars: 1000,
+      now: () => "2026-07-13T00:00:00.000Z",
+    }),
+    outlines: createInMemoryDocumentOutlineRepository({ maxOutlines: 4 }),
+    synchronousUploadReindexer: null,
+    traces: createNoopTraceRecorder(),
   };
 }

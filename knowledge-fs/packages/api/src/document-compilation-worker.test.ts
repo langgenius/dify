@@ -223,7 +223,14 @@ describe("createDocumentCompilationWorker lease integration", () => {
               contentType: "text",
               createdAt: "2026-09-01T12:00:00.000Z",
               documentAssetId: input.documentAssetId,
-              elements: [],
+              elements: [
+                {
+                  id: "inline-profile-image",
+                  type: "image",
+                  sectionPath: [],
+                  metadata: { assetRef: { uri: "data:image/png;base64,AQIDBA==" } },
+                },
+              ],
               id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a16",
               metadata: {},
               parser: "unstructured",
@@ -238,13 +245,22 @@ describe("createDocumentCompilationWorker lease integration", () => {
         },
         profileImageExtractionEnabled,
         reindexer: {
-          reindex: async (input) => ({
-            artifact: input.parseArtifact,
-            nodesCreated: 0,
-            projectionIds: [],
-            projectionsCreated: 0,
-            status: "rebuilt",
-          }),
+          reindex: async (input) => {
+            const assetRef = input.parseArtifact.elements[0]?.metadata.assetRef;
+            if (!profileImageExtractionEnabled) expect(input.skipVisual).toBe(true);
+            expect(assetRef).toMatchObject(
+              profileImageExtractionEnabled
+                ? { objectKey: expect.any(String) }
+                : { uri: "data:image/png;base64,AQIDBA==" },
+            );
+            return {
+              artifact: input.parseArtifact,
+              nodesCreated: 0,
+              projectionIds: [],
+              projectionsCreated: 0,
+              status: "rebuilt",
+            };
+          },
         },
       });
 

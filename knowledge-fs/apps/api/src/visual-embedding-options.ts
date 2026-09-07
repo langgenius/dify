@@ -130,7 +130,7 @@ export function createApiVisualEmbeddingOptions({
     objectStorage,
     ...(trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT)
       ? { preferredVariant: trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT) }
-      : { preferredVariant: "thumbnail" }),
+      : { preferredVariant: "analysis" }),
     provider: imageBytesProvider,
   });
 

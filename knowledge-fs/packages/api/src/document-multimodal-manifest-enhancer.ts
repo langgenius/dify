@@ -357,7 +357,10 @@ function mergeMultimodalItemEnrichment(
     ...(caption ? { caption } : {}),
     enrichment: {
       ...item.enrichment,
-      asset: assetRef ? "provided" : item.enrichment.asset,
+      asset:
+        assetRef && (assetRef.objectKey || assetRef.uri || assetRef.sha256)
+          ? "provided"
+          : item.enrichment.asset,
       caption: caption ? "provided" : item.enrichment.caption,
       ocr: ocrText ? "provided" : item.enrichment.ocr,
       // Never downgrade a "provided" status to a weaker provider result.
@@ -365,10 +368,9 @@ function mergeMultimodalItemEnrichment(
         item.enrichment.tableStructure,
         result.tableStructureStatus,
       ),
-      visualEmbedding: preferProvidedStatus(
-        item.enrichment.visualEmbedding,
-        result.visualEmbeddingStatus,
-      ),
+      visualEmbedding: assetRef?.analysisUnavailable
+        ? "unsupported"
+        : preferProvidedStatus(item.enrichment.visualEmbedding, result.visualEmbeddingStatus),
     },
     ...(ocrText ? { ocrText } : {}),
     sourceMetadata: {
@@ -390,6 +392,8 @@ function pickBetterAssetRef(
   current: DocumentMultimodalAssetRef | undefined,
   incoming: DocumentMultimodalAssetRef | undefined,
 ): DocumentMultimodalAssetRef | undefined {
+  // Enrichment does not validate image resource bounds and cannot clear a decoder rejection.
+  if (current?.analysisUnavailable) return current;
   if (!incoming) {
     return current;
   }

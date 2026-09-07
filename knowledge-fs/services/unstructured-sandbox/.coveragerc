@@ -1,0 +1,9 @@
+[run]
+branch = true
+source = kfs_sandbox
+parallel = true
+patch = subprocess
+
+[report]
+fail_under = 90
+show_missing = true
