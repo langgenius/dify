@@ -11,6 +11,8 @@
   "batchAction.enable": "有効にする",
   "batchAction.reIndex": "再インデックス",
   "batchAction.selected": "選択済み",
+  "batchAction.sync": "同期",
+  "batchAction.syncAll": "全て同期",
   "chunkingMode.general": "汎用",
   "chunkingMode.graph": "グラフ",
   "chunkingMode.parentChild": "親子",

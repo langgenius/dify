@@ -11,6 +11,8 @@
   "batchAction.enable": "ເປີດໃຊ້ງານ",
   "batchAction.reIndex": "ສ້າງດັດຊະນີໃໝ່",
   "batchAction.selected": "ເລືອກແລ້ວ",
+  "batchAction.sync": "ຊິງຄ໌",
+  "batchAction.syncAll": "ຊິງຄ໌ທັງໝົດ",
   "chunkingMode.general": "ທົ່ວໄປ",
   "chunkingMode.graph": "ກຣາຟ",
   "chunkingMode.parentChild": "ແມ່-ລູກ",

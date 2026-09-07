@@ -11,6 +11,8 @@
   "batchAction.enable": "使",
   "batchAction.reIndex": "重新建立索引",
   "batchAction.selected": "選擇",
+  "batchAction.sync": "同步",
+  "batchAction.syncAll": "全部同步",
   "chunkingMode.general": "常規",
   "chunkingMode.graph": "圖形",
   "chunkingMode.parentChild": "父子",

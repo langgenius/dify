@@ -204,6 +204,8 @@ class WorkflowUpdatePayload(BaseModel):
 
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
+DOCUMENT_BATCH_SYNC_MAX_DOCS = 100
+
 
 class ChildChunkCreatePayload(BaseModel):
     content: str = Field(description="Child chunk text content.")
@@ -221,6 +223,17 @@ class DocumentBatchDownloadZipPayload(BaseModel):
         min_length=1,
         max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS,
         description="List of document IDs to include in the ZIP download.",
+    )
+
+
+class DocumentBatchSyncPayload(BaseModel):
+    """Request payload for re-syncing documents from their original data source."""
+
+    document_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=DOCUMENT_BATCH_SYNC_MAX_DOCS,
+        description="List of document IDs to re-sync from their original data source.",
     )
 
 
