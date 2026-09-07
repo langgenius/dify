@@ -14,7 +14,6 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -161,28 +160,26 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
   }
   const labelTitle = typeof label === 'string' ? label : undefined
 
+  if (docName !== DocName.GDPR && plan === undefined) return null
+
   return (
     <DropdownMenuItem
       className="h-10 justify-between py-1 pr-2 pl-1"
       closeOnClick={!isCurrentPlanCanDownload}
-      disabled={isPending || (docName !== DocName.GDPR && !plan)}
+      disabled={isPending}
       onClick={handleSelect}
     >
       {icon}
       <div className="grow truncate px-1 system-md-regular text-text-secondary" title={labelTitle}>
         {label}
       </div>
-      {docName !== DocName.GDPR && !plan ? (
-        <SkeletonRectangle className="h-5 w-16 animate-pulse" />
-      ) : (
-        <ComplianceDocActionVisual
-          isCurrentPlanCanDownload={isCurrentPlanCanDownload}
-          isPending={isPending}
-          tooltipText={plan ? upgradeTooltip[plan] : ''}
-          downloadText={t(($) => $['operation.download'], { ns: 'common' })}
-          upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
-        />
-      )}
+      <ComplianceDocActionVisual
+        isCurrentPlanCanDownload={isCurrentPlanCanDownload}
+        isPending={isPending}
+        tooltipText={plan ? upgradeTooltip[plan] : ''}
+        downloadText={t(($) => $['operation.download'], { ns: 'common' })}
+        upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+      />
     </DropdownMenuItem>
   )
 }

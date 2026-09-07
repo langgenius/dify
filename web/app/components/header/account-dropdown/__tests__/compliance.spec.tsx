@@ -83,10 +83,9 @@ describe('Compliance', () => {
     queryClient.clear()
     vi.mocked(getDocDownloadUrl).mockResolvedValue({ url: 'https://example.com/gdpr.pdf' })
     openMenuAndRender()
-    expect(getComplianceMenuItem('common.compliance.soc2Type1')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.queryByText('common.compliance.soc2Type1')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.compliance.soc2Type2')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.compliance.iso27001')).not.toBeInTheDocument()
     expect(getComplianceMenuItem('common.compliance.gdpr')).not.toHaveAttribute(
       'aria-disabled',
       'true',

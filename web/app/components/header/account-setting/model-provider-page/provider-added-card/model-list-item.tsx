@@ -43,8 +43,11 @@ const ModelListItem = ({
 }: ModelListItemProps) => {
   const { t } = useTranslation()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: features } = useQuery(
-    consoleQuery.features.get.queryOptions({ enabled: deploymentEdition === 'CLOUD' }),
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (features) => features.billing.subscription.plan,
+    }),
   )
   const modelLoadBalancingEnabled = useProviderContextSelector(
     (state) => state.modelLoadBalancingEnabled,
@@ -135,9 +138,7 @@ const ModelListItem = ({
             </Badge>
           )}
         {canConfigureModels &&
-          (deploymentEdition !== 'CLOUD' ||
-            modelLoadBalancingEnabled ||
-            features?.billing.subscription.plan === 'sandbox') &&
+          (deploymentEdition !== 'CLOUD' || modelLoadBalancingEnabled || plan === 'sandbox') &&
           !model.deprecated &&
           [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
             <ConfigModel

@@ -1,11 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiHardDrive3Line } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQueries } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
@@ -19,15 +17,14 @@ const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB('sandbox')
 
 const VectorSpaceInfo: FC<Props> = ({ className }) => {
   const { t } = useTranslation()
-  const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
-  const { data: vectorSpace } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions())
-  if (!features || !vectorSpace)
-    return (
-      <SkeletonRectangle
-        aria-busy="true"
-        className={cn('h-24 animate-pulse rounded-xl', className)}
-      />
-    )
+  const [{ data: plan }, { data: vectorSpace }] = useSuspenseQueries({
+    queries: [
+      consoleQuery.features.get.queryOptions({
+        select: (features) => features.billing.subscription.plan,
+      }),
+      consoleQuery.features.vectorSpace.get.queryOptions(),
+    ],
+  })
 
   return (
     <UsageInfo
@@ -42,7 +39,7 @@ const VectorSpaceInfo: FC<Props> = ({ className }) => {
       storageMode
       storageThreshold={STORAGE_THRESHOLD_MB}
       storageTooltip={t(($) => $['usagePage.storageThresholdTooltip'], { ns: 'billing' }) as string}
-      isSandboxPlan={features.billing.subscription.plan === 'sandbox'}
+      isSandboxPlan={plan === 'sandbox'}
       usageUnknown={vectorSpace.usage_unknown}
     />
   )
