@@ -41,6 +41,9 @@ class _CallableSessionProxy:
     def __call__(self) -> Session:
         return self._session
 
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._session, name)
+
     def add(self, instance: object) -> None:
         self._session.add(instance)
 
@@ -55,6 +58,15 @@ class _CallableSessionProxy:
 
     def get(self, entity: type[object], ident: object) -> object | None:
         return self._session.get(entity, ident)
+
+    def scalar(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        return self._session.scalar(statement, *args, **kwargs)
+
+    def scalars(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        return self._session.scalars(statement, *args, **kwargs)
+
+    def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        return self._session.execute(statement, *args, **kwargs)
 
 
 @dataclass(frozen=True)
