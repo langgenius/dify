@@ -231,7 +231,9 @@ const NodePanel: FC<Props> = ({
             {(isAgentNode || isToolNode) && onShowAgentOrToolLog && (
               <AgentLogTrigger nodeInfo={nodeInfo} onShowAgentOrToolLog={onShowAgentOrToolLog} />
             )}
+            {/* ponytail: enable retry drilldown when traces carry invocation identity. */}
             {nodeInfo.node_type === BlockEnum.Tool &&
+              nodeInfo.status !== 'retry' &&
               nodeInfo.extras?.workflow_tool === true &&
               workflowToolTracing && (
                 <Button

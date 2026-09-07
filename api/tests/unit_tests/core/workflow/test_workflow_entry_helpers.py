@@ -141,8 +141,11 @@ class TestWorkflowEntryInit:
         assert handler_factories[0](MagicMock()).node_type == BuiltinNodeTypes.LOOP
         assert handler_factories[1](MagicMock()).node_type == BuiltinNodeTypes.ITERATION
         handler = handler_factories[2](MagicMock())
-        assert handler.should_emit(event=sentinel.hidden_event) is False
-        execution_limits_layer.on_event.assert_called_once_with(sentinel.hidden_event)
+        hidden_event = NodeRunSucceededEvent(
+            id="source-execution", node_id="source-node", node_type=BuiltinNodeTypes.START, start_at=datetime.now()
+        )
+        assert handler.should_emit(event=hidden_event) is False
+        execution_limits_layer.on_event.assert_called_once_with(hidden_event)
         assert graph_runtime_state._execution_context is sentinel.execution_context
         execution_limits_layer_cls.assert_called_once_with(
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,

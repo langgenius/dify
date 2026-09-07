@@ -32,7 +32,7 @@ from graphon.engine.ready_queue import ResumeTask
 from graphon.engine_events.base import NodeEvent
 from graphon.engine_events.node import NodeRunFailedEvent, NodeRunPauseRequestedEvent
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File
 from graphon.graph import Graph
 from graphon.nodes.container_effects import (
@@ -59,8 +59,23 @@ _file_access_controller = DatabaseFileAccessController()
 _RESERVED_TOOL_OUTPUTS = frozenset(("text", "json", "files"))
 _FAILURE_SELECTOR_PREFIX = "__workflow_tool_container__"
 _HIDDEN_CHILD_EVENT_KEY = "__dify_workflow_tool_child__"
+_CONTAINER_METADATA_KEYS = frozenset(
+    (
+        WorkflowNodeExecutionMetadataKey.LOOP_ID,
+        WorkflowNodeExecutionMetadataKey.LOOP_INDEX,
+        WorkflowNodeExecutionMetadataKey.ITERATION_ID,
+        WorkflowNodeExecutionMetadataKey.ITERATION_INDEX,
+    )
+)
 
 type WorkflowToolEventListenerFactory = Callable[[WorkflowToolSource], Callable[[NodeEvent], None]]
+
+
+def _persist_workflow_tool_event(event: NodeEvent, listeners: Mapping[str, Callable[[NodeEvent], None]]) -> None:
+    source_boundary = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
+    source_frame_id = source_boundary.get("frame_id") if isinstance(source_boundary, Mapping) else None
+    if isinstance(source_frame_id, str) and (listener := listeners.get(source_frame_id)) is not None:
+        listener(event)
 
 
 @final
@@ -73,9 +88,11 @@ class WorkflowToolNestedContainerHandler:
         *,
         handler_factory: Callable[[FrameRegistry], ContainerHandler],
         hidden_event_listener: Callable[[NodeEvent], None] | None = None,
+        event_listeners: Mapping[str, Callable[[NodeEvent], None]] | None = None,
     ) -> None:
         self._handler = handler_factory(frame_registry)
         self._hidden_event_listener = hidden_event_listener
+        self._event_listeners = event_listeners if event_listeners is not None else {}
         self.node_type = self._handler.node_type
 
     def restore_frame(self, frame_state: ContainerFrameState) -> None:
@@ -90,6 +107,7 @@ class WorkflowToolNestedContainerHandler:
     def should_emit(self, *, event: NodeEvent) -> bool:
         should_emit = self._handler.should_emit(event=event)
         if should_emit and _HIDDEN_CHILD_EVENT_KEY in event.node_run_result.process_data:
+            _persist_workflow_tool_event(event, self._event_listeners)
             if self._hidden_event_listener is not None:
                 self._hidden_event_listener(event)
             return False
@@ -115,12 +133,13 @@ class WorkflowToolContainerHandler:
         source_repository: WorkflowToolSourceRepository,
         hidden_event_listener: Callable[[NodeEvent], None] | None = None,
         event_listener_factory: WorkflowToolEventListenerFactory | None = None,
+        event_listeners: dict[str, Callable[[NodeEvent], None]] | None = None,
     ) -> None:
         self._frame_registry = frame_registry
         self._source_repository = source_repository
         self._hidden_event_listener = hidden_event_listener
         self._event_listener_factory = event_listener_factory
-        self._event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
+        self._event_listeners = event_listeners if event_listeners is not None else {}
 
     def restore_frame(self, frame_state: ContainerFrameState) -> None:
         if not isinstance(frame_state, CustomContainerFrameState):
@@ -184,21 +203,8 @@ class WorkflowToolContainerHandler:
         child_frame.scheduler.enqueue_node(child_frame.graph.root_node.id)
 
     def prepare_frame_event(self, *, frame: ExecutionFrame, event: NodeEvent) -> None:
-        source_frame_id = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
-        is_direct_workflow_tool_child = source_frame_id is None
-        if (is_direct_workflow_tool_child or source_frame_id == frame.frame_id) and (
-            listener := self._event_listeners.get(frame.frame_id)
-        ) is not None:
-            # Persist source node identities independently of child event visibility.
-            persisted_event = event.model_copy(deep=True)
-            persisted_event.node_run_result.process_data = {
-                key: value
-                for key, value in persisted_event.node_run_result.process_data.items()
-                if key != _HIDDEN_CHILD_EVENT_KEY
-            }
-            if persisted_event.container_id == frame.container_id:
-                persisted_event.container_id = ""
-            listener(persisted_event)
+        source_boundary = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
+        is_direct_workflow_tool_child = source_boundary is None
         if is_direct_workflow_tool_child and isinstance(event, NodeRunFailedEvent):
             # Graphon increments immediately after container preparation; only the outer Tool failure belongs here.
             frame.state.graph_execution.exceptions_count -= 1
@@ -206,13 +212,22 @@ class WorkflowToolContainerHandler:
             # Keep source identity in Graphon; persist form ownership for Dify's response boundary.
             form_id = default_session_binding.resolve_form_id_from_session_id(session_id=event.reason.session_id)
             self._root_runtime_state().variable_pool.add(human_input_container_selector(form_id), frame.container_id)
-        # Preserve source ownership in the engine's derived retry/exception events.
+        # Preserve source ownership before outer containers add their own metadata.
         event.node_run_result.process_data = {
             **event.node_run_result.process_data,
-            _HIDDEN_CHILD_EVENT_KEY: source_frame_id or frame.frame_id,
+            _HIDDEN_CHILD_EVENT_KEY: source_boundary
+            or {
+                "frame_id": frame.frame_id,
+                "container_metadata": {
+                    key: value
+                    for key, value in event.node_run_result.metadata.items()
+                    if key in _CONTAINER_METADATA_KEYS
+                },
+            },
         }
 
     def should_emit(self, *, event: NodeEvent) -> bool:
+        _persist_workflow_tool_event(event, self._event_listeners)
         if self._hidden_event_listener is not None:
             self._hidden_event_listener(event)
         return False
@@ -338,12 +353,25 @@ class WorkflowToolContainerHandler:
             ).execution_id
 
             def persist_child_event(event: NodeEvent) -> None:
-                event.node_run_result.process_data = {
-                    **event.node_run_result.process_data,
+                # Delivery runs after Graphon normalizes results and suppresses retry starts.
+                persisted_event = event.model_copy(deep=True)
+                source_boundary = persisted_event.node_run_result.process_data[_HIDDEN_CHILD_EVENT_KEY]
+                persisted_event.node_run_result.metadata = {
+                    key: value
+                    for key, value in persisted_event.node_run_result.metadata.items()
+                    if key not in _CONTAINER_METADATA_KEYS
+                } | source_boundary["container_metadata"]
+                persisted_event.node_run_result.process_data = {
+                    key: value
+                    for key, value in persisted_event.node_run_result.process_data.items()
+                    if key != _HIDDEN_CHILD_EVENT_KEY
+                } | {
                     WORKFLOW_TOOL_INVOCATION_ID_KEY: run_state.invocation_id,
                     WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: parent_execution_id,
                 }
-                listener(event)
+                if persisted_event.container_id == run_state.node_id:
+                    persisted_event.container_id = ""
+                listener(persisted_event)
 
             self._event_listeners[frame_id] = persist_child_event
         return self._frame_registry.create(
