@@ -43,13 +43,19 @@ class _FakeUnexpectedStatusCodeError(Exception):
         self.status_code = status_code
 
 
-def _make_vector() -> WeaviateVector:
+def _make_vector() -> tuple[WeaviateVector, MagicMock]:
     """Build a ``WeaviateVector`` without invoking ``__init__`` so we
     never reach ``_init_client`` (which would try to connect).
 
     Only ``_client`` and ``_collection_name`` are touched by the
     production code paths exercised here (``_get_uuids`` and
     ``delete_by_ids``), so the rest of the instance dict is left bare.
+
+    Returns the ``WeaviateVector`` together with its mocked client so
+    tests can reach ``client.collections.use(...).data`` (the same
+    path the production code walks) without pyrefly tripping over
+    chained ``.return_value`` access through the dynamic ``_client``
+    instance attribute.
     """
     # pyrefly cannot resolve chained ``.return_value`` access through
     # dynamically-attached attributes (it infers ``v._client`` as the
@@ -63,11 +69,11 @@ def _make_vector() -> WeaviateVector:
     v = WeaviateVector.__new__(WeaviateVector)
     v._collection_name = "Test_Collection"
     v._client = client
-    return v
+    return v, client
 
 
-def _collection(v: WeaviateVector) -> MagicMock:
-    """Resolve ``v._client.collections.use().data`` as a typed MagicMock.
+def _collection(client: MagicMock) -> MagicMock:
+    """Resolve ``client.collections.use().data`` as a typed MagicMock.
 
     Centralised so the same ``client.data`` instance is reused -- the
     production code reaches the Weaviate collection's ``data`` object
@@ -75,7 +81,7 @@ def _collection(v: WeaviateVector) -> MagicMock:
     so ``delete_by_id`` / ``delete_many`` side effects wired on the
     returned mock are observed by the production calls.
     """
-    col: MagicMock = v._client.collections.use.return_value
+    col: MagicMock = client.collections.use.return_value
     return col.data
 
 
@@ -83,7 +89,7 @@ class TestGetUuidsUsesDocId:
     """_get_uuids must return one id per input document, positionally aligned."""
 
     def test_doc_id_passes_through(self) -> None:
-        v = _make_vector()
+        v, _client = _make_vector()
         docs = [Document(page_content="x", metadata={"doc_id": "doc-aaa-1"})]
 
         uuids = v._get_uuids(docs)
@@ -95,7 +101,7 @@ class TestGetUuidsUsesDocId:
         returned list so the parallel ``objs`` list in ``add_texts``
         never goes out of alignment with the input documents.
         """
-        v = _make_vector()
+        v, _client = _make_vector()
         docs = [
             Document(page_content="x", metadata={"doc_id": "doc-aaa-1"}),
             Document(page_content="y", metadata={}),
@@ -116,7 +122,7 @@ class TestGetUuidsUsesDocId:
         assert parsed.version == 4
 
     def test_all_doc_ids_present(self) -> None:
-        v = _make_vector()
+        v, _client = _make_vector()
         docs = [
             Document(page_content="x", metadata={"doc_id": "a"}),
             Document(page_content="y", metadata={"doc_id": "b"}),
@@ -136,8 +142,8 @@ class TestDeleteByIdsBackwardCompatible:
         ``index_node_id`` must be reaped even though its Weaviate UUID
         no longer matches.
         """
-        v = _make_vector()
-        col = _collection(v)
+        v, client = _make_vector()
+        col = _collection(client)
         col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
 
         with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError):
@@ -158,8 +164,8 @@ class TestDeleteByIdsBackwardCompatible:
         ``index_node_id`` is reaped by the direct delete, and the
         metadata-filter pass is a redundant no-op (no rows match).
         """
-        v = _make_vector()
-        col = _collection(v)
+        v, client = _make_vector()
+        col = _collection(client)
 
         v.delete_by_ids(["doc-aaa-1"])
 
@@ -178,8 +184,8 @@ class TestDeleteByIdsBackwardCompatible:
         """
         import pytest
 
-        v = _make_vector()
-        col = _collection(v)
+        v, client = _make_vector()
+        col = _collection(client)
         col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(500)
 
         with (
@@ -192,8 +198,8 @@ class TestDeleteByIdsBackwardCompatible:
         """The metadata-filter 404 (column doesn't exist) is also
         swallowed -- the schema may not have been migrated yet.
         """
-        v = _make_vector()
-        col = _collection(v)
+        v, client = _make_vector()
+        col = _collection(client)
         col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
         col.delete_many.side_effect = _FakeUnexpectedStatusCodeError(404)
 
