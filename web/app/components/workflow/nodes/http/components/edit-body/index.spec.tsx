@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { VarType } from '@/app/components/workflow/types'
 import { HTTP_BODY_VARIABLE_TYPES, isSupportedHttpBodyVariable } from './supported-body-vars'
 

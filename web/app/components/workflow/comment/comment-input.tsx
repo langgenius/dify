@@ -1,10 +1,10 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { MentionInput } from './mention-input'
 
 type CommentInputProps = {
@@ -25,7 +25,10 @@ export const CommentInput: FC<CommentInputProps> = memo(
   ({ position, onSubmit, onCancel, autoFocus = true, disabled = false, onPositionChange }) => {
     const [content, setContent] = useState('')
     const { t } = useTranslation()
-    const userProfile = useAtomValue(userProfileAtom)
+    const { data: userProfile } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile,
+    })
     const dragStateRef = useRef<
       {
         pointerId: number | null

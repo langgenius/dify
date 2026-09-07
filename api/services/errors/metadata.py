@@ -1,0 +1,2 @@
+class MetadataResourceNotFoundError(Exception):
+    pass

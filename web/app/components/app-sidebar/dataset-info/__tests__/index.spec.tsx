@@ -119,10 +119,6 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
@@ -215,12 +211,12 @@ describe('DatasetInfo', () => {
       expect(screen.queryByText('dataset.chunkingMode.general')).not.toBeInTheDocument()
     })
 
-    it('should hide detailed fields when collapsed', () => {
+    it('should keep the dataset name available when collapsed and omit detailed fields', () => {
       // Arrange
       render(<DatasetInfo expand={false} />)
 
       // Assert
-      expect(screen.queryByText('Dataset Name')).not.toBeInTheDocument()
+      expect(screen.getByText('Dataset Name')).toBeInTheDocument()
       expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
     })
   })

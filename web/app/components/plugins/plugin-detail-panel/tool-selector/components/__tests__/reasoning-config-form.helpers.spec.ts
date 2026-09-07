@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -22,10 +22,14 @@ describe('reasoning-config-form helpers', () => {
     expect(getVarKindType(FormTypeEnum.files)).toBe(VarKindType.variable)
     expect(getVarKindType(FormTypeEnum.textNumber)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.textInput)).toBe(VarKindType.mixed)
+    expect(getVarKindType(FormTypeEnum.date)).toBe(VarKindType.constant)
+    expect(getVarKindType(FormTypeEnum.dateRange)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.dynamicSelect)).toBeUndefined()
 
     expect(resolveTargetVarType(FormTypeEnum.textInput)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.textNumber)).toBe(VarType.number)
+    expect(resolveTargetVarType(FormTypeEnum.date)).toBe(VarType.string)
+    expect(resolveTargetVarType(FormTypeEnum.dateRange)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.files)).toBe(VarType.arrayFile)
     expect(resolveTargetVarType(FormTypeEnum.file)).toBe(VarType.file)
     expect(resolveTargetVarType(FormTypeEnum.checkbox)).toBe(VarType.boolean)
@@ -42,6 +46,26 @@ describe('reasoning-config-form helpers', () => {
     expect(numberFilter?.({ type: VarType.string } as never)).toBe(false)
     expect(stringFilter?.({ type: VarType.secret } as never)).toBe(true)
     expect(fileFilter?.({ type: VarType.arrayFile } as never)).toBe(true)
+  })
+
+  it('creates variable filters for date fields', () => {
+    const dateFilter = createPickerProps({
+      type: FormTypeEnum.date,
+      value: {},
+      language: 'en_US',
+      schema: { type: FormTypeEnum.date } as never,
+    }).filterVar
+    expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
+    expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
+    expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
+    expect(
+      createPickerProps({
+        type: FormTypeEnum.dateRange,
+        value: {},
+        language: 'en_US',
+        schema: { type: FormTypeEnum.dateRange } as never,
+      }).filterVar,
+    ).toBeUndefined()
   })
 
   it('filters select options based on show_on conditions', () => {
@@ -149,6 +173,23 @@ describe('reasoning-config-form helpers', () => {
         isShowJSONEditor: true,
         showTypeSwitch: true,
         isConstant: true,
+      }),
+    )
+
+    expect(getFieldFlags(FormTypeEnum.date)).toEqual(
+      expect.objectContaining({
+        isDate: true,
+        isDateRange: false,
+        isString: false,
+        showTypeSwitch: true,
+      }),
+    )
+    expect(getFieldFlags(FormTypeEnum.dateRange)).toEqual(
+      expect.objectContaining({
+        isDate: false,
+        isDateRange: true,
+        isString: false,
+        showTypeSwitch: false,
       }),
     )
 

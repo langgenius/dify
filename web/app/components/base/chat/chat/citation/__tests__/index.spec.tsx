@@ -1,7 +1,7 @@
 import type { CitationItem } from '../../type'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Citation from '../index'
 
 vi.mock('../popup', () => ({

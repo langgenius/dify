@@ -3,15 +3,11 @@ import type {
   ApiBasedExtensionResponse,
 } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -96,7 +92,17 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
         backdropProps={{ forceRender: true }}
         className="w-160 border-none p-8 pb-6 text-left"
       >
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
 
         <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">
           {mode === 'edit'
@@ -106,7 +112,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
         <Form<ApiBasedExtensionPayload> className="grid gap-4 pt-2" onFormSubmit={handleSubmit}>
           <Field name="name">
             <FieldLabel>{nameLabel}</FieldLabel>
-            <FieldControl
+            <Input
               required
               defaultValue={editingApiBasedExtension?.name || ''}
               placeholder={
@@ -120,7 +126,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
 
           <Field name="api_endpoint">
             <FieldLabel>{apiEndpointLabel}</FieldLabel>
-            <FieldControl
+            <Input
               required
               defaultValue={editingApiBasedExtension?.api_endpoint || ''}
               placeholder={
@@ -157,7 +163,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             }}
           >
             <FieldLabel>{apiKeyLabel}</FieldLabel>
-            <FieldControl
+            <Input
               required
               defaultValue={editingApiBasedExtension?.api_key || ''}
               placeholder={

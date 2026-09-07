@@ -7,6 +7,7 @@ from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
@@ -258,7 +259,7 @@ class ServerVersionResponse(BaseModel):
     """Meta endpoint payload for `GET /openapi/v1/_version` — no auth required."""
 
     version: str
-    edition: Literal["SELF_HOSTED", "CLOUD"]
+    edition: DeploymentEdition
 
 
 class HealthResponse(BaseModel):

@@ -8,6 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding
+from services.auth.errors import DataSourceApiKeyAuthCredentialValidationError
+from services.entities.data_source_api_key_auth_entities import (
+    DataSourceApiKeyAuthBindingCreate,
+    DataSourceApiKeyAuthCredentials,
+)
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -71,12 +76,15 @@ def test_create_binding_successful(
 ) -> None:
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     tenant_id = tenant.id
-    payload = {"category": "api_key", "provider": "custom", "credentials": {"key": "value"}}
+    payload = {
+        "category": "api_key",
+        "provider": "custom",
+        "credentials": {"auth_type": "bearer", "config": {"api_key": "secret"}},
+    }
 
-    with (
-        patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.validate_api_key_auth_args"),
-        patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.create_provider_auth") as create_auth,
-    ):
+    with patch(
+        "services.auth.data_source_api_key_auth_service.DataSourceApiKeyAuthService.create_binding"
+    ) as create_auth:
         response = test_client_with_containers.post(
             "/console/api/api-key-auth/data-source/binding",
             json=payload,
@@ -85,7 +93,15 @@ def test_create_binding_successful(
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
-    create_auth.assert_called_once_with(tenant_id, payload, session=ANY)
+    create_auth.assert_called_once_with(
+        ANY,
+        DataSourceApiKeyAuthBindingCreate(
+            category=payload["category"],
+            provider=payload["provider"],
+            credentials=DataSourceApiKeyAuthCredentials("bearer", "secret", {}),
+        ),
+    )
+    assert create_auth.call_args.args[0].active_workspace_id == tenant_id
 
 
 def test_create_binding_failure(
@@ -94,24 +110,25 @@ def test_create_binding_failure(
 ) -> None:
     account, _tenant = create_console_account_and_tenant(db_session_with_containers)
 
-    with (
-        patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.validate_api_key_auth_args"),
-        patch(
-            "controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.create_provider_auth",
-            side_effect=ValueError("Invalid structure"),
-        ),
+    with patch(
+        "services.auth.data_source_api_key_auth_service.DataSourceApiKeyAuthService.create_binding",
+        side_effect=DataSourceApiKeyAuthCredentialValidationError("Credentials rejected"),
     ):
         response = test_client_with_containers.post(
             "/console/api/api-key-auth/data-source/binding",
-            json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
+            json={
+                "category": "api_key",
+                "provider": "custom",
+                "credentials": {"auth_type": "bearer", "config": {"api_key": "secret"}},
+            },
             headers=authenticate_console_client(test_client_with_containers, account),
         )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
     payload = response.get_json()
     assert payload is not None
-    assert payload["code"] == "auth_failed"
-    assert payload["message"] == "Invalid structure"
+    assert payload["code"] == "data_source_api_key_auth_credentials_rejected"
+    assert payload["message"] == "Credentials rejected"
 
 
 def test_delete_binding_successful(

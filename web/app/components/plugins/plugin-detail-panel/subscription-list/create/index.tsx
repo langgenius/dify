@@ -1,6 +1,7 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Select,
   SelectContent,
@@ -13,7 +14,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { Infotip } from '@/app/components/base/infotip'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -26,6 +26,7 @@ import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 import { CommonCreateModal } from './common-modal'
+import styles from './index.module.css'
 import { OAuthClientSettingsModal } from './oauth-client'
 import { CreateButtonType, DEFAULT_METHOD } from './types'
 
@@ -131,14 +132,14 @@ export const CreateSubscriptionButton = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <ActionButton
+                <IconButton
                   aria-label={t(($) => $['subscription.addType.options.oauth.clientSettings'], {
                     ns: 'pluginTrigger',
                   })}
                   onClick={onClickClientSettings}
                 >
                   <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-                </ActionButton>
+                </IconButton>
               }
             />
             <TooltipContent>
@@ -315,22 +316,21 @@ export const CreateSubscriptionButton = ({
               <TooltipTrigger
                 disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}
                 render={
-                  <ActionButton
+                  <IconButton
                     aria-label={buttonTextMap[methodType!]}
                     onClick={onClickCreate}
+                    disabled={subscriptionCount >= MAX_COUNT}
+                    focusableWhenDisabled
                     className={cn(
                       'float-right',
-                      shape === 'circle' &&
-                        'rounded-full! border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
+                      subscriptionCount >= MAX_COUNT &&
+                        shape === 'square' &&
+                        'data-disabled:hover:bg-state-base-hover',
+                      shape === 'circle' && cn('rounded-full', styles.highlightedIconButton),
                     )}
-                    state={
-                      subscriptionCount >= MAX_COUNT
-                        ? ActionButtonState.Disabled
-                        : ActionButtonState.Default
-                    }
                   >
                     <span aria-hidden className="i-ri-add-line size-4" />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>

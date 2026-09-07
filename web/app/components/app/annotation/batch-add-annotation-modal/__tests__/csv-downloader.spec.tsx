@@ -1,5 +1,5 @@
 /* oxlint-disable typescript/no-explicit-any */
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { Locale } from '@/i18n-config'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'

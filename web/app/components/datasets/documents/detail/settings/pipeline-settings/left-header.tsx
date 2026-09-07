@@ -1,5 +1,4 @@
-import { Button } from '@langgenius/dify-ui/button'
-import { RiArrowLeftLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,14 +25,15 @@ const LeftHeader = ({ title }: LeftHeaderProps) => {
       <div className="system-md-semibold text-text-primary">
         {t(($) => $['addDocuments.steps.processDocuments'], { ns: 'datasetPipeline' })}
       </div>
-      <Button
+      <IconButton
         variant="secondary-accent"
-        className="absolute top-3.5 -left-11 size-9 rounded-full p-0"
+        size="xl"
+        className="absolute top-3.5 -left-11 rounded-full"
         onClick={navigateBack}
         aria-label={t(($) => $['operation.back'], { ns: 'common' })}
       >
-        <RiArrowLeftLine className="size-5" />
-      </Button>
+        <span aria-hidden className="i-ri-arrow-left-line size-5" />
+      </IconButton>
       <Effect className="-top-8.5 left-8 opacity-20" />
     </div>
   )

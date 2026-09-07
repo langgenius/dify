@@ -1,6 +1,8 @@
 import type { currentVarType } from './panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+// import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowRightSLine,
@@ -11,8 +13,6 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// import { Button } from '@langgenius/dify-ui/button'
-import ActionButton from '@/app/components/base/action-button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
@@ -146,12 +146,12 @@ const Group = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
                     aria-label={t(($) => $['debug.variableInspect.view'], { ns: 'workflow' })}
                     onClick={handleView}
                   >
                     <RiFileList3Line className="size-4" aria-hidden />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>
@@ -161,12 +161,12 @@ const Group = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
                     aria-label={t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflow' })}
                     onClick={handleClear}
                   >
                     <RiDeleteBinLine className="size-4" aria-hidden />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>

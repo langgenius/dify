@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Theme } from '@/types/app'
 import IconWithTooltip from '../icon-with-tooltip'
 
@@ -23,7 +23,7 @@ describe('IconWithTooltip', () => {
     expect(screen.queryByText('Light icon')).not.toBeInTheDocument()
   })
 
-  it('exposes tooltip content as the icon accessible name', () => {
+  it('exposes the badge meaning without opening the tooltip', () => {
     render(
       <IconWithTooltip
         theme={Theme.light}
@@ -33,6 +33,6 @@ describe('IconWithTooltip', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Partner plugin')).toBeInTheDocument()
+    expect(screen.getByText('Partner plugin')).toBeInTheDocument()
   })
 })

@@ -3,7 +3,7 @@ import type { NudgeStore } from '@/cache/nudge-store'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { loadNudgeStore } from '@/cache/nudge-store'
 import { ENV_CACHE_DIR } from '@/store/dir'
 import { CACHE_NUDGE, getCache } from '@/store/manager'
@@ -15,7 +15,7 @@ const fixedNow = () => NOW
 
 type Probe = (host: string) => Promise<ServerVersionResponse>
 
-const UNSUPPORTED: ServerVersionResponse = { version: '99.0.0', edition: 'SELF_HOSTED' }
+const UNSUPPORTED: ServerVersionResponse = { version: '99.0.0', edition: 'COMMUNITY' }
 const COMPATIBLE: ServerVersionResponse = { version: '1.6.4', edition: 'CLOUD' }
 
 function emitterSpy() {
@@ -122,7 +122,7 @@ describe('maybeNudgeCompat', () => {
 
   it('does not warn when server version yields unknown verdict', async () => {
     const probe = vi.fn(
-      async () => ({ version: '', edition: 'SELF_HOSTED' }) as ServerVersionResponse,
+      async () => ({ version: '', edition: 'COMMUNITY' }) as ServerVersionResponse,
     )
     const { emit, lines } = emitterSpy()
 

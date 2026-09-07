@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AgentScope } from '@/features/agent-v2/analytics'
 import { CreateAgentDialog } from '../create-agent-dialog'
 
 const mutationMock = vi.hoisted(() => ({
@@ -111,10 +112,11 @@ describe('CreateAgentDialog', () => {
       mutationOptions.onSuccess({ id: 'agent-1' })
     })
 
-    expect(toastMock.success).toHaveBeenCalledWith('agentV2.roster.createSuccess')
+    expect(toastMock.success).not.toHaveBeenCalled()
     expect(trackCreateAppMock).toHaveBeenCalledWith({
       source: 'studio_blank',
       appMode: 'agent-v2',
+      agentScope: AgentScope.Global,
     })
     expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure')
   })
@@ -137,6 +139,44 @@ describe('CreateAgentDialog', () => {
     ).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
+  })
+
+  it('focuses the name field when opened and resets native form values after closing', async () => {
+    const user = userEvent.setup()
+    render(<CreateAgentDialog />)
+
+    const trigger = screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ })
+    await user.click(trigger)
+
+    let dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'agentV2.roster.createForm.nameLabel',
+    })
+    const descriptionInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.descriptionLabel/,
+    })
+    expect(nameInput).toHaveFocus()
+    expect(descriptionInput).toHaveAttribute('maxlength', '400')
+
+    await user.type(nameInput, 'Temporary Agent')
+    await user.type(descriptionInput, 'Temporary description')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'agentV2.roster.createDialog.title' }),
+      ).not.toBeInTheDocument()
+    })
+
+    await user.click(trigger)
+    dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    expect(
+      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+    ).toHaveValue('')
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: /agentV2\.roster\.createForm\.descriptionLabel/,
+      }),
+    ).toHaveValue('')
   })
 
   it('marks role and description as optional', async () => {

@@ -4,7 +4,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { toast } from '@/app/components/app/configuration/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -150,6 +150,26 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
+    })
+
+    it('should ignore sortable updates when the variable order is unchanged', () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      act(() => {
+        latestSortableProps?.setList([
+          { id: 'first', variable: firstVar },
+          { id: 'second', variable: secondVar },
+        ])
+      })
+
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
     })
   })
 

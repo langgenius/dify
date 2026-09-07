@@ -4,28 +4,25 @@ import io
 import json
 import zipfile
 from contextlib import nullcontext
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from sqlalchemy.orm import Session, sessionmaker
 
 from libs.archive_storage import ArchiveStorage
-from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_bundle_index import ARCHIVE_BUNDLE_ROOT_PREFIX, ArchiveBundleManifest
 from services.retention.workflow_run.archive_download_preparation import (
     WorkflowRunArchiveDownloadPreparer,
     build_archive_download_storage_key,
 )
-from services.retention.workflow_run.archive_download_task_cache import (
+from services.retention.workflow_run.archive_download_task import (
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
-    WorkflowRunArchiveDownloadTaskCache,
     build_archive_download_id,
     build_pending_archive_download_task,
 )
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveBundleRecord
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
@@ -75,6 +72,25 @@ class FakeTaskCache:
         self.saved_tasks.append(task)
 
 
+class FakeBundleQuery:
+    def __init__(self, records: tuple[WorkflowRunArchiveBundleRecord, ...]) -> None:
+        self.records = records
+
+    def list_for_tenant(self, tenant_id: str) -> tuple[WorkflowRunArchiveBundleRecord, ...]:
+        assert tenant_id == TENANT_ID
+        return self.records
+
+    def list_for_tenant_month(
+        self,
+        tenant_id: str,
+        *,
+        year: int,
+        month: int,
+    ) -> tuple[WorkflowRunArchiveBundleRecord, ...]:
+        assert tenant_id == TENANT_ID
+        return tuple(record for record in self.records if record.year == year and record.month == month)
+
+
 def _object_prefix(bundle_id: str = BUNDLE_ID) -> str:
     return (
         f"{ARCHIVE_BUNDLE_ROOT_PREFIX}tenant_prefix=1/tenant_id={TENANT_ID}/"
@@ -82,8 +98,17 @@ def _object_prefix(bundle_id: str = BUNDLE_ID) -> str:
     )
 
 
-def _bundle(bundle_id: str = BUNDLE_ID) -> WorkflowRunArchiveBundle:
-    return cast(WorkflowRunArchiveBundle, SimpleNamespace(shard=SHARD, bundle_id=bundle_id))
+def _bundle(bundle_id: str = BUNDLE_ID) -> WorkflowRunArchiveBundleRecord:
+    return WorkflowRunArchiveBundleRecord(
+        year=2025,
+        month=3,
+        shard=SHARD,
+        bundle_id=bundle_id,
+        workflow_run_count=1,
+        row_count=1,
+        archive_bytes=100,
+        archived_at=datetime.datetime(2026, 6, 25, 8),
+    )
 
 
 def _task(bundle_refs: list[tuple[str, str]] | None = None) -> WorkflowRunArchiveDownloadTask:
@@ -145,21 +170,17 @@ def _preparer(
     archive_storage: FakeArchiveStorage | None = None,
     download_storage: FakeArchiveStorage | None = None,
     cache: FakeTaskCache,
-    bundles: list[WorkflowRunArchiveBundle] | None = None,
+    bundles: list[WorkflowRunArchiveBundleRecord] | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
     source_storage = archive_storage or storage
     target_storage = download_storage or storage
     assert source_storage is not None
     assert target_storage is not None
-    session = MagicMock()
-    session.scalars.return_value = bundles or [_bundle()]
-    session_factory = MagicMock()
-    session_factory.return_value.__enter__.return_value = session
     return WorkflowRunArchiveDownloadPreparer(
-        archive_storage=cast(ArchiveStorage, source_storage),
-        download_storage=cast(ArchiveStorage, target_storage),
-        cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
-        session_factory=cast(sessionmaker[Session], session_factory),
+        archive_storage_provider=lambda: cast(ArchiveStorage, source_storage),
+        bundles=FakeBundleQuery(tuple([_bundle()] if bundles is None else bundles)),
+        cache=cache,
+        download_storage_provider=lambda: cast(ArchiveStorage, target_storage),
     )
 
 
@@ -254,11 +275,35 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
     assert storage.put_objects == {}
 
 
+def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unavailable() -> None:
+    task = _task()
+    cache = FakeTaskCache(task)
+    archive_storage_provider = MagicMock(side_effect=RuntimeError("archive storage unavailable"))
+    download_storage_provider = MagicMock()
+    preparer = WorkflowRunArchiveDownloadPreparer(
+        archive_storage_provider=archive_storage_provider,
+        bundles=FakeBundleQuery((_bundle(),)),
+        cache=cache,
+        download_storage_provider=download_storage_provider,
+    )
+
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
+    assert result.error == "archive storage unavailable"
+    download_storage_provider.assert_not_called()
+
+
 def test_prepare_workflow_run_archive_download_skips_duplicate_worker() -> None:
     task = _task().model_copy(update={"celery_task_id": "celery-task-1"})
     storage = FakeArchiveStorage({})
     cache = FakeTaskCache(task)
-    preparer = _preparer(storage=storage, cache=cache, bundles=[])
+    preparer = _preparer(
+        storage=storage,
+        cache=cache,
+        bundles=[],
+    )
     nested_results: list[WorkflowRunArchiveDownloadTask | None] = []
     preparer._get_task_bundles = MagicMock(return_value=[])
 

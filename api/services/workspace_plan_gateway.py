@@ -5,8 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import override
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from services.billing_service import BillingService
 from services.feature_service import FeatureService
 from services.workspace_query_service import WorkspacePlanGateway
@@ -23,11 +22,11 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
         if not ids:
             return {}
 
-        is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
+        is_enterprise_only = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
         if is_enterprise_only:
             return dict.fromkeys(ids, str(CloudPlan.SANDBOX))
 
-        is_saas = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.BILLING_ENABLED
+        is_saas = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
         bulk_plans = BillingService.get_plan_bulk(ids) if is_saas else {}
         if is_saas and not bulk_plans:
             logger.warning("get_plan_bulk returned empty result, falling back to FeatureService")

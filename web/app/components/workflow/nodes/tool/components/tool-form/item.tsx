@@ -80,13 +80,18 @@ const ToolFormItem: FC<Props> = ({
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
-  const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
+  const showDescription =
+    type === FormTypeEnum.textInput ||
+    type === FormTypeEnum.textNumber ||
+    type === FormTypeEnum.secretInput ||
+    type === FormTypeEnum.date ||
+    type === FormTypeEnum.dateRange
   const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
-        <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">
+        <div className="flex min-h-6 min-w-0 items-center">
+          <div className="min-w-0 system-sm-medium wrap-break-word text-text-secondary">
             {label[language] || label.en_US}
           </div>
           {required && (

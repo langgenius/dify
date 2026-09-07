@@ -1,9 +1,10 @@
 import type {
   AppPublisherProps,
+  AppPublisherPublishOptions,
   AppPublisherPublishParams,
-} from '@/app/components/app/app-publisher'
+} from '@/app/components/app/app-publisher/types'
+import type { ConfigurationPublishConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Features, FileUpload } from '@/app/components/base/features/types'
-import type { ModelConfig } from '@/models/debug'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,7 +15,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { produce } from 'immer'
-import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppPublisher } from '@/app/components/app/app-publisher'
@@ -23,18 +23,13 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 
-type PublishedModelConfig = ModelConfig & {
-  resetAppConfig?: () => void
-}
-
 type Props = Omit<AppPublisherProps, 'onPublish'> & {
   onPublish?: (
     params?: AppPublisherPublishParams,
     features?: Features,
+    options?: AppPublisherPublishOptions,
   ) => Promise<unknown> | unknown
-  publishedConfig: {
-    modelConfig: PublishedModelConfig
-  }
+  publishedConfig: ConfigurationPublishConfig
   resetAppConfig?: () => void
 }
 
@@ -43,6 +38,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
+  const { resetAppConfig } = props
   const {
     more_like_this,
     opening_statement,
@@ -54,10 +50,9 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
     retriever_resource,
     annotation_reply,
     file_upload,
-    resetAppConfig,
   } = props.publishedConfig.modelConfig
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = () => {
     resetAppConfig?.()
     const { features, setFeatures } = featuresStore!.getState()
     const newFeatures = produce(features, (draft) => {
@@ -92,10 +87,11 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
     })
     setFeatures(newFeatures)
     setRestoreConfirmOpen(false)
-  }, [featuresStore, props])
+  }
 
   const handlePublish = useCallback(
-    (params?: AppPublisherPublishParams) => {
+    (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
+      if (options) return props.onPublish?.(params, features, options)
       return props.onPublish?.(params, features)
     },
     [features, props],

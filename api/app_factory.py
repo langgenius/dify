@@ -14,6 +14,7 @@ from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from enums import DeploymentEdition
 from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus
@@ -112,7 +113,7 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             surface = _match_license_gated_surface(request.path)
             if surface is not None:
                 try:

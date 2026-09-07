@@ -6,6 +6,11 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { consoleRouterContract } from '@dify/contracts/console'
 import type {
+  EnvironmentAccess,
+  GetEnvironmentDeploymentResponse,
+  ListEnvironmentDeploymentsResponse,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type {
   GetReleaseResponse,
   ListReleasesResponse,
   PrecheckReleaseRequest,
@@ -34,6 +39,32 @@ function getMarketplaceHeaders() {
   return new Headers({
     'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
   })
+}
+
+// 15s deadline so a stalled Marketplace fetch can error/retry.
+const MARKETPLACE_REQUEST_TIMEOUT_MS = 15_000
+
+// Combine the caller's abort with the deadline; AbortSignal.any is too new.
+function withRequestDeadline(callerSignal: AbortSignal | null | undefined): AbortSignal {
+  const deadline = AbortSignal.timeout(MARKETPLACE_REQUEST_TIMEOUT_MS)
+  if (!callerSignal) return deadline
+  if (callerSignal.aborted) return callerSignal
+
+  const controller = new AbortController()
+  callerSignal.addEventListener('abort', () => controller.abort(callerSignal.reason), {
+    once: true,
+  })
+  deadline.addEventListener('abort', () => controller.abort(deadline.reason), { once: true })
+  return controller.signal
+}
+
+function isMarketplacePackageDownload(input: Request | URL | string): boolean {
+  const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  try {
+    return new URL(href).pathname.endsWith('/download')
+  } catch {
+    return false
+  }
 }
 
 function isURL(path: string) {
@@ -99,9 +130,14 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   url: MARKETPLACE_API_PREFIX,
   headers: () => getMarketplaceHeaders(),
   fetch: (request, init) => {
+    const requestInit = init as RequestInit | undefined
+    const callerSignal = requestInit?.signal ?? request.signal
     return globalThis.fetch(request, {
-      ...init,
+      ...requestInit,
       cache: 'no-store',
+      signal: isMarketplacePackageDownload(request)
+        ? callerSignal
+        : withRequestDeadline(callerSignal),
     })
   },
   interceptors: [
@@ -140,7 +176,7 @@ type ConsoleQueryUtils = RouterUtils<
 >
 
 function isTagType(type: string | null | undefined): type is TagType {
-  return type === 'app' || type === 'knowledge' || type === 'snippet'
+  return type === 'app' || type === 'knowledge' || type === 'skill' || type === 'snippet'
 }
 
 const defaultAppDeployInvalidationOptions = {
@@ -159,6 +195,136 @@ const defaultAppDeployInvalidationOptions = {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateEnvironmentApiKeyQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+) {
+  const environmentParams = {
+    app_id: params.app_id,
+    environment_id: params.environment_id,
+  }
+
+  return invalidateQueryKeys(client, [
+    query.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+    query.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+  ])
+}
+
+function environmentDeploymentQueries(
+  query: ConsoleQueryUtils,
+  params: { app_id: string; environment_id: string },
+) {
+  const environmentParams = {
+    app_id: params.app_id,
+    environment_id: params.environment_id,
+  }
+
+  return {
+    deployment: query.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+      input: { params: environmentParams },
+    }),
+    deployments:
+      query.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      }),
+  }
+}
+
+function invalidateEnvironmentDeploymentQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+  { appEnvironments }: { appEnvironments: boolean },
+) {
+  const environmentQueries = environmentDeploymentQueries(query, params)
+  const queryKeys: QueryKey[] = [
+    environmentQueries.deployments.queryKey,
+    environmentQueries.deployment.queryKey,
+  ]
+
+  if (appEnvironments) {
+    queryKeys.push(
+      query.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      }).queryKey,
+    )
+  }
+
+  return invalidateQueryKeys(client, queryKeys)
+}
+
+function syncEnvironmentAccessCaches(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+  accessPatch: Partial<EnvironmentAccess>,
+) {
+  const environmentQueries = environmentDeploymentQueries(query, params)
+
+  client.setQueryData<ListEnvironmentDeploymentsResponse>(
+    environmentQueries.deployments.queryKey,
+    (current) => {
+      if (
+        !current?.environment_deployments.some(
+          (deployment) => deployment.environment.id === params.environment_id,
+        )
+      )
+        return current
+
+      return {
+        ...current,
+        environment_deployments: current.environment_deployments.map((deployment) =>
+          deployment.environment.id === params.environment_id
+            ? {
+                ...deployment,
+                access: {
+                  ...deployment.access,
+                  ...accessPatch,
+                },
+              }
+            : deployment,
+        ),
+      }
+    },
+  )
+  client.setQueryData<GetEnvironmentDeploymentResponse>(
+    environmentQueries.deployment.queryKey,
+    (current) => {
+      if (!current || current.environment_deployment.environment.id !== params.environment_id)
+        return current
+
+      return {
+        ...current,
+        environment_deployment: {
+          ...current.environment_deployment,
+          access: {
+            ...current.environment_deployment.access,
+            ...accessPatch,
+          },
+        },
+      }
+    },
+  )
+
+  return invalidateQueryKeys(client, [
+    environmentQueries.deployments.queryKey,
+    environmentQueries.deployment.queryKey,
+  ])
 }
 
 function appInstanceQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
@@ -401,11 +567,23 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
+        profile: {
+          patch: {
+            mutationOptions: {
+              onSuccess: async (_data, _variables, _onMutateResult, context) => {
+                await context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.profile.get.key(),
+                })
+              },
+            },
+          },
+        },
       },
       apps: {
         post: {
           mutationOptions: {
             onSuccess: (_data, _variables, _onMutateResult, context) => {
+              void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
               void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
               void context.client.invalidateQueries({
                 queryKey: consoleQuery.apps.starred.get.key(),
@@ -419,9 +597,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         imports: {
           post: {
             mutationOptions: {
-              onSuccess: (data, _variables, _onMutateResult, context) => {
+              onSuccess: (data, variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
+                if (!variables.body.app_id) {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.features.get.key(),
+                  })
+                }
                 void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.apps.starred.get.key(),
@@ -441,6 +624,9 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                       return
 
                     void context.client.invalidateQueries({
+                      queryKey: consoleQuery.features.get.key(),
+                    })
+                    void context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.get.key(),
                     })
                     void context.client.invalidateQueries({
@@ -456,10 +642,27 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
         byAppId: {
+          // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          apiEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) =>
-                Promise.all([
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
+                return Promise.all([
                   context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.starred.get.key(),
@@ -467,7 +670,8 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.recent.get.key(),
                   }),
-                ]),
+                ])
+              },
             },
           },
           put: {
@@ -489,6 +693,38 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               },
             },
           },
+          siteEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
+          site: {
+            accessTokenReset: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    })
+                  },
+                },
+              },
+            },
+          },
           convertToWorkflow: {
             post: {
               mutationOptions: {
@@ -507,7 +743,12 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           copy: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                onSuccess: (data, _variables, _onMutateResult, context) => {
+                  if (!('mode' in data)) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.features.get.key(),
+                  })
                   void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.starred.get.key(),
@@ -993,6 +1234,15 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.byAgentId.key({
+                    input: {
+                      params: {
+                        agent_id: variables.params.agent_id,
+                      },
+                    },
+                  }),
+                })
                 context.client.setQueriesData(
                   {
                     queryKey: consoleQuery.agent.get.key({ type: 'query' }),
@@ -1161,6 +1411,98 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       enterprise: {
+        appDeploy: {
+          accessService: {
+            createEnvironmentApiKey: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentApiKeyQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                  )
+                },
+              },
+            },
+            deleteEnvironmentApiKey: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentApiKeyQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                  )
+                },
+              },
+            },
+            updateEnvironmentApi: {
+              mutationOptions: {
+                onSuccess: (updatedApi, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+                      input: { params: variables.params },
+                    }).queryKey,
+                    updatedApi,
+                  )
+
+                  return syncEnvironmentAccessCaches(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { enable_api: updatedApi.enabled },
+                  )
+                },
+              },
+            },
+            updateEnvironmentSite: {
+              mutationOptions: {
+                onSuccess: (updatedSite, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryOptions(
+                      {
+                        input: { params: variables.params },
+                      },
+                    ).queryKey,
+                    updatedSite,
+                  )
+
+                  return syncEnvironmentAccessCaches(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { enable_site: updatedSite.enabled },
+                  )
+                },
+              },
+            },
+          },
+          deploymentService: {
+            deployWorkflow: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentDeploymentQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { appEnvironments: false },
+                  )
+                },
+              },
+            },
+            undeployWorkflow: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentDeploymentQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { appEnvironments: true },
+                  )
+                },
+              },
+            },
+          },
+        },
         webAppAuth: {
           updateWebAppWhitelistSubjects: {
             mutationOptions: {
@@ -1198,16 +1540,19 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
 
                     const listResponse = await context.client
-                      .fetchQuery(
-                        consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-                          input: {
-                            query: {
-                              pageNumber: 1,
-                              resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                      .query({
+                        ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions(
+                          {
+                            input: {
+                              query: {
+                                pageNumber: 1,
+                                resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                              },
                             },
                           },
-                        }),
-                      )
+                        ),
+                        staleTime: 0,
+                      })
                       .catch(() => undefined)
 
                     if (listResponse?.appInstances?.some((app) => app.id === appInstanceId)) break

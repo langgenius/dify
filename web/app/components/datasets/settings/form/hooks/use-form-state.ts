@@ -1,19 +1,21 @@
 'use client'
+
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -32,7 +34,10 @@ export const useFormState = () => {
   const { t } = useTranslation()
   const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () =>

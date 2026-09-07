@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from pytest_mock import MockerFixture
 
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -9,8 +11,9 @@ def _make_service() -> RagPipelineService:
 
 def test_fetch_recommended_plugin_manifests_returns_empty_when_disabled(
     mocker: MockerFixture,
+    config_overrides: Callable[..., None],
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.MARKETPLACE_ENABLED", False)
+    config_overrides(MARKETPLACE_ENABLED=False)
     batch_fetch = mocker.patch("services.rag_pipeline.rag_pipeline.marketplace.batch_fetch_plugin_by_ids")
 
     service = _make_service()
@@ -22,8 +25,9 @@ def test_fetch_recommended_plugin_manifests_returns_empty_when_disabled(
 
 def test_fetch_recommended_plugin_manifests_returns_data_when_enabled(
     mocker: MockerFixture,
+    config_overrides: Callable[..., None],
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.MARKETPLACE_ENABLED", True)
+    config_overrides(MARKETPLACE_ENABLED=True)
     expected = [{"plugin_id": "langgenius/openai", "name": "OpenAI"}]
     mocker.patch(
         "services.rag_pipeline.rag_pipeline.marketplace.batch_fetch_plugin_by_ids",

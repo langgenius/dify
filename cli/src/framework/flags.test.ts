@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { UnsupportedArgValueError } from './errors'
 import { Args, Flags, parseArgv } from './flags'
 

@@ -1,14 +1,8 @@
 import type { TFunction } from 'i18next'
-import { AccessMode } from '@/models/access-control'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import {
-  getDisabledFunctionTooltip,
-  getPublisherAppMode,
-  getPublisherAppUrl,
-  isPublisherAccessConfigured,
-} from '../utils'
+import { getDisabledFunctionTooltip, getPublisherAppMode, getPublisherAppUrl } from '../utils'
 
 describe('app-publisher utils', () => {
   describe('getPublisherAppMode', () => {
@@ -30,26 +24,6 @@ describe('app-publisher utils', () => {
           mode: AppModeEnum.CHAT,
         }),
       ).toBe(`https://example.com${basePath}/chat/token-1`)
-    })
-  })
-
-  describe('isPublisherAccessConfigured', () => {
-    it('should require members or groups for specific access mode', () => {
-      expect(
-        isPublisherAccessConfigured(
-          { access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-          { groups: [], members: [] },
-        ),
-      ).toBe(false)
-    })
-
-    it('should treat public access as configured', () => {
-      expect(
-        isPublisherAccessConfigured(
-          { access_mode: AccessMode.PUBLIC },
-          { groups: [], members: [] },
-        ),
-      ).toBe(true)
     })
   })
 

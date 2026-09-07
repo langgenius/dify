@@ -4,11 +4,11 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
@@ -112,13 +112,13 @@ export function AgentLogDetailPanel({
             {log?.title || log?.conversation_id}
           </div>
         </div>
-        <ActionButton
-          size="l"
+        <IconButton
+          size="lg"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
-        </ActionButton>
+        </IconButton>
       </div>
       <div className="shrink-0 px-1 pt-1">
         <div className="rounded-t-xl bg-background-section-burn p-3 pb-2" />

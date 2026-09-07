@@ -16,6 +16,8 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -25,8 +27,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
-import { Fragment, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
@@ -41,11 +44,26 @@ import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
 
+const appNavItemHeight = 28
+const appNavItemGap = 1
+const appNavSeparatorHeight = 12
+
 const getPreloadDistance = (scrollContainer: Element) =>
   Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
 
 const selectInstalledApps = (data: InfiniteData<InstalledAppListResponse, string | undefined>) =>
   data.pages.flatMap((page) => page.installed_apps)
+
+type WebAppListRow =
+  | {
+      key: string
+      kind: 'app'
+      app: InstalledAppResponse
+    }
+  | {
+      key: string
+      kind: 'separator'
+    }
 
 const WebAppsSectionContent = () => {
   const { t } = useTranslation()
@@ -81,12 +99,51 @@ const WebAppsSectionContent = () => {
     consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
   )
 
-  const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+  const webAppRows = useMemo<WebAppListRow[]>(() => {
+    const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+
+    return installedApps.flatMap((app, index) => {
+      const rows: WebAppListRow[] = [{ key: app.id, kind: 'app', app }]
+
+      if (index === pinnedAppsCount - 1 && index !== installedApps.length - 1)
+        rows.push({ key: `${app.id}-separator`, kind: 'separator' })
+
+      return rows
+    })
+  }, [installedApps])
+  const getWebAppRowKey = useCallback(
+    (index: number) => webAppRows[index]?.key ?? index,
+    [webAppRows],
+  )
+
+  const rowVirtualizer = useVirtualizer({
+    count: webAppRows.length,
+    estimateSize: (index) =>
+      webAppRows[index]?.kind === 'separator' ? appNavSeparatorHeight : appNavItemHeight,
+    gap: appNavItemGap,
+    getItemKey: getWebAppRowKey,
+    getScrollElement: () => scrollRef.current,
+    overscan: 6,
+    paddingEnd: installedAppsQuery.hasNextPage ? 0 : 8,
+  })
+
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
+  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })
+  const showNoResults =
+    !installedAppsQuery.isError &&
+    !installedAppsQuery.isFetching &&
+    !installedAppsQuery.isPlaceholderData &&
+    installedApps.length === 0
 
   const handleSearchTextChange = (value: string) => {
     scrollRef.current?.scrollTo({ top: 0 })
     setSearchText(value)
+  }
+
+  const handleSearchVisibleChange = (visible: boolean) => {
+    setAppsExpanded(true)
+    if (!visible) handleSearchTextChange('')
+    setSearchVisible(visible)
   }
 
   const handleDelete = () => {
@@ -124,7 +181,6 @@ const WebAppsSectionContent = () => {
 
   const renderAppNavItem = (installedApp: (typeof installedApps)[number]) => (
     <AppNavItem
-      key={installedApp.id}
       app={installedApp}
       ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
         ns: 'common',
@@ -135,8 +191,23 @@ const WebAppsSectionContent = () => {
       onDelete={setUninstallDialogAppId}
     />
   )
+  const renderRow = (row: WebAppListRow) => {
+    if (row.kind === 'separator') {
+      return (
+        <div className="flex h-3 items-center px-1">
+          <Divider className="m-0 h-px bg-divider-subtle" />
+        </div>
+      )
+    }
+
+    return renderAppNavItem(row.app)
+  }
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <Collapsible
+      open={appsExpanded && searchVisible}
+      onOpenChange={handleSearchVisibleChange}
+      className="flex min-h-0 flex-1 flex-col"
+    >
       <div className="flex items-center justify-between py-1 pr-2 pl-2">
         <button
           type="button"
@@ -154,26 +225,22 @@ const WebAppsSectionContent = () => {
           />
         </button>
         <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-            className={cn(
-              'flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              searchVisible && 'bg-state-base-hover text-text-secondary',
-            )}
-            onClick={() => {
-              setAppsExpanded(true)
-              if (searchVisible) handleSearchTextChange('')
-              setSearchVisible(!searchVisible)
-            }}
-          >
-            <span className="flex size-5 shrink-0 items-center justify-center">
-              <span aria-hidden className="i-ri-search-line size-3.5" />
-            </span>
-          </button>
+          <CollapsibleTrigger
+            className="size-6 min-h-0 w-6 justify-center gap-0 rounded-md p-0.5 hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+                className="rounded-md"
+              >
+                <span className="flex size-5 shrink-0 items-center justify-center">
+                  <span aria-hidden className="i-ri-search-line size-3.5" />
+                </span>
+              </IconButton>
+            }
+          />
         </div>
       </div>
-      {appsExpanded && searchVisible && (
+      <CollapsiblePanel className="shrink-0">
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
@@ -183,18 +250,21 @@ const WebAppsSectionContent = () => {
             autoFocus
           />
         </div>
-      )}
+      </CollapsiblePanel>
       {appsExpanded && (
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRef}
-            aria-busy={installedAppsQuery.isFetchingNextPage}
+            aria-busy={installedAppsQuery.isFetching}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
             style={{ overflowX: 'hidden' }}
             className="overscroll-contain"
             role="region"
           >
             <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
+              <div className="sr-only" role="status">
+                {showNoResults ? noResultsMessage : ''}
+              </div>
               {installedAppsQuery.isError && !installedAppsQuery.isFetchNextPageError && (
                 <div
                   className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
@@ -212,21 +282,30 @@ const WebAppsSectionContent = () => {
                   </Button>
                 </div>
               )}
-              {!installedAppsQuery.isError && installedApps.length === 0 && (
-                <div className="px-2 py-1 system-xs-regular">
-                  {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
-                </div>
+              {showNoResults && (
+                <div className="px-2 py-1 system-xs-regular">{noResultsMessage}</div>
               )}
-              {installedApps.length > 0 && (
-                <div className="space-y-0.5 pb-2">
-                  {installedApps.map((installedApp, index) => (
-                    <Fragment key={installedApp.id}>
-                      {renderAppNavItem(installedApp)}
-                      {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && (
-                        <Divider />
-                      )}
-                    </Fragment>
-                  ))}
+              {webAppRows.length > 0 && (
+                <div
+                  className="relative w-full"
+                  style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+                >
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const row = webAppRows[virtualRow.index]!
+
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        className="absolute top-0 left-0 w-full"
+                        style={{
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        {renderRow(row)}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
               {installedAppsQuery.hasNextPage && (
@@ -290,7 +369,6 @@ const WebAppsSectionContent = () => {
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={uninstallAppMutation.isPending}
-              disabled={uninstallAppMutation.isPending}
               onClick={handleDelete}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
@@ -298,7 +376,7 @@ const WebAppsSectionContent = () => {
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Collapsible>
   )
 }
 

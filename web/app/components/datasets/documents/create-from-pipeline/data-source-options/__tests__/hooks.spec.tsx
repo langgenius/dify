@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useDatasourceIcon } from '../hooks'
 
 const mockTransformDataSourceToTool = vi.fn()

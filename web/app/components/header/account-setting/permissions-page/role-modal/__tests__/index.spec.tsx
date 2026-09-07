@@ -155,7 +155,6 @@ describe('RoleModal', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.confirm' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
       ).not.toBeInTheDocument()

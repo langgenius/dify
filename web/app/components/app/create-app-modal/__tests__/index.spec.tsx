@@ -1,9 +1,9 @@
+import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useProviderContext } from '@/context/provider-context'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -48,6 +48,14 @@ vi.mock('@/service/client', async (importOriginal) => {
     ...actual,
     consoleQuery: {
       ...actual.consoleQuery,
+      features: actual.consoleQuery.features,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
       systemFeatures: actual.consoleQuery.systemFeatures,
       apps: {
         ...actual.consoleQuery.apps,
@@ -83,13 +91,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
+
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -106,33 +108,29 @@ const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
-const mockUseProviderContext = vi.mocked(useProviderContext)
 const { mockToastSuccess, mockToastError } = toastMocks
 
-const defaultPlanUsage = {
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
-}
+let appQuota = { size: 0, limit: 1 }
 
 const renderModal = () => {
   const onClose = vi.fn()
-  const onSuccess = vi.fn()
   const onCreateFromTemplate = vi.fn()
   render(
     <CreateAppModal
       show
       onClose={onClose}
-      onSuccess={onSuccess}
       onCreateFromTemplate={onCreateFromTemplate}
       defaultAppMode={AppModeEnum.ADVANCED_CHAT}
     />,
   )
-  return { onClose, onSuccess, onCreateFromTemplate }
+  return { onClose, onCreateFromTemplate }
+}
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: appQuota },
+  })
 }
 
 describe('CreateAppModal', () => {
@@ -140,15 +138,7 @@ describe('CreateAppModal', () => {
     vi.clearAllMocks()
     ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: defaultPlanUsage,
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 0, limit: 1 }
     mockConsoleStateReader.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
@@ -164,7 +154,7 @@ describe('CreateAppModal', () => {
       maintainer: 'user-1',
     }
     mockCreateApp.mockResolvedValue(mockApp as App)
-    const { onClose, onSuccess } = renderModal()
+    const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
@@ -186,8 +176,7 @@ describe('CreateAppModal', () => {
       appMode: AppModeEnum.ADVANCED_CHAT,
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onSuccess).toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
@@ -252,15 +241,7 @@ describe('CreateAppModal', () => {
   })
 
   it('shows the apps-full notice and disables creation when the workspace quota is exhausted', () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: { ...defaultPlanUsage, buildApps: 1 },
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
@@ -322,15 +303,7 @@ describe('CreateAppModal', () => {
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: { ...defaultPlanUsage, buildApps: 1 },
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 1, limit: 1 }
 
     renderModal()
 

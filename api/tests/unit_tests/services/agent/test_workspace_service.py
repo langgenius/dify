@@ -15,7 +15,13 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
+from services.agent.workspace_service import (
+    AgentWorkspaceError,
+    AgentWorkspaceNotFoundError,
+    AgentWorkspaceService,
+    WorkspaceOwnerScope,
+)
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _scope() -> WorkspaceOwnerScope:
@@ -87,11 +93,18 @@ def _binding(
     )
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
+def test_workspace_client_honors_the_configured_snapshot_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_BACKEND_BASE_URL="http://agent.example",
+        AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS=123.5,
+    )
+
+    client = AgentWorkspaceService._client()
+
+    assert client._timeout == 123.5
+
+
 def test_create_binding_success_persists_new_workspace_and_binding(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -130,11 +143,6 @@ def test_create_binding_success_persists_new_workspace_and_binding(
     assert request.home_snapshot_ref == "home-ref"
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_binding_without_home_snapshot_uses_backend_default(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -158,11 +166,6 @@ def test_create_binding_without_home_snapshot_uses_backend_default(
     assert request.home_snapshot_ref is None
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_binding_rejects_missing_explicit_home_snapshot_before_backend_call(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -182,11 +185,6 @@ def test_create_binding_rejects_missing_explicit_home_snapshot_before_backend_ca
     client.create_execution_binding_sync.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_second_binding_reuses_existing_workspace(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -225,7 +223,6 @@ def test_create_second_binding_reuses_existing_workspace(
     assert request.workspace_id == workspace.id
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_get_active_binding_resolves_exact_participant(sqlite_session: Session) -> None:
     conversation_workspace = _workspace(workspace_id="workspace-conversation")
     build_workspace = _workspace(
@@ -256,7 +253,6 @@ def test_get_active_binding_resolves_exact_participant(sqlite_session: Session) 
     assert resolved.id == conversation_binding.id
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_get_active_binding_rejects_wrong_owner(sqlite_session: Session) -> None:
     build_workspace = _workspace(
         workspace_id="workspace-build",
@@ -281,7 +277,6 @@ def test_get_active_binding_rejects_wrong_owner(sqlite_session: Session) -> None
     assert resolved is None
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_retire_non_final_binding_keeps_workspace_active(sqlite_session: Session) -> None:
     binding = _binding()
     other_binding = _binding(binding_id="binding-2", agent_id="agent-2")
@@ -302,7 +297,6 @@ def test_retire_non_final_binding_keeps_workspace_active(sqlite_session: Session
     assert other_binding.status is AgentWorkingResourceStatus.ACTIVE
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_retire_final_binding_retires_workspace(sqlite_session: Session) -> None:
     binding = _binding()
     workspace = _workspace()
@@ -317,15 +311,14 @@ def test_retire_final_binding_retires_workspace(sqlite_session: Session) -> None
     assert workspace.retired_at == binding.retired_at
 
 
-def test_retire_workspace_retires_all_active_bindings() -> None:
+def test_retire_workspace_retires_all_active_bindings(sqlite_session: Session) -> None:
     workspace = _workspace()
     bindings = [_binding(), _binding(binding_id="binding-2", agent_id="agent-2")]
-    session = MagicMock()
-    session.scalar.return_value = workspace
-    session.scalars.return_value.all.return_value = bindings
+    sqlite_session.add_all([workspace, *bindings])
+    sqlite_session.flush()
 
     retired_id = AgentWorkspaceService.retire_workspace(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         workspace_id=workspace.id,
     )
@@ -336,7 +329,6 @@ def test_retire_workspace_retires_all_active_bindings() -> None:
     assert all(binding.retired_at == workspace.retired_at for binding in bindings)
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_session: Session) -> None:
     active = _workspace(workspace_id="workspace-active", owner_id="conversation-active")
     already_retired = _workspace(
@@ -372,7 +364,6 @@ def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_s
     assert other_binding.status is AgentWorkingResourceStatus.ACTIVE
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_collect_binding_without_retired_workspace_destroys_binding_only(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -396,7 +387,6 @@ def test_collect_binding_without_retired_workspace_destroys_binding_only(
     assert sqlite_session.get(AgentWorkspace, workspace.id) is not None
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_collect_workspace_destroys_workspace_then_remaining_bindings(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -412,9 +402,11 @@ def test_collect_workspace_destroys_workspace_then_remaining_bindings(
     sqlite_session.add_all([workspace, anchor, remaining])
     sqlite_session.commit()
     client = MagicMock()
+    commit = MagicMock(wraps=sqlite_session.commit)
     monkeypatch.setattr(
         "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
     )
+    monkeypatch.setattr(sqlite_session, "commit", commit)
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
 
     AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id=workspace.id)
@@ -429,47 +421,160 @@ def test_collect_workspace_destroys_workspace_then_remaining_bindings(
     assert sqlite_session.get(AgentWorkspace, workspace.id) is None
     assert sqlite_session.get(AgentWorkspaceBinding, anchor.id) is None
     assert sqlite_session.get(AgentWorkspaceBinding, remaining.id) is None
-
-
-def test_binding_collection_database_failure_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
-    session = context.__enter__.return_value
-    session.scalar.side_effect = RuntimeError("database unavailable")
-    log_exception = MagicMock()
-    monkeypatch.setattr("services.agent.workspace_service.session_factory.create_session", lambda: context)
-    monkeypatch.setattr("services.agent.workspace_service.logger.exception", log_exception)
-
-    AgentWorkspaceService.collect_retired_binding(tenant_id="tenant-1", binding_id="binding-1")
-
-    session.scalar.assert_called_once()
-    log_exception.assert_called_once_with(
-        "Failed to collect retired Agent Workspace Binding",
-        extra={"tenant_id": "tenant-1", "binding_id": "binding-1"},
-    )
+    commit.assert_called_once()
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_workspace_collection_final_delete_failure_is_best_effort(
+def test_collect_workspace_remaining_failure_preserves_ledgers_and_replay_converges(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
+    anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
+    remaining = [
+        _binding(
+            binding_id=f"binding-{index}",
+            agent_id=f"agent-{index}",
+            status=AgentWorkingResourceStatus.RETIRED,
+        )
+        for index in (2, 3)
+    ]
+    anchor.created_at = datetime(2026, 7, 23, 10)
+    for index, binding in enumerate(remaining, start=1):
+        binding.created_at = anchor.created_at + timedelta(minutes=index)
+    sqlite_session.add_all([workspace, anchor, *remaining])
+    sqlite_session.commit()
+    workspace_id = workspace.id
+    binding_ids = [anchor.id, *(binding.id for binding in remaining)]
+    error = RuntimeError("middle Binding destroy failed")
+    client = MagicMock()
+    client.destroy_execution_binding_sync.side_effect = [None, error, None]
+    monkeypatch.setattr(
+        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
+    )
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id=workspace_id)
+
+    assert exc_info.value is error
+    assert client.destroy_execution_binding_sync.call_count == 3
+    first_attempt = [call.args[0] for call in client.destroy_execution_binding_sync.call_args_list]
+    assert [request.destroy_workspace for request in first_attempt] == [True, False, False]
+    assert sqlite_session.get(AgentWorkspace, workspace_id) is not None
+    assert all(sqlite_session.get(AgentWorkspaceBinding, binding_id) is not None for binding_id in binding_ids)
+
+    client.reset_mock()
+    client.destroy_execution_binding_sync.side_effect = None
+    AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id=workspace_id)
+
+    assert client.destroy_execution_binding_sync.call_count == 3
+    assert sqlite_session.get(AgentWorkspace, workspace_id) is None
+    assert all(sqlite_session.get(AgentWorkspaceBinding, binding_id) is None for binding_id in binding_ids)
+
+
+def test_collect_retired_workspace_without_retired_binding_raises(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
+    sqlite_session.add(workspace)
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "services.agent.workspace_service.session_factory.create_session",
+        lambda: nullcontext(sqlite_session),
+    )
+
+    with pytest.raises(AgentWorkspaceError, match="tenant_id=tenant-1, workspace_id=workspace-1"):
+        AgentWorkspaceService.collect_retired_workspace(
+            tenant_id="tenant-1",
+            workspace_id=workspace.id,
+        )
+
+
+def test_binding_collection_database_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
+    context = MagicMock()
+    session = context.__enter__.return_value
+    error = RuntimeError("database unavailable")
+    session.scalar.side_effect = error
+    monkeypatch.setattr("services.agent.workspace_service.session_factory.create_session", lambda: context)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentWorkspaceService.collect_retired_binding(tenant_id="tenant-1", binding_id="binding-1")
+
+    assert exc_info.value is error
+
+
+@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
+def test_binding_collection_backend_failure_propagates_and_preserves_retired_binding(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workspace = _workspace()
+    binding = _binding(status=AgentWorkingResourceStatus.RETIRED)
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+    error = RuntimeError("Agent backend unavailable")
+    client = MagicMock()
+    client.destroy_execution_binding_sync.side_effect = error
+    monkeypatch.setattr(
+        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
+    )
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentWorkspaceService.collect_retired_binding(tenant_id="tenant-1", binding_id=binding.id)
+
+    assert exc_info.value is error
+    stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
+    assert stored_binding is not None
+    assert stored_binding.status is AgentWorkingResourceStatus.RETIRED
+
+
+@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
+def test_workspace_collection_backend_failure_propagates_and_preserves_retired_resources(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
     anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
     sqlite_session.add_all([workspace, anchor])
     sqlite_session.commit()
-    commit = MagicMock(side_effect=RuntimeError("database unavailable"))
+    error = RuntimeError("Agent backend unavailable")
     client = MagicMock()
-    log_exception = MagicMock()
+    client.destroy_execution_binding_sync.side_effect = error
+    monkeypatch.setattr(
+        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
+    )
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id=workspace.id)
+
+    assert exc_info.value is error
+    stored_workspace = sqlite_session.get(AgentWorkspace, workspace.id)
+    stored_anchor = sqlite_session.get(AgentWorkspaceBinding, anchor.id)
+    assert stored_workspace is not None
+    assert stored_workspace.status is AgentWorkingResourceStatus.RETIRED
+    assert stored_anchor is not None
+    assert stored_anchor.status is AgentWorkingResourceStatus.RETIRED
+
+
+@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
+def test_workspace_collection_final_delete_failure_propagates(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
+    anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
+    sqlite_session.add_all([workspace, anchor])
+    sqlite_session.commit()
+    error = RuntimeError("database unavailable")
+    commit = MagicMock(side_effect=error)
+    client = MagicMock()
     monkeypatch.setattr(
         "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
     )
     monkeypatch.setattr(sqlite_session, "commit", commit)
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
-    monkeypatch.setattr("services.agent.workspace_service.logger.exception", log_exception)
 
-    AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id="workspace-1")
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id="workspace-1")
 
+    assert exc_info.value is error
     client.destroy_execution_binding_sync.assert_called_once()
-    log_exception.assert_called_once_with(
-        "Failed to collect retired Agent Workspace",
-        extra={"tenant_id": "tenant-1", "workspace_id": "workspace-1"},
-    )

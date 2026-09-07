@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import { useGetApi } from '../use-get-api'
 

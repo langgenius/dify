@@ -1,5 +1,5 @@
 import type { SseEvent } from './sse'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { eventNameFromDifyData, normalizeDifyStream } from './sse-dify'
 
 const enc = new TextEncoder()

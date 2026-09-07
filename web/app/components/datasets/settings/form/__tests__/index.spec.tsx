@@ -28,14 +28,6 @@ const mockUserProfile = {
 }
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -53,7 +45,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const render = (ui: ReactElement) => {
+function render(ui: ReactElement) {
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: false },
   })
@@ -225,8 +217,6 @@ vi.mock('@/context/provider-context', () => ({
     moderationModelList: [],
     hasSettedApiKey: true,
     plan: { type: 'free' },
-    enableBilling: false,
-    onPlanInfoChanged: vi.fn(),
   }),
 }))
 

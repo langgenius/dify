@@ -13,7 +13,7 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -65,7 +65,6 @@ type FormProps<
   validatedSuccess?: boolean
   showOnVariableMap: Record<string, string[]>
   isEditMode: boolean
-  isAgentStrategy?: boolean
   readonly?: boolean
   inputClassName?: string
   isShowDefaultValue?: boolean
@@ -100,7 +99,6 @@ function Form<
   validatedSuccess,
   showOnVariableMap,
   isEditMode,
-  isAgentStrategy = false,
   readonly,
   inputClassName,
   isShowDefaultValue = false,
@@ -449,7 +447,6 @@ function Form<
             popupClassName="w-[387px]!"
             isAdvancedMode
             isInWorkflow
-            isAgentStrategy={isAgentStrategy}
             value={value[variable]}
             setModel={(model) => handleModelChanged(variable, model)}
             readonly={readonly}

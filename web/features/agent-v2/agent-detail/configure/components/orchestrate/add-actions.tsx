@@ -8,15 +8,15 @@ import type {
 } from './add-actions-context'
 import { useCallback, useMemo, useState } from 'react'
 import { AgentOrchestrateAddActionsContext } from './add-actions-context'
-import { useAgentOrchestrateReadOnly } from './read-only-context'
+import { useAgentOrchestrateViewingVersion } from './read-only-context'
 
 export function AgentOrchestrateAddActionsProvider({ children }: { children: ReactNode }) {
-  const readOnly = useAgentOrchestrateReadOnly()
+  const isViewingVersion = useAgentOrchestrateViewingVersion()
   const [actions, setActions] = useState<AgentOrchestrateAddActions>({})
 
   const registerAction = useCallback(
     (key: AgentOrchestrateAddActionKey, action: AgentOrchestrateAddAction) => {
-      if (readOnly) return () => undefined
+      if (isViewingVersion) return () => undefined
 
       setActions((currentActions) => {
         if (currentActions[key] === action) return currentActions
@@ -37,15 +37,15 @@ export function AgentOrchestrateAddActionsProvider({ children }: { children: Rea
         })
       }
     },
-    [readOnly],
+    [isViewingVersion],
   )
 
   const value = useMemo(
     () => ({
-      actions: readOnly ? {} : actions,
+      actions: isViewingVersion ? {} : actions,
       registerAction,
     }),
-    [actions, readOnly, registerAction],
+    [actions, isViewingVersion, registerAction],
   )
 
   return (

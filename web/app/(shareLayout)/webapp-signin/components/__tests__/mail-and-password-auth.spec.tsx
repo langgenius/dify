@@ -70,7 +70,38 @@ describe('MailAndPasswordAuth', () => {
     await user.type(passwordInput, 'strong-password{Enter}')
 
     await waitFor(() => {
-      expect(webAppLoginMock).toHaveBeenCalledTimes(1)
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        url: '/login',
+        body: {
+          email: 'user@example.com',
+          password: expect.any(String),
+          remember_me: true,
+        },
+      })
     })
+  })
+
+  it('keeps the password field name separate from the recovery link', () => {
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    expect(screen.getByLabelText('login.password', { exact: true })).toHaveAttribute(
+      'name',
+      'password',
+    )
+    expect(screen.getByRole('link', { name: 'login.forget' })).toBeInTheDocument()
+  })
+
+  it('names the password visibility action for its current state', async () => {
+    const user = userEvent.setup()
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    const passwordInput = screen.getByLabelText('login.password')
+    expect(passwordInput).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
   })
 })

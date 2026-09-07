@@ -1,6 +1,6 @@
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { selectAppReader, SubjectKind, subjectOf } from './app-reader'
 import { AppsClient } from './apps'
 import { PermittedExternalAppsClient } from './permitted-external-apps'

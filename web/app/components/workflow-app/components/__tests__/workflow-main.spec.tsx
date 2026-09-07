@@ -5,6 +5,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -24,6 +25,7 @@ const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
 const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
+const mockUseCollaboration = vi.hoisted(() => vi.fn())
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -135,14 +137,10 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
-  useCollaboration: () => ({
-    startCursorTracking: collaborationRuntime.startCursorTracking,
-    stopCursorTracking: collaborationRuntime.stopCursorTracking,
-    onlineUsers: collaborationRuntime.onlineUsers,
-    cursors: collaborationRuntime.cursors,
-    isConnected: collaborationRuntime.isConnected,
-    isEnabled: collaborationRuntime.isEnabled,
-  }),
+  useCollaboration: (...args: unknown[]) => {
+    mockUseCollaboration(...args)
+    return collaborationRuntime
+  },
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
@@ -588,6 +586,16 @@ describe('WorkflowMain', () => {
 
     act(() => collaborationListeners.graphReadyChange?.(true))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('disables collaboration for view-only apps', () => {
+    useAppStore.setState({
+      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    expect(mockUseCollaboration).toHaveBeenCalledWith('app-1', false, expect.any(Object))
   })
 
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {

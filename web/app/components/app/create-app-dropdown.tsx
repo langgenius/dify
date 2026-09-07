@@ -59,7 +59,7 @@ export function CreateAppDropdown({
           disableMotion: menu.controlled,
           highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
           interactionMode: menu.controlled ? 'presentation' : 'interactive',
-          popupClassName: 'w-70 p-0',
+          className: 'w-70 p-0',
         })}
       >
         <div className="py-1">

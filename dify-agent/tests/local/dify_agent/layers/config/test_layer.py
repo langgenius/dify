@@ -19,7 +19,7 @@ from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShell
 
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
+        DifyShellLayerConfig(),
     )
 
 
@@ -133,6 +133,7 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
     assert "dify-agent config note push --help" in layer.runtime_state.config_cli_help
     assert "dify-agent file upload --help" in layer.runtime_state.config_cli_help
+    assert "dify-agent file public-url --help" in layer.runtime_state.config_cli_help
     assert "dify-agent file download --help" in layer.runtime_state.config_cli_help
     assert layer.runtime_state.push_spec_json_schema == ""
     suffix_prompt = layer.build_suffix_prompt()
@@ -140,8 +141,12 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
         "Agent file CLI reference for installed `dify-agent`:"
     )
     assert "$ dify-agent file upload --help" in suffix_prompt
+    assert "$ dify-agent file public-url --help" in suffix_prompt
     assert "$ dify-agent file download --help" in suffix_prompt
     assert suffix_prompt.index("$ dify-agent file upload --help") < suffix_prompt.index(
+        "$ dify-agent file public-url --help"
+    )
+    assert suffix_prompt.index("$ dify-agent file public-url --help") < suffix_prompt.index(
         "$ dify-agent file download --help"
     )
     assert _AGENT_FILE_UPLOAD_REPLY_HINT in suffix_prompt

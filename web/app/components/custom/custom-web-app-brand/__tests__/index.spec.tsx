@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import useWebAppBrand from '../hooks/use-web-app-brand'
 import CustomWebAppBrand from '../index'
 
@@ -21,7 +21,7 @@ const createHookState = (
   isCustomConfigUnavailable: false,
   uploadDisabled: false,
   workspaceLogo: 'https://example.com/workspace-logo.png',
-  isSandbox: false,
+  canReplaceLogo: true,
   canManageCustomBrand: true,
   handleApply: vi.fn(),
   handleCancel: vi.fn(),
@@ -88,7 +88,7 @@ describe('CustomWebAppBrand', () => {
 
     it('should disable the switch when sandbox restrictions are active', () => {
       renderComponent({
-        isSandbox: true,
+        canReplaceLogo: false,
       })
 
       expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')

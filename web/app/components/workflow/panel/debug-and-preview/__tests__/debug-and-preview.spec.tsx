@@ -8,6 +8,7 @@ import DebugAndPreview from '../index'
 const mockHandleRestart = vi.fn()
 const mockHandleNodeCancelRunningStatus = vi.fn()
 const mockHandleEdgeCancelRunningStatus = vi.fn()
+const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 
 vi.mock('reactflow', () => ({
   useNodes: () => [
@@ -23,7 +24,7 @@ vi.mock('reactflow', () => ({
 
 vi.mock('../../../hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
-    handleCancelDebugAndPreviewPanel: vi.fn(),
+    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
 }))
 
@@ -86,10 +87,28 @@ describe('DebugAndPreview', () => {
     })
     const toggle = screen.getByRole('button', { name: /panel\.userInputField/ })
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
     await user.click(toggle)
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('closes the panel through a named keyboard action', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(<DebugAndPreview />, {
+      initialStoreState: {
+        previewPanelWidth: 400,
+      },
+    })
+
+    const closeButton = screen.getByRole('button', { name: /operation\.close/ })
+    closeButton.focus()
+
+    expect(closeButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
   })
 })

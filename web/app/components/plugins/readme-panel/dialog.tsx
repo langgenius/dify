@@ -1,7 +1,7 @@
 'use client'
-
 import type { PluginDetail } from '../types'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { ReadmePanelContent } from './content'
 
@@ -26,9 +26,16 @@ export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDi
             </DialogTitle>
           }
           closeButton={
-            <DialogCloseButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="static size-8 rounded-lg"
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="sm"
+                  className="static size-8 rounded-lg"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
             />
           }
         />

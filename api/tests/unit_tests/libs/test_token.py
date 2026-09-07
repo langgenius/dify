@@ -41,26 +41,32 @@ def test_extract_access_token():
         assert extract_webapp_access_token(request) == expected_webapp
 
 
-def test_real_cookie_name_uses_host_prefix_without_domain(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "https://console.example.com", raising=False)
-    monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "https://api.example.com", raising=False)
-    monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", "", raising=False)
+def test_real_cookie_name_uses_host_prefix_without_domain(config_overrides):
+    config_overrides(
+        CONSOLE_WEB_URL="https://console.example.com",
+        CONSOLE_API_URL="https://api.example.com",
+        COOKIE_DOMAIN="",
+    )
 
     assert token._real_cookie_name("csrf_token") == "__Host-csrf_token"
 
 
-def test_real_cookie_name_without_host_prefix_when_domain_present(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "https://console.example.com", raising=False)
-    monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "https://api.example.com", raising=False)
-    monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", ".example.com", raising=False)
+def test_real_cookie_name_without_host_prefix_when_domain_present(config_overrides):
+    config_overrides(
+        CONSOLE_WEB_URL="https://console.example.com",
+        CONSOLE_API_URL="https://api.example.com",
+        COOKIE_DOMAIN=".example.com",
+    )
 
     assert token._real_cookie_name("csrf_token") == "csrf_token"
 
 
-def test_set_csrf_cookie_includes_domain_when_configured(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "https://console.example.com", raising=False)
-    monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "https://api.example.com", raising=False)
-    monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", ".example.com", raising=False)
+def test_set_csrf_cookie_includes_domain_when_configured(config_overrides):
+    config_overrides(
+        CONSOLE_WEB_URL="https://console.example.com",
+        CONSOLE_API_URL="https://api.example.com",
+        COOKIE_DOMAIN=".example.com",
+    )
 
     response = Response()
     request = MagicMock()
@@ -94,12 +100,14 @@ def test_non_whitelisted_path_requires_csrf():
         token.check_csrf_token(request, "account-1")
 
 
-def test_admin_api_key_header_bypasses_csrf_when_console_cookie_is_present(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(token.dify_config, "ADMIN_API_KEY_ENABLE", True)
-    monkeypatch.setattr(token.dify_config, "ADMIN_API_KEY", "admin-key")
-    monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "http://console.example.com")
-    monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "http://api.example.com")
-    monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", "")
+def test_admin_api_key_header_bypasses_csrf_when_console_cookie_is_present(config_overrides):
+    config_overrides(
+        ADMIN_API_KEY_ENABLE=True,
+        ADMIN_API_KEY="admin-key",
+        CONSOLE_WEB_URL="http://console.example.com",
+        CONSOLE_API_URL="http://api.example.com",
+        COOKIE_DOMAIN="",
+    )
     request = cast(
         Request,
         MockRequest(

@@ -14,6 +14,7 @@ export type FeatureModel = {
   docs_processing: string
   documents_upload_quota: LimitationModel
   education: EducationModel
+  enable_skill: boolean
   human_input_email_delivery_enabled: boolean
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
@@ -45,7 +46,6 @@ export type Quota = {
 }
 
 export type BillingModel = {
-  enabled: boolean
   subscription: SubscriptionModel
 }
 
@@ -66,8 +66,10 @@ export type LicenseLimitationModel = {
 
 export type SubscriptionModel = {
   interval: string
-  plan: string
+  plan: CloudPlan
 }
+
+export type CloudPlan = 'professional' | 'sandbox' | 'team'
 
 export type GetFeaturesData = {
   body?: never

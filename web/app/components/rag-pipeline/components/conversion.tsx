@@ -9,13 +9,14 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
 import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
@@ -27,7 +28,10 @@ const Conversion = () => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
@@ -115,7 +119,10 @@ const Conversion = () => {
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogTitle
+              className="w-full truncate title-2xl-semi-bold text-text-primary"
+              title={confirmTitle}
+            >
               {confirmTitle}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -128,7 +135,7 @@ const Conversion = () => {
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={isPending}
-              disabled={isPending || !canConvertDataset}
+              disabled={!canConvertDataset}
               onClick={handleConvert}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

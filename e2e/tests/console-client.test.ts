@@ -1,6 +1,6 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { Buffer } from 'node:buffer'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleClient } from '../support/api/console-client'
 import { createPlaywrightFetch } from '../support/api/playwright-fetch'
 

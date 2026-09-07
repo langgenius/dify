@@ -166,6 +166,7 @@
                     "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Based on users' choice, retrieve external knowledge to more accurately summarize articles.",
+                    "is_learn_dify": true,
                     "is_listed": true,
                     "position": 5,
                     "privacy_policy": null
@@ -294,6 +295,7 @@
                     "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Basic Workflow Template, a chatbot capable of identifying intents alongside with a knowledge base.",
+                    "is_learn_dify": true,
                     "is_listed": true,
                     "position": 4,
                     "privacy_policy": null
@@ -326,6 +328,7 @@
                     "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Basic Workflow Template, A chatbot with a knowledge base. ",
+                    "is_learn_dify": true,
                     "is_listed": true,
                     "position": 4,
                     "privacy_policy": null

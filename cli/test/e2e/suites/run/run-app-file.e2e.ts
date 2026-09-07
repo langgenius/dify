@@ -11,7 +11,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, expect, inject, it } from 'vite-plus/test'
 import { assertExitCode, assertJson, assertNoAnsi } from '../../helpers/assert.js'
 import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'

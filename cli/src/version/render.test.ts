@@ -1,5 +1,5 @@
 import type { VersionReport } from './probe'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderVersionText } from './render'
 
 function baseClient(overrides: Partial<VersionReport['client']> = {}): VersionReport['client'] {
@@ -69,18 +69,6 @@ describe('renderVersionText', () => {
     expect(text).toContain('install or wait for the stable channel')
   })
 
-  it('appends warning when channel is alpha', () => {
-    const report: VersionReport = {
-      client: baseClient({ channel: 'alpha' }),
-      server: { endpoint: '', reachable: false },
-      compat: { ...compatible(), status: 'unknown', detail: 'server probe skipped' },
-    }
-    const text = renderVersionText(report)
-
-    expect(text).toContain('WARNING: This build is a(n) alpha release')
-    expect(text).toContain('install or wait for the stable channel')
-  })
-
   it('appends warning when channel is edge', () => {
     const report: VersionReport = {
       client: baseClient({ channel: 'edge' }),
@@ -136,7 +124,7 @@ describe('renderVersionText', () => {
         endpoint: 'https://cloud.dify.ai',
         reachable: true,
         version: '99.0.0',
-        edition: 'SELF_HOSTED',
+        edition: 'COMMUNITY',
       },
       compat: {
         minDify: '1.6.0',
@@ -185,7 +173,7 @@ describe('renderVersionText', () => {
           endpoint: 'https://cloud.dify.ai',
           reachable: true,
           version: '99.0.0',
-          edition: 'SELF_HOSTED',
+          edition: 'COMMUNITY',
         },
         compat: {
           minDify: '1.6.0',

@@ -26,7 +26,7 @@ export function MissingReferenceWarning({
           </button>
         }
       />
-      <TooltipContent aria-label={label}>{label}</TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
 }

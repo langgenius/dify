@@ -64,21 +64,21 @@ vi.mock('@/app/components/datasets/settings/index-method', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    defaultModel,
-    onSelect,
+  ModelSelector: ({
+    value,
+    onValueChange,
   }: {
-    defaultModel?: DefaultModel
-    onSelect?: (value: DefaultModel) => void
+    value?: DefaultModel
+    onValueChange?: (value: DefaultModel) => void
   }) => (
     <div
       data-testid="model-selector"
-      data-model={defaultModel?.model ?? ''}
-      data-provider={defaultModel?.provider ?? ''}
+      data-model={value?.model ?? ''}
+      data-provider={value?.provider ?? ''}
     >
       <button
         type="button"
-        onClick={() => onSelect?.({ provider: 'cohere', model: 'embed-english-v3.0' })}
+        onClick={() => onValueChange?.({ provider: 'cohere', model: 'embed-english-v3.0' })}
       >
         select-model
       </button>

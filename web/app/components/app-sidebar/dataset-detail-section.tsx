@@ -19,9 +19,9 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
@@ -43,7 +43,10 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')

@@ -160,7 +160,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
               style={{ overflowX: 'hidden' }}
             >
               <ScrollAreaContent
-                className="flex min-h-full w-full max-w-full min-w-0 flex-col"
+                className="flex min-h-full w-full max-w-full flex-col"
                 style={{ minWidth: 0 }}
               >
                 <AppListCatalog

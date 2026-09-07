@@ -1,7 +1,9 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import type { ModelProviderPluginSummary } from '../../index'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { zPostWorkspacesCurrentPluginListInstallationsIdsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/client'
@@ -45,6 +47,7 @@ let mockHeaderState = {
   isFromMarketplace: true,
   isFromGitHub: false,
 }
+let handleMarketplaceUpdateComplete: (() => Promise<void>) | undefined
 
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
@@ -55,9 +58,12 @@ const openActionsMenu = () => {
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () => ({
   useDetailHeaderState: () => mockHeaderState,
-  usePluginOperations: () => ({
+  usePluginOperations: ({ onUpdate }: { onUpdate?: () => void | Promise<void> }) => ({
     handleUpdate: mockHandleUpdate,
-    handleUpdatedFromMarketplace: mockHandleUpdatedFromMarketplace,
+    handleUpdatedFromMarketplace: async () => {
+      mockHandleUpdatedFromMarketplace()
+      await onUpdate?.()
+    },
     handleDelete: mockHandleDelete,
   }),
 }))
@@ -67,18 +73,23 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components',
     targetVersion,
     isDowngrade,
     isAutoUpgradeEnabled,
+    onUpdatedFromMarketplace,
   }: {
     targetVersion?: { version: string; unique_identifier: string }
     isDowngrade: boolean
     isAutoUpgradeEnabled: boolean
-  }) => (
-    <div
-      data-testid="header-modals"
-      data-target-version={targetVersion?.version ?? ''}
-      data-is-downgrade={String(isDowngrade)}
-      data-auto-upgrade={String(isAutoUpgradeEnabled)}
-    />
-  ),
+    onUpdatedFromMarketplace: () => Promise<void>
+  }) => {
+    handleMarketplaceUpdateComplete = onUpdatedFromMarketplace
+    return (
+      <div
+        data-testid="header-modals"
+        data-target-version={targetVersion?.version ?? ''}
+        data-is-downgrade={String(isDowngrade)}
+        data-auto-upgrade={String(isAutoUpgradeEnabled)}
+      />
+    )
+  },
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
@@ -134,9 +145,50 @@ const createSummary = (
   ...overrides,
 })
 
+const pluginInstallationsResponse = zPostWorkspacesCurrentPluginListInstallationsIdsResponse.parse({
+  plugins: [
+    {
+      checksum: 'checksum',
+      created_at: '2026-09-03T00:00:00Z',
+      declaration: {
+        author: 'langgenius',
+        category: 'model',
+        created_at: '2026-09-03T00:00:00Z',
+        description: { en_US: 'Provider plugin' },
+        icon: 'icon.svg',
+        label: { en_US: 'Provider Plugin' },
+        meta: {},
+        name: 'provider-plugin',
+        plugins: {},
+        resource: {},
+        version: '1.0.0',
+      },
+      endpoints_active: 0,
+      endpoints_setups: 0,
+      id: 'installation-id',
+      meta: {},
+      plugin_id: 'langgenius/provider-plugin',
+      plugin_unique_identifier: 'langgenius/provider-plugin@1.0.0',
+      runtime_type: 'local',
+      source: 'github',
+      tenant_id: 'tenant-id',
+      updated_at: '2026-09-03T00:00:00Z',
+      version: '1.0.0',
+    },
+  ],
+})
+
+const seedPluginDetail = (queryClient: QueryClient) => {
+  const options = consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
+    input: { body: { plugin_ids: ['langgenius/provider-plugin'] } },
+  })
+  queryClient.setQueryData(options.queryKey, pluginInstallationsResponse)
+}
+
 describe('ProviderCardActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    handleMarketplaceUpdateComplete = undefined
     mockHeaderState = {
       modalStates: {
         showPluginInfo: mockShowPluginInfo,
@@ -196,9 +248,7 @@ describe('ProviderCardActions', () => {
     const rendered = render(
       <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
     )
-    const fetchQuery = vi
-      .spyOn(rendered.queryClient, 'fetchQuery')
-      .mockResolvedValue({ plugins: [{}] })
+    seedPluginDetail(rendered.queryClient)
 
     openActionsMenu()
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.info'))
@@ -206,7 +256,6 @@ describe('ProviderCardActions', () => {
     await waitFor(() => {
       expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
     })
-    expect(fetchQuery).toHaveBeenCalledTimes(1)
     expect(mockNormalizeInstalledPluginDetail).toHaveBeenCalledTimes(1)
   })
 
@@ -214,7 +263,6 @@ describe('ProviderCardActions', () => {
     const rendered = render(
       <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
     )
-    const fetchQuery = vi.spyOn(rendered.queryClient, 'fetchQuery')
     const invalidateQueries = vi.spyOn(rendered.queryClient, 'invalidateQueries')
 
     openActionsMenu()
@@ -224,7 +272,7 @@ describe('ProviderCardActions', () => {
     await waitFor(() => {
       expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id')
     })
-    expect(fetchQuery).not.toHaveBeenCalled()
+    expect(mockNormalizeInstalledPluginDetail).not.toHaveBeenCalled()
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
     })
@@ -288,7 +336,7 @@ describe('ProviderCardActions', () => {
         providerLabel="Provider Plugin"
       />,
     )
-    vi.spyOn(rendered.queryClient, 'fetchQuery').mockResolvedValue({ plugins: [{}] })
+    seedPluginDetail(rendered.queryClient)
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
 
@@ -298,6 +346,87 @@ describe('ProviderCardActions', () => {
         unique_identifier: 'plugin-id@2.0.0',
       })
     })
+  })
+
+  it.each([
+    ['upgrade', '1.0.0', '2.0.0'],
+    ['downgrade', '2.0.0', '1.0.0'],
+  ])(
+    'should show the refreshed summary version after a marketplace %s',
+    async (_, current, next) => {
+      const user = userEvent.setup()
+      let resolveRefresh: () => void = () => {}
+      const refreshPromise = new Promise<void>((resolve) => {
+        resolveRefresh = resolve
+      })
+      const onUpdate = vi.fn(() => refreshPromise)
+      mockNormalizeInstalledPluginDetail.mockReturnValue(createDetail({ version: current }))
+
+      const rendered = render(
+        <ProviderCardActions
+          summary={createSummary({ source: 'marketplace', version: current })}
+          providerLabel="Provider Plugin"
+          onUpdate={onUpdate}
+        />,
+      )
+      seedPluginDetail(rendered.queryClient)
+
+      await user.click(screen.getByRole('button', { name: current }))
+      let updateComplete: Promise<void> | undefined
+      await act(async () => {
+        updateComplete = handleMarketplaceUpdateComplete?.()
+      })
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+
+      rendered.rerender(
+        <ProviderCardActions
+          summary={createSummary({ source: 'marketplace', version: next })}
+          providerLabel="Provider Plugin"
+          onUpdate={onUpdate}
+        />,
+      )
+
+      expect(screen.getByText(current)).toBeInTheDocument()
+      expect(screen.getByTestId('header-modals')).toBeInTheDocument()
+
+      await act(async () => {
+        resolveRefresh()
+        await updateComplete
+      })
+
+      expect(await screen.findByText(next)).toBeInTheDocument()
+      expect(screen.queryByText(current)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('header-modals')).not.toBeInTheDocument()
+    },
+  )
+
+  it('should keep the loaded detail when refreshing the summary fails', async () => {
+    const user = userEvent.setup()
+    const refreshError = new Error('refresh failed')
+    const onUpdate = vi.fn().mockRejectedValue(refreshError)
+    mockNormalizeInstalledPluginDetail.mockReturnValue(createDetail({ version: '1.0.0' }))
+    const rendered = render(
+      <ProviderCardActions
+        summary={createSummary({ source: 'marketplace', version: '1.0.0' })}
+        providerLabel="Provider Plugin"
+        onUpdate={onUpdate}
+      />,
+    )
+    seedPluginDetail(rendered.queryClient)
+
+    await user.click(screen.getByRole('button', { name: '1.0.0' }))
+    let thrownError: unknown
+    await act(async () => {
+      try {
+        await handleMarketplaceUpdateComplete?.()
+      } catch (error) {
+        thrownError = error
+      }
+    })
+
+    expect(thrownError).toBe(refreshError)
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+    expect(screen.getByTestId('header-modals')).toBeInTheDocument()
   })
 
   it('should render version controls for marketplace plugins and handle manual version selection', async () => {

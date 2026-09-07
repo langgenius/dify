@@ -57,18 +57,28 @@ export const zLicenseLimitationModel = z.object({
 })
 
 /**
+ * CloudPlan
+ *
+ * Enum representing user plan types in the cloud platform.
+ *
+ * SANDBOX: Free/default plan with limited features
+ * PROFESSIONAL: Professional paid plan
+ * TEAM: Team collaboration paid plan
+ */
+export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
+
+/**
  * SubscriptionModel
  */
 export const zSubscriptionModel = z.object({
   interval: z.string().default(''),
-  plan: z.string().default('sandbox'),
+  plan: zCloudPlan.default('sandbox'),
 })
 
 /**
  * BillingModel
  */
 export const zBillingModel = z.object({
-  enabled: z.boolean().default(false),
   subscription: zSubscriptionModel.default({ interval: '', plan: 'sandbox' }),
 })
 
@@ -83,15 +93,13 @@ export const zFeatureModel = z.object({
     usage: 0,
   }),
   apps: zLimitationModel.default({ limit: 10, size: 0 }),
-  billing: zBillingModel.default({
-    enabled: false,
-    subscription: { interval: '', plan: 'sandbox' },
-  }),
+  billing: zBillingModel.default({ subscription: { interval: '', plan: 'sandbox' } }),
   can_replace_logo: z.boolean().default(false),
   dataset_operator_enabled: z.boolean().default(false),
   docs_processing: z.string().default('standard'),
   documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
   education: zEducationModel.default({ activated: false, enabled: false }),
+  enable_skill: z.boolean().default(true),
   human_input_email_delivery_enabled: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),

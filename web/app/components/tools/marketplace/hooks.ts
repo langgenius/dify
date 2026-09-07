@@ -29,13 +29,13 @@ export const useMarketplace = (
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
-    resetPlugins,
+    resetQueryParams,
     queryPlugins,
     isLoading: isPluginsLoading,
     fetchNextPage,
     hasNextPage,
     page: pluginsPage,
-  } = useMarketplacePlugins()
+  } = useMarketplacePlugins(enabled)
   const searchPluginTextRef = useRef(searchPluginText)
   const filterPluginTagsRef = useRef(filterPluginTags)
 
@@ -72,7 +72,7 @@ export const useMarketplace = (
           exclude,
           type: 'plugin',
         })
-        resetPlugins()
+        resetQueryParams()
       }
     }
   }, [
@@ -80,7 +80,7 @@ export const useMarketplace = (
     filterPluginTags,
     queryPlugins,
     queryMarketplaceCollectionsAndPlugins,
-    resetPlugins,
+    resetQueryParams,
     exclude,
     enabled,
     isSuccess,

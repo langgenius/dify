@@ -122,7 +122,7 @@ class TestAppDslService:
             patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
             patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -139,7 +139,7 @@ class TestAppDslService:
                 "gpt-3.5-turbo",
             )
 
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
             yield {
@@ -153,8 +153,8 @@ class TestAppDslService:
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         fake = Faker()
-        with patch("services.account_service.FeatureService") as mock_account_feature_service:
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+        with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+            mock_account_feature_service.is_registration_allowed.return_value = True
             account = AccountService.create_account(
                 email=fake.email(),
                 name=fake.name(),
@@ -600,6 +600,8 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
 
         pending = PendingData(
+            tenant_id=_DEFAULT_TENANT_ID,
+            account_id=_DEFAULT_ACCOUNT_ID,
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(),
             name="name",
@@ -609,11 +611,7 @@ class TestAppDslService:
             icon_background="#fff",
             app_id=None,
         )
-        redis_client.setex(
-            redis_key,
-            IMPORT_INFO_REDIS_EXPIRY,
-            pending.model_dump_json(exclude={"tenant_id", "account_id"}),
-        )
+        redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, pending.model_dump_json())
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
@@ -1010,6 +1008,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1021,6 +1020,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1318,7 +1318,7 @@ class TestAppDslService:
 
         with pytest.raises(
             WorkflowNotFoundError,
-            match="Missing draft workflow configuration, please check.",
+            match="Workflow version not found. Workflow ID:",
         ):
             AppDslService.export_dsl(
                 app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers

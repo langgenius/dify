@@ -428,7 +428,6 @@ export function ProcessingTasksDrawer({
                     <Button
                       ref={permissionQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-                      aria-busy={permissionQueryFetching}
                       className="mt-3"
                       loading={permissionQueryFetching}
                       size="small"
@@ -452,7 +451,6 @@ export function ProcessingTasksDrawer({
                     <Button
                       ref={taskQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.tasksErrorDescription'])}`}
-                      aria-busy={taskQueryFetching}
                       className="mt-3"
                       loading={taskQueryFetching}
                       size="small"
@@ -476,7 +474,6 @@ export function ProcessingTasksDrawer({
                     <Button
                       ref={documentQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                      aria-busy={documentQueryFetching}
                       className="mt-3"
                       loading={documentQueryFetching}
                       size="small"
@@ -560,8 +557,6 @@ export function ProcessingTasksDrawer({
                                   : undefined
                               }
                               size="small"
-                              aria-busy={pendingActions.has(task.id)}
-                              disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
                               onBlur={(event) => {
                                 if (event.relatedTarget) focusedTaskActionRef.current = null
@@ -581,8 +576,6 @@ export function ProcessingTasksDrawer({
                                   : undefined
                               }
                               size="small"
-                              aria-busy={pendingActions.has(task.id)}
-                              disabled={pendingActions.has(task.id)}
                               loading={pendingActions.has(task.id)}
                               onBlur={(event) => {
                                 if (event.relatedTarget) focusedTaskActionRef.current = null
@@ -608,7 +601,6 @@ export function ProcessingTasksDrawer({
                   <div className="mt-4 flex justify-center">
                     <Button
                       ref={loadMoreButtonRef}
-                      aria-busy={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       loading={isFetchingNextTaskPage || isFetchingNextDocumentPage}
                       onBlur={() => {
                         loadMoreRequestedRef.current = false

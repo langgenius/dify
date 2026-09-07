@@ -45,7 +45,7 @@ def test_get_pipeline_template_detail(mocker: MockerFixture, sqlite_session: Ses
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail("tpl-1", session=sqlite_session)
+    detail = retrieval.get_pipeline_template_detail("tpl-1", "tenant-1", session=sqlite_session)
 
     assert detail == {"id": "tpl-1", "name": "Template 1"}
     assert not sqlite_session.in_transaction()
@@ -79,7 +79,7 @@ def test_get_pipeline_template_detail_returns_none_for_unknown_id(
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("nonexistent-id", session=sqlite_session)
+    result = retrieval.get_pipeline_template_detail("nonexistent-id", "tenant-1", session=sqlite_session)
 
     assert result is None
     assert not sqlite_session.in_transaction()

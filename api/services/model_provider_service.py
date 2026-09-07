@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
 from core.plugin.plugin_service import PluginService
 from core.provider_manager import ProviderManager
+from enums import DeploymentEdition
 from extensions import ext_hosting_provider
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from models.provider import (
@@ -296,7 +297,7 @@ class ModelProviderService:
     ) -> ProviderType:
         if state.preferred_provider_type is not None:
             return state.preferred_provider_type
-        if dify_config.EDITION == "CLOUD" and system_enabled:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_enabled:
             return ProviderType.SYSTEM
         if custom_present:
             return ProviderType.CUSTOM

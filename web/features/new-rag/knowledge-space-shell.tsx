@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
@@ -20,6 +20,26 @@ function responseStatus(error: unknown) {
     const data = error.data
     if (data && typeof data === 'object' && 'status' in data) return data.status
   }
+}
+
+const knowledgeSpacePageTitle = (
+  pathname: string,
+  t: ReturnType<typeof useTranslation<'dataset'>>['t'],
+) => {
+  if (pathname.includes('/sources/new')) return t(($) => $['newKnowledge.addSource'])
+  if (pathname.includes('/sources')) return t(($) => $['newKnowledge.sources'])
+  if (pathname.includes('/documents')) return t(($) => $['newKnowledge.documents'])
+
+  return t(($) => $.knowledge)
+}
+
+const isDocumentDetailPath = (pathname: string) =>
+  /^\/datasets\/new\/[^/]+\/documents\/[^/]+\/?$/.test(pathname)
+
+function KnowledgeSpacePageTitle({ title }: { title: string }) {
+  useDocumentTitle(title)
+
+  return null
 }
 
 export function KnowledgeSpaceShell({
@@ -43,44 +63,59 @@ export function KnowledgeSpaceShell({
       return failureCount < 3
     },
   })
-  useDocumentTitle(knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge))
+  const pageTitle = knowledgeSpacePageTitle(pathname, t)
+  const documentTitle = `${pageTitle} · ${knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge)}`
+  const documentTitleOwnedByChild =
+    isDocumentDetailPath(pathname) &&
+    !knowledgeSpaceQuery.isPending &&
+    !knowledgeSpaceQuery.error &&
+    !!knowledgeSpaceQuery.data
+  const pageTitleElement = !documentTitleOwnedByChild ? (
+    <KnowledgeSpacePageTitle title={documentTitle} />
+  ) : null
 
   if (knowledgeSpaceQuery.isPending)
     return (
-      <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
-        <Loading />
-      </div>
+      <>
+        {pageTitleElement}
+        <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+          <Loading />
+        </div>
+      </>
     )
 
   if (knowledgeSpaceQuery.error || !knowledgeSpaceQuery.data) {
     const status = responseStatus(knowledgeSpaceQuery.error)
     const notFound = status === 403 || status === 404
     return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center px-6 text-center">
-        <span aria-hidden className="i-ri-book-open-line size-8 text-text-tertiary" />
-        <h1 className="mt-4 title-2xl-semi-bold text-text-primary">
-          {t(($) =>
-            notFound ? $['newKnowledge.notFoundTitle'] : $['newKnowledge.detailErrorTitle'],
-          )}
-        </h1>
-        <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-          {t(($) =>
-            notFound
-              ? $['newKnowledge.notFoundDescription']
-              : $['newKnowledge.detailErrorDescription'],
-          )}
-        </p>
-        <div className="mt-5 flex gap-2">
-          <Button render={<Link href={newKnowledgeListPath} />}>
-            {t(($) => $['newKnowledge.backToList'])}
-          </Button>
-          {!notFound && (
-            <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
-              {tCommon(($) => $['operation.retry'])}
-            </Button>
-          )}
+      <>
+        {pageTitleElement}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center px-6 text-center">
+          <span aria-hidden className="i-ri-book-open-line size-8 text-text-tertiary" />
+          <h1 className="mt-4 title-2xl-semi-bold text-text-primary">
+            {t(($) =>
+              notFound ? $['newKnowledge.notFoundTitle'] : $['newKnowledge.detailErrorTitle'],
+            )}
+          </h1>
+          <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
+            {t(($) =>
+              notFound
+                ? $['newKnowledge.notFoundDescription']
+                : $['newKnowledge.detailErrorDescription'],
+            )}
+          </p>
+          <div className="mt-5 flex gap-2">
+            <Link href={newKnowledgeListPath} className={buttonVariants()}>
+              {t(($) => $['newKnowledge.backToList'])}
+            </Link>
+            {!notFound && (
+              <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -94,6 +129,7 @@ export function KnowledgeSpaceShell({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body p-1">
+      {pageTitleElement}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:flex-row">
         <aside className="flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs sm:w-60">
           <div className="flex h-12 min-w-0 items-center px-1 pr-2">

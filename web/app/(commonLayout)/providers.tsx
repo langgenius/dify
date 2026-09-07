@@ -5,17 +5,14 @@ import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import { ExternalServiceSync } from './external-service-sync'
 import { CommonLayoutHydrationBoundary } from './hydration-boundary'
-import { ProfileBootstrapGate } from './profile-bootstrap-gate'
 
 export async function ConsoleRuntimeProviders({ children }: { children: ReactNode }) {
   return (
     <>
       <OAuthRegistrationAnalytics />
       <CommonLayoutHydrationBoundary>
-        <ProfileBootstrapGate>
-          <ExternalServiceSync />
-          {children}
-        </ProfileBootstrapGate>
+        <ExternalServiceSync />
+        {children}
       </CommonLayoutHydrationBoundary>
     </>
   )
