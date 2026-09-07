@@ -289,7 +289,11 @@ def _message_data(**overrides):
         "inputs": "inputs",
     }
     data.update(overrides)
-    return SimpleNamespace(**data, to_dict=lambda: data)
+    return SimpleNamespace(
+        **data,
+        agent_thoughts_with_session=lambda *, session: data["agent_thoughts"],
+        to_dict=lambda: data,
+    )
 
 
 def test_encrypt_decrypt_obfuscate_and_cache(
