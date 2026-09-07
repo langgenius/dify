@@ -422,7 +422,7 @@ class WeaviateVector(BaseVector):
             try:
                 col.data.delete_by_id(uid)
             except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
+                if e.status_code != 404:
                     raise
 
         # 2. Backward-compatible catch-up: the legacy UUID5 path (or any
@@ -433,7 +433,7 @@ class WeaviateVector(BaseVector):
             try:
                 col.data.delete_many(where=Filter.by_property("doc_id").contains_any(ids))
             except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
+                if e.status_code != 404:
                     raise
 
     @override
