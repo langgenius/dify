@@ -218,7 +218,6 @@ vi.mock('@/context/provider-context', () => ({
     hasSettedApiKey: true,
     plan: { type: 'free' },
     enableBilling: false,
-    onPlanInfoChanged: vi.fn(),
   }),
 }))
 

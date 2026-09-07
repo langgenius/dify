@@ -34,7 +34,6 @@ import AppIconPicker from '../../base/app-icon-picker'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
-  onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
@@ -50,7 +49,7 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
   )
 }
 
-function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
+function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
   const nameInputId = useId()
@@ -120,7 +119,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       }
 
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      onSuccess()
       onClose()
       getRedirection(app, push, {
         currentUserId,
@@ -146,7 +144,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
     appMode,
     appIcon,
     description,
-    onSuccess,
     onClose,
     push,
     workspacePermissionKeys,
@@ -420,7 +417,6 @@ type CreateAppDialogProps = CreateAppProps & {
 const CreateAppModal = ({
   show,
   onClose,
-  onSuccess,
   onCreateFromTemplate,
   defaultAppMode,
 }: CreateAppDialogProps) => {
@@ -435,7 +431,6 @@ const CreateAppModal = ({
     >
       <CreateApp
         onClose={onClose}
-        onSuccess={onSuccess}
         onCreateFromTemplate={onCreateFromTemplate}
         defaultAppMode={defaultAppMode}
       />

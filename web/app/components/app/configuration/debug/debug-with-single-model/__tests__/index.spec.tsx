@@ -125,7 +125,6 @@ function createMockProviderContext(
     ttsDefaultModel: null,
     agentThoughtDefaultModel: null,
     updateModelList: vi.fn(),
-    onPlanInfoChanged: vi.fn(),
     refreshModelProviders: vi.fn(),
     ...overrides,
   } as ProviderContextState

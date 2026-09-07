@@ -60,11 +60,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
       queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
     ]).then(() => undefined)
 
-  const refreshFeatures = () =>
-    queryClient
-      .invalidateQueries({ queryKey: consoleQuery.features.get.key() })
-      .then(() => undefined)
-
   // #region Zendesk conversation fields
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
@@ -99,7 +94,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isFetchedPlanInfo,
         enableBilling,
         enableSkill,
-        onPlanInfoChanged: refreshFeatures,
         enableReplaceWebAppLogo,
         modelLoadBalancingEnabled,
         enableEducationPlan,

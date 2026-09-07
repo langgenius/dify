@@ -125,18 +125,16 @@ const defaultPlanUsage = {
 
 const renderModal = () => {
   const onClose = vi.fn()
-  const onSuccess = vi.fn()
   const onCreateFromTemplate = vi.fn()
   render(
     <CreateAppModal
       show
       onClose={onClose}
-      onSuccess={onSuccess}
       onCreateFromTemplate={onCreateFromTemplate}
       defaultAppMode={AppModeEnum.ADVANCED_CHAT}
     />,
   )
-  return { onClose, onSuccess, onCreateFromTemplate }
+  return { onClose, onCreateFromTemplate }
 }
 
 describe('CreateAppModal', () => {
@@ -168,7 +166,7 @@ describe('CreateAppModal', () => {
       maintainer: 'user-1',
     }
     mockCreateApp.mockResolvedValue(mockApp as App)
-    const { onClose, onSuccess } = renderModal()
+    const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
@@ -190,8 +188,7 @@ describe('CreateAppModal', () => {
       appMode: AppModeEnum.ADVANCED_CHAT,
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onSuccess).toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',

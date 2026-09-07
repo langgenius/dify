@@ -583,6 +583,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         post: {
           mutationOptions: {
             onSuccess: (_data, _variables, _onMutateResult, context) => {
+              void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
               void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
               void context.client.invalidateQueries({
                 queryKey: consoleQuery.apps.starred.get.key(),
@@ -596,9 +597,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         imports: {
           post: {
             mutationOptions: {
-              onSuccess: (data, _variables, _onMutateResult, context) => {
+              onSuccess: (data, variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
+                if (!variables.body.app_id) {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.features.get.key(),
+                  })
+                }
                 void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.apps.starred.get.key(),
@@ -617,6 +623,9 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     if (data.status !== 'completed' && data.status !== 'completed-with-warnings')
                       return
 
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.features.get.key(),
+                    })
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.get.key(),
                     })
@@ -651,8 +660,9 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
           delete: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) =>
-                Promise.all([
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
+                return Promise.all([
                   context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.starred.get.key(),
@@ -660,7 +670,8 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.recent.get.key(),
                   }),
-                ]),
+                ])
+              },
             },
           },
           put: {
@@ -732,7 +743,12 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           copy: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                onSuccess: (data, _variables, _onMutateResult, context) => {
+                  if (!('mode' in data)) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.features.get.key(),
+                  })
                   void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.starred.get.key(),
