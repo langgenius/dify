@@ -4001,11 +4001,8 @@
     }
   },
   "web/app/components/workflow/nodes/loop/components/loop-variables/form-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
