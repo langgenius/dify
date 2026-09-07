@@ -5133,7 +5133,7 @@
   },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 12
+      "count": 11
     }
   },
   "web/service/use-datasource.ts": {

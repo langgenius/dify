@@ -1,10 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProviderContext } from '@/context/provider-context'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { consoleQuery } from '@/service/client'
 import { MessageFastPlus } from '../../base/icons/src/vender/line/communication'
 import UsageInfo from '../usage-info'
+import { parseLimit } from '../utils'
 
 type Props = Readonly<{
   className?: string
@@ -12,15 +16,21 @@ type Props = Readonly<{
 
 const Usage: FC<Props> = ({ className }) => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const { usage, total } = plan
+  const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
+  if (!features)
+    return (
+      <SkeletonRectangle
+        aria-busy="true"
+        className={cn('h-24 animate-pulse rounded-xl', className)}
+      />
+    )
   return (
     <UsageInfo
       className={className}
       Icon={MessageFastPlus}
       name={t(($) => $['annotatedResponse.quotaTitle'], { ns: 'billing' })}
-      usage={usage.annotatedResponse}
-      total={total.annotatedResponse}
+      usage={features.annotation_quota_limit.size}
+      total={parseLimit(features.annotation_quota_limit.limit)}
     />
   )
 }

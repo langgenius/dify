@@ -178,7 +178,6 @@ describe('WorkspaceCard', () => {
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
       enableEducationPlan: false,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
@@ -343,7 +342,6 @@ describe('WorkspaceCard', () => {
     })
     vi.mocked(useProviderContext).mockReturnValue({
       enableEducationPlan: false,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 

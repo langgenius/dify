@@ -96,6 +96,7 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     ZENDESK_FIELD_IDS: {
+      PLAN: '',
       ENVIRONMENT: 'environment-field',
       VERSION: 'version-field',
       EMAIL: 'email-field',
@@ -113,6 +114,15 @@ vi.mock('@/features/account-profile/client', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    features: {
+      get: {
+        queryOptions: (options: object) => ({
+          queryKey: ['features'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     systemFeatures: {
       get: {
         queryOptions: () => ({
@@ -512,6 +522,42 @@ describe('Console bootstrap', () => {
         expect(properties).not.toHaveProperty('workspace_status')
         expect(flushRegistrationSuccess).toHaveBeenCalled()
       })
+    })
+
+    it('syncs the actual plan only after features arrive and follows plan changes', async () => {
+      ZENDESK_FIELD_IDS.PLAN = 'plan-field'
+      try {
+        const { queryClient } = renderConsoleBootstrap()
+        await waitFor(() => expect(zendeskRuntime.setConversationFields).toHaveBeenCalled())
+        expect(
+          vi
+            .mocked(zendeskRuntime.setConversationFields)
+            .mock.calls.flatMap(([fields]) => fields)
+            .some((field) => field.id === 'plan-field'),
+        ).toBe(false)
+        act(() =>
+          queryClient.setQueryData(['features'], {
+            billing: { subscription: { plan: 'professional' } },
+          }),
+        )
+        await waitFor(() =>
+          expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
+            [{ id: 'plan-field', value: 'professional-plan' }],
+            'CLOUD',
+          ),
+        )
+        act(() =>
+          queryClient.setQueryData(['features'], { billing: { subscription: { plan: 'team' } } }),
+        )
+        await waitFor(() =>
+          expect(zendeskRuntime.setConversationFields).toHaveBeenCalledWith(
+            [{ id: 'plan-field', value: 'team-plan' }],
+            'CLOUD',
+          ),
+        )
+      } finally {
+        ZENDESK_FIELD_IDS.PLAN = ''
+      }
     })
 
     it('should not sync Zendesk fields outside cloud deployments', async () => {

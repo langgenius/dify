@@ -1,4 +1,4 @@
-import type { CloudPlan, GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import dayjs from 'dayjs'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
 
@@ -23,13 +23,14 @@ export const getPlanVectorSpaceLimitMB = (planType: CloudPlan): number => {
   return parseVectorSpaceToMB(ALL_PLANS[planType].vectorSpace)
 }
 
-const parseLimit = (limit: number) => {
+// The API uses 0 for unlimited count quotas.
+export const parseLimit = (limit: number) => {
   if (limit === 0) return NUM_INFINITE
 
   return limit
 }
 
-const parseRateLimit = (limit: number) => {
+export const parseRateLimit = (limit: number) => {
   if (limit === 0 || limit === -1) return NUM_INFINITE
 
   return limit
@@ -62,35 +63,4 @@ export const getResetInDaysFromDate = (resetDate: number) => {
   if (Number.isNaN(diff) || diff < 0) return null
 
   return diff
-}
-
-export const parseCurrentPlan = (data: GetFeaturesResponse) => {
-  const planType = data.billing.subscription.plan
-  const vectorSpaceLimit = getPlanVectorSpaceLimitMB(planType)
-
-  return {
-    type: planType,
-    usage: {
-      vectorSpace: 0,
-      buildApps: data.apps.size,
-      teamMembers: data.members.size,
-      annotatedResponse: data.annotation_quota_limit.size,
-      documentsUploadQuota: data.documents_upload_quota.size,
-      apiRateLimit: data.api_rate_limit.usage,
-      triggerEvents: data.trigger_event.usage,
-    },
-    total: {
-      vectorSpace: vectorSpaceLimit,
-      buildApps: parseLimit(data.apps.limit),
-      teamMembers: parseLimit(data.members.limit),
-      annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
-      documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
-      apiRateLimit: parseRateLimit(data.api_rate_limit.limit),
-      triggerEvents: parseRateLimit(data.trigger_event.limit),
-    },
-    reset: {
-      apiRateLimit: getResetInDaysFromDate(data.api_rate_limit.reset_date),
-      triggerEvents: getResetInDaysFromDate(data.trigger_event.reset_date),
-    },
-  }
 }

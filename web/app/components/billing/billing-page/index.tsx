@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
@@ -23,7 +24,11 @@ const Billing: FC = () => {
 
   return (
     <div>
-      <PlanComp loc="billing-page" />
+      <React.Suspense
+        fallback={<SkeletonRectangle className="h-96 w-full animate-pulse rounded-2xl" />}
+      >
+        <PlanComp loc="billing-page" />
+      </React.Suspense>
       {deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager && (
         <a
           className={cn(

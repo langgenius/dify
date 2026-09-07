@@ -10,16 +10,17 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { getDocDownloadUrl } from '@/service/common'
 import { downloadUrl } from '@/utils/download'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
@@ -101,10 +102,15 @@ type ComplianceDocRowItemProps = {
 
 function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: docName !== DocName.GDPR,
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const { setShowPricingModal } = useModalContext()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
-  const isFreePlan = plan.type === 'sandbox'
+  const isFreePlan = plan === 'sandbox'
 
   const { isPending, mutate: downloadCompliance } = useMutation({
     mutationKey: ['downloadCompliance', docName],
@@ -127,7 +133,9 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     [DocName.GDPR]: ['team', 'professional', 'sandbox'],
   }
 
-  const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[docName].includes(plan.type)
+  const isCurrentPlanCanDownload =
+    docName === DocName.GDPR ||
+    (plan !== undefined && whichPlanCanDownloadCompliance[docName].includes(plan))
 
   const handleSelect = useCallback(() => {
     if (isCurrentPlanCanDownload) {
@@ -157,20 +165,24 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     <DropdownMenuItem
       className="h-10 justify-between py-1 pr-2 pl-1"
       closeOnClick={!isCurrentPlanCanDownload}
-      disabled={isPending}
+      disabled={isPending || (docName !== DocName.GDPR && !plan)}
       onClick={handleSelect}
     >
       {icon}
       <div className="grow truncate px-1 system-md-regular text-text-secondary" title={labelTitle}>
         {label}
       </div>
-      <ComplianceDocActionVisual
-        isCurrentPlanCanDownload={isCurrentPlanCanDownload}
-        isPending={isPending}
-        tooltipText={upgradeTooltip[plan.type]}
-        downloadText={t(($) => $['operation.download'], { ns: 'common' })}
-        upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
-      />
+      {docName !== DocName.GDPR && !plan ? (
+        <SkeletonRectangle className="h-5 w-16 animate-pulse" />
+      ) : (
+        <ComplianceDocActionVisual
+          isCurrentPlanCanDownload={isCurrentPlanCanDownload}
+          isPending={isPending}
+          tooltipText={plan ? upgradeTooltip[plan] : ''}
+          downloadText={t(($) => $['operation.download'], { ns: 'common' })}
+          upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+        />
+      )}
     </DropdownMenuItem>
   )
 }
