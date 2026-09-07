@@ -1,5 +1,4 @@
 import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -35,11 +34,6 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-const mockUseProviderContext = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
-}))
-
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')
   return {
@@ -62,13 +56,6 @@ describe('EditCustomCollectionModal', () => {
       parameters_schema: [],
       schema_type: 'openapi',
     })
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: 'sandbox',
-      },
-
-      webappCopyrightEnabled: true,
-    } as ProviderContextState)
   })
 
   const renderModal = (props?: {

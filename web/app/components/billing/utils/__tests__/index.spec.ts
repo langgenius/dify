@@ -1,5 +1,10 @@
-import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
-import { getPlanVectorSpaceLimitMB, parseCurrentPlan, parseVectorSpaceToMB } from '../index'
+import {
+  getPlanVectorSpaceLimitMB,
+  getResetInDaysFromDate,
+  parseLimit,
+  parseRateLimit,
+  parseVectorSpaceToMB,
+} from '../index'
 
 describe('billing utils', () => {
   // parseVectorSpaceToMB tests
@@ -42,275 +47,34 @@ describe('billing utils', () => {
     })
   })
 
-  // parseCurrentPlan tests
-  describe('parseCurrentPlan', () => {
-    const createMockPlanData = (
-      overrides: Partial<GetFeaturesResponse> = {},
-    ): GetFeaturesResponse => ({
-      annotation_quota_limit: {
-        size: 5,
-        limit: 10,
-      },
-      api_rate_limit: {
-        usage: 0,
-        limit: 5000,
-        reset_date: -1,
-      },
-      apps: {
-        size: 2,
-        limit: 5,
-      },
-      billing: {
-        subscription: {
-          interval: '',
-          plan: 'sandbox',
-        },
-      },
-      can_replace_logo: false,
-      dataset_operator_enabled: false,
-      docs_processing: '',
-      documents_upload_quota: {
-        size: 20,
-        limit: 0,
-      },
-      education: {
-        activated: false,
-        enabled: false,
-      },
-      enable_skill: false,
-      human_input_email_delivery_enabled: false,
-      is_allow_transfer_workspace: false,
-      knowledge_pipeline: {
-        publish_enabled: false,
-      },
-      knowledge_rate_limit: 0,
-      members: {
-        size: 1,
-        limit: 1,
-      },
-      model_load_balancing_enabled: false,
-      next_credit_reset_date: 0,
-      trigger_event: {
-        usage: 0,
-        limit: 3000,
-        reset_date: -1,
-      },
-      vector_space: null,
-      webapp_copyright_enabled: false,
-      workspace_members: {
-        enabled: false,
-        size: 0,
-        limit: 0,
-      },
-      ...overrides,
+  describe('quota reset dates', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(2026, 8, 7, 12))
     })
-
-    it('should parse plan type correctly', () => {
-      const data = createMockPlanData()
-      const result = parseCurrentPlan(data)
-      expect(result.type).toBe('sandbox')
+    afterEach(() => vi.useRealTimers())
+    it('handles Unix timestamps in seconds and milliseconds', () => {
+      const resetDate = new Date(2026, 8, 14).getTime()
+      expect(getResetInDaysFromDate(resetDate)).toBe(7)
+      expect(getResetInDaysFromDate(resetDate / 1000)).toBe(7)
     })
-
-    it('should parse usage values correctly', () => {
-      const data = createMockPlanData()
-      const result = parseCurrentPlan(data)
-
-      expect(result.usage.vectorSpace).toBe(0)
-      expect(result.usage.buildApps).toBe(2)
-      expect(result.usage.teamMembers).toBe(1)
-      expect(result.usage.annotatedResponse).toBe(5)
-      expect(result.usage.documentsUploadQuota).toBe(20)
+    it('handles calendar dates and omits absent or past resets', () => {
+      expect(getResetInDaysFromDate(20260914)).toBe(7)
+      expect(getResetInDaysFromDate(0)).toBeNull()
+      expect(getResetInDaysFromDate(-1)).toBeNull()
+      expect(getResetInDaysFromDate(20260901)).toBeNull()
     })
+  })
 
-    it('should parse total limits correctly', () => {
-      const data = createMockPlanData()
-      const result = parseCurrentPlan(data)
-
-      expect(result.total.vectorSpace).toBe(50)
-      expect(result.total.buildApps).toBe(5)
-      expect(result.total.teamMembers).toBe(1)
-      expect(result.total.annotatedResponse).toBe(10)
+  describe('quota display', () => {
+    it('displays zero count limits as unlimited', () => {
+      expect(parseLimit(0)).toBe(-1)
+      expect(parseLimit(10)).toBe(10)
     })
-
-    it('should not read vector space usage from current plan info', () => {
-      const data = createMockPlanData()
-      const result = parseCurrentPlan(data)
-
-      expect(result.usage.vectorSpace).toBe(0)
-      expect(result.total.vectorSpace).toBe(50)
-    })
-
-    it('should derive vector space total from plan config', () => {
-      const data = createMockPlanData({
-        billing: {
-          subscription: {
-            interval: '',
-            plan: 'professional',
-          },
-        },
-      })
-      const result = parseCurrentPlan(data)
-
-      expect(result.usage.vectorSpace).toBe(0)
-      expect(result.total.vectorSpace).toBe(5 * 1024)
-    })
-
-    it('should convert 0 limits to NUM_INFINITE (-1)', () => {
-      const data = createMockPlanData({
-        documents_upload_quota: {
-          size: 20,
-          limit: 0,
-        },
-      })
-      const result = parseCurrentPlan(data)
-      expect(result.total.documentsUploadQuota).toBe(-1)
-    })
-
-    it('should handle api_rate_limit quota', () => {
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: 0,
-        },
-      })
-      const result = parseCurrentPlan(data)
-
-      expect(result.usage.apiRateLimit).toBe(100)
-      expect(result.total.apiRateLimit).toBe(5000)
-    })
-
-    it('should handle trigger_event quota', () => {
-      const data = createMockPlanData({
-        trigger_event: {
-          usage: 50,
-          limit: 3000,
-          reset_date: 0,
-        },
-      })
-      const result = parseCurrentPlan(data)
-
-      expect(result.usage.triggerEvents).toBe(50)
-      expect(result.total.triggerEvents).toBe(3000)
-    })
-
-    it('should convert 0 or -1 rate limits to NUM_INFINITE', () => {
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 0,
-          limit: 0,
-          reset_date: 0,
-        },
-      })
-      const result = parseCurrentPlan(data)
-      expect(result.total.apiRateLimit).toBe(-1)
-
-      const data2 = createMockPlanData({
-        api_rate_limit: {
-          usage: 0,
-          limit: -1,
-          reset_date: 0,
-        },
-      })
-      const result2 = parseCurrentPlan(data2)
-      expect(result2.total.apiRateLimit).toBe(-1)
-    })
-
-    it('should handle reset dates with milliseconds timestamp', () => {
-      const futureDate = Date.now() + 86400000 // Tomorrow in ms
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: futureDate,
-        },
-      })
-      const result = parseCurrentPlan(data)
-
-      expect(result.reset.apiRateLimit).toBe(1)
-    })
-
-    it('should handle reset dates with seconds timestamp', () => {
-      const futureDate = Math.floor(Date.now() / 1000) + 86400 // Tomorrow in seconds
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: futureDate,
-        },
-      })
-      const result = parseCurrentPlan(data)
-
-      expect(result.reset.apiRateLimit).toBe(1)
-    })
-
-    it('should handle reset dates in YYYYMMDD format', () => {
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const year = tomorrow.getFullYear()
-      const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
-      const day = String(tomorrow.getDate()).padStart(2, '0')
-      const dateNumber = Number.parseInt(`${year}${month}${day}`, 10)
-
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: dateNumber,
-        },
-      })
-      const result = parseCurrentPlan(data)
-
-      expect(result.reset.apiRateLimit).toBe(1)
-    })
-
-    it('should return null for invalid reset dates', () => {
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: 0,
-        },
-      })
-      const result = parseCurrentPlan(data)
-      expect(result.reset.apiRateLimit).toBeNull()
-    })
-
-    it('should return null for negative reset dates', () => {
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: -1,
-        },
-      })
-      const result = parseCurrentPlan(data)
-      expect(result.reset.apiRateLimit).toBeNull()
-    })
-
-    it('should return null when reset date is in the past', () => {
-      const pastDate = Date.now() - 86400000 // Yesterday
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: pastDate,
-        },
-      })
-      const result = parseCurrentPlan(data)
-      expect(result.reset.apiRateLimit).toBeNull()
-    })
-
-    it('should return null for unrecognized date format', () => {
-      const data = createMockPlanData({
-        api_rate_limit: {
-          usage: 100,
-          limit: 5000,
-          reset_date: 12345, // Unrecognized format
-        },
-      })
-      const result = parseCurrentPlan(data)
-      expect(result.reset.apiRateLimit).toBeNull()
+    it('preserves unlimited rate limits in either API representation', () => {
+      expect(parseRateLimit(0)).toBe(-1)
+      expect(parseRateLimit(-1)).toBe(-1)
+      expect(parseRateLimit(5000)).toBe(5000)
     })
   })
 })
