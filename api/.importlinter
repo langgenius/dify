@@ -279,6 +279,20 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:message-file-preview-service-boundary]
+name = Message file preview application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.message_file_preview_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:upload-file-delivery-service-boundary]
 name = Upload file delivery application service is framework and persistence neutral
 type = forbidden

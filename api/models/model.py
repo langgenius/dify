@@ -1703,10 +1703,6 @@ class Message(Base):
 
         return re_sign_file_url_answer
 
-    @property
-    def user_feedback(self) -> MessageFeedback | None:
-        return self.user_feedback_with_session(session=db.session())
-
     def user_feedback_with_session(self, *, session: Session) -> MessageFeedback | None:
         return session.scalar(
             select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
@@ -1720,23 +1716,11 @@ class Message(Base):
             select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
         )
 
-    @property
-    def feedbacks(self) -> Sequence[MessageFeedback]:
-        return self.feedbacks_with_session(session=db.session())
-
     def feedbacks_with_session(self, *, session: Session) -> Sequence[MessageFeedback]:
         return session.scalars(select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
 
-    @property
-    def annotation(self) -> MessageAnnotation | None:
-        return self.annotation_with_session(session=db.session())
-
     def annotation_with_session(self, *, session: Session) -> MessageAnnotation | None:
         return session.scalar(select(MessageAnnotation).where(MessageAnnotation.message_id == self.id))
-
-    @property
-    def annotation_hit_history(self) -> MessageAnnotation | None:
-        return self.annotation_hit_history_with_session(session=db.session())
 
     def annotation_hit_history_with_session(self, *, session: Session) -> MessageAnnotation | None:
         annotation_history = session.scalar(
@@ -1747,10 +1731,6 @@ class Message(Base):
                 select(MessageAnnotation).where(MessageAnnotation.id == annotation_history.annotation_id)
             )
         return None
-
-    @property
-    def app_model_config(self) -> AppModelConfig | None:
-        return self.app_model_config_with_session(session=db.session())
 
     def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
         conversation = session.scalar(select(Conversation).where(Conversation.id == self.conversation_id))
@@ -1767,10 +1747,6 @@ class Message(Base):
     def message_metadata_dict(self) -> dict[str, Any]:
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
-    @property
-    def agent_thoughts(self) -> Sequence[MessageAgentThought]:
-        return self.agent_thoughts_with_session(session=db.session())
-
     def agent_thoughts_with_session(self, *, session: Session) -> Sequence[MessageAgentThought]:
         return session.scalars(
             select(MessageAgentThought)
@@ -1781,10 +1757,6 @@ class Message(Base):
     @property
     def retriever_resources(self) -> Any:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
-
-    @property
-    def message_files(self) -> list[MessageFileInfo]:
-        return self.message_files_with_session(session=db.session())
 
     def message_files_with_session(self, *, session: Session) -> list[MessageFileInfo]:
         from factories import file_factory

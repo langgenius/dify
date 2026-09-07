@@ -49,6 +49,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -160,6 +161,7 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.message_file_preview_service import MessageFilePreviewService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -265,6 +267,7 @@ class ApplicationServices:
     file_grants: FileGrantService
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
+    message_file_previews: MessageFilePreviewService
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
@@ -664,6 +667,10 @@ def build_application_services(
             ),
             files=file_service,
             remote_files=remote_file_service,
+        ),
+        message_file_previews=MessageFilePreviewService(
+            files=MessageFilePreviewQueryRepository(session_factory=database_client),
+            storage=storage,
         ),
         upload_file_delivery=UploadFileDeliveryService(
             files=UploadFileDeliveryQueryRepository(session_factory=database_client),
