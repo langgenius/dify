@@ -1739,6 +1739,7 @@ async function cancelScopedWork(
   const p = (position: number) => databasePlaceholder(database, position);
   const nowIso = new Date().toISOString();
   const nowMs = Date.now();
+  const replacementWorkflowId = websiteReplacementWorkflowId(job);
   await database.transaction(async (transaction) => {
     await assertJobFence(database, transaction, job);
     await transaction.execute({
@@ -1798,19 +1799,34 @@ async function cancelScopedWork(
       params:
         job.targetType === "knowledge_space"
           ? [job.knowledgeSpaceId, nowIso]
-          : [job.knowledgeSpaceId, job.targetId, nowIso],
+          : job.targetType === "logical_document" && replacementWorkflowId
+            ? [job.knowledgeSpaceId, job.targetId, nowIso, job.tenantId, replacementWorkflowId]
+            : [job.knowledgeSpaceId, job.targetId, nowIso],
       sql:
         job.targetType === "knowledge_space"
           ? `UPDATE ${q("sources")} SET ${q("status")} = 'disabled', ${q("updated_at")} = ${p(2)}, ${q("version")} = ${q("version")} + 1 WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("status")} = 'syncing';`
           : job.targetType === "source"
             ? `UPDATE ${q("sources")} SET ${q("status")} = 'disabled', ${q("updated_at")} = ${p(3)}, ${q("version")} = ${q("version")} + 1 WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} = ${p(2)} AND ${q("status")} = 'syncing';`
             : job.targetType === "logical_document"
-              ? `UPDATE ${q("sources")} SET ${q("status")} = 'disabled', ${q("updated_at")} = ${p(3)}, ${q("version")} = ${q("version")} + 1 WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} IN (SELECT ${q("source_id")} FROM ${q("logical_documents")} WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} = ${p(2)} AND ${q("source_id")} IS NOT NULL) AND ${q("status")} = 'syncing';`
+              ? `UPDATE ${q("sources")} SET ${q("status")} = 'disabled', ${q("updated_at")} = ${p(3)}, ${q("version")} = ${q("version")} + 1 WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} IN (SELECT ${q("source_id")} FROM ${q("logical_documents")} WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} = ${p(2)} AND ${q("source_id")} IS NOT NULL) AND ${q("status")} = 'syncing'${replacementWorkflowId ? ` AND NOT EXISTS (SELECT 1 FROM ${q("source_workflow_runs")} replacement_workflow WHERE replacement_workflow.${q("tenant_id")} = ${p(4)} AND replacement_workflow.${q("knowledge_space_id")} = ${p(1)} AND replacement_workflow.${q("id")} = ${p(5)} AND replacement_workflow.${q("source_id")} = ${q("sources")}.${q("id")} AND (replacement_workflow.${q("kind")} = 'crawl-import' OR (replacement_workflow.${q("kind")} = 'sync' AND ${q("sources")}.${q("type")} = 'web')))` : ""};`
               : `UPDATE ${q("sources")} SET ${q("status")} = 'disabled', ${q("updated_at")} = ${p(3)}, ${q("version")} = ${q("version")} + 1 WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} IN (SELECT ${q("source_id")} FROM ${q("document_assets")} WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} = ${p(2)} AND ${q("source_id")} IS NOT NULL) AND ${q("status")} = 'syncing';`,
       tableName: "sources",
     });
     await cancelLegacyScopedWorkers(transaction, database, job, nowIso);
   });
+}
+
+function websiteReplacementWorkflowId(
+  job: DurableDeletionTargetOperationInput["job"],
+): string | undefined {
+  if (job.targetType !== "logical_document") return undefined;
+  const prefix = "source-remote-missing:";
+  const suffix = `:${job.targetId}`;
+  if (!job.idempotencyKey.startsWith(prefix) || !job.idempotencyKey.endsWith(suffix)) {
+    return undefined;
+  }
+  const workflowId = job.idempotencyKey.slice(prefix.length, -suffix.length);
+  return workflowId && !workflowId.includes(":") ? workflowId : undefined;
 }
 
 async function cancelWholeSpaceOpaqueWriters(

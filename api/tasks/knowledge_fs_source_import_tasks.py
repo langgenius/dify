@@ -122,19 +122,26 @@ def finalize_source_import_once(
         expected_revision = current_policy.revision
     except KnowledgeFSProductResourceNotFoundError:
         expected_revision = 0
-    facade.update_source_sync_policy(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        source_id=source_id,
-        payload=KnowledgeFSSourceSyncPolicyPayload(
-            enabled=desired_policy.enabled,
-            mode=desired_policy.mode,
-            customIntervalSeconds=desired_policy.custom_interval_seconds,
-            expectedRevision=expected_revision,
-            expectedSourceVersion=source.version,
-        ),
-    )
+    try:
+        facade.update_source_sync_policy(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=KnowledgeFSSourceSyncPolicyPayload(
+                enabled=desired_policy.enabled,
+                mode=desired_policy.mode,
+                customIntervalSeconds=desired_policy.custom_interval_seconds,
+                expectedRevision=expected_revision,
+                expectedSourceVersion=source.version,
+            ),
+        )
+    except KnowledgeFSProductRequestRejectedError as exc:
+        # A website selection replacement can still be draining its child document deletions after
+        # the parent workflow completes. KnowledgeFS reports that temporary policy-write fence as 400.
+        if exc.status_code != 400 or import_metadata.get("kind") != "website-crawl-import":
+            raise
+        raise KnowledgeFSSourceImportNotReadyError("Website source import cleanup is still running") from exc
     return workflow_id
 
 

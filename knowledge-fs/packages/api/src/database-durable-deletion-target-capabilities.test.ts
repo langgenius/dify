@@ -3068,6 +3068,34 @@ describe("database durable deletion target capability edge branches", () => {
   );
 
   it.each(["postgres", "tidb"] as const)(
+    "keeps the parent Source syncing for a website replacement child deletion (%s)",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const workflowId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d20";
+      const childJob = job({
+        idempotencyKey: `source-remote-missing:${workflowId}:${targetDocumentId}`,
+        targetId: targetDocumentId,
+        targetType: "logical_document",
+      });
+
+      await capabilitiesFor(dialect, async (input) => {
+        calls.push(input);
+        return result([]);
+      }).quiesce({ job: childJob, signal: new AbortController().signal });
+
+      const sourceCancellation = calls.find(
+        (call) => call.operation === "update" && call.tableName === "sources",
+      );
+      expect(sourceCancellation?.params).toContain(workflowId);
+      expect(sourceCancellation?.sql).toContain("source_workflow_runs");
+      expect(sourceCancellation?.sql).toContain("crawl-import");
+      expect(sourceCancellation?.sql).toContain("sync");
+      expect(sourceCancellation?.sql).toContain("web");
+      expect(sourceCancellation?.sql).toContain("NOT EXISTS");
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
     "cancels only staged commits owned by the child deletion target (%s)",
     async (dialect) => {
       for (const childJob of [

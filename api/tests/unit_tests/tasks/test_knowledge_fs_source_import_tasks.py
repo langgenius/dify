@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -194,6 +195,60 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
     facade.update_source_sync_policy.assert_not_called()
 
 
+def test_finalize_website_source_import_waits_for_policy_write_fence() -> None:
+    facade = MagicMock()
+    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "website-crawl-import",
+                "state": "completed",
+                "syncPolicy": {"enabled": True, "mode": "interval"},
+                "workflowId": "import-1",
+            },
+            "preview": False,
+        },
+        status="active",
+        version=5,
+    )
+    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
+    facade.update_source_sync_policy.side_effect = KnowledgeFSProductRequestRejectedError(status_code=400)
+
+    with pytest.raises(KnowledgeFSSourceImportNotReadyError):
+        _run(facade)
+
+
+@pytest.mark.parametrize("import_kind", ["online-document-import", "online-drive-import"])
+def test_finalize_non_website_source_import_does_not_reclassify_a_bad_request(
+    import_kind: str,
+) -> None:
+    facade = MagicMock()
+    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": import_kind,
+                "state": "completed",
+                "syncPolicy": {"enabled": True, "mode": "interval"},
+                "workflowId": "import-1",
+            },
+            "preview": False,
+        },
+        status="active",
+        version=5,
+    )
+    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
+    rejection = KnowledgeFSProductRequestRejectedError(status_code=400)
+    facade.update_source_sync_policy.side_effect = rejection
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        _run(facade)
+
+    assert raised.value is rejection
+
+
 def test_finalize_source_import_retries_a_source_revision_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
     error = KnowledgeFSProductRequestRejectedError(status_code=409)
     monkeypatch.setattr(task_module, "finalize_source_import_once", MagicMock(side_effect=error))
@@ -210,3 +265,25 @@ def test_finalize_source_import_retries_a_source_revision_conflict(monkeypatch: 
         )
 
     retry.assert_called_once_with(exc=error)
+
+
+@pytest.mark.parametrize("status_code", [400, 422])
+def test_finalize_source_import_does_not_retry_a_permanent_rejection(
+    monkeypatch: pytest.MonkeyPatch, status_code: Literal[400, 422]
+) -> None:
+    error = KnowledgeFSProductRequestRejectedError(status_code=status_code)
+    monkeypatch.setattr(task_module, "finalize_source_import_once", MagicMock(side_effect=error))
+    retry = MagicMock(side_effect=Retry())
+    monkeypatch.setattr(task_module.finalize_source_import, "retry", retry)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        task_module.finalize_source_import.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            source_id="source-1",
+            workflow_id="import-1",
+        )
+
+    assert raised.value is error
+    retry.assert_not_called()
