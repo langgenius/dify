@@ -28,6 +28,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 import uuid
 from typing import Any
 
+from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import (
     AssistantTurnItem,
     ChangeSetCard,
@@ -470,7 +471,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
             count=len(changes),
             changes=changes,
             scope=scope,
-            full_diff_open=False,
+            nodes=result.nodes or describe_changed_nodes(result.changed_nodes),
         ),
     )
 
