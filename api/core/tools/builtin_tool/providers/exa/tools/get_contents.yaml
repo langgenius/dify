@@ -1,0 +1,47 @@
+identity:
+  name: get_contents
+  author: Dify
+  label:
+    en_US: Exa Get Webpage Contents
+    zh_Hans: Exa 获取网页全文
+    pt_BR: Obter Conteúdo da Web Exa
+description:
+  human:
+    en_US: Fetch clean, parsed webpage text, markdown, and highlights from any URL using Exa parsing engine.
+    zh_Hans: 使用 Exa 解析引擎从任何 URL 获取干净的网页正文、Markdown 和高亮摘要。
+    pt_BR: Obtenha texto limpo e formatado de qualquer URL usando o mecanismo de análise Exa.
+  llm: Extract parsed text contents and highlights from one or multiple URLs using Exa.
+parameters:
+  - name: urls
+    type: string
+    required: true
+    label:
+      en_US: URLs
+      zh_Hans: 目标链接
+    human_description:
+      en_US: Comma-separated list of URLs to retrieve contents for
+      zh_Hans: 逗号分隔的目标网页链接
+    llm_description: One or more URLs to retrieve clean contents from
+    form: llm
+  - name: max_characters
+    type: number
+    required: false
+    default: 5000
+    label:
+      en_US: Max Characters
+      zh_Hans: 最大字符数
+    human_description:
+      en_US: Maximum characters of text to return per webpage
+      zh_Hans: 每个网页返回的最大字符数
+    form: form
+  - name: include_highlights
+    type: boolean
+    required: false
+    default: "false"
+    label:
+      en_US: Include Highlights
+      zh_Hans: 包含关键高亮
+    human_description:
+      en_US: Extract key summary sentences
+      zh_Hans: 提取关键摘要句子
+    form: form

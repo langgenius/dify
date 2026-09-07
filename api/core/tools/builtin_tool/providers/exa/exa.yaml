@@ -1,0 +1,30 @@
+identity:
+  author: Dify
+  name: exa
+  label:
+    en_US: Exa AI Search
+    zh_Hans: Exa AI 搜索
+    pt_BR: Exa AI Search
+  description:
+    en_US: Exa is an AI-native neural search engine designed for LLMs to find knowledge, research papers, articles, and clean webpage contents.
+    zh_Hans: Exa 是专为大语言模型设计的神经搜索引擎，用于查找知识、研究论文、文章和网页全文内容。
+    pt_BR: Exa é um mecanismo de busca neural nativo para IA projetado para LLMs encontrarem conhecimento e conteúdo de páginas web.
+  icon: icon.svg
+  tags:
+    - search
+    - web
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Exa API Key
+      zh_Hans: Exa API 密钥
+      pt_BR: Chave de API Exa
+    placeholder:
+      en_US: Enter your Exa API Key from https://dashboard.exa.ai
+      zh_Hans: 输入来自 https://dashboard.exa.ai 的 Exa API 密钥
+    help:
+      en_US: Get your API Key from the Exa Dashboard (https://dashboard.exa.ai/api-keys)
+      zh_Hans: 从 Exa 控制台获取 API 密钥 (https://dashboard.exa.ai/api-keys)
+    url: https://dashboard.exa.ai/api-keys

@@ -1,0 +1,102 @@
+identity:
+  name: search
+  author: Dify
+  label:
+    en_US: Exa Neural Search
+    zh_Hans: Exa 神经搜索
+    pt_BR: Busca Neural Exa
+description:
+  human:
+    en_US: Search the web using Exa neural embeddings or keyword matching with clean text extraction.
+    zh_Hans: 使用 Exa 神经嵌入或关键字匹配搜索网页，并提取干净的正文文本。
+    pt_BR: Pesquise na web usando incorporações neurais Exa com extração limpa de texto.
+  llm: Search the web using Exa AI neural search engine. Returns top ranked web pages with titles, URLs, and parsed text contents.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 搜索关键词
+    human_description:
+      en_US: The search query string
+      zh_Hans: 要搜索的问题或查询语句
+    llm_description: The search query to find documents or answers on the web
+    form: llm
+  - name: search_type
+    type: select
+    required: false
+    default: neural
+    options:
+      - value: neural
+        label:
+          en_US: Neural (Semantic)
+          zh_Hans: 语义神经网络
+      - value: keyword
+        label:
+          en_US: Keyword (Exact match)
+          zh_Hans: 关键字精确匹配
+      - value: auto
+        label:
+          en_US: Auto
+          zh_Hans: 自动选择
+    label:
+      en_US: Search Mode
+      zh_Hans: 搜索模式
+    human_description:
+      en_US: Search mode (neural embeddings vs exact keywords)
+      zh_Hans: 搜索算法类型（语义搜索或关键字）
+    form: form
+  - name: num_results
+    type: number
+    required: false
+    default: 5
+    label:
+      en_US: Number of Results
+      zh_Hans: 结果数量
+    human_description:
+      en_US: Maximum number of search results to return (1-25)
+      zh_Hans: 返回的最大搜索结果数量 (1-25)
+    form: form
+  - name: include_text
+    type: boolean
+    required: false
+    default: "true"
+    label:
+      en_US: Include Text Contents
+      zh_Hans: 包含网页正文
+    human_description:
+      en_US: Whether to parse and return main webpage text
+      zh_Hans: 是否解析并返回网页正文文本
+    form: form
+  - name: include_highlights
+    type: boolean
+    required: false
+    default: "false"
+    label:
+      en_US: Include Key Highlights
+      zh_Hans: 包含关键高亮句子
+    human_description:
+      en_US: Extract the most relevant sentences answering the query
+      zh_Hans: 提取与查询最相关的关键句
+    form: form
+  - name: include_domains
+    type: string
+    required: false
+    label:
+      en_US: Include Domains
+      zh_Hans: 限定域名列表
+    human_description:
+      en_US: Comma-separated list of domains to restrict search to (e.g. github.com, arxiv.org)
+      zh_Hans: 逗号分隔的限定搜索域名（例如 github.com, arxiv.org）
+    form: form
+  - name: exclude_domains
+    type: string
+    required: false
+    label:
+      en_US: Exclude Domains
+      zh_Hans: 排除域名列表
+    human_description:
+      en_US: Comma-separated list of domains to exclude
+      zh_Hans: 逗号分隔的排除域名列表
+    form: form
