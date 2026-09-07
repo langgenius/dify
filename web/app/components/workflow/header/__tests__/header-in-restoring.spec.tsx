@@ -1,8 +1,14 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedFeatures,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
 import { FlowType } from '@/types/common'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { renderWorkflowComponent as renderWorkflow } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInRestoring from '../header-in-restoring'
 
@@ -12,14 +18,7 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 let mockPlanType: CloudPlan = 'professional'
-let mockEnableBilling = true
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-    enableBilling: mockEnableBilling,
-  }),
-}))
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -89,7 +88,7 @@ describe('HeaderInRestoring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPlanType = 'professional'
-    mockEnableBilling = true
+    deploymentEdition = 'CLOUD'
   })
 
   it('should disable restore when the flow id is not ready yet', () => {
@@ -163,3 +162,14 @@ describe('HeaderInRestoring', () => {
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 })
+
+function renderWorkflowComponent(
+  ui: Parameters<typeof renderWorkflow>[0],
+  options: Parameters<typeof renderWorkflow>[1] = {},
+) {
+  const queryClient = createConsoleQueryClient()
+  createConsoleQueryWrapper({ queryClient })
+  seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
+  seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
+  return renderWorkflow(ui, { ...options, queryClient })
+}

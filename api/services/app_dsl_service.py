@@ -44,6 +44,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
+from models.agent import AgentScope
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
@@ -456,20 +457,27 @@ class AppDslService:
             raise NoPermissionError("You do not have permission to overwrite this app")
         return app
 
-    @staticmethod
-    def _ensure_agent_manage_permission(account: Account) -> None:
-        """Importing an Agent DSL creates a roster Agent, which requires ``agent.manage``."""
+    def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:
             return
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
+        binding = (
+            app.agent_app_binding_with_session(session=self._session, include_archived=True)
+            if app is not None
+            else None
+        )
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
         allowed = RBACService.CheckAccess.check(
             account.current_tenant_id,
             account.id,
-            scene=RBACPermission.AGENT_MANAGE,
+            scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.AGENT if binding is not None else None,
+            resource_id=str(binding.id) if binding is not None else None,
         )
         if not allowed:
-            raise NoPermissionError("Agent management permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
 
     def _create_or_update_app(
         self,
@@ -492,7 +500,7 @@ class AppDslService:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         if app_mode == AppMode.AGENT:
-            self._ensure_agent_manage_permission(account)
+            self._ensure_agent_import_permission(account, app=app)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")

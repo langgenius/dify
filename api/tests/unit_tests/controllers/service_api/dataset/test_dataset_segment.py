@@ -1212,7 +1212,6 @@ class TestSegmentApiPost(SQLiteEndpointTest):
         mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1555,7 +1554,6 @@ class TestDatasetSegmentApiUpdate(SQLiteEndpointTest):
         """Configure mocks to neutralise billing/auth decorators."""
         mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -2054,7 +2052,6 @@ class TestChildChunkApiPost(SQLiteEndpointTest):
     def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
         mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -2368,7 +2365,6 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
         mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()

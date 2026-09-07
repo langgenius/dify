@@ -185,14 +185,6 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
-// Mock provider context
-const mockOnPlanInfoChanged = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    onPlanInfoChanged: mockOnPlanInfoChanged,
-  }),
-}))
-
 // systemFeatures is seeded into the QueryClient via the local render helper.
 
 vi.mock('@/service/apps', () => ({
@@ -1160,25 +1152,6 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockCopyApp).toHaveBeenCalled()
-      })
-    })
-
-    it('should call onPlanInfoChanged after successful duplication', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(mockOnPlanInfoChanged).toHaveBeenCalled()
       })
     })
 

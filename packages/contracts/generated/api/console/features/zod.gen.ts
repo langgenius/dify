@@ -79,7 +79,6 @@ export const zSubscriptionModel = z.object({
  * BillingModel
  */
 export const zBillingModel = z.object({
-  enabled: z.boolean().default(false),
   subscription: zSubscriptionModel.default({ interval: '', plan: 'sandbox' }),
 })
 
@@ -94,10 +93,7 @@ export const zFeatureModel = z.object({
     usage: 0,
   }),
   apps: zLimitationModel.default({ limit: 10, size: 0 }),
-  billing: zBillingModel.default({
-    enabled: false,
-    subscription: { interval: '', plan: 'sandbox' },
-  }),
+  billing: zBillingModel.default({ subscription: { interval: '', plan: 'sandbox' } }),
   can_replace_logo: z.boolean().default(false),
   dataset_operator_enabled: z.boolean().default(false),
   docs_processing: z.string().default('standard'),

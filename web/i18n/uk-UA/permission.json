@@ -34,6 +34,7 @@
   "accessRule.updated": "Правило доступу успішно оновлено",
   "accessRule.workspaceOwner": "Власник робочого простору",
   "common.duplicateAction": "Дублювати",
+  "group.agent": "Агенти",
   "group.app": "Застосунки",
   "group.app_acl": "Дозволи доступу до застосунку",
   "group.billing": "Оплата",

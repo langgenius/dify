@@ -8,11 +8,8 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { usePricingModal } from '@/hooks/use-query-params'
 import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
@@ -93,15 +90,8 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   > | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] =
     useState<ModalState<UpdatePluginPayload> | null>(null)
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
-  const { plan, isFetchedPlan } = useProviderContext()
-  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal({
-    plan,
-    isFetchedPlan,
-    currentWorkspaceId,
-  })
+  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal()
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)

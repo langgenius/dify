@@ -6,12 +6,15 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/client'
 import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {
@@ -51,11 +54,23 @@ const DuplicateAppModal = ({
       : { type: 'emoji' as const, icon, background: icon_background },
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = () => {
-    if (isAppsFull) return
+    if (isAppQuotaUnavailable || isAppsFull) return
 
     if (!name.trim()) {
       toast.error(t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }))
@@ -130,7 +145,12 @@ const DuplicateAppModal = ({
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </div>
             <div className="flex flex-row-reverse">
-              <Button type="submit" disabled={isAppsFull} className="ml-2 w-24" variant="primary">
+              <Button
+                type="submit"
+                disabled={isAppQuotaUnavailable || isAppsFull}
+                className="ml-2 w-24"
+                variant="primary"
+              >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
               <Button type="button" className="w-24" onClick={onHide}>

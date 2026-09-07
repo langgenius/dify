@@ -16,11 +16,8 @@ export const baseProviderContextValue: ProviderContextState = {
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
-  isFetchedPlan: false,
-  isFetchedPlanInfo: false,
-  enableBilling: false,
+
   enableSkill: false,
-  onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
   enableEducationPlan: false,
@@ -38,7 +35,6 @@ export const createMockProviderContextValue = (
   return {
     ...merged,
     refreshModelProviders: merged.refreshModelProviders ?? noop,
-    onPlanInfoChanged: merged.onPlanInfoChanged ?? noop,
   }
 }
 

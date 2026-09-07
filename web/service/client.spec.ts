@@ -778,39 +778,51 @@ describe('consoleQuery app mutation defaults', () => {
     })
   })
 
-  it('should invalidate app lists without blocking a directly completed import', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi
-      .spyOn(queryClient, 'invalidateQueries')
-      .mockImplementation(() => new Promise(() => {}))
-    const mutationOptions = consoleQuery.apps.imports.post.mutationOptions()
+  it.each([undefined, 'existing-app'])(
+    'should refresh completed import data without blocking (overwrite: %s)',
+    async (appId) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const invalidateQueries = vi
+        .spyOn(queryClient, 'invalidateQueries')
+        .mockImplementation(() => new Promise(() => {}))
+      const mutationOptions = consoleQuery.apps.imports.post.mutationOptions()
 
-    const result = mutationOptions.onSuccess?.(
-      {
-        id: 'import-1',
-        status: 'completed',
-        app_id: 'app-1',
-        current_dsl_version: '',
-        imported_dsl_version: '',
-        error: '',
-      },
-      { body: { mode: 'yaml-content', yaml_content: 'app: demo' } },
-      undefined,
-      createMutationContext(queryClient),
-    )
+      const result = mutationOptions.onSuccess?.(
+        {
+          id: 'import-1',
+          status: 'completed',
+          app_id: 'app-1',
+          current_dsl_version: '',
+          imported_dsl_version: '',
+          error: '',
+        },
+        { body: { mode: 'yaml-content', yaml_content: 'app: demo', app_id: appId } },
+        undefined,
+        createMutationContext(queryClient),
+      )
 
-    expect(result).toBeUndefined()
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.starred.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.recent.get.key(),
-    })
-  })
+      if (appId) {
+        expect(invalidateQueries).not.toHaveBeenCalledWith({
+          queryKey: consoleQuery.features.get.key(),
+        })
+      } else {
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.features.get.key(),
+        })
+      }
+      expect(result).toBeUndefined()
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.get.key(),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.starred.get.key(),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.recent.get.key(),
+      })
+    },
+  )
 
   it('should keep app lists intact while an import awaits confirmation', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -873,16 +885,20 @@ describe('consoleQuery app mutation defaults', () => {
     expect(synchronized).toBe(true)
   })
 
-  it('should keep a delete mutation pending until every app list synchronizes', async () => {
+  it('should wait for deleted app lists to synchronize without waiting for quota', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidationResolvers: Array<() => void> = []
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
+    const invalidateQueries = vi
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockImplementation((filters) => {
+        if (JSON.stringify(filters?.queryKey) === JSON.stringify(consoleQuery.features.get.key()))
+          return new Promise<void>(() => {})
+
+        return new Promise<void>((resolve) => {
           invalidationResolvers.push(resolve)
-        }),
-    )
+        })
+      })
     const mutationOptions = consoleQuery.apps.byAppId.delete.mutationOptions()
 
     const synchronization = mutationOptions.onSuccess?.(
@@ -907,7 +923,8 @@ describe('consoleQuery app mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.recent.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.features.get.key() })
+    expect(invalidateQueries).toHaveBeenCalledTimes(4)
 
     invalidationResolvers.forEach((resolve) => resolve())
     await synchronization
