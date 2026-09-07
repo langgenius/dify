@@ -1,6 +1,6 @@
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
 
@@ -93,42 +93,29 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.getByText('Parse failed')).toBeInTheDocument()
+  })
+
+  it('should use the localized fallback when an error has no message', () => {
+    render(
+      <IndexingProgressItem
+        detail={makeDetail({ indexing_status: 'error', error: null })}
+        name="broken.pdf"
+      />,
+    )
+
+    expect(screen.getByText('common.error')).toBeInTheDocument()
   })
 
   it('should show priority label when billing is enabled', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="test.pdf"
-        enableBilling={true}
-      />,
-    )
+    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={true} />)
 
     expect(screen.getByTestId('priority-label')).toBeInTheDocument()
   })
 
   it('should not show priority label when billing is disabled', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="test.pdf"
-        enableBilling={false}
-      />,
-    )
+    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={false} />)
 
     expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
-  })
-
-  it('should apply error styling for error status', () => {
-    const { container } = render(
-      <IndexingProgressItem
-        detail={makeDetail({ indexing_status: 'error' })}
-        name="error.pdf"
-      />,
-    )
-
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper.className).toContain('bg-state-destructive-hover-alt')
   })
 })

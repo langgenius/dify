@@ -1,7 +1,7 @@
-from typing import Literal
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+from enums import DeploymentEdition
 
 
 class DeploymentConfig(BaseSettings):
@@ -25,9 +25,14 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    EDITION: Literal["SELF_HOSTED", "CLOUD"] = Field(
-        description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
-        default="SELF_HOSTED",
+    DEPLOYMENT_EDITION: DeploymentEdition = Field(
+        description="Product edition of the application.",
+        default=DeploymentEdition.COMMUNITY,
+    )
+
+    INIT_PASSWORD: str = Field(
+        description="Password required before initializing a self-hosted deployment",
+        default="",
     )
 
     DEPLOY_ENV: str = Field(

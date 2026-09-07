@@ -6,7 +6,13 @@ import ChunkStructure from '../index'
 const mockUseChunkStructure = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
-  Field: ({ children, fieldTitleProps }: { children: ReactNode, fieldTitleProps: { title: string, warningDot?: boolean, operation?: ReactNode } }) => (
+  Field: ({
+    children,
+    fieldTitleProps,
+  }: {
+    children: ReactNode
+    fieldTitleProps: { title: string; warningDot?: boolean; operation?: ReactNode }
+  }) => (
     <div data-testid="field" data-warning-dot={String(!!fieldTitleProps.warningDot)}>
       <div>{fieldTitleProps.title}</div>
       {fieldTitleProps.operation}
@@ -24,7 +30,7 @@ vi.mock('../../option-card', () => ({
 }))
 
 vi.mock('../selector', () => ({
-  default: ({ trigger, value }: { trigger?: ReactNode, value?: string }) => (
+  default: ({ trigger, value }: { trigger?: ReactNode; value?: string }) => (
     <div data-testid="selector">
       {value ?? 'no-value'}
       {trigger}
@@ -33,7 +39,11 @@ vi.mock('../selector', () => ({
 }))
 
 vi.mock('../instruction', () => ({
-  default: ({ className }: { className?: string }) => <div data-testid="instruction" className={className}>Instruction</div>,
+  default: ({ className }: { className?: string }) => (
+    <div data-testid="instruction" className={className}>
+      Instruction
+    </div>
+  ),
 }))
 
 describe('ChunkStructure', () => {
@@ -65,11 +75,7 @@ describe('ChunkStructure', () => {
   })
 
   it('should render the add trigger and instruction when no chunk structure is selected', () => {
-    render(
-      <ChunkStructure
-        onChunkStructureChange={vi.fn()}
-      />,
-    )
+    render(<ChunkStructure onChunkStructureChange={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: /chooseChunkStructure/i })).toBeInTheDocument()
     expect(screen.getByTestId('instruction')).toBeInTheDocument()

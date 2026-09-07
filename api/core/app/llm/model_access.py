@@ -4,11 +4,12 @@ from copy import deepcopy
 from typing import Any
 
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
+from core.entities.model_entities import ModelWithProviderEntity
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
@@ -19,6 +20,10 @@ class DifyCredentialsProvider:
 
     Fetched credentials are stored in :attr:`credentials_cache` and reused for
     subsequent ``fetch`` calls for the same ``(provider_name, model_name)``.
+    The matching validated provider model is cached alongside the credentials so
+    follow-up workflow startup checks can reuse the earlier provider lookup
+    instead of resolving the same model metadata a second time.
+
     Because of that cache, a single instance can return stale credentials after
     the tenant or provider configuration changes (e.g. API key rotation).
 
@@ -30,6 +35,7 @@ class DifyCredentialsProvider:
     tenant_id: str
     provider_manager: ProviderManager
     credentials_cache: dict[tuple[str, str], dict[str, Any]]
+    provider_model_cache: dict[tuple[str, str], ModelWithProviderEntity]
 
     def __init__(
         self,
@@ -45,12 +51,21 @@ class DifyCredentialsProvider:
             )
         self.provider_manager = provider_manager
         self.credentials_cache = {}
+        self.provider_model_cache = {}
+
+    def get_cached_provider_model(self, provider_name: str, model_name: str) -> ModelWithProviderEntity | None:
+        provider_model = self.provider_model_cache.get((provider_name, model_name))
+        if provider_model is None:
+            return None
+
+        return provider_model.model_copy(deep=True)
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
         if (provider_name, model_name) in self.credentials_cache:
             return deepcopy(self.credentials_cache[(provider_name, model_name)])
 
         provider_configurations = self.provider_manager.get_configurations(self.tenant_id)
+
         provider_configuration = provider_configurations.get(provider_name)
         if not provider_configuration:
             raise ValueError(f"Provider {provider_name} does not exist.")
@@ -65,6 +80,7 @@ class DifyCredentialsProvider:
             raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
 
         self.credentials_cache[(provider_name, model_name)] = deepcopy(credentials)
+        self.provider_model_cache[(provider_name, model_name)] = provider_model.model_copy(deep=True)
         return credentials
 
 
@@ -112,6 +128,39 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
     )
 
 
+def resolve_model_context_window(
+    *,
+    run_context: DifyRunContext,
+    provider_name: str,
+    model_name: str,
+) -> int | None:
+    """Return the selected model's credential-bound context-window capability.
+
+    The ``ModelInstance`` and its schema are resolved with the current
+    tenant/user ``DifyRunContext``. A positive, non-boolean plugin-declared
+    ``CONTEXT_SIZE`` is returned; a missing or invalid value returns ``None``.
+    Model lookup and schema errors propagate. This function does not infer a
+    window from the model name or fall back to a model registry or cache.
+    """
+    model_instance = DifyModelFactory(run_context=run_context).init_model_instance(provider_name, model_name)
+    context_window = model_instance.get_model_schema().model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+    if isinstance(context_window, bool) or not isinstance(context_window, int) or context_window <= 0:
+        return None
+    return context_window
+
+
+def resolve_model_supports_vision(
+    *,
+    run_context: DifyRunContext,
+    provider_name: str,
+    model_name: str,
+) -> bool:
+    """Return whether the credential-bound model advertises vision support."""
+
+    model_instance = DifyModelFactory(run_context=run_context).init_model_instance(provider_name, model_name)
+    return ModelFeature.VISION in (model_instance.get_model_schema().features or [])
+
+
 def _normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """
     Split node-level completion params into provider parameters and stop sequences.
@@ -135,6 +184,9 @@ def fetch_model_config(
     credentials_provider: CredentialsProvider,
     model_factory: DifyModelFactory,
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    if not node_data_model.provider or not node_data_model.name:
+        raise ValueError("LLM provider and model are required.")
+
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
 
@@ -142,13 +194,21 @@ def fetch_model_config(
     model_instance = model_factory.init_model_instance(node_data_model.provider, node_data_model.name)
     provider_model_bundle = model_instance.provider_model_bundle
 
-    provider_model = provider_model_bundle.configuration.get_provider_model(
-        model=node_data_model.name,
-        model_type=ModelType.LLM,
-    )
+    provider_model = None
+    if isinstance(credentials_provider, DifyCredentialsProvider):
+        provider_model = credentials_provider.get_cached_provider_model(
+            provider_name=node_data_model.provider,
+            model_name=node_data_model.name,
+        )
+
     if provider_model is None:
-        raise ModelNotExistError(f"Model {node_data_model.name} does not exist.")
-    provider_model.raise_for_status()
+        provider_model = provider_model_bundle.configuration.get_provider_model(
+            model=node_data_model.name,
+            model_type=ModelType.LLM,
+        )
+        if provider_model is None:
+            raise ModelNotExistError(f"Model {node_data_model.name} does not exist.")
+        provider_model.raise_for_status()
 
     model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
     if model_schema is None:

@@ -40,22 +40,26 @@ const createEvent = (name: string, label: string): Event => ({
     en_US: `${label} description`,
     zh_Hans: `${label} description`,
   },
-  parameters: [{
-    name: 'token',
-    label: { en_US: 'Token', zh_Hans: 'Token' },
-    human_description: { en_US: 'Token', zh_Hans: 'Token' },
-    type: 'string',
-    form: 'form',
-    llm_description: 'Token',
-    required: true,
-    multiple: false,
-    default: '',
-  }],
+  parameters: [
+    {
+      name: 'token',
+      label: { en_US: 'Token', zh_Hans: 'Token' },
+      human_description: { en_US: 'Token', zh_Hans: 'Token' },
+      type: 'string',
+      form: 'form',
+      llm_description: 'Token',
+      required: true,
+      multiple: false,
+      default: '',
+    },
+  ],
   labels: [],
   output_schema: { type: 'object' },
 })
 
-const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): TriggerWithProvider => ({
+const createTriggerProvider = (
+  overrides: Partial<TriggerWithProvider> = {},
+): TriggerWithProvider => ({
   id: 'trigger-provider-1',
   name: 'trigger-provider',
   author: 'Trigger Author',
@@ -87,7 +91,9 @@ describe('trigger plugin selector components', () => {
     vi.clearAllMocks()
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useAllTriggerPlugins>)
+    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<
+      typeof useAllTriggerPlugins
+    >)
   })
 
   it('should select trigger plugin action items with default params and preview details', async () => {
@@ -105,15 +111,51 @@ describe('trigger plugin selector components', () => {
       />,
     )
 
-    await user.click(screen.getByText('On Created'))
+    const triggerButton = screen.getByRole('button', { name: 'On Created' })
+    expect(triggerButton).toHaveAccessibleDescription('On Created description')
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      plugin_id: 'trigger-plugin-1',
-      provider_id: 'trigger-provider',
-      event_name: 'on_created',
-      event_label: 'On Created',
-      params: { token: '' },
-    }))
+    await user.click(triggerButton)
+
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        plugin_id: 'trigger-plugin-1',
+        provider_id: 'trigger-provider',
+        event_name: 'on_created',
+        event_label: 'On Created',
+        params: { token: '' },
+      }),
+    )
+  })
+
+  it('should select trigger plugin action items from the keyboard', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const provider = createTriggerProvider()
+    const event = createEvent('on_created', 'On Created')
+
+    render(
+      <TriggerPluginActionItem
+        provider={provider}
+        payload={event}
+        previewCardHandle={createPreviewCardHandle()}
+        onSelect={onSelect}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'On Created' })
+    await user.tab()
+    expect(action).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        event_name: 'on_created',
+        event_label: 'On Created',
+      }),
+    )
   })
 
   it('should expand providers and select workflow trigger providers directly', async () => {
@@ -123,10 +165,7 @@ describe('trigger plugin selector components', () => {
     const { rerender } = render(
       <TriggerPluginItem
         payload={createTriggerProvider({
-          events: [
-            createEvent('first', 'First Event'),
-            createEvent('second', 'Second Event'),
-          ],
+          events: [createEvent('first', 'First Event'), createEvent('second', 'Second Event')],
         })}
         hasSearchText={false}
         previewCardHandle={createPreviewCardHandle()}
@@ -135,12 +174,16 @@ describe('trigger plugin selector components', () => {
     )
 
     await user.click(screen.getByText('Trigger Provider'))
+
     await user.click(screen.getByText('Second Event'))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      event_name: 'second',
-      title: 'Second Event',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        event_name: 'second',
+        title: 'Second Event',
+      }),
+    )
 
     onSelect.mockClear()
     rerender(
@@ -157,10 +200,38 @@ describe('trigger plugin selector components', () => {
 
     await user.click(screen.getByText('Workflow Event'))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      provider_type: CollectionType.workflow,
-      event_name: 'workflow_event',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        provider_type: CollectionType.workflow,
+        event_name: 'workflow_event',
+      }),
+    )
+  })
+
+  it('should expand trigger providers from the keyboard', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+
+    render(
+      <TriggerPluginItem
+        payload={createTriggerProvider({
+          events: [createEvent('first', 'First Event'), createEvent('second', 'Second Event')],
+        })}
+        hasSearchText={false}
+        previewCardHandle={createPreviewCardHandle()}
+        onSelect={onSelect}
+      />,
+    )
+
+    const provider = screen.getByRole('button', { name: /Trigger Provider/ })
+    await user.tab()
+    expect(provider).toHaveFocus()
+
+    await user.keyboard(' ')
+
+    expect(screen.getByRole('region', { name: 'workflow.tabs.allTriggers' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Second Event' })).toBeInTheDocument()
   })
 
   it('should filter trigger plugins and report whether content exists', async () => {

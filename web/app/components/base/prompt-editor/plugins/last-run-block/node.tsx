@@ -1,4 +1,4 @@
-import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import LastRunBlockComponent from './component'
 
@@ -32,11 +32,7 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   override decorate(): React.JSX.Element {
-    return (
-      <LastRunBlockComponent
-        nodeKey={this.getKey()}
-      />
-    )
+    return <LastRunBlockComponent nodeKey={this.getKey()} />
   }
 
   static override importJSON(): LastRunBlockNode {
@@ -58,10 +54,4 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
 }
 export function $createLastRunBlockNode(): LastRunBlockNode {
   return new LastRunBlockNode()
-}
-
-export function $isLastRunBlockNode(
-  node: LastRunBlockNode | LexicalNode | null | undefined,
-): boolean {
-  return node instanceof LastRunBlockNode
 }

@@ -1,14 +1,47 @@
+import type { Options as LockOptions } from 'lockfile'
 import type { Platform } from '@/sys'
-import fs from 'node:fs'
+import { promises as fsp } from 'node:fs'
 import { dirname } from 'node:path'
-import { Entry } from '@napi-rs/keyring'
-import yaml from 'js-yaml'
+import { AsyncEntry } from '@napi-rs/keyring'
+import {
+  binaryTag,
+  CORE_SCHEMA,
+  dump,
+  loadAll,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+  timestampTag,
+  YAMLException,
+} from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '@/sys'
 import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
+const LOCK_STALE_MS = 30_000
+const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(
+  binaryTag,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+  timestampTag,
+)
+
+function lockAsync(path: string, opts: LockOptions): Promise<void> {
+  return new Promise((resolve, reject) => {
+    lockfile.lock(path, opts, (err) => (err ? reject(err) : resolve()))
+  })
+}
+
+function unlockAsync(path: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    lockfile.unlock(path, (err) => (err ? reject(err) : resolve()))
+  })
+}
 
 export type Key<T> = {
   default: T
@@ -16,12 +49,13 @@ export type Key<T> = {
 }
 
 export type Store = {
-  get: <T>(key: Key<T>) => T
-  set: <T>(key: Key<T>, value: T) => void
-  unset: <T>(key: Key<T>) => void
+  get: <T>(key: Key<T>) => Promise<T>
+  set: <T>(key: Key<T>, value: T) => Promise<void>
+  unset: <T>(key: Key<T>) => Promise<void>
 }
 
-export type StorageMode = 'keychain' | 'file'
+export const STORAGE_MODES = ['keychain', 'file'] as const
+export type StorageMode = (typeof STORAGE_MODES)[number]
 
 abstract class FileBasedStore implements Store {
   filePath: string
@@ -34,16 +68,18 @@ abstract class FileBasedStore implements Store {
     this.platform = resolvePlatform()
   }
 
-  unlock(): void {
-    lockfile.unlockSync(`${this.filePath}.lock`)
+  private async ensureDir(): Promise<void> {
+    await fsp.mkdir(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
+  }
+
+  async unlock(): Promise<void> {
+    await unlockAsync(`${this.filePath}.lock`)
   }
 
   /**
    * atomically write raw_content (if any)
    */
-  flush(): void {
-    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-
+  async flush(): Promise<void> {
     // we don't handle A-B-A scenario,
     // which is not likely to happen in cli
     if (!this.dirty) {
@@ -51,16 +87,17 @@ abstract class FileBasedStore implements Store {
     }
 
     if (this.rawContent !== undefined) {
+      await this.ensureDir()
       const tmp = `${this.filePath}.tmp.${pid()}.${Date.now()}`
       try {
-        fs.writeFileSync(tmp, this.rawContent, { mode: FILE_PERM })
+        await fsp.writeFile(tmp, this.rawContent, { mode: FILE_PERM })
         this.platform.atomicReplace(tmp, this.filePath)
-      }
-      catch (err) {
+      } catch (err) {
         try {
-          fs.unlinkSync(tmp)
+          await fsp.unlink(tmp)
+        } catch {
+          /* tmp may not exist */
         }
-        catch { /* tmp may not exist */ }
         throw err
       }
     }
@@ -68,13 +105,13 @@ abstract class FileBasedStore implements Store {
     this.dirty = false
   }
 
-  lock(): void {
+  async lock(): Promise<void> {
+    await this.ensureDir()
     try {
-      lockfile.lockSync(`${this.filePath}.lock`, {
-        stale: 30_000,
+      await lockAsync(`${this.filePath}.lock`, {
+        stale: LOCK_STALE_MS,
       })
-    }
-    catch (err) {
+    } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code === 'EEXIST') {
         throw new ConcurrentAccessError(this.filePath)
@@ -83,12 +120,11 @@ abstract class FileBasedStore implements Store {
     }
   }
 
-  load(): void {
+  async load(): Promise<void> {
     try {
-      this.rawContent = fs.readFileSync(this.filePath, 'utf8')
+      this.rawContent = await fsp.readFile(this.filePath, 'utf8')
       this.dirty = false
-    }
-    catch (err) {
+    } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code !== 'ENOENT') {
         throw err
@@ -97,7 +133,7 @@ abstract class FileBasedStore implements Store {
   }
 
   public setRawContent(content: string): void {
-    this.dirty = (content !== this.getRawContent())
+    this.dirty = content !== this.getRawContent()
     this.rawContent = content
   }
 
@@ -105,49 +141,46 @@ abstract class FileBasedStore implements Store {
     return this.rawContent
   }
 
-  protected withLock<R>(body: () => R): R {
-    this.lock()
+  protected async withLock<R>(body: () => R | Promise<R>): Promise<R> {
+    await this.lock()
     try {
-      return body()
-    }
-    finally {
-      this.unlock()
+      return await body()
+    } finally {
+      await this.unlock()
     }
   }
 
-  get<T>(key: Key<T>): T {
-    return this.withLock(() => {
-      this.load()
+  async get<T>(key: Key<T>): Promise<T> {
+    return this.withLock(async () => {
+      await this.load()
       return this.doGet(key)
     })
   }
 
-  set<T>(key: Key<T>, value: T) {
-    this.withLock(() => {
-      this.load()
+  async set<T>(key: Key<T>, value: T): Promise<void> {
+    await this.withLock(async () => {
+      await this.load()
       this.doSet(key, value)
-      this.flush()
+      await this.flush()
     })
   }
 
-  unset<T>(key: Key<T>): void {
-    this.withLock(() => {
-      this.load()
+  async unset<T>(key: Key<T>): Promise<void> {
+    await this.withLock(async () => {
+      await this.load()
       this.doUnset(key)
-      this.flush()
+      await this.flush()
     })
   }
 
   /**
    * Remove the underlying file of the store. No-op if file doesn't exist.
    */
-  rm(): void {
+  async rm(): Promise<void> {
     try {
-      fs.unlinkSync(this.filePath)
-    }
-    catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
-        throw err
+      await fsp.unlink(this.filePath)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
     }
   }
 
@@ -173,18 +206,18 @@ export class YamlStore extends FileBasedStore {
     return (current as T) ?? key.default
   }
 
-  getTyped<T>(): T | null {
-    return this.withLock(() => {
-      this.load()
+  async getTyped<T>(): Promise<T | null> {
+    return this.withLock(async () => {
+      await this.load()
       return loadYaml(this.getRawContent(), this.filePath) as T
     })
   }
 
-  setTyped<T>(data: T): void {
-    this.withLock(() => {
-      this.load()
-      this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
-      this.flush()
+  async setTyped<T>(data: T): Promise<void> {
+    await this.withLock(async () => {
+      await this.load()
+      this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
+      await this.flush()
     })
   }
 
@@ -192,47 +225,47 @@ export class YamlStore extends FileBasedStore {
     const data = loadYaml(this.getRawContent(), this.filePath) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
-    if (lastKey === undefined)
-      return
+    if (lastKey === undefined) return
     let current: Record<string, unknown> = data
     for (const part of parts) {
-      if (current[part] === null || current[part] === undefined || typeof current[part] !== 'object')
+      if (
+        current[part] === null ||
+        current[part] === undefined ||
+        typeof current[part] !== 'object'
+      )
         current[part] = {}
       current = current[part] as Record<string, unknown>
     }
     current[lastKey] = value
-    this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
   }
 
   doUnset<T>(key: Key<T>): void {
     const data = loadYaml(this.getRawContent(), this.filePath) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
-    if (lastKey === undefined)
-      return
+    if (lastKey === undefined) return
     let current: Record<string, unknown> = data
     for (const part of parts) {
       const next = current[part]
-      if (next === null || next === undefined || typeof next !== 'object')
-        return
+      if (next === null || next === undefined || typeof next !== 'object') return
       current = next as Record<string, unknown>
     }
-    if (!(lastKey in current))
-      return
+    if (!(lastKey in current)) return
     delete current[lastKey]
-    this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
   }
 }
 
 function loadYaml(raw: string | undefined, file_path: string): Record<string, unknown> | null {
-  if (raw === undefined)
-    return null
+  if (raw === undefined) return null
   try {
-    return (yaml.load(raw) ?? {}) as Record<string, unknown>
-  }
-  catch (err) {
-    if (err instanceof yaml.YAMLException)
-      throw new BadYamlFormatError(file_path, raw, err)
+    const documents = loadAll(raw, { schema: YAML_LOAD_SCHEMA })
+    if (documents.length > 1)
+      throw new YAMLException('expected a single document in the stream, but found more')
+    return (documents[0] ?? {}) as Record<string, unknown>
+  } catch (err) {
+    if (err instanceof YAMLException) throw new BadYamlFormatError(file_path, raw, err)
     throw err
   }
 }
@@ -249,26 +282,25 @@ export class KeyringBasedStore implements Store {
     this.service = service
   }
 
-  get<T>(key: Key<T>): T {
+  async get<T>(key: Key<T>): Promise<T> {
     try {
-      const v = new Entry(this.service, key.key).getPassword()
-      if (v === null || v === undefined || v === '')
-        return key.default
+      const v = await new AsyncEntry(this.service, key.key).getPassword()
+      if (v === null || v === undefined || v === '') return key.default
       return JSON.parse(v) as T
-    }
-    catch {
+    } catch {
       return key.default
     }
   }
 
-  set<T>(key: Key<T>, value: T): void {
-    new Entry(this.service, key.key).setPassword(JSON.stringify(value))
+  async set<T>(key: Key<T>, value: T): Promise<void> {
+    await new AsyncEntry(this.service, key.key).setPassword(JSON.stringify(value))
   }
 
-  unset<T>(key: Key<T>): void {
+  async unset<T>(key: Key<T>): Promise<void> {
     try {
-      new Entry(this.service, key.key).deletePassword()
+      await new AsyncEntry(this.service, key.key).deletePassword()
+    } catch {
+      /* missing entry is fine */
     }
-    catch { /* missing entry is fine */ }
   }
 }

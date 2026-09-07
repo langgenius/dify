@@ -10,7 +10,6 @@
   "imageUploader.tip": "上傳或拖曳圖片（每張最多 {{batchCount}}，{{size}}MB）",
   "imageUploader.tooltip": "上傳圖片（每張最大 {{batchCount}}，{{size}}MB）",
   "input.countWarning": "不超過 200 個字元",
-  "input.indexWarning": "僅支援高品質模式知識庫",
   "input.placeholder": "請輸入文字，建議使用簡短的陳述句。",
   "input.testing": "測試",
   "input.title": "來源文字",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "查詢內容",
   "table.header.source": "資料來源",
   "table.header.time": "時間",
-  "title": "檢索測試",
-  "viewChart": "查看向量圖表",
-  "viewDetail": "查看詳情"
+  "title": "檢索測試"
 }

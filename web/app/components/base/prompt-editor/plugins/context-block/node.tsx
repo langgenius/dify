@@ -3,7 +3,11 @@ import type { Dataset } from './index'
 import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode & { datasets: Dataset[], onAddContext: () => void, canNotAddContext: boolean }
+type SerializedNode = SerializedLexicalNode & {
+  datasets: Dataset[]
+  onAddContext: () => void
+  canNotAddContext: boolean
+}
 
 export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
   __datasets: Dataset[]
@@ -15,14 +19,24 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   static override clone(node: ContextBlockNode): ContextBlockNode {
-    return new ContextBlockNode(node.__datasets, node.__onAddContext, node.getKey(), node.__canNotAddContext)
+    return new ContextBlockNode(
+      node.__datasets,
+      node.__onAddContext,
+      node.getKey(),
+      node.__canNotAddContext,
+    )
   }
 
   override isInline(): boolean {
     return true
   }
 
-  constructor(datasets: Dataset[], onAddContext: () => void, key?: NodeKey, canNotAddContext?: boolean) {
+  constructor(
+    datasets: Dataset[],
+    onAddContext: () => void,
+    key?: NodeKey,
+    canNotAddContext?: boolean,
+  ) {
     super(key)
 
     this.__datasets = datasets
@@ -70,7 +84,11 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   static override importJSON(serializedNode: SerializedNode): ContextBlockNode {
-    const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext, serializedNode.canNotAddContext)
+    const node = $createContextBlockNode(
+      serializedNode.datasets,
+      serializedNode.onAddContext,
+      serializedNode.canNotAddContext,
+    )
 
     return node
   }
@@ -89,7 +107,11 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
     return '{{#context#}}'
   }
 }
-export function $createContextBlockNode(datasets: Dataset[], onAddContext: () => void, canNotAddContext?: boolean): ContextBlockNode {
+export function $createContextBlockNode(
+  datasets: Dataset[],
+  onAddContext: () => void,
+  canNotAddContext?: boolean,
+): ContextBlockNode {
   return new ContextBlockNode(datasets, onAddContext, undefined, canNotAddContext)
 }
 

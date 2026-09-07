@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Action Logs",
   "circularInvocationTip": "There is circular invocation of tools/nodes in the current workflow.",
   "detail": "DETAIL",
   "input": "INPUT",
@@ -10,7 +9,6 @@
   "meta.time": "Elapsed Time",
   "meta.title": "METADATA",
   "meta.tokens": "Total Tokens",
-  "meta.version": "Version",
   "result": "RESULT",
   "resultEmpty.link": "detail panel",
   "resultEmpty.tipLeft": "please go to the ",

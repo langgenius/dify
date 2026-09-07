@@ -10,16 +10,16 @@ const Install = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   return (
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
-      <div className={cn('flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle')}>
+      <div
+        className={cn(
+          'flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle',
+        )}
+      >
         <Header />
         <InstallForm />
         {!systemFeatures.branding.enabled && (
           <div className="px-8 py-6 text-sm font-normal text-text-tertiary">
-            ©
-            {' '}
-            {new Date().getFullYear()}
-            {' '}
-            LangGenius, Inc. All rights reserved.
+            © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
           </div>
         )}
       </div>

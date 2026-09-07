@@ -1,15 +1,13 @@
 import type { ReactElement } from 'react'
 import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Item from '../item'
 
 const renderItem = (ui: ReactElement) => {
   return render(
     <DropdownMenu open>
-      <DropdownMenuContent>
-        {ui}
-      </DropdownMenuContent>
+      <DropdownMenuContent>{ui}</DropdownMenuContent>
     </DropdownMenu>,
   )
 }

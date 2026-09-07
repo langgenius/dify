@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -9,11 +9,18 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   id: string
   name: string
@@ -25,13 +32,29 @@ type Props = {
   min?: number
   max: number
   onChange: (key: string, value: number) => void
+  disabled?: boolean
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
-}
+}>
 
-const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({
+  className,
+  id,
+  name,
+  noTooltip,
+  tip,
+  step = 0.1,
+  min = 0,
+  max,
+  value,
+  enable,
+  onChange,
+  disabled = false,
+  hasSwitch,
+  onSwitchChange,
+}) => {
   return (
-    <FieldsetRoot className={className}>
+    <Fieldset className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
         <div className="flex h-6 items-center">
@@ -40,6 +63,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
               size="md"
               className="mr-2"
               checked={enable}
+              disabled={disabled}
               onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
@@ -56,12 +80,12 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
       <div className="mt-1 flex items-center">
         <div className="mr-3 flex shrink-0 items-center">
           <NumberField
-            disabled={!enable}
+            disabled={disabled || !enable}
             min={min}
             max={max}
             step={step}
             value={value}
-            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+            onValueChange={(nextValue) => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup>
               <NumberFieldInput aria-label={name} className="w-18" />
@@ -75,16 +99,29 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
         <div className="flex grow items-center">
           <Slider
             className="w-full"
-            disabled={!enable}
+            disabled={disabled || !enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            aria-label={name}
-          />
+            onValueChange={(value) => onChange(id, value / (max < 5 ? 100 : 1))}
+          >
+            <SliderLabel className="sr-only">{name}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb
+                  getAriaValueText={
+                    max < 5
+                      ? (_formattedValue, sliderValue) => (sliderValue / 100).toString()
+                      : undefined
+                  }
+                />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
         </div>
       </div>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 export default ParamItem

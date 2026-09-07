@@ -1,36 +1,29 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import { queryOptions } from '@tanstack/react-query'
-import { IS_CLOUD_EDITION } from '@/config'
-import {
-  getServerConsoleClientContext,
-  serverConsoleClient,
-  serverConsoleQuery,
-} from '@/service/server'
-import { cloudSystemFeatures, defaultSystemFeatures } from './config'
+import { dehydrate } from '@tanstack/react-query'
+import { cache } from 'react'
+import { getQueryClient } from '@/app/get-query-client'
+import { connection } from '@/next/server'
+import { serverConsoleQuery } from '@/service/server'
+import 'server-only'
 
-export const serverSystemFeaturesQueryOptions = () => {
-  const queryKey = serverConsoleQuery.systemFeatures.get.queryKey()
+const getRequestQueryClient = cache(getQueryClient)
 
-  if (IS_CLOUD_EDITION) {
-    return queryOptions<GetSystemFeaturesResponse>({
-      queryKey,
-      queryFn: async () => cloudSystemFeatures,
-      staleTime: 'static',
-    })
-  }
+const systemFeaturesServerQueryOptions = () =>
+  serverConsoleQuery.systemFeatures.get.queryOptions({ staleTime: 'static' })
 
-  return queryOptions<GetSystemFeaturesResponse>({
-    queryKey,
-    queryFn: async () => {
-      try {
-        return await serverConsoleClient.systemFeatures.get(undefined, {
-          context: await getServerConsoleClientContext(),
-        })
-      }
-      catch (err) {
-        console.error('[systemFeatures] server fetch failed', err)
-        return defaultSystemFeatures
-      }
-    },
-  })
+export const getOptionalSystemFeatures = async () => {
+  await connection()
+  const queryClient = getRequestQueryClient()
+  const queryOptions = systemFeaturesServerQueryOptions()
+  const queryState = queryClient.getQueryState(queryOptions.queryKey)
+
+  if (queryState?.status === 'error' && queryState.data === undefined) return undefined
+
+  return queryClient.query(queryOptions).catch(() => undefined)
 }
+
+export const getSystemFeatures = async () => {
+  await connection()
+  return getRequestQueryClient().query(systemFeaturesServerQueryOptions())
+}
+
+export const dehydrateSystemFeatures = () => dehydrate(getRequestQueryClient())

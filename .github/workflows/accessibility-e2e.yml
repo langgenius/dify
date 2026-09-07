@@ -1,0 +1,101 @@
+name: Manual WCAG Accessibility Audit
+run-name: WCAG ${{ inputs.level }} · ${{ inputs.page }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      page:
+        description: Page to scan
+        required: true
+        default: home
+        type: choice
+        options:
+          - home
+          - sign-in
+          - studio
+          - agents
+          - knowledge
+          - integrations
+          - all
+      level:
+        description: WCAG level to scan
+        required: true
+        default: aa
+        type: choice
+        options:
+          - aa
+          - a
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accessibility-e2e-${{ github.ref }}-${{ inputs.page }}-${{ inputs.level }}
+  cancel-in-progress: true
+
+jobs:
+  accessibility:
+    name: WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} · ${{ inputs.page }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web dependencies
+        uses: ./.github/actions/setup-web
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: |
+            api/uv.lock
+
+      - name: Install API dependencies
+        run: uv sync --project api --dev
+
+      - name: Install Chromium for accessibility E2E
+        timeout-minutes: 15
+        working-directory: ./e2e
+        run: vp run e2e:install:ci:chromium
+
+      - name: Run automated WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} checks
+        working-directory: ./e2e
+        env:
+          E2E_ADMIN_EMAIL: e2e-admin@example.com
+          E2E_ADMIN_NAME: E2E Admin
+          E2E_ADMIN_PASSWORD: E2eAdmin12345
+          E2E_FORCE_WEB_BUILD: '1'
+          E2E_INIT_PASSWORD: E2eInit12345
+          WCAG_PAGE: ${{ inputs.page }}
+        run: |
+          if [[ "$WCAG_PAGE" == "all" ]]; then
+            vp run e2e:accessibility:${{ inputs.level }}
+          else
+            pnpm exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
+          fi
+
+      - name: Upload accessibility Cucumber report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cucumber-report-accessibility-${{ inputs.level }}-${{ inputs.page }}
+          path: e2e/cucumber-report
+          retention-days: 7
+
+      - name: Upload accessibility E2E logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-logs-accessibility-${{ inputs.level }}-${{ inputs.page }}
+          path: e2e/.logs/*.log
+          include-hidden-files: true
+          retention-days: 7

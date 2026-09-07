@@ -13,10 +13,7 @@ describe('chat-record UserInput', () => {
     const user = userEvent.setup()
     const { container } = render(
       <UserInput
-        variables={[
-          { variable: 'query' },
-          { variable: 'locale' },
-        ]}
+        variables={[{ variable: 'query' }, { variable: 'locale' }]}
         initialExpanded={false}
       />,
     )

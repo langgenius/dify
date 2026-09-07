@@ -10,12 +10,7 @@ type DocumentTitleProps = {
   wrapperCls?: string
 }
 
-export function DocumentTitle({
-  datasetId,
-  document,
-  parentMode,
-  wrapperCls,
-}: DocumentTitleProps) {
+export function DocumentTitle({ datasetId, document, parentMode, wrapperCls }: DocumentTitleProps) {
   const router = useRouter()
 
   return (

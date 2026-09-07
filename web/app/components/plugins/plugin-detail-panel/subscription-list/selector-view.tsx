@@ -1,11 +1,10 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { Infotip } from '@/app/components/base/infotip'
 import { CreateSubscriptionButton } from './create'
 import { CreateButtonType } from './create/types'
@@ -14,7 +13,7 @@ import { useSubscriptionList } from './use-subscription-list'
 
 type SubscriptionSelectorProps = {
   selectedId?: string
-  onSelect?: ({ id, name }: { id: string, name: string }) => void
+  onSelect?: ({ id, name }: { id: string; name: string }) => void
 }
 
 export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
@@ -32,24 +31,20 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
         <div className="mr-1.5 ml-7 flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center gap-1">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
+              {t(($) => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
             <Infotip
-              aria-label={t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              aria-label={t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
               className="size-3.5"
-              iconClassName="h-full w-full"
             >
-              {t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
             </Infotip>
           </div>
-          <CreateSubscriptionButton
-            buttonType={CreateButtonType.ICON_BUTTON}
-            shape="circle"
-          />
+          <CreateSubscriptionButton buttonType={CreateButtonType.ICON_BUTTON} shape="circle" />
         </div>
       )}
-      <div className="max-h-[320px] overflow-y-auto">
-        {subscriptions?.map(subscription => (
+      <div className="max-h-80 overflow-y-auto">
+        {subscriptions?.map((subscription) => (
           <div
             key={subscription.id}
             className={cn(
@@ -65,31 +60,41 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             >
               <div className="flex items-center">
                 {selectedId === subscription.id && (
-                  <RiCheckLine className="mr-2 size-4 shrink-0 text-text-accent" />
+                  <span
+                    aria-hidden
+                    className="mr-2 i-ri-check-line size-4 shrink-0 text-text-accent"
+                  />
                 )}
-                <RiWebhookLine className={cn('mr-1.5 size-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mr-1.5 i-ri-webhook-line size-3.5 text-text-secondary',
+                    selectedId !== subscription.id && 'ml-6',
+                  )}
+                />
                 <span className="system-md-regular leading-6 text-text-secondary">
                   {subscription.name}
                 </span>
               </div>
             </button>
-            <ActionButton
+            <IconButton
+              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+              tone="destructive"
               onClick={(e) => {
                 e.stopPropagation()
                 setDeletedSubscription(subscription)
               }}
-              className="subscription-delete-btn hidden shrink-0 text-text-tertiary group-hover:flex hover:bg-state-destructive-hover hover:text-text-destructive"
+              className="subscription-delete-btn hidden shrink-0 group-hover:flex"
             >
-              <RiDeleteBinLine className="size-4" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         ))}
       </div>
       {deletedSubscription && (
         <DeleteConfirm
           onClose={(deleted) => {
-            if (deleted)
-              onSelect?.({ id: '', name: '' })
+            if (deleted) onSelect?.({ id: '', name: '' })
             setDeletedSubscription(null)
           }}
           isShow={!!deletedSubscription}

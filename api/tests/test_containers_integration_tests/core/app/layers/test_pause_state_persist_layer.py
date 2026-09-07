@@ -17,13 +17,13 @@ These tests use TestContainers to spin up real services for integration testing,
 providing more reliable and realistic test scenarios than mocks.
 """
 
-import json
 import uuid
 from time import time
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Engine, delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
@@ -35,6 +35,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
 from graphon.graph_engine.entities.commands import GraphEngineCommand
 from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from graphon.graph_events import GraphRunPausedEvent
@@ -45,8 +46,26 @@ from models import Account
 from models import WorkflowPause as WorkflowPauseModel
 from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
+
+
+def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
+    """Build a `ResponseStreamFilter` that has already run `initialize()`.
+
+    `ResponseStreamFilter.dumps()` raises `RuntimeError` unless the filter has
+    processed a `GraphEventFilterContext` first. In production this always
+    happens before any event (including `GraphRunPausedEvent`) reaches
+    `PauseStatePersistenceLayer.on_event`, so tests that exercise `on_event`
+    or a subsequent `dumps()` call need a filter in that same state. A
+    nodeless graph is enough to satisfy the precondition.
+    """
+    response_stream_filter = ResponseStreamFilter()
+    context = GraphEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
+    response_stream_filter.initialize(context)
+    return response_stream_filter
 
 
 class _TestCommandChannelImpl:
@@ -82,7 +101,14 @@ class TestPauseStatePersistenceLayerTestContainers:
     @pytest.fixture
     def workflow_run_service(self, engine: Engine, file_service: FileService):
         """Create WorkflowRunService instance with TestContainers engine and FileService."""
-        return WorkflowRunService(engine)
+        session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+        workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
+        return WorkflowRunService(
+            workflow_runs=workflow_runs,
+            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                session_maker=session_factory
+            ),
+        )
 
     @pytest.fixture(autouse=True)
     def setup_test_data(self, db_session_with_containers: Session, file_service, workflow_run_service):
@@ -219,12 +245,12 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Create LLM usage
         llm_usage = LLMUsage.empty_usage()
+        llm_usage.total_tokens = total_tokens
 
         # Create graph runtime state
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,
             start_at=start_at,
-            total_tokens=total_tokens,
             llm_usage=llm_usage,
             outputs=outputs or {},
             node_run_steps=node_run_steps,
@@ -295,6 +321,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             session_factory=self.session.get_bind(),
             state_owner_user_id=owner_id,
             generate_entity=entity,
+            response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
     def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers: Session):
@@ -347,9 +374,6 @@ class TestPauseStatePersistenceLayerTestContainers:
         resumption_context = WorkflowResumptionContext.loads(storage_content)
         assert resumption_context.version == "1"
         assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
-        expected_state = json.loads(graph_runtime_state.dumps())
-        actual_state = json.loads(resumption_context.serialized_graph_runtime_state)
-        assert actual_state == expected_state
         persisted_entity = resumption_context.get_generate_entity()
         assert isinstance(persisted_entity, WorkflowAppGenerateEntity)
         assert persisted_entity.workflow_execution_id == self.test_workflow_run_id
@@ -388,20 +412,18 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.on_event(event)
 
         # Assert - Retrieve and verify
-        pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(self.test_workflow_run_id)
+        pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(self.test_workflow_run_id)
         assert pause_entity is not None
         assert pause_entity.workflow_execution_id == self.test_workflow_run_id
         assert pause_entity.get_pause_reasons() == event.reasons
 
         state_bytes = pause_entity.get_state()
         resumption_context = WorkflowResumptionContext.loads(state_bytes.decode())
-        retrieved_state = json.loads(resumption_context.serialized_graph_runtime_state)
-        expected_state = json.loads(graph_runtime_state.dumps())
+        retrieved_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
-        assert retrieved_state == expected_state
-        assert retrieved_state["outputs"] == complex_outputs
-        assert retrieved_state["total_tokens"] == 250
-        assert retrieved_state["node_run_steps"] == 10
+        assert retrieved_state.outputs == complex_outputs
+        assert retrieved_state.total_tokens == 250
+        assert retrieved_state.node_run_steps == 10
         assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
     def test_database_transaction_handling(self, db_session_with_containers: Session):
@@ -529,7 +551,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert pause_model is not None
 
         # Verify the state owner is the workflow creator
-        pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(different_workflow_run.id)
+        pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(different_workflow_run.id)
         assert pause_entity is not None
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
         assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id

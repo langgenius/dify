@@ -126,6 +126,7 @@ Run with coverage:
 """
 
 import asyncio
+import logging
 import string
 import sys
 import types
@@ -644,13 +645,13 @@ class TestTextSplitterBasePaths:
         with pytest.raises(NotImplementedError):
             asyncio.run(splitter.atransform_documents([Document(page_content="x", metadata={})]))
 
-    def test_merge_splits_logs_warning_for_oversized_total(self):
+    def test_merge_splits_logs_warning_for_oversized_total(self, caplog: pytest.LogCaptureFixture):
         """Cover logger.warning path in _merge_splits."""
         splitter = RecursiveCharacterTextSplitter(chunk_size=5, chunk_overlap=1)
-        with patch("core.rag.splitter.text_splitter.logger.warning") as mock_warning:
+        with caplog.at_level(logging.WARNING, logger="core.rag.splitter.text_splitter"):
             merged = splitter._merge_splits(["abcdefghij", "b"], "", [10, 1])
         assert merged
-        mock_warning.assert_called_once()
+        assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 # ============================================================================
@@ -950,6 +951,21 @@ class TestFixedRecursiveCharacterTextSplitter:
         combined = " ".join(result)
         assert "word1" in combined
         assert "word2" in combined
+
+    def test_preserves_spaces_when_recursively_splitting_long_paragraph(self):
+        """Ensure recursive space splitting preserves word boundaries."""
+        text = "여름철에는 항상 기상상황에 주목하며 주변 사람들과 함께 정보를 공유합니다."
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=20,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1
+        assert " ".join(result) == text
 
     def test_character_level_splitting(self):
         """Test character-level splitting when no separator works."""

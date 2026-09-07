@@ -459,23 +459,24 @@ class TestEndToEndSerialization:
 
     def _verify_all_complex_types_converted(self, data):
         """Helper method to verify all complex types were properly converted"""
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if key in ["id", "checksum"]:
-                    # These should be strings (UUID/bytes converted)
-                    assert isinstance(value, str)
-                elif key in ["created_at", "last_login", "timestamp", "uploaded_at"]:
-                    # These should be strings (datetime converted)
-                    assert isinstance(value, str)
-                elif key in ["total_time", "duration"]:
-                    # These should be floats (Decimal converted)
-                    assert isinstance(value, float)
-                elif key == "metrics":
-                    # This should be a list (ndarray converted)
-                    assert isinstance(value, list)
-                else:
-                    # Recursively check nested structures
-                    self._verify_all_complex_types_converted(value)
-        elif isinstance(data, list):
-            for item in data:
-                self._verify_all_complex_types_converted(item)
+        match data:
+            case dict():
+                for key, value in data.items():
+                    if key in ["id", "checksum"]:
+                        # These should be strings (UUID/bytes converted)
+                        assert isinstance(value, str)
+                    elif key in ["created_at", "last_login", "timestamp", "uploaded_at"]:
+                        # These should be strings (datetime converted)
+                        assert isinstance(value, str)
+                    elif key in ["total_time", "duration"]:
+                        # These should be floats (Decimal converted)
+                        assert isinstance(value, float)
+                    elif key == "metrics":
+                        # This should be a list (ndarray converted)
+                        assert isinstance(value, list)
+                    else:
+                        # Recursively check nested structures
+                        self._verify_all_complex_types_converted(value)
+            case list():
+                for item in data:
+                    self._verify_all_complex_types_converted(item)

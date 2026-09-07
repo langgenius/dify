@@ -10,7 +10,6 @@
   "imageUploader.tip": "Carregar ou soltar imagens (Máx. {{batchCount}}, {{size}}MB cada)",
   "imageUploader.tooltip": "Carregar imagens (Máx. {{batchCount}}, {{size}}MB cada)",
   "input.countWarning": "Até 200 caracteres.",
-  "input.indexWarning": "Somente conhecimento de alta qualidade.",
   "input.placeholder": "Digite um texto, uma frase declarativa curta é recomendada.",
   "input.testing": "Testando",
   "input.title": "Texto de origem",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Conteúdo da Consulta",
   "table.header.source": "Origem",
   "table.header.time": "Hora",
-  "title": "Teste de Recuperação",
-  "viewChart": "Ver GRÁFICO DE VETORES",
-  "viewDetail": "Ver detalhes"
+  "title": "Teste de Recuperação"
 }

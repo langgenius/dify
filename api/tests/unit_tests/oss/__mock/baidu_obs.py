@@ -5,7 +5,6 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from baidubce.services.bos.bos_client import BosClient
 
 from tests.unit_tests.oss.__mock.base import (
@@ -55,7 +54,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_baidu_obs_mock(monkeypatch: MonkeyPatch):
+def setup_baidu_obs_mock(monkeypatch: pytest.MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(BosClient, "__init__", MockBaiduObsClass.__init__)
         monkeypatch.setattr(BosClient, "put_object", MockBaiduObsClass.put_object)

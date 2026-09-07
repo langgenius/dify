@@ -1,12 +1,21 @@
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
+from core.model_manager import QuotaManagedModelInstance
+from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
+from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.plugin_service import PluginService
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
 from core.workflow.human_input_adapter import (
@@ -21,6 +30,7 @@ from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
     DifyPreparedLLM,
+    DifyPreparedPollingLLM,
     DifyPromptMessageSerializer,
     DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
@@ -29,23 +39,121 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
+from core.workflow.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
+from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+from models.base import TypeBase
+from models.dataset import SegmentAttachmentBinding
+from models.enums import CreatorUserRole
+from models.model import StorageType, UploadFile
+from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_run_context
 
 
-def _build_model_schema() -> AIModelEntity:
+@pytest.fixture
+def attachment_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Provide real attachment and upload-file persistence to node runtime tests."""
+
+    TypeBase.metadata.create_all(sqlite_engine, tables=[SegmentAttachmentBinding.__table__, UploadFile.__table__])
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        yield session
+
+
+def _persist_attachment(
+    session: Session,
+    *,
+    segment_id: str,
+    upload_file_id: str,
+    upload_file_tenant_id: str = "tenant-id",
+) -> UploadFile:
+    """Persist an attachment binding for the test tenant and its referenced upload file."""
+
+    upload_file = UploadFile(
+        tenant_id=upload_file_tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="storage-key",
+        name="diagram.png",
+        size=128,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-id",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=False,
+        source_url="https://example.com/diagram.png",
+    )
+    upload_file.id = upload_file_id
+    session.add_all(
+        [
+            upload_file,
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-id",
+                segment_id=segment_id,
+                attachment_id=upload_file_id,
+            ),
+        ]
+    )
+    session.commit()
+    return upload_file
+
+
+def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
     return AIModelEntity(
         model="gpt-4o-mini",
         label=I18nObject(en_US="GPT-4o mini"),
         model_type=ModelType.LLM,
         fetch_from=FetchFrom.PREDEFINED_MODEL,
         model_properties={},
+        features=features,
     )
+
+
+class _ModelTypeInstanceStub(LargeLanguageModel):
+    def __init__(
+        self,
+        *,
+        model_schema: AIModelEntity | None,
+        model_runtime: object | None = None,
+    ) -> None:
+        self.model_runtime = model_runtime
+        self.get_model_schema = Mock(return_value=model_schema)
+
+
+class _ModelInstanceStub:
+    def __init__(
+        self,
+        *,
+        model_schema: AIModelEntity | None,
+        model_runtime: object | None = None,
+        invoke_llm_result: object = sentinel.result,
+        get_llm_num_tokens_result: int = 32,
+    ) -> None:
+        self.provider = "langgenius/openai/openai"
+        self.model_name = "gpt-4o-mini"
+        self.parameters = {"temperature": 0.2}
+        self.stop = ("stop",)
+        self.credentials = {"api_key": "secret"}
+        self.model_type_instance = _ModelTypeInstanceStub(
+            model_schema=model_schema,
+            model_runtime=model_runtime,
+        )
+        self.get_llm_num_tokens = Mock(return_value=get_llm_num_tokens_result)
+        self.invoke_llm = Mock(return_value=invoke_llm_result)
+
+
+class _QuotaManagedModelInstanceStub(_ModelInstanceStub, QuotaManagedModelInstance):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.reserve_quota = Mock()
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
@@ -126,18 +234,9 @@ def test_dify_file_reference_factory_passes_tenant_id(monkeypatch: pytest.Monkey
 
 def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     model_schema = _build_model_schema()
-    model_type_instance = SimpleNamespace(get_model_schema=Mock(return_value=model_schema))
-    model_instance = SimpleNamespace(
-        provider="langgenius/openai/openai",
-        model_name="gpt-4o-mini",
-        parameters={"temperature": 0.2},
-        stop=("stop",),
-        credentials={"api_key": "secret"},
-        model_type_instance=model_type_instance,
-        get_llm_num_tokens=Mock(return_value=32),
-        invoke_llm=Mock(return_value=sentinel.result),
-    )
-    prepared = DifyPreparedLLM(model_instance)
+    model_instance = _ModelInstanceStub(model_schema=model_schema)
+    model_type_instance = model_instance.model_type_instance
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"app_id": "app-id"})
 
     assert prepared.provider == "langgenius/openai/openai"
     assert prepared.model_name == "gpt-4o-mini"
@@ -163,15 +262,13 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         tools=[],
         stop=[],
         stream=False,
+        request_metadata={"app_id": "app-id"},
     )
 
 
 def test_dify_prepared_llm_requires_model_schema() -> None:
-    model_instance = SimpleNamespace(
-        model_name="gpt-4o-mini",
-        credentials={},
-        model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=None)),
-    )
+    model_instance = _ModelInstanceStub(model_schema=None)
+    model_instance.credentials = {}
     prepared = DifyPreparedLLM(model_instance)
 
     with pytest.raises(ValueError, match="Model schema not found"):
@@ -179,13 +276,8 @@ def test_dify_prepared_llm_requires_model_schema() -> None:
 
 
 def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytest.MonkeyPatch) -> None:
-    model_instance = SimpleNamespace(
-        provider="langgenius/openai/openai",
-        model_name="gpt-4o-mini",
-        credentials={"api_key": "secret"},
-        model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=_build_model_schema())),
-    )
-    prepared = DifyPreparedLLM(model_instance)
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"created_by": "workflow"})
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
 
@@ -207,6 +299,7 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
         model_parameters={"temperature": 0.2},
         stop=["done"],
         stream=True,
+        request_metadata={"created_by": "workflow"},
     )
 
 
@@ -215,6 +308,234 @@ def test_dify_prepared_llm_identifies_structured_output_errors() -> None:
 
     assert prepared.is_structured_output_parse_error(OutputParserError("bad json")) is True
     assert prepared.is_structured_output_parse_error(ValueError("other")) is False
+
+
+def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
+    polling_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+        next_check_after_seconds=2,
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
+    plugin_runtime.check_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
+    model_instance = _ModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    assert isinstance(prepared, LLMPollingCapableProtocol)
+    assert (
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={"temperature": 0.1},
+            tools=[],
+            stop=("END",),
+            json_schema={"type": "object"},
+        )
+        == polling_result
+    )
+    assert (
+        prepared.check_llm_polling(
+            plugin_state={"task_id": "poll-1"},
+        )
+        == polling_result
+    )
+    plugin_runtime.start_llm_polling.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+        prompt_messages=[],
+        model_parameters={"temperature": 0.1},
+        tools=[],
+        stop=("END",),
+        json_schema={"type": "object"},
+    )
+    plugin_runtime.check_llm_polling.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+        plugin_state={"task_id": "poll-1"},
+    )
+
+
+def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    usage = node_runtime.LLMUsage.empty_usage().model_copy(update={"total_tokens": 5})
+    succeeded_result = LLMPollingResult(
+        status=LLMPollingStatus.SUCCEEDED,
+        result=node_runtime.LLMResult(
+            model="gpt-4o-mini",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="done"),
+            usage=usage,
+        ),
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+    plugin_runtime.check_llm_polling = Mock(return_value=succeeded_result)  # type: ignore[method-assign]
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.commit.assert_called_once_with(usage)
+    reservation.release.assert_not_called()
+
+
+def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+    first_reservation = MagicMock()
+    second_reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+    model_instance.reserve_quota.side_effect = [first_reservation, second_reservation]
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    for _ in range(2):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    first_reservation.release.assert_called_once_with()
+    second_reservation.release.assert_not_called()
+    assert model_instance.reserve_quota.call_count == 2
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_finalized() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.finalize_llm_polling()
+    prepared.finalize_llm_polling()
+
+    reservation.release.assert_called_once_with()
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_check_fails() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(side_effect=RuntimeError("polling failed")),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+
+    with pytest.raises(RuntimeError, match="polling failed"):
+        prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.release.assert_called_once_with()
+
+
+def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported() -> None:
+    llm_result = node_runtime.LLMResult(
+        model="gpt-4o-mini",
+        prompt_messages=[],
+        message=AssistantPromptMessage(content="sync-result"),
+        usage=node_runtime.LLMUsage.empty_usage(),
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(),
+        plugin_service=Mock(),
+    )
+    plugin_runtime.start_llm_polling = Mock(side_effect=PluginLLMPollingUnsupportedError("Polling unsupported"))  # type: ignore[method-assign]
+    model_instance = _ModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+        invoke_llm_result=llm_result,
+    )
+
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    with pytest.raises(PluginLLMPollingUnsupportedError):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={"temperature": 0.1},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
 
 
 def test_dify_prompt_message_serializer_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -233,29 +554,12 @@ def test_dify_prompt_message_serializer_delegates(monkeypatch: pytest.MonkeyPatc
     )
 
 
-def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    upload_file = SimpleNamespace(
-        id="upload-file-id",
-        name="diagram.png",
-        extension="png",
-        mime_type="image/png",
-        source_url="https://example.com/diagram.png",
-        key="storage-key",
-        size=128,
-    )
-    session = MagicMock()
-    session.execute.return_value.all.return_value = [(None, upload_file)]
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
+def test_dify_retriever_attachment_loader_builds_graph_files(
+    monkeypatch: pytest.MonkeyPatch, attachment_session: Session
+) -> None:
+    _persist_attachment(attachment_session, segment_id="segment-id", upload_file_id="upload-file-id")
     build_from_mapping = MagicMock(return_value=sentinel.file)
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_SessionContext()))
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=attachment_session.get_bind()))
     loader = DifyRetrieverAttachmentLoader(
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
     )
@@ -273,39 +577,18 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
 
 def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
     monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
 ) -> None:
     from factories.file_factory import builders as file_builders
 
     upload_file_id = str(uuid4())
     segment_id = str(uuid4())
-    upload_file = SimpleNamespace(
-        id=upload_file_id,
-        tenant_id="tenant-id",
-        name="diagram.png",
-        extension="png",
-        mime_type="image/png",
-        source_url="https://example.com/diagram.png",
-        key="storage-key",
-        size=128,
-    )
-    attachment_session = MagicMock()
-    attachment_session.execute.return_value.all.return_value = [(None, upload_file)]
-
-    class _AttachmentSessionContext:
-        def __enter__(self):
-            return attachment_session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    upload_session = MagicMock()
-    upload_session.__enter__.return_value = upload_session
-    upload_session.__exit__.return_value = False
-    upload_session.scalar.return_value = upload_file
-
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_AttachmentSessionContext()))
-    monkeypatch.setattr(file_builders, "session_factory", SimpleNamespace(create_session=lambda: upload_session))
+    _persist_attachment(attachment_session, segment_id=segment_id, upload_file_id=upload_file_id)
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    session_maker = sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(file_builders.session_factory, "create_session", session_maker)
 
     loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
     scope = FileAccessScope(
@@ -320,18 +603,57 @@ def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segmen
         files = loader.load(segment_id=segment_id)
 
     assert files[0].related_id == upload_file_id
-    stmt = upload_session.scalar.call_args.args[0]
-    whereclause = str(stmt.whereclause)
-    assert "upload_files.tenant_id" in whereclause
-    assert "upload_files.id IN" in whereclause
+    assert files[0].filename == "diagram.png"
+
+
+def test_dify_retriever_attachment_loader_rejects_granted_upload_file_from_another_tenant(
+    monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
+) -> None:
+    from factories.file_factory import builders as file_builders
+
+    upload_file_id = str(uuid4())
+    segment_id = str(uuid4())
+    _persist_attachment(
+        attachment_session,
+        segment_id=segment_id,
+        upload_file_id=upload_file_id,
+        upload_file_tenant_id="other-tenant-id",
+    )
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    monkeypatch.setattr(file_builders.session_factory, "create_session", sessionmaker(engine, expire_on_commit=False))
+
+    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        with pytest.raises(ValueError, match="Invalid upload file"):
+            loader.load(segment_id=segment_id)
 
 
 def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
     monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
 ) -> None:
     build_from_mapping = MagicMock()
-    session_factory = MagicMock()
-    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    statement_count = 0
+
+    def count_statements(*_args, **_kwargs) -> None:
+        nonlocal statement_count
+        statement_count += 1
+
+    event.listen(engine, "before_cursor_execute", count_statements)
     loader = DifyRetrieverAttachmentLoader(
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
     )
@@ -345,19 +667,31 @@ def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
     with bind_file_access_scope(scope):
         files = loader.load(segment_id=str(uuid4()))
 
-    assert files == []
-    session_factory.assert_not_called()
-    build_from_mapping.assert_not_called()
+    try:
+        assert files == []
+        assert statement_count == 0
+        build_from_mapping.assert_not_called()
+    finally:
+        event.remove(engine, "before_cursor_execute", count_statements)
 
 
 def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
     monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
 ) -> None:
     segment_id = str(uuid4())
     build_from_mapping = MagicMock()
-    session_factory = MagicMock()
     segment_access_checker = MagicMock(return_value=False)
-    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    statement_count = 0
+
+    def count_statements(*_args, **_kwargs) -> None:
+        nonlocal statement_count
+        statement_count += 1
+
+    event.listen(engine, "before_cursor_execute", count_statements)
     loader = DifyRetrieverAttachmentLoader(
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping),
         segment_access_checker=segment_access_checker,
@@ -373,14 +707,27 @@ def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
         grant_retriever_segment_access([segment_id])
         files = loader.load(segment_id=segment_id)
 
-    assert files == []
-    segment_access_checker.assert_called_once_with(segment_id)
-    session_factory.assert_not_called()
-    build_from_mapping.assert_not_called()
+    try:
+        assert files == []
+        segment_access_checker.assert_called_once_with(segment_id)
+        assert statement_count == 0
+        build_from_mapping.assert_not_called()
+    finally:
+        event.remove(engine, "before_cursor_execute", count_statements)
 
 
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    create_file_by_raw = MagicMock(return_value=SimpleNamespace(id="tool-file-id"))
+    tool_file = ToolFile(
+        user_id="user-id",
+        tenant_id="tenant-id",
+        conversation_id="conversation-id",
+        file_key="tools/tenant-id/tool-file-id.png",
+        mimetype="image/png",
+        name="diagram.png",
+        size=len(b"file-bytes"),
+    )
+    tool_file.id = "tool-file-id"
+    create_file_by_raw = MagicMock(return_value=tool_file)
     manager_instance = SimpleNamespace(create_file_by_raw=create_file_by_raw)
     monkeypatch.setattr(node_runtime, "ToolFileManager", MagicMock(return_value=manager_instance))
     conversation_id_getter = MagicMock(return_value="conversation-id")
@@ -625,10 +972,41 @@ def test_dify_human_input_runtime_create_form_filters_debugger_delivery_methods(
     params = repository.create_form.call_args.args[0]
     assert params.node_id == "human-input-node"
     assert params.workflow_execution_id == "workflow-execution-id"
+    # No conversation_id_getter wired -> a pure workflow run leaves it None.
+    assert params.conversation_id is None
     assert params.display_in_ui is True
     assert len(params.delivery_methods) == 1
     assert params.delivery_methods[0].type == DeliveryMethodType.EMAIL
     assert params.delivery_methods[0].config.recipients.items[0].reference_id == "user-id"
+
+
+def test_dify_human_input_runtime_create_form_tags_conversation_id_for_chatflow() -> None:
+    # ENG-635 (review): a chatflow (advanced-chat) run carries a conversation, so its
+    # Human Input form is tagged with BOTH its workflow run and its conversation —
+    # making the form queryable per conversation without changing resume routing.
+    repository = MagicMock()
+    repository.create_form.return_value = sentinel.form
+    node_data = HumanInputNodeData(
+        title="Human Input",
+        delivery_methods=[WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())],
+    )
+    runtime = DifyHumanInputNodeRuntime(
+        _build_run_context(),
+        workflow_execution_id_getter=lambda: "workflow-execution-id",
+        conversation_id_getter=lambda: "conversation-id",
+        form_repository=repository,
+    )
+
+    runtime.create_form(
+        node_id="human-input-node",
+        node_data=node_data,
+        rendered_content="<p>Rendered</p>",
+        resolved_default_values={},
+    )
+
+    params = repository.create_form.call_args.args[0]
+    assert params.workflow_execution_id == "workflow-execution-id"
+    assert params.conversation_id == "conversation-id"
 
 
 def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations() -> None:

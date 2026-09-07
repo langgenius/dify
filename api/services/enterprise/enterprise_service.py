@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import enum
 import logging
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import redis_client
 from services.enterprise.base import (
     EnterpriseRequest,
@@ -17,12 +16,10 @@ from services.enterprise.base import (
     MCPNoRefreshTokenError,
     MCPTokenError,
 )
+from services.entities.feature_entities import LicenseStatus
 from services.errors.enterprise import (
     EnterpriseServiceError,
 )
-
-if TYPE_CHECKING:
-    from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +28,6 @@ DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
 LICENSE_STATUS_CACHE_KEY = "enterprise:license:status"
 VALID_LICENSE_CACHE_TTL = 600  # 10 minutes — valid licenses are stable
 INVALID_LICENSE_CACHE_TTL = 30  # 30 seconds — short so admin fixes are picked up quickly
-
-
-class WebAppAccessMode(enum.StrEnum):
-    PUBLIC = "public"
-    PRIVATE = "private"
-    PRIVATE_ALL = "private_all"
-    SSO_VERIFIED = "sso_verified"
 
 
 PERMISSION_CHECK_MODES: frozenset[WebAppAccessMode] = frozenset(
@@ -98,7 +88,7 @@ def try_join_default_workspace(account_id: str) -> None:
     This is a best-effort integration. Failures must not block user registration.
     """
 
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return
 
     try:
@@ -136,12 +126,13 @@ class EnterpriseService:
         tenant_id: str,
         app_id: str | None,
         audience: str,
+        user_type: str = "account",
     ) -> tuple[str, int]:
         """Mint a short-lived SSO id_token (or OAuth2 access_token) representing
         the calling Dify user, audience-scoped to the given MCP server identifier.
 
         Used by MCPTool.invoke_remote_mcp_tool to stamp the
-        X-Dify-SSO-Access-Token header on outbound MCP requests when the
+        X-Dify-SSO-Token header on outbound MCP requests when the
         provider's identity_mode is set to "idp_token".
 
         Returns:
@@ -163,6 +154,7 @@ class EnterpriseService:
                     "tenant_id": tenant_id,
                     "app_id": app_id or "",
                     "audience": audience,
+                    "user_type": user_type,
                 },
             )
         except EnterpriseServiceError as e:
@@ -293,7 +285,7 @@ class EnterpriseService:
             params = {"appId": app_id}
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
             if not data:
-                raise ValueError("No data found.")
+                raise EnterpriseServiceError("No data found.")
             return WebAppSettings.model_validate(data)
 
         @classmethod
@@ -374,9 +366,9 @@ class EnterpriseService:
         caching, every request on an expired license would hit the enterprise API.
 
         Returns:
-            LicenseStatus enum value, or None if enterprise is disabled / unreachable.
+            LicenseStatus enum value, or None outside the Enterprise edition or when unreachable.
         """
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return None
 
         cached = cls._read_cached_license_status()
@@ -388,8 +380,6 @@ class EnterpriseService:
     @classmethod
     def _read_cached_license_status(cls) -> LicenseStatus | None:
         """Read license status from Redis cache, returning None on miss or failure."""
-        from services.feature_service import LicenseStatus
-
         try:
             raw = redis_client.get(LICENSE_STATUS_CACHE_KEY)
             if raw:
@@ -402,8 +392,6 @@ class EnterpriseService:
     @classmethod
     def _fetch_and_cache_license_status(cls) -> LicenseStatus | None:
         """Fetch license status from enterprise API and cache the result."""
-        from services.feature_service import LicenseStatus
-
         try:
             info = cls.get_info()
             license_info = info.get("License")

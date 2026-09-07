@@ -11,4 +11,5 @@ export const ModelProviderQuotaGetPaid = {
   DEEPSEEK: 'langgenius/deepseek/deepseek',
   TONGYI: 'langgenius/tongyi/tongyi',
 } as const
-export type ModelProviderQuotaGetPaid = typeof ModelProviderQuotaGetPaid[keyof typeof ModelProviderQuotaGetPaid]
+export type ModelProviderQuotaGetPaid =
+  (typeof ModelProviderQuotaGetPaid)[keyof typeof ModelProviderQuotaGetPaid]

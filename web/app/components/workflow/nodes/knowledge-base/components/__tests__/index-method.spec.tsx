@@ -37,7 +37,9 @@ describe('IndexMethod', () => {
       />,
     )
 
-    fireEvent.change(container.querySelector('input') as HTMLInputElement, { target: { value: '7' } })
+    fireEvent.change(container.querySelector('input') as HTMLInputElement, {
+      target: { value: '7' },
+    })
 
     expect(onKeywordNumberChange).toHaveBeenCalledWith(7, expect.anything())
   })

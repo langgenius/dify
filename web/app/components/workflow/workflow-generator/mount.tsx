@@ -13,9 +13,8 @@ const WorkflowGeneratorModal = dynamic(() => import('./index'), { ssr: false })
  * zustand store flips ``isOpen`` to true.
  */
 const WorkflowGeneratorMount: React.FC = () => {
-  const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
-  if (!isOpen)
-    return null
+  const isOpen = useWorkflowGeneratorStore((s) => s.isOpen)
+  if (!isOpen) return null
   return <WorkflowGeneratorModal />
 }
 

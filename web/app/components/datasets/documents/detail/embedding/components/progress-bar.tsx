@@ -10,34 +10,30 @@ type ProgressBarProps = {
   isError: boolean
 }
 
-const ProgressBar: FC<ProgressBarProps> = React.memo(({
-  percent,
-  isEmbedding,
-  isCompleted,
-  isPaused,
-  isError,
-}) => {
-  const isActive = isEmbedding || isCompleted
-  const isHighlighted = isPaused || isError
+const ProgressBar: FC<ProgressBarProps> = React.memo(
+  ({ percent, isEmbedding, isCompleted, isPaused, isError }) => {
+    const isActive = isEmbedding || isCompleted
+    const isHighlighted = isPaused || isError
 
-  return (
-    <div
-      className={cn(
-        'flex h-2 w-full items-center overflow-hidden rounded-md border border-components-progress-bar-border',
-        isEmbedding ? 'bg-components-progress-bar-bg/50' : 'bg-components-progress-bar-bg',
-      )}
-    >
+    return (
       <div
         className={cn(
-          'h-full transition-all duration-300',
-          isActive && 'bg-components-progress-bar-progress-solid',
-          isHighlighted && 'bg-components-progress-bar-progress-highlight',
+          'flex h-2 w-full items-center overflow-hidden rounded-md border border-components-progress-bar-border',
+          isEmbedding ? 'bg-components-progress-bar-bg/50' : 'bg-components-progress-bar-bg',
         )}
-        style={{ width: `${percent}%` }}
-      />
-    </div>
-  )
-})
+      >
+        <div
+          className={cn(
+            'h-full transition-all duration-300',
+            isActive && 'bg-components-progress-bar-progress-solid',
+            isHighlighted && 'bg-components-progress-bar-progress-highlight',
+          )}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    )
+  },
+)
 
 ProgressBar.displayName = 'ProgressBar'
 

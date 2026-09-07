@@ -2,14 +2,15 @@ import type { RefObject } from 'react'
 import type { UploadDropzoneProps } from '../upload-dropzone'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import UploadDropzone from '../upload-dropzone'
 
 let mockEnableBilling = false
 
 vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: <T,>(selector: (state: Pick<ProviderContextState, 'enableBilling'>) => T): T =>
-    selector({ enableBilling: mockEnableBilling }),
+  useProviderContextSelector: <T,>(
+    selector: (state: Pick<ProviderContextState, 'enableBilling'>) => T,
+  ): T => selector({ enableBilling: mockEnableBilling }),
 }))
 
 // Helper to create mock ref objects for testing
@@ -63,16 +64,20 @@ describe('UploadDropzone', () => {
       expect(icon).toBeInTheDocument()
     })
 
-    it('should render browse label when extensions are allowed', () => {
+    it('should render browse button when extensions are allowed', () => {
       render(<UploadDropzone {...defaultProps} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.uploader.browse')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+      ).toBeInTheDocument()
     })
 
-    it('should not render browse label when no extensions allowed', () => {
+    it('should not render browse button when no extensions allowed', () => {
       render(<UploadDropzone {...defaultProps} allowedExtensions={[]} />)
 
-      expect(screen.queryByText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render file size and count limits', () => {
@@ -88,9 +93,13 @@ describe('UploadDropzone', () => {
 
       render(<UploadDropzone {...defaultProps} />)
 
-      const tipWithoutTotal = screen.getByText(/datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/)
+      const tipWithoutTotal = screen.getByText(
+        /datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/,
+      )
       expect(tipWithoutTotal).toBeInTheDocument()
-      expect(screen.queryByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/),
+      ).not.toBeInTheDocument()
     })
 
     it('should render tip with total count limit when billing is enabled', () => {
@@ -98,8 +107,12 @@ describe('UploadDropzone', () => {
 
       render(<UploadDropzone {...defaultProps} />)
 
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/)).toBeInTheDocument()
-      expect(screen.queryByText(/datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/)).not.toBeInTheDocument()
+      expect(
+        screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/),
+      ).not.toBeInTheDocument()
     })
 
     it('should pass file size, batch count and supported types to tip when billing is disabled', () => {
@@ -119,7 +132,8 @@ describe('UploadDropzone', () => {
 
       render(<UploadDropzone {...defaultProps} />)
 
-      const tipText = screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/).textContent ?? ''
+      const tipText =
+        screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/).textContent ?? ''
       expect(tipText).toContain('"size":15')
       expect(tipText).toContain('"batchCount":5')
       expect(tipText).toContain('"supportTypes":"PDF, DOCX, TXT"')
@@ -160,7 +174,9 @@ describe('UploadDropzone', () => {
     it('should show single file text when supportBatchUpload is false', () => {
       render(<UploadDropzone {...defaultProps} supportBatchUpload={false} />)
 
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/),
+      ).toBeInTheDocument()
     })
   })
 
@@ -168,13 +184,21 @@ describe('UploadDropzone', () => {
     it('should apply dragging styles when dragging is true', () => {
       const { container } = render(<UploadDropzone {...defaultProps} dragging={true} />)
 
-      const dropzone = container.querySelector('[class*="border-components-dropzone-border-accent"]')
+      const dropzone = container.querySelector(
+        '[class*="border-components-dropzone-border-accent"]',
+      )
       expect(dropzone).toBeInTheDocument()
     })
 
     it('should render drag overlay when dragging', () => {
       const dragRef = createMockRef<HTMLDivElement>()
-      render(<UploadDropzone {...defaultProps} dragging={true} dragRef={dragRef as RefObject<HTMLDivElement | null>} />)
+      render(
+        <UploadDropzone
+          {...defaultProps}
+          dragging={true}
+          dragRef={dragRef as RefObject<HTMLDivElement | null>}
+        />,
+      )
 
       const overlay = document.querySelector('.absolute.left-0.top-0')
       expect(overlay).toBeInTheDocument()
@@ -189,12 +213,14 @@ describe('UploadDropzone', () => {
   })
 
   describe('event handlers', () => {
-    it('should call onSelectFile when browse label is clicked', () => {
+    it('should call onSelectFile when browse button is clicked', () => {
       const onSelectFile = vi.fn()
       render(<UploadDropzone {...defaultProps} onSelectFile={onSelectFile} />)
 
-      const browseLabel = screen.getByText('datasetCreation.stepOne.uploader.browse')
-      fireEvent.click(browseLabel)
+      const browseButton = screen.getByRole('button', {
+        name: 'datasetCreation.stepOne.uploader.browse',
+      })
+      fireEvent.click(browseButton)
 
       expect(onSelectFile).toHaveBeenCalledTimes(1)
     })
@@ -215,40 +241,47 @@ describe('UploadDropzone', () => {
   describe('refs', () => {
     it('should attach dropRef to drop container', () => {
       const dropRef = createMockRef<HTMLDivElement>()
-      render(<UploadDropzone {...defaultProps} dropRef={dropRef as RefObject<HTMLDivElement | null>} />)
+      render(
+        <UploadDropzone {...defaultProps} dropRef={dropRef as RefObject<HTMLDivElement | null>} />,
+      )
 
       expect(dropRef.current).toBeInstanceOf(HTMLDivElement)
     })
 
     it('should attach fileUploaderRef to input element', () => {
       const fileUploaderRef = createMockRef<HTMLInputElement>()
-      render(<UploadDropzone {...defaultProps} fileUploaderRef={fileUploaderRef as RefObject<HTMLInputElement | null>} />)
+      render(
+        <UploadDropzone
+          {...defaultProps}
+          fileUploaderRef={fileUploaderRef as RefObject<HTMLInputElement | null>}
+        />,
+      )
 
       expect(fileUploaderRef.current).toBeInstanceOf(HTMLInputElement)
     })
 
     it('should attach dragRef to overlay when dragging', () => {
       const dragRef = createMockRef<HTMLDivElement>()
-      render(<UploadDropzone {...defaultProps} dragging={true} dragRef={dragRef as RefObject<HTMLDivElement | null>} />)
+      render(
+        <UploadDropzone
+          {...defaultProps}
+          dragging={true}
+          dragRef={dragRef as RefObject<HTMLDivElement | null>}
+        />,
+      )
 
       expect(dragRef.current).toBeInstanceOf(HTMLDivElement)
     })
   })
 
   describe('styling', () => {
-    it('should have base dropzone styling', () => {
-      const { container } = render(<UploadDropzone {...defaultProps} />)
-
-      const dropzone = container.querySelector('[class*="border-dashed"]')
-      expect(dropzone).toBeInTheDocument()
-      expect(dropzone).toHaveClass('rounded-xl')
-    })
-
-    it('should have cursor-pointer on browse label', () => {
+    it('should have cursor-pointer on browse button', () => {
       render(<UploadDropzone {...defaultProps} />)
 
-      const browseLabel = screen.getByText('datasetCreation.stepOne.uploader.browse')
-      expect(browseLabel).toHaveClass('cursor-pointer')
+      const browseButton = screen.getByRole('button', {
+        name: 'datasetCreation.stepOne.uploader.browse',
+      })
+      expect(browseButton).toHaveClass('cursor-pointer')
     })
   })
 

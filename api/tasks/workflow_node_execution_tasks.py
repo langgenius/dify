@@ -13,6 +13,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
@@ -144,8 +145,9 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+    process_data = preserve_workflow_agent_binding_id(node_execution.process_data_dict, execution.process_data)
     node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
+        json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
     )
     node_execution.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"

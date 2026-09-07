@@ -1,12 +1,5 @@
-import type {
-  EditorConfig,
-  LexicalNode,
-  SerializedTextNode,
-} from 'lexical'
-import {
-  $applyNodeReplacement,
-  TextNode,
-} from 'lexical'
+import type { EditorConfig, SerializedTextNode } from 'lexical'
+import { $applyNodeReplacement, TextNode } from 'lexical'
 
 export class VariableValueBlockNode extends TextNode {
   static override getType(): string {
@@ -23,7 +16,15 @@ export class VariableValueBlockNode extends TextNode {
 
   override createDOM(config: EditorConfig): HTMLElement {
     const element = super.createDOM(config)
-    element.classList.add('inline-flex', 'items-center', 'px-0.5', 'h-[22px]', 'text-text-accent', 'rounded-[5px]', 'align-middle')
+    element.classList.add(
+      'inline-flex',
+      'items-center',
+      'px-0.5',
+      'h-[22px]',
+      'text-text-accent',
+      'rounded-[5px]',
+      'align-middle',
+    )
     return element
   }
 
@@ -55,10 +56,4 @@ export class VariableValueBlockNode extends TextNode {
 
 export function $createVariableValueBlockNode(text = ''): VariableValueBlockNode {
   return $applyNodeReplacement(new VariableValueBlockNode(text))
-}
-
-export function $isVariableValueNodeBlock(
-  node: LexicalNode | null | undefined,
-): node is VariableValueBlockNode {
-  return node instanceof VariableValueBlockNode
 }

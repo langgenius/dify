@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceProvider } from '@/models/common'
 import NoData from '../no-data'
 
@@ -19,9 +19,15 @@ let mockEnableJinaReader = true
 let mockEnableWaterCrawl = true
 
 vi.mock('@/config', () => ({
-  get ENABLE_WEBSITE_FIRECRAWL() { return mockEnableFirecrawl },
-  get ENABLE_WEBSITE_JINAREADER() { return mockEnableJinaReader },
-  get ENABLE_WEBSITE_WATERCRAWL() { return mockEnableWaterCrawl },
+  get ENABLE_WEBSITE_FIRECRAWL() {
+    return mockEnableFirecrawl
+  },
+  get ENABLE_WEBSITE_JINAREADER() {
+    return mockEnableJinaReader
+  },
+  get ENABLE_WEBSITE_WATERCRAWL() {
+    return mockEnableWaterCrawl
+  },
 }))
 
 // NoData Component Tests

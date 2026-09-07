@@ -1,91 +1,24 @@
 import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ChatUserInput from '../chat-user-input'
 
 const mockSetInputs = vi.fn()
 const mockUseContext = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('use-context-selector', () => ({
   useContext: () => mockUseContext(),
   createContext: vi.fn(() => ({})),
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({ value, onChange, placeholder, autoFocus, maxLength, readOnly, type }: {
-    value: string
-    onChange: (e: { target: { value: string } }) => void
-    placeholder?: string
-    autoFocus?: boolean
-    maxLength?: number
-    readOnly?: boolean
-    type?: string
-  }) => (
-    <input
-      data-testid={`input-${placeholder}`}
-      data-autofocus={autoFocus ? 'true' : undefined}
-      type={type || 'text'}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      maxLength={maxLength}
-      readOnly={readOnly}
-    />
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    disabled?: boolean
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({ children, disabled, onValueChange }: {
-      children: React.ReactNode
-      disabled?: boolean
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext.Provider value={{ disabled, onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <button data-testid="select-input" type="button" disabled={context.disabled} className={className}>
-            {children}
-          </button>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
-            empty select value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button data-testid={`select-${value}`} type="button" role="option" onClick={() => context.onValueChange?.(value)}>
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
-
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ name, value, required, onChange, readonly }: {
+  default: ({
+    name,
+    value,
+    required,
+    onChange,
+    readonly,
+  }: {
     name: string
     value: boolean
     required?: boolean
@@ -96,7 +29,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-i
       <input
         type="checkbox"
         checked={value}
-        onChange={e => onChange(e.target.checked)}
+        onChange={(e) => onChange(e.target.checked)}
         disabled={readonly}
         data-required={required}
       />
@@ -116,7 +49,9 @@ type ExtendedPromptVariable = {
   default?: string | null
 }
 
-const createPromptVariable = (overrides: Partial<ExtendedPromptVariable> = {}): ExtendedPromptVariable => ({
+const createPromptVariable = (
+  overrides: Partial<ExtendedPromptVariable> = {},
+): ExtendedPromptVariable => ({
   key: 'test-key',
   name: 'Test Name',
   type: 'string',
@@ -124,24 +59,29 @@ const createPromptVariable = (overrides: Partial<ExtendedPromptVariable> = {}): 
   ...overrides,
 })
 
-const createModelConfig = (promptVariables: ExtendedPromptVariable[] = []): ModelConfig => ({
-  provider: 'openai',
-  model_id: 'gpt-4',
-  mode: 'chat',
-  configs: {
-    prompt_template: '',
-    prompt_variables: promptVariables as PromptVariable[],
-  },
-} as ModelConfig)
+const createModelConfig = (promptVariables: ExtendedPromptVariable[] = []): ModelConfig =>
+  ({
+    provider: 'openai',
+    model_id: 'gpt-4',
+    mode: 'chat',
+    configs: {
+      prompt_template: '',
+      prompt_variables: promptVariables as PromptVariable[],
+    },
+  }) as ModelConfig
 
-const createContextValue = (overrides: Partial<{
-  modelConfig: ModelConfig
-  setInputs: (inputs: Inputs) => void
-  readonly: boolean
-}> = {}) => ({
+const createContextValue = (
+  overrides: Partial<{
+    modelConfig: ModelConfig
+    setInputs: (inputs: Inputs) => void
+    readonly: boolean
+    canTestAndRun: boolean
+  }> = {},
+) => ({
   modelConfig: createModelConfig(),
   setInputs: mockSetInputs,
   readonly: false,
+  canTestAndRun: true,
   ...overrides,
 })
 
@@ -153,141 +93,177 @@ describe('ChatUserInput', () => {
 
   describe('Rendering', () => {
     it('should return null when no prompt variables exist', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([]),
+        }),
+      )
 
       const { container } = render(<ChatUserInput inputs={{}} />)
       expect(container.firstChild).toBeNull()
     })
 
     it('should return null when prompt variables have empty keys', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: '', name: 'Test' }),
-          createPromptVariable({ key: '   ', name: 'Test2' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: '', name: 'Test' }),
+            createPromptVariable({ key: '   ', name: 'Test2' }),
+          ]),
+        }),
+      )
 
       const { container } = render(<ChatUserInput inputs={{}} />)
       expect(container.firstChild).toBeNull()
     })
 
     it('should return null when prompt variables have empty names', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'key1', name: '' }),
-          createPromptVariable({ key: 'key2', name: '   ' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'key1', name: '' }),
+            createPromptVariable({ key: 'key2', name: '   ' }),
+          ]),
+        }),
+      )
 
       const { container } = render(<ChatUserInput inputs={{}} />)
       expect(container.firstChild).toBeNull()
     })
 
     it('should render string input type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
     })
 
     it('should render paragraph input type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'description', name: 'Description', type: 'paragraph' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'description', name: 'Description', type: 'paragraph' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
     })
 
-    it('should render select input type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B', 'C'] }),
-        ]),
-      }))
+    it('should render select input type', async () => {
+      const user = userEvent.setup()
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({
+              key: 'choice',
+              name: 'Choice',
+              type: 'select',
+              options: ['A', 'B', 'C'],
+            }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('select-input')).toBeInTheDocument()
-      expect(screen.getByText('A')).toBeInTheDocument()
-      expect(screen.getByText('B')).toBeInTheDocument()
-      expect(screen.getByText('C')).toBeInTheDocument()
+      const select = screen.getByRole('combobox', { name: 'Choice' })
+      await user.click(select)
+      expect(await screen.findByRole('option', { name: 'A' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'B' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'C' })).toBeInTheDocument()
     })
 
     it('should render number input type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      const input = screen.getByTestId('input-Count')
+      const input = screen.getByRole('spinbutton', { name: 'Count' })
       expect(input).toBeInTheDocument()
       expect(input).toHaveAttribute('type', 'number')
     })
 
     it('should render checkbox input type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('bool-input-Enabled')).toBeInTheDocument()
     })
 
     it('should render multiple input types', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['X', 'Y'] }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+            createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
+            createPromptVariable({
+              key: 'choice',
+              name: 'Choice',
+              type: 'select',
+              options: ['X', 'Y'],
+            }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
       expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
-      expect(screen.getByTestId('select-input')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Choice' })).toBeInTheDocument()
     })
 
     it('should show optional label for non-required fields', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', required: false }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string', required: false }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByText('panel.optional')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)panel\.optional(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should not show optional label for required fields', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', required: true }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string', required: true }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.queryByText('panel.optional')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)panel\.optional(?=$|:)/)).not.toBeInTheDocument()
     })
 
     it('should use key as label when name is not provided', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'myKey', name: '', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'myKey', name: '', type: 'string' }),
+          ]),
+        }),
+      )
 
       // This should actually return null because name is empty
       const { container } = render(<ChatUserInput inputs={{}} />)
@@ -297,45 +273,53 @@ describe('ChatUserInput', () => {
 
   describe('Input Values', () => {
     it('should display existing input values for string type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ name: 'John' }} />)
-      expect(screen.getByTestId('input-Name')).toHaveValue('John')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('John')
     })
 
     it('should display existing input values for paragraph type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ desc: 'Long text here' }} />)
       expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Long text here')
     })
 
     it('should display existing input values for number type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ count: 42 }} />)
       // Number type input still uses string value internally
-      expect(screen.getByTestId('input-Count')).toHaveValue(42)
+      expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveValue(42)
     })
 
     it('should display checkbox as checked when value is truthy', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ enabled: true }} />)
       const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')
@@ -343,11 +327,13 @@ describe('ChatUserInput', () => {
     })
 
     it('should display checkbox as unchecked when value is falsy', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ enabled: false }} />)
       const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')
@@ -355,100 +341,114 @@ describe('ChatUserInput', () => {
     })
 
     it('should handle empty string values', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ name: '' }} />)
-      expect(screen.getByTestId('input-Name')).toHaveValue('')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
     })
 
     it('should handle undefined values', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveValue('')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
     })
   })
 
   describe('User Interactions', () => {
     it('should call setInputs when string input changes', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'New Value' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+        target: { value: 'New Value' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ name: 'New Value' })
     })
 
     it('should call setInputs when paragraph input changes', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'New Description' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+        target: { value: 'New Description' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ desc: 'New Description' })
     })
 
-    it('should call setInputs when select input changes', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B', 'C'] }),
-        ]),
-      }))
+    it('should call setInputs when select input changes', async () => {
+      const user = userEvent.setup()
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({
+              key: 'choice',
+              name: 'Choice',
+              type: 'select',
+              options: ['A', 'B', 'C'],
+            }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ choice: 'A' }} />)
-      fireEvent.click(screen.getByTestId('select-B'))
+      await user.click(screen.getByRole('combobox', { name: 'Choice' }))
+      await user.click(await screen.findByRole('option', { name: 'B' }))
 
       expect(mockSetInputs).toHaveBeenCalledWith({ choice: 'B' })
     })
 
-    it('should ignore empty select updates', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B', 'C'] }),
-        ]),
-      }))
-
-      render(<ChatUserInput inputs={{}} />)
-      fireEvent.click(screen.getByTestId('select-empty'))
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
-    })
-
     it('should call setInputs when number input changes', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByTestId('input-Count'), { target: { value: '100' } })
+      fireEvent.change(screen.getByRole('spinbutton', { name: 'Count' }), {
+        target: { value: '100' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ count: '100' })
     })
 
     it('should call setInputs when checkbox changes', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ enabled: false }} />)
       const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')!
@@ -465,70 +465,121 @@ describe('ChatUserInput', () => {
           callback(createPromptVariable({ key: 'name', name: 'Name', type: 'string' }), 0),
         ],
       }
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: {
-          ...createModelConfig(),
-          configs: {
-            prompt_template: '',
-            prompt_variables: {
-              filter: () => filteredPromptVariables,
-            } as unknown as PromptVariable[],
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: {
+            ...createModelConfig(),
+            configs: {
+              prompt_template: '',
+              prompt_variables: {
+                filter: () => filteredPromptVariables,
+              } as unknown as PromptVariable[],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
 
-      fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'Valid' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+        target: { value: 'Valid' },
+      })
 
       expect(mockSetInputs).not.toHaveBeenCalled()
     })
   })
 
-  describe('Readonly Mode', () => {
-    it('should set string input as readonly when readonly is true', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-        readonly: true,
-      }))
+  describe('Debug Permission', () => {
+    it('should keep string input editable when configuration is readonly but test/run is allowed', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+          readonly: true,
+          canTestAndRun: true,
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox', { name: 'Name' })).not.toHaveAttribute('readonly')
     })
 
-    it('should set paragraph input as readonly when readonly is true', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-        readonly: true,
-      }))
+    it('should set string input as readonly when test/run is denied even if configuration is editable', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+          readonly: false,
+          canTestAndRun: false,
+        }),
+      )
+
+      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('readonly')
+    })
+
+    it('should set string input as readonly when configuration is readonly and test/run is denied', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+          readonly: true,
+          canTestAndRun: false,
+        }),
+      )
+
+      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('readonly')
+    })
+
+    it('should set paragraph input as readonly when configuration is readonly and test/run is denied', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
+          ]),
+          readonly: true,
+          canTestAndRun: false,
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAttribute('readonly')
     })
 
-    it('should disable select when readonly is true', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B'] }),
-        ]),
-        readonly: true,
-      }))
+    it('should disable select when configuration is readonly and test/run is denied', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({
+              key: 'choice',
+              name: 'Choice',
+              type: 'select',
+              options: ['A', 'B'],
+            }),
+          ]),
+          readonly: true,
+          canTestAndRun: false,
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('select-input')).toBeDisabled()
+      expect(screen.getByRole('combobox', { name: 'Choice' })).toBeDisabled()
     })
 
-    it('should disable checkbox when readonly is true', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-        readonly: true,
-      }))
+    it('should disable checkbox when configuration is readonly and test/run is denied', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
+          ]),
+          readonly: true,
+          canTestAndRun: false,
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
       const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')
@@ -538,11 +589,18 @@ describe('ChatUserInput', () => {
 
   describe('Default Values', () => {
     it('should initialize inputs with default values when field is empty', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: 'Default Name' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({
+              key: 'name',
+              name: 'Name',
+              type: 'string',
+              default: 'Default Name',
+            }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
 
@@ -550,11 +608,13 @@ describe('ChatUserInput', () => {
     })
 
     it('should not override existing values with defaults', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: 'Default' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: 'Default' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ name: 'Existing Value' }} />)
 
@@ -563,12 +623,19 @@ describe('ChatUserInput', () => {
     })
 
     it('should handle multiple default values', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: 'Default Name' }),
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number', default: '10' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({
+              key: 'name',
+              name: 'Name',
+              type: 'string',
+              default: 'Default Name',
+            }),
+            createPromptVariable({ key: 'count', name: 'Count', type: 'number', default: '10' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
 
@@ -579,11 +646,13 @@ describe('ChatUserInput', () => {
     })
 
     it('should not set default when default is empty string', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: '' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: '' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
 
@@ -591,11 +660,13 @@ describe('ChatUserInput', () => {
     })
 
     it('should not set default when default is undefined', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
 
@@ -603,11 +674,18 @@ describe('ChatUserInput', () => {
     })
 
     it('should not set default when default is null', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: null as unknown as string }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({
+              key: 'name',
+              name: 'Name',
+              type: 'string',
+              default: null as unknown as string,
+            }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
 
@@ -615,93 +693,53 @@ describe('ChatUserInput', () => {
     })
   })
 
-  describe('AutoFocus', () => {
-    it('should set autoFocus on first string input', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'first', name: 'First', type: 'string' }),
-          createPromptVariable({ key: 'second', name: 'Second', type: 'string' }),
-        ]),
-      }))
+  describe('Input constraints', () => {
+    it('preserves the text length constraint', () => {
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string', max_length: 50 }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-First')).toHaveAttribute('data-autofocus', 'true')
-      expect(screen.getByTestId('input-Second')).not.toHaveAttribute('data-autofocus')
-    })
 
-    it('should set autoFocus on first number input when it is the first field', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      }))
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Count')).toHaveAttribute('data-autofocus', 'true')
-    })
-  })
-
-  describe('MaxLength', () => {
-    it('should pass maxLength to string input', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', max_length: 50 }),
-        ]),
-      }))
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Name')).toHaveAttribute('maxLength', '50')
-    })
-
-    it('should pass maxLength to number input', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number', max_length: 10 }),
-        ]),
-      }))
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('input-Count')).toHaveAttribute('maxLength', '10')
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('maxLength', '50')
     })
   })
 
   describe('Edge Cases', () => {
-    it('should handle select with empty options', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: [] }),
-        ]),
-      }))
+    it('should show no options when a select has no configured choices', async () => {
+      const user = userEvent.setup()
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: [] }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
-      const select = screen.getByTestId('select-input')
-      expect(select).toBeInTheDocument()
+      const select = screen.getByRole('combobox', { name: 'Choice' })
+      await user.click(select)
       expect(screen.queryAllByRole('option')).toHaveLength(0)
     })
 
-    it('should handle select with undefined options', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select' }),
-        ]),
-      }))
-
-      render(<ChatUserInput inputs={{}} />)
-      const select = screen.getByTestId('select-input')
-      expect(select).toBeInTheDocument()
-    })
-
     it('should preserve other input values when updating one field', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+            createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ name: 'Existing', desc: 'Also Existing' }} />)
-      fireEvent.change(screen.getByTestId('input-Name'), { target: { value: 'Updated' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+        target: { value: 'Updated' },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledWith({
         name: 'Updated',
@@ -710,22 +748,26 @@ describe('ChatUserInput', () => {
     })
 
     it('should convert non-string values to string for display', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'value', name: 'Value', type: 'string' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'value', name: 'Value', type: 'string' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{ value: 123 as unknown as string }} />)
-      expect(screen.getByTestId('input-Value')).toHaveValue('123')
+      expect(screen.getByRole('textbox', { name: 'Value' })).toHaveValue('123')
     })
 
     it('should not hide label for checkbox type', () => {
-      mockUseContext.mockReturnValue(createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Is Enabled', type: 'checkbox' }),
-        ]),
-      }))
+      mockUseContext.mockReturnValue(
+        createContextValue({
+          modelConfig: createModelConfig([
+            createPromptVariable({ key: 'enabled', name: 'Is Enabled', type: 'checkbox' }),
+          ]),
+        }),
+      )
 
       render(<ChatUserInput inputs={{}} />)
       // For checkbox, the label is rendered inside BoolInput, not in the header

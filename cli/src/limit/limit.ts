@@ -9,10 +9,7 @@ const INTEGER_PATTERN = /^-?\d+$/
 
 export function parseLimit(raw: string, source: string): number {
   if (!INTEGER_PATTERN.test(raw)) {
-    throw newError(
-      ErrorCode.UsageInvalidFlag,
-      `${source}: ${JSON.stringify(raw)} is not a number`,
-    )
+    throw newError(ErrorCode.UsageInvalidFlag, `${source}: ${JSON.stringify(raw)} is not a number`)
   }
   const n = Number(raw)
   if (n < LIMIT_MIN || n > LIMIT_MAX) {

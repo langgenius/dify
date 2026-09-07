@@ -1,30 +1,32 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 
 type AppCardTagsProps = {
   appId: string
+  appName: string
   tags: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
 }
 
 export const AppCardTags = ({
   appId,
+  appName,
   tags,
+  canBindOrUnbindTags,
   onOpenTagManagement = () => {},
   onTagsChange,
 }: AppCardTagsProps) => {
   return (
-    <div className="group/tag-area relative min-w-0 overflow-hidden">
-      <TagSelector
-        placement="bottom-start"
-        type="app"
-        targetId={appId}
-        value={tags}
-        onOpenTagManagement={onOpenTagManagement}
-        onTagsChange={onTagsChange}
-      />
-      <div className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-tag-selector-mask-bg group-focus-within/tag-area:hidden group-hover/tag-area:hidden" />
-    </div>
+    <TagSelector
+      type="app"
+      targetId={appId}
+      contextLabel={appName}
+      value={tags}
+      canBindOrUnbindTags={canBindOrUnbindTags}
+      onOpenTagManagement={onOpenTagManagement}
+      onTagsChange={onTagsChange}
+    />
   )
 }

@@ -50,9 +50,7 @@ const createWrapper = () => {
   workflowStore.temporal.getState().resume()
 
   return ({ children }: { children: React.ReactNode }) => (
-    <WorkflowContext.Provider value={workflowStore}>
-      {children}
-    </WorkflowContext.Provider>
+    <WorkflowContext.Provider value={workflowStore}>{children}</WorkflowContext.Provider>
   )
 }
 

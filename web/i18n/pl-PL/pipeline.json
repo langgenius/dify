@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Przejdź do dodawania dokumentów",
   "common.preparingDataSource": "Przygotowywanie źródła danych",
   "common.processing": "Przetwarzanie",
-  "common.publishAs": "Publikowanie jako potoku wiedzy",
+  "common.publishAs": "Opublikuj jako potok wiedzy",
   "common.publishAsPipeline.description": "Opis wiedzy",
   "common.publishAsPipeline.descriptionPlaceholder": "Wprowadź opis tego potoku wiedzy. (Opcjonalnie)",
   "common.publishAsPipeline.name": "Nazwa i ikona potoku",

@@ -4,23 +4,22 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   icon: React.JSX.Element
   name: string
   description: string
   children: React.JSX.Element
-}
+}>
 
-const ItemPanel: FC<Props> = ({
-  className,
-  icon,
-  name,
-  description,
-  children,
-}) => {
+const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) => {
   return (
-    <div className={cn(className, 'flex h-12 items-center justify-between rounded-lg bg-background-section-burn px-3')}>
+    <div
+      className={cn(
+        className,
+        'flex h-12 items-center justify-between rounded-lg bg-background-section-burn px-3',
+      )}
+    >
       <div className="flex items-center">
         {icon}
         <div className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">{name}</div>
@@ -28,9 +27,7 @@ const ItemPanel: FC<Props> = ({
           {description}
         </Infotip>
       </div>
-      <div>
-        {children}
-      </div>
+      <div>{children}</div>
     </div>
   )
 }

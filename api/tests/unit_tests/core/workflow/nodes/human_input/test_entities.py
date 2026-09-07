@@ -30,13 +30,11 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
-from core.workflow.system_variables import build_system_variables
-from graphon.entities import GraphInitParams
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import PauseRequestedEvent
-from graphon.node_events.node import StreamCompletedEvent
-from graphon.nodes.human_input.entities import (
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
+)
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     HumanInputNodeData,
@@ -46,13 +44,18 @@ from graphon.nodes.human_input.entities import (
     StringSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import (
+from core.workflow.nodes.human_input.enums import (
     ButtonStyle,
     FormInputType,
     HumanInputFormStatus,
     TimeoutUnit,
     ValueSourceType,
 )
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.node_events import PauseRequestedEvent
+from graphon.node_events.node import StreamCompletedEvent
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -69,6 +72,7 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
     status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
+    created: datetime = field(default_factory=naive_utc_now)
     expiration: datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
 
     @property
@@ -90,6 +94,10 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     @property
     def selected_action_id(self) -> str | None:
         return self.action_id
+
+    @property
+    def created_at(self) -> datetime:
+        return self.created
 
     @property
     def submitted_data(self) -> Mapping[str, Any] | None:
@@ -171,13 +179,20 @@ def _build_human_input_node(
     typed_node_data = (
         node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
     )
+    runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
+    callback = DifyHITLCallback(
+        form_repository=runtime.build_form_repository(),
+        node_data=typed_node_data,
+        delivery_methods=runtime._resolve_delivery_methods(node_data=typed_node_data),
+        display_in_ui=runtime._display_in_ui(node_data=typed_node_data),
+        file_reference_factory=_TestFileReferenceFactory(),
+    )
     return HumanInputNode(
         node_id=node_id,
         data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
-        runtime=runtime,
+        hitl_callback=callback,
     )
 
 
@@ -522,7 +537,8 @@ class TestHumanInputNodeVariableResolution:
 
         assert isinstance(pause_event, PauseRequestedEvent)
         expected_values = {"user_name": "Jane Doe"}
-        assert pause_event.reason.resolved_default_values == expected_values
+        create_params = mock_repo.create_form.call_args.args[0]
+        assert create_params.resolved_default_values == expected_values
 
         params = mock_repo.create_form.call_args.args[0]
         assert params.resolved_default_values == expected_values

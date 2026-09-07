@@ -1,15 +1,320 @@
+import logging
+from datetime import UTC, datetime
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
+from graphon.enums import WorkflowType
+from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.model import App, AppMode, EndUser
+from models.tools import ToolFile
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
+from models.workflow import Workflow
+from services.errors.app import QuotaExceededError
+from services.trigger import webhook_service as webhook_service_module
 from services.trigger.webhook_service import WebhookService
 
 
+def _webhook_trigger(
+    *,
+    webhook_id: str = "webhook-123",
+    tenant_id: str = "tenant-123",
+    app_id: str = "app-123",
+    node_id: str = "node-123",
+    created_by: str = "account-123",
+) -> WorkflowWebhookTrigger:
+    return WorkflowWebhookTrigger(
+        webhook_id=webhook_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        node_id=node_id,
+        created_by=created_by,
+    )
+
+
+def _tool_file() -> ToolFile:
+    tool_file = ToolFile(
+        user_id="user-123",
+        tenant_id="test_tenant",
+        conversation_id=None,
+        file_key="webhook/test.txt",
+        mimetype="text/plain",
+        name="test.txt",
+        size=7,
+    )
+    tool_file.id = "test_file_id"
+    return tool_file
+
+
+def _workflow(
+    *,
+    workflow_id: str = "workflow-123",
+    tenant_id: str = "tenant-123",
+    app_id: str = "app-123",
+    version: str = Workflow.VERSION_DRAFT,
+) -> Workflow:
+    workflow = Workflow.new(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=WorkflowType.WORKFLOW.value,
+        version=version,
+        graph='{"nodes": [], "edges": []}',
+        features="{}",
+        created_by="account-123",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.id = workflow_id
+    return workflow
+
+
+def _app(*, tenant_id: str = "tenant-123", app_id: str = "app-123") -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Webhook App",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _app_trigger(*, status: AppTriggerStatus = AppTriggerStatus.ENABLED) -> AppTrigger:
+    return AppTrigger(
+        tenant_id="tenant-123",
+        app_id="app-123",
+        node_id="node-123",
+        trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
+        title="Webhook",
+        status=status,
+    )
+
+
+def _end_user() -> EndUser:
+    return EndUser(
+        id="end-user-123",
+        tenant_id="tenant-123",
+        app_id="app-123",
+        type=EndUserType.TRIGGER,
+        session_id="webhook-session",
+    )
+
+
+class TestWebhookServiceLookup:
+    def test_debug_lookup_scopes_draft_workflow_to_trigger_owner(
+        self,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        target_workflow = _workflow()
+        target_workflow.created_at = datetime(2025, 1, 1, tzinfo=UTC).replace(tzinfo=None)
+        tenant_decoy = _workflow(
+            workflow_id="workflow-decoy",
+            tenant_id="tenant-other",
+            app_id="app-123",
+        )
+        tenant_decoy.created_at = datetime(2026, 1, 1, tzinfo=UTC).replace(tzinfo=None)
+        sqlite_session.add_all([_webhook_trigger(), target_workflow, tenant_decoy])
+        sqlite_session.commit()
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+        node_config = {"id": "node-123", "data": {}}
+
+        with patch.object(Workflow, "get_node_config_by_id", autospec=True, return_value=node_config) as get_node:
+            webhook_trigger, workflow, result_node_config = WebhookService.get_webhook_trigger_and_workflow(
+                "webhook-123", is_debug=True
+            )
+
+        assert webhook_trigger.tenant_id == "tenant-123"
+        assert workflow.id == target_workflow.id
+        assert result_node_config is node_config
+        get_node.assert_called_once_with(workflow, "node-123")
+
+    def test_published_lookup_uses_persisted_owner_chain(
+        self,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        sqlite_session.add_all([_webhook_trigger(), _app_trigger(), _app()])
+        sqlite_session.commit()
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+        published_workflow = _workflow(version="published")
+        node_config = {"id": "node-123", "data": {}}
+
+        with (
+            patch.object(webhook_service_module, "WorkflowService") as workflow_service_class,
+            patch.object(Workflow, "get_node_config_by_id", autospec=True, return_value=node_config),
+        ):
+            get_published_workflow = workflow_service_class.return_value.get_published_workflow
+            get_published_workflow.return_value = published_workflow
+            webhook_trigger, workflow, result_node_config = WebhookService.get_webhook_trigger_and_workflow(
+                "webhook-123"
+            )
+
+        assert webhook_trigger.app_id == "app-123"
+        assert workflow is published_workflow
+        assert result_node_config is node_config
+        persisted_app = get_published_workflow.call_args.args[0]
+        assert isinstance(persisted_app, App)
+        assert persisted_app.id == "app-123"
+        assert persisted_app.tenant_id == "tenant-123"
+
+    def test_published_lookup_rejects_cross_tenant_app_decoy(
+        self,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        sqlite_session.add_all(
+            [
+                _webhook_trigger(),
+                _app_trigger(),
+                _app(tenant_id="tenant-other"),
+            ]
+        )
+        sqlite_session.commit()
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+
+        with pytest.raises(ValueError, match="App not found"):
+            WebhookService.get_webhook_trigger_and_workflow("webhook-123")
+
+    @pytest.mark.parametrize(
+        "status",
+        [AppTriggerStatus.DISABLED, AppTriggerStatus.UNAUTHORIZED],
+    )
+    def test_published_lookup_rejects_inactive_trigger(
+        self,
+        status: AppTriggerStatus,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        sqlite_session.add_all([_webhook_trigger(), _app_trigger(status=status)])
+        sqlite_session.commit()
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+
+        with pytest.raises(ValueError, match="disabled"):
+            WebhookService.get_webhook_trigger_and_workflow("webhook-123")
+
+    def test_published_lookup_reports_rate_limited_trigger(
+        self,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        sqlite_session.add_all([_webhook_trigger(), _app_trigger(status=AppTriggerStatus.RATE_LIMITED)])
+        sqlite_session.commit()
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+
+        with pytest.raises(QuotaExceededError):
+            WebhookService.get_webhook_trigger_and_workflow("webhook-123")
+
+
 class TestWebhookServiceUnit:
-    """Unit tests for WebhookService focusing on business logic without database dependencies."""
+    """Webhook business-logic tests with isolated sessions where the service owns their lifecycle."""
+
+    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ) -> None:
+        """Quota failures refund the charge and close the real service-owned session."""
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+        webhook_trigger = _webhook_trigger()
+        workflow = _workflow()
+        quota_charge = MagicMock()
+        quota_error = QuotaExceededError(feature="workflow", tenant_id="tenant-123", required=1)
+
+        caplog.set_level(logging.INFO)
+        with (
+            patch(
+                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
+                return_value=_end_user(),
+            ),
+            patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
+            patch(
+                "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
+                side_effect=quota_error,
+            ) as mock_trigger_workflow_async,
+        ):
+            with pytest.raises(QuotaExceededError) as exc_info:
+                WebhookService.trigger_workflow_execution(
+                    webhook_trigger,
+                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                    workflow,
+                )
+
+        assert exc_info.value is quota_error
+        quota_charge.refund.assert_called_once_with()
+        session = mock_trigger_workflow_async.call_args.kwargs["session"]
+        assert isinstance(session, Session)
+        assert session.in_transaction() is False
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelno == logging.INFO
+        assert caplog.records[0].message == (
+            "Tenant tenant-123 quota exceeded for feature workflow, skipping webhook trigger webhook-123"
+        )
+
+    def test_trigger_workflow_execution_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ) -> None:
+        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+        webhook_trigger = _webhook_trigger()
+        workflow = _workflow()
+        end_user = _end_user()
+        quota_charge = MagicMock()
+        webhook_data = {
+            "method": "POST",
+            "headers": {"Authorization": "Bearer token"},
+            "query_params": {"version": "1"},
+            "body": {"message": "hello"},
+            "files": {},
+        }
+
+        with (
+            patch.object(
+                webhook_service_module.EndUserService,
+                "get_or_create_end_user_by_type",
+                return_value=end_user,
+            ),
+            patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
+            patch.object(
+                webhook_service_module.AsyncWorkflowService,
+                "trigger_workflow_async",
+            ) as mock_trigger,
+        ):
+            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+
+        call_session = mock_trigger.call_args.kwargs["session"]
+        assert call_session.get_bind() is sqlite_engine
+        quota_charge.commit.assert_called_once_with()
+        quota_charge.refund.assert_not_called()
+
+    def test_trigger_workflow_execution_end_user_service_failure(self) -> None:
+        webhook_trigger = _webhook_trigger()
+        workflow = _workflow()
+        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+
+        with patch.object(
+            webhook_service_module.EndUserService,
+            "get_or_create_end_user_by_type",
+            side_effect=ValueError("Failed to create end user"),
+        ):
+            with pytest.raises(ValueError, match="Failed to create end user"):
+                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""
@@ -22,7 +327,7 @@ class TestWebhookServiceUnit:
             query_string="version=1&format=json",
             json={"message": "hello", "count": 42},
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
             assert webhook_data["method"] == "POST"
@@ -44,7 +349,7 @@ class TestWebhookServiceUnit:
             headers={"Content-Type": "application/json"},
             query_string="count=42&threshold=3.14&enabled=true&note=text",
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
             # After refactoring, raw extraction keeps query params as strings
@@ -63,7 +368,7 @@ class TestWebhookServiceUnit:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             data={"username": "test", "password": "secret"},
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
             assert webhook_data["method"] == "POST"
@@ -84,7 +389,7 @@ class TestWebhookServiceUnit:
             headers={"Content-Type": "multipart/form-data"},
             data={"message": "test", "file": file_storage},
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             webhook_trigger.tenant_id = "test_tenant"
 
             with patch.object(WebhookService, "_process_file_uploads", autospec=True) as mock_process_files:
@@ -104,7 +409,7 @@ class TestWebhookServiceUnit:
         with app.test_request_context(
             "/webhook", method="POST", headers={"Content-Type": "text/plain"}, data="raw text content"
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
             assert webhook_data["method"] == "POST"
@@ -118,7 +423,7 @@ class TestWebhookServiceUnit:
         with app.test_request_context(
             "/webhook", method="POST", headers={"Content-Type": "application/octet-stream"}, data=binary_content
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             mock_file = MagicMock()
             mock_file.to_dict.return_value = {"file": "data"}
 
@@ -159,7 +464,9 @@ class TestWebhookServiceUnit:
 
         assert result == "application/octet-stream"
 
-    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch: pytest.MonkeyPatch):
+    def test_detect_binary_mimetype_handles_magic_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         """Fallback MIME type should be used when python-magic raises an exception."""
         try:
             import magic as real_magic
@@ -169,12 +476,12 @@ class TestWebhookServiceUnit:
         fake_magic = MagicMock()
         fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+        caplog.set_level(logging.DEBUG, logger="services.trigger.webhook_service")
 
-        with patch("services.trigger.webhook_service.logger", autospec=True) as mock_logger:
-            result = WebhookService._detect_binary_mimetype(b"binary data")
+        result = WebhookService._detect_binary_mimetype(b"binary data")
 
-            assert result == "application/octet-stream"
-            mock_logger.debug.assert_called_once()
+        assert result == "application/octet-stream"
+        assert "python-magic detection failed for octet-stream payload" in caplog.messages
 
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""
@@ -183,7 +490,7 @@ class TestWebhookServiceUnit:
         with app.test_request_context(
             "/webhook", method="POST", headers={"Content-Type": "application/json"}, data="invalid json"
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             with pytest.raises(ValueError, match="Invalid JSON body"):
                 WebhookService.extract_webhook_data(webhook_trigger)
 
@@ -253,9 +560,7 @@ class TestWebhookServiceUnit:
         """Test successful file upload processing."""
         # Mock ToolFileManager
         mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
-        mock_tool_file = MagicMock()
-        mock_tool_file.id = "test_file_id"
-        mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
+        mock_tool_file_instance.create_file_by_raw.return_value = _tool_file()
 
         # Mock file factory
         mock_file_obj = MagicMock()
@@ -271,7 +576,7 @@ class TestWebhookServiceUnit:
         files["file1"].stream.read.return_value = b"content1"
         files["file2"].stream.read.return_value = b"content2"
 
-        webhook_trigger = MagicMock()
+        webhook_trigger = _webhook_trigger()
         webhook_trigger.tenant_id = "test_tenant"
 
         result = WebhookService._process_file_uploads(files, webhook_trigger)
@@ -290,9 +595,7 @@ class TestWebhookServiceUnit:
         """Test file upload processing with errors."""
         # Mock ToolFileManager
         mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
-        mock_tool_file = MagicMock()
-        mock_tool_file.id = "test_file_id"
-        mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
+        mock_tool_file_instance.create_file_by_raw.return_value = _tool_file()
 
         # Mock file factory
         mock_file_obj = MagicMock()
@@ -307,7 +610,7 @@ class TestWebhookServiceUnit:
         files["good_file"].stream.read.return_value = b"content"
         files["bad_file"].stream.read.side_effect = Exception("Read error")
 
-        webhook_trigger = MagicMock()
+        webhook_trigger = _webhook_trigger()
         webhook_trigger.tenant_id = "test_tenant"
 
         result = WebhookService._process_file_uploads(files, webhook_trigger)
@@ -324,7 +627,7 @@ class TestWebhookServiceUnit:
             "none_filename": MagicMock(filename=None, content_type="text/plain"),
         }
 
-        webhook_trigger = MagicMock()
+        webhook_trigger = _webhook_trigger()
         webhook_trigger.tenant_id = "test_tenant"
 
         result = WebhookService._process_file_uploads(files, webhook_trigger)
@@ -469,7 +772,7 @@ class TestWebhookServiceUnit:
             query_string="count=42&enabled=true",
             json={"message": "hello", "age": 25},
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             node_config = {
                 "data": {
                     "method": "post",
@@ -503,7 +806,7 @@ class TestWebhookServiceUnit:
             headers={"Content-Type": "application/json"},
             data='{"invalid": }',
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             node_config = {
                 "data": {
                     "method": "post",
@@ -523,7 +826,7 @@ class TestWebhookServiceUnit:
             method="GET",  # Wrong method
             headers={"Content-Type": "application/json"},
         ):
-            webhook_trigger = MagicMock()
+            webhook_trigger = _webhook_trigger()
             node_config = {
                 "data": {
                     "method": "post",  # Expects POST
@@ -534,6 +837,104 @@ class TestWebhookServiceUnit:
             with pytest.raises(ValueError, match="HTTP method mismatch"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
+    def test_extract_and_validate_webhook_request_missing_required_header(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [{"name": "Authorization", "required": True}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="Required header missing: Authorization"):
+                WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+    def test_extract_and_validate_webhook_request_case_insensitive_headers(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json", "authorization": "Bearer token"},
+            json={"message": "hello"},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [{"name": "Authorization", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+        assert result["headers"].get("Authorization") == "Bearer token"
+
+    def test_extract_and_validate_webhook_request_missing_required_param(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json={"message": "hello"},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "params": [{"name": "version", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="Required parameter missing: version"):
+                WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+    def test_extract_and_validate_webhook_request_missing_required_body_param(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json={},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+    def test_extract_and_validate_webhook_request_missing_required_file(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            data={"note": "test"},
+            content_type="multipart/form-data",
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "multipart/form-data",
+                    "body": [{"name": "file", "type": "file", "required": True}],
+                }
+            }
+
+            result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+        assert result["files"] == {}
+
     def test_debug_mode_parameter_handling(self):
         """Test that the debug mode parameter is properly handled in _prepare_webhook_execution."""
         from controllers.trigger.webhook import _prepare_webhook_execution
@@ -543,19 +944,19 @@ class TestWebhookServiceUnit:
             patch.object(WebhookService, "get_webhook_trigger_and_workflow", autospec=True) as mock_get_trigger,
             patch.object(WebhookService, "extract_and_validate_webhook_data", autospec=True) as mock_extract,
         ):
-            mock_trigger = MagicMock()
-            mock_workflow = MagicMock()
+            webhook_trigger = _webhook_trigger()
+            workflow = _workflow()
             mock_config = {"data": {"test": "config"}}
             mock_data = {"test": "data"}
 
-            mock_get_trigger.return_value = (mock_trigger, mock_workflow, mock_config)
+            mock_get_trigger.return_value = (webhook_trigger, workflow, mock_config)
             mock_extract.return_value = mock_data
 
             result = _prepare_webhook_execution("test_webhook", is_debug=False)
-            assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
+            assert result == (webhook_trigger, workflow, mock_config, mock_data, None)
 
             # Reset mock
             mock_get_trigger.reset_mock()
 
             result = _prepare_webhook_execution("test_webhook", is_debug=True)
-            assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
+            assert result == (webhook_trigger, workflow, mock_config, mock_data, None)

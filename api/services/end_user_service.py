@@ -4,8 +4,8 @@ from collections.abc import Mapping
 from sqlalchemy import case, select
 from sqlalchemy.orm import sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from models.enums import EndUserType
 from models.model import App, DefaultEndUserSessionID, EndUser
 
 logger = logging.getLogger(__name__)
@@ -41,11 +41,11 @@ class EndUserService:
         Get or create an end user for a given app.
         """
 
-        return cls.get_or_create_end_user_by_type(InvokeFrom.SERVICE_API, app_model.tenant_id, app_model.id, user_id)
+        return cls.get_or_create_end_user_by_type(EndUserType.SERVICE_API, app_model.tenant_id, app_model.id, user_id)
 
     @classmethod
     def get_or_create_end_user_by_type(
-        cls, type: InvokeFrom, tenant_id: str, app_id: str, user_id: str | None = None
+        cls, type: EndUserType, tenant_id: str, app_id: str, user_id: str | None = None
     ) -> EndUser:
         """
         Get or create an end user for a given app and type.
@@ -63,6 +63,11 @@ class EndUserService:
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.session_id == user_id,
+                    # An AppDeploy row is never a legacy row this could upgrade:
+                    # the type was added after the split, and FileGrantService
+                    # reads its rows by type. Retyping one here would hide it
+                    # from that read and strand the files it owns.
+                    EndUser.type != EndUserType.APP_DEPLOY,
                 )
                 .order_by(
                     # Prioritize records with matching type (0 = match, 1 = no match)
@@ -98,7 +103,7 @@ class EndUserService:
 
     @classmethod
     def create_end_user_batch(
-        cls, type: InvokeFrom, tenant_id: str, app_ids: list[str], user_id: str
+        cls, type: EndUserType, tenant_id: str, app_ids: list[str], user_id: str
     ) -> Mapping[str, EndUser]:
         """Create end users in batch.
 

@@ -3,25 +3,28 @@ Integration tests for Account and Tenant model methods that interact with the da
 
 Migrated from unit_tests/models/test_account_models.py, replacing
 @patch("models.account.db") mock patches with real PostgreSQL operations.
+Also absorbs unit_tests/models/test_account.py role helper coverage.
 
 Covers:
 - Account.current_tenant setter (sets _current_tenant and role from TenantAccountJoin)
 - Account.set_tenant_id (resolves tenant + role from real join row)
-- Account.get_by_openid (AccountIntegrate lookup then Account fetch)
 - Tenant.get_accounts (returns accounts linked via TenantAccountJoin)
 """
 
 from collections.abc import Generator
+from typing import cast
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from models.account import Account, AccountIntegrate, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+
+TrackedRow = Account | Tenant | TenantAccountJoin
 
 
-def _cleanup_tracked_rows(db_session: Session, tracked: list) -> None:
+def _cleanup_tracked_rows(db_session: Session, tracked: list[TrackedRow]) -> None:
     """Delete rows tracked during the test so committed state does not leak into the DB.
 
     Rolls back any pending (uncommitted) session state first, then issues DELETE
@@ -52,7 +55,7 @@ def _build_account(email_prefix: str = "account") -> Account:
 class _DBTrackingTestBase:
     """Base class providing a tracker list and shared row factories for account/tenant tests."""
 
-    _tracked: list
+    _tracked: list[TrackedRow]
 
     @pytest.fixture(autouse=True)
     def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None, None, None]:
@@ -82,6 +85,22 @@ class _DBTrackingTestBase:
         db_session.flush()
         self._tracked.append(join)
         return join
+
+
+class TestTenantAccountRole:
+    """Tests for TenantAccountRole helper methods."""
+
+    def test_account_is_privileged_role(self) -> None:
+        assert TenantAccountRole.ADMIN == "admin"
+        assert TenantAccountRole.OWNER == "owner"
+        assert TenantAccountRole.EDITOR == "editor"
+        assert TenantAccountRole.NORMAL == "normal"
+
+        assert TenantAccountRole.is_privileged_role(TenantAccountRole.ADMIN)
+        assert TenantAccountRole.is_privileged_role(TenantAccountRole.OWNER)
+        assert not TenantAccountRole.is_privileged_role(TenantAccountRole.NORMAL)
+        assert not TenantAccountRole.is_privileged_role(TenantAccountRole.EDITOR)
+        assert not TenantAccountRole.is_privileged_role(cast(TenantAccountRole, ""))
 
 
 class TestAccountCurrentTenantSetter(_DBTrackingTestBase):
@@ -152,37 +171,6 @@ class TestAccountSetTenantId(_DBTrackingTestBase):
         assert account._current_tenant is None
 
 
-class TestAccountGetByOpenId(_DBTrackingTestBase):
-    """Integration tests for Account.get_by_openid class method."""
-
-    def test_get_by_openid_returns_account_when_integrate_exists(self, db_session_with_containers: Session) -> None:
-        """get_by_openid returns the Account when a matching AccountIntegrate row exists."""
-        account = self._create_account(db_session_with_containers, email_prefix="openid")
-        provider = "google"
-        open_id = f"google_{uuid4()}"
-
-        integrate = AccountIntegrate(
-            account_id=account.id,
-            provider=provider,
-            open_id=open_id,
-            encrypted_token="token",
-        )
-        db_session_with_containers.add(integrate)
-        db_session_with_containers.flush()
-        self._tracked.append(integrate)
-
-        result = Account.get_by_openid(provider, open_id)
-
-        assert result is not None
-        assert result.id == account.id
-
-    def test_get_by_openid_returns_none_when_no_integrate_exists(self, db_session_with_containers: Session) -> None:
-        """get_by_openid returns None when no AccountIntegrate row matches."""
-        result = Account.get_by_openid("github", f"github_{uuid4()}")
-
-        assert result is None
-
-
 class TestTenantGetAccounts(_DBTrackingTestBase):
     """Integration tests for Tenant.get_accounts method."""
 
@@ -194,7 +182,7 @@ class TestTenantGetAccounts(_DBTrackingTestBase):
         self._create_join(db_session_with_containers, tenant.id, account1.id, TenantAccountRole.OWNER, current=False)
         self._create_join(db_session_with_containers, tenant.id, account2.id, TenantAccountRole.NORMAL, current=False)
 
-        accounts = tenant.get_accounts()
+        accounts = tenant.get_accounts(session=db_session_with_containers)
 
         assert len(accounts) == 2
         account_ids = {a.id for a in accounts}

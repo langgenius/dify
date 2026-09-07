@@ -1,13 +1,11 @@
 import type { Model, ModelItem, ModelProvider } from '../declarations'
 import type { CredentialPanelState } from '../provider-added-card/use-credential-panel-state'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '../declarations'
+import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { deriveModelStatus } from '../derive-model-status'
 
-const createCredentialState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
+const createCredentialState = (
+  overrides: Partial<CredentialPanelState> = {},
+): CredentialPanelState => ({
   variant: 'credits-active',
   priority: 'credits',
   supportsCredits: true,
@@ -30,8 +28,7 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const createModelProvider = (): ModelProvider =>
-  ({ provider: 'openai' } as ModelProvider)
+const createModelProvider = (): ModelProvider => ({ provider: 'openai' }) as ModelProvider
 
 const createModel = (overrides: Partial<Model> = {}): Model => ({
   provider: 'openai',
@@ -45,22 +42,46 @@ const createModel = (overrides: Partial<Model> = {}): Model => ({
 describe('deriveModelStatus', () => {
   it('should return empty when model id or provider name is missing', () => {
     expect(
-      deriveModelStatus('', 'openai', createModelProvider(), createModelItem(), createCredentialState()),
+      deriveModelStatus(
+        '',
+        'openai',
+        createModelProvider(),
+        createModelItem(),
+        createCredentialState(),
+      ),
     ).toBe('empty')
     expect(
-      deriveModelStatus('text-embedding-3-large', '', createModelProvider(), createModelItem(), createCredentialState()),
+      deriveModelStatus(
+        'text-embedding-3-large',
+        '',
+        createModelProvider(),
+        createModelItem(),
+        createCredentialState(),
+      ),
     ).toBe('empty')
   })
 
   it('should return incompatible when provider plugin is missing', () => {
     expect(
-      deriveModelStatus('text-embedding-3-large', 'openai', undefined, createModelItem(), createCredentialState()),
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        undefined,
+        createModelItem(),
+        createCredentialState(),
+      ),
     ).toBe('incompatible')
   })
 
   it('should return incompatible when model is missing from the provider list', () => {
     expect(
-      deriveModelStatus('text-embedding-3-large', 'openai', createModel(), undefined, createCredentialState()),
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModel(),
+        undefined,
+        createCredentialState(),
+      ),
     ).toBe('incompatible')
   })
 
@@ -82,13 +103,25 @@ describe('deriveModelStatus', () => {
 
   it('should return configure-required when the model status is no-configure', () => {
     expect(
-      deriveModelStatus('text-embedding-3-large', 'openai', createModelProvider(), createModelItem({ status: ModelStatusEnum.noConfigure }), createCredentialState()),
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        createModelItem({ status: ModelStatusEnum.noConfigure }),
+        createCredentialState(),
+      ),
     ).toBe('configure-required')
   })
 
   it('should return disabled when the model status is disabled', () => {
     expect(
-      deriveModelStatus('text-embedding-3-large', 'openai', createModelProvider(), createModelItem({ status: ModelStatusEnum.disabled }), createCredentialState()),
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        createModelItem({ status: ModelStatusEnum.disabled }),
+        createCredentialState(),
+      ),
     ).toBe('disabled')
   })
 
@@ -154,7 +187,13 @@ describe('deriveModelStatus', () => {
 
   it('should return active when model and credential state are available', () => {
     expect(
-      deriveModelStatus('text-embedding-3-large', 'openai', createModelProvider(), createModelItem(), createCredentialState()),
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        createModelItem(),
+        createCredentialState(),
+      ),
     ).toBe('active')
   })
 })

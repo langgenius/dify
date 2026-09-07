@@ -13,22 +13,32 @@ Strategy:
 - Endpoint methods on these resources have no billing decorators on the method
   itself.  ``method_decorators = [validate_dataset_token]`` is only invoked by
   Flask-RESTx dispatch, not by direct calls, so we call methods directly.
-- Only ``KnowledgebasePipelineFileUploadApi.post`` touches ``db`` inline
-  (via ``FileService(db.engine)``); the other endpoints delegate to services.
+- Dataset ownership checks run against the shared SQLite fixture; pipeline and
+  upload responses use real mapped instances while external services stay mocked.
 """
 
 import io
 import uuid
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
+from controllers.common.errors import (
+    FilenameNotExistsError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
+from controllers.common.errors import (
+    FileTooLargeError as FileTooLargeHTTPError,
+)
 from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as workflow_module
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     DatasourceNodeRunApi,
     DatasourceNodeRunPayload,
@@ -37,13 +47,47 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     PipelineRunApi,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.storage.storage_type import StorageType
 from models.account import Account
-from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
+from models.dataset import Dataset, Pipeline
+from models.enums import CreatorUserRole
+from models.model import UploadFile
+from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.errors.file import UnsupportedFileTypeError
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+
+
+def _persist_dataset(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset:
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Pipeline dataset",
+        created_by="account-1",
+        data_source_type=None,
+        indexing_technique=None,
+    )
+    session.add(dataset)
+    session.commit()
+    return dataset
+
+
+def _persist_pipeline(session: Session, *, tenant_id: str) -> Pipeline:
+    pipeline = Pipeline(tenant_id=tenant_id, name="Knowledge pipeline")
+    session.add(pipeline)
+    session.commit()
+    return pipeline
+
+
+@pytest.fixture(autouse=True)
+def _bind_database(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch):
+    session_proxy = scoped_session(sqlite_session_factory)
+    monkeypatch.setattr(workflow_module.db, "session", session_proxy)
+    yield
+    session_proxy.remove()
 
 
 class TestDatasourceNodeRunPayload:
@@ -127,7 +171,7 @@ class TestFileUploadErrors:
 
     def test_file_too_large_error(self):
         """Test FileTooLargeError can be raised."""
-        error = FileTooLargeError("File exceeds size limit")
+        error = FileTooLargeServiceError("File exceeds size limit")
         assert error is not None
 
     def test_unsupported_file_type_error(self):
@@ -325,10 +369,12 @@ class TestPipelineRunApiEntity:
     def test_entity_missing_required_field(self):
         """Test entity raises on missing required field."""
         with pytest.raises(ValueError):
-            PipelineRunApiEntity(
-                inputs={},
-                datasource_type="online_document",
-                # missing datasource_info_list, start_node_id, etc.
+            PipelineRunApiEntity.model_validate(
+                {
+                    "inputs": {},
+                    "datasource_type": "online_document",
+                    # missing datasource_info_list, start_node_id, etc.
+                }
             )
 
 
@@ -372,18 +418,27 @@ class TestDatasourcePluginsApiGet:
     an inline dataset query, so no ``db`` patching is needed.
     """
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    def test_get_plugins_success(self, mock_svc_cls, mock_db, app: Flask):
+    def test_get_plugins_success(self, mock_svc_cls, app: Flask, sqlite_session: Session):
         """Test successful retrieval of datasource plugins."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
 
-        mock_dataset = Mock()
-        mock_db.session.scalar.return_value = mock_dataset
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
+        datasource_plugins = [
+            {
+                "node_id": "node-datasource-1",
+                "plugin_id": "plugin-a",
+                "provider_name": "provider-a",
+                "datasource_type": "online_document",
+                "title": "Online Docs",
+                "user_input_variables": [{"variable": "url", "label": "URL", "type": "text-input", "required": True}],
+                "credentials": [{"id": "cred-1", "name": "Default credential", "type": "oauth2", "is_default": True}],
+            }
+        ]
         mock_svc_instance = Mock()
-        mock_svc_instance.get_datasource_plugins.return_value = [{"name": "plugin_a"}]
+        mock_svc_instance.get_datasource_plugins.return_value = datasource_plugins
         mock_svc_cls.return_value = mock_svc_instance
 
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins?is_published=true"):
@@ -391,33 +446,56 @@ class TestDatasourcePluginsApiGet:
             response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
 
         assert status == 200
-        assert response == [{"name": "plugin_a"}]
+        assert response == datasource_plugins
         mock_svc_instance.get_datasource_plugins.assert_called_once_with(
             tenant_id=tenant_id, dataset_id=dataset_id, is_published=True
         )
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    def test_get_plugins_not_found(self, mock_db, app: Flask):
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    def test_get_plugins_parses_false_is_published_query(self, mock_svc_cls, app: Flask, sqlite_session: Session):
+        """Test false query string is parsed as boolean False."""
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+        mock_svc_instance = Mock()
+        mock_svc_instance.get_datasource_plugins.return_value = []
+        mock_svc_cls.return_value = mock_svc_instance
+
+        with app.test_request_context("/datasets/test/pipeline/datasource-plugins?is_published=false"):
+            api = DatasourcePluginsApi()
+            response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
+
+        assert status == 200
+        assert response == []
+        mock_svc_instance.get_datasource_plugins.assert_called_once_with(
+            tenant_id=tenant_id, dataset_id=dataset_id, is_published=False
+        )
+
+    def test_get_plugins_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""
-        mock_db.session.scalar.return_value = None
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id="other-tenant", dataset_id=dataset_id)
 
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
             api = DatasourcePluginsApi()
             with pytest.raises(NotFound):
-                api.get(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+                api.get(tenant_id=tenant_id, dataset_id=dataset_id)
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    def test_get_plugins_empty_list(self, mock_svc_cls, mock_db, app: Flask):
+    def test_get_plugins_empty_list(self, mock_svc_cls, app: Flask, sqlite_session: Session):
         """Test empty plugin list."""
-        mock_db.session.scalar.return_value = Mock()
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
         mock_svc_instance = Mock()
         mock_svc_instance.get_datasource_plugins.return_value = []
         mock_svc_cls.return_value = mock_svc_instance
 
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
             api = DatasourcePluginsApi()
-            response, status = api.get(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+            response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
 
         assert status == 200
         assert response == []
@@ -428,43 +506,53 @@ class TestDatasourceNodeRunApiPost:
 
     The source asserts ``isinstance(current_user, Account)`` and delegates to
     ``RagPipelineService`` and ``PipelineGenerator``, so we patch those plus
-    ``current_user`` and ``service_api_ns``.
+    ``current_user``.  ``post`` is wrapped in ``@model_validate``, which parses
+    the JSON request body live, so payloads are supplied via
+    ``test_request_context(json=...)`` and validation runs before the dataset
+    ownership guard.
     """
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerator")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Mock(spec=Account),
+        new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success(self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen, mock_helper, app: Flask):
+    def test_post_success(
+        self,
+        mock_svc_cls,
+        current_account,
+        mock_gen,
+        mock_helper,
+        app: Flask,
+        sqlite_session: Session,
+    ):
         """Test successful datasource node run."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
         node_id = "node_abc"
 
-        mock_db.session.scalar.return_value = Mock()
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
-        mock_ns.payload = {
-            "inputs": {"url": "https://example.com"},
-            "datasource_type": "online_document",
-            "is_published": True,
-        }
-
-        mock_pipeline = Mock()
-        mock_pipeline.id = str(uuid.uuid4())
+        pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id)
         mock_svc_instance = Mock()
-        mock_svc_instance.get_pipeline.return_value = mock_pipeline
+        mock_svc_instance.get_pipeline.return_value = pipeline
         mock_svc_instance.run_datasource_workflow_node.return_value = iter(["event1"])
         mock_svc_cls.return_value = mock_svc_instance
 
         mock_gen.convert_to_event_stream.return_value = iter(["stream_event"])
         mock_helper.compact_generate_response.return_value = {"result": "ok"}
 
-        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/node_abc/run", method="POST"):
+        with app.test_request_context(
+            "/datasets/test/pipeline/datasource/nodes/node_abc/run",
+            method="POST",
+            json={
+                "inputs": {"url": "https://example.com"},
+                "datasource_type": "online_document",
+                "is_published": True,
+            },
+        ):
             api = DatasourceNodeRunApi()
             response = api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id=node_id)
 
@@ -473,12 +561,16 @@ class TestDatasourceNodeRunApiPost:
         mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
         mock_svc_instance.run_datasource_workflow_node.assert_called_once()
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    def test_post_not_found(self, mock_db, app: Flask):
+    def test_post_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""
-        mock_db.session.scalar.return_value = None
 
-        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/n1/run", method="POST"):
+        # `@model_validate` parses the body before the ownership guard, so a
+        # valid payload is required to reach the NotFound branch.
+        with app.test_request_context(
+            "/datasets/test/pipeline/datasource/nodes/n1/run",
+            method="POST",
+            json={"inputs": {}, "datasource_type": "online_document", "is_published": True},
+        ):
             api = DatasourceNodeRunApi()
             with pytest.raises(NotFound):
                 api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
@@ -487,21 +579,20 @@ class TestDatasourceNodeRunApiPost:
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new="not_account",
     )
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_fails_when_current_user_not_account(self, mock_ns, mock_db, app: Flask):
+    def test_post_fails_when_current_user_not_account(self, app: Flask, sqlite_session: Session):
         """Test AssertionError when current_user is not an Account instance."""
-        mock_db.session.scalar.return_value = Mock()
-        mock_ns.payload = {
-            "inputs": {},
-            "datasource_type": "local_file",
-            "is_published": True,
-        }
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
-        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/n1/run", method="POST"):
+        with app.test_request_context(
+            "/datasets/test/pipeline/datasource/nodes/n1/run",
+            method="POST",
+            json={"inputs": {}, "datasource_type": "local_file", "is_published": True},
+        ):
             api = DatasourceNodeRunApi()
             with pytest.raises(AssertionError):
-                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
+                api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id="n1")
 
 
 class TestPipelineRunApiPost:
@@ -511,19 +602,18 @@ class TestPipelineRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Mock(spec=Account),
+        new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
     def test_post_success_streaming(
-        self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app
+        self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app, sqlite_session: Session
     ):
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
 
-        mock_db.session.scalar.return_value = Mock()
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
         mock_ns.payload = {
             "inputs": {"key": "val"},
@@ -534,9 +624,9 @@ class TestPipelineRunApiPost:
             "response_mode": "streaming",
         }
 
-        mock_pipeline = Mock()
+        pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id)
         mock_svc_instance = Mock()
-        mock_svc_instance.get_pipeline.return_value = mock_pipeline
+        mock_svc_instance.get_pipeline.return_value = pipeline
         mock_svc_cls.return_value = mock_svc_instance
 
         mock_gen_svc.generate.return_value = {"result": "ok"}
@@ -544,27 +634,31 @@ class TestPipelineRunApiPost:
 
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
-            response = api.post(tenant_id=tenant_id, dataset_id=dataset_id)
+            response = api.post.__wrapped__(api, sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
         assert response == {"result": "ok"}
+        mock_svc_cls.assert_called_once_with(sqlite_session)
         mock_gen_svc.generate.assert_called_once()
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    def test_post_not_found(self, mock_db, app: Flask):
+    def test_post_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""
-        mock_db.session.scalar.return_value = None
-
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
             with pytest.raises(NotFound):
-                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+                api.post.__wrapped__(
+                    api,
+                    sqlite_session,
+                    tenant_id=str(uuid.uuid4()),
+                    dataset_id=str(uuid.uuid4()),
+                )
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_forbidden_non_account_user(self, mock_ns, mock_db, app: Flask):
+    def test_post_forbidden_non_account_user(self, mock_ns, app: Flask, sqlite_session: Session):
         """Test Forbidden when current_user is not an Account."""
-        mock_db.session.scalar.return_value = Mock()
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
         mock_ns.payload = {
             "inputs": {},
             "datasource_type": "online_document",
@@ -577,30 +671,41 @@ class TestPipelineRunApiPost:
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
             with pytest.raises(Forbidden):
-                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+                api.post.__wrapped__(
+                    api,
+                    sqlite_session,
+                    tenant_id=tenant_id,
+                    dataset_id=dataset_id,
+                )
 
 
 class TestFileUploadApiPost:
     """Tests for KnowledgebasePipelineFileUploadApi.post()."""
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    def test_upload_success(self, mock_db, mock_current_user, mock_file_svc_cls, app: Flask):
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
+    )
+    def test_upload_success(self, current_account, mock_file_svc_cls, app: Flask, sqlite_engine):
         """Test successful file upload."""
-        mock_current_user.__bool__ = Mock(return_value=True)
-
-        mock_upload = Mock()
-        mock_upload.id = str(uuid.uuid4())
-        mock_upload.name = "doc.pdf"
-        mock_upload.size = 1024
-        mock_upload.extension = "pdf"
-        mock_upload.mime_type = "application/pdf"
-        mock_upload.created_by = str(uuid.uuid4())
-        mock_upload.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+        current_account.id = str(uuid.uuid4())
+        upload = UploadFile(
+            tenant_id=str(uuid.uuid4()),
+            storage_type=StorageType.LOCAL,
+            key="pipeline/doc.pdf",
+            name="doc.pdf",
+            size=1024,
+            extension="pdf",
+            mime_type="application/pdf",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=current_account.id,
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+            used=False,
+        )
 
         mock_file_svc_instance = Mock()
-        mock_file_svc_instance.upload_file.return_value = mock_upload
+        mock_file_svc_instance.upload_file.return_value = upload
         mock_file_svc_cls.return_value = mock_file_svc_instance
 
         file_data = FileStorage(
@@ -609,18 +714,56 @@ class TestFileUploadApiPost:
             content_type="application/pdf",
         )
 
-        with app.test_request_context(
-            "/datasets/pipeline/file-upload",
-            method="POST",
-            content_type="multipart/form-data",
-            data={"file": file_data},
+        with (
+            patch.object(workflow_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            app.test_request_context(
+                "/datasets/pipeline/file-upload",
+                method="POST",
+                content_type="multipart/form-data",
+                data={"file": file_data},
+            ),
         ):
-            api = KnowledgebasePipelineFileUploadApi()
-            response, status = api.post(tenant_id=str(uuid.uuid4()))
+            response, status = KnowledgebasePipelineFileUploadApi().post(tenant_id=str(uuid.uuid4()))
 
         assert status == 201
         assert response["name"] == "doc.pdf"
         assert response["extension"] == "pdf"
+
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FeatureService"
+        ".get_knowledge_file_size_limit",
+        return_value=15,
+    )
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
+    )
+    def test_upload_file_too_large_returns_http_413(
+        self, current_account, mock_file_svc_cls, mock_get_limit, app: Flask, sqlite_engine
+    ):
+        mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
+        file_data = FileStorage(
+            stream=io.BytesIO(b"oversized content"),
+            filename="doc.pdf",
+            content_type="application/pdf",
+        )
+
+        with (
+            patch.object(workflow_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            app.test_request_context(
+                "/datasets/pipeline/file-upload",
+                method="POST",
+                content_type="multipart/form-data",
+                data={"file": file_data},
+            ),
+        ):
+            with pytest.raises(FileTooLargeHTTPError) as exc_info:
+                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+
+        assert exc_info.value.code == 413
+        assert exc_info.value.error_code == "file_too_large"
+        mock_get_limit.assert_called_once_with("tenant-1")
 
     def test_upload_no_file(self, app: Flask):
         """Test error when no file is uploaded."""

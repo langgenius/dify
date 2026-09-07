@@ -5,7 +5,7 @@ from typing import override
 from pydantic import Field
 from sqlalchemy import select
 
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
@@ -24,7 +24,7 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
-class ApiToolProviderController(ToolProviderController):
+class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTool]):
     provider_id: str
     tenant_id: str
     tools: list[ApiTool] = Field(default_factory=list)
@@ -41,7 +41,7 @@ class ApiToolProviderController(ToolProviderController):
             ProviderConfig(
                 name="auth_type",
                 required=True,
-                type=ProviderConfig.Type.SELECT,
+                type=ProviderConfigType.SELECT,
                 options=[
                     ProviderConfig.Option(value="none", label=I18nObject(en_US="None", zh_Hans="无")),
                     ProviderConfig.Option(value="api_key_header", label=I18nObject(en_US="Header", zh_Hans="请求头")),
@@ -60,20 +60,20 @@ class ApiToolProviderController(ToolProviderController):
                     name="api_key_header",
                     required=False,
                     default="Authorization",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     help=I18nObject(en_US="The header name of the api key", zh_Hans="携带 api key 的 header 名称"),
                 ),
                 ProviderConfig(
                     name="api_key_value",
                     required=True,
-                    type=ProviderConfig.Type.SECRET_INPUT,
+                    type=ProviderConfigType.SECRET_INPUT,
                     help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
                 ProviderConfig(
                     name="api_key_header_prefix",
                     required=False,
                     default="basic",
-                    type=ProviderConfig.Type.SELECT,
+                    type=ProviderConfigType.SELECT,
                     help=I18nObject(en_US="The prefix of the api key header", zh_Hans="api key header 的前缀"),
                     options=[
                         ProviderConfig.Option(value="basic", label=I18nObject(en_US="Basic", zh_Hans="Basic")),
@@ -89,7 +89,7 @@ class ApiToolProviderController(ToolProviderController):
                     name="api_key_query_param",
                     required=False,
                     default="key",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     help=I18nObject(
                         en_US="The query parameter name of the api key", zh_Hans="携带 api key 的查询参数名称"
                     ),
@@ -97,7 +97,7 @@ class ApiToolProviderController(ToolProviderController):
                 ProviderConfig(
                     name="api_key_value",
                     required=True,
-                    type=ProviderConfig.Type.SECRET_INPUT,
+                    type=ProviderConfigType.SECRET_INPUT,
                     help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
             ]

@@ -7,20 +7,34 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CLIENT_SHARED_DTO_DEPENDENCIES = {
-    "httpx>=0.28.1",
-    "pydantic>=2.12.5,<3",
-    "pydantic-ai-slim>=1.85.1",
-    "typing-extensions>=4.12.2",
+    "httpx==0.28.1",
+    "httpx2>=2.5.0,<3.0.0",
+    "pydantic>=2.12.5,<2.13",
+    "pydantic-ai-harness>=0.20.0,<0.21.0",
+    "pydantic-ai-slim>=2.30.0,<3.0.0",
+    "typing-extensions>=4.12.2,<5.0.0",
 }
 
 SERVER_RUNTIME_DEPENDENCIES = {
-    "fastapi>=0.136.0",
-    "graphon~=0.2.2",
-    "jsonschema>=4.23.0",
-    "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
-    "pydantic-settings>=2.12.0",
-    "redis>=5",
-    "uvicorn[standard]>=0.38.0",
+    "e2b>=2.38.0,<3.0.0",
+    "fastapi==0.136.0",
+    "graphon==0.5.2",
+    "jsonschema>=4.23.0,<5.0.0",
+    "jwcrypto>=1.5.6,<2",
+    "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
+    "pydantic-ai-slim[anthropic,google,openai]>=2.30.0,<3.0.0",
+    "pydantic-settings>=2.12.0,<3.0.0",
+    "redis>=7.4.0,<8.0.0",
+    "uvicorn[standard]==0.46.0",
+}
+
+DEV_DEPENDENCIES = {
+    "coverage[toml]>=7.10.7",
+    "pyrefly>=1.2.0",
+    "pytest>=9.0.3",
+    "pytest-examples>=0.0.18",
+    "pytest-mock>=3.14.0",
+    "ruff>=0.15.11",
 }
 
 
@@ -34,6 +48,7 @@ def test_project_dependencies_split_client_and_server_requirements() -> None:
 
     assert set(project["dependencies"]) == CLIENT_SHARED_DTO_DEPENDENCIES
     assert set(project["optional-dependencies"]["server"]) == SERVER_RUNTIME_DEPENDENCIES
+    assert set(pyproject["dependency-groups"]["dev"]) == DEV_DEPENDENCIES
 
 
 def test_default_package_discovery_excludes_example_packages() -> None:
@@ -41,5 +56,18 @@ def test_default_package_discovery_excludes_example_packages() -> None:
     find_config = pyproject["tool"]["setuptools"]["packages"]["find"]
 
     assert find_config["where"] == ["src"]
+    assert "shellctl*" in find_config["include"]
+    assert "shellctl_runtime*" not in find_config["include"]
     assert "agenton_examples*" not in find_config["include"]
     assert "dify_agent_examples*" not in find_config["include"]
+
+
+def test_project_declares_console_scripts() -> None:
+    pyproject = _read_pyproject()
+    scripts = pyproject["project"]["scripts"]
+
+    assert scripts["dify-agent-stub-server"] == "dify_agent.agent_stub.server.cli:main"
+    assert "dify-agent" not in scripts
+    assert "shellctl" not in scripts
+    assert "shellctl-sanitize-pty" not in scripts
+    assert "shellctl-runner-exit" not in scripts

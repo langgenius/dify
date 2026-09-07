@@ -13,20 +13,20 @@ export const useTestRunSteps = () => {
   const [currentStep, setCurrentStep] = useState(1)
 
   const handleNextStep = useCallback(() => {
-    setCurrentStep(preStep => preStep + 1)
+    setCurrentStep((preStep) => preStep + 1)
   }, [])
 
   const handleBackStep = useCallback(() => {
-    setCurrentStep(preStep => preStep - 1)
+    setCurrentStep((preStep) => preStep - 1)
   }, [])
 
   const steps = [
     {
-      label: t('testRun.steps.dataSource', { ns: 'datasetPipeline' }),
+      label: t(($) => $['testRun.steps.dataSource'], { ns: 'datasetPipeline' }),
       value: TestRunStep.dataSource,
     },
     {
-      label: t('testRun.steps.documentProcessing', { ns: 'datasetPipeline' }),
+      label: t(($) => $['testRun.steps.documentProcessing'], { ns: 'datasetPipeline' }),
       value: TestRunStep.documentProcessing,
     },
   ]
@@ -41,7 +41,7 @@ export const useTestRunSteps = () => {
 
 export const useDatasourceOptions = () => {
   const nodes = useNodes<DataSourceNodeType>()
-  const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+  const datasourceNodes = nodes.filter((node) => node.data.type === BlockEnum.DataSource)
 
   const options = useMemo(() => {
     const options: DataSourceOption[] = []
@@ -86,13 +86,8 @@ export const useWebsiteCrawl = () => {
   const dataSourceStore = useDataSourceStore()
 
   const clearWebsiteCrawlData = useCallback(() => {
-    const {
-      setStep,
-      setCrawlResult,
-      setWebsitePages,
-      setPreviewIndex,
-      setCurrentWebsite,
-    } = dataSourceStore.getState()
+    const { setStep, setCrawlResult, setWebsitePages, setPreviewIndex, setCurrentWebsite } =
+      dataSourceStore.getState()
     setStep(CrawlStep.init)
     setCrawlResult(undefined)
     setCurrentWebsite(undefined)
@@ -109,13 +104,8 @@ export const useOnlineDrive = () => {
   const dataSourceStore = useDataSourceStore()
 
   const clearOnlineDriveData = useCallback(() => {
-    const {
-      setOnlineDriveFileList,
-      setBucket,
-      setPrefix,
-      setKeywords,
-      setSelectedFileIds,
-    } = dataSourceStore.getState()
+    const { setOnlineDriveFileList, setBucket, setPrefix, setKeywords, setSelectedFileIds } =
+      dataSourceStore.getState()
     setOnlineDriveFileList([])
     setBucket('')
     setPrefix([])

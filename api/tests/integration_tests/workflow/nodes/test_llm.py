@@ -4,6 +4,8 @@ import uuid
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import ModelInstance
@@ -91,11 +93,11 @@ def init_llm_node(config: dict) -> LLMNode:
     return node
 
 
-def _mock_db_session_close(monkeypatch) -> None:
+def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db.session, "close", MagicMock())
 
 
-def test_execute_llm(monkeypatch):
+def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
     node = init_llm_node(
         config={
             "id": "llm",
@@ -199,7 +201,7 @@ def test_execute_llm(monkeypatch):
                 assert item.node_run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
-def test_execute_llm_with_jinja2(monkeypatch):
+def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
     """
     Test execute LLM node with jinja2
     """

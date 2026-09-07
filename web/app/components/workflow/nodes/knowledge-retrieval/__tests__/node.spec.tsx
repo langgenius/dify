@@ -76,7 +76,9 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-const createData = (overrides: Partial<KnowledgeRetrievalNodeType> = {}): KnowledgeRetrievalNodeType => ({
+const createData = (
+  overrides: Partial<KnowledgeRetrievalNodeType> = {},
+): KnowledgeRetrievalNodeType => ({
   title: 'Knowledge Retrieval',
   desc: '',
   type: BlockEnum.KnowledgeRetrieval,

@@ -24,7 +24,7 @@ describe('useSerialAsyncCallback', () => {
   it('should serialize concurrent calls sequentially', async () => {
     const order: number[] = []
     const fn = vi.fn(async (id: number, delay: number) => {
-      await new Promise(resolve => setTimeout(resolve, delay))
+      await new Promise((resolve) => setTimeout(resolve, delay))
       order.push(id)
       return id
     })
@@ -76,8 +76,7 @@ describe('useSerialAsyncCallback', () => {
     let callCount = 0
     const fn = vi.fn(async () => {
       callCount++
-      if (callCount === 1)
-        throw new Error('fail')
+      if (callCount === 1) throw new Error('fail')
       return 'ok'
     })
 

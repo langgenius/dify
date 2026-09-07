@@ -7,13 +7,8 @@ import { Markdown } from '@/app/components/base/markdown'
 type BasicContentProps = {
   item: ChatItem
 }
-const BasicContent: FC<BasicContentProps> = ({
-  item,
-}) => {
-  const {
-    annotation,
-    content,
-  } = item
+const BasicContent: FC<BasicContentProps> = ({ item }) => {
+  const { annotation, content } = item
 
   if (annotation?.logAnnotation) {
     return (
@@ -33,9 +28,7 @@ const BasicContent: FC<BasicContentProps> = ({
 
   return (
     <Markdown
-      className={cn(
-        item.isError && 'text-[#F04438]!',
-      )}
+      className={cn(item.isError && 'text-[#F04438]!')}
       content={displayContent}
       data-testid="basic-content-markdown"
     />

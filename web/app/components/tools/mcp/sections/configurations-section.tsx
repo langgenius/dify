@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 
 type ConfigurationsSectionProps = {
   timeout: number
@@ -17,30 +18,44 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
   onSseReadTimeoutChange,
 }) => {
   const { t } = useTranslation()
+  const timeoutInputId = useId()
+  const sseReadTimeoutInputId = useId()
 
   return (
     <>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.timeout', { ns: 'tools' })}</span>
+          <label htmlFor={timeoutInputId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['mcp.modal.timeout'], { ns: 'tools' })}
+          </label>
         </div>
-        <Input
-          type="number"
-          value={timeout}
-          onChange={e => onTimeoutChange(Number(e.target.value))}
-          placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
-        />
+        <NumberField value={timeout} min={0} onValueChange={(value) => onTimeoutChange(value ?? 0)}>
+          <NumberFieldGroup>
+            <NumberFieldInput
+              id={timeoutInputId}
+              placeholder={t(($) => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })}
+            />
+          </NumberFieldGroup>
+        </NumberField>
       </div>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.sseReadTimeout', { ns: 'tools' })}</span>
+          <label htmlFor={sseReadTimeoutInputId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['mcp.modal.sseReadTimeout'], { ns: 'tools' })}
+          </label>
         </div>
-        <Input
-          type="number"
+        <NumberField
           value={sseReadTimeout}
-          onChange={e => onSseReadTimeoutChange(Number(e.target.value))}
-          placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
-        />
+          min={0}
+          onValueChange={(value) => onSseReadTimeoutChange(value ?? 0)}
+        >
+          <NumberFieldGroup>
+            <NumberFieldInput
+              id={sseReadTimeoutInputId}
+              placeholder={t(($) => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })}
+            />
+          </NumberFieldGroup>
+        </NumberField>
       </div>
     </>
   )

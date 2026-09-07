@@ -64,10 +64,15 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         dify_agent = importlib.import_module("dify_agent")
         client_module = importlib.import_module("dify_agent.client")
         protocol_module = importlib.import_module("dify_agent.protocol")
+        agent_stub_protocol_module = importlib.import_module("dify_agent.agent_stub.protocol")
+        agent_cli_help_module = importlib.import_module("dify_agent.layers._agent_cli_help")
+        agent_stub_shell_env_module = importlib.import_module("dify_agent.agent_stub.shell_env")
         shell_module = importlib.import_module("dify_agent.layers.shell")
         execution_context_module = importlib.import_module("dify_agent.layers.execution_context")
         plugin_module = importlib.import_module("dify_agent.layers.dify_plugin")
+        ask_human_module = importlib.import_module("dify_agent.layers.ask_human")
         output_module = importlib.import_module("dify_agent.layers.output")
+        user_prompt_module = importlib.import_module("dify_agent.layers.user_prompt")
 
         assert agenton_layers.ExitIntent is not None
         assert agenton_layers.LayerConfig is not None
@@ -79,10 +84,27 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert protocol_module.CreateRunRequest is not None
         assert protocol_module.RunComposition is not None
         assert protocol_module.RunLayerSpec is not None
+        assert agent_stub_protocol_module.AgentStubConnectRequest is not None
+        assert agent_cli_help_module.render_agent_stub_cli_help is not None
+        # Exercises the generated JSON snapshot to confirm it ships in the wheel.
+        assert "Usage:" in agent_cli_help_module.render_agent_stub_cli_help(("config",))
+        assert agent_stub_shell_env_module.build_shell_agent_stub_env is not None
         assert shell_module.DifyShellLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None
         assert plugin_module.DifyPluginLLMLayerConfig is not None
+        assert ask_human_module.DifyAskHumanLayerConfig is not None
         assert output_module.DifyOutputLayerConfig is not None
+        assert user_prompt_module.DifyUserPromptLayerConfig is not None
+        assert user_prompt_module.DifyUserPromptFileConfig is not None
+        download = user_prompt_module.DifyUserPromptDownloadConfig(
+            type="image", transfer_method="local_file", reference="file-1"
+        )
+        image = user_prompt_module.DifyUserPromptImageConfig(
+            filename="image.png", mime_type="image/png", format="png", url="https://example.com/image.png"
+        )
+        config = user_prompt_module.DifyUserPromptLayerConfig(text="Inspect it.", files=[download, image])
+        assert user_prompt_module.DifyUserPromptLayerConfig.model_validate_json(config.model_dump_json()) == config
+        assert [file.delivery for file in config.files] == ["download", "multimodal"]
 
         unexpectedly_installed = []
         for dependency_name in sorted(server_only_dependency_names):

@@ -1,4 +1,4 @@
-"""Unified sync and async Python client for the Dify Agent run API."""
+"""Unified sync and async Python client for the Dify Agent HTTP API."""
 
 from ._client import (
     Client,

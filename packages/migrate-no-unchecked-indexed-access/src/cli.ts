@@ -15,8 +15,8 @@ Options:
 
 async function flushStandardStreams() {
   await Promise.all([
-    new Promise<void>(resolve => process.stdout.write('', () => resolve())),
-    new Promise<void>(resolve => process.stderr.write('', () => resolve())),
+    new Promise<void>((resolve) => process.stdout.write('', () => resolve())),
+    new Promise<void>((resolve) => process.stderr.write('', () => resolve())),
   ])
 }
 
@@ -36,8 +36,7 @@ try {
   await main()
   const currentExitCode = process.exitCode
   exitCode = typeof currentExitCode === 'number' ? currentExitCode : 0
-}
-catch (error) {
+} catch (error) {
   console.error(error instanceof Error ? error.message : error)
   exitCode = 1
 }

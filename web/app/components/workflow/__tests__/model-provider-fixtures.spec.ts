@@ -29,15 +29,19 @@ describe('model-provider-fixtures', () => {
     })
 
     it('should allow overriding the default model item fields', () => {
-      expect(createModelItem({
-        model: 'bge-large',
-        status: ModelStatusEnum.disabled,
-        load_balancing_enabled: true,
-      })).toEqual(expect.objectContaining({
-        model: 'bge-large',
-        status: ModelStatusEnum.disabled,
-        load_balancing_enabled: true,
-      }))
+      expect(
+        createModelItem({
+          model: 'bge-large',
+          status: ModelStatusEnum.disabled,
+          load_balancing_enabled: true,
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          model: 'bge-large',
+          status: ModelStatusEnum.disabled,
+          load_balancing_enabled: true,
+        }),
+      )
     })
   })
 
@@ -57,15 +61,19 @@ describe('model-provider-fixtures', () => {
         model_type: ModelTypeEnum.rerank,
       })
 
-      expect(createModel({
-        provider: 'cohere',
-        label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-        models: [customModelItem],
-      })).toEqual(expect.objectContaining({
-        provider: 'cohere',
-        label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-        models: [customModelItem],
-      }))
+      expect(
+        createModel({
+          provider: 'cohere',
+          label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
+          models: [customModelItem],
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          provider: 'cohere',
+          label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
+          models: [customModelItem],
+        }),
+      )
     })
   })
 
@@ -78,10 +86,12 @@ describe('model-provider-fixtures', () => {
     })
 
     it('should allow overriding the default provider selection', () => {
-      expect(createDefaultModel({
-        provider: 'azure_openai',
-        model: 'text-embedding-3-small',
-      })).toEqual({
+      expect(
+        createDefaultModel({
+          provider: 'azure_openai',
+          model: 'text-embedding-3-small',
+        }),
+      ).toEqual({
         provider: 'azure_openai',
         model: 'text-embedding-3-small',
       })
@@ -124,25 +134,29 @@ describe('model-provider-fixtures', () => {
     })
 
     it('should apply provider metadata overrides', () => {
-      expect(createProviderMeta({
-        provider: 'bedrock',
-        supported_model_types: [ModelTypeEnum.textGeneration],
-        preferred_provider_type: PreferredProviderTypeEnum.system,
-        system_configuration: {
-          enabled: false,
-          current_quota_type: CurrentSystemQuotaTypeEnum.paid,
-          quota_configurations: [],
-        },
-      })).toEqual(expect.objectContaining({
-        provider: 'bedrock',
-        supported_model_types: [ModelTypeEnum.textGeneration],
-        preferred_provider_type: PreferredProviderTypeEnum.system,
-        system_configuration: {
-          enabled: false,
-          current_quota_type: CurrentSystemQuotaTypeEnum.paid,
-          quota_configurations: [],
-        },
-      }))
+      expect(
+        createProviderMeta({
+          provider: 'bedrock',
+          supported_model_types: [ModelTypeEnum.textGeneration],
+          preferred_provider_type: PreferredProviderTypeEnum.system,
+          system_configuration: {
+            enabled: false,
+            current_quota_type: CurrentSystemQuotaTypeEnum.paid,
+            quota_configurations: [],
+          },
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          provider: 'bedrock',
+          supported_model_types: [ModelTypeEnum.textGeneration],
+          preferred_provider_type: PreferredProviderTypeEnum.system,
+          system_configuration: {
+            enabled: false,
+            current_quota_type: CurrentSystemQuotaTypeEnum.paid,
+            quota_configurations: [],
+          },
+        }),
+      )
     })
   })
 
@@ -161,19 +175,23 @@ describe('model-provider-fixtures', () => {
     })
 
     it('should allow overriding the credential panel state', () => {
-      expect(createCredentialState({
-        variant: 'credits-active',
-        supportsCredits: true,
-        showPrioritySwitcher: true,
-        credits: 12,
-        credentialName: 'Primary Key',
-      })).toEqual(expect.objectContaining({
-        variant: 'credits-active',
-        supportsCredits: true,
-        showPrioritySwitcher: true,
-        credits: 12,
-        credentialName: 'Primary Key',
-      }))
+      expect(
+        createCredentialState({
+          variant: 'credits-active',
+          supportsCredits: true,
+          showPrioritySwitcher: true,
+          credits: 12,
+          credentialName: 'Primary Key',
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          variant: 'credits-active',
+          supportsCredits: true,
+          showPrioritySwitcher: true,
+          credits: 12,
+          credentialName: 'Primary Key',
+        }),
+      )
     })
   })
 })

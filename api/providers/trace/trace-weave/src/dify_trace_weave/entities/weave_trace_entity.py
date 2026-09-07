@@ -40,41 +40,19 @@ class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
             "total_tokens": values.get("total_tokens", 0),
         }
         file_list = values.get("file_list", [])
-        if isinstance(v, str):
-            if field_name == "inputs":
-                return {
-                    "messages": {
-                        "role": "user",
-                        "content": v,
-                        "usage_metadata": usage_metadata,
-                        "file_list": file_list,
-                    },
-                }
-            elif field_name == "outputs":
-                return {
-                    "choices": {
-                        "role": "ai",
-                        "content": v,
-                        "usage_metadata": usage_metadata,
-                        "file_list": file_list,
-                    },
-                }
-        elif isinstance(v, list):
-            data = {}
-            if len(v) > 0 and isinstance(v[0], dict):
-                # rename text to content
-                v = replace_text_with_content(data=v)
+        match v:
+            case str():
                 if field_name == "inputs":
-                    data = {
-                        "messages": [
-                            dict(msg, **{"usage_metadata": usage_metadata, "file_list": file_list})  # type: ignore
-                            for msg in v
-                        ]
-                        if isinstance(v, list)
-                        else v,
+                    return {
+                        "messages": {
+                            "role": "user",
+                            "content": v,
+                            "usage_metadata": usage_metadata,
+                            "file_list": file_list,
+                        },
                     }
                 elif field_name == "outputs":
-                    data = {
+                    return {
                         "choices": {
                             "role": "ai",
                             "content": v,
@@ -82,16 +60,39 @@ class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
                             "file_list": file_list,
                         },
                     }
-                return data
-            else:
-                return {
-                    "choices": {
-                        "role": "ai" if field_name == "outputs" else "user",
-                        "content": str(v),
-                        "usage_metadata": usage_metadata,
-                        "file_list": file_list,
-                    },
-                }
+            case list():
+                data = {}
+                if len(v) > 0 and isinstance(v[0], dict):
+                    # rename text to content
+                    v = replace_text_with_content(data=v)
+                    if field_name == "inputs":
+                        data = {
+                            "messages": [
+                                dict(msg, **{"usage_metadata": usage_metadata, "file_list": file_list})  # type: ignore
+                                for msg in v
+                            ]
+                            if isinstance(v, list)
+                            else v,
+                        }
+                    elif field_name == "outputs":
+                        data = {
+                            "choices": {
+                                "role": "ai",
+                                "content": v,
+                                "usage_metadata": usage_metadata,
+                                "file_list": file_list,
+                            },
+                        }
+                    return data
+                else:
+                    return {
+                        "choices": {
+                            "role": "ai" if field_name == "outputs" else "user",
+                            "content": str(v),
+                            "usage_metadata": usage_metadata,
+                            "file_list": file_list,
+                        },
+                    }
         if isinstance(v, dict):
             v["usage_metadata"] = usage_metadata
             v["file_list"] = file_list

@@ -2,13 +2,11 @@ import { RiInstallLine } from '@remixicon/react'
 import * as React from 'react'
 import { formatNumber } from '@/utils/format'
 
-type Props = {
+type Props = Readonly<{
   downloadCount: number
-}
+}>
 
-const DownloadCountComponent = ({
-  downloadCount,
-}: Props) => {
+const DownloadCountComponent = ({ downloadCount }: Props) => {
   return (
     <div className="flex items-center space-x-1 text-text-tertiary">
       <RiInstallLine className="size-3 shrink-0" />

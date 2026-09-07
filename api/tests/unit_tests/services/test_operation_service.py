@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from services.operation_service import OperationService
+from services.operation_service import OPERATION_REQUEST_TIMEOUT, OperationService
 
 
 class TestOperationService:
@@ -44,6 +44,7 @@ class TestOperationService:
         assert kwargs["json"] == json_data
         assert kwargs["headers"]["Billing-Api-Secret-Key"] == "s3cr3t"
         assert kwargs["headers"]["Content-Type"] == "application/json"
+        assert kwargs["timeout"] == OPERATION_REQUEST_TIMEOUT
 
     @patch("httpx.request")
     def test_should_propagate_httpx_error_when__send_request_raises(

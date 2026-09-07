@@ -18,9 +18,12 @@ from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
+    EnvironmentVariableListResponse,
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
     ensure_variable_access,
@@ -33,11 +36,12 @@ from controllers.console.snippets.snippet_workflow import get_snippet
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     setup_required,
     with_current_user,
 )
-from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.file_access import DatabaseFileAccessController
+from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -90,7 +94,7 @@ def _snippet_draft_var_prerequisite[T, **P, R](
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
 class SnippetWorkflowVariableCollectionApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowDraftVariableListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_snippet_workflow_variables")
     @console_ns.doc(description="List draft workflow variables without values (paginated, snippet scope)")
     @console_ns.response(
@@ -183,9 +187,15 @@ class SnippetVariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
+    @model_validate(WorkflowDraftVariableUpdatePayload)
+    def patch(
+        self,
+        req_data: WorkflowDraftVariableUpdatePayload,
+        current_user: Account,
+        snippet: CustomizedSnippet,
+        variable_id: str,
+    ) -> WorkflowDraftVariable:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
-        args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id),
@@ -195,8 +205,8 @@ class SnippetVariableApi(Resource):
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
 
-        new_name = args_model.name
-        raw_value = args_model.value
+        new_name = req_data.name
+        raw_value = req_data.value
         if new_name is None and raw_value is None:
             return variable
 
@@ -305,7 +315,11 @@ class SnippetSystemVariableCollectionApi(Resource):
 class SnippetEnvironmentVariableCollectionApi(Resource):
     @console_ns.doc("get_snippet_environment_variables")
     @console_ns.doc(description="Get environment variables from snippet draft workflow graph")
-    @console_ns.response(200, "Environment variables retrieved successfully")
+    @console_ns.response(
+        200,
+        "Environment variables retrieved successfully",
+        console_ns.models[EnvironmentVariableListResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @_snippet_draft_var_prerequisite
     def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:
@@ -323,7 +337,7 @@ class SnippetEnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.exposed_type().value,
+                    "value_type": environment_variable_value_type(v),
                     "value": v.value,
                     "edited": False,
                     "visible": True,

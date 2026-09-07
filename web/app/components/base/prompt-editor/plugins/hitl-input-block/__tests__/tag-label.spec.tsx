@@ -24,11 +24,7 @@ describe('TagLabel', () => {
   })
 
   it('should render variable icon label when type is variable', () => {
-    const { container } = render(
-      <TagLabel type="variable">
-        Variable
-      </TagLabel>,
-    )
+    const { container } = render(<TagLabel type="variable">Variable</TagLabel>)
 
     expect(screen.getByText('Variable')).toBeInTheDocument()
     expect(container.querySelector('svg')).toBeInTheDocument()

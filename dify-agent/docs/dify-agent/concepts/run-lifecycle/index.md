@@ -45,14 +45,15 @@ current `agent run` has ended; the outer `workflow run` is what should be paused
 
 The caller should handle this flow as follows:
 
-1. Read the current `agent run` result and detect the HITL (human-in-the-loop)
-   requirement.
+1. Read the current `agent run` result and detect `deferred_tool_call` on the
+   terminal `run_succeeded` event.
 2. Enter workflow HITL handling and pause graphon.
 3. Wait for the human input to be completed.
-4. When resuming the workflow, insert the human tool response into the same Agent
-   session's history layer.
-5. Start a second `agent run` on the same Agent node and reuse the same history
-   session.
+4. When resuming the workflow, start a second `agent run` on the same Agent node
+   with the previous `session_snapshot`, matching composition, and
+   `deferred_tool_results` keyed by the original tool call id.
+5. Keep the history layer active so Dify Agent can match the result to the
+   pending tool call stored in the previous run's message history.
 
 In other words, a human tool does not mean “pause this agent run until it is
 resumed.” It means “this agent run ended with a result that requires human
@@ -75,8 +76,9 @@ current run. Callers control whether each layer is suspended or deleted through
 `CreateRunRequest.on_exit`.
 
 Exit signals control the **layer lifecycle state**, not the execution state of an
-`agent run`. The default policy is `suspend`, so a successful `agent run` returns
-a reusable `session_snapshot`.
+`agent run`. The default policy is `suspend`, so any run that enters and exits its
+compositor context can return a reusable `session_snapshot`, including failed or
+cancelled runs. Failures or cancellations before entry have no new snapshot.
 
 ### Default: suspend layers
 

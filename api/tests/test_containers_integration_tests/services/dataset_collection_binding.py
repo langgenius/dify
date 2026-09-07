@@ -88,7 +88,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, collection_type
+            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
         )
 
         # Assert
@@ -109,7 +109,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, collection_type
+            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
         )
 
         # Assert
@@ -128,7 +128,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, collection_type
+            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
         )
 
         # Assert
@@ -143,7 +143,9 @@ class TestDatasetCollectionBindingServiceGetBinding:
         model_name = "text-embedding-ada-002"
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(provider_name, model_name)
+        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+            provider_name, model_name, session=db_session_with_containers
+        )
 
         # Assert
         assert result.type == CollectionBindingType.DATASET
@@ -192,7 +194,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, CollectionBindingType.DATASET
+            binding.id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
         )
 
         # Assert
@@ -210,7 +212,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
             DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                non_existent_id, CollectionBindingType.DATASET
+                non_existent_id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
             )
 
     def test_get_dataset_collection_binding_by_id_and_type_different_collection_type(
@@ -228,7 +230,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, "custom_type"
+            binding.id, session=db_session_with_containers, collection_type="custom_type"
         )
 
         # Assert
@@ -249,7 +251,9 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id)
+        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            binding.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.id == binding.id
@@ -268,4 +272,6 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id, "wrong_type")
+            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                binding.id, session=db_session_with_containers, collection_type="wrong_type"
+            )

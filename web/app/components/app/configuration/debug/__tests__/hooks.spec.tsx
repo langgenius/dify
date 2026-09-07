@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { AgentStrategy } from '@/types/app'
 import {
@@ -53,7 +53,9 @@ describe('configuration debug hooks', () => {
 
     expect(result.current.debugWithMultipleModel).toBe(true)
     expect(result.current.multipleModelConfigs).toHaveLength(1)
-    expect(JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}')).toEqual({
+    expect(
+      JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}'),
+    ).toEqual({
       'app-1': {
         multiple: true,
         configs: [
@@ -66,6 +68,46 @@ describe('configuration debug hooks', () => {
         ],
       },
     })
+  })
+
+  it('should restore persisted multiple-model debug settings', () => {
+    localStorage.setItem(
+      'app-debug-with-single-or-multiple-models',
+      JSON.stringify({
+        'app-1': {
+          multiple: true,
+          configs: [
+            {
+              id: 'model-1',
+              model: 'gpt-4o',
+              provider: 'langgenius/openai/openai',
+              parameters: { temperature: 0.7 },
+            },
+          ],
+        },
+      }),
+    )
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(true)
+    expect(result.current.multipleModelConfigs).toEqual([
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+    ])
+  })
+
+  it.each(['{', 'null'])('should fall back to default settings for stored value %s', (value) => {
+    localStorage.setItem('app-debug-with-single-or-multiple-models', value)
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(false)
+    expect(result.current.multipleModelConfigs).toEqual([])
   })
 
   it('should derive chat config data from the debug context', () => {
@@ -111,13 +153,15 @@ describe('configuration debug hooks', () => {
 
     const { result } = renderHook(() => useConfigFromDebugContext())
 
-    expect(result.current).toEqual(expect.objectContaining({
-      appId: 'app-1',
-      dataset_query_variable: '',
-      opening_statement: 'hello',
-      pre_prompt: 'hello {{name}}',
-      suggested_questions: ['how are you?'],
-    }))
+    expect(result.current).toEqual(
+      expect.objectContaining({
+        appId: 'app-1',
+        dataset_query_variable: '',
+        opening_statement: 'hello',
+        pre_prompt: 'hello {{name}}',
+        suggested_questions: ['how are you?'],
+      }),
+    )
     expect(result.current.agent_mode?.strategy).toBe(AgentStrategy.functionCall)
     expect(result.current.dataset_configs?.datasets?.datasets).toEqual([
       { dataset: { enabled: true, id: 'dataset-1' } },

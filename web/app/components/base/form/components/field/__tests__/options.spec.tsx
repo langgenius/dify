@@ -4,7 +4,7 @@ import OptionsField from '../options'
 const mockField = {
   name: 'options-field',
   state: {
-    value: [] as { label: string, value: string }[],
+    value: [] as { label: string; value: string }[],
   },
   handleChange: vi.fn(),
 }
@@ -14,14 +14,8 @@ vi.mock('../../..', () => ({
 }))
 
 vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: { label: string, value: string }[]) => void
-  }) => (
-    <button onClick={() => onChange([{ label: 'A', value: 'a' }])}>
-      apply-options
-    </button>
+  default: ({ onChange }: { onChange: (value: { label: string; value: string }[]) => void }) => (
+    <button onClick={() => onChange([{ label: 'A', value: 'a' }])}>apply-options</button>
   ),
 }))
 

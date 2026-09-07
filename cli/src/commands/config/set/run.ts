@@ -11,10 +11,10 @@ export type RunConfigSetOptions = {
   readonly store: YamlStore
 }
 
-export function runConfigSet(opts: RunConfigSetOptions): string {
-  const loaded = loadConfig(opts.store)
+export async function runConfigSet(opts: RunConfigSetOptions): Promise<string> {
+  const loaded = await loadConfig(opts.store)
   const config: ConfigFile = loaded.found ? loaded.config : emptyConfig()
   const next = setKey(config, opts.key, opts.value)
-  saveConfig(opts.store, next)
+  await saveConfig(opts.store, next)
   return `set ${opts.key} = ${opts.value}\n`
 }

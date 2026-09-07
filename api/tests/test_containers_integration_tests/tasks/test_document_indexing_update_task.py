@@ -139,9 +139,9 @@ class TestDocumentIndexingUpdateTask:
         clean_call = mock_external_dependencies["processor"].clean.call_args
         assert clean_call is not None
         args, kwargs = clean_call
-        # args[0] is a Dataset instance (from another session) — validate by id
+        # args[0] is a Dataset instance (from another session), so validate by id.
         assert getattr(args[0], "id", None) == dataset.id
-        # args[1] should contain our node_ids
+        # args[1] should contain our node_ids.
         assert set(args[1]) == set(node_ids)
         assert kwargs.get("with_keywords") is True
         assert kwargs.get("delete_child_chunks") is True

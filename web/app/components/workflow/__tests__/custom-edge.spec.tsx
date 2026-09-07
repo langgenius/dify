@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Position } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import CustomEdge from '../custom-edge'
 import { BlockEnum, NodeRunningStatus } from '../types'
+import { renderWorkflowComponent } from './workflow-test-env'
 
 const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
-const mockBlockSelector = vi.hoisted(() => vi.fn())
 const mockGradientRender = vi.hoisted(() => vi.fn())
 
 vi.mock('reactflow', () => ({
@@ -31,52 +32,40 @@ vi.mock('reactflow', () => ({
       data-dasharray={props.style.strokeDasharray}
     />
   ),
-  EdgeLabelRenderer: ({ children }: { children?: ReactNode }) => <div data-testid="edge-label">{children}</div>,
+  EdgeLabelRenderer: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="edge-label">{children}</div>
+  ),
   getBezierPath: () => ['M 0 0', 24, 48],
   Position: {
     Right: 'right',
     Left: 'left',
   },
+  useStoreApi: () => ({
+    getState: () => ({ getNodes: () => [] }),
+  }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
-  useNodesInteractions: () => mockUseNodesInteractions(),
-}))
+vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-available-blocks')>()
 
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  __esModule: true,
-  default: (props: {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    onSelect: (nodeType: string, pluginDefaultValue?: Record<string, unknown>) => void
-    availableBlocksTypes: string[]
-    triggerClassName?: () => string
-  }) => {
-    mockBlockSelector(props)
-    return (
-      <button
-        type="button"
-        data-testid="block-selector"
-        data-trigger-class={props.triggerClassName?.()}
-        onClick={() => {
-          props.onOpenChange(true)
-          props.onSelect('llm', { provider: 'openai' })
-        }}
-      >
-        {props.availableBlocksTypes.join(',')}
-      </button>
-    )
-  },
-}))
+  return {
+    ...actual,
+    useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
+  }
+})
+
+vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => mockUseNodesInteractions(),
+  }
+})
 
 vi.mock('@/app/components/workflow/custom-edge-linear-gradient-render', () => ({
   __esModule: true,
-  default: (props: {
-    id: string
-    startColor: string
-    stopColor: string
-  }) => {
+  default: (props: { id: string; startColor: string; stopColor: string }) => {
     mockGradientRender(props)
     return <div data-testid="edge-gradient">{props.id}</div>
   },
@@ -91,15 +80,16 @@ describe('CustomEdge', () => {
       handleNodeAdd: mockHandleNodeAdd,
     })
     mockUseAvailableBlocks.mockImplementation((nodeType: BlockEnum) => {
-      if (nodeType === BlockEnum.Code)
-        return { availablePrevBlocks: ['code', 'llm'] }
+      if (nodeType === BlockEnum.Code) return { availablePrevBlocks: ['code', 'llm'] }
 
       return { availableNextBlocks: ['llm', 'tool'] }
     })
   })
 
-  it('should render a gradient edge and insert a node between the source and target', () => {
-    render(
+  it('should render a gradient edge and hide the start tab from its insert-node selector', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-1"
         source="source-node"
@@ -113,54 +103,48 @@ describe('CustomEdge', () => {
         targetY={220}
         targetPosition={Position.Left}
         selected={false}
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-          _sourceRunningStatus: NodeRunningStatus.Succeeded,
-          _targetRunningStatus: NodeRunningStatus.Failed,
-          _hovering: true,
-          _waitingRun: true,
-          _dimmed: true,
-          _isTemp: true,
-          isInIteration: true,
-          isInLoop: true,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+            _sourceRunningStatus: NodeRunningStatus.Succeeded,
+            _targetRunningStatus: NodeRunningStatus.Failed,
+            _hovering: true,
+            _waitingRun: true,
+            _dimmed: true,
+            _isTemp: true,
+            isInIteration: true,
+            isInLoop: true,
+          } as never
+        }
       />,
     )
 
     expect(screen.getByTestId('edge-gradient')).toHaveTextContent('edge-1')
-    expect(mockGradientRender).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'edge-1',
-      startColor: 'var(--color-workflow-link-line-success-handle)',
-      stopColor: 'var(--color-workflow-link-line-error-handle)',
-    }))
+    expect(mockGradientRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'edge-1',
+        startColor: 'var(--color-workflow-link-line-success-handle)',
+        stopColor: 'var(--color-workflow-link-line-error-handle)',
+      }),
+    )
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'url(#edge-1)')
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-opacity', '0.3')
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-dasharray', '8 8')
-    expect(screen.getByTestId('block-selector')).toHaveTextContent('llm')
-    expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
+    const addBlockTrigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
+    expect(addBlockTrigger.parentElement).toHaveStyle({
       transform: 'translate(-50%, -50%) translate(24px, 48px)',
       opacity: '0.7',
+      zIndex: '1001',
     })
 
-    fireEvent.click(screen.getByTestId('block-selector'))
+    await user.click(addBlockTrigger)
 
-    expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-      {
-        nodeType: 'llm',
-        pluginDefaultValue: { provider: 'openai' },
-      },
-      {
-        prevNodeId: 'source-node',
-        prevNodeSourceHandle: 'source',
-        nextNodeId: 'target-node',
-        nextNodeTargetHandle: 'target',
-      },
-    )
+    expect(screen.queryByRole('tab', { name: 'workflow.tabs.start' })).not.toBeInTheDocument()
   })
 
   it('should prefer the running stroke color when the edge is selected', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-selected"
         source="source-node"
@@ -172,20 +156,25 @@ describe('CustomEdge', () => {
         targetY={100}
         targetPosition={Position.Left}
         selected
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-          _sourceRunningStatus: NodeRunningStatus.Succeeded,
-          _targetRunningStatus: NodeRunningStatus.Running,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+            _sourceRunningStatus: NodeRunningStatus.Succeeded,
+            _targetRunningStatus: NodeRunningStatus.Running,
+          } as never
+        }
       />,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-handle)')
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-handle)',
+    )
   })
 
   it('should use the fail-branch running color while the connected node is hovering', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-hover"
         source="source-node"
@@ -198,19 +187,24 @@ describe('CustomEdge', () => {
         targetY={100}
         targetPosition={Position.Left}
         selected={false}
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-          _connectedNodeIsHovering: true,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+            _connectedNodeIsHovering: true,
+          } as never
+        }
       />,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-failure-handle)')
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-failure-handle)',
+    )
   })
 
   it('should fall back to the default edge color when no highlight state is active', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-default"
         source="source-node"
@@ -222,16 +216,22 @@ describe('CustomEdge', () => {
         targetY={100}
         targetPosition={Position.Left}
         selected={false}
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+          } as never
+        }
       />,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-normal)')
-    expect(screen.getByTestId('block-selector')).toHaveAttribute('data-trigger-class', 'hover:scale-150 transition-all')
-    expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-normal)',
+    )
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.addBlock' }).parentElement,
+    ).toHaveStyle({
       opacity: '0',
       pointerEvents: 'none',
     })

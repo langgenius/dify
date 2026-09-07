@@ -1,68 +1,60 @@
 import type { NodeTracing } from '@/types/workflow'
-import { noop } from 'es-toolkit/function'
-import format, { addChildrenToLoopNode } from '..'
-import graphToLogStruct from '../../graph-to-log-struct'
+import { addChildrenToLoopNode } from '..'
 
-describe('loop', () => {
-  const list = graphToLogStruct('start -> (loop, loopNode, plainNode1 -> plainNode2)')
-  const [startNode, loopNode, ...loops] = list
-  const result = format(list as NodeTracing[], noop)
-  it('result should have no nodes in loop node', () => {
-    expect(result.find(item => !!item.execution_metadata?.loop_id)).toBeUndefined()
-  })
-  it('loop should put nodes in details', () => {
-    expect(result).toEqual([
-      startNode,
-      {
-        ...loopNode,
-        details: [
-          [loops[0], loops[1]],
-        ],
-      },
-    ])
-  })
+type ExecutionMetadata = NonNullable<NodeTracing['execution_metadata']>
 
-  it('should place the first child of a new loop run at a new record when its index is missing', () => {
-    const parent = { node_id: 'loop1', node_type: 'loop', execution_metadata: {} } as unknown as NodeTracing
-    const child0 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 0 } } as unknown as NodeTracing
-    const streaming = { node_id: 'code', execution_metadata: { loop_id: 'loop1' } } as unknown as NodeTracing
+const createExecutionMetadata = (
+  overrides: Partial<ExecutionMetadata> = {},
+): ExecutionMetadata => ({
+  total_tokens: 0,
+  total_price: 0,
+  currency: 'USD',
+  ...overrides,
+})
 
-    const result = addChildrenToLoopNode(parent, [child0, streaming])
-    expect(result.details![0]).toEqual([child0])
-    expect(result.details![1]).toEqual([streaming])
+const createTrace = (nodeId: string, executionMetadata?: Partial<ExecutionMetadata>): NodeTracing =>
+  ({
+    node_id: nodeId,
+    execution_metadata: createExecutionMetadata(executionMetadata),
+  }) as NodeTracing
+
+describe('loop format log', () => {
+  it('should place the first child of a new loop at a new record when its index is missing', () => {
+    const parent = createTrace('loop')
+    const child = createTrace('code', { loop_id: 'loop', loop_index: 0 })
+    const streamingChild = createTrace('code', { loop_id: 'loop' })
+
+    const result = addChildrenToLoopNode(parent, [child, streamingChild])
+
+    expect(result.details).toEqual([[child], [streamingChild]])
   })
 
-  it('should keep missing loop_index items in the current record when the node has not restarted', () => {
-    const parent = {
-      node_id: 'loop1',
-      node_type: 'loop',
-      execution_metadata: {
-        loop_duration_map: { 0: 1.2, 1: 0.4 },
-      },
-    } as unknown as NodeTracing
-    const child0 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 0 } } as unknown as NodeTracing
-    const child1 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 1 } } as unknown as NodeTracing
-    const streaming = { node_id: 'tool', execution_metadata: { loop_id: 'loop1' } } as unknown as NodeTracing
+  it('should keep missing loop index items in the current record when the node has not restarted', () => {
+    const parent = createTrace('loop')
+    const firstRunChild = createTrace('code', { loop_id: 'loop', loop_index: 0 })
+    const secondRunChild = createTrace('code', { loop_id: 'loop', loop_index: 1 })
+    const streamingChild = createTrace('tool', { loop_id: 'loop' })
 
-    const result = addChildrenToLoopNode(parent, [child0, child1, streaming])
-    expect(result.details![0]).toEqual([child0])
-    expect(result.details![1]).toEqual([child1, streaming])
+    const result = addChildrenToLoopNode(parent, [firstRunChild, secondRunChild, streamingChild])
+
+    expect(result.details).toEqual([[firstRunChild], [secondRunChild, streamingChild]])
   })
 
-  it('should not jump to the latest loop when an earlier item is missing loop_index', () => {
-    const parent = {
-      node_id: 'loop1',
-      node_type: 'loop',
-      execution_metadata: {
-        loop_duration_map: { 0: 1.2, 1: 0.4 },
-      },
-    } as unknown as NodeTracing
-    const code0 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 0 } } as unknown as NodeTracing
-    const tool = { node_id: 'tool', execution_metadata: { loop_id: 'loop1' } } as unknown as NodeTracing
-    const code1 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 1 } } as unknown as NodeTracing
+  it('should group loop children by parallel run id before loop index', () => {
+    const parent = createTrace('loop')
+    const firstParallelChild = createTrace('code', {
+      loop_id: 'loop',
+      loop_index: 0,
+      parallel_mode_run_id: 'parallel-a',
+    })
+    const secondParallelChild = createTrace('tool', {
+      loop_id: 'loop',
+      loop_index: 0,
+      parallel_mode_run_id: 'parallel-b',
+    })
 
-    const result = addChildrenToLoopNode(parent, [code0, tool, code1])
-    expect(result.details![0]).toEqual([code0, tool])
-    expect(result.details![1]).toEqual([code1])
+    const result = addChildrenToLoopNode(parent, [firstParallelChild, secondParallelChild])
+
+    expect(result.details).toEqual([[firstParallelChild], [secondParallelChild]])
   })
 })

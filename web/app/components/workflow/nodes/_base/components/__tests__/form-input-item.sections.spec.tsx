@@ -1,10 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  JsonEditorField,
-  MultiSelectField,
-} from '../form-input-item.sections'
+import { JsonEditorField, MultiSelectField } from '../form-input-item.sections'
 
 describe('form-input-item sections', () => {
   it('should render a loading multi-select label', () => {

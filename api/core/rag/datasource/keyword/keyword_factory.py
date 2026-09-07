@@ -1,5 +1,7 @@
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
@@ -27,23 +29,23 @@ class Keyword:
             case _:
                 raise ValueError(f"Keyword store {keyword_type} is not supported.")
 
-    def create(self, texts: list[Document], **kwargs):
-        self._keyword_processor.create(texts, **kwargs)
+    def create(self, texts: list[Document], session: Session, **kwargs: Any):
+        self._keyword_processor.create(texts, session, **kwargs)
 
-    def add_texts(self, texts: list[Document], **kwargs):
-        self._keyword_processor.add_texts(texts, **kwargs)
+    def add_texts(self, texts: list[Document], session: Session, **kwargs: Any):
+        self._keyword_processor.add_texts(texts, session, **kwargs)
 
-    def text_exists(self, id: str) -> bool:
-        return self._keyword_processor.text_exists(id)
+    def text_exists(self, id: str, *, session: Session) -> bool:
+        return self._keyword_processor.text_exists(id, session=session)
 
-    def delete_by_ids(self, ids: list[str]):
-        self._keyword_processor.delete_by_ids(ids)
+    def delete_by_ids(self, ids: list[str], session: Session, **kwargs: Any):
+        self._keyword_processor.delete_by_ids(ids, session, **kwargs)
 
-    def delete(self):
-        self._keyword_processor.delete()
+    def delete(self, *, session: Session):
+        self._keyword_processor.delete(session=session)
 
-    def search(self, query: str, **kwargs: Any) -> list[Document]:
-        return self._keyword_processor.search(query, **kwargs)
+    def search(self, query: str, *, session: Session, **kwargs: Any) -> list[Document]:
+        return self._keyword_processor.search(query, session=session, **kwargs)
 
     def __getattr__(self, name):
         if self._keyword_processor is not None:

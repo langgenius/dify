@@ -32,7 +32,9 @@ describe('TopKAndScoreThreshold', () => {
   it('should notify score-threshold input values without additional rounding', () => {
     render(<TopKAndScoreThreshold {...defaultProps} />)
 
-    fireEvent.change(screen.getByRole('textbox', { name: scoreThresholdLabel }), { target: { value: '0.456' } })
+    fireEvent.change(screen.getByRole('textbox', { name: scoreThresholdLabel }), {
+      target: { value: '0.456' },
+    })
 
     expect(defaultProps.scoreThreshold.onChange).toHaveBeenCalledWith(0.456)
   })
@@ -74,6 +76,9 @@ describe('TopKAndScoreThreshold', () => {
       />,
     )
 
-    expect(screen.getByRole('switch', { name: scoreThresholdLabel }))!.toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: scoreThresholdLabel }))!.toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   })
 })

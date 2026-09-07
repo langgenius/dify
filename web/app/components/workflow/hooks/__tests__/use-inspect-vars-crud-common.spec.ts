@@ -16,15 +16,18 @@ const mockHandleCancelNodeSuccessStatus = vi.hoisted(() => vi.fn())
 const mockHandleEdgeCancelRunningStatus = vi.hoisted(() => vi.fn())
 const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
-const schemaTypeDefinitions: SchemaTypeDefinition[] = [{
-  name: 'simple',
-  schema: {
-    properties: {},
+const schemaTypeDefinitions: SchemaTypeDefinition[] = [
+  {
+    name: 'simple',
+    schema: {
+      properties: {},
+    },
   },
-}]
+]
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('@/service/use-flow', () => ({
   default: () => ({
@@ -40,7 +43,8 @@ vi.mock('@/service/use-flow', () => ({
 }))
 
 vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock())
+  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+)
 
 vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: (...args: unknown[]) => mockFetchNodeInspectVars(...args),
@@ -58,10 +62,15 @@ vi.mock('../use-edges-interactions-without-sync', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', async importOriginal => ({
-  ...(await importOriginal<typeof import('@/app/components/workflow/nodes/_base/components/variable/utils')>()),
-  toNodeOutputVars: (...args: unknown[]) => mockToNodeOutputVars(...args),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/variable/utils',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/workflow/nodes/_base/components/variable/utils')
+    >()),
+    toNodeOutputVars: (...args: unknown[]) => mockToNodeOutputVars(...args),
+  }),
+)
 
 const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
   id: 'var-1',
@@ -95,21 +104,26 @@ describe('useInspectVarsCrudCommon', () => {
         },
       }),
     ]
-    mockToNodeOutputVars.mockReturnValue([{
-      nodeId: 'node-1',
-      vars: [{
-        variable: 'answer',
-        schemaType: 'simple',
-      }],
-    }])
+    mockToNodeOutputVars.mockReturnValue([
+      {
+        nodeId: 'node-1',
+        vars: [
+          {
+            variable: 'answer',
+            schemaType: 'simple',
+          },
+        ],
+      },
+    ])
   })
 
   it('invalidates cached system vars without refetching node values for system selectors', async () => {
     const { result } = renderWorkflowHook(
-      () => useInspectVarsCrudCommon({
-        flowId: 'flow-1',
-        flowType: FlowType.appFlow,
-      }),
+      () =>
+        useInspectVarsCrudCommon({
+          flowId: 'flow-1',
+          flowType: FlowType.appFlow,
+        }),
       {
         initialStoreState: {
           dataSourceList: [],
@@ -126,29 +140,30 @@ describe('useInspectVarsCrudCommon', () => {
   })
 
   it('fetches node inspect vars, adds schema types, and marks the node as fetched', async () => {
-    mockFetchNodeInspectVars.mockResolvedValue([
-      createInspectVar(),
-    ])
+    mockFetchNodeInspectVars.mockResolvedValue([createInspectVar()])
 
     const { result, store } = renderWorkflowHook(
-      () => useInspectVarsCrudCommon({
-        flowId: 'flow-1',
-        flowType: FlowType.appFlow,
-      }),
+      () =>
+        useInspectVarsCrudCommon({
+          flowId: 'flow-1',
+          flowType: FlowType.appFlow,
+        }),
       {
         initialStoreState: {
           dataSourceList: [],
-          nodesWithInspectVars: [{
-            nodeId: 'node-1',
-            nodePayload: {
-              type: BlockEnum.Code,
+          nodesWithInspectVars: [
+            {
+              nodeId: 'node-1',
+              nodePayload: {
+                type: BlockEnum.Code,
+                title: 'Code',
+                desc: '',
+              } as never,
+              nodeType: BlockEnum.Code,
               title: 'Code',
-              desc: '',
-            } as never,
-            nodeType: BlockEnum.Code,
-            title: 'Code',
-            vars: [],
-          }],
+              vars: [],
+            },
+          ],
         },
       },
     )
@@ -176,23 +191,26 @@ describe('useInspectVarsCrudCommon', () => {
     mockDoDeleteAllInspectorVars.mockResolvedValue(undefined)
 
     const { result, store } = renderWorkflowHook(
-      () => useInspectVarsCrudCommon({
-        flowId: 'flow-1',
-        flowType: FlowType.appFlow,
-      }),
+      () =>
+        useInspectVarsCrudCommon({
+          flowId: 'flow-1',
+          flowType: FlowType.appFlow,
+        }),
       {
         initialStoreState: {
-          nodesWithInspectVars: [{
-            nodeId: 'node-1',
-            nodePayload: {
-              type: BlockEnum.Code,
+          nodesWithInspectVars: [
+            {
+              nodeId: 'node-1',
+              nodePayload: {
+                type: BlockEnum.Code,
+                title: 'Code',
+                desc: '',
+              } as never,
+              nodeType: BlockEnum.Code,
               title: 'Code',
-              desc: '',
-            } as never,
-            nodeType: BlockEnum.Code,
-            title: 'Code',
-            vars: [createInspectVar()],
-          }],
+              vars: [createInspectVar()],
+            },
+          ],
         },
       },
     )

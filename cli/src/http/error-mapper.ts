@@ -1,70 +1,109 @@
+import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
+import type { ErrorCodeValue } from '@/errors/codes'
+import { zErrorBody } from '@dify/contracts/api/openapi/zod.gen'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { redactBearer } from './sanitize'
 
-type WireFields = {
-  code?: string
-  message?: string
-  hint?: string
+const AUTH_EXPIRED_MESSAGE = 'session expired or revoked'
+const AUTH_LOGIN_HINT = "run 'difyctl auth login' to sign in again"
+
+// How one HTTP status bucket classifies: CLI code, message fallback when the
+// body is not a canonical ErrorBody, optional CLI hint, raw-body retention.
+type StatusClass = {
+  readonly code: ErrorCodeValue
+  readonly fallbackMessage: (status: number) => string
+  readonly hint?: string
+  readonly includeRaw: boolean
 }
 
-type WireEnvelope = WireFields & {
-  error?: WireFields
+const AUTH_EXPIRED_CLASS: StatusClass = {
+  code: ErrorCode.AuthExpired,
+  fallbackMessage: () => AUTH_EXPIRED_MESSAGE,
+  hint: AUTH_LOGIN_HINT,
+  includeRaw: false,
 }
 
-async function readBody(response: Response): Promise<{ raw: string, parsed?: WireEnvelope }> {
+const SERVER_5XX_CLASS: StatusClass = {
+  code: ErrorCode.Server5xx,
+  fallbackMessage: (status) => `server error (HTTP ${status})`,
+  includeRaw: true,
+}
+
+const SERVER_4XX_CLASS: StatusClass = {
+  code: ErrorCode.Server4xxOther,
+  fallbackMessage: (status) => `request failed (HTTP ${status})`,
+  includeRaw: true,
+}
+
+// 429 gets a dedicated CLI code (its own exit code) so wrappers can tell a rate limit from a hard
+// failure. The serverError.code ("too_many_requests" / "rate_limit_error") still rides along.
+const RATE_LIMITED_CLASS: StatusClass = {
+  code: ErrorCode.RateLimited,
+  fallbackMessage: () => 'too many requests',
+  includeRaw: false,
+}
+
+const ACCESS_DENIED_CLASS: StatusClass = {
+  code: ErrorCode.AccessDenied,
+  fallbackMessage: () => 'not permitted',
+  includeRaw: false,
+}
+
+// 426 Upgrade Required: the server rejected this difyctl as too old. Give it the
+// version-compat exit code so scripts can tell it apart from a generic failure.
+// The server's ErrorBody.code ("upgrade_required") + message still ride along.
+const VERSION_COMPAT_CLASS: StatusClass = {
+  code: ErrorCode.VersionSkew,
+  fallbackMessage: () => 'client version no longer supported by the server',
+  includeRaw: false,
+}
+
+function statusClass(status: number): StatusClass {
+  if (status === 401) return AUTH_EXPIRED_CLASS
+  if (status === 403) return ACCESS_DENIED_CLASS
+  if (status === 426) return VERSION_COMPAT_CLASS
+  if (status === 429) return RATE_LIMITED_CLASS
+  if (status >= 500) return SERVER_5XX_CLASS
+  return SERVER_4XX_CLASS
+}
+
+function parseServerError(raw: string): ErrorBody | undefined {
+  if (raw === '') return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+  const result = zErrorBody.safeParse(parsed)
+  return result.success ? result.data : undefined
+}
+
+export async function classifyResponse(
+  request: Request,
+  response: Response,
+): Promise<HttpClientError> {
   let raw = ''
   try {
-    raw = await response.text()
+    raw = await response.clone().text()
+  } catch {
+    // ignore read errors; raw stays ''
   }
-  catch {
-    return { raw: '' }
-  }
-  if (raw === '')
-    return { raw }
-  try {
-    return { raw, parsed: JSON.parse(raw) as WireEnvelope }
-  }
-  catch {
-    return { raw }
-  }
-}
 
-export async function classifyResponse(request: Request, response: Response): Promise<BaseError> {
-  const { parsed, raw } = await readBody(response.clone())
-  const wire: WireFields = parsed?.error ?? parsed ?? {}
+  const serverError = parseServerError(raw)
   const status = response.status
-  const url = redactBearer(response.url || request.url)
-  const method = request.method
-
-  if (status === 401) {
-    return HttpClientError.from(newError(
-      ErrorCode.AuthExpired,
-      wire.message ?? 'session expired or revoked',
-    ))
-      .withHint(wire.hint ?? 'run \'difyctl auth login\' to sign in again')
-      .withHttpStatus(status)
-      .withRequest(method, url)
-  }
-
-  if (status >= 500) {
-    return HttpClientError.from(newError(
-      ErrorCode.Server5xx,
-      wire.message ?? `server error (HTTP ${status})`,
-    ))
-      .withHttpStatus(status)
-      .withRequest(method, url)
-      .withRawResponse(raw)
-  }
-
-  const err = HttpClientError.from(newError(
-    ErrorCode.Server4xxOther,
-    wire.message ?? `request failed (HTTP ${status})`,
-  ))
-    .withHttpStatus(status)
-    .withRequest(method, url)
-    .withRawResponse(raw)
-  return wire.hint !== undefined ? err.withHint(wire.hint) : err
+  const c = statusClass(status)
+  return new HttpClientError({
+    code: c.code,
+    message: serverError?.message ?? c.fallbackMessage(status),
+    hint: c.hint,
+    httpStatus: status,
+    method: request.method,
+    url: redactBearer(response.url || request.url),
+    rawResponse: c.includeRaw && raw !== '' ? raw : undefined,
+    serverError,
+  })
 }
 
 export function classifyTransportError(err: unknown): BaseError {

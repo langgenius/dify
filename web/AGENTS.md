@@ -1,30 +1,40 @@
 ## Frontend Workflow
 
-- Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
+- Read `docs/test.md` only for frontend test work and `docs/lint.md` only when running or changing static checks.
+- Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
+- Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
 
-## Overlay Components (Mandatory)
+## Package Contracts
 
-- `../packages/dify-ui/README.md` is the permanent contract for overlay primitives, portals, root `isolation: isolate`, and the `z-50` / `z-60` layering.
-- `./docs/overlay.md` records the current web overlay best practices.
-- In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
-- Do not introduce overlay imports from `@/app/components/base/*`; when touching existing callers, migrate them.
+Web owns application-specific requirements and consumes shared architecture guidance from skills and primitive contracts from Dify UI. Link to those owners instead of redefining their rules here.
 
-## Design Token Mapping
+- For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
+- User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
+- For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/client`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
+- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Use the [Dify UI package index] to find a primitive; read the relevant contract directly when it is already known. Preserve a visible focus indicator on the final focusable element.
+- Reuse the Web `SearchInput` composite when its search, clear, and IME contract matches the feature; otherwise follow the canonical [Input Group contract].
+- Give save and submit flows a real form boundary with visible labels and accessible errors. Use Dify UI `Form` when its structured submission and validation contract is the owner; otherwise use a native form. Follow the canonical [form contract].
+- Follow the canonical [Button contract] and [IconButton contract] for action semantics, loading, accessible names, and primitive composition. Do not add a Web wrapper that hides those contracts.
+- Follow [Accessible names and descriptions] when choosing or changing visible labels, ARIA naming, descriptions, or visually hidden text. Web owns localization and feature-specific status announcements; do not redefine the Dify UI naming contract locally.
+- Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Reuse the Web `Infotip` composite for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
+- For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
+- `docs/test.md` is the single source of truth for Web automated-test policy. Skills may route and execute that policy but must not redefine it.
 
-- When translating Figma designs to code, read `../packages/dify-ui/AGENTS.md` for the Figma `--radius/*` token to Tailwind `rounded-*` class mapping. The two scales are offset by one step.
+<!-- BEGIN:nextjs-agent-rules -->
 
-## Client State Management
+# This is NOT the Next.js you know
 
-- Use local component state for state owned by one component.
-- Use feature-level Jotai atoms for simple client state shared across components in the same feature, especially when components need a shared source of truth, derived values, or shared actions.
-- Use existing feature stores for complex or high-frequency interaction state such as workflow canvas, drag, resize, and panel runtime state.
-- Use `@/hooks/use-local-storage` only for low-frequency, client-only persistence such as user preferences, dismissed notices, and UI defaults. Do not use localStorage as the live source of truth for app state.
-- For high-frequency interactions, update the feature state during interaction and persist storage only on commit or settled updates.
-- Do not access `localStorage`, `window.localStorage`, or `globalThis.localStorage` directly in app code; use the storage hook boundary and preserve existing raw/custom storage formats.
-- Do not add ad hoc global event listeners for shared state. Prefer atoms, existing stores, or a shared subscription hook so listeners are centralized and deduplicated.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
-## Automated Test Generation
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
-- Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.
-- When proposing or saving tests, re-read that document and follow every requirement.
-- All frontend tests MUST also comply with the `frontend-testing` skill. Treat the skill as a mandatory constraint, not optional guidance.
+<!-- END:nextjs-agent-rules -->
+
+[Accessible names and descriptions]: ../packages/dify-ui/docs/accessible-names-and-descriptions.md
+[Button contract]: ../packages/dify-ui/src/button/README.md
+[Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
+[Dify UI package index]: ../packages/dify-ui/README.md
+[IconButton contract]: ../packages/dify-ui/src/icon-button/README.md
+[Input Group contract]: ../packages/dify-ui/src/input-group/README.md
+[Truncated Text Disclosure]: docs/truncated-text-disclosure.md
+[form contract]: ../packages/dify-ui/docs/forms.md

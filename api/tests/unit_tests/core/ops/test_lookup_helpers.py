@@ -7,36 +7,212 @@ Covers:
 - TraceTask._get_user_id_from_metadata
 """
 
-from unittest.mock import MagicMock, patch
+import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
+from unittest.mock import PropertyMock, patch
 
 import pytest
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session
+
+from core.tools.entities.tool_entities import ApiProviderSchemaType
+from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
+from models.account import Tenant
+from models.base import TypeBase
+from models.model import App, AppMode, IconType
+from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_db_and_session_patches(scalar_side_effect=None, scalar_return_value=None):
-    """Return (mock_db, cm, session) ready to patch 'core.ops.ops_trace_manager.db'
-    and 'core.ops.ops_trace_manager.Session'.
+@pytest.fixture
+def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
+    models = (
+        App,
+        Tenant,
+        Provider,
+        ProviderCredential,
+        ProviderModel,
+        ProviderModelCredential,
+        BuiltinToolProvider,
+        ApiToolProvider,
+        WorkflowToolProvider,
+        MCPToolProvider,
+    )
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
 
-    Provide either scalar_side_effect (list, for multiple calls) or
-    scalar_return_value (single value).
-    """
-    mock_db = MagicMock()
-    mock_db.engine = MagicMock()
+    with patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine):
+        with Session(sqlite_engine, expire_on_commit=False) as session:
+            yield session
 
-    session = MagicMock()
-    if scalar_side_effect is not None:
-        session.scalar.side_effect = scalar_side_effect
+
+def _persist_app(session: Session, *, tenant_id: str, name: str = "MyApp") -> App:
+    app = App(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        name=name,
+        mode=AppMode.WORKFLOW,
+        icon_type=IconType.EMOJI,
+        icon="workflow",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=False,
+    )
+    session.add(app)
+    session.commit()
+    return app
+
+
+def _persist_tenant(session: Session, *, name: str = "MyWorkspace") -> Tenant:
+    tenant = Tenant(name=name)
+    session.add(tenant)
+    session.commit()
+    return tenant
+
+
+def _persist_tool_provider(
+    session: Session, provider_type: str
+) -> BuiltinToolProvider | ApiToolProvider | WorkflowToolProvider | MCPToolProvider:
+    tenant_id = str(uuid.uuid4())
+    user_id = str(uuid.uuid4())
+    if provider_type in {"builtin", "plugin"}:
+        provider = BuiltinToolProvider(
+            name="CredentialA",
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider="test/provider",
+        )
+    elif provider_type == "api":
+        provider = ApiToolProvider(
+            name="CredentialA",
+            icon="icon.svg",
+            schema="{}",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            description="API provider",
+            tools_str="[]",
+            credentials_str="{}",
+        )
+    elif provider_type == "workflow":
+        provider = WorkflowToolProvider(
+            name="CredentialA",
+            label="CredentialA",
+            icon="icon.svg",
+            app_id=str(uuid.uuid4()),
+            version="1",
+            user_id=user_id,
+            tenant_id=tenant_id,
+            description="Workflow provider",
+        )
+    elif provider_type == "mcp":
+        provider = MCPToolProvider(
+            name="CredentialA",
+            server_identifier="credential-a",
+            server_url="https://example.com/mcp",
+            server_url_hash="credential-a-hash",
+            icon="icon.svg",
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
     else:
-        session.scalar.return_value = scalar_return_value
+        raise ValueError(f"unsupported provider type: {provider_type}")
 
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=session)
-    cm.__exit__ = MagicMock(return_value=False)
+    session.add(provider)
+    session.commit()
+    return provider
 
-    return mock_db, cm, session
+
+def _persist_provider_credential(
+    session: Session,
+    *,
+    tenant_id: str,
+    credential_name: str = "ProvCredName",
+) -> ProviderCredential:
+    credential = ProviderCredential(
+        tenant_id=tenant_id,
+        provider_name="openai",
+        credential_name=credential_name,
+        encrypted_config="{}",
+    )
+    session.add(credential)
+    session.commit()
+    return credential
+
+
+def _persist_model_credential(
+    session: Session,
+    *,
+    tenant_id: str,
+    credential_name: str = "ModelCredName",
+) -> ProviderModelCredential:
+    credential = ProviderModelCredential(
+        tenant_id=tenant_id,
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name=credential_name,
+        encrypted_config="{}",
+    )
+    session.add(credential)
+    session.commit()
+    return credential
+
+
+def _persist_provider(
+    session: Session,
+    *,
+    tenant_id: str,
+    credential_id: str | None,
+) -> Provider:
+    provider = Provider(
+        tenant_id=tenant_id,
+        provider_name="openai",
+        provider_type=ProviderType.CUSTOM,
+        credential_id=credential_id,
+    )
+    session.add(provider)
+    session.commit()
+    return provider
+
+
+def _persist_provider_model(
+    session: Session,
+    *,
+    tenant_id: str,
+    credential_id: str | None,
+) -> ProviderModel:
+    model = ProviderModel(
+        tenant_id=tenant_id,
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_id=credential_id,
+    )
+    session.add(model)
+    session.commit()
+    return model
+
+
+@contextmanager
+def _raise_on_table(engine: Engine, table_name: str) -> Iterator[None]:
+    """Raise only when SQL targets the named table, leaving other real lookups intact."""
+
+    def fail_target_query(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if f"FROM {table_name}" in statement:
+            raise RuntimeError(f"forced failure for {table_name}")
+
+    event.listen(engine, "before_cursor_execute", fail_target_query)
+    try:
+        yield
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_target_query)
 
 
 # ---------------------------------------------------------------------------
@@ -47,62 +223,42 @@ def _make_db_and_session_patches(scalar_side_effect=None, scalar_return_value=No
 class TestLookupAppAndWorkspaceNames:
     """Tests for _lookup_app_and_workspace_names(app_id, tenant_id)."""
 
-    def test_both_found(self):
+    def test_both_found(self, orm_session: Session):
         """Returns (app_name, workspace_name) when both records exist."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=["MyApp", "MyWorkspace"])
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names("app-123", "tenant-456")
+        tenant = _persist_tenant(orm_session)
+        app = _persist_app(orm_session, tenant_id=tenant.id)
+        app_name, workspace_name = _lookup_app_and_workspace_names(app.id, tenant.id)
 
         assert app_name == "MyApp"
         assert workspace_name == "MyWorkspace"
 
-    def test_app_only_found(self):
+    def test_app_only_found(self, orm_session: Session):
         """Returns (app_name, '') when tenant record is absent."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=["MyApp", None])
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names("app-123", "tenant-456")
+        app = _persist_app(orm_session, tenant_id=str(uuid.uuid4()))
+        app_name, workspace_name = _lookup_app_and_workspace_names(app.id, str(uuid.uuid4()))
 
         assert app_name == "MyApp"
         assert workspace_name == ""
 
-    def test_tenant_only_found(self):
+    def test_tenant_only_found(self, orm_session: Session):
         """Returns ('', workspace_name) when app record is absent."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=[None, "MyWorkspace"])
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names("app-123", "tenant-456")
+        tenant = _persist_tenant(orm_session)
+        app_name, workspace_name = _lookup_app_and_workspace_names(str(uuid.uuid4()), tenant.id)
 
         assert app_name == ""
         assert workspace_name == "MyWorkspace"
 
-    def test_neither_found(self):
+    def test_neither_found(self, orm_session: Session):
         """Returns ('', '') when both DB lookups return None."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=[None, None])
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names("app-123", "tenant-456")
+        app_name, workspace_name = _lookup_app_and_workspace_names(str(uuid.uuid4()), str(uuid.uuid4()))
 
         assert app_name == ""
         assert workspace_name == ""
@@ -111,50 +267,30 @@ class TestLookupAppAndWorkspaceNames:
         """Returns ('', '') immediately when both IDs are None — no DB access."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db = MagicMock()
-        mock_session_cls = MagicMock()
+        app_name, workspace_name = _lookup_app_and_workspace_names(None, None)
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", mock_session_cls),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names(None, None)
-
-        mock_session_cls.assert_not_called()
         assert app_name == ""
         assert workspace_name == ""
 
-    def test_app_id_none_only_queries_tenant(self):
+    def test_app_id_none_only_queries_tenant(self, orm_session: Session):
         """When app_id is None, only the tenant query is issued."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db, cm, session = _make_db_and_session_patches(scalar_return_value="OnlyWorkspace")
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names(None, "tenant-456")
+        tenant = _persist_tenant(orm_session, name="OnlyWorkspace")
+        app_name, workspace_name = _lookup_app_and_workspace_names(None, tenant.id)
 
         assert app_name == ""
         assert workspace_name == "OnlyWorkspace"
-        assert session.scalar.call_count == 1
 
-    def test_tenant_id_none_only_queries_app(self):
+    def test_tenant_id_none_only_queries_app(self, orm_session: Session):
         """When tenant_id is None, only the app query is issued."""
         from core.ops.ops_trace_manager import _lookup_app_and_workspace_names
 
-        mock_db, cm, session = _make_db_and_session_patches(scalar_return_value="OnlyApp")
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            app_name, workspace_name = _lookup_app_and_workspace_names("app-123", None)
+        app = _persist_app(orm_session, tenant_id=str(uuid.uuid4()), name="OnlyApp")
+        app_name, workspace_name = _lookup_app_and_workspace_names(app.id, None)
 
         assert app_name == "OnlyApp"
         assert workspace_name == ""
-        assert session.scalar.call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -166,32 +302,20 @@ class TestLookupCredentialName:
     """Tests for _lookup_credential_name(credential_id, provider_type)."""
 
     @pytest.mark.parametrize("provider_type", ["builtin", "plugin", "api", "workflow", "mcp"])
-    def test_known_provider_types_return_name(self, provider_type):
+    def test_known_provider_types_return_name(self, provider_type: str, orm_session: Session):
         """Each valid provider_type results in a DB query and returns the credential name."""
         from core.ops.ops_trace_manager import _lookup_credential_name
 
-        mock_db, cm, session = _make_db_and_session_patches(scalar_return_value="CredentialA")
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            result = _lookup_credential_name("cred-123", provider_type)
+        provider = _persist_tool_provider(orm_session, provider_type)
+        result = _lookup_credential_name(provider.id, provider_type)
 
         assert result == "CredentialA"
-        session.scalar.assert_called_once()
 
-    def test_credential_not_found_returns_empty_string(self):
+    def test_credential_not_found_returns_empty_string(self, orm_session: Session):
         """Returns '' when DB yields None for the given credential_id."""
         from core.ops.ops_trace_manager import _lookup_credential_name
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_return_value=None)
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            result = _lookup_credential_name("cred-999", "api")
+        result = _lookup_credential_name(str(uuid.uuid4()), "api")
 
         assert result == ""
 
@@ -199,48 +323,24 @@ class TestLookupCredentialName:
         """Returns '' immediately for an unrecognised provider_type — no DB access."""
         from core.ops.ops_trace_manager import _lookup_credential_name
 
-        mock_db = MagicMock()
-        mock_session_cls = MagicMock()
+        result = _lookup_credential_name(str(uuid.uuid4()), "unknown_type")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", mock_session_cls),
-        ):
-            result = _lookup_credential_name("cred-123", "unknown_type")
-
-        mock_session_cls.assert_not_called()
         assert result == ""
 
     def test_none_credential_id_returns_empty_string_without_db(self):
         """Returns '' immediately when credential_id is None — no DB access."""
         from core.ops.ops_trace_manager import _lookup_credential_name
 
-        mock_db = MagicMock()
-        mock_session_cls = MagicMock()
+        result = _lookup_credential_name(None, "api")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", mock_session_cls),
-        ):
-            result = _lookup_credential_name(None, "api")
-
-        mock_session_cls.assert_not_called()
         assert result == ""
 
     def test_none_provider_type_returns_empty_string_without_db(self):
         """Returns '' immediately when provider_type is None — no DB access."""
         from core.ops.ops_trace_manager import _lookup_credential_name
 
-        mock_db = MagicMock()
-        mock_session_cls = MagicMock()
+        result = _lookup_credential_name(str(uuid.uuid4()), None)
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", mock_session_cls),
-        ):
-            result = _lookup_credential_name("cred-123", None)
-
-        mock_session_cls.assert_not_called()
         assert result == ""
 
     def test_builtin_and_plugin_map_to_same_model(self):
@@ -281,106 +381,78 @@ class TestLookupCredentialName:
 class TestLookupLlmCredentialInfo:
     """Tests for _lookup_llm_credential_info(tenant_id, provider, model, model_type)."""
 
-    def _provider_record(self, credential_id: str | None = None) -> MagicMock:
-        record = MagicMock()
-        record.credential_id = credential_id
-        return record
-
-    def _model_record(self, credential_id: str | None = None) -> MagicMock:
-        record = MagicMock()
-        record.credential_id = credential_id
-        return record
-
-    def test_model_level_credential_found(self):
+    def test_model_level_credential_found(self, orm_session: Session):
         """Returns model-level credential_id and name when ProviderModel has a credential."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        provider_record = self._provider_record(credential_id=None)
-        model_record = self._model_record(credential_id="model-cred-id")
+        tenant_id = str(uuid.uuid4())
+        model_credential = _persist_model_credential(orm_session, tenant_id=tenant_id)
+        _persist_provider(orm_session, tenant_id=tenant_id, credential_id=None)
+        _persist_provider_model(orm_session, tenant_id=tenant_id, credential_id=model_credential.id)
 
-        # scalar calls: (1) Provider, (2) ProviderModel, (3) ProviderModelCredential.credential_name
-        mock_db, cm, _session = _make_db_and_session_patches(
-            scalar_side_effect=[provider_record, model_record, "ModelCredName"]
+        decoy_tenant_id = str(uuid.uuid4())
+        decoy_credential = _persist_model_credential(
+            orm_session,
+            tenant_id=decoy_tenant_id,
+            credential_name="WrongTenantCredential",
         )
+        _persist_provider(orm_session, tenant_id=decoy_tenant_id, credential_id=None)
+        _persist_provider_model(orm_session, tenant_id=decoy_tenant_id, credential_id=decoy_credential.id)
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
+        cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", "gpt-4")
 
-        assert cred_id == "model-cred-id"
+        assert cred_id == model_credential.id
         assert cred_name == "ModelCredName"
 
-    def test_provider_level_fallback_when_no_model_credential(self):
+    def test_provider_level_fallback_when_no_model_credential(self, orm_session: Session):
         """Falls back to provider-level credential when ProviderModel has no credential_id."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        provider_record = self._provider_record(credential_id="prov-cred-id")
-        model_record = self._model_record(credential_id=None)
+        tenant_id = str(uuid.uuid4())
+        provider_credential = _persist_provider_credential(orm_session, tenant_id=tenant_id)
+        _persist_provider(orm_session, tenant_id=tenant_id, credential_id=provider_credential.id)
+        _persist_provider_model(orm_session, tenant_id=tenant_id, credential_id=None)
 
-        # scalar calls: (1) Provider, (2) ProviderModel (no cred), (3) ProviderCredential.credential_name
-        mock_db, cm, _session = _make_db_and_session_patches(
-            scalar_side_effect=[provider_record, model_record, "ProvCredName"]
-        )
+        cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", "gpt-4")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
-
-        assert cred_id == "prov-cred-id"
+        assert cred_id == provider_credential.id
         assert cred_name == "ProvCredName"
 
-    def test_provider_level_fallback_when_no_model_record(self):
+    def test_provider_level_fallback_when_no_model_record(self, orm_session: Session):
         """Falls back to provider-level credential when no ProviderModel row exists."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        provider_record = self._provider_record(credential_id="prov-cred-id")
+        tenant_id = str(uuid.uuid4())
+        provider_credential = _persist_provider_credential(orm_session, tenant_id=tenant_id)
+        _persist_provider(orm_session, tenant_id=tenant_id, credential_id=provider_credential.id)
 
-        # scalar calls: (1) Provider, (2) ProviderModel → None, (3) ProviderCredential.credential_name
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=[provider_record, None, "ProvCredName"])
+        cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", "gpt-4")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
-
-        assert cred_id == "prov-cred-id"
+        assert cred_id == provider_credential.id
         assert cred_name == "ProvCredName"
 
-    def test_no_model_arg_uses_provider_level_only(self):
+    def test_no_model_arg_uses_provider_level_only(self, orm_session: Session):
         """When model is None, skips ProviderModel query and uses provider credential."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        provider_record = self._provider_record(credential_id="prov-cred-id")
+        tenant_id = str(uuid.uuid4())
+        provider_credential = _persist_provider_credential(orm_session, tenant_id=tenant_id)
+        _persist_provider(orm_session, tenant_id=tenant_id, credential_id=provider_credential.id)
 
-        # scalar calls: (1) Provider, (2) ProviderCredential.credential_name — no ProviderModel
-        mock_db, cm, session = _make_db_and_session_patches(scalar_side_effect=[provider_record, "ProvCredName"])
+        cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", None)
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", None)
-
-        assert cred_id == "prov-cred-id"
+        assert cred_id == provider_credential.id
         assert cred_name == "ProvCredName"
-        assert session.scalar.call_count == 2
 
-    def test_provider_not_found_returns_none_and_empty(self):
+    def test_provider_not_found_returns_none_and_empty(self, orm_session: Session):
         """Returns (None, '') when Provider record does not exist."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_return_value=None)
+        other_tenant_id = str(uuid.uuid4())
+        _persist_provider(orm_session, tenant_id=other_tenant_id, credential_id=None)
+        tenant_id = str(uuid.uuid4())
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
+        cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", "gpt-4")
 
         assert cred_id is None
         assert cred_name == ""
@@ -389,16 +461,8 @@ class TestLookupLlmCredentialInfo:
         """Returns (None, '') immediately when tenant_id is None — no DB access."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        mock_db = MagicMock()
-        mock_session_cls = MagicMock()
+        cred_id, cred_name = _lookup_llm_credential_info(None, "openai", "gpt-4")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", mock_session_cls),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info(None, "openai", "gpt-4")
-
-        mock_session_cls.assert_not_called()
         assert cred_id is None
         assert cred_name == ""
 
@@ -406,69 +470,46 @@ class TestLookupLlmCredentialInfo:
         """Returns (None, '') immediately when provider is None — no DB access."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        mock_db = MagicMock()
-        mock_session_cls = MagicMock()
+        cred_id, cred_name = _lookup_llm_credential_info(str(uuid.uuid4()), None, "gpt-4")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", mock_session_cls),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", None, "gpt-4")
-
-        mock_session_cls.assert_not_called()
         assert cred_id is None
         assert cred_name == ""
 
-    def test_db_error_on_outer_query_returns_none_and_empty(self):
+    def test_db_error_on_outer_query_returns_none_and_empty(self, orm_session: Session, sqlite_engine: Engine):
         """Returns (None, '') and logs a warning when the outer DB query raises."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        mock_db, cm, session = _make_db_and_session_patches()
-        session.scalar.side_effect = Exception("DB connection failed")
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
+        with _raise_on_table(sqlite_engine, "providers"):
+            cred_id, cred_name = _lookup_llm_credential_info(str(uuid.uuid4()), "openai", "gpt-4")
 
         assert cred_id is None
         assert cred_name == ""
 
-    def test_credential_name_lookup_failure_returns_id_with_empty_name(self):
+    def test_credential_name_lookup_failure_returns_id_with_empty_name(
+        self, orm_session: Session, sqlite_engine: Engine
+    ):
         """When credential name sub-query fails, returns cred_id but '' for name."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        provider_record = self._provider_record(credential_id="prov-cred-id")
+        tenant_id = str(uuid.uuid4())
+        provider_credential = _persist_provider_credential(orm_session, tenant_id=tenant_id)
+        _persist_provider(orm_session, tenant_id=tenant_id, credential_id=provider_credential.id)
 
-        # Provider found, no model record, then name lookup raises
-        mock_db, cm, _session = _make_db_and_session_patches(
-            scalar_side_effect=[provider_record, None, Exception("deleted")]
-        )
+        with _raise_on_table(sqlite_engine, "provider_credentials"):
+            cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", "gpt-4")
 
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
-
-        assert cred_id == "prov-cred-id"
+        assert cred_id == provider_credential.id
         assert cred_name == ""
 
-    def test_no_credential_on_provider_or_model_returns_none_id(self):
+    def test_no_credential_on_provider_or_model_returns_none_id(self, orm_session: Session):
         """Returns (None, '') when neither provider nor model has a credential_id."""
         from core.ops.ops_trace_manager import _lookup_llm_credential_info
 
-        provider_record = self._provider_record(credential_id=None)
-        model_record = self._model_record(credential_id=None)
+        tenant_id = str(uuid.uuid4())
+        _persist_provider(orm_session, tenant_id=tenant_id, credential_id=None)
+        _persist_provider_model(orm_session, tenant_id=tenant_id, credential_id=None)
 
-        mock_db, cm, _session = _make_db_and_session_patches(scalar_side_effect=[provider_record, model_record])
-
-        with (
-            patch("core.ops.ops_trace_manager.db", mock_db),
-            patch("core.ops.ops_trace_manager.Session", return_value=cm),
-        ):
-            cred_id, cred_name = _lookup_llm_credential_info("tenant-1", "openai", "gpt-4")
+        cred_id, cred_name = _lookup_llm_credential_info(tenant_id, "openai", "gpt-4")
 
         assert cred_id is None
         assert cred_name == ""

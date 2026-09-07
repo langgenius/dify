@@ -1,8 +1,5 @@
 import type { ReactNode } from 'react'
-import type {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
+import type { BlockEnum, VarType } from '@/app/components/workflow/types'
 
 export type VariablePayload = {
   className?: string

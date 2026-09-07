@@ -9,8 +9,9 @@ import path from 'node:path'
 // Get all supported locales from the i18n directory
 const I18N_DIR = path.join(__dirname, '../i18n')
 const getSupportedLocales = (): string[] => {
-  return fs.readdirSync(I18N_DIR)
-    .filter(item => fs.statSync(path.join(I18N_DIR, item)).isDirectory())
+  return fs
+    .readdirSync(I18N_DIR)
+    .filter((item) => fs.statSync(path.join(I18N_DIR, item)).isDirectory())
     .sort()
 }
 
@@ -18,8 +19,7 @@ const getSupportedLocales = (): string[] => {
 const loadTranslationContent = (locale: string): string => {
   const filePath = path.join(I18N_DIR, locale, 'app-debug.json')
 
-  if (!fs.existsSync(filePath))
-    throw new Error(`Translation file not found: ${filePath}`)
+  if (!fs.existsSync(filePath)) throw new Error(`Translation file not found: ${filePath}`)
 
   return fs.readFileSync(filePath, 'utf-8')
 }

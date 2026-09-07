@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "الذهاب لإضافة مستندات",
   "common.preparingDataSource": "جارٍ إعداد مصدر البيانات",
   "common.processing": "جارٍ المعالجة",
-  "common.publishAs": "النشر كقالب سير عمل مخصص",
+  "common.publishAs": "نشر كمسار معرفة",
   "common.publishAsPipeline.description": "وصف المعرفة",
   "common.publishAsPipeline.descriptionPlaceholder": "يرجى إدخال وصف سير عمل المعرفة هذا. (اختياري) ",
   "common.publishAsPipeline.name": "اسم وأيقونة سير العمل",

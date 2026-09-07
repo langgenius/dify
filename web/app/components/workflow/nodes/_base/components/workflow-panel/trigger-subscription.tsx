@@ -12,7 +12,11 @@ type TriggerSubscriptionProps = {
   children: React.ReactNode
 }
 
-export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({ subscriptionIdSelected, onSubscriptionChange, children }) => {
+export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({
+  subscriptionIdSelected,
+  onSubscriptionChange,
+  children,
+}) => {
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
 

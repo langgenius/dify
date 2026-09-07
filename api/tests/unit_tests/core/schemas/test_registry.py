@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from core.schemas.registry import SchemaRegistry
 
 
@@ -71,7 +73,7 @@ class TestSchemaRegistry:
         assert registry.metadata[uri]["title"] == "Test Schema"
         assert registry.metadata[uri]["version"] == "v1"
 
-    def test_load_schema_invalid_json(self, tmp_path, caplog):
+    def test_load_schema_invalid_json(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         schema_path = tmp_path / "invalid.json"
         schema_path.write_text("invalid json")
 
@@ -81,7 +83,7 @@ class TestSchemaRegistry:
 
         assert "Failed to load schema v1/invalid" in caplog.text
 
-    def test_load_schema_os_error(self, tmp_path, caplog):
+    def test_load_schema_os_error(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         schema_path = tmp_path / "error.json"
         schema_path.write_text("{}")
 

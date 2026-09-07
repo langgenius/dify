@@ -6,14 +6,15 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Protocol, cast, override
+from typing import Any, Protocol, cast, override
 
 from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 from repositories.api_workflow_node_execution_repository import (
@@ -64,6 +65,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session_maker: SQLAlchemy sessionmaker for creating database sessions
         """
         self._session_maker = session_maker
+
+    @override
+    def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Load Process Data from external storage when the execution was offloaded."""
+        with self._session_maker() as session:
+            return execution.load_full_process_data(session, storage)
 
     @override
     def get_node_last_execution(

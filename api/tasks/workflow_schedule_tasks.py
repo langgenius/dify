@@ -8,7 +8,7 @@ from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleNotFoundError,
     TenantOwnerNotFoundError,
 )
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
@@ -39,7 +39,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
         if not schedule:
             raise ScheduleNotFoundError(f"Schedule {schedule_id} not found")
 
-        tenant_owner = ScheduleService.get_tenant_owner(session, schedule.tenant_id)
+        tenant_owner = ScheduleService.get_tenant_owner(schedule.tenant_id, session=session)
         if not tenant_owner:
             raise TenantOwnerNotFoundError(f"No owner or admin found for tenant {schedule.tenant_id}")
 

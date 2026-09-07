@@ -9,14 +9,14 @@ import Loading from '../../base/loading'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
 
-type Props = {
+type Props = Readonly<{
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   dependency: GitHubItemAndMarketPlaceDependency
   versionInfo: VersionProps
   onFetchedPayload: (payload: Plugin) => void
   onFetchError: () => void
-}
+}>
 
 const Item: FC<Props> = ({
   checked,
@@ -44,11 +44,9 @@ const Item: FC<Props> = ({
     }
   }, [data])
   useEffect(() => {
-    if (error)
-      onFetchError()
+    if (error) onFetchError()
   }, [error])
-  if (!payload)
-    return <Loading />
+  if (!payload) return <Loading />
   return (
     <LoadedItem
       payload={payload}

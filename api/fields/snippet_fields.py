@@ -1,52 +1,74 @@
-from flask_restx import fields
+from datetime import datetime
+from typing import Any
 
-from fields.member_fields import simple_account_fields
-from libs.helper import TimestampField
+from pydantic import Field, field_validator
 
-tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
+from fields.base import ResponseModel
+from fields.member_fields import SimpleAccountResponse
+from libs.helper import to_timestamp
+from models.snippet import SnippetType
 
-# Snippet list item fields (lightweight for list display)
-snippet_list_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "description": fields.String,
-    "type": fields.String,
-    "version": fields.Integer,
-    "use_count": fields.Integer,
-    "is_published": fields.Boolean,
-    "icon_info": fields.Raw,
-    "tags": fields.List(fields.Nested(tag_fields)),
-    "created_by": fields.String,
-    "author_name": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-}
 
-# Full snippet fields (includes creator info and graph data)
-snippet_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "description": fields.String,
-    "type": fields.String,
-    "version": fields.Integer,
-    "use_count": fields.Integer,
-    "is_published": fields.Boolean,
-    "icon_info": fields.Raw,
-    "graph": fields.Raw(attribute="graph_dict"),
-    "input_fields": fields.Raw(attribute="input_fields_list"),
-    "tags": fields.List(fields.Nested(tag_fields)),
-    "created_by": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
-    "created_at": TimestampField,
-    "updated_by": fields.Nested(simple_account_fields, attribute="updated_by_account", allow_null=True),
-    "updated_at": TimestampField,
-}
+class SnippetTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
 
-# Pagination response fields
-snippet_pagination_fields = {
-    "data": fields.List(fields.Nested(snippet_list_fields)),
-    "page": fields.Integer,
-    "limit": fields.Integer,
-    "total": fields.Integer,
-    "has_more": fields.Boolean,
-}
+
+class SnippetListItemResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None
+    type: SnippetType
+    version: int
+    use_count: int
+    is_published: bool
+    icon_info: dict[str, Any] | None
+    tags: list[SnippetTagResponse]
+    created_by: str | None
+    author_name: str | None
+    created_at: int
+    updated_by: str | None
+    updated_at: int
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
+        timestamp = to_timestamp(value)
+        if timestamp is None:
+            raise ValueError("timestamp is required")
+        return timestamp
+
+
+class SnippetResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None
+    type: SnippetType
+    version: int
+    use_count: int
+    is_published: bool
+    icon_info: dict[str, Any] | None
+    graph: dict[str, Any] = Field(validation_alias="graph_dict")
+    input_fields: list[dict[str, Any]] = Field(validation_alias="input_fields_list")
+    tags: list[SnippetTagResponse]
+    created_by: SimpleAccountResponse | None = Field(validation_alias="created_by_account")
+    created_at: int
+    updated_by: SimpleAccountResponse | None = Field(validation_alias="updated_by_account")
+    updated_at: int
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
+        timestamp = to_timestamp(value)
+        if timestamp is None:
+            raise ValueError("timestamp is required")
+        return timestamp
+
+
+class SnippetPaginationResponse(ResponseModel):
+    data: list[SnippetListItemResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool

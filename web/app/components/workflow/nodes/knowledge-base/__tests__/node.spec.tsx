@@ -9,11 +9,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-  RetrievalSearchMethodEnum,
-} from '../types'
+import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
 const mockUseModelList = vi.hoisted(() => vi.fn())
 const mockUseSettingsDisplay = vi.hoisted(() => vi.fn())
@@ -27,14 +23,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/header/account-setting/model-provider-page/hooks')>()
-  return {
-    ...actual,
-    useLanguage: () => 'en_US',
-    useModelList: mockUseModelList,
-  }
-})
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+      >()
+    return {
+      ...actual,
+      useLanguage: () => 'en_US',
+      useModelList: mockUseModelList,
+    }
+  },
+)
 
 vi.mock('../hooks/use-settings-display', () => ({
   useSettingsDisplay: mockUseSettingsDisplay,
@@ -55,7 +57,9 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const createNodeData = (overrides: Partial<CommonNodeType<KnowledgeBaseNodeType>> = {}): CommonNodeType<KnowledgeBaseNodeType> => ({
+const createNodeData = (
+  overrides: Partial<CommonNodeType<KnowledgeBaseNodeType>> = {},
+): CommonNodeType<KnowledgeBaseNodeType> => ({
   title: 'Knowledge Base',
   desc: '',
   type: BlockEnum.KnowledgeBase,
@@ -108,7 +112,9 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.configureRequired'),
+      ).toBeInTheDocument()
     })
 
     it('should render disabled when embedding model status is disabled', () => {
@@ -190,10 +196,12 @@ describe('KnowledgeBaseNode', () => {
       mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
         if (modelType === ModelTypeEnum.textEmbedding) {
           return {
-            data: [{
-              provider: 'openai',
-              models: [createModelItem()],
-            }],
+            data: [
+              {
+                provider: 'openai',
+                models: [createModelItem()],
+              },
+            ],
           }
         }
         return { data: [] }

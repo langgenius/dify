@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,15 +20,22 @@ type Props = {
 const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
   const { t } = useTranslation()
   const { content, title, score } = payload
-  const [
-    isShowDetailModal,
-    { setTrue: showDetailModal, setFalse: hideDetailModal },
-  ] = useBoolean(false)
+  const [isShowDetailModal, { setTrue: showDetailModal, setFalse: hideDetailModal }] =
+    useBoolean(false)
 
   return (
-    <div className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')} onClick={showDetailModal}>
+    <div
+      className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')}
+      onClick={showDetailModal}
+    >
       {/* Meta info */}
-      <ResultItemMeta className="px-3" labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
+      <ResultItemMeta
+        className="px-3"
+        labelPrefix="Chunk"
+        positionId={positionId}
+        wordCount={content.length}
+        score={score}
+      />
 
       {/* Main */}
       <div className="mt-1 px-3">
@@ -35,24 +43,42 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
       </div>
 
       {/* Foot */}
-      <ResultItemFooter docType={FileAppearanceTypeEnum.custom} docTitle={title} showDetailModal={showDetailModal} />
+      <ResultItemFooter
+        docType={FileAppearanceTypeEnum.custom}
+        docTitle={title}
+        showDetailModal={showDetailModal}
+      />
 
       {isShowDetailModal && (
         <Dialog
           open={isShowDetailModal}
           onOpenChange={(open) => {
-            if (!open)
-              hideDetailModal()
+            if (!open) hideDetailModal()
           }}
         >
-          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-[800px]! flex-col overflow-hidden! border-none text-left align-middle">
-            <DialogCloseButton />
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-200! flex-col overflow-hidden! border-none text-left align-middle">
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-              {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
+              {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
             </DialogTitle>
 
             <div className="mt-4 flex min-h-0 flex-1 flex-col">
-              <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
+              <ResultItemMeta
+                labelPrefix="Chunk"
+                positionId={positionId}
+                wordCount={content.length}
+                score={score}
+              />
               <div className="mt-2 min-h-0 flex-1 overflow-y-auto body-md-regular break-all text-text-secondary">
                 {content}
               </div>

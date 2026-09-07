@@ -62,9 +62,8 @@ export async function runCreateMember(
     active: deps.active,
   })
 
-  const response = await runWithSpinner(
-    { io, label: `Inviting ${opts.email}` },
-    () => factory(deps.http).invite(wsId, {
+  const response = await runWithSpinner({ io, label: `Inviting ${opts.email}` }, () =>
+    factory(deps.http).invite(wsId, {
       email: opts.email,
       role: opts.role as 'normal' | 'admin',
     }),

@@ -2,48 +2,54 @@ import type { ActionMenuProps } from './index'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
+import { useProviderContext } from '@/context/provider-context'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
-  const {
-    isNamedVersion,
-  } = props
+  const { workflowId, isNamedVersion, canImportExportDSL } = props
   const { t } = useTranslation()
-  const pipelineId = useStore(s => s.pipelineId)
+  const pipelineId = useStore((s) => s.pipelineId)
+  const { plan, enableBilling } = useProviderContext()
+  const shouldShowUpgrade = enableBilling && plan.type === 'sandbox'
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
-    name: t('operation.delete', { ns: 'common' }),
+    name: t(($) => $['operation.delete'], { ns: 'common' }),
   }
 
   const options = useMemo(() => {
     return [
       {
         key: VersionHistoryContextMenuOptions.restore,
-        name: t('common.restore', { ns: 'workflow' }),
+        name: t(($) => $['common.restore'], { ns: 'workflow' }),
+        ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
       },
       isNamedVersion
         ? {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t('versionHistory.editVersionInfo', { ns: 'workflow' }),
+            name: t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' }),
           }
         : {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t('versionHistory.nameThisVersion', { ns: 'workflow' }),
+            name: t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' }),
           },
       // todo: pipeline support export specific version DSL
-      ...(!pipelineId
-        ? [{
-            key: VersionHistoryContextMenuOptions.exportDSL,
-            name: t('export', { ns: 'app' }),
-          }]
+      ...(canImportExportDSL && !pipelineId
+        ? [
+            {
+              key: VersionHistoryContextMenuOptions.exportDSL,
+              name: t(($) => $.export, { ns: 'app' }),
+              ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
+            },
+          ]
         : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: t('versionHistory.copyId', { ns: 'workflow' }),
+        name: t(($) => $['versionHistory.copyId'], { ns: 'workflow' }),
+        description: workflowId,
       },
     ]
-  }, [isNamedVersion, pipelineId, t])
+  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, t, workflowId])
 
   return {
     deleteOperation,

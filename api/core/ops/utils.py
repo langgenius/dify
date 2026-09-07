@@ -34,22 +34,24 @@ def measure_time():
     try:
         yield timing_info
     finally:
+        # pyrefly: ignore [bad-assignment]
         timing_info["end"] = datetime.now()
 
 
 def replace_text_with_content(data):
-    if isinstance(data, dict):
-        new_data = {}
-        for key, value in data.items():
-            if key == "text":
-                new_data["content"] = value
-            else:
-                new_data[key] = replace_text_with_content(value)
-        return new_data
-    elif isinstance(data, list):
-        return [replace_text_with_content(item) for item in data]
-    else:
-        return data
+    match data:
+        case dict():
+            new_data = {}
+            for key, value in data.items():
+                if key == "text":
+                    new_data["content"] = value
+                else:
+                    new_data[key] = replace_text_with_content(value)
+            return new_data
+        case list():
+            return [replace_text_with_content(item) for item in data]
+        case _:
+            return data
 
 
 def generate_dotted_order(run_id: str, start_time: Union[str, datetime], parent_dotted_order: str | None = None) -> str:
@@ -103,7 +105,13 @@ def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", 
     return normalized_url
 
 
-def validate_url_with_path(url: str, default_url: str, required_suffix: str | None = None) -> str:
+def validate_url_with_path(
+    url: str,
+    default_url: str,
+    required_suffix: str | None = None,
+    *,
+    allowed_schemes: tuple[str, ...] = ("https", "http"),
+) -> str:
     """
     Validate URL that may include path components
 
@@ -111,22 +119,26 @@ def validate_url_with_path(url: str, default_url: str, required_suffix: str | No
         url: The URL to validate
         default_url: Default URL to use if input is None or empty
         required_suffix: Optional suffix that URL must end with
+        allowed_schemes: Tuple of allowed URL schemes (default: https, http)
 
     Returns:
-        Validated URL string
+        Validated URL string, returned verbatim so path, query and trailing
+        separators survive — `required_suffix` consumers depend on that
 
     Raises:
         ValueError: If URL format is invalid or doesn't match required suffix
     """
     if not url or url.strip() == "":
         return default_url
+    url = url.strip()
 
     # Parse URL to validate format
     parsed = urlparse(url)
 
     # Check if scheme is allowed
-    if parsed.scheme not in ("https", "http"):
-        raise ValueError("URL must start with https:// or http://")
+    if parsed.scheme not in allowed_schemes:
+        expected = " or ".join(f"{scheme}://" for scheme in allowed_schemes)
+        raise ValueError(f"URL must start with {expected}")
 
     # Check required suffix if specified
     if required_suffix and not url.endswith(required_suffix):

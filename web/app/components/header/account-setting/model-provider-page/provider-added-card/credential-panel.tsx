@@ -1,4 +1,6 @@
-import type { ModelProvider } from '../declarations'
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactNode } from 'react'
+import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
 import type { CardVariant } from './use-credential-panel-state'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { memo } from 'react'
@@ -10,7 +12,20 @@ import { useChangeProviderPriority } from './use-change-provider-priority'
 import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
 
 type CredentialPanelProps = {
-  provider: ModelProvider
+  provider: ModelProviderSummaryResponse | ModelProvider
+}
+
+type CredentialPanelContentProps = {
+  provider: ModelProviderSummaryResponse | ModelProvider
+  state: ReturnType<typeof useCredentialPanelState>
+  isChangingPriority: boolean
+  onChangePriority: (key: PreferredProviderTypeEnum) => void
+  renderActions?: (props: {
+    provider: ModelProviderSummaryResponse | ModelProvider
+    state: ReturnType<typeof useCredentialPanelState>
+    isChangingPriority: boolean
+    onChangePriority: (key: PreferredProviderTypeEnum) => void
+  }) => ReactNode
 }
 
 const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
@@ -22,12 +37,13 @@ const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
   'api-required-configure',
 ])
 
-const CredentialPanel = ({
+const CredentialPanelContent = ({
   provider,
-}: CredentialPanelProps) => {
-  const state = useCredentialPanelState(provider)
-  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(provider)
-
+  state,
+  isChangingPriority,
+  onChangePriority,
+  renderActions,
+}: CredentialPanelContentProps) => {
   const { variant, credentialName } = state
   const isDestructive = isDestructiveVariant(variant)
   const isTextLabel = TEXT_LABEL_VARIANTS.has(variant)
@@ -36,19 +52,40 @@ const CredentialPanel = ({
   return (
     <SystemQuotaCard variant={isDestructive ? 'destructive' : 'default'}>
       <SystemQuotaCard.Label className={needsGap ? 'gap-1' : undefined}>
-        {isTextLabel
-          ? <TextLabel variant={variant} />
-          : <CredentialStatus variant={variant} credentialName={credentialName} />}
+        {isTextLabel ? (
+          <TextLabel variant={variant} />
+        ) : (
+          <CredentialStatus variant={variant} credentialName={credentialName} />
+        )}
       </SystemQuotaCard.Label>
       <SystemQuotaCard.Actions>
-        <ModelAuthDropdown
-          provider={provider}
-          state={state}
-          isChangingPriority={isChangingPriority}
-          onChangePriority={handleChangePriority}
-        />
+        {renderActions ? (
+          renderActions({ provider, state, isChangingPriority, onChangePriority })
+        ) : (
+          <ModelAuthDropdown
+            provider={provider}
+            state={state}
+            isChangingPriority={isChangingPriority}
+            onChangePriority={onChangePriority}
+          />
+        )}
       </SystemQuotaCard.Actions>
     </SystemQuotaCard>
+  )
+}
+
+const CredentialPanel = ({ provider }: CredentialPanelProps) => {
+  // oxlint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
+  const credentialPanelInfo = useCredentialPanelState(provider)
+  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(provider)
+
+  return (
+    <CredentialPanelContent
+      provider={provider}
+      state={credentialPanelInfo}
+      isChangingPriority={isChangingPriority}
+      onChangePriority={handleChangePriority}
+    />
   )
 }
 
@@ -69,16 +106,17 @@ function TextLabel({ variant }: { variant: CardVariant }) {
   return (
     <>
       <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
-        {t(labelKey, { ns: 'common' })}
+        {t(($) => $[labelKey], { ns: 'common' })}
       </span>
-      {variant === 'credits-fallback' && (
-        <Warning className="size-3 shrink-0 text-text-warning" />
-      )}
+      {variant === 'credits-fallback' && <Warning className="size-3 shrink-0 text-text-warning" />}
     </>
   )
 }
 
-function CredentialStatus({ variant, credentialName }: {
+function CredentialStatus({
+  variant,
+  credentialName,
+}: {
   variant: CardVariant
   credentialName: string | undefined
 }) {
@@ -88,16 +126,14 @@ function CredentialStatus({ variant, credentialName }: {
 
   return (
     <>
-      <StatusDot className="shrink-0" status={dotColor} />
+      <StatusDot className="shrink-0" size="small" status={dotColor} />
       <span
         className={`truncate ${isDestructive ? 'text-text-destructive' : 'text-text-secondary'}`}
         title={credentialName}
       >
         {credentialName}
       </span>
-      {showWarning && (
-        <Warning className="ml-auto size-3 shrink-0 text-text-warning" />
-      )}
+      {showWarning && <Warning className="ml-auto size-3 shrink-0 text-text-warning" />}
     </>
   )
 }

@@ -11,17 +11,14 @@ type VariableItemProps = {
   onDelete: (item: ConversationVariable) => void
 }
 
-const VariableItem = ({
-  item,
-  onEdit,
-  onDelete,
-}: VariableItemProps) => {
+const VariableItem = ({ item, onEdit, onDelete }: VariableItemProps) => {
   const [destructive, setDestructive] = useState(false)
   return (
-    <div className={cn(
-      'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
-      destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
-    )}
+    <div
+      className={cn(
+        'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+        destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
+      )}
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">

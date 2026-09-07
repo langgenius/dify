@@ -3,6 +3,11 @@
 import * as z from 'zod'
 
 /**
+ * GeneratorResponse
+ */
+export const zGeneratorResponse = z.unknown()
+
+/**
  * LLMMode
  *
  * Enum class for large language model mode.
@@ -33,4 +38,4 @@ export const zPostRuleGenerateBody = zRuleGeneratePayload
 /**
  * Rule configuration generated successfully
  */
-export const zPostRuleGenerateResponse = z.record(z.string(), z.unknown())
+export const zPostRuleGenerateResponse = zGeneratorResponse

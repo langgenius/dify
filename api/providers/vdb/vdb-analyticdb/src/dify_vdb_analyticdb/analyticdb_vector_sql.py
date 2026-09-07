@@ -144,7 +144,7 @@ class AnalyticdbVectorBySql:
                     f"id text PRIMARY KEY,"
                     f"vector real[], ref_doc_id text, page_content text, metadata_ jsonb, "
                     f"to_tsvector TSVECTOR"
-                    f") WITH (fillfactor=70) DISTRIBUTED BY (id);"
+                    f") DISTRIBUTED BY (id);"
                 )
                 if embedding_dimension is not None:
                     index_name = f"{self._collection_name}_embedding_idx"
@@ -153,7 +153,7 @@ class AnalyticdbVectorBySql:
                         cur.execute(
                             f"CREATE INDEX {index_name} ON {self.table_name} USING ann(vector) "
                             f"WITH(dim='{embedding_dimension}', distancemeasure='{self.config.metrics}', "
-                            f"pq_enable=0, external_storage=0)"
+                            f"pq_enable=0)"
                         )
                         cur.execute(f"CREATE INDEX ON {self.table_name} USING gin(to_tsvector)")
                     except Exception as e:

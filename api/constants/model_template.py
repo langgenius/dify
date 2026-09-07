@@ -88,8 +88,9 @@ default_app_templates: Mapping[AppMode, Mapping] = {
     AppMode.AGENT: {
         "app": {
             "mode": AppMode.AGENT,
-            "enable_site": True,
-            "enable_api": True,
+            # Public access is enabled atomically by the first successful publish.
+            "enable_site": False,
+            "enable_api": False,
         },
     },
 }

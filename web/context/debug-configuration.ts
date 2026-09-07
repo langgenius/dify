@@ -24,12 +24,18 @@ import type {
 import type { VisionSettings } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import {
+  ANNOTATION_DEFAULT,
+  DEFAULT_AGENT_SETTING,
+  DEFAULT_CHAT_PROMPT_CONFIG,
+  DEFAULT_COMPLETION_PROMPT_CONFIG,
+} from '@/config'
 import { PromptMode } from '@/models/debug'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 type IDebugConfiguration = {
   readonly?: boolean
+  canTestAndRun?: boolean
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
@@ -65,7 +71,9 @@ type IDebugConfiguration = {
   moreLikeThisConfig: MoreLikeThisConfig
   setMoreLikeThisConfig: (moreLikeThisConfig: MoreLikeThisConfig) => void
   suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig
-  setSuggestedQuestionsAfterAnswerConfig: (suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig) => void
+  setSuggestedQuestionsAfterAnswerConfig: (
+    suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig,
+  ) => void
   speechToTextConfig: SpeechToTextConfig
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   textToSpeechConfig: TextToSpeechConfig
@@ -110,6 +118,7 @@ type IDebugConfiguration = {
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
   readonly: false,
+  canTestAndRun: false,
   appId: '',
   isAPIKeySet: false,
   isTrailFinished: false,

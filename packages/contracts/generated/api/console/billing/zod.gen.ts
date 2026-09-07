@@ -3,6 +3,31 @@
 import * as z from 'zod'
 
 /**
+ * BillingInvoiceResponse
+ */
+export const zBillingInvoiceResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * BillingOperationFailedErrorResponse
+ */
+export const zBillingOperationFailedErrorResponse = z.object({
+  code: z.literal('billing_operation_failed'),
+  message: z.string(),
+  status: z.literal(502),
+})
+
+/**
+ * BillingUnavailableErrorResponse
+ */
+export const zBillingUnavailableErrorResponse = z.object({
+  code: z.literal('billing_unavailable'),
+  message: z.string(),
+  status: z.literal(503),
+})
+
+/**
  * PartnerTenantsPayload
  */
 export const zPartnerTenantsPayload = z.object({
@@ -10,9 +35,30 @@ export const zPartnerTenantsPayload = z.object({
 })
 
 /**
+ * BillingResponse
+ */
+export const zBillingResponse = z.record(z.string(), z.unknown())
+
+/**
+ * BillingSubscriptionResponse
+ */
+export const zBillingSubscriptionResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * BillingUnprocessableEntityErrorResponse
+ */
+export const zBillingUnprocessableEntityErrorResponse = z.object({
+  code: z.literal('unprocessable_entity'),
+  message: z.string(),
+  status: z.literal(422),
+})
+
+/**
  * Success
  */
-export const zGetBillingInvoicesResponse = z.record(z.string(), z.unknown())
+export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
 
 export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
 
@@ -23,9 +69,14 @@ export const zPutBillingPartnersByPartnerKeyTenantsPath = z.object({
 /**
  * Tenants synced to partner successfully
  */
-export const zPutBillingPartnersByPartnerKeyTenantsResponse = z.record(z.string(), z.unknown())
+export const zPutBillingPartnersByPartnerKeyTenantsResponse = zBillingResponse
+
+export const zGetBillingSubscriptionQuery = z.object({
+  interval: z.enum(['month', 'year']),
+  plan: z.enum(['professional', 'team']),
+})
 
 /**
  * Success
  */
-export const zGetBillingSubscriptionResponse = z.record(z.string(), z.unknown())
+export const zGetBillingSubscriptionResponse = zBillingSubscriptionResponse

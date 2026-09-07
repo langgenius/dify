@@ -1,14 +1,15 @@
 'use client'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -51,11 +52,13 @@ const DuplicateAppModal = ({
   )
 
   const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
 
   const submit = () => {
+    if (isAppsFull) return
+
     if (!name.trim()) {
-      toast.error(t('appCustomize.nameRequired', { ns: 'explore' }))
+      toast.error(t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }))
       return
     }
     onConfirm({
@@ -69,50 +72,82 @@ const DuplicateAppModal = ({
 
   return (
     <>
-      <Dialog open={show}>
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none px-8 text-left align-middle">
-
-          <button
-            type="button"
-            className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+      <Dialog
+        open={show}
+        onOpenChange={(open) => {
+          if (!open) onHide()
+        }}
+      >
+        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
+          <IconButton
+            size="lg"
+            className="absolute top-4 right-4"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onHide}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
-          </button>
-          <div className="relative mt-3 mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
-          <div className="mb-9 system-sm-regular text-text-secondary">
-            <div className="mb-2 system-md-medium">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
-            <div className="flex items-center justify-between space-x-2">
-              <AppIcon
-                size="large"
-                onClick={() => { setShowAppIconPicker(true) }}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="h-10"
-              />
+            <span aria-hidden="true" className="i-ri-close-line size-4" />
+          </IconButton>
+          <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
+            {t(($) => $.duplicateTitle, { ns: 'app' })}
+          </DialogTitle>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              submit()
+            }}
+          >
+            <div className="mb-9 system-sm-regular text-text-secondary">
+              <Field className="gap-2" name="name">
+                <FieldLabel className="py-0 system-md-medium">
+                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                </FieldLabel>
+                <div className="flex items-center justify-between space-x-2">
+                  <button
+                    type="button"
+                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                    onClick={() => {
+                      setShowAppIconPicker(true)
+                    }}
+                    className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  >
+                    <AppIcon
+                      size="large"
+                      iconType={appIcon.type}
+                      icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                      background={appIcon.type === 'image' ? undefined : appIcon.background}
+                      imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                    />
+                  </button>
+                  <Input
+                    autoComplete="off"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-10"
+                    placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+                  />
+                </div>
+              </Field>
+              {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </div>
-            {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-          </div>
-          <div className="flex flex-row-reverse">
-            <Button disabled={isAppsFull} className="ml-2 w-24" variant="primary" onClick={submit}>{t('duplicate', { ns: 'app' })}</Button>
-            <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-          </div>
+            <div className="flex flex-row-reverse">
+              <Button type="submit" disabled={isAppsFull} className="ml-2 w-24" variant="primary">
+                {t(($) => $.duplicate, { ns: 'app' })}
+              </Button>
+              <Button type="button" className="w-24" onClick={onHide}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
           open={showAppIconPicker}
-          initialEmoji={appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined}
+          initialEmoji={
+            appIcon.type === 'emoji'
+              ? { icon: appIcon.icon, background: appIcon.background }
+              : undefined
+          }
           onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
@@ -120,7 +155,6 @@ const DuplicateAppModal = ({
         />
       )}
     </>
-
   )
 }
 

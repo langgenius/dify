@@ -5,7 +5,7 @@ import { realStreams } from '@/sys/io/streams'
 import { runWhoami } from './whoami'
 
 export default class Whoami extends DifyCommand {
-  static override description = 'Print the active subject\'s identity'
+  static override description = "Print the active subject's identity"
 
   static override examples = [
     '<%= config.bin %> auth whoami',
@@ -18,7 +18,7 @@ export default class Whoami extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     const { flags } = this.parse(Whoami, argv)
-    const reg = Registry.load()
+    const reg = await Registry.load()
     await runWhoami({ io: realStreams(), reg, json: flags.json })
   }
 }

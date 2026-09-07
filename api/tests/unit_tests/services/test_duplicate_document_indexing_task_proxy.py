@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import (
     DuplicateDocumentIndexingTaskProxy,
 )
@@ -12,7 +12,7 @@ class DuplicateDocumentIndexingTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for DuplicateDocumentIndexingTaskProxy tests."""
 
     @staticmethod
-    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
+    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan | str | None = CloudPlan.SANDBOX) -> Mock:
         """Create mock features with billing configuration."""
         features = Mock()
         features.billing = Mock()

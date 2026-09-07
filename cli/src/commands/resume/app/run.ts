@@ -4,14 +4,14 @@ import type { RunContext } from '@/commands/run/app/_strategies/index'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { AppMetaClient } from '@/api/app-meta'
+import { selectAppReader } from '@/api/app-reader'
 import { AppRunClient } from '@/api/app-run'
-import { AppsClient } from '@/api/apps'
 import { pickStrategy } from '@/commands/run/app/_strategies/index'
 import { RUN_MODES } from '@/commands/run/app/handlers'
-import { getEnv, processExit } from '@/sys/index'
+import { resolveInputs, TEXT_FORMATS } from '@/commands/run/app/input-flags'
+import { processExit } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { FieldInfo } from '@/types/app-meta'
-import { resolveWorkspaceId } from '@/workspace/resolver'
 
 export type ResumeAppOptions = {
   readonly appId: string
@@ -38,50 +38,10 @@ export type ResumeAppDeps = {
   readonly exit?: (code: number) => never
 }
 
-const TEXT_FORMATS = new Set(['', 'text'])
-
-async function resolveInputs(
-  inputsJson: string | undefined,
-  inputsFile: string | undefined,
-  directInputs: Readonly<Record<string, unknown>> | undefined,
-): Promise<Record<string, unknown>> {
-  if (inputsJson !== undefined && inputsFile !== undefined)
-    throw new Error('--inputs and --inputs-file are mutually exclusive')
-  if (inputsJson !== undefined) {
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(inputsJson)
-    }
-    catch {
-      throw new Error('--inputs must be valid JSON')
-    }
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new Error('--inputs must be a JSON object')
-    return parsed as Record<string, unknown>
-  }
-  if (inputsFile !== undefined) {
-    const { readFile } = await import('node:fs/promises')
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(await readFile(inputsFile, 'utf8'))
-    }
-    catch {
-      throw new Error('--inputs-file must contain valid JSON')
-    }
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new Error('--inputs-file must be a JSON object')
-    return parsed as Record<string, unknown>
-  }
-  return { ...(directInputs ?? {}) }
-}
-
 export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Promise<void> {
-  const env = deps.envLookup ?? getEnv
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
-
-  const apps = new AppsClient(deps.http)
+  const apps = selectAppReader(deps.active, deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
-  const m = await meta.get(opts.appId, wsId, [FieldInfo])
+  const m = await meta.get(opts.appId, [FieldInfo])
   const mode = m.info?.mode ?? RUN_MODES.Workflow
 
   const runClient = new AppRunClient(deps.http)
@@ -90,15 +50,13 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
   let action = opts.action
   if (action === undefined) {
     const formResp = await deps.http.get<{ user_actions: { id: string }[] }>(
-      `apps/${encodeURIComponent(opts.appId)}/form/human_input/${encodeURIComponent(opts.formToken)}`,
+      `apps/${encodeURIComponent(opts.appId)}/human-input-forms/${encodeURIComponent(opts.formToken)}`,
     )
     if (formResp.user_actions.length === 1) {
       action = formResp.user_actions[0]?.id ?? ''
-    }
-    else if (formResp.user_actions.length === 0) {
+    } else if (formResp.user_actions.length === 0) {
       action = ''
-    }
-    else {
+    } else {
       throw new Error('--action required: form has multiple user actions')
     }
   }

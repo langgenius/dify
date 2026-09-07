@@ -724,3 +724,23 @@ def test_scrape_with_watercrawl_calls_provider(monkeypatch: pytest.MonkeyPatch) 
     )
     assert result == {"markdown": "m"}
     provider_instance.scrape_url.assert_called_once_with("u")
+
+
+def test_pooled_clients_carry_bounded_timeouts() -> None:
+    """Regression for #39859: the Jina and adaptive-crawl pooled clients
+    must carry a read/connect timeout so a stalled endpoint fails fast
+    instead of pinning a worker. Same shape as the WaterCrawl hardening
+    that landed in PR #37512.
+    """
+    jina = website_service_module._jina_http_client
+    adaptive = website_service_module._adaptive_http_client
+
+    # Read and connect bounds are set.
+    assert jina.timeout is not None
+    assert adaptive.timeout is not None
+
+    # The values match the documented floor (read 30.0 / connect 5.0).
+    assert jina.timeout.read == 30.0
+    assert jina.timeout.connect == 5.0
+    assert adaptive.timeout.read == 30.0
+    assert adaptive.timeout.connect == 5.0

@@ -119,6 +119,19 @@ class Storage:
     def delete(self, filename: str):
         return self.storage_runner.delete(filename)
 
+    def generate_presigned_url(
+        self,
+        filename: str,
+        *,
+        expires_in: int,
+        content_type: str | None = None,
+    ) -> str:
+        return self.storage_runner.generate_presigned_url(
+            filename,
+            expires_in=expires_in,
+            content_type=content_type,
+        )
+
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         return self.storage_runner.scan(path, files=files, directories=directories)
 

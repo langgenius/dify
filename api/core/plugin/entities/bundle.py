@@ -5,12 +5,13 @@ from pydantic import BaseModel
 from core.plugin.entities.plugin import PluginDeclaration, PluginInstallationSource
 
 
-class PluginBundleDependency(BaseModel):
-    class Type(StrEnum):
-        Github = PluginInstallationSource.Github.value
-        Marketplace = PluginInstallationSource.Marketplace.value
-        Package = PluginInstallationSource.Package.value
+class PluginBundleDependencyType(StrEnum):
+    Github = PluginInstallationSource.Github.value
+    Marketplace = PluginInstallationSource.Marketplace.value
+    Package = PluginInstallationSource.Package.value
 
+
+class PluginBundleDependency(BaseModel):
     class Github(BaseModel):
         repo_address: str
         repo: str
@@ -26,5 +27,5 @@ class PluginBundleDependency(BaseModel):
         unique_identifier: str
         manifest: PluginDeclaration
 
-    type: Type
+    type: PluginBundleDependencyType
     value: Github | Marketplace | Package

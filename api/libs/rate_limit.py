@@ -15,7 +15,7 @@ from enum import StrEnum
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import jsonify, make_response, request, session
+from flask import request, session
 from werkzeug.exceptions import TooManyRequests
 
 from configs import dify_config
@@ -132,20 +132,32 @@ def enforce(spec: RateLimit, *, key: str) -> None:
     limiter.increment_rate_limit(key)
 
 
+class _BearerRateLimited(TooManyRequests):
+    """Per-token 429. Carries Retry-After as a plain ``headers`` attribute because the openapi
+    error formatter reads ``getattr(e, "headers")`` (not werkzeug's ``get_headers()``). No
+    pre-built response, so the formatter still renders the canonical ErrorBody ("too_many_requests").
+    """
+
+    headers: dict[str, str]
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__()
+        self.headers = {"Retry-After": str(retry_after_seconds)}
+
+
 def enforce_bearer_rate_limit(token_hash: str) -> None:
     """Per-token rate limit on /openapi/v1/* bearer-authed routes.
 
     Bucket key = ``token:<sha256_hex>`` so the same token shares one
     bucket across api replicas (Redis-backed sliding window).
     """
+    # 0 (or less) disables the per-token limit. Short-circuit here: a limiter built with
+    # max_attempts=0 would otherwise treat every request as already over the limit.
+    if LIMIT_BEARER_PER_TOKEN.limit <= 0:
+        return
     limiter = _build_limiter(LIMIT_BEARER_PER_TOKEN)
     key = f"token:{token_hash}"
     if limiter.is_rate_limited(key):
         retry_after = limiter.seconds_until_available(key)
-        response = make_response(
-            jsonify({"error": "rate_limited", "retry_after_ms": retry_after * 1000}),
-            429,
-        )
-        response.headers["Retry-After"] = str(retry_after)
-        raise TooManyRequests(response=response)
+        raise _BearerRateLimited(retry_after)
     limiter.increment_rate_limit(key)

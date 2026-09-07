@@ -149,10 +149,10 @@ def build_file_from_mapping_without_lookup(*, file_mapping: Mapping[str, Any]) -
 def rebuild_serialized_graph_files_without_lookup(value: Any) -> Any:
     """Recursively rebuild serialized graph file payloads into `File` objects.
 
-    `graphon` 0.2.2 no longer accepts legacy serialized file mappings via
-    `model_validate_json()`. Dify keeps this recovery path at the model boundary
-    so historical JSON blobs remain readable without reintroducing global graph
-    patches or test-local coercion.
+    `graphon` no longer accepts legacy serialized file mappings via
+    `model_validate_json()`. Dify keeps this recovery path at the model
+    boundary so historical JSON blobs remain readable without reintroducing
+    global graph patches or test-local coercion.
     """
     match value:
         case list():

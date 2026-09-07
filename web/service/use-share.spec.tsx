@@ -9,6 +9,7 @@ import {
   generationConversationName,
 } from './share'
 import {
+  EnvironmentConversationNotFoundError,
   shareQueryKeys,
   useInvalidateShareConversations,
   useShareChatList,
@@ -34,13 +35,15 @@ const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
 const mockGenerationConversationName = vi.mocked(generationConversationName)
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        retryDelay: 0,
+      },
     },
-  },
-})
+  })
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
@@ -65,11 +68,33 @@ const createConversationItem = (overrides: Partial<ConversationItem> = {}): Conv
   ...overrides,
 })
 
-const createConversationData = (overrides: Partial<AppConversationData> = {}): AppConversationData => ({
+const createConversationData = (
+  overrides: Partial<AppConversationData> = {},
+): AppConversationData => ({
   data: [createConversationItem()],
   has_more: false,
   limit: 20,
   ...overrides,
+})
+
+describe('shareQueryKeys', () => {
+  it('should isolate web app metadata by complete address', () => {
+    const firstAddress = { kind: 'environment' as const, code: 'webapp' }
+    const secondAddress = { kind: 'default' as const, code: 'webapp' }
+    expect(shareQueryKeys.appAccessMode(firstAddress, 'webapp')).not.toEqual(
+      shareQueryKeys.appAccessMode(secondAddress, 'webapp'),
+    )
+    expect(shareQueryKeys.appInfo(firstAddress)).not.toEqual(shareQueryKeys.appInfo(secondAddress))
+    expect(shareQueryKeys.appParams(firstAddress)).not.toEqual(
+      shareQueryKeys.appParams(secondAddress),
+    )
+    expect(shareQueryKeys.appMeta(firstAddress)).not.toEqual(shareQueryKeys.appMeta(secondAddress))
+
+    const params = { appSourceType: AppSourceType.webApp, appId: 'app-1' }
+    expect(shareQueryKeys.conversationList(firstAddress, params)).not.toEqual(
+      shareQueryKeys.conversationList(secondAddress, params),
+    )
+  })
 })
 
 // Scenario: share conversation list queries behave consistently with params and enablement.
@@ -95,12 +120,20 @@ describe('useShareConversations', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, undefined, undefined, true, 50)
+      expect(mockFetchConversations).toHaveBeenCalledWith(
+        AppSourceType.webApp,
+        undefined,
+        undefined,
+        true,
+        50,
+      )
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
     })
-    expect(queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(params) })).toBeDefined()
+    expect(
+      queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(null, params) }),
+    ).toBeDefined()
   })
 
   it('should not fetch conversations when installed app lacks appId', async () => {
@@ -126,6 +159,7 @@ describe('useShareConversations', () => {
 describe('useShareChatList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
   })
 
   it('should fetch chat list when conversationId is provided', async () => {
@@ -144,7 +178,11 @@ describe('useShareChatList', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.installedApp, 'app-1')
+      expect(mockFetchChatList).toHaveBeenCalledWith(
+        'conversation-1',
+        AppSourceType.installedApp,
+        'app-1',
+      )
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -170,6 +208,63 @@ describe('useShareChatList', () => {
     expect(mockFetchChatList).not.toHaveBeenCalled()
   })
 
+  it('should translate a missing Environment conversation', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-code')
+    const params = {
+      conversationId: 'stale-conversation',
+      appId: 'app-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+      status: 404,
+    })
+    mockFetchChatList.mockRejectedValue(response)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(EnvironmentConversationNotFoundError)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
+  it('should preserve retries for other Environment errors', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-code')
+    const params = {
+      conversationId: 'conversation-1',
+      appId: 'app-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'OTHER_ERROR' }), { status: 404 })
+    mockFetchChatList.mockRejectedValue(response)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(response)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
+  it('should preserve ordinary WebApp handling for the same 404 reason', async () => {
+    window.history.replaceState({}, '', '/chatbot/webapp-code')
+    const params = {
+      conversationId: 'conversation-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+      status: 404,
+    })
+    mockFetchChatList.mockRejectedValue(response)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(response)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
   it('should always consider data stale to ensure fresh data on conversation switch (GitHub #30378)', async () => {
     // This test verifies that chat list data is always considered stale (staleTime: 0)
     // which ensures fresh data is fetched when switching back to a conversation.
@@ -183,7 +278,12 @@ describe('useShareChatList', () => {
       appSourceType: AppSourceType.webApp,
     }
     const initialResponse = { data: [{ id: '1', content: 'initial' }] }
-    const updatedResponse = { data: [{ id: '1', content: 'initial' }, { id: '2', content: 'new message' }] }
+    const updatedResponse = {
+      data: [
+        { id: '1', content: 'initial' },
+        { id: '2', content: 'new message' },
+      ],
+    }
 
     // First fetch
     mockFetchChatList.mockResolvedValueOnce(initialResponse)
@@ -239,7 +339,11 @@ describe('useShareConversationName', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockGenerationConversationName).toHaveBeenCalledWith(AppSourceType.webApp, undefined, 'conversation-2')
+      expect(mockGenerationConversationName).toHaveBeenCalledWith(
+        AppSourceType.webApp,
+        undefined,
+        'conversation-2',
+      )
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)

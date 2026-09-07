@@ -26,8 +26,7 @@ export const useGetPluginCredentialInfoHook = (
   let url = enable ? apiMap.getCredentialInfo : ''
   if (url && ids.length > 0) {
     const qs = new URLSearchParams()
-    for (const id of ids)
-      qs.append('include_credential_ids', id)
+    for (const id of ids) qs.append('include_credential_ids', id)
     url = url + (url.includes('?') ? '&' : '?') + qs.toString()
   }
   return useGetPluginCredentialInfo(url)
@@ -57,7 +56,10 @@ export const useSetPluginDefaultCredentialHook = (pluginPayload: PluginPayload) 
   return useSetPluginDefaultCredential(apiMap.setDefaultCredential)
 }
 
-export const useGetPluginCredentialSchemaHook = (pluginPayload: PluginPayload, credentialType: CredentialTypeEnum) => {
+export const useGetPluginCredentialSchemaHook = (
+  pluginPayload: PluginPayload,
+  credentialType: CredentialTypeEnum,
+) => {
   const apiMap = useGetApi(pluginPayload)
 
   return useGetPluginCredentialSchema(apiMap.getCredentialSchema(credentialType))
@@ -81,10 +83,10 @@ export const useGetPluginOAuthUrlHook = (pluginPayload: PluginPayload) => {
   return useGetPluginOAuthUrl(apiMap.getOauthUrl)
 }
 
-export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {
+export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload, enabled = true) => {
   const apiMap = useGetApi(pluginPayload)
 
-  return useGetPluginOAuthClientSchema(apiMap.getOauthClientSchema)
+  return useGetPluginOAuthClientSchema(enabled ? apiMap.getOauthClientSchema : '')
 }
 
 export const useInvalidPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {

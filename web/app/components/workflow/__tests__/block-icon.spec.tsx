@@ -5,11 +5,18 @@ import { BlockEnum } from '../types'
 
 describe('BlockIcon', () => {
   it('renders the default workflow icon container for regular nodes', () => {
-    const { container } = render(<BlockIcon type={BlockEnum.Start} size="xs" className="extra-class" />)
+    const { container } = render(
+      <BlockIcon type={BlockEnum.Start} size="xs" className="extra-class" />,
+    )
 
     const iconContainer = container.firstElementChild
-    expect(iconContainer).toHaveClass('w-4', 'h-4', 'bg-util-colors-blue-brand-blue-brand-500', 'extra-class')
-    expect(iconContainer?.querySelector('svg')).toBeInTheDocument()
+    expect(iconContainer).toHaveClass(
+      'w-4',
+      'h-4',
+      'bg-util-colors-blue-brand-blue-brand-500',
+      'extra-class',
+    )
+    expect(iconContainer?.querySelector('.i-custom-vender-workflow-user-input')).toBeInTheDocument()
   })
 
   it('normalizes protected plugin icon urls for tool-like nodes', () => {
@@ -33,10 +40,7 @@ describe('BlockIcon', () => {
 describe('VarBlockIcon', () => {
   it('renders the compact icon variant without the default container wrapper', () => {
     const { container } = render(
-      <VarBlockIcon
-        type={BlockEnum.Answer}
-        className="custom-var-icon"
-      />,
+      <VarBlockIcon type={BlockEnum.Answer} className="custom-var-icon" />,
     )
 
     expect(container.querySelector('.custom-var-icon')).toBeInTheDocument()

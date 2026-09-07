@@ -2,11 +2,13 @@
 
 import datetime
 import uuid
+from collections.abc import Callable
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, sentinel
+from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
 
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
@@ -14,7 +16,13 @@ from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, Pl
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.llm_entities import (
+    LLMPollingResult,
+    LLMPollingStatus,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
+)
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
@@ -28,12 +36,44 @@ class _FakeRedis:
     def get(self, key: str) -> str | None:
         return self._values.get(key)
 
+    def mget(self, keys: list[str]) -> list[str | None]:
+        return [self.get(key) for key in keys]
+
     def setex(self, key: str, ttl: int, value: str) -> None:
         self._values[key] = value
         self.setex_calls.append((key, ttl, value))
 
     def delete(self, key: str) -> None:
         self._values.pop(key, None)
+
+    def lock(
+        self,
+        key: str,
+        *,
+        timeout: int,
+        sleep: float,
+    ) -> "_FakeRedisLock":
+        return _FakeRedisLock(self, key)
+
+
+class _FakeRedisLock:
+    def __init__(self, redis: _FakeRedis, key: str) -> None:
+        self._redis = redis
+        self._key = key
+        self._acquired = False
+
+    def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool:
+        if self._key in self._redis._values:
+            return False
+
+        self._redis._values[self._key] = "locked"
+        self._acquired = True
+        return True
+
+    def release(self) -> None:
+        if self._acquired:
+            self._redis.delete(self._key)
+            self._acquired = False
 
 
 def _build_model_schema() -> AIModelEntity:
@@ -55,6 +95,7 @@ def _build_plugin_model_provider(*, tenant_id: str, provider: str = "openai") ->
         tenant_id=tenant_id,
         plugin_unique_identifier=f"langgenius/{provider}/{provider}",
         plugin_id=f"langgenius/{provider}",
+        installation_source=PluginInstallationSource.Marketplace,
         declaration=ProviderEntity(
             provider=provider,
             label=I18nObject(en_US=provider.title()),
@@ -78,6 +119,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="OpenAI"),
@@ -107,6 +149,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="acme/openai/openai",
                 plugin_id="acme/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="Acme OpenAI"),
@@ -122,6 +165,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="OpenAI"),
@@ -149,6 +193,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/gemini/google",
                 plugin_id="langgenius/gemini",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="google",
                     label=I18nObject(en_US="Google"),
@@ -240,6 +285,59 @@ class TestPluginModelRuntime:
             stream=False,
         )
 
+    def test_invoke_llm_forwards_string_app_id_from_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"app_id": "app-1"},
+        )
+
+        assert list(result) == []
+        client.invoke_llm.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            app_id="app-1",
+        )
+
+    def test_invoke_llm_ignores_non_string_app_id_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"app_id": 123},
+        )
+
+        assert result is client.invoke_llm.return_value
+        assert "app_id" not in client.invoke_llm.call_args.kwargs
+
     def test_invoke_llm_returns_plugin_stream_directly(self) -> None:
         client = Mock(spec=PluginModelClient)
         stream_result = iter([])
@@ -270,6 +368,74 @@ class TestPluginModelRuntime:
             tools=None,
             stop=["END"],
             stream=True,
+        )
+
+    def test_start_llm_polling_resolves_plugin_fields(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.RUNNING,
+            plugin_state={"task_id": "poll-1"},
+            next_check_after_seconds=2,
+        )
+        client.start_llm_polling.return_value = polling_result
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.start_llm_polling(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.2},
+            prompt_messages=[],
+            tools=None,
+            stop=("END",),
+            json_schema={"type": "object"},
+        )
+
+        assert result == polling_result
+        client.start_llm_polling.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            prompt_messages=[],
+            model_parameters={"temperature": 0.2},
+            tools=None,
+            stop=["END"],
+            json_schema={"type": "object"},
+        )
+
+    def test_check_llm_polling_resolves_plugin_fields(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.SUCCEEDED,
+            result=model_runtime_module.LLMResult(
+                model="gpt-4o-mini",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content="done"),
+                usage=LLMUsage.empty_usage(),
+            ),
+        )
+        client.check_llm_polling.return_value = polling_result
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.check_llm_polling(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            plugin_state={"task_id": "poll-1"},
+        )
+
+        assert result == polling_result
+        client.check_llm_polling.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            plugin_state={"task_id": "poll-1"},
         )
 
     def test_invoke_llm_rejects_per_call_user_override(self) -> None:
@@ -319,7 +485,9 @@ class TestPluginModelRuntime:
             voice="alloy",
         )
 
-    def test_fetch_model_providers_does_not_keep_bound_runtime_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_fetch_model_providers_does_not_keep_bound_runtime_cache(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
         client = Mock(spec=PluginModelClient)
         client.fetch_model_providers.return_value = []
         from core.plugin import plugin_service as plugin_service_module
@@ -329,11 +497,13 @@ class TestPluginModelRuntime:
             "redis_client",
             SimpleNamespace(
                 get=Mock(return_value=None),
+                mget=Mock(return_value=[None]),
                 delete=Mock(),
                 setex=Mock(),
+                lock=Mock(return_value=MagicMock()),
             ),
         )
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=0)
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
         runtime.fetch_model_providers()
@@ -342,13 +512,13 @@ class TestPluginModelRuntime:
         assert client.fetch_model_providers.call_count == 2
 
     def test_fetch_model_providers_uses_tenant_ttl_cache_across_runtime_instances(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
     ) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=300)
         redis = _FakeRedis()
         from core.plugin import plugin_service as plugin_service_module
 
         monkeypatch.setattr(plugin_service_module, "redis_client", redis)
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
         first_client = Mock(spec=PluginModelClient)
         first_client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
         second_client = Mock(spec=PluginModelClient)
@@ -368,12 +538,14 @@ class TestPluginModelRuntime:
         second_client.fetch_model_providers.assert_not_called()
         assert redis.setex_calls[0][1] == 300
 
-    def test_fetch_model_providers_cache_is_tenant_isolated(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_fetch_model_providers_cache_is_tenant_isolated(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=300)
         redis = _FakeRedis()
         from core.plugin import plugin_service as plugin_service_module
 
         monkeypatch.setattr(plugin_service_module, "redis_client", redis)
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
         first_client = Mock(spec=PluginModelClient)
         first_client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant-a")]
         second_client = Mock(spec=PluginModelClient)
@@ -591,7 +763,10 @@ def test_invoke_llm_with_structured_output_raises_when_model_schema_is_missing()
         )
 
 
-def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_model_schema_deletes_invalid_cache_and_refetches(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(PLUGIN_MODEL_SCHEMA_CACHE_TTL=300)
     client = Mock(spec=PluginModelClient)
     schema = _build_model_schema()
     delete = Mock()
@@ -605,7 +780,6 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytes
             setex=setex,
         ),
     )
-    monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_MODEL_SCHEMA_CACHE_TTL", 300)
     client.get_model_schema.return_value = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
@@ -630,9 +804,11 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytes
     setex.assert_called_once()
 
 
-def test_get_llm_num_tokens_returns_zero_when_plugin_counting_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_llm_num_tokens_returns_zero_when_plugin_counting_is_disabled(
+    config_overrides: Callable[..., None],
+) -> None:
     client = Mock(spec=PluginModelClient)
-    monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_BASED_TOKEN_COUNTING_ENABLED", False)
+    config_overrides(PLUGIN_BASED_TOKEN_COUNTING_ENABLED=False)
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
     assert (
@@ -660,6 +836,7 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -696,6 +873,7 @@ def test_get_provider_icon_rejects_unsupported_types_and_missing_variants() -> N
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -828,6 +1006,7 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider()
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),

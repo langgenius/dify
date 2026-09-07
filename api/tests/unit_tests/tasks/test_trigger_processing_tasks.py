@@ -1,10 +1,54 @@
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import tasks.trigger_processing_tasks as trigger_processing_tasks_module
+from core.plugin.entities.plugin_daemon import CredentialType
+from graphon.enums import WorkflowType
+from models.enums import EndUserType
+from models.model import EndUser
+from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from tasks.trigger_processing_tasks import dispatch_triggered_workflow
+
+
+def _workflow(*, app_id: str = "app-123") -> Workflow:
+    workflow = Workflow.new(
+        tenant_id="tenant-123",
+        app_id=app_id,
+        type=WorkflowType.WORKFLOW.value,
+        version="published",
+        graph=json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node-123",
+                        "data": {"type": trigger_processing_tasks_module.TRIGGER_PLUGIN_NODE_TYPE},
+                    }
+                ],
+                "edges": [],
+            }
+        ),
+        features="{}",
+        created_by="user-123",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.id = "workflow-123"
+    return workflow
+
+
+def _end_user() -> EndUser:
+    return EndUser(
+        id="end-user-123",
+        tenant_id="tenant-123",
+        app_id="app-123",
+        type=EndUserType.TRIGGER,
+        session_id="trigger-session",
+    )
 
 
 class TestDispatchTriggeredWorkflow:
@@ -20,21 +64,31 @@ class TestDispatchTriggeredWorkflow:
 
     @pytest.fixture
     def subscription(self):
-        sub = MagicMock()
-        sub.id = "subscription-123"
-        sub.tenant_id = "tenant-123"
-        sub.provider_id = "langgenius/test_plugin/test_plugin"
-        sub.endpoint_id = "endpoint-123"
-        sub.credentials = {}
-        sub.credential_type = "api_key"
-        return sub
+        subscription = TriggerSubscription(
+            tenant_id="tenant-123",
+            user_id="user-123",
+            name="Test Subscription",
+            endpoint_id="endpoint-123",
+            provider_id="langgenius/test_plugin/test_plugin",
+            parameters={},
+            properties={},
+            credentials={},
+            credential_type=CredentialType.API_KEY,
+        )
+        subscription.id = "subscription-123"
+        return subscription
 
     @pytest.fixture
     def plugin_trigger(self):
-        trigger = MagicMock()
+        trigger = WorkflowPluginTrigger(
+            app_id="app-123",
+            node_id="node-123",
+            tenant_id="tenant-123",
+            provider_id="langgenius/test_plugin/test_plugin",
+            event_name="test_event",
+            subscription_id="subscription-123",
+        )
         trigger.id = "plugin-trigger-123"
-        trigger.app_id = "app-123"
-        trigger.node_id = "node-123"
         return trigger
 
     @pytest.fixture
@@ -55,10 +109,6 @@ class TestDispatchTriggeredWorkflow:
         (``get_workflows``, ``reserve``, ``create_end_user_batch``, ...) to
         drive the path it targets.
         """
-        session_cm = MagicMock()
-        session_cm.__enter__.return_value = MagicMock()
-        session_cm.__exit__.return_value = False
-
         invoke_response = MagicMock()
         invoke_response.cancelled = False
         invoke_response.variables = {}
@@ -98,18 +148,13 @@ class TestDispatchTriggeredWorkflow:
             ),
             patch.object(
                 trigger_processing_tasks_module,
-                "_get_latest_workflows_by_app_ids",
+                "_get_published_workflows_by_app_ids",
             ) as get_workflows,
             patch.object(
                 trigger_processing_tasks_module.EndUserService,
                 "create_end_user_batch",
                 return_value={},
             ) as create_end_user_batch,
-            patch.object(
-                trigger_processing_tasks_module.session_factory,
-                "create_session",
-                return_value=session_cm,
-            ),
             patch.object(
                 trigger_processing_tasks_module.QuotaService,
                 "reserve",
@@ -153,11 +198,8 @@ class TestDispatchTriggeredWorkflow:
 
     def test_dispatch_marks_rate_limited_when_quota_exceeded(self, subscription, plugin_trigger, dispatch_mocks):
         """Covers QuotaExceededError → mark rate-limited + early return."""
-        workflow_mock = MagicMock()
-        workflow_mock.walk_nodes.return_value = iter(
-            [(plugin_trigger.node_id, {"type": trigger_processing_tasks_module.TRIGGER_PLUGIN_NODE_TYPE})]
-        )
-        dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow_mock}
+        workflow = _workflow()
+        dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow}
         dispatch_mocks["reserve"].side_effect = QuotaExceededError(
             feature="trigger", tenant_id=subscription.tenant_id, required=1
         )
@@ -178,15 +220,11 @@ class TestDispatchTriggeredWorkflow:
         self, subscription, plugin_trigger, dispatch_mocks
     ):
         """Happy path: end user exists and async trigger succeeds."""
-        workflow_mock = MagicMock()
-        workflow_mock.id = "workflow-123"
-        workflow_mock.walk_nodes.return_value = iter(
-            [(plugin_trigger.node_id, {"type": trigger_processing_tasks_module.TRIGGER_PLUGIN_NODE_TYPE})]
-        )
-        dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow_mock}
+        workflow = _workflow()
+        dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow}
 
-        end_user_mock = MagicMock()
-        dispatch_mocks["create_end_user_batch"].return_value = {plugin_trigger.app_id: end_user_mock}
+        end_user = _end_user()
+        dispatch_mocks["create_end_user_batch"].return_value = {plugin_trigger.app_id: end_user}
 
         dispatched = dispatch_triggered_workflow(
             user_id="user-123",
@@ -198,7 +236,7 @@ class TestDispatchTriggeredWorkflow:
         assert dispatched == 1
         dispatch_mocks["trigger_workflow_async"].assert_called_once()
         _, kwargs = dispatch_mocks["trigger_workflow_async"].call_args
-        assert kwargs["user"] is end_user_mock
+        assert kwargs["user"] is end_user
         dispatch_mocks["quota_charge"].commit.assert_called_once()
         dispatch_mocks["quota_charge"].refund.assert_not_called()
         dispatch_mocks["mark_rate_limited"].assert_not_called()

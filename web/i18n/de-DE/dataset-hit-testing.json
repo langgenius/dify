@@ -10,7 +10,6 @@
   "imageUploader.tip": "Bilder hochladen oder ablegen (Max. {{batchCount}}, {{size}} MB pro Bild)",
   "imageUploader.tooltip": "Bilder hochladen (Max. {{batchCount}}, jeweils {{size}} MB)",
   "input.countWarning": "Bis zu 200 Zeichen.",
-  "input.indexWarning": "Nur Wissen hoher Qualität.",
   "input.placeholder": "Bitte geben Sie einen Text ein, ein kurzer aussagekräftiger Satz wird empfohlen.",
   "input.testing": "Testen",
   "input.title": "Quelltext",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Inhaltsabfrage",
   "table.header.source": "Quelle",
   "table.header.time": "Zeit",
-  "title": "Abruf-Test",
-  "viewChart": "VEKTORDIAGRAMM ansehen",
-  "viewDetail": "Im Detail sehen"
+  "title": "Abruf-Test"
 }

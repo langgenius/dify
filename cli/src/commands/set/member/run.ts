@@ -62,9 +62,8 @@ export async function runSetMember(
     active: deps.active,
   })
 
-  await runWithSpinner(
-    { io, label: `Updating role for ${opts.memberId}` },
-    () => factory(deps.http).updateRole(wsId, opts.memberId, {
+  await runWithSpinner({ io, label: `Updating role for ${opts.memberId}` }, () =>
+    factory(deps.http).updateRole(wsId, opts.memberId, {
       role: opts.role as 'normal' | 'admin',
     }),
   )

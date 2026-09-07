@@ -18,14 +18,16 @@ export type AppMetaCacheRecord = {
   fetchedAt: string
 }
 
-export function fromDescribe(resp: AppDescribeResponse, requested: readonly AppMetaFieldKey[]): AppMeta {
+export function fromDescribe(
+  resp: AppDescribeResponse,
+  requested: readonly AppMetaFieldKey[],
+): AppMeta {
   const covered = new Set<AppMetaFieldKey>()
   if (requested.length === 0) {
     covered.add(FieldInfo)
     covered.add(FieldParameters)
     covered.add(FieldInputSchema)
-  }
-  else {
+  } else {
     for (const f of requested) covered.add(f)
   }
   return {
@@ -37,8 +39,7 @@ export function fromDescribe(resp: AppDescribeResponse, requested: readonly AppM
 }
 
 export function mergeMeta(prev: AppMeta | undefined, next: AppMeta): AppMeta {
-  if (prev === undefined)
-    return next
+  if (prev === undefined) return next
   const merged = new Set<AppMetaFieldKey>(prev.coveredFields)
   for (const f of next.coveredFields) merged.add(f)
   return {
@@ -51,13 +52,14 @@ export function mergeMeta(prev: AppMeta | undefined, next: AppMeta): AppMeta {
 
 export function covers(meta: AppMeta, fields: readonly AppMetaFieldKey[]): boolean {
   if (fields.length === 0) {
-    return meta.coveredFields.has(FieldInfo)
-      && meta.coveredFields.has(FieldParameters)
-      && meta.coveredFields.has(FieldInputSchema)
+    return (
+      meta.coveredFields.has(FieldInfo) &&
+      meta.coveredFields.has(FieldParameters) &&
+      meta.coveredFields.has(FieldInputSchema)
+    )
   }
   for (const f of fields) {
-    if (!meta.coveredFields.has(f))
-      return false
+    if (!meta.coveredFields.has(f)) return false
   }
   return true
 }

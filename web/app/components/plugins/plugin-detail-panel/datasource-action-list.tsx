@@ -1,4 +1,3 @@
-// import { useAppContext } from '@/context/app-context'
 // import { Button } from '@langgenius/dify-ui/button'
 // import { StatusDot } from '@langgenius/dify-ui/status-dot'
 // import ToolItem from '@/app/components/tools/provider/tool-item'
@@ -10,23 +9,19 @@ import { useTranslation } from 'react-i18next'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import { useDataSourceList } from '@/service/use-pipeline'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
-const ActionList = ({
-  detail,
-}: Props) => {
+const ActionList = ({ detail }: Props) => {
   const { t } = useTranslation()
-  // const { isCurrentWorkspaceManager } = useAppContext()
   // const providerBriefInfo = detail.declaration.datasource?.identity
   // const providerKey = `${detail.plugin_id}/${providerBriefInfo?.name}`
   const { data: dataSourceList } = useDataSourceList(true)
   const provider = useMemo(() => {
-    const result = dataSourceList?.find(collection => collection.plugin_id === detail.plugin_id)
+    const result = dataSourceList?.find((collection) => collection.plugin_id === detail.plugin_id)
 
-    if (result)
-      return transformDataSourceToTool(result)
+    if (result) return transformDataSourceToTool(result)
   }, [detail.plugin_id, dataSourceList])
   const data: any = []
   // const { data } = useBuiltinTools(providerKey)
@@ -45,14 +40,17 @@ const ActionList = ({
   //   onSuccess: handleCredentialSettingUpdate,
   // })
 
-  if (!data || !provider)
-    return null
+  if (!data || !provider) return null
 
   return (
     <div className="px-4 pt-2 pb-4">
       <div className="mb-1 py-1">
         <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
-          {t('detailPanel.actionNum', { ns: 'plugin', num: data.length, action: data.length > 1 ? 'actions' : 'action' })}
+          {t(($) => $['detailPanel.actionNum'], {
+            ns: 'plugin',
+            num: data.length,
+            action: data.length > 1 ? 'actions' : 'action',
+          })}
           {/* {provider.is_team_authorization && provider.allow_delete && (
             <Button
               variant='secondary'

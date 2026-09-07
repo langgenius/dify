@@ -1,5 +1,4 @@
 {
-  "actionLogs": "บันทึกการดําเนินการ",
   "circularInvocationTip": "มีการเรียกใช้เครื่องมือ/โหนดแบบวงกลมในเวิร์กโฟลว์ปัจจุบัน",
   "detail": "รายละเอียด",
   "input": "อินพุต",
@@ -10,7 +9,6 @@
   "meta.time": "เวลาที่ผ่านไป",
   "meta.title": "ข้อมูลเมตา",
   "meta.tokens": "โทเค็นทั้งหมด",
-  "meta.version": "เวอร์ชัน",
   "result": "ผล",
   "resultEmpty.link": "แผงรายละเอียด",
   "resultEmpty.tipLeft": "กรุณาไปที่",

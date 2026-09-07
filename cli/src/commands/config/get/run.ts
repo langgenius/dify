@@ -9,8 +9,8 @@ export type RunConfigGetOptions = {
   readonly store: YamlStore
 }
 
-export function runConfigGet(opts: RunConfigGetOptions): string {
-  const loaded = loadConfig(opts.store)
+export async function runConfigGet(opts: RunConfigGetOptions): Promise<string> {
+  const loaded = await loadConfig(opts.store)
   const config: ConfigFile = loaded.found ? loaded.config : emptyConfig()
   return `${getKey(config, opts.key)}\n`
 }

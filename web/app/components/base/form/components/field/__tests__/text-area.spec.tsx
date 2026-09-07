@@ -38,7 +38,9 @@ describe('TextAreaField', () => {
     render(
       <TextAreaField
         label="Note"
-        {...({ onValueChange: externalOnValueChange } as Partial<ComponentProps<typeof TextAreaField>>)}
+        {...({ onValueChange: externalOnValueChange } as Partial<
+          ComponentProps<typeof TextAreaField>
+        >)}
       />,
     )
 

@@ -1,6 +1,4 @@
-import type {
-  ModelProvider,
-} from '../../declarations'
+import type { ModelProvider } from '../../declarations'
 
 export const useCustomModels = (provider: ModelProvider) => {
   const { custom_models } = provider.custom_configuration

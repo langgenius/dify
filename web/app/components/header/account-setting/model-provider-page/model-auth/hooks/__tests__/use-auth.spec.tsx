@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react'
-import type {
-  Credential,
-  CustomModel,
-  ModelProvider,
-} from '../../../declarations'
+import type { Credential, CustomModel, ModelProvider } from '../../../declarations'
 import { act, renderHook } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelModalModeEnum, ModelTypeEnum } from '../../../declarations'
 import { useAuth } from '../use-auth'
@@ -48,10 +44,14 @@ vi.mock('@/service/use-models', () => ({
 
 vi.mock('../use-auth-service', () => ({
   useAuthService: () => ({
-    getDeleteCredentialService: (isModel: boolean) => (isModel ? mockDeleteModelCredential : mockDeleteProviderCredential),
-    getActiveCredentialService: (isModel: boolean) => (isModel ? mockActiveModelCredential : mockActiveProviderCredential),
-    getEditCredentialService: (isModel: boolean) => (isModel ? mockEditModelCredential : mockEditProviderCredential),
-    getAddCredentialService: (isModel: boolean) => (isModel ? mockAddModelCredential : mockAddProviderCredential),
+    getDeleteCredentialService: (isModel: boolean) =>
+      isModel ? mockDeleteModelCredential : mockDeleteProviderCredential,
+    getActiveCredentialService: (isModel: boolean) =>
+      isModel ? mockActiveModelCredential : mockActiveProviderCredential,
+    getEditCredentialService: (isModel: boolean) =>
+      isModel ? mockEditModelCredential : mockEditProviderCredential,
+    getAddCredentialService: (isModel: boolean) =>
+      isModel ? mockAddModelCredential : mockAddProviderCredential,
   }),
 }))
 
@@ -79,11 +79,7 @@ describe('useAuth', () => {
     model_type: ModelTypeEnum.textGeneration,
   }
 
-  const createWrapper = ({ children }: { children: ReactNode }) => (
-    <>
-      {children}
-    </>
-  )
+  const createWrapper = ({ children }: { children: ReactNode }) => <>{children}</>
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -99,7 +95,10 @@ describe('useAuth', () => {
   })
 
   it('should open and close delete confirmation state', () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     act(() => {
       result.current.openConfirmDelete(credential, model)
@@ -119,7 +118,10 @@ describe('useAuth', () => {
   })
 
   it('should activate credential, notify success, and refresh models', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.customizableModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.customizableModel),
+      { wrapper: createWrapper },
+    )
 
     await act(async () => {
       await result.current.handleActiveCredential(credential, model)
@@ -130,16 +132,21 @@ describe('useAuth', () => {
       model: 'gpt-4',
       model_type: ModelTypeEnum.textGeneration,
     })
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'success',
-      message: 'common.api.actionSuccess',
-    }))
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        message: 'common.api.actionSuccess',
+      }),
+    )
     expect(mockHandleRefreshModel).toHaveBeenCalledWith(provider, undefined, true)
     expect(result.current.doingAction).toBe(false)
   })
 
   it('should close delete dialog without calling services when nothing is pending', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     await act(async () => {
       await result.current.handleConfirmDelete()
@@ -153,10 +160,14 @@ describe('useAuth', () => {
 
   it('should delete credential and call onRemove callback', async () => {
     const onRemove = vi.fn()
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel, undefined, {
-      isModelCredential: false,
-      onRemove,
-    }), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () =>
+        useAuth(provider, ConfigurationMethodEnum.predefinedModel, undefined, {
+          isModelCredential: false,
+          onRemove,
+        }),
+      { wrapper: createWrapper },
+    )
 
     act(() => {
       result.current.openConfirmDelete(credential, model)
@@ -168,8 +179,6 @@ describe('useAuth', () => {
 
     expect(mockDeleteProviderCredential).toHaveBeenCalledWith({
       credential_id: 'cred-1',
-      model: 'gpt-4',
-      model_type: ModelTypeEnum.textGeneration,
     })
     expect(mockDeleteModelService).not.toHaveBeenCalled()
     expect(onRemove).toHaveBeenCalledWith('cred-1')
@@ -178,9 +187,13 @@ describe('useAuth', () => {
 
   it('should delete model when pending operation has no credential id', async () => {
     const onRemove = vi.fn()
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.customizableModel, undefined, {
-      onRemove,
-    }), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () =>
+        useAuth(provider, ConfigurationMethodEnum.customizableModel, undefined, {
+          onRemove,
+        }),
+      { wrapper: createWrapper },
+    )
 
     act(() => {
       result.current.openConfirmDelete(undefined, model)
@@ -198,7 +211,10 @@ describe('useAuth', () => {
   })
 
   it('should add or edit credentials and refresh on successful save', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     await act(async () => {
       await result.current.handleSaveCredential({ api_key: 'new-key' })
@@ -211,7 +227,10 @@ describe('useAuth', () => {
       await result.current.handleSaveCredential({ credential_id: 'cred-1', api_key: 'updated-key' })
     })
 
-    expect(mockEditProviderCredential).toHaveBeenCalledWith({ credential_id: 'cred-1', api_key: 'updated-key' })
+    expect(mockEditProviderCredential).toHaveBeenCalledWith({
+      credential_id: 'cred-1',
+      api_key: 'updated-key',
+    })
     expect(mockHandleRefreshModel).toHaveBeenCalledWith(provider, undefined, false)
   })
 
@@ -219,7 +238,10 @@ describe('useAuth', () => {
     const deferred = createDeferred<{ result: string }>()
     mockAddProviderCredential.mockReturnValueOnce(deferred.promise)
 
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     let first!: Promise<void>
     let second!: Promise<void>
@@ -241,11 +263,15 @@ describe('useAuth', () => {
       __model_name: 'gpt-4',
       __model_type: ModelTypeEnum.textGeneration,
     }
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.customizableModel, fixedFields, {
-      isModelCredential: true,
-      onUpdate,
-      mode: ModelModalModeEnum.configModelCredential,
-    }), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () =>
+        useAuth(provider, ConfigurationMethodEnum.customizableModel, fixedFields, {
+          isModelCredential: true,
+          onUpdate,
+          mode: ModelModalModeEnum.configModelCredential,
+        }),
+      { wrapper: createWrapper },
+    )
 
     act(() => {
       result.current.handleOpenModal(credential, model)
@@ -267,7 +293,10 @@ describe('useAuth', () => {
   it('should not notify or refresh when handleSaveCredential returns non-success result', async () => {
     mockAddProviderCredential.mockResolvedValue({ result: 'error' })
 
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     await act(async () => {
       await result.current.handleSaveCredential({ api_key: 'some-key' })
@@ -279,7 +308,10 @@ describe('useAuth', () => {
   })
 
   it('should pass undefined model and model_type when handleActiveCredential is called without a model parameter', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     await act(async () => {
       await result.current.handleActiveCredential(credential)
@@ -294,7 +326,10 @@ describe('useAuth', () => {
 
   // openConfirmDelete with credential only (no model): deleteCredentialId set, deleteModel stays null
   it('should only set deleteCredentialId when openConfirmDelete is called without a model', () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     act(() => {
       result.current.openConfirmDelete(credential, undefined)
@@ -311,7 +346,10 @@ describe('useAuth', () => {
     const deferred = createDeferred<{ result: string }>()
     mockDeleteProviderCredential.mockReturnValueOnce(deferred.promise)
 
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     act(() => {
       result.current.openConfirmDelete(credential, model)
@@ -335,7 +373,10 @@ describe('useAuth', () => {
     const deferred = createDeferred<{ result: string }>()
     mockActiveProviderCredential.mockReturnValueOnce(deferred.promise)
 
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
 
     let first!: Promise<void>
     let second!: Promise<void>

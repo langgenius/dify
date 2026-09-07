@@ -7,7 +7,6 @@ consumes injected context managers when it needs to preserve thread-local state.
 
 import contextvars
 import threading
-from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
 from typing import Any, Protocol, final, override, runtime_checkable
@@ -15,28 +14,25 @@ from typing import Any, Protocol, final, override, runtime_checkable
 from pydantic import BaseModel
 
 
-class AppContext(ABC):
+class AppContext(Protocol):
     """
-    Abstract application context interface.
+    Application context interface.
 
     Application adapters can implement this to restore framework-specific state
     such as Flask app context around worker execution.
     """
 
-    @abstractmethod
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key."""
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
     def get_extension(self, name: str) -> Any:
         """Get application extension by name."""
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
     def enter(self) -> AbstractContextManager[None]:
         """Enter the application context."""
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable

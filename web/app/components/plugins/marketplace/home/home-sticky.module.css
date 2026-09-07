@@ -1,0 +1,171 @@
+/* Sticky offsets read --home-header-height and --home-search-height from
+   HomeShell (HOME_HEADER_HEIGHT_PX / HOME_SEARCH_HEIGHT_PX). Desktop catalog
+   navigation still pins with an inline top of HOME_HEADER_HEIGHT_PX. */
+
+.headerCatalogTabs {
+  display: flex;
+}
+
+.headerCatalogSlot,
+.catalogTabs {
+  transition-property: opacity, transform;
+  transition-duration: 140ms;
+  transition-timing-function: ease-out;
+  will-change: opacity, transform;
+}
+
+.headerCatalogSlot {
+  display: flex;
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+}
+
+.headerCatalogSlotPinned {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.marketplaceLogoLight {
+  display: block;
+}
+
+.marketplaceLogoDark {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .marketplaceLogoLight {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .marketplaceLogoDark {
+  display: block;
+}
+
+.search {
+  position: sticky;
+  z-index: 60;
+  top: 6px;
+  height: var(--home-search-height, 36px);
+  padding-right: 356px;
+  padding-left: 356px;
+  overflow-anchor: none;
+}
+
+.searchContent {
+  max-width: 420px;
+}
+
+.catalogNavigationGroup {
+  display: contents;
+}
+
+.catalogTabsRegion {
+  padding: 24px 32px 0;
+}
+
+.catalogNavigation {
+  position: sticky;
+  z-index: 40;
+  padding: 16px 32px;
+}
+
+.catalogNavigationPinned {
+  background-color: var(--color-background-default);
+}
+
+.catalogTabs {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.catalogTabsPinned {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+}
+
+.catalogContent {
+  min-height: calc(100vh - 106px);
+  min-height: calc(100dvh - 106px);
+}
+
+@media (max-width: 879px) {
+  .search {
+    position: relative;
+    z-index: 0;
+    top: auto;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  :global([data-marketplace-standalone]) .search {
+    position: sticky;
+    z-index: 45;
+    top: var(--home-header-height, 48px);
+    height: calc(var(--home-search-height, 36px) + var(--home-search-mobile-padding-bottom, 16px));
+    padding-right: 20px;
+    padding-bottom: var(--home-search-mobile-padding-bottom, 16px);
+    padding-left: 20px;
+    background-color: var(--color-background-default);
+  }
+
+  :global([data-marketplace-standalone]) .searchContent {
+    max-width: 360px;
+  }
+
+  :global([data-marketplace-standalone]) .headerCatalogTabs {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .standaloneHeaderActions {
+    display: none;
+  }
+
+  /* Sit under the search row's padding-bottom so that gap is not stacked
+     on top of the tabs' own padding when this group pins. */
+  :global([data-marketplace-standalone]) .catalogNavigationGroup {
+    position: sticky;
+    z-index: 40;
+    display: block;
+    top: calc(var(--home-header-height, 48px) + var(--home-search-height, 36px));
+    background-color: var(--color-background-default);
+  }
+
+  :global([data-marketplace-standalone]) .catalogTabsRegion {
+    padding-top: var(--home-search-mobile-padding-bottom, 16px);
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  :global([data-marketplace-standalone]) .catalogNavigation {
+    position: static;
+    padding: 16px 20px;
+  }
+
+  :global([data-marketplace-standalone]) .catalogLeading {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .catalogLeadingDivider {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .catalogContent {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  :global([data-marketplace-standalone]) .bannerSpacer {
+    height: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headerCatalogSlot,
+  .catalogTabs {
+    transition-duration: 0ms;
+  }
+}
