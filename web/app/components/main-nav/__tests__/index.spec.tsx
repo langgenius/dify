@@ -656,7 +656,6 @@ describe('MainNav', () => {
     }
     ;(useProviderContext as Mock).mockReturnValue({
       enableEducationPlan: false,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -834,7 +833,6 @@ describe('MainNav', () => {
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableEducationPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
 
     renderMainNav(defaultMainNavSystemFeatures, {

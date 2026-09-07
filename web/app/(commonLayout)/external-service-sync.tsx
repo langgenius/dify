@@ -133,6 +133,20 @@ function ZendeskConversationSync() {
       deploymentEdition: data.deployment_edition,
     }),
   })
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: systemFeatures.deploymentEdition === 'CLOUD' && Boolean(ZENDESK_FIELD_IDS.PLAN),
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  useEffect(() => {
+    if (systemFeatures.deploymentEdition !== 'CLOUD' || !plan || !ZENDESK_FIELD_IDS.PLAN) return
+    zendeskRuntime.setConversationFields(
+      [{ id: ZENDESK_FIELD_IDS.PLAN, value: `${plan}-plan` }],
+      systemFeatures.deploymentEdition,
+    )
+  }, [plan, systemFeatures.deploymentEdition])
+
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: versionData } = useQuery(
     consoleQuery.version.get.queryOptions({

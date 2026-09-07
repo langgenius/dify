@@ -2,7 +2,6 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { RenderOptions } from '@testing-library/react'
 import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen } from '@testing-library/react'
-import { defaultPlan } from '@/app/components/billing/config'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import APIKeyInfoPanel from '../index'
@@ -43,15 +42,12 @@ const defaultProviderContext = {
   isLoadingModelProviders: false,
   isSuccessModelProviders: false,
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: false,
-  plan: defaultPlan,
 
   enableSkill: false,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
   enableEducationPlan: false,
-  webappCopyrightEnabled: false,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
   humanInputEmailDeliveryEnabled: false,
