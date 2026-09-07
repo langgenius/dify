@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
   headers: vi.fn(),
+  cookies: vi.fn(),
   resolveServerConsoleApiUrl: vi.fn(),
   basePath: '',
 }))
@@ -28,6 +29,11 @@ vi.mock('@/app/get-query-client', () => {
 
 vi.mock('@/next/headers', () => ({
   headers: () => mocks.headers(),
+  cookies: () => mocks.cookies(),
+}))
+
+vi.mock('@/config', () => ({
+  REFRESH_TOKEN_COOKIE_NAME: () => 'refresh_token',
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -82,6 +88,12 @@ describe('CommonLayoutHydrationBoundary', () => {
         'x-dify-search': '?tag=workflow',
       }),
     )
+    // Default to holding a refresh token, so the existing 401 cases still expect the
+    // /auth/refresh hop. The no-token shortcut is covered by its own case below.
+    mocks.cookies.mockResolvedValue({
+      get: (name: string) =>
+        name === 'refresh_token' ? { name, value: 'a-refresh-token' } : undefined,
+    })
     mocks.resolveServerConsoleApiUrl.mockReturnValue(
       'https://console.example.com/console/api/account/profile',
     )
@@ -215,6 +227,21 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.redirect).toHaveBeenCalledWith(
       '/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow',
     )
+  })
+
+  it('should redirect straight to signin on 401 when no refresh token is present', async () => {
+    // /auth/refresh is a Route Handler and can only answer with a bare 3xx, which an RSC
+    // navigation cannot settle on — the client router then retries forever. With nothing
+    // to exchange there is no reason to go there, so go to the sign-in page directly.
+    mocks.cookies.mockResolvedValue({ get: () => undefined })
+    mocks.profileQueryFn.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+    )
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mocks.redirect).toHaveBeenCalledWith('/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow')
   })
 
   it('should use the internal home path when the pathname header is missing', async () => {

@@ -10,6 +10,8 @@ vi.mock('@/config', () => ({
   API_PREFIX: 'http://localhost:5001/console/api',
   CSRF_COOKIE_NAME: () => 'csrf_token',
   CSRF_HEADER_NAME: 'X-CSRF-Token',
+  ACCESS_TOKEN_COOKIE_NAME: () => 'access_token',
+  REFRESH_TOKEN_COOKIE_NAME: () => 'refresh_token',
 }))
 
 vi.mock('server-only', () => ({}))
@@ -103,6 +105,30 @@ describe('auth refresh route', () => {
 
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
+  })
+
+  it('should expire the dead token pair when refresh is rejected', async () => {
+    // Leaving the unusable cookies in place sends the next guarded navigation back through
+    // this handler, which is what sustained the sign-in redirect loop. Clearing them makes
+    // the next attempt take the direct-to-signin path instead.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
+    const { GET } = await import('../route')
+
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=%2Fapps',
+        'refresh_token=expired',
+      ),
+    )
+
+    const setCookies = response.headers.getSetCookie()
+    expect(setCookies).toHaveLength(2)
+    for (const name of ['refresh_token', 'access_token']) {
+      const cookie = setCookies.find(value => value.startsWith(`${name}=`))
+      expect(cookie).toBeDefined()
+      expect(cookie).toContain('Max-Age=0')
+      expect(cookie).toContain('Path=/')
+    }
   })
 
   it('should ignore cross-origin redirect targets', async () => {

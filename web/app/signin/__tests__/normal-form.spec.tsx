@@ -77,7 +77,17 @@ const mockQueryResults = (
 ) => {
   mockUseQuery.mockImplementation((options) => {
     const queryKey = options.queryKey as readonly unknown[]
-    return (queryKey[0] === 'account' ? profileResult : inviteResult) as ReturnType<typeof useQuery>
+    if (queryKey[0] !== 'account') return inviteResult as ReturnType<typeof useQuery>
+    // The component only trusts a probe that settled during the current mount, so stamp
+    // the timestamps real useQuery always reports. Evaluated at call time, which is inside
+    // render and therefore at or after the component's own mount timestamp. Fixtures that
+    // set these explicitly (e.g. replaying a stale cache) keep their own values.
+    const settledAt = Date.now()
+    return {
+      ...profileResult,
+      dataUpdatedAt: profileResult.data ? settledAt : 0,
+      errorUpdatedAt: profileResult.error ? settledAt : 0,
+    } as ReturnType<typeof useQuery>
   })
 }
 
@@ -100,6 +110,30 @@ describe('NormalForm', () => {
   })
 
   describe('Default Redirects', () => {
+    // Regression: a guarded page's server component rejects the session and bounces here.
+    // That soft navigation replays the cached profile synchronously, and redirecting on it
+    // unmounts us before the revalidation lands, so the cache is never corrected and
+    // / <-> /signin ping-pongs indefinitely.
+    it('should not redirect on a cached probe that has not settled during this mount', async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams())
+      mockQueryResults(
+        {
+          ...loggedInQueryResult,
+          // Cached before this mount, and the revalidation is still in flight.
+          dataUpdatedAt: Date.now() - 60_000,
+          errorUpdatedAt: 0,
+          isFetching: true,
+        } as unknown as ReturnType<typeof useQuery>,
+        nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      )
+
+      render(<NormalForm />)
+
+      await waitFor(() => {
+        expect(mockReplace).not.toHaveBeenCalled()
+      })
+    })
+
     it('should send logged-in visitors without a redirect target to the console home', async () => {
       const searchParams = new URLSearchParams()
       mockUseSearchParams.mockReturnValue(searchParams)

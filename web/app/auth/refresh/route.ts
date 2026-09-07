@@ -1,6 +1,7 @@
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
 import { resolveServerConsoleApiUrl } from '@/service/server'
 import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
+import { ACCESS_TOKEN_COOKIE_NAME, API_PREFIX, REFRESH_TOKEN_COOKIE_NAME } from '@/config'
 import { basePath } from '@/utils/var'
 
 const REFRESH_TOKEN_PATH = '/refresh-token'
@@ -82,9 +83,27 @@ const createRedirectResponse = (pathname: string, setCookies: string[] = []) => 
   })
 }
 
+// Expire the unusable pair so the next request to a guarded page skips this handler
+// entirely and goes straight to /signin. Without this the caller keeps arriving here
+// with the same dead cookies, which is what sustained the sign-in redirect loop.
+const buildExpiredAuthCookies = () => {
+  // Must mirror the attributes the backend sets in api/libs/token.py: Path is always "/"
+  // (not basePath), and Secure tracks the scheme. A `__Host-`prefixed cookie is rejected
+  // outright by browsers unless it carries Secure and Path=/, so the pair has to match.
+  const attrs = ['Path=/', 'Max-Age=0', 'HttpOnly', 'SameSite=Lax']
+  if (API_PREFIX.startsWith('https://')) attrs.push('Secure')
+  const suffix = attrs.join('; ')
+
+  return [
+    `${REFRESH_TOKEN_COOKIE_NAME()}=; ${suffix}`,
+    `${ACCESS_TOKEN_COOKIE_NAME()}=; ${suffix}`,
+  ]
+}
+
 const createSigninRedirectResponse = (redirectTarget: LoginRedirectTarget) =>
   createRedirectResponse(
     `${basePath}/signin?redirect_url=${encodeURIComponent(redirectTarget.href)}`,
+    buildExpiredAuthCookies(),
   )
 
 export async function GET(request: Request) {

@@ -13,3 +13,13 @@
 *.md
 !web/README.md
 !api/README.md
+
+# Local env files must never reach an image build. Next.js resolves NEXT_PUBLIC_* at build
+# time, so a developer's web/.env.local bakes the host dev API origin
+# (http://localhost:5001) into the served bundle. The browser then talks to the dev API
+# while the container's server-side render talks to api:5001 -- different databases and
+# SECRET_KEYs, so every session the browser establishes is rejected server-side.
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.test

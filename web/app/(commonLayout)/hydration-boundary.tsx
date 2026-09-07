@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary, noop } from '@tanstack/react-query'
 import { getQueryClient } from '@/app/get-query-client'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { REFRESH_TOKEN_COOKIE_NAME } from '@/config'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
 import {
@@ -14,6 +15,7 @@ const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const ACCOUNT_PROFILE_PATH = '/account/profile'
 const AUTH_REFRESH_PATH = '/auth/refresh'
+const SIGNIN_PATH = '/signin'
 
 type ConsoleErrorPayload = {
   code?: string
@@ -38,9 +40,21 @@ const getCurrentPath = async () => {
   return `${pathname}${search}`
 }
 
+// `/auth/refresh` is a Route Handler, so it can only answer with a bare 3xx. During an
+// RSC navigation the client router cannot settle on that, and it retries this request
+// forever (the flashing sign-in loop). Only go there when a refresh token actually
+// exists to be exchanged; otherwise redirect straight to the sign-in *page*, which
+// returns an RSC payload the router can commit.
 const redirectToAuthRefresh = async () => {
   const currentPath = await getCurrentPath()
-  redirect(`${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
+  const target = encodeURIComponent(currentPath)
+  const { cookies } = await import('@/next/headers')
+  const cookieStore = await cookies()
+
+  if (!cookieStore.get(REFRESH_TOKEN_COOKIE_NAME())?.value)
+    redirect(`${SIGNIN_PATH}?redirect_url=${target}`)
+
+  redirect(`${AUTH_REFRESH_PATH}?redirect_url=${target}`)
 }
 
 const handleProfileError = async (error: unknown) => {
