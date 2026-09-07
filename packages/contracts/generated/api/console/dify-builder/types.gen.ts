@@ -707,7 +707,7 @@ export type CheckpointCard = {
 export type ChangeSetCard = {
   changes: Array<string>
   count: number
-  full_diff_open?: boolean
+  nodes?: Array<ChangedNode>
   scope: string
 }
 
@@ -818,6 +818,11 @@ export type ResourceOption = {
   label: string
   meta: string
   readiness: string
+}
+
+export type ChangedNode = {
+  node_id: string
+  title?: string
 }
 
 export type TestStat = {

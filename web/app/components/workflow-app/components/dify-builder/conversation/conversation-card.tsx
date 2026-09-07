@@ -11,6 +11,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { DifyBuilderCard } from '../cards/card-shell'
+import { ChangeSetCard } from './change-set-card'
 import { ExecutionProgress } from './execution-progress'
 import { FormCard } from './form-card'
 import { ResourceCard } from './resource-card'
@@ -54,7 +55,6 @@ export const ConversationCard = memo(
     item: ConversationItem
     busy: boolean
     interactive: boolean
-    changesExpanded: boolean
     invalidated: boolean
     formId?: string
     onActionPayloadChange: DifyBuilderActionPayloadChange
@@ -66,8 +66,10 @@ export const ConversationCard = memo(
   }) => {
     const { t } = useTranslation()
 
-    if (item.kind === 'challenge' || item.kind === 'change_set' || item.kind === 'checkpoint')
-      return null
+    if (item.kind === 'challenge' || item.kind === 'checkpoint') return null
+
+    if (item.kind === 'change_set')
+      return <ChangeSetCard payload={item.payload} invalidated={invalidated} />
 
     if (item.kind === 'user') {
       const retryable = item.payload.turn_id === retryableTurnId
@@ -76,7 +78,7 @@ export const ConversationCard = memo(
         <article className="flex justify-end">
           <div className="group/user-message flex flex-col items-end gap-1">
             <h3 className="sr-only">{t(($) => $.you, { ns: 'common' })}</h3>
-            <div className="max-w-[316px] rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
+            <div className="max-w-79 rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
               {item.payload.text}
             </div>
             <div className="flex h-6 items-center gap-0.5">
@@ -109,7 +111,7 @@ export const ConversationCard = memo(
       return (
         <article className="flex justify-end">
           <h3 className="sr-only">{t(($) => $.you, { ns: 'common' })}</h3>
-          <div className="max-w-[316px] rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
+          <div className="max-w-79 rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
             {item.payload.text}
           </div>
         </article>

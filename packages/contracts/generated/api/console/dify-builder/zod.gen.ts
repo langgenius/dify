@@ -429,26 +429,6 @@ export const zDifyBuilderCheckpointConversationItemResponse = z.object({
 })
 
 /**
- * ChangeSetCard
- */
-export const zChangeSetCard = z.object({
-  changes: z.array(z.string()),
-  count: z.int(),
-  full_diff_open: z.boolean().optional().default(false),
-  scope: z.string(),
-})
-
-/**
- * DifyBuilderChangeSetConversationItemResponse
- */
-export const zDifyBuilderChangeSetConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('change_set'),
-  payload: zChangeSetCard,
-  seq: z.int(),
-})
-
-/**
  * ErrorCard
  */
 export const zErrorCard = z.object({
@@ -673,6 +653,34 @@ export const zDifyBuilderResourceSelectConversationItemResponse = z.object({
   at_version: z.int(),
   kind: z.literal('resource_select'),
   payload: zResourceSelectCard,
+  seq: z.int(),
+})
+
+/**
+ * ChangedNode
+ */
+export const zChangedNode = z.object({
+  node_id: z.string(),
+  title: z.string().optional().default(''),
+})
+
+/**
+ * ChangeSetCard
+ */
+export const zChangeSetCard = z.object({
+  changes: z.array(z.string()),
+  count: z.int(),
+  nodes: z.array(zChangedNode).optional(),
+  scope: z.string(),
+})
+
+/**
+ * DifyBuilderChangeSetConversationItemResponse
+ */
+export const zDifyBuilderChangeSetConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('change_set'),
+  payload: zChangeSetCard,
   seq: z.int(),
 })
 

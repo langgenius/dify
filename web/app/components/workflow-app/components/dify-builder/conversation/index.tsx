@@ -17,7 +17,6 @@ export const DifyBuilderConversation = memo(
     activeInteraction,
     viewVersion,
     activeFormId,
-    changesExpanded,
     interrupted,
     items,
     onActionPayloadChange,
@@ -32,7 +31,6 @@ export const DifyBuilderConversation = memo(
     activeInteraction: SessionView['active_interaction']
     viewVersion: SessionView['version']
     activeFormId?: string
-    changesExpanded: boolean
     interrupted: boolean
     items: ConversationItem[]
     onActionPayloadChange: DifyBuilderActionPayloadChange
@@ -74,7 +72,6 @@ export const DifyBuilderConversation = memo(
                   item={group.item}
                   busy={busy}
                   interactive={interactionIsCurrent && group.item.seq === activeCard?.seq}
-                  changesExpanded={changesExpanded}
                   invalidated={false}
                   onActionPayloadChange={onActionPayloadChange}
                   onActionValidityChange={onActionValidityChange}
@@ -100,7 +97,6 @@ export const DifyBuilderConversation = memo(
                   item={group.turn}
                   busy={busy}
                   interactive={interactionIsCurrent && group.turn.seq === activeCard?.seq}
-                  changesExpanded={changesExpanded}
                   invalidated={group.invalidated}
                   onActionPayloadChange={onActionPayloadChange}
                   onActionValidityChange={onActionValidityChange}
@@ -116,7 +112,6 @@ export const DifyBuilderConversation = memo(
                       item={item}
                       busy={busy}
                       interactive={interactionIsCurrent && item.seq === activeCard?.seq}
-                      changesExpanded={changesExpanded}
                       invalidated={group.invalidated}
                       onActionPayloadChange={onActionPayloadChange}
                       onActionValidityChange={onActionValidityChange}
@@ -136,7 +131,6 @@ export const DifyBuilderConversation = memo(
             busy={busy}
             formId={activeFormId}
             interactive={interactionIsCurrent}
-            changesExpanded={changesExpanded}
             invalidated={false}
             onActionPayloadChange={onActionPayloadChange}
             onActionValidityChange={onActionValidityChange}

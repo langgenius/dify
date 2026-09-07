@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useId } from 'react'
 
 export type DifyBuilderCardStatusState =
   | 'waiting'
@@ -43,11 +44,13 @@ export const DifyBuilderCard = ({
   status?: DifyBuilderCardStatus
   subheadline?: string | null
 }) => {
+  const categoryId = useId()
   const statusStyle = status?.state ? statusClassNames[status.state] : undefined
   const hasBody = children !== undefined && children !== null
 
   return (
     <article
+      aria-labelledby={categoryId}
       data-card-state={invalidated ? 'invalidated' : 'valid'}
       className={cn(
         'border-px w-full overflow-hidden rounded-xl border border-components-panel-border',
@@ -56,6 +59,7 @@ export const DifyBuilderCard = ({
     >
       <header className="flex min-h-8 w-full items-center gap-1.5 bg-background-default-lighter px-4 py-2">
         <span
+          id={categoryId}
           title={category}
           className="min-w-24 flex-1 truncate system-xs-semibold-uppercase text-text-tertiary"
         >
