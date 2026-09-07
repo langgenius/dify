@@ -2,6 +2,7 @@ import json
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.common import workflow_response_converter
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -218,6 +220,7 @@ def test_resume_rejects_form_outside_the_trusted_execution_owner(sqlite_session:
 def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
     submitted_at = 1_700_000_000
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: submitted_at)
     factory = DifyFileReferenceFactory(build_test_run_context())
