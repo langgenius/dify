@@ -87,7 +87,7 @@ def _make_vector(**overrides) -> WeaviateVector:
 class TestGetUuidsUsesDocId:
     """_get_uuids must return one id per input document, positionally aligned."""
 
-    def test_doc_id_passes_through(self):
+    def test_doc_id_passes_through(self) -> None:
         v = _make_vector()
         docs = [Document(page_content="x", metadata={"doc_id": "doc-aaa-1"})]
 
@@ -95,7 +95,7 @@ class TestGetUuidsUsesDocId:
 
         assert uuids == ["doc-aaa-1"]
 
-    def test_missing_doc_id_falls_back_to_fresh_uuid4(self):
+    def test_missing_doc_id_falls_back_to_fresh_uuid4(self) -> None:
         """A document without ``doc_id`` still needs a slot in the
         returned list so the parallel ``objs`` list in ``add_texts``
         never goes out of alignment with the input documents.
@@ -120,7 +120,7 @@ class TestGetUuidsUsesDocId:
         parsed = _uuid.UUID(uuids[1])
         assert parsed.version == 4
 
-    def test_all_doc_ids_present(self):
+    def test_all_doc_ids_present(self) -> None:
         v = _make_vector()
         docs = [
             Document(page_content="x", metadata={"doc_id": "a"}),
@@ -136,7 +136,7 @@ class TestDeleteByIdsBackwardCompatible:
     UUID no longer matches ``index_node_id`` are reaped via the
     ``doc_id``-metadata filter."""
 
-    def test_legacy_object_with_matching_doc_id_is_reaped(self):
+    def test_legacy_object_with_matching_doc_id_is_reaped(self) -> None:
         """A legacy object whose ``doc_id`` matches the supplied
         ``index_node_id`` must be reaped even though its Weaviate UUID
         no longer matches.
@@ -163,7 +163,7 @@ class TestDeleteByIdsBackwardCompatible:
         assert "doc_id" in str(where)
         assert "doc-aaa-1" in str(where)
 
-    def test_fresh_object_is_reaped_by_direct_delete(self):
+    def test_fresh_object_is_reaped_by_direct_delete(self) -> None:
         """A fresh object whose Weaviate UUID equals the supplied
         ``index_node_id`` is reaped by the direct delete, and the
         metadata-filter pass is a redundant no-op (no rows match).
@@ -182,7 +182,7 @@ class TestDeleteByIdsBackwardCompatible:
         assert "doc_id" in str(where)
         assert "doc-aaa-1" in str(where)
 
-    def test_non_404_error_propagates(self):
+    def test_non_404_error_propagates(self) -> None:
         """A non-404 (e.g. 500) error on direct delete must propagate,
         not be swallowed as if it were a 404.
         """
@@ -197,7 +197,7 @@ class TestDeleteByIdsBackwardCompatible:
         with pytest.raises(_ServerError):
             v.delete_by_ids(["doc-aaa-1"])
 
-    def test_delete_many_404_is_swallowed(self):
+    def test_delete_many_404_is_swallowed(self) -> None:
         """The metadata-filter 404 (column doesn't exist) is also
         swallowed — the schema may not have been migrated yet.
         """
