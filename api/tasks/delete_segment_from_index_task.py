@@ -38,6 +38,36 @@ def delete_segment_from_index_task(
             if not dataset_document:
                 return
 
+            # Always clean up attachment records, regardless of the
+            # parent document's enabled/archived/indexing_status state.
+            # Disabling, archiving, or leaving indexing incomplete must
+            # not orphan SegmentAttachmentBinding or UploadFile rows. See
+            # #41457.
+            if dataset.is_multimodal:
+                segment_attachment_bindings = session.scalars(
+                    select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                ).all()
+                if segment_attachment_bindings:
+                    attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
+                    index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
+                    index_processor.clean(
+                        session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
+                    )
+                    segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
+
+                    for i in range(0, len(segment_attachment_bind_ids), 1000):
+                        segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
+                        )
+                        session.execute(segment_attachment_bind_delete_stmt)
+
+                    # delete upload file
+                    session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
+                    session.commit()
+
+            # Index cleanup is gated by the parent document's state. The
+            # attachment cleanup above has already committed and is not
+            # affected by this branch.
             if (
                 not dataset_document.enabled
                 or dataset_document.archived
@@ -60,27 +90,6 @@ def delete_segment_from_index_task(
                 session=session,
             )
             session.commit()
-            if dataset.is_multimodal:
-                # delete segment attachment binding
-                segment_attachment_bindings = session.scalars(
-                    select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
-                ).all()
-                if segment_attachment_bindings:
-                    attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
-                    index_processor.clean(
-                        session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
-                    )
-                    segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
-
-                    for i in range(0, len(segment_attachment_bind_ids), 1000):
-                        segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
-                        )
-                        session.execute(segment_attachment_bind_delete_stmt)
-
-                    # delete upload file
-                    session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
-                    session.commit()
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
