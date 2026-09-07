@@ -49,3 +49,45 @@ class TestSuggestedQuestionsAfterAnswerOutputParser:
         result = parser.parse("no questions here")
 
         assert list(result) == []
+
+    def test_parse_discards_unclosed_think_block(self) -> None:
+        # Truncated response leaving an unclosed <think> tag with bracket tokens inside
+        parser = SuggestedQuestionsAfterAnswerOutputParser()
+        text = "<think>Analyzing user query: score vector [0.1, 0.9]"
+
+        result = parser.parse(text)
+
+        assert list(result) == []
+
+    def test_parse_discards_unclosed_thought_block(self) -> None:
+        # Truncated response with an unclosed <thought> tag
+        parser = SuggestedQuestionsAfterAnswerOutputParser()
+        text = "<thought>Analyzing user query: tokens [MASK]"
+
+        result = parser.parse(text)
+
+        assert list(result) == []
+
+    def test_parse_case_insensitive_closed_think_block(self) -> None:
+        parser = SuggestedQuestionsAfterAnswerOutputParser()
+        text = '<Think>\nThinking with [0.1, 0.9]\n</THINK>\n["What is Dify?"]'
+
+        result = parser.parse(text)
+
+        assert list(result) == ["What is Dify?"]
+
+    def test_parse_case_insensitive_unclosed_think_block(self) -> None:
+        parser = SuggestedQuestionsAfterAnswerOutputParser()
+        text = "<THINK>Thinking with [0.1, 0.9] truncated"
+
+        result = parser.parse(text)
+
+        assert list(result) == []
+
+    def test_parse_closed_thought_block(self) -> None:
+        parser = SuggestedQuestionsAfterAnswerOutputParser()
+        text = '<thought>\nInternal thought with [MASK]\n</thought>\n["What is Dify?"]'
+
+        result = parser.parse(text)
+
+        assert list(result) == ["What is Dify?"]
