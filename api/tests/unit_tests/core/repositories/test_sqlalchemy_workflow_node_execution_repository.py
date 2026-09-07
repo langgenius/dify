@@ -333,7 +333,11 @@ def test_save_execution_data_updates_existing_and_creates_missing(
     repo = _repository(monkeypatch, sqlite_session_factory)
     existing = _execution(
         inputs={"initial": True},
-        process_data={"workflow_agent_binding_id": "binding-1", "workflow_tool_invocation_id": "tool-call-1"},
+        process_data={
+            "workflow_agent_binding_id": "binding-1",
+            "workflow_tool_invocation_id": "tool-call-1",
+            "workflow_tool_root_app_id": "root-app",
+        },
     )
     repo.save(existing)
     existing.inputs = {"updated": True}
@@ -350,6 +354,7 @@ def test_save_execution_data_updates_existing_and_creates_missing(
             "step": 3,
             "workflow_agent_binding_id": "binding-1",
             "workflow_tool_invocation_id": "tool-call-1",
+            "workflow_tool_root_app_id": "root-app",
         }
 
     missing = _execution(execution_id="missing", node_execution_id="missing-node", inputs={"new": True})

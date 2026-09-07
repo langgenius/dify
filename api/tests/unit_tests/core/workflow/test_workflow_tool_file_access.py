@@ -9,21 +9,22 @@ from context import capture_current_context
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
-from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from extensions.storage.storage_type import StorageType
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
-from graphon.nodes.protocols import ToolFileManagerProtocol
+from graphon.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
 from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
-from tests.unit_tests.core.workflow.test_workflow_tool_container import _outer_graph, _workflow_tool_node
+from tests.unit_tests.core.workflow.test_workflow_tool_container import _workflow_tool_node
 from tests.workflow_test_utils import build_test_run_context
 
 
 @pytest.mark.parametrize("input_kind", ["system_files", "file", "file-list"])
+@pytest.mark.parametrize("container_type", [None, "loop", "iteration"])
 @pytest.mark.parametrize(
     ("transfer_method", "permission"),
     [
@@ -35,7 +36,12 @@ from tests.workflow_test_utils import build_test_run_context
     ],
 )
 def test_workflow_tool_dispatcher_enforces_file_ownership(
-    sqlite_session: Session, input_kind: str, transfer_method: str, permission: str
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    input_kind: str,
+    container_type: str | None,
+    transfer_method: str,
+    permission: str,
 ) -> None:
     owner_id = "user" if permission == "owned" else "other-user"
     stored_file: UploadFile | ToolFile
@@ -81,19 +87,55 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
             execution_context=capture_current_context(),
         )
     template_node, runtime, payload = _workflow_tool_node(runtime_state)
-    node = DifyWorkflowToolNode(
-        node_id=template_node.id,
-        data=template_node.node_data,
+    monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _: runtime)
+    tool_data = template_node.node_data.model_dump(mode="python")
+    nodes = [
+        {"id": "start", "data": {"type": "start", "title": "Start", "variables": list[object]()}},
+        {"id": "tool", "data": tool_data},
+    ]
+    edges = [{"id": "outer", "source": "start", "target": "tool"}]
+    if container_type is not None:
+        tool_data[f"{container_type}_id"] = container_type
+        container_data: dict[str, object] = {
+            "type": container_type,
+            "title": container_type,
+            "start_node_id": "body-start",
+        }
+        if container_type == "loop":
+            container_data.update(loop_count=1, break_conditions=[], logical_operator="and")
+        else:
+            runtime_state.variable_pool.add(("start", "items"), ["one"])
+            container_data.update(
+                iterator_selector=["start", "items"], output_selector=["tool", "text"], output_type="array[string]"
+            )
+        nodes.extend(
+            [
+                {"id": container_type, "data": container_data},
+                {
+                    "id": "body-start",
+                    "data": {
+                        "type": f"{container_type}-start",
+                        "title": "Body start",
+                        f"{container_type}_id": container_type,
+                    },
+                },
+            ]
+        )
+        edges = [
+            {"id": "outer", "source": "start", "target": container_type},
+            {"id": "inner", "source": "body-start", "target": "tool"},
+        ]
+    graph_config = {"nodes": nodes, "edges": edges}
+    node_factory = DifyNodeFactory(
         init_params=template_node.init_params.model_copy(
             update={
+                "graph_config": graph_config,
                 "run_context": build_test_run_context(
                     app_id="outer-app", user_from=UserFrom.END_USER, invoke_from=InvokeFrom.SERVICE_API
-                )
+                ),
             }
         ),
         runtime_state=runtime_state,
-        tool_file_manager=MagicMock(spec=ToolFileManagerProtocol),
-        runtime=runtime,
     )
     variables: list[dict[str, object]] = []
     if input_kind == "system_files":
@@ -137,7 +179,7 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
     repository = MagicMock(spec=WorkflowToolSourceRepository)
     repository.get_source.return_value = source
     engine = Engine(
-        graph=_outer_graph(node),
+        graph=Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start"),
         runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
         workers=1,

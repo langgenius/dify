@@ -305,8 +305,8 @@ class WorkflowToolContainerHandler:
 
         if variable_pool is None:
             # Container requests run on the dispatcher, outside the workers'
-            # captured context. Restore file ownership and retrieval grants here.
-            with parent_frame.state.execution_context:
+            # captured context. Built-in child frames do not inherit that context.
+            with self._root_runtime_state().execution_context:
                 variable_pool = self._build_variable_pool(
                     parent_frame=parent_frame,
                     source=source,

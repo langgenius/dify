@@ -16,7 +16,10 @@ from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+    WORKFLOW_TOOL_ROOT_APP_ID_KEY,
+)
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.engine.event.processor import NodeEventProcessor
 from graphon.engine.event.stream import EventStream
@@ -157,6 +160,7 @@ def _make_sql_layer(session_factory):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         ),
     )
+    layer._application_generate_entity.app_config.app_id = "caller-app"
     return layer
 
 
@@ -223,6 +227,7 @@ def test_workflow_tool_agent_nodes_persist_in_source_app_under_only_root_run(sql
             node_title="Agent",
             start_at=started_at,
             container_id="source-loop",
+            node_run_result=NodeRunResult(process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "untrusted-app"}),
         )
     )
 
@@ -237,6 +242,7 @@ def test_workflow_tool_agent_nodes_persist_in_source_app_under_only_root_run(sql
             "run-id",
         )
         assert source_row.status == "running"
+        assert source_row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
         assert source_row.execution_metadata_dict["loop_id"] == "source-loop"
         assert session.scalars(select(WorkflowRun)).one().workflow_id == "workflow-id"
 
@@ -263,6 +269,7 @@ def test_workflow_tool_agent_nodes_persist_in_source_app_under_only_root_run(sql
         row = session.get(WorkflowNodeExecutionModel, "source-agent-exec")
         assert row.status == "succeeded"
         assert row.outputs_dict == {"answer": "ok"}
+        assert row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
 
 
 def test_workflow_tool_resume_updates_existing_running_container(sqlite_session_factory):

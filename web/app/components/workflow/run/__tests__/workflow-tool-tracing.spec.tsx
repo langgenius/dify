@@ -189,4 +189,101 @@ describe('Workflow tool tracing', () => {
     await waitFor(() => expect(screen.getByText('Completed approval')).toBeInTheDocument())
     expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
   })
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'refreshes an open source %s after its human input is submitted',
+    async (containerType) => {
+      const user = userEvent.setup()
+      const root = trace('root-execution', { title: 'Approval tool', expand: true })
+      const container = trace('batch-execution', {
+        node_id: 'batch',
+        title: 'Approval batch',
+        node_type: containerType,
+        status: 'paused',
+        parallel_id: 'parallel',
+        parallel_start_node_id: 'branch',
+      })
+      const branch = trace('branch-execution', {
+        node_id: 'branch',
+        node_type: BlockEnum.TemplateTransform,
+        parallel_id: 'parallel',
+        parallel_start_node_id: 'branch',
+      })
+      const approval = trace('approval-execution', {
+        index: 2,
+        title: 'Human approval',
+        node_type: BlockEnum.HumanInput,
+        status: 'paused',
+        execution_metadata: {
+          total_tokens: 0,
+          total_price: 0,
+          currency: 'USD',
+          [`${containerType}_id`]: 'batch',
+          [`${containerType}_index`]: 0,
+        },
+      })
+      mockRequest.mockImplementation(() =>
+        Promise.resolve(jsonResponse({ data: [branch, container, approval] })),
+      )
+      const { rerender } = renderWithConsoleQuery(
+        <TracingPanel
+          list={[root]}
+          workflowRun={{ appId: 'app', runId: 'run', status: 'paused' }}
+        />,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+      await user.click(await screen.findByText('Approval batch'))
+      await user.click(
+        screen.getByRole('button', { name: new RegExp(`workflow.nodes.${containerType}`) }),
+      )
+      await user.click(screen.getByText(`workflow.singleRun.${containerType} 1`))
+      await user.click(screen.getByText('Human approval'))
+      expect(screen.getByText('workflow.nodes.humanInput.log.reasonContent')).toBeInTheDocument()
+
+      mockRequest.mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({
+            data: [
+              branch,
+              {
+                ...container,
+                status: 'succeeded',
+                execution_metadata: {
+                  total_tokens: 0,
+                  total_price: 0,
+                  currency: 'USD',
+                  [`${containerType}_duration_map`]: { 0: 2 },
+                  loop_variable_map: { 0: { decision: 'Updated loop variables' } },
+                },
+              },
+              { ...approval, status: 'succeeded', outputs: { decision: 'Approved result' } },
+              trace('next-execution', {
+                index: 3,
+                title: 'After approval',
+                node_type: BlockEnum.TemplateTransform,
+                execution_metadata: approval.execution_metadata,
+              }),
+            ],
+          }),
+        ),
+      )
+      rerender(
+        <TracingPanel
+          list={[root]}
+          workflowRun={{ appId: 'app', runId: 'run', status: 'succeeded' }}
+        />,
+      )
+
+      expect(await screen.findByText(/Approved result/)).toBeInTheDocument()
+      expect(screen.getByText('After approval')).toBeInTheDocument()
+      expect(screen.getByText('2.00s')).toBeInTheDocument()
+      if (containerType === BlockEnum.Loop)
+        expect(screen.getByText(/Updated loop variables/)).toBeInTheDocument()
+      expect(
+        screen.queryByText('workflow.nodes.humanInput.log.reasonContent'),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText(`workflow.singleRun.${containerType} 1`)).toBeInTheDocument()
+    },
+  )
 })

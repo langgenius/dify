@@ -4,6 +4,7 @@ import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { getIterationDurationMap, getIterationResultList } from '../utils/format-log/iteration'
 
 type IterationLogTriggerProps = {
   nodeInfo: NodeTracing
@@ -12,10 +13,6 @@ type IterationLogTriggerProps = {
     iterationResultList: NodeTracing[][],
     iterationResultDurationMap: IterationDurationMap,
   ) => void
-}
-
-const getIterationDurationMap = (nodeInfo: NodeTracing) => {
-  return nodeInfo.iterDurationMap || nodeInfo.execution_metadata?.iteration_duration_map || {}
 }
 
 const getDisplayIterationCount = (nodeInfo: NodeTracing) => {
@@ -64,67 +61,14 @@ const IterationLogTrigger = ({
 }: IterationLogTriggerProps) => {
   const { t } = useTranslation()
 
-  const getNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
-
-    const parallelNodes = allExecutions.filter(
-      (exec) => exec.execution_metadata?.parallel_mode_run_id === key,
-    )
-    if (parallelNodes.length > 0) return parallelNodes
-
-    const serialIndex = Number.parseInt(key, 10)
-    if (!isNaN(serialIndex)) {
-      const serialNodes = allExecutions.filter(
-        (exec) =>
-          exec.execution_metadata?.iteration_id === nodeInfo.node_id &&
-          exec.execution_metadata?.iteration_index === serialIndex,
-      )
-      if (serialNodes.length > 0) return serialNodes
-    }
-
-    return []
-  }
-
-  const getStructuredIterationList = () => {
-    const iterationNodeMeta = nodeInfo.execution_metadata
-
-    if (!iterationNodeMeta?.iteration_duration_map) return nodeInfo.details || []
-
-    const structuredList = Object.keys(iterationNodeMeta.iteration_duration_map)
-      .map(getNodesForInstance)
-      .filter((branchNodes) => branchNodes.length > 0)
-
-    if (!allExecutions || !nodeInfo.details?.length) return structuredList
-
-    const existingIterationIndices = new Set<number>()
-    structuredList.forEach((iteration) => {
-      iteration.forEach((node) => {
-        if (node.execution_metadata?.iteration_index !== undefined)
-          existingIterationIndices.add(node.execution_metadata.iteration_index)
-      })
-    })
-
-    nodeInfo.details.forEach((iteration, index) => {
-      if (
-        !existingIterationIndices.has(index) &&
-        iteration.some((node) => node.status === NodeRunningStatus.Failed)
-      ) {
-        structuredList.push(iteration)
-      }
-    })
-
-    return structuredList.sort((a, b) => {
-      const aIndex = a[0]?.execution_metadata?.iteration_index ?? 0
-      const bIndex = b[0]?.execution_metadata?.iteration_index ?? 0
-      return aIndex - bIndex
-    })
-  }
-
   const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
 
-    onShowIterationResultList(getStructuredIterationList(), getIterationDurationMap(nodeInfo))
+    onShowIterationResultList(
+      getIterationResultList(nodeInfo, allExecutions),
+      getIterationDurationMap(nodeInfo),
+    )
   }
 
   const displayIterationCount = getDisplayIterationCount(nodeInfo)

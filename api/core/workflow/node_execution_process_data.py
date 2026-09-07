@@ -4,6 +4,7 @@ from typing import Any
 WORKFLOW_AGENT_BINDING_ID_KEY = "workflow_agent_binding_id"
 WORKFLOW_TOOL_INVOCATION_ID_KEY = "workflow_tool_invocation_id"
 WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY = "workflow_tool_parent_execution_id"
+WORKFLOW_TOOL_ROOT_APP_ID_KEY = "workflow_tool_root_app_id"
 
 
 def preserve_workflow_agent_identity(
@@ -16,6 +17,7 @@ def preserve_workflow_agent_identity(
         WORKFLOW_AGENT_BINDING_ID_KEY,
         WORKFLOW_TOOL_INVOCATION_ID_KEY,
         WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+        WORKFLOW_TOOL_ROOT_APP_ID_KEY,
     ):
         source_id = (identity_source or {}).get(key)
         target_id = (process_data or {}).get(key)
@@ -43,6 +45,7 @@ __all__ = [
     "WORKFLOW_AGENT_BINDING_ID_KEY",
     "WORKFLOW_TOOL_INVOCATION_ID_KEY",
     "WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY",
+    "WORKFLOW_TOOL_ROOT_APP_ID_KEY",
     "preserve_workflow_agent_identity",
     "workflow_agent_workspace_scope_key",
 ]

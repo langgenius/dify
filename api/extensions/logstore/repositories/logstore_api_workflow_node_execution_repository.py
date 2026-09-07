@@ -22,6 +22,9 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +131,20 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Initialize the repository with LogStore client.
 
         Args:
-            session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
+            session_maker: SQLAlchemy sessionmaker for synchronous Agent caller records.
         """
         logger.debug("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+        self._session_maker = session_maker
+
+    @override
+    def delete_executions_by_app(self, tenant_id: str, app_id: str, batch_size: int = 1000) -> int:
+        """Delete SQL caller records; append-only Logstore traces retain their configured TTL."""
+        if self._session_maker is None:
+            raise ValueError("session_maker is required to delete SQL workflow caller records")
+        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository(self._session_maker).delete_executions_by_app(
+            tenant_id=tenant_id, app_id=app_id, batch_size=batch_size
+        )
 
     @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
