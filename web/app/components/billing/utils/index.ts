@@ -23,7 +23,8 @@ export const getPlanVectorSpaceLimitMB = (planType: CloudPlan): number => {
   return parseVectorSpaceToMB(ALL_PLANS[planType].vectorSpace)
 }
 
-// The API uses 0 for unlimited count quotas.
+// App, member, document upload, and annotation quotas use 0 for unlimited.
+// Event and API quotas use -1 for unlimited and must preserve 0 as zero capacity.
 export const parseLimit = (limit: number) => {
   if (limit === 0) return NUM_INFINITE
 
