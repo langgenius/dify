@@ -41,9 +41,6 @@ class _CallableSessionProxy:
     def __call__(self) -> Session:
         return self._session
 
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._session, name)
-
     def add(self, instance: object) -> None:
         self._session.add(instance)
 
