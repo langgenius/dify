@@ -51,10 +51,12 @@ def _make_vector() -> WeaviateVector:
     production code paths exercised here (``_get_uuids`` and
     ``delete_by_ids``), so the rest of the instance dict is left bare.
     """
+    client = MagicMock()
+    client.collections.exists.return_value = True
+
     v = WeaviateVector.__new__(WeaviateVector)
     v._collection_name = "Test_Collection"
-    v._client = MagicMock()
-    v._client.collections.exists.return_value = True
+    v._client = client
     return v
 
 
