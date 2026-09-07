@@ -104,7 +104,7 @@ class PluginEndpointClient(BasePluginClient):
             )
         except PluginDaemonInternalServerError as e:
             # Make delete idempotent: if record is not found, consider it a success
-            if "record not found" in str(e.description).lower():
+            if "record not found" in e.description.lower():
                 return True
             raise
 

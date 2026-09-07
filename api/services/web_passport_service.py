@@ -157,7 +157,7 @@ class WebPassportService:
         now = self._now()
         expires_at = int((now + timedelta(minutes=self._access_token_expire_minutes)).timestamp())
         if claims.exp:
-            expires_at = int(claims.exp)
+            expires_at = claims.exp
 
         token = self._tokens.issue(
             {

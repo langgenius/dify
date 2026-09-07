@@ -263,7 +263,7 @@ class ApolloClient:
         if self.secret == "":
             return headers
         uri = url[len(self.config_url) : len(url)]
-        time_unix_now = str(int(round(time.time() * 1000)))
+        time_unix_now = str(round(time.time() * 1000))
         headers["Authorization"] = "Apollo " + self.app_id + ":" + signature(time_unix_now, uri, self.secret)
         headers["Timestamp"] = time_unix_now
         return headers

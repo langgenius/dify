@@ -260,7 +260,7 @@ def select_tool_candidates(
         ranked = _rank_tools_for_query(entries, query)
         confident = [(score, entry) for score, entry, is_confident in ranked if is_confident]
         if not confident:
-            capability = str(query.get("capability") or "").strip()
+            capability = query.get("capability") or "".strip()
             if capability:
                 unmatched_queries.append(capability)
             continue
@@ -357,8 +357,8 @@ def _find_current_graph_tool_keys(
 def _rank_tools_for_query(
     entries: list[ToolCatalogueEntry], query: ToolCapabilityQuery
 ) -> list[tuple[float, ToolCatalogueEntry, bool]]:
-    capability = str(query.get("capability") or "").strip()
-    keywords = [str(keyword).strip() for keyword in (query.get("keywords") or []) if str(keyword).strip()]
+    capability = query.get("capability") or "".strip()
+    keywords = [keyword.strip() for keyword in (query.get("keywords") or []) if keyword.strip()]
     query_text = " ".join([capability, *keywords]).strip()
     query_normalized = _normalize_search_text(query_text)
     query_tokens = _search_tokens(query_text)

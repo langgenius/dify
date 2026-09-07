@@ -240,7 +240,7 @@ class TriggerProviderService:
 
                     return {
                         "result": "success",
-                        "id": str(subscription.id),
+                        "id": subscription.id,
                     }
 
         except Exception as e:
@@ -597,7 +597,7 @@ class TriggerProviderService:
 
             # Persist refreshed properties and expires_at
             subscription.properties = dict(properties_encrypter.encrypt(dict(refreshed.properties)))
-            subscription.expires_at = int(refreshed.expires_at)
+            subscription.expires_at = refreshed.expires_at
             properties_cache.delete()
 
             logger.info(
@@ -607,7 +607,7 @@ class TriggerProviderService:
                 subscription.expires_at,
             )
 
-            return {"result": "success", "expires_at": int(refreshed.expires_at)}
+            return {"result": "success", "expires_at": refreshed.expires_at}
 
     @classmethod
     def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any] | None:

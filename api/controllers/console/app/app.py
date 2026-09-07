@@ -112,7 +112,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported tag_ids type.")
 
-        items = [str(item).strip() for item in value if item and str(item).strip()]
+        items = [item.strip() for item in value if item and item.strip()]
         if not items:
             return None
 
@@ -130,7 +130,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported creator_ids type.")
 
-        items = [str(item).strip() for item in value if item and str(item).strip()]
+        items = [item.strip() for item in value if item and item.strip()]
         if not items:
             return None
 

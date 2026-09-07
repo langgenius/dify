@@ -64,4 +64,4 @@ def build_plugin_pool_key(tenant_id: str, provider_id: str, subscription_id: str
         provider_id: Provider ID
         subscription_id: Subscription ID
     """
-    return f"{TriggerDebugPoolKey.PLUGIN}:{{{tenant_id}}}:{str(provider_id)}:{subscription_id}:{name}"
+    return f"{TriggerDebugPoolKey.PLUGIN}:{{{tenant_id}}}:{provider_id}:{subscription_id}:{name}"

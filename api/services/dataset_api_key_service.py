@@ -32,7 +32,7 @@ def get_bound_dataset_ids(session: Session, api_token_id: str) -> set[str]:
 
 def list_bindings_by_token(session: Session, token_ids: Iterable[str]) -> dict[str, list[str]]:
     """Group bound dataset ids by api token id for the given tokens."""
-    ids = [str(token_id) for token_id in token_ids]
+    ids = [token_id for token_id in token_ids]
     bindings_by_token: dict[str, list[str]] = {}
     if not ids:
         return bindings_by_token
