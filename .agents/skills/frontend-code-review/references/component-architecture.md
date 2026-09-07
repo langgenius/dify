@@ -15,13 +15,12 @@ For a file-focused component review, use the named component as the root. For a 
 
 1. Build the locally owned rendered component tree from each root to every leaf. Follow imported feature components, conditional branches, lists, portals, dialogs, drawers, and popovers. Stop at third-party or Dify UI primitives and explicit stable public feature boundaries, but record the props passed across that final edge.
 2. At every component, inventory state sources: React state/reducers, form state, URL state, context/store/Jotai reads and writes, queries, mutations, refs that hold workflow state, and custom-hook results.
-3. For every state value, derived fact, and handler, identify all descendant branches that consume it. If only one branch consumes it, verify that it is declared in the lowest owner in that branch. If several siblings consume it, verify that the parent genuinely derives or coordinates one shared snapshot or lifecycle.
+3. For every state value, derived fact, and handler, record its consuming branches and required lifetime, including persistence across descendant unmounts. Assess its placement against [Ownership] and [State], including their coordination and persistence exceptions.
 4. Inspect every props edge. Mark values that are read by the child, forwarded unchanged, renamed, recomputed, mirrored into local state, or paired with lifecycle fields such as `data/pending/error/retry` and `open/onOpenChange`.
-5. Treat a parent as a switchboard when it mainly destructures a workflow hook and redistributes fields without rendering or coordinating them. Flag moving single-branch state down; when sibling surfaces share the workflow, flag exposing focused feature facts and commands instead of routing the internal state machine through the parent.
+5. Trace what each forwarding parent actually owns before reporting an unnecessary intermediary. Apply [Ownership] to distinguish required coordination or persistence from merely redistributing workflow fields, and [State] to determine whether a feature graph is warranted.
 6. Remove unused or redundant props at their source. Do not accept replacing many props with a props bag, context, or hook result unless that abstraction becomes the real owner and gives consumers a narrower contract.
 
 Review the complete paths before concluding that a state or prop is necessary. When several edges share one ownership defect, report one finding at the highest incorrect owner and include a representative path such as `Root -> Section -> Leaf`; do not emit a duplicate finding for every child.
-
 
 ## Apply Rules In Their Actual Scope
 

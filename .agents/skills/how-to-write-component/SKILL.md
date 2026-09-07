@@ -24,19 +24,6 @@ Choose the mode from the user's requested outcome:
 - **Implementation:** Establish the affected owner map, state graph, props edges, and reset boundaries before editing. Implement one coherent vertical slice at a time, then run the final audit in [`references/audit.md`][audit]. Read [`references/ownership.md`][ownership].
 - **Bug or regression review:** Use the frontend code-review workflow unless the user explicitly requests this skill's architecture model as an additional lens.
 
-## First Decisions
-
-| Question | Default | Choose differently when |
-| --- | --- | --- |
-| Where should code live? | In the product workflow, route, or feature owner. | Several verticals need the same stable contract. |
-| Who owns state and handlers? | The lowest owner whose consumers and lifetime match the state. | Another owner coordinates it or it must survive the local owner's unmount. |
-| Should React control a value? | Leave submit-only DOM fields uncontrolled. | The workflow needs the current value for rendering or coordination. |
-| Should state enter Jotai? | Keep owner-local state local. Use feature-local Jotai after a value enters the feature state graph. | An existing stable graph/store already owns the contract. |
-| Who owns URL state? | Next.js route APIs and `nuqs`. | Atoms need one route-identity bridge for shared queries or derivations. URL writes still stay with the URL owner. |
-| Who owns remote state? | TanStack Query at the lowest complete consumer. | Atom state drives shared work, another graph node consumes the result, or a workflow command coordinates it. |
-| Is a wrapper needed? | Use the primitive or direct code. | The wrapper owns behavior, validation, state, semantics, or necessary integration. |
-| Is an Effect needed? | Derive during render or handle the user action. | A named external system must be synchronized. |
-
 ## Topic Routing
 
 After selecting the operating mode, read only the topic references required by the change:
