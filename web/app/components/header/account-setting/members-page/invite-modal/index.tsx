@@ -14,9 +14,11 @@ import {
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
 import { mergeEmailRecipients } from './email-recipients'
@@ -48,14 +50,16 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const queryClient = useQueryClient()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
   const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
   const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
+  // A limit of 0 means unlimited.
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
-    : features?.billing.enabled && features.members.limit > 0
+    : deploymentEdition === 'CLOUD' && features && features.members.limit > 0
       ? features.members
       : undefined
   const remainingSeats =

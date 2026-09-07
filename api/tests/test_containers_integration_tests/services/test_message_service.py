@@ -33,7 +33,6 @@ class TestMessageService:
             patch("services.message_service.TokenBufferMemory") as mock_token_buffer_memory,
         ):
             # Setup default mock returns
-            mock_account_feature_service.get_features.return_value.billing.enabled = False
 
             # Mock ModelManager
             mock_model_instance = mock_model_manager.return_value.get_default_model_instance.return_value

@@ -395,15 +395,13 @@ class VectorSpaceAdmissionService:
             ) from error
 
         plan = None
-        if billing_info["enabled"]:
-            try:
-                plan = CloudPlan(billing_info["subscription"]["plan"])
-            except ValueError:
-                logger.warning(
-                    "Skipping TiDB vector-space admission for unknown plan tenant_id=%s plan=%s",
-                    tenant_id,
-                    billing_info["subscription"]["plan"],
-                )
+        try:
+            plan = CloudPlan(billing_info["subscription"]["plan"])
+        except ValueError:
+            logger.warning(
+                "Skipping TiDB vector-space admission for unknown plan tenant_id=%s",
+                tenant_id,
+            )
         self._plan_by_tenant[tenant_id] = plan
         return plan
 

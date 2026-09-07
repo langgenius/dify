@@ -20,9 +20,6 @@ class TestAPIBasedExtensionService:
             patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch("services.api_based_extension_service.APIBasedExtensionRequestor") as mock_requestor,
         ):
-            # Setup default mock returns
-            mock_account_feature_service.get_features.return_value.billing.enabled = False
-
             # Mock successful ping response
             mock_requestor_instance = mock_requestor.return_value
             mock_requestor_instance.request.return_value = {"result": "pong"}

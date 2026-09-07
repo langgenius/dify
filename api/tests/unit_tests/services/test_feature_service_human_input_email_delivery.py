@@ -14,7 +14,6 @@ class HumanInputEmailDeliveryCase:
     name: str
     deployment_edition: DeploymentEdition
     tenant_id: str | None
-    billing_feature_enabled: bool
     plan: str
     expected: bool
 
@@ -24,7 +23,6 @@ CASES = [
         name="enterprise_edition",
         deployment_edition=DeploymentEdition.ENTERPRISE,
         tenant_id=None,
-        billing_feature_enabled=False,
         plan=CloudPlan.SANDBOX,
         expected=True,
     ),
@@ -32,7 +30,6 @@ CASES = [
         name="community_edition",
         deployment_edition=DeploymentEdition.COMMUNITY,
         tenant_id=None,
-        billing_feature_enabled=False,
         plan=CloudPlan.SANDBOX,
         expected=True,
     ),
@@ -40,15 +37,6 @@ CASES = [
         name="cloud_edition_requires_tenant",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id=None,
-        billing_feature_enabled=True,
-        plan=CloudPlan.PROFESSIONAL,
-        expected=False,
-    ),
-    HumanInputEmailDeliveryCase(
-        name="billing_feature_off",
-        deployment_edition=DeploymentEdition.CLOUD,
-        tenant_id="tenant-1",
-        billing_feature_enabled=False,
         plan=CloudPlan.PROFESSIONAL,
         expected=False,
     ),
@@ -56,7 +44,6 @@ CASES = [
         name="professional_plan",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
-        billing_feature_enabled=True,
         plan=CloudPlan.PROFESSIONAL,
         expected=True,
     ),
@@ -64,7 +51,6 @@ CASES = [
         name="team_plan",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
-        billing_feature_enabled=True,
         plan=CloudPlan.TEAM,
         expected=True,
     ),
@@ -72,7 +58,6 @@ CASES = [
         name="sandbox_plan",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
-        billing_feature_enabled=True,
         plan=CloudPlan.SANDBOX,
         expected=False,
     ),
@@ -86,7 +71,6 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
 ):
     config_overrides(DEPLOYMENT_EDITION=case.deployment_edition)
     features = FeatureModel()
-    features.billing.enabled = case.billing_feature_enabled
     features.billing.subscription.plan = case.plan
 
     result = FeatureService._resolve_human_input_email_delivery_enabled(

@@ -30,7 +30,6 @@ class TestFeatureService:
         ):
             # Setup default mock returns for BillingService
             mock_billing_service.get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": True},
                 "members": {"size": 5, "limit": 10},
                 "apps": {"size": 3, "limit": 20},
@@ -118,7 +117,6 @@ class TestFeatureService:
             assert isinstance(result, FeatureModel)
 
             # Verify billing features
-            assert result.billing.enabled is True
             assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
             assert result.billing.subscription.interval == "monthly"
             assert result.education.activated is True
@@ -184,7 +182,6 @@ class TestFeatureService:
 
             # Set mock return value inside the patch context
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.SANDBOX, "interval": "monthly", "education": False},
                 "members": {"size": 1, "limit": 3},
                 "apps": {"size": 1, "limit": 5},
@@ -510,9 +507,6 @@ class TestFeatureService:
             assert result is not None
             assert isinstance(result, FeatureModel)
 
-            # Verify billing is disabled
-            assert result.billing.enabled is False
-
             # Verify environment-based features
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is True
@@ -597,9 +591,6 @@ class TestFeatureService:
             # Assert: Verify the expected outcomes
             assert result is not None
             assert isinstance(result, FeatureModel)
-
-            # Cloud billing is not loaded in the Enterprise edition.
-            assert result.billing.enabled is False
 
             # Verify enterprise features
             assert result.webapp_copyright_enabled is True
@@ -710,9 +701,6 @@ class TestFeatureService:
             assert result is not None
             assert isinstance(result, FeatureModel)
 
-            # Billing data is not loaded without a tenant ID.
-            assert result.billing.enabled is False
-
             # Verify environment-based features
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is False
@@ -753,7 +741,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
                 # Missing members, apps, vector_space, etc.
             }
@@ -766,7 +753,6 @@ class TestFeatureService:
         assert isinstance(result, FeatureModel)
 
         # Verify billing features
-        assert result.billing.enabled is True
         assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
         assert result.billing.subscription.interval == "yearly"
 
@@ -814,7 +800,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
                 "vector_space": {"size": 0, "limit": 0},
                 "apps": {"size": 5, "limit": 10},
@@ -931,7 +916,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
                 "members": {"size": 10, "limit": 10},
                 "vector_space": {"size": 3, "limit": 5},
@@ -1251,7 +1235,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "members": {"size": 0, "limit": 0},
                 "apps": {"size": 0, "limit": -1},
@@ -1355,7 +1338,6 @@ class TestFeatureService:
         # Arrange: Setup edge case education mock
         tenant_id = self._create_test_tenant_id()
         mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "enabled": True,
             "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "semester", "education": True},
             "members": {"size": 100, "limit": 200},
             "apps": {"size": 50, "limit": 100},
@@ -1509,7 +1491,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.TEAM, "interval": "monthly"},
                 "docs_processing": "advanced",
                 "can_replace_logo": True,
@@ -1627,7 +1608,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "annotation_quota_limit": {"size": 999, "limit": 1000},
                 "knowledge_rate_limit": {"limit": 500},
@@ -1688,7 +1668,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
                 "documents_upload_quota": {
                     "size": 0,  # Edge case: zero current size
@@ -1803,7 +1782,6 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "enabled": True,
                 "subscription": {
                     "plan": CloudPlan.PROFESSIONAL,
                     "interval": "monthly",

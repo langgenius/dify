@@ -4,12 +4,11 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
-import { NUM_INFINITE } from '@/app/components/billing/config'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -19,6 +18,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
+import { consoleQuery } from '@/service/client'
 import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
@@ -48,10 +48,22 @@ const MembersPage = () => {
     MemberInviteResponse['invitation_results'] | null
   >(null)
   const accounts = data?.accounts || []
-  const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== 'team'
+  const { isAllowTransferWorkspace } = useProviderContext()
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: billing } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => ({ plan: data.billing.subscription.plan, members: data.members }),
+    }),
+  )
+
+  const isNotUnlimitedMemberPlan =
+    deploymentEdition === 'CLOUD' && billing !== undefined && billing.plan !== 'team'
+  // A limit of 0 means unlimited.
   const isMemberFull =
-    enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
+    isNotUnlimitedMemberPlan &&
+    billing.members.limit > 0 &&
+    accounts.length >= billing.members.limit
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
@@ -130,7 +142,7 @@ const MembersPage = () => {
               )}
             </div>
             <div className="mt-1 system-xs-medium text-text-tertiary">
-              {enableBilling && isNotUnlimitedMemberPlan ? (
+              {isNotUnlimitedMemberPlan ? (
                 <div className="flex space-x-1">
                   <div>
                     {t(($) => $['plansCommon.member'], { ns: 'billing' })}
@@ -139,9 +151,9 @@ const MembersPage = () => {
                   <div className="">{accounts.length}</div>
                   <div>/</div>
                   <div>
-                    {plan.total.teamMembers === NUM_INFINITE
+                    {billing.members.limit === 0
                       ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-                      : plan.total.teamMembers}
+                      : billing.members.limit}
                   </div>
                 </div>
               ) : (

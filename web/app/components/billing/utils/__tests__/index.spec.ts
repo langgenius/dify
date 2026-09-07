@@ -61,7 +61,6 @@ describe('billing utils', () => {
         limit: 5,
       },
       billing: {
-        enabled: true,
         subscription: {
           interval: '',
           plan: 'sandbox',
@@ -144,7 +143,6 @@ describe('billing utils', () => {
     it('should derive vector space total from plan config', () => {
       const data = createMockPlanData({
         billing: {
-          enabled: true,
           subscription: {
             interval: '',
             plan: 'professional',

@@ -4,13 +4,16 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from enums import DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.retry_document_indexing_task import retry_document_indexing_task
+from tests.unit_tests.config_override import config_overrides_context
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 def test_retry_enforces_vector_space_admission(sqlite_session: Session) -> None:
     tenant = Tenant(name="Retry tenant")
     user = Account(name="Retry user", email=f"retry-{uuid4()}@example.com")
@@ -49,7 +52,6 @@ def test_retry_enforces_vector_space_admission(sqlite_session: Session) -> None:
     sqlite_session.add_all([tenant, user, membership, dataset, document])
     sqlite_session.commit()
     features = MagicMock()
-    features.billing.enabled = False
 
     with (
         patch("tasks.retry_document_indexing_task.FeatureService.get_features", return_value=features),

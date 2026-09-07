@@ -28,6 +28,8 @@ let mockPlan: {
   total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
 }
 
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
+
 const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
@@ -36,8 +38,9 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
     usage_unknown: vectorSpaceUsageUnknown,
   })
   return renderWithConsoleQuery(ui, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
+    systemFeatures: { deployment_edition: deploymentEdition },
     queryClient,
+    features: { billing: { subscription: { plan: mockPlan.type } } },
   })
 }
 
@@ -60,14 +63,6 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock provider context
-let mockEnableBilling = false
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('../../file-uploader', () => ({
   default: ({ onPreview, fileList }: { onPreview: (file: File) => void; fileList: FileItem[] }) => (
@@ -250,7 +245,7 @@ describe('StepOne', () => {
       usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
       total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
     }
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
   })
 
   describe('Rendering', () => {
@@ -430,7 +425,7 @@ describe('StepOne', () => {
     })
 
     it('should show plan upgrade modal when batch upload not supported and multiple files', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
       const files = [createMockFileItem(), createMockFileItem()]
       render(<StepOne {...defaultProps} files={files} />)
@@ -441,7 +436,7 @@ describe('StepOne', () => {
     })
 
     it('should show upgrade card immediately when in sandbox plan', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
 
       render(<StepOne {...defaultProps} files={[]} />)
@@ -453,7 +448,7 @@ describe('StepOne', () => {
   // Vector Space Full Tests
   describe('Vector Space Full', () => {
     it('should show VectorSpaceFull when vector space is full and billing is enabled', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
       const files = [createMockFileItem()]
@@ -464,7 +459,7 @@ describe('StepOne', () => {
     })
 
     it('should disable next button when vector space is full', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
       const files = [createMockFileItem()]
@@ -475,7 +470,7 @@ describe('StepOne', () => {
     })
 
     it('should require sandbox users to retry when vector space usage is unknown', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
@@ -490,7 +485,7 @@ describe('StepOne', () => {
     })
 
     it('should allow paid users to continue when vector space usage is unknown', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan.type = 'professional'
       const files = [createMockFileItem()]
 

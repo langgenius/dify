@@ -5,12 +5,12 @@ import type {
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -95,6 +95,16 @@ vi.mock('@/service/client', () => ({
         queryKey: () => ['system-features'],
         queryOptions: (options: Record<string, unknown> = {}) => ({
           queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
+    features: {
+      get: {
+        queryKey: () => ['features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['features'],
+          staleTime: Infinity,
           ...options,
         }),
       },
@@ -264,7 +274,7 @@ function renderWithQueryClient(
 ) {
   const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  render(ui, { wrapper: createQueryClientWrapper(queryClient) })
 
   return queryClient
 }
@@ -286,6 +296,7 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedFeatures(queryClient)
   return queryClient
 }
 
@@ -731,20 +742,15 @@ describe('Agent access surface cards', () => {
       })
       const queryClient = createConsoleQueryClient()
       const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
-        </QueryClientProvider>,
+        <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />,
+        { wrapper: createQueryClientWrapper(queryClient) },
       )
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
       ).toBeDisabled()
 
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />
-        </QueryClientProvider>,
-      )
+      rerender(<WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />)
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),

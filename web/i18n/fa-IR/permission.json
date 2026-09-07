@@ -34,6 +34,7 @@
   "accessRule.updated": "قانون دسترسی با موفقیت به‌روزرسانی شد",
   "accessRule.workspaceOwner": "مالک فضای کاری",
   "common.duplicateAction": "تکثیر",
+  "group.agent": "عامل‌ها",
   "group.app": "برنامه‌ها",
   "group.app_acl": "مجوزهای دسترسی برنامه",
   "group.billing": "صورت‌حساب",

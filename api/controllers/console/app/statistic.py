@@ -5,11 +5,12 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate
+from controllers.console.wraps import RBACPermission, model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
@@ -158,8 +159,7 @@ class DailyMessageStatistic(Resource):
         console_ns.models[DailyMessageStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
@@ -186,8 +186,7 @@ class DailyConversationStatistic(Resource):
         console_ns.models[DailyConversationStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
@@ -214,8 +213,7 @@ class DailyTerminalsStatistic(Resource):
         console_ns.models[DailyTerminalStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
@@ -242,8 +240,7 @@ class DailyTokenCostStatistic(Resource):
         console_ns.models[DailyTokenCostStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
@@ -270,8 +267,7 @@ class AverageSessionInteractionStatistic(Resource):
         console_ns.models[AverageSessionInteractionStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @model_validate(StatisticTimeRangeQuery)
@@ -298,8 +294,7 @@ class UserSatisfactionRateStatistic(Resource):
         console_ns.models[UserSatisfactionRateStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)
@@ -326,8 +321,7 @@ class AverageResponseTimeStatistic(Resource):
         console_ns.models[AverageResponseTimeStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model(mode=AppMode.COMPLETION)
     @model_validate(StatisticTimeRangeQuery)
@@ -354,8 +348,7 @@ class TokensPerSecondStatistic(Resource):
         console_ns.models[TokensPerSecondStatisticResponse.__name__],
     )
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_MONITOR,
+        rbac_checks=[RBACCheck(RBACPermission.APP_MONITOR, PlainApp())],
     )
     @get_app_model
     @model_validate(StatisticTimeRangeQuery)

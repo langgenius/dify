@@ -19,7 +19,6 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
         quota_used=20,
     )
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.SANDBOX},
     }
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -61,7 +60,6 @@ def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> 
         quota_used=40,
     )
     billing_info = {
-        "enabled": True,
         "subscription": {"plan": CloudPlan.TEAM},
     }
     config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)

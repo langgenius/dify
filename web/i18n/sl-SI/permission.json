@@ -34,6 +34,7 @@
   "accessRule.updated": "Pravilo za dostop uspešno posodobljeno",
   "accessRule.workspaceOwner": "Lastnik delovnega prostora",
   "common.duplicateAction": "Podvoji",
+  "group.agent": "Agenti",
   "group.app": "Aplikacije",
   "group.app_acl": "Dovoljenja za dostop do aplikacije",
   "group.billing": "Obračunavanje",

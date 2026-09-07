@@ -22,6 +22,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 import services.annotation_service as annotation_service_module
+from enums import DeploymentEdition
 from models.account import Account
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType
@@ -37,6 +38,7 @@ from models.model import (
 )
 from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
+from tests.unit_tests.config_override import config_overrides_context
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
@@ -593,16 +595,13 @@ class TestAppAnnotationServiceBatchImport:
         features: Any | None = None,
     ) -> dict[str, Any]:
         if features is None:
-            features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
+            features = SimpleNamespace(annotation_quota_limit=None)
         with (
             patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
             patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(
-                    ANNOTATION_IMPORT_MAX_RECORDS=maximum,
-                    ANNOTATION_IMPORT_MIN_RECORDS=minimum,
-                ),
+            config_overrides_context(
+                ANNOTATION_IMPORT_MAX_RECORDS=maximum,
+                ANNOTATION_IMPORT_MIN_RECORDS=minimum,
             ),
         ):
             return AppAnnotationService.batch_import_app_annotations(app.id, _file(content), sqlite_session)
@@ -678,10 +677,10 @@ class TestAppAnnotationServiceBatchImport:
 
         assert "at least" in cast(str, result["error_msg"])
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_rejects_subscription_quota_overflow(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session)
         features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=True),
             annotation_quota_limit=SimpleNamespace(limit=1, size=1),
         )
 
@@ -694,10 +693,11 @@ class TestAppAnnotationServiceBatchImport:
 
         assert "exceeds the limit" in cast(str, result["error_msg"])
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_valid_import_enqueues_job(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session)
         dataframe = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
-        features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
+        features = SimpleNamespace(annotation_quota_limit=None)
         with (
             patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
             patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
@@ -705,10 +705,7 @@ class TestAppAnnotationServiceBatchImport:
             patch.object(annotation_service_module, "redis_client") as redis,
             patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-3"),
             patch.object(annotation_service_module, "naive_utc_now", return_value=datetime.fromtimestamp(1)),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
+            config_overrides_context(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
         ):
             result = AppAnnotationService.batch_import_app_annotations(
                 app.id, _file(b"question,answer\nq,a\n"), sqlite_session
@@ -722,22 +719,20 @@ class TestAppAnnotationServiceBatchImport:
             "uuid-3", [{"question": "q1", "answer": "a1"}], app.id, TENANT_ID, current_user.id
         )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_unexpected_error_cleans_active_job(
         self, sqlite_session: Session, current_user: Account, caplog: pytest.LogCaptureFixture
     ) -> None:
         app = _persist_app(sqlite_session)
         dataframe = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
-        features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
+        features = SimpleNamespace(annotation_quota_limit=None)
         with (
             patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
             patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
             patch.object(annotation_service_module, "redis_client") as redis,
             patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-4"),
             patch.object(annotation_service_module, "naive_utc_now", return_value=datetime.fromtimestamp(1)),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
+            config_overrides_context(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
         ):
             redis.zadd.side_effect = RuntimeError("boom")
             redis.zrem.side_effect = RuntimeError("cleanup-failed")

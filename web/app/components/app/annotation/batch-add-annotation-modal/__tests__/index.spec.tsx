@@ -1,18 +1,17 @@
+import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { IBatchModalProps } from '../index'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import BatchModal, { ProcessStatus } from '../index'
+
+let annotationQuota = { size: 0, limit: 10 }
 
 vi.mock('@/service/annotation', () => ({
   annotationBatchImport: vi.fn(),
   checkAnnotationBatchImportProgress: vi.fn(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
 }))
 
 vi.mock('../csv-downloader', () => ({
@@ -54,7 +53,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
 }))
-const useProviderContextMock = useProviderContext as Mock
 const annotationBatchImportMock = annotationBatchImport as Mock
 const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as Mock
 
@@ -72,27 +70,22 @@ const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   }
 }
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: annotationQuota },
+  })
+}
+
 describe('BatchModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lastUploadedFile = undefined
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 0 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: false,
-    })
+    annotationQuota = { size: 0, limit: 10 }
   })
 
   it('should disable run action and show billing hint when annotation quota is full', () => {
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 10 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: true,
-    })
+    annotationQuota = { size: 10, limit: 10 }
 
     renderComponent()
 

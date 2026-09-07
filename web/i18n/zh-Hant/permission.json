@@ -34,6 +34,7 @@
   "accessRule.updated": "訪問規則已更新",
   "accessRule.workspaceOwner": "工作空間擁有者",
   "common.duplicateAction": "建立副本",
+  "group.agent": "Agent",
   "group.app": "應用",
   "group.app_acl": "應用訪問權限",
   "group.billing": "帳單",

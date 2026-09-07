@@ -1,12 +1,9 @@
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
-import { getDefaultStore } from 'jotai'
+import { useSetAtom } from 'jotai'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import {
-  agentComposerDraftAtom,
-  agentComposerSavedDraftAtom,
-} from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
@@ -636,9 +633,6 @@ describe('useCreateInlineAgentBinding', () => {
 describe('useWorkflowInlineAgentConfigureSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const store = getDefaultStore()
-    store.set(agentComposerSavedDraftAtom, defaultAgentSoulConfigFormState)
-    store.set(agentComposerDraftAtom, defaultAgentSoulConfigFormState)
   })
 
   it('saves inline agent composer changes through the workflow node composer API', async () => {
@@ -653,8 +647,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
     })
     const { result } = renderWorkflowHook(
-      () =>
-        useWorkflowInlineAgentConfigureSync({
+      () => ({
+        ...useWorkflowInlineAgentConfigureSync({
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -665,6 +659,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           },
           enabled: true,
         }),
+        setDraft: useSetAtom(agentComposerDraftAtom),
+      }),
       {
         queryClient,
         hooksStoreProps: {
@@ -678,7 +674,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     )
 
     act(() => {
-      getDefaultStore().set(agentComposerDraftAtom, {
+      result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Workflow inline prompt',
       })
@@ -732,14 +728,16 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
     })
     const { result } = renderWorkflowHook(
-      () =>
-        useWorkflowInlineAgentConfigureSync({
+      () => ({
+        ...useWorkflowInlineAgentConfigureSync({
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
           },
           enabled: true,
         }),
+        setDraft: useSetAtom(agentComposerDraftAtom),
+      }),
       {
         queryClient,
         hooksStoreProps: {
@@ -753,7 +751,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     )
 
     act(() => {
-      getDefaultStore().set(agentComposerDraftAtom, {
+      result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Snippet inline prompt',
       })
@@ -803,8 +801,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
     })
     const { result } = renderWorkflowHook(
-      () =>
-        useWorkflowInlineAgentConfigureSync({
+      () => ({
+        ...useWorkflowInlineAgentConfigureSync({
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -812,6 +810,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           autoSaveEnabled: false,
           enabled: true,
         }),
+        setDraft: useSetAtom(agentComposerDraftAtom),
+      }),
       {
         queryClient,
         hooksStoreProps: {
@@ -825,7 +825,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     )
 
     act(() => {
-      getDefaultStore().set(agentComposerDraftAtom, {
+      result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Manual inline prompt',
       })

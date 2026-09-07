@@ -4,7 +4,7 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from configs import dify_config
-from controllers.common.wraps import enforce_rbac_access
+from controllers.common.rbac import enforce_rbac_checks
 from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
@@ -62,12 +62,10 @@ def check_rbac_permission(data: AuthData) -> None:
         return
     if data.account_id is None or data.tenant is None:
         raise Forbidden("rbac context missing")
-    enforce_rbac_access(
+    enforce_rbac_checks(
         tenant_id=str(data.tenant.id),
         account_id=str(data.account_id),
-        resource_type=req.resource_type,
-        scene=req.scene,
-        resource_required=req.resource_required,
+        checks=[req],
         path_args=dict(data.path_params),
     )
 

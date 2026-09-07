@@ -6,37 +6,50 @@ remote URLs. The caller always submits a multipart form: when a non-empty
 falls back to the local file upload flow.
 """
 
-import httpx
+from typing import Any
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
-from sqlalchemy.orm import sessionmaker
+from werkzeug.datastructures import FileStorage
 
 import services
 from controllers.common.errors import (
     BlockedFileExtensionError,
+    FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
-    RemoteFileUploadError,
+    RemoteFileAccessDeniedError,
+    RemoteFileInvalidResponseError,
+    RemoteFileInvalidUrlError,
+    RemoteFileNotFoundError,
+    RemoteFileUnavailableError,
+    RemoteFileUrlBlockedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import JsonResponseWithStatus, register_schema_models
 from controllers.web import web_ns
-from core.file.remote_file_metadata import guess_file_info_from_response
-from core.helper import ssrf_proxy
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, FileWithSignedUrl
-from graphon.file import helpers as file_helpers
 from libs.exception import BaseHTTPException
 from libs.helper import dump_response
-from repositories.factory import DifyAPIRepositoryFactory
-from services.file_service import FileService
 from services.human_input_file_upload_service import (
     HITL_UPLOAD_TOKEN_PREFIX,
     HumanInputFileUploadService,
+    HumanInputUploadContext,
     InvalidUploadTokenError,
 )
+from services.remote_file_service import (
+    RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
+)
+from services.remote_file_service import (
+    RemoteFileInvalidResponseError as RemoteFileInvalidResponseServiceError,
+)
+from services.remote_file_service import RemoteFileInvalidUrlError as RemoteFileInvalidUrlServiceError
+from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNotFoundServiceError
+from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
+from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
 
 
 class InvalidUploadTokenBadRequestError(BaseHTTPException):
@@ -68,15 +81,6 @@ class HumanInputFileUploadFormPayload(BaseModel):
 register_schema_models(web_ns, HumanInputFileUploadFormPayload, FileResponse, FileWithSignedUrl)
 
 
-def _create_upload_service() -> HumanInputFileUploadService:
-    session_factory = sessionmaker(bind=db.engine)
-    workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
-    return HumanInputFileUploadService(
-        session_factory=session_factory,
-        workflow_run_repository=workflow_run_repository,
-    )
-
-
 def _extract_hitl_upload_token() -> str:
     """Read HITL upload token from Authorization without invoking other bearer auth chains."""
 
@@ -98,14 +102,14 @@ def _extract_hitl_upload_token() -> str:
     return token
 
 
-def _validate_context(service: HumanInputFileUploadService, token: str):
+def _validate_context(service: HumanInputFileUploadService, token: str) -> HumanInputUploadContext:
     try:
         return service.validate_upload_token(token)
     except InvalidUploadTokenError as exc:
         raise InvalidUploadTokenForbiddenError() from exc
 
 
-def _parse_local_upload_file():
+def _parse_local_upload_file() -> FileStorage:
     if "file" not in request.files:
         raise NoFileUploadedError()
     if len(request.files) > 1:
@@ -113,8 +117,6 @@ def _parse_local_upload_file():
 
     file = request.files["file"]
     if not file.filename:
-        from controllers.common.errors import FilenameNotExistsError
-
         raise FilenameNotExistsError()
 
     return file
@@ -124,79 +126,68 @@ def _parse_upload_form() -> HumanInputFileUploadFormPayload:
     return HumanInputFileUploadFormPayload.model_validate(request.form.to_dict(flat=True))
 
 
-def _upload_local_file(context):
+def _upload_local_file(
+    *,
+    service: HumanInputFileUploadService,
+    context: HumanInputUploadContext,
+) -> dict[str, Any]:
     file = _parse_local_upload_file()
 
     try:
-        upload_file = FileService(db.engine).upload_file(
+        upload_file = service.upload_local_file(
+            context=context,
             filename=file.filename or "",
             content=file.read(),
             mimetype=file.mimetype,
-            user=context.owner,
-            source=None,
         )
     except services.errors.file.FileTooLargeError as file_too_large_error:
-        raise FileTooLargeError(file_too_large_error.description)
-    except services.errors.file.UnsupportedFileTypeError:
-        raise UnsupportedFileTypeError()
+        raise FileTooLargeError(file_too_large_error.description or "File size exceeded.") from file_too_large_error
+    except services.errors.file.UnsupportedFileTypeError as error:
+        raise UnsupportedFileTypeError() from error
     except services.errors.file.BlockedFileExtensionError as exc:
         raise BlockedFileExtensionError() from exc
 
-    return upload_file.id, dump_response(FileResponse, upload_file)
+    return dump_response(FileResponse, upload_file)
 
 
-def _upload_remote_file(context, url: str):
+def _upload_remote_file(
+    *,
+    service: HumanInputFileUploadService,
+    context: HumanInputUploadContext,
+    url: str,
+) -> dict[str, Any]:
     try:
-        resp = ssrf_proxy.head(url=url)
-        if resp.status_code != httpx.codes.OK:
-            resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
-        if resp.status_code != httpx.codes.OK:
-            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
-    except httpx.RequestError as exc:
-        raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(exc)}")
-
-    file_info = guess_file_info_from_response(resp)
-    if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
-        raise FileTooLargeError()
-
-    content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
-
-    try:
-        upload_file = FileService(db.engine).upload_file(
-            filename=file_info.filename,
-            content=content,
-            mimetype=file_info.mimetype,
-            user=context.owner,
-            source_url=url,
-        )
+        upload_file = service.upload_remote_file(context=context, url=url)
+    except RemoteFileInvalidUrlServiceError as error:
+        raise RemoteFileInvalidUrlError() from error
+    except RemoteFileUrlBlockedServiceError as error:
+        raise RemoteFileUrlBlockedError() from error
+    except RemoteFileNotFoundServiceError as error:
+        raise RemoteFileNotFoundError() from error
+    except RemoteFileAccessDeniedServiceError as error:
+        raise RemoteFileAccessDeniedError() from error
+    except RemoteFileUnavailableServiceError as error:
+        raise RemoteFileUnavailableError() from error
+    except RemoteFileInvalidResponseServiceError as error:
+        raise RemoteFileInvalidResponseError() from error
     except services.errors.file.FileTooLargeError as file_too_large_error:
-        raise FileTooLargeError(file_too_large_error.description)
-    except services.errors.file.UnsupportedFileTypeError:
-        raise UnsupportedFileTypeError()
+        raise FileTooLargeError(file_too_large_error.description or "File size exceeded.") from file_too_large_error
+    except services.errors.file.UnsupportedFileTypeError as error:
+        raise UnsupportedFileTypeError() from error
     except services.errors.file.BlockedFileExtensionError as exc:
         raise BlockedFileExtensionError() from exc
 
-    response = FileWithSignedUrl(
-        id=upload_file.id,
-        name=upload_file.name,
-        size=upload_file.size,
-        extension=upload_file.extension,
-        url=file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
-        mime_type=upload_file.mime_type,
-        created_by=upload_file.created_by,
-        created_at=int(upload_file.created_at.timestamp()),
-    )
-    return upload_file.id, response.model_dump(mode="json")
+    return dump_response(FileWithSignedUrl, upload_file)
 
 
 @web_ns.route("/human-input-forms/files")
 @web_ns.response(201, "File uploaded successfully", web_ns.models[FileResponse.__name__])
 class HumanInputFileUploadApi(Resource):
-    def post(self):
+    def post(self) -> JsonResponseWithStatus:
         """Upload one local file or remote URL file for a HITL human input form."""
 
         token = _extract_hitl_upload_token()
-        upload_service = _create_upload_service()
+        upload_service = application_services().human_input_file_uploads
         context = _validate_context(upload_service, token)
         form = _parse_upload_form()
 
@@ -204,10 +195,13 @@ class HumanInputFileUploadApi(Resource):
         # switches the endpoint into the remote-fetch flow; otherwise the
         # request must carry a local `file`.
         if form.url is not None:
-            file_id, response = _upload_remote_file(context=context, url=str(form.url))
+            response = _upload_remote_file(
+                service=upload_service,
+                context=context,
+                url=str(form.url),
+            )
         else:
-            file_id, response = _upload_local_file(context=context)
+            response = _upload_local_file(service=upload_service, context=context)
 
-        upload_service.record_upload_file(context=context, file_id=file_id)
         # response-contract:ignore pre-dumped response. See above
         return response, 201

@@ -1,15 +1,13 @@
-import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { defaultPlan } from '@/app/components/billing/config'
-import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
+
+let canReplaceLogo = true
 
 let currentBrandingOverrides: Partial<GetSystemFeaturesResponse['branding']> = {}
 let customConfig = {
@@ -32,6 +30,9 @@ const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
       },
     },
     queryClient,
+    features: {
+      can_replace_logo: canReplaceLogo,
+    },
   })
 }
 
@@ -113,15 +114,12 @@ vi.mock('@/context/permission-state', async () => {
     refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
   }))
 })
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
+
 vi.mock('@/app/components/base/image-uploader/utils', () => ({
   imageUpload: vi.fn(),
   getImageUploadErrorMessage: vi.fn(),
 }))
 
-const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
 
@@ -132,22 +130,6 @@ const testUserProfile = {
   avatar: '',
   avatar_url: '',
   is_password_set: false,
-}
-
-const createProviderContext = ({
-  enableBilling = false,
-  planType = 'professional',
-}: {
-  enableBilling?: boolean
-  planType?: CloudPlan
-} = {}) => {
-  return createMockProviderContextValue({
-    enableBilling,
-    plan: {
-      ...defaultPlan,
-      type: planType,
-    },
-  })
 }
 
 const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): ConsoleStateFixture => {
@@ -183,7 +165,7 @@ describe('useWebAppBrand', () => {
     customConfigQueryPending = false
     customConfigQueryError = undefined
     mockUpdateCustomConfig.mockResolvedValue(customConfig)
-    mockUseProviderContext.mockReturnValue(createProviderContext())
+    canReplaceLogo = true
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
 
@@ -228,17 +210,12 @@ describe('useWebAppBrand', () => {
     })
 
     it('should disable uploads in sandbox workspaces and when branding is removed', () => {
-      mockUseProviderContext.mockReturnValue(
-        createProviderContext({
-          enableBilling: true,
-          planType: 'sandbox',
-        }),
-      )
+      canReplaceLogo = false
       customConfig = { ...customConfig, remove_webapp_brand: true }
 
       const { result } = renderHook(() => useWebAppBrand())
 
-      expect(result.current.isSandbox).toBe(true)
+      expect(!result.current.canReplaceLogo).toBe(true)
       expect(result.current.webappBrandRemoved).toBe(true)
       expect(result.current.uploadDisabled).toBe(true)
     })

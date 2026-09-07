@@ -3,9 +3,10 @@ import logging
 from collections.abc import Callable, Sequence
 from functools import cached_property
 
+from configs import dify_config
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -79,15 +80,10 @@ class RagPipelineTaskProxy:
         if not upload_file_id:
             raise ValueError("upload_file_id is empty")
 
-        logger.info(
-            "dispatch args: %s - %s - %s",
-            self._dataset_tenant_id,
-            self.features.billing.enabled,
-            self.features.billing.subscription.plan,
-        )
+        logger.info("Dispatching tenant %s in %s", self._dataset_tenant_id, dify_config.DEPLOYMENT_EDITION)
 
-        # dispatch to different pipeline queue with tenant isolation when billing enabled
-        if self.features.billing.enabled:
+        # Cloud queues isolate tenants and prioritize paid plans.
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
                 # dispatch to normal pipeline queue with tenant isolation for sandbox plan
                 self._send_to_default_tenant_queue(upload_file_id)

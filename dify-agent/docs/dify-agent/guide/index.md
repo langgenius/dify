@@ -359,6 +359,49 @@ whose Agenton layers provide user input. With the MVP provider set, use
 effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
 
+Agent App callers can use the `dify.user_prompt` layer to send text and images
+in the same model turn. Each image must provide exactly one transport: an
+HTTP(S) `url` or unprefixed Base64 data in `base64_data`. The image is passed as
+structured multimodal content; it is not interpolated into `config.text`.
+
+```json
+{
+  "name": "agent_app_user_prompt",
+  "type": "dify.user_prompt",
+  "config": {
+    "text": "Describe this image.",
+    "files": [
+      {
+        "delivery": "multimodal",
+        "type": "image",
+        "filename": "earth.png",
+        "mime_type": "image/png",
+        "format": "png",
+        "url": "https://files.example.com/earth.png",
+        "base64_data": null,
+        "detail": "high"
+      }
+    ]
+  }
+}
+```
+
+All attachments use `config.files`. The `delivery` field selects how an attachment
+is presented, independently of its file `type` (`image`, `document`, `audio`,
+`video`, or `custom`):
+
+- `delivery: "multimodal"` currently supports `type: "image"` only. Dify API
+  chooses URL or Base64 transport according to `MULTIMODAL_SEND_FORMAT`.
+- `delivery: "download"` preserves the original file `type`, including `image`
+  when the selected model has no Vision feature. It contains either
+  `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
+  `datasource_file` transfer method with a canonical `reference`.
+
+The layer appends sandbox file-download instructions for download attachments
+and adds multimodal attachments as structured model content. Callers keep
+`config.text` as the original user text. Omitting `config.files` is equivalent
+to an empty list.
+
 The optional Pydantic AI history layer uses the reserved name `history` and
 persists captured messages in session snapshots for later resume. Resume from a
 terminal event's `session_snapshot` using the same layer composition, names, and

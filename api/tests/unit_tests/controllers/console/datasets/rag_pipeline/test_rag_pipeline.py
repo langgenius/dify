@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from inspect import getclosurevars, unwrap
+from inspect import unwrap
 from unittest.mock import ANY, PropertyMock, patch
 
 import pytest
@@ -28,6 +28,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import PipelineT
 from services.errors.account import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 def _template_item() -> dict[str, object]:
@@ -362,11 +363,8 @@ class TestCustomizedPipelineTemplateApi:
 
 class TestPublishCustomizedPipelineTemplateApi:
     def test_post_uses_pipeline_release_rbac_scene(self) -> None:
-        method = PublishCustomizedPipelineTemplateApi.post
-        while "scene" not in getclosurevars(method).nonlocals:
-            method = method.__wrapped__
-
-        assert getclosurevars(method).nonlocals["scene"] == module.RBACPermission.DATASET_PIPELINE_RELEASE
+        [check] = rbac_checks(PublishCustomizedPipelineTemplateApi.post)
+        assert check.scene == module.RBACPermission.DATASET_PIPELINE_RELEASE
 
     def test_post_validates_payload_and_returns_empty_204(self) -> None:
         api = PublishCustomizedPipelineTemplateApi()

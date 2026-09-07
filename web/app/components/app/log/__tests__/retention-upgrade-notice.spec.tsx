@@ -2,21 +2,11 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { defaultPlan } from '@/app/components/billing/config'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { RetentionUpgradeNotice } from '../retention-upgrade-notice'
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
 
 vi.mock('@/context/modal-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/modal-context')>()
@@ -26,46 +16,30 @@ vi.mock('@/context/modal-context', async (importOriginal) => {
   }
 })
 
-const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
 
 describe('RetentionUpgradeNotice', () => {
   const setShowPricingModal = vi.fn()
 
-  function mockProvider({
-    enableBilling = true,
-    isFetchedPlan = true,
-    isFetchedPlanInfo = true,
-    planType = 'sandbox',
-  }: {
-    enableBilling?: boolean
-    isFetchedPlan?: boolean
-    isFetchedPlanInfo?: boolean
-    planType?: CloudPlan
-  } = {}) {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling,
-        isFetchedPlan,
-        isFetchedPlanInfo,
-        plan: {
-          ...defaultPlan,
-          type: planType,
-        },
-      }),
-    )
-  }
-
-  function renderNotice(deploymentEdition: DeploymentEdition = 'CLOUD') {
-    const { wrapper } = createConsoleQueryWrapper({
+  function renderNotice(
+    deploymentEdition: DeploymentEdition = 'CLOUD',
+    plan: CloudPlan | null = 'sandbox',
+  ) {
+    const { wrapper, queryClient } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: deploymentEdition },
     })
+    if (plan) seedFeatures(queryClient, { billing: { subscription: { plan } } })
+    else {
+      void queryClient.query({
+        queryKey: consoleQuery.features.get.queryKey(),
+        queryFn: () => new Promise(() => {}),
+      })
+    }
     return render(<RetentionUpgradeNotice />, { wrapper })
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProvider()
     mockUseModalContext.mockReturnValue({
       setShowPricingModal,
     } as unknown as ReturnType<typeof useModalContext>)
@@ -89,28 +63,26 @@ describe('RetentionUpgradeNotice', () => {
   it.each([
     {
       name: 'paid Cloud workspaces',
-      provider: { planType: 'professional' },
+      plan: 'professional',
       deploymentEdition: 'CLOUD',
     },
     {
       name: 'self-hosted sandbox workspaces',
-      provider: { planType: 'sandbox' },
+      plan: 'sandbox',
       deploymentEdition: 'COMMUNITY',
     },
     {
-      name: 'workspaces without billing',
-      provider: { enableBilling: false },
-      deploymentEdition: 'CLOUD',
+      name: 'Enterprise workspaces',
+      plan: 'sandbox',
+      deploymentEdition: 'ENTERPRISE',
     },
     {
       name: 'workspaces before plan loading completes',
-      provider: { isFetchedPlan: false, isFetchedPlanInfo: false },
+      plan: null,
       deploymentEdition: 'CLOUD',
     },
-  ] as const)('should not show guidance for $name', ({ provider, deploymentEdition }) => {
-    mockProvider(provider)
-
-    renderNotice(deploymentEdition)
+  ] as const)('should not show guidance for $name', ({ plan, deploymentEdition }) => {
+    renderNotice(deploymentEdition, plan)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })

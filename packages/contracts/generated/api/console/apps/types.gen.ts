@@ -729,18 +729,6 @@ export type ParserEnable = {
   trigger_id: string
 }
 
-export type WorkflowTriggerResponse = {
-  created_at?: string | null
-  icon: string
-  id: string
-  node_id: string
-  provider_name: string
-  status: string
-  title: string
-  trigger_type: string
-  updated_at?: string | null
-}
-
 export type WorkflowTriggerListResponse = {
   data: Array<WorkflowTriggerResponse>
 }
@@ -1665,6 +1653,18 @@ export type UserSatisfactionRateStatisticItem = {
 export type TextToSpeechVoiceResponse = {
   name: string
   value: string
+}
+
+export type WorkflowTriggerResponse = {
+  created_at?: string | null
+  icon: string
+  id: string
+  node_id: string
+  provider_name: string
+  status: string
+  title: string
+  trigger_type: string
+  updated_at?: string | null
 }
 
 export type WorkflowAppLogPartialResponse = {
@@ -3870,7 +3870,9 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsResponses = {
-  204: void
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAppsByAppIdAnnotationsResponse =
@@ -4011,7 +4013,9 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
-  204: void
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse =
@@ -5003,6 +5007,8 @@ export type DeleteAppsByAppIdTraceConfigData = {
 export type DeleteAppsByAppIdTraceConfigErrors = {
   400: unknown
   403: unknown
+  404: unknown
+  500: unknown
 }
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
@@ -5025,6 +5031,8 @@ export type GetAppsByAppIdTraceConfigData = {
 
 export type GetAppsByAppIdTraceConfigErrors = {
   400: unknown
+  404: unknown
+  500: unknown
 }
 
 export type GetAppsByAppIdTraceConfigResponses = {
@@ -5046,6 +5054,8 @@ export type PatchAppsByAppIdTraceConfigData = {
 export type PatchAppsByAppIdTraceConfigErrors = {
   400: unknown
   403: unknown
+  404: unknown
+  500: unknown
 }
 
 export type PatchAppsByAppIdTraceConfigResponses = {
@@ -5067,6 +5077,9 @@ export type PostAppsByAppIdTraceConfigData = {
 export type PostAppsByAppIdTraceConfigErrors = {
   400: unknown
   403: unknown
+  404: unknown
+  409: unknown
+  500: unknown
 }
 
 export type PostAppsByAppIdTraceConfigResponses = {
@@ -5086,7 +5099,9 @@ export type PostAppsByAppIdTriggerEnableData = {
 }
 
 export type PostAppsByAppIdTriggerEnableResponses = {
-  200: WorkflowTriggerResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdTriggerEnableResponse =
@@ -6494,7 +6509,9 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
-  204: void
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponse =

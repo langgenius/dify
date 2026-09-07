@@ -10,7 +10,9 @@ import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +22,7 @@ import Loading from '@/app/components/base/loading'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import {
   addAnnotation,
   delAnnotation,
@@ -32,6 +34,7 @@ import {
   updateAnnotationScore,
   updateAnnotationStatus,
 } from '@/service/annotation'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
 import PageTitle from '../log-annotation/page-title'
@@ -54,9 +57,21 @@ const Annotation: FC<Props> = (props) => {
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== AppModeEnum.COMPLETION)
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
-  const { plan, enableBilling } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: annotationQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.annotation_quota_limit,
+    }),
+  )
+  const isAnnotationQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
-    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
+    deploymentEdition === 'CLOUD' &&
+    annotationQuota !== undefined &&
+    annotationQuota.limit > 0 &&
+    annotationQuota.size >= annotationQuota.limit
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = useState(0)
@@ -177,9 +192,11 @@ const Annotation: FC<Props> = (props) => {
                   <Switch
                     key={controlRefreshSwitch}
                     checked={annotationConfig?.enabled ?? false}
+                    disabled={!annotationConfig?.enabled && isAnnotationQuotaUnavailable}
                     size="md"
                     onCheckedChange={async (value) => {
                       if (value) {
+                        if (isAnnotationQuotaUnavailable) return
                         if (isAnnotationFull) {
                           setIsShowAnnotationFullModal(true)
                           setControlRefreshSwitch(Date.now())
