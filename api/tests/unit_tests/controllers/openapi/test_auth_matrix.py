@@ -122,6 +122,7 @@ class Case(StrEnum):
     FOREIGN_WORKSPACE_QUERY = auto()
     EDITION_NOT_ENTERPRISE = auto()
     LICENSE_INVALID = auto()
+    EE_LICENSE_INVALID = auto()
     EE_ACCOUNT_PUBLIC = auto()
     EE_ACCOUNT_SSO_VERIFIED = auto()
     EE_ACCOUNT_PRIVATE_ALL = auto()
@@ -351,6 +352,7 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.FOREIGN_WORKSPACE_QUERY: frozenset({Trait.APP_SCOPED}),
     Case.EDITION_NOT_ENTERPRISE: frozenset({Trait.ENTERPRISE_ONLY}),
     Case.LICENSE_INVALID: frozenset(),
+    Case.EE_LICENSE_INVALID: frozenset({Trait.ACCOUNT_PRIMARY}),
     Case.EE_ACCOUNT_PUBLIC: frozenset({Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY}),
     Case.EE_ACCOUNT_SSO_VERIFIED: frozenset({Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY}),
     Case.EE_ACCOUNT_PRIVATE_ALL: frozenset({Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY}),
@@ -382,6 +384,9 @@ SCENARIOS: dict[Case, Scenario] = {
     Case.FOREIGN_WORKSPACE_QUERY: Scenario(bearer=Bearer.PRIMARY, foreign_workspace_query=True),
     Case.EDITION_NOT_ENTERPRISE: Scenario(bearer=Bearer.PRIMARY, edition=DeploymentEdition.COMMUNITY),
     Case.LICENSE_INVALID: Scenario(bearer=Bearer.PRIMARY, license_status=LicenseStatus.EXPIRED),
+    Case.EE_LICENSE_INVALID: Scenario(
+        bearer=Bearer.PRIMARY, edition=DeploymentEdition.ENTERPRISE, license_status=LicenseStatus.EXPIRED
+    ),
     Case.EE_ACCOUNT_PUBLIC: Scenario(
         bearer=Bearer.ACCOUNT_MEMBER,
         edition=DeploymentEdition.ENTERPRISE,
@@ -480,16 +485,22 @@ _ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
     Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_SCOPE,
     Case.LOW_ROLE: ADMIT,
     Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+    Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
     Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
     Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
 }
 
 
+# The account-identity routes are the only ones an enterprise deployment refuses
+# on a dead licence; in every other edition they behave like the rest.
+_ACCOUNT_IDENTITY: dict[Case, Expect] = {**_ACCOUNT_ONLY_NO_WORKSPACE, Case.EE_LICENSE_INVALID: DENY_LICENSE}
+
+
 MATRIX: dict[str, dict[Case, Expect]] = {
-    "account.get": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "account.sessions.revoke_self": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "account.sessions.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "account.sessions.revoke_one": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
+    "account.get": dict(_ACCOUNT_IDENTITY),
+    "account.sessions.revoke_self": dict(_ACCOUNT_IDENTITY),
+    "account.sessions.list": dict(_ACCOUNT_IDENTITY),
+    "account.sessions.revoke_one": dict(_ACCOUNT_IDENTITY),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.describe": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "apps.list": {
@@ -501,6 +512,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
@@ -513,6 +525,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
@@ -525,6 +538,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
     },
@@ -540,6 +554,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
     "workspaces.members.remove": {
@@ -552,6 +567,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
     "workspaces.members.update_role": {
@@ -564,6 +580,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_DENIED: DENY_RBAC,
     },
     "app_dsl.import": {
@@ -577,6 +594,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
     },
     "app_dsl.import_confirm": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -589,6 +607,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
     },
     "apps.describe": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -602,6 +621,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -624,6 +644,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -646,6 +667,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -668,6 +690,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -696,6 +719,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -724,6 +748,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -752,6 +777,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -780,6 +806,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -808,6 +835,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.EE_LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,

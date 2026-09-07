@@ -19,7 +19,7 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.requirements import CheckScope, CheckSessionOwnership
+from controllers.openapi.auth.requirements import CheckEnterpriseLicense, CheckScope, CheckSessionOwnership
 from machinery.context import AccountRequestContext
 from services.entities.account_access_entities import AccountSessionPage
 
@@ -118,6 +118,14 @@ def test_session_ownership_runs_after_token_scope():
     token_scope_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckScope))
     ownership_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckSessionOwnership))
     assert token_scope_index < ownership_index
+
+
+def test_every_account_route_declares_the_enterprise_licence_gate():
+    """What an enterprise deployment with a dead licence refuses: the identity
+    routes and nothing else on this surface, which the allow/deny matrix pins.
+    """
+    for view in (AccountApi.get, AccountSessionsSelfApi.delete, AccountSessionsApi.get, AccountSessionByIdApi.delete):
+        assert any(isinstance(requirement, CheckEnterpriseLicense) for requirement in view.__spec__.requirements)
 
 
 def test_the_other_session_routes_do_not_declare_it():
