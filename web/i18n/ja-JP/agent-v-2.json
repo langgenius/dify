@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Agent に表示する名前",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Agent はいつこのスペースを使いますか？",
   "agentDetail.configure.knowledgeFs.description": "Agent は読み取り専用 CLI で自律的に閲覧・検索します。各スペースは独自の検索モデルを使用します。画像の証拠を読むには、画像対応の Agent モデルと有効なサンドボックスシェルが必要です。",
-  "agentDetail.configure.knowledgeFs.details": "{{name}} の詳細",
   "agentDetail.configure.knowledgeFs.empty": "一致するスペースがありません。さらに読み込んで検索範囲を広げてください。",
   "agentDetail.configure.knowledgeFs.filter": "読み込み済みのスペースを絞り込む",
   "agentDetail.configure.knowledgeFs.invalid": "一意の名前（最大 120 文字）、有効なスペース ID を使用し、10 個以内で選択してください。",

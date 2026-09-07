@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Название для агента",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Когда агенту следует использовать это пространство?",
   "agentDetail.configure.knowledgeFs.description": "Агент самостоятельно просматривает и ищет данные через CLI только для чтения. Каждое пространство использует свои модели поиска. Для изображений нужны модель агента с поддержкой зрения и включённая оболочка песочницы.",
-  "agentDetail.configure.knowledgeFs.details": "Сведения о {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Совпадений нет. Загрузите ещё пространства для поиска.",
   "agentDetail.configure.knowledgeFs.filter": "Фильтр загруженных пространств",
   "agentDetail.configure.knowledgeFs.invalid": "Используйте уникальные имена (до 120 символов), корректные ID и не более 10 пространств.",

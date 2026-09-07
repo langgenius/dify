@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Naam voor de agent",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Wanneer moet de agent deze ruimte gebruiken?",
   "agentDetail.configure.knowledgeFs.description": "De agent doorzoekt zelfstandig de geselecteerde ruimtes via de alleen-lezen CLI. Elke ruimte gebruikt eigen zoekmodellen. Afbeeldingen vereisen een agentmodel met beeldondersteuning en een ingeschakelde sandbox-shell.",
-  "agentDetail.configure.knowledgeFs.details": "Details van {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Geen overeenkomende ruimtes. Laad meer om verder te zoeken.",
   "agentDetail.configure.knowledgeFs.filter": "Geladen ruimtes filteren",
   "agentDetail.configure.knowledgeFs.invalid": "Gebruik unieke namen (maximaal 120 tekens), geldige ruimte-ID’s en maximaal 10 ruimtes.",

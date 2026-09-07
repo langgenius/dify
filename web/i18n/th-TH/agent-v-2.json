@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "ชื่อที่แสดงให้ Agent",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Agent ควรใช้พื้นที่นี้เมื่อใด",
   "agentDetail.configure.knowledgeFs.description": "Agent เรียกดูและค้นหาเองผ่าน CLI แบบอ่านอย่างเดียว แต่ละพื้นที่ใช้โมเดลค้นหาของตนเอง หลักฐานรูปภาพต้องใช้โมเดล Agent ที่รองรับภาพและเปิดเชลล์แซนด์บ็อกซ์",
-  "agentDetail.configure.knowledgeFs.details": "รายละเอียดของ {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "ไม่พบพื้นที่ที่ตรงกัน โหลดเพิ่มเพื่อขยายการค้นหา",
   "agentDetail.configure.knowledgeFs.filter": "กรองพื้นที่ที่โหลดแล้ว",
   "agentDetail.configure.knowledgeFs.invalid": "ใช้ชื่อที่ไม่ซ้ำกัน (สูงสุด 120 อักขระ) รหัสพื้นที่ที่ถูกต้อง และไม่เกิน 10 พื้นที่",

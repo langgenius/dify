@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Agent को दिखने वाला नाम",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Agent को यह स्पेस कब उपयोग करना चाहिए?",
   "agentDetail.configure.knowledgeFs.description": "Agent केवल-पढ़ने वाले CLI से स्वयं ब्राउज़ और खोज करता है। हर स्पेस अपने खोज मॉडल उपयोग करता है। चित्र साक्ष्य के लिए दृष्टि-सक्षम Agent मॉडल और चालू सैंडबॉक्स शेल आवश्यक हैं।",
-  "agentDetail.configure.knowledgeFs.details": "{{name}} का विवरण",
   "agentDetail.configure.knowledgeFs.empty": "कोई मेल खाता स्पेस नहीं मिला। खोज बढ़ाने के लिए और लोड करें।",
   "agentDetail.configure.knowledgeFs.filter": "लोड किए गए स्पेस फ़िल्टर करें",
   "agentDetail.configure.knowledgeFs.invalid": "अद्वितीय नाम (अधिकतम 120 अक्षर), मान्य स्पेस ID और अधिकतम 10 स्पेस उपयोग करें।",

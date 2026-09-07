@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Tên dành cho Agent",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Khi nào Agent nên dùng không gian này?",
   "agentDetail.configure.knowledgeFs.description": "Agent tự duyệt và tìm kiếm qua CLI chỉ đọc. Mỗi không gian dùng mô hình tìm kiếm riêng. Bằng chứng hình ảnh cần mô hình Agent hỗ trợ thị giác và shell sandbox được bật.",
-  "agentDetail.configure.knowledgeFs.details": "Chi tiết về {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Không có không gian phù hợp. Tải thêm để mở rộng tìm kiếm.",
   "agentDetail.configure.knowledgeFs.filter": "Lọc không gian đã tải",
   "agentDetail.configure.knowledgeFs.invalid": "Dùng tên duy nhất (tối đa 120 ký tự), ID hợp lệ và không quá 10 không gian.",

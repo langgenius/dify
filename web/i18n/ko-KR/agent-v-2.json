@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Agent에 표시할 이름",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Agent가 이 공간을 언제 사용해야 하나요?",
   "agentDetail.configure.knowledgeFs.description": "Agent는 읽기 전용 CLI로 자율적으로 탐색하고 검색합니다. 각 공간은 자체 검색 모델을 사용합니다. 이미지 근거를 읽으려면 비전을 지원하는 Agent 모델과 활성화된 샌드박스 셸이 필요합니다.",
-  "agentDetail.configure.knowledgeFs.details": "{{name}} 상세 정보",
   "agentDetail.configure.knowledgeFs.empty": "일치하는 공간이 없습니다. 더 불러와 검색 범위를 넓히세요.",
   "agentDetail.configure.knowledgeFs.filter": "불러온 공간 필터링",
   "agentDetail.configure.knowledgeFs.invalid": "고유한 이름(최대 120자)과 유효한 공간 ID를 사용하고 최대 10개 공간을 선택하세요.",

@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Ajanın göreceği ad",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Ajan bu alanı ne zaman kullanmalı?",
   "agentDetail.configure.knowledgeFs.description": "Ajan, salt okunur CLI üzerinden bağımsız olarak gezinir ve arama yapar. Her alan kendi arama modellerini kullanır. Görseller, görme destekli bir ajan modeli ve etkin sanal alan kabuğu gerektirir.",
-  "agentDetail.configure.knowledgeFs.details": "{{name}} ayrıntıları",
   "agentDetail.configure.knowledgeFs.empty": "Eşleşen alan yok. Aramayı genişletmek için daha fazla yükleyin.",
   "agentDetail.configure.knowledgeFs.filter": "Yüklenen alanları filtrele",
   "agentDetail.configure.knowledgeFs.invalid": "Benzersiz adlar (en fazla 120 karakter), geçerli alan kimlikleri ve en fazla 10 alan kullanın.",

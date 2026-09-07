@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Nama untuk Agen",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Kapan Agen harus memakai ruang ini?",
   "agentDetail.configure.knowledgeFs.description": "Agen menelusuri dan mencari secara mandiri melalui CLI hanya-baca. Setiap ruang memakai model pencariannya sendiri. Bukti gambar memerlukan model Agen dengan visi dan shell sandbox yang aktif.",
-  "agentDetail.configure.knowledgeFs.details": "Detail {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Tidak ada ruang yang cocok. Muat lebih banyak untuk memperluas pencarian.",
   "agentDetail.configure.knowledgeFs.filter": "Filter ruang yang dimuat",
   "agentDetail.configure.knowledgeFs.invalid": "Gunakan nama unik (maksimal 120 karakter), ID ruang yang valid, dan paling banyak 10 ruang.",

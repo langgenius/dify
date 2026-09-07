@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Agent 使用的名称",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Agent 应在什么情况下使用此知识库？",
   "agentDetail.configure.knowledgeFs.description": "Agent 通过只读 CLI 自主浏览和检索所选知识库。检索使用各知识库自己的模型；读取图片需要 Agent 模型支持视觉，并启用沙箱 Shell。",
-  "agentDetail.configure.knowledgeFs.details": "查看 {{name}} 的详情",
   "agentDetail.configure.knowledgeFs.empty": "没有匹配的知识库。可加载更多后继续筛选。",
   "agentDetail.configure.knowledgeFs.filter": "筛选已加载的知识库",
   "agentDetail.configure.knowledgeFs.invalid": "请使用唯一名称（最多 120 字符）及有效知识库 ID，最多绑定 10 个知识库。",

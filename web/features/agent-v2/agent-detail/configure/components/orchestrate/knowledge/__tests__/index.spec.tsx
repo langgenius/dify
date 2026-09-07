@@ -132,20 +132,23 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.sets).toEqual([])
   })
 
-  it('opens full space details without selecting the space', async () => {
+  it('keeps knowledge descriptions accessible without a separate help action', async () => {
     const user = userEvent.setup()
     setup([], { spaces: [space()] })
     const dialog = await open(user)
-    const details = within(dialog).getByRole('button', { name: /knowledgeFs.details/ })
-    await user.click(details)
-    const popover = await screen.findByRole('dialog', { name: 'Product manual' })
-    expect(within(popover).getByText('A real knowledge space')).toBeVisible()
-    expect(within(popover).queryByText(SPACE)).not.toBeInTheDocument()
-    await user.keyboard('{Escape}')
-    expect(within(dialog).getByRole('checkbox', { name: 'Product manual' })).toHaveAttribute(
-      'aria-checked',
-      'false',
+    const list = within(dialog).getByRole('group', { name: /knowledgeFs.select/ })
+    expect(within(list).queryByRole('button')).not.toBeInTheDocument()
+    const checkbox = within(list).getByRole('checkbox', { name: 'Product manual' })
+    expect(checkbox).toHaveAccessibleDescription('A real knowledge space')
+    await user.click(checkbox)
+    expect(checkbox).toHaveAttribute('aria-checked', 'true')
+    await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
+    expect(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ })).toHaveValue(
+      'Product manual',
     )
+    expect(
+      within(dialog).getByRole('textbox', { name: /knowledgeFs.bindingDescription/ }),
+    ).toHaveValue('A real knowledge space')
     expect(snapshot().knowledge.spaces).toEqual([])
   })
 

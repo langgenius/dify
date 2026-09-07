@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "نام قابل مشاهده برای عامل",
   "agentDetail.configure.knowledgeFs.bindingDescription": "عامل چه زمانی باید از این فضا استفاده کند؟",
   "agentDetail.configure.knowledgeFs.description": "عامل به‌طور مستقل با CLI فقط‌خواندنی مرور و جست‌وجو می‌کند. هر فضا مدل‌های جست‌وجوی خود را دارد. شواهد تصویری به مدل عامل با قابلیت بینایی و پوستهٔ ایزولهٔ فعال نیاز دارند.",
-  "agentDetail.configure.knowledgeFs.details": "جزئیات {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "فضای منطبقی نیست. برای گسترش جست‌وجو موارد بیشتری بارگذاری کنید.",
   "agentDetail.configure.knowledgeFs.filter": "فیلتر فضاهای بارگذاری‌شده",
   "agentDetail.configure.knowledgeFs.invalid": "از نام‌های یکتا (حداکثر ۱۲۰ نویسه)، شناسه‌های معتبر و حداکثر ۱۰ فضا استفاده کنید.",

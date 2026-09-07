@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "ຊື່ທີ່ສະແດງໃຫ້ Agent",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Agent ຄວນໃຊ້ພື້ນທີ່ນີ້ເມື່ອໃດ?",
   "agentDetail.configure.knowledgeFs.description": "Agent ຄົ້ນຫາແລະເບິ່ງຂໍ້ມູນເອງຜ່ານ CLI ແບບອ່ານຢ່າງດຽວ. ແຕ່ລະພື້ນທີ່ໃຊ້ໂມເດລຄົ້ນຫາຂອງຕົນ. ຮູບພາບຕ້ອງໃຊ້ໂມເດລ Agent ທີ່ຮອງຮັບພາບ ແລະເປີດ shell sandbox.",
-  "agentDetail.configure.knowledgeFs.details": "ລາຍລະອຽດຂອງ {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "ບໍ່ພົບພື້ນທີ່ທີ່ກົງກັນ. ໂຫຼດເພີ່ມເພື່ອຂະຫຍາຍການຄົ້ນຫາ.",
   "agentDetail.configure.knowledgeFs.filter": "ກັ່ນຕອງພື້ນທີ່ທີ່ໂຫຼດແລ້ວ",
   "agentDetail.configure.knowledgeFs.invalid": "ໃຊ້ຊື່ທີ່ບໍ່ຊ້ຳກັນ (ສູງສຸດ 120 ຕົວອັກສອນ), ID ທີ່ຖືກຕ້ອງ ແລະບໍ່ເກີນ 10 ພື້ນທີ່.",

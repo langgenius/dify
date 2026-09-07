@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Nume pentru agent",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Când trebuie să folosească agentul acest spațiu?",
   "agentDetail.configure.knowledgeFs.description": "Agentul explorează și caută autonom prin CLI doar în citire. Fiecare spațiu folosește propriile modele de căutare. Imaginile necesită un model de agent cu vedere și terminalul izolat activat.",
-  "agentDetail.configure.knowledgeFs.details": "Detalii pentru {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Nu există spații potrivite. Încărcați mai multe pentru a extinde căutarea.",
   "agentDetail.configure.knowledgeFs.filter": "Filtrați spațiile încărcate",
   "agentDetail.configure.knowledgeFs.invalid": "Folosiți nume unice (maximum 120 de caractere), ID-uri valide și cel mult 10 spații.",

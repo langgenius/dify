@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Ime za agenta",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Kdaj naj agent uporabi ta prostor?",
   "agentDetail.configure.knowledgeFs.description": "Agent samostojno brska in išče prek CLI samo za branje. Vsak prostor uporablja svoje iskalne modele. Slike zahtevajo model agenta z vidom in omogočeno lupino peskovnika.",
-  "agentDetail.configure.knowledgeFs.details": "Podrobnosti za {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Ni ustreznih prostorov. Naložite več za širše iskanje.",
   "agentDetail.configure.knowledgeFs.filter": "Filtriraj naložene prostore",
   "agentDetail.configure.knowledgeFs.invalid": "Uporabite enolična imena (do 120 znakov), veljavne ID-je in največ 10 prostorov.",

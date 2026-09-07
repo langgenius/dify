@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Nome para o agente",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Quando o agente deve usar este espaço?",
   "agentDetail.configure.knowledgeFs.description": "O agente explora e pesquisa de forma autônoma pela CLI somente leitura. Cada espaço usa seus próprios modelos de busca. Imagens exigem um modelo de agente com visão e o shell isolado habilitado.",
-  "agentDetail.configure.knowledgeFs.details": "Detalhes de {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Nenhum espaço correspondente. Carregue mais para ampliar a busca.",
   "agentDetail.configure.knowledgeFs.filter": "Filtrar espaços carregados",
   "agentDetail.configure.knowledgeFs.invalid": "Use nomes exclusivos (até 120 caracteres), IDs válidos e no máximo 10 espaços.",

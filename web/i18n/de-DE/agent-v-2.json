@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Name für den Agenten",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Wann soll der Agent diesen Raum verwenden?",
   "agentDetail.configure.knowledgeFs.description": "Der Agent durchsucht die ausgewählten Räume selbstständig über die schreibgeschützte CLI. Jeder Raum nutzt seine eigenen Suchmodelle. Bildbelege erfordern ein bildfähiges Agent-Modell und eine aktivierte Sandbox-Shell.",
-  "agentDetail.configure.knowledgeFs.details": "Details zu {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Keine passenden Räume. Laden Sie weitere Räume, um die Suche zu erweitern.",
   "agentDetail.configure.knowledgeFs.filter": "Geladene Räume filtern",
   "agentDetail.configure.knowledgeFs.invalid": "Verwenden Sie eindeutige Namen (max. 120 Zeichen), gültige Raum-IDs und höchstens 10 Räume.",

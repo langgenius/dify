@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Nazwa dla agenta",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Kiedy agent powinien używać tej przestrzeni?",
   "agentDetail.configure.knowledgeFs.description": "Agent samodzielnie przegląda i przeszukuje przestrzenie przez CLI tylko do odczytu. Każda przestrzeń używa własnych modeli wyszukiwania. Obrazy wymagają modelu agenta obsługującego wizję i włączonej powłoki piaskownicy.",
-  "agentDetail.configure.knowledgeFs.details": "Szczegóły {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Brak pasujących przestrzeni. Załaduj więcej, aby rozszerzyć wyszukiwanie.",
   "agentDetail.configure.knowledgeFs.filter": "Filtruj załadowane przestrzenie",
   "agentDetail.configure.knowledgeFs.invalid": "Użyj unikalnych nazw (do 120 znaków), prawidłowych identyfikatorów i najwyżej 10 przestrzeni.",

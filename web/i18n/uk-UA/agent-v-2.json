@@ -118,7 +118,6 @@
   "agentDetail.configure.knowledgeFs.alias": "Назва для агента",
   "agentDetail.configure.knowledgeFs.bindingDescription": "Коли агент має використовувати цей простір?",
   "agentDetail.configure.knowledgeFs.description": "Агент самостійно переглядає та шукає дані через CLI лише для читання. Кожен простір використовує власні моделі пошуку. Зображення потребують моделі агента з підтримкою зору та ввімкненої оболонки пісочниці.",
-  "agentDetail.configure.knowledgeFs.details": "Відомості про {{name}}",
   "agentDetail.configure.knowledgeFs.empty": "Відповідних просторів немає. Завантажте більше для розширення пошуку.",
   "agentDetail.configure.knowledgeFs.filter": "Фільтрувати завантажені простори",
   "agentDetail.configure.knowledgeFs.invalid": "Використовуйте унікальні назви (до 120 символів), коректні ID та щонайбільше 10 просторів.",

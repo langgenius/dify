@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgeni
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
@@ -107,20 +106,6 @@ function KnowledgeSpaceOption({
           onCheckedChange={onCheckedChange}
         />
       </label>
-      <Infotip
-        aria-label={t(($) => $['agentDetail.configure.knowledgeFs.details'], { name })}
-        className="size-6"
-        popupClassName="max-h-72 w-72 max-w-[calc(100vw-2rem)] space-y-2 overflow-y-auto p-3"
-      >
-        <PopoverTitle className="system-sm-medium wrap-break-word text-text-primary">
-          {name}
-        </PopoverTitle>
-        {!!description && (
-          <p className="system-xs-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
-            {description}
-          </p>
-        )}
-      </Infotip>
     </div>
   )
 }
