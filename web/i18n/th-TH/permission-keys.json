@@ -1,5 +1,4 @@
 {
-  "agent.manage": "จัดการ Agents",
   "api_extension.manage": "จัดการการกําหนดค่าส่วนขยาย API",
   "app.access_config": "กําหนดค่าสิทธิ์การเข้าถึงแอป",
   "app.acl.access_config": "ดูและจัดการสิทธิ์การเข้าถึง",
