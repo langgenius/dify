@@ -16,7 +16,7 @@ dependencies = [
     "gevent-websocket==0.10.1",
     "gmpy2>=2.3.0,<3.0.0",
     "google-api-python-client>=2.198.0,<3.0.0",
-    "gunicorn>=26.1.0,<27.0.0",
+    "gunicorn>=26.2.0,<27.0.0",
     "psycogreen>=1.0.2,<2.0.0",
     "psycopg2-binary>=2.9.12,<3.0.0",
     "python-socketio>=5.13.0,<6.0.0",
