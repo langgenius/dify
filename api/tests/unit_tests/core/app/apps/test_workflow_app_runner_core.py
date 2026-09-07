@@ -4,6 +4,7 @@ import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import override
 
 import pytest
 
@@ -12,7 +13,9 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFr
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,
+    QueueIterationStartEvent,
     QueueLoopCompletedEvent,
+    QueueLoopStartEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeRetryEvent,
@@ -28,6 +31,9 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
+from core.workflow.workflow_entry import iter_dify_graph_engine_events
+from graphon.engine import Engine
+from graphon.engine.layer import Layer
 from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunPausedEvent,
@@ -608,20 +614,10 @@ class TestWorkflowBasedAppRunner:
         assert any(isinstance(event, QueueIterationCompletedEvent) for event in published)
         assert any(isinstance(event, QueueLoopCompletedEvent) for event in published)
 
-    @pytest.mark.parametrize(
-        ("container_id", "expected_iteration_id", "expected_loop_id"),
-        [
-            ("", None, None),
-            ("iteration-node", "iteration-node", None),
-            ("loop-node", None, "loop-node"),
-        ],
-    )
-    def test_handle_node_started_maps_direct_container_owner(
-        self,
-        container_id: str,
-        expected_iteration_id: str | None,
-        expected_loop_id: str | None,
-    ):
+    @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
+    def test_nested_engine_events_retain_both_container_ancestors(self, ownership: str):
+        from tests.unit_tests.core.app.workflow.test_persistence_layer import _make_layer
+
         published: list[object] = []
 
         class _QueueManager:
@@ -629,33 +625,55 @@ class TestWorkflowBasedAppRunner:
                 del publish_from
                 published.append(event)
 
-        graph_config = {
-            "nodes": [
-                {"id": "iteration-node", "data": {"type": "iteration", "container_id": "loop-node"}},
-                {"id": "loop-node", "data": {"type": "loop"}},
-            ],
-            "edges": [],
-        }
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph=SimpleNamespace(graph_config=graph_config)))
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-
-        runner._handle_event(
-            workflow_entry,
-            NodeRunStartedEvent(
-                id="exec",
-                node_id="node",
-                node_type=BuiltinNodeTypes.START,
-                node_title="Start",
-                start_at=datetime.now(UTC),
-                container_id=container_id,
-            ),
+        graph_config = _nested_container_graph(ownership)
+        graph_config["nodes"].append(
+            {"id": "deep-end", "data": {"type": "end", "title": "Nested End", "outputs": [], "container_id": "deep"}}
         )
+        graph_config["edges"].append({"id": "deep-output", "source": "deep-start", "target": "deep-end"})
+        layer, _, node_repo, state = _make_layer(graph_data=graph_config)
+        persisted_starts: dict[str, dict] = {}
 
-        event = published[-1]
-        assert isinstance(event, QueueNodeStartedEvent)
-        assert event.in_iteration_id == expected_iteration_id
-        assert event.in_loop_id == expected_loop_id
-        assert not (event.in_iteration_id and event.in_loop_id)
+        class _StartMetadataLayer(Layer):
+            @override
+            def on_event(self, event):
+                if isinstance(event, NodeRunStartedEvent):
+                    persisted_starts[event.node_id] = dict(node_repo.saved[-1].metadata)
+
+        state.variable_pool.add(["start", "items"], ["item"])
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        graph = runner._init_graph(
+            graph_config=graph_config,
+            graph_runtime_state=state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        engine = Engine(graph=graph, runtime_state=state, workers=1)
+        engine.add_layer(layer)
+        engine.add_layer(_StartMetadataLayer())
+        for event in iter_dify_graph_engine_events(engine):
+            runner._handle_event(SimpleNamespace(graph_engine=engine), event)
+
+        expected = {
+            "outer": (None, None),
+            "inner": (None, "outer"),
+            "deep": ("inner", "outer"),
+            "deep-end": ("inner", "deep"),
+        }
+        started = {event.node_id: event for event in published if isinstance(event, QueueNodeStartedEvent)}
+        persisted = {event.node_id: event for event in node_repo.saved}
+        for node_id, (iteration_id, loop_id) in expected.items():
+            assert (started[node_id].in_iteration_id, started[node_id].in_loop_id) == (iteration_id, loop_id)
+            for metadata in (persisted_starts[node_id], persisted[node_id].metadata):
+                assert (metadata.get("iteration_id"), metadata.get("loop_id")) == (iteration_id, loop_id)
+        for metadata in (persisted_starts["deep-end"], persisted["deep-end"].metadata):
+            assert metadata["iteration_index"] == 0
+            assert metadata["loop_index"] == 0
+        for event in published:
+            if isinstance(
+                event,
+                QueueIterationStartEvent | QueueIterationCompletedEvent | QueueLoopStartEvent | QueueLoopCompletedEvent,
+            ):
+                assert (event.metadata.get("iteration_id"), event.metadata.get("loop_id")) == expected[event.node_id]
 
     def test_handle_nested_answer_success_publishes_text_chunk(self):
         published: list[object] = []
@@ -679,7 +697,9 @@ class TestWorkflowBasedAppRunner:
                 node_type=BuiltinNodeTypes.ANSWER,
                 start_at=datetime.now(UTC),
                 finished_at=datetime.now(UTC),
-                node_run_result=NodeRunResult(outputs={"answer": "inside iteration"}),
+                node_run_result=NodeRunResult(
+                    outputs={"answer": "inside iteration"}, metadata={"iteration_id": "iteration"}
+                ),
                 container_id="iteration",
             ),
         )

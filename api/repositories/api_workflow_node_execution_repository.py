@@ -9,6 +9,9 @@ The service repository handles operations that require access to database-specif
 tenant_id, app_id, triggered_from, etc., which are not part of the core domain model.
 """
 
+from __future__ import annotations
+
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,7 +19,22 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
+
+
+class WorkflowNodeExecutionSnapshotSource(Protocol):
+    id: str
+    node_execution_id: str | None
+    node_id: str
+    node_type: str
+    title: str
+    index: int
+    status: WorkflowNodeExecutionStatus
+    elapsed_time: float | None
+    created_at: datetime
+    finished_at: datetime | None
+    execution_metadata: str | None
 
 
 @dataclass(frozen=True)
@@ -38,6 +56,37 @@ class WorkflowNodeExecutionSnapshot:
     finished_at: datetime | None  # Execution finished timestamp.
     iteration_id: str | None = None  # Iteration id from execution metadata, if any.
     loop_id: str | None = None  # Loop id from execution metadata, if any.
+
+    @classmethod
+    def from_execution(
+        cls, row: WorkflowNodeExecutionSnapshotSource | WorkflowNodeExecutionModel
+    ) -> WorkflowNodeExecutionSnapshot:
+        metadata: dict[str, object] = {}
+        if row.execution_metadata:
+            try:
+                parsed_metadata = json.loads(row.execution_metadata)
+                if isinstance(parsed_metadata, dict):
+                    metadata = parsed_metadata
+            except json.JSONDecodeError:
+                metadata = {}
+        iteration_id = metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
+        loop_id = metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
+        elapsed_time = row.elapsed_time
+        if elapsed_time is None:
+            elapsed_time = (row.finished_at - row.created_at).total_seconds() if row.finished_at else 0.0
+        return cls(
+            execution_id=row.node_execution_id or row.id,
+            node_id=row.node_id,
+            node_type=row.node_type,
+            title=row.title,
+            index=row.index,
+            status=row.status,
+            elapsed_time=float(elapsed_time),
+            created_at=row.created_at,
+            finished_at=row.finished_at,
+            iteration_id=str(iteration_id) if iteration_id else None,
+            loop_id=str(loop_id) if loop_id else None,
+        )
 
 
 class DifyAPIWorkflowNodeExecutionRepository(Protocol):

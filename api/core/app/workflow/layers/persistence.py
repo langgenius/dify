@@ -274,36 +274,13 @@ class WorkflowPersistenceLayer(Layer):
     # ------------------------------------------------------------------
     # Node-level handlers
     # ------------------------------------------------------------------
-    def _resolve_container_ids(self, container_id: str) -> tuple[str | None, str | None]:
-        if not container_id:
-            return None, None
-
-        nodes = self._workflow_info.graph_data.get("nodes")
-        if not isinstance(nodes, list):
-            raise ValueError("workflow graph nodes must be a list")
-        container_type = next(
-            (
-                data.get("type")
-                for node in nodes
-                if isinstance(node, Mapping)
-                and node.get("id") == container_id
-                and isinstance((data := node.get("data")), Mapping)
-            ),
-            None,
-        )
-        match container_type:
-            case BuiltinNodeTypes.ITERATION:
-                return container_id, None
-            case BuiltinNodeTypes.LOOP:
-                return None, container_id
-            case _:
-                raise ValueError(f"Unknown workflow container: {container_id}")
-
     def _handle_node_started(self, event: NodeRunStartedEvent) -> None:
         execution = self._get_workflow_execution()
-        iteration_id, loop_id = self._resolve_container_ids(event.container_id)
+        iteration_id = event.node_run_result.metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID)
+        loop_id = event.node_run_result.metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID)
 
         metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
+            **event.node_run_result.metadata,
             WorkflowNodeExecutionMetadataKey.ITERATION_ID: iteration_id,
             WorkflowNodeExecutionMetadataKey.LOOP_ID: loop_id,
         }

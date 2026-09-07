@@ -333,9 +333,8 @@ class DifyNodeFactory(NodeFactory):
         self.init_params = init_params
         self.runtime_state = runtime_state
         self._dify_context = self._resolve_dify_context(init_params.run_context)
-        self._human_input_run_context = human_input_run_context
         self._containerize_workflow_tools = containerize_workflow_tools
-        human_input_context = (
+        self._human_input_run_context = (
             self._dify_context
             if human_input_run_context is None
             else (
@@ -374,7 +373,7 @@ class DifyNodeFactory(NodeFactory):
             conversation_id_getter=self._conversation_id,
         )
         self._human_input_runtime = DifyHumanInputNodeRuntime(
-            human_input_context,
+            self._human_input_run_context,
             workflow_execution_id_getter=lambda: get_system_text(
                 self.runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
@@ -420,11 +419,7 @@ class DifyNodeFactory(NodeFactory):
 
     @property
     def human_input_run_context(self) -> DifyRunContext:
-        if self._human_input_run_context is None:
-            return self._dify_context
-        if isinstance(self._human_input_run_context, DifyRunContext):
-            return self._human_input_run_context
-        return self._resolve_dify_context(self._human_input_run_context)
+        return self._human_input_run_context
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:

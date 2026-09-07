@@ -1,6 +1,7 @@
 import type { HumanInputFormTimeoutResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
+import { applyHumanInputTimeout } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useWorkflowNodeHumanInputFormTimeout = () => {
@@ -12,13 +13,7 @@ export const useWorkflowNodeHumanInputFormTimeout = () => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
       const newWorkflowRunningData = produce(workflowRunningData!, (draft) => {
-        if (draft.humanInputFormDataList?.length) {
-          const currentFormIndex = draft.humanInputFormDataList.findIndex(
-            (item) => item.form_id === data.form_id,
-          )
-          if (currentFormIndex > -1)
-            draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
-        }
+        applyHumanInputTimeout(draft, data)
       })
       setWorkflowRunningData(newWorkflowRunningData)
     },

@@ -5,10 +5,9 @@ This module provides a concrete implementation of the service repository protoco
 using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
-import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any, Protocol, cast, override
+from typing import Any, cast, override
 
 from sqlalchemy import JSON, String, Text, asc, delete, desc, func, or_, select
 from sqlalchemy.engine import CursorResult
@@ -16,26 +15,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from extensions.ext_storage import storage
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionSnapshot,
+    WorkflowNodeExecutionSnapshotSource,
 )
-
-
-class _WorkflowNodeExecutionSnapshotRow(Protocol):
-    id: str
-    node_execution_id: str | None
-    node_id: str
-    node_type: str
-    title: str
-    index: int
-    status: WorkflowNodeExecutionStatus
-    elapsed_time: float | None
-    created_at: datetime
-    finished_at: datetime | None
-    execution_metadata: str | None
 
 
 class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):
@@ -229,43 +215,9 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         )
 
         with self._session_maker() as session:
-            rows = cast(Sequence[_WorkflowNodeExecutionSnapshotRow], session.execute(stmt).all())
+            rows = cast(Sequence[WorkflowNodeExecutionSnapshotSource], session.execute(stmt).all())
 
-        return [self._row_to_snapshot(row) for row in rows]
-
-    @staticmethod
-    def _row_to_snapshot(row: _WorkflowNodeExecutionSnapshotRow) -> WorkflowNodeExecutionSnapshot:
-        metadata: dict[str, object] = {}
-        execution_metadata = getattr(row, "execution_metadata", None)
-        if execution_metadata:
-            try:
-                metadata = json.loads(execution_metadata)
-            except json.JSONDecodeError:
-                metadata = {}
-        iteration_id = metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
-        loop_id = metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
-        execution_id = getattr(row, "node_execution_id", None) or row.id
-        elapsed_time = getattr(row, "elapsed_time", None)
-        created_at = row.created_at
-        finished_at = getattr(row, "finished_at", None)
-        if elapsed_time is None:
-            if finished_at is not None and created_at is not None:
-                elapsed_time = (finished_at - created_at).total_seconds()
-            else:
-                elapsed_time = 0.0
-        return WorkflowNodeExecutionSnapshot(
-            execution_id=str(execution_id),
-            node_id=row.node_id,
-            node_type=row.node_type,
-            title=row.title,
-            index=row.index,
-            status=row.status,
-            elapsed_time=float(elapsed_time),
-            created_at=created_at,
-            finished_at=finished_at,
-            iteration_id=str(iteration_id) if iteration_id else None,
-            loop_id=str(loop_id) if loop_id else None,
-        )
+        return [WorkflowNodeExecutionSnapshot.from_execution(row) for row in rows]
 
     @override
     def get_execution_by_id(
