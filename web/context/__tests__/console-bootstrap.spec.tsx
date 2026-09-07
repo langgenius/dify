@@ -24,7 +24,6 @@ import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceEditorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '../workspace-state'
@@ -204,7 +203,6 @@ function ConsoleBootstrapProbe() {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
@@ -247,10 +245,6 @@ function ConsoleBootstrapProbe() {
       <span>
         owner:
         {String(isCurrentWorkspaceOwner)}
-      </span>
-      <span>
-        editor:
-        {String(isCurrentWorkspaceEditor)}
       </span>
       <span>
         dataset operator:
@@ -412,7 +406,6 @@ describe('Console bootstrap', () => {
 
       expect(await screen.findByText('manager:true')).toBeInTheDocument()
       expect(screen.getByText('owner:true')).toBeInTheDocument()
-      expect(screen.getByText('editor:true')).toBeInTheDocument()
       expect(screen.getByText('dataset operator:false')).toBeInTheDocument()
     })
 

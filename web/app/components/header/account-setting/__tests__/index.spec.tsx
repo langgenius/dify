@@ -151,7 +151,6 @@ const baseConsoleState: ConsoleStateFixture = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   isLoadingCurrentWorkspace: false,

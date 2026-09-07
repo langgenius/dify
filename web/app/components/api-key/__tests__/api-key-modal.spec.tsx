@@ -123,7 +123,6 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
   }))
 })
 
