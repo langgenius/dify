@@ -932,5 +932,109 @@ class TestWeaviateVectorFactory(unittest.TestCase):
         }
 
 
+class TestGetUuids(unittest.TestCase):
+    """_get_uuids must align the insert path with the delete path.
+
+    The cleanup path persists ``DocumentSegment.index_node_id`` and later passes
+    it back to ``delete_by_ids``. The insert path receives the same identifier
+    in ``Document.metadata["doc_id"]`` (see qa_index_processor.py:87, which
+    generates ``doc_id = str(uuid.uuid4())`` and stores it both in the
+    segment row and in the document metadata before the vector insert).
+    The Weaviate adapter must use that identifier as the Weaviate object UUID
+    so the delete path actually targets the right object.
+    """
+
+    @override
+    def test_prefers_caller_doc_id_when_present(self) -> None:
+        from dify_vdb_weaviate.weaviate_vector import WeaviateVector
+
+        wv = WeaviateVector.__new__(WeaviateVector)  # bypass __init__
+        caller_uuid = "6390eac9-9441-4deb-9b1e-1c4d2e0a6f55"
+        documents = [
+            Document(
+                page_content="segment content",
+                metadata={"doc_id": caller_uuid, "doc_hash": "h"},
+            )
+        ]
+
+        uuids = wv._get_uuids(documents)
+
+        assert uuids == [caller_uuid]
+
+    @override
+    def test_falls_back_to_uuid5_when_doc_id_missing(self) -> None:
+        from dify_vdb_weaviate.weaviate_vector import WeaviateVector
+
+        wv = WeaviateVector.__new__(WeaviateVector)  # bypass __init__
+        documents = [
+            Document(
+                page_content="segment content",
+                metadata={"doc_hash": "h"},
+            )
+        ]
+
+        uuids = wv._get_uuids(documents)
+
+        # UUID5(namespace, "segment content") is deterministic; assert shape, not value
+        import uuid as _uuid
+
+        assert len(uuids) == 1
+        _uuid.UUID(uuids[0])  # parses as UUID
+        assert uuids[0] != "6390eac9-9441-4deb-9b1e-1c4d2e0a6f55"  # not the v4 fallback
+
+    @override
+    def test_falls_back_to_uuid5_when_doc_id_empty(self) -> None:
+        from dify_vdb_weaviate.weaviate_vector import WeaviateVector
+
+        wv = WeaviateVector.__new__(WeaviateVector)  # bypass __init__
+        documents = [
+            Document(
+                page_content="segment content",
+                metadata={"doc_id": ""},
+            )
+        ]
+
+        uuids = wv._get_uuids(documents)
+
+        import uuid as _uuid
+
+        assert len(uuids) == 1
+        _uuid.UUID(uuids[0])
+
+    @override
+    def test_handles_metadata_none(self) -> None:
+        from dify_vdb_weaviate.weaviate_vector import WeaviateVector
+
+        wv = WeaviateVector.__new__(WeaviateVector)  # bypass __init__
+        documents = [Document(page_content="segment content", metadata={})]
+
+        uuids = wv._get_uuids(documents)
+
+        import uuid as _uuid
+
+        assert len(uuids) == 1
+        _uuid.UUID(uuids[0])
+
+    @override
+    def test_handles_non_string_doc_id(self) -> None:
+        from dify_vdb_weaviate.weaviate_vector import WeaviateVector
+
+        wv = WeaviateVector.__new__(WeaviateVector)  # bypass __init__
+        # Some legacy callers may pass a non-string value; fall back to UUID5(content)
+        documents = [
+            Document(
+                page_content="segment content",
+                metadata={"doc_id": 12345},
+            )
+        ]
+
+        uuids = wv._get_uuids(documents)
+
+        import uuid as _uuid
+
+        assert len(uuids) == 1
+        _uuid.UUID(uuids[0])
+
+
 if __name__ == "__main__":
     unittest.main()
