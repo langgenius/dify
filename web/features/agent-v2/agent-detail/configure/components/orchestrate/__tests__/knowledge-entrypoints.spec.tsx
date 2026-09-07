@@ -66,7 +66,11 @@ function setup({ enabled = true, workflow = false, readOnly = false, configured 
             updated_at: '2026-09-07T00:00:00Z',
             linked_apps: 0,
             owner_account_id: 'account',
-            permission_keys: ['knowledge_space_read', 'knowledge_space_query'],
+            permission_keys: [
+              'knowledge_space_read',
+              'knowledge_space_query',
+              'knowledge_space_access_config',
+            ],
             resource_version: 1,
             state: 'active',
             technical_status: 'available',
