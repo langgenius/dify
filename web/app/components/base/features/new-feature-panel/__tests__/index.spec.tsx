@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Features } from '../../types'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -87,6 +88,7 @@ const renderPanel = (
     inWorkflow: boolean
     showFileUpload: boolean
     showAnnotationReply: boolean
+    fileUploadExtraContent: ReactNode
   }> = {},
 ) => {
   return renderWithConsoleQuery(
@@ -100,6 +102,7 @@ const renderPanel = (
         inWorkflow={props.inWorkflow}
         showFileUpload={props.showFileUpload}
         showAnnotationReply={props.showAnnotationReply}
+        fileUploadExtraContent={props.fileUploadExtraContent}
       />
     </FeaturesProvider>,
   )
@@ -188,6 +191,15 @@ describe('NewFeaturePanel', () => {
 
       expect(screen.queryByText(/feature\.fileUpload\.title/)).not.toBeInTheDocument()
       expect(screen.queryByText(/feature\.imageUpload\.title/)).not.toBeInTheDocument()
+    })
+
+    it('should render extra content after file upload when provided', () => {
+      renderPanel({
+        isChatMode: true,
+        fileUploadExtraContent: <div data-testid="file-upload-extra-content">Extra content</div>,
+      })
+
+      expect(screen.getByTestId('file-upload-extra-content')).toBeInTheDocument()
     })
   })
 
