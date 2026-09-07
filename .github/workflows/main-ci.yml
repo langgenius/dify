@@ -155,10 +155,6 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             python-style:
               - 'api/**'
-              - 'Makefile'
-              - 'dify-agent/pyproject.toml'
-              - 'vite.config.ts'
-              - '.vite-hooks/**'
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
@@ -169,8 +165,6 @@ jobs:
               - '.github/workflows/main-ci.yml'
             dify-agent-style:
               - 'dify-agent/**'
-              - 'vite.config.ts'
-              - '.vite-hooks/**'
               - '.github/workflows/style.yml'
               - '.github/workflows/main-ci.yml'
             web-style:

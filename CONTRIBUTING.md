@@ -61,31 +61,15 @@ How we prioritize:
 
 ## Development checks
 
-The commit hook runs `vp staged`: it fixes staged Python files with Ruff, checks and
-fixes JavaScript/TypeScript with Vite+, and formats supported non-code files.
-Fixes are staged while existing unstaged changes stay unstaged; failures restore
-the original state. Ruff uses locked lint-only dependencies. Git operations such
-as merges and rebases skip the hook checks; CI still validates their results.
-Use `vp hooks status` to check the hook installation.
+The commit hook runs `vp staged` to check and fix staged files. Python files use
+Ruff with each project's development dependencies and configuration. Fixes are
+staged automatically; existing unstaged changes stay unstaged, and failures restore
+the original state. Git operations such as merges and rebases skip staged checks.
 
-Run the relevant full checks and tests before opening a PR. They remain outside
-the commit hook, along with artifact generation:
-
-| Scope | Read-only checks | Fixes |
-| --- | --- | --- |
-| API | `make check`, `make type-check` | `make lint` |
-| Dify Agent | `make -C dify-agent check`, `make -C dify-agent typecheck` | `make -C dify-agent fix` |
-| TypeScript workspace | `vp run -w check` | `vp run -w check:fix` |
-| Web project rules | `vp run dify-web#lint:tss`, `vp run knip`, `vp run knip:production`, `vp run knip:production-unused-check` | Resolve reported issues |
-
-Python Style and TS Common independently enforce lint/formatting on PRs and merge
-groups. The `autofix.ci` workflow verifies generated API artifacts and Docker Compose;
-stale outputs fail even if the bot is unavailable. Bot repairs run only on PRs,
-never on merge groups.
-
-Regenerate API artifacts with `make generate-api-artifacts`, or Docker Compose with
-`./docker/generate_docker_compose`, then commit the results. The API command replaces
-the generated Markdown and API contract directories; raw OpenAPI JSON is ignored.
+Local hooks are optional and do not replace CI. The existing autofix workflow
+continues to offer Python repairs and regenerate artifacts on pull requests.
+Run relevant project checks and tests before opening a PR; for frontend static
+checks, use `vp run -w check` or `vp run -w check:fix` to apply fixes.
 
 ## Submitting your PR
 

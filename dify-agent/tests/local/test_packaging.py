@@ -48,12 +48,7 @@ def test_project_dependencies_split_client_and_server_requirements() -> None:
 
     assert set(project["dependencies"]) == CLIENT_SHARED_DTO_DEPENDENCIES
     assert set(project["optional-dependencies"]["server"]) == SERVER_RUNTIME_DEPENDENCIES
-    groups = pyproject["dependency-groups"]
-    dev = groups["dev"]
-    assert groups["lint"] == ["ruff>=0.15.11"]
-    assert [dependency for dependency in dev if isinstance(dependency, dict)] == [{"include-group": "lint"}]
-    resolved_dev = {dependency for dependency in dev if isinstance(dependency, str)} | set(groups["lint"])
-    assert resolved_dev == DEV_DEPENDENCIES
+    assert set(pyproject["dependency-groups"]["dev"]) == DEV_DEPENDENCIES
 
 
 def test_default_package_discovery_excludes_example_packages() -> None:
