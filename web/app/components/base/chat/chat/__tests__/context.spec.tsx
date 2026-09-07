@@ -2,7 +2,7 @@ import type { ChatItem } from '../../types'
 import type { ChatContextValue } from '../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useChatContext } from '../context'
 import { ChatContextProvider } from '../context-provider'
 
@@ -16,7 +16,9 @@ const TestConsumer = () => {
       <div data-testid="chatListCount">{context.chatList.length}</div>
       <div data-testid="questionIcon">{context.questionIcon}</div>
       <button onClick={() => context.onSend?.('test message', [])}>Send Button</button>
-      <button onClick={() => context.onRegenerate?.({ id: '1' } as ChatItem, { message: 'retry' })}>Regenerate Button</button>
+      <button onClick={() => context.onRegenerate?.({ id: '1' } as ChatItem, { message: 'retry' })}>
+        Regenerate Button
+      </button>
     </div>
   )
 }

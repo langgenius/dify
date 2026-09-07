@@ -2,6 +2,7 @@ import type { WebhookTriggerNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 
@@ -31,51 +32,6 @@ const {
   mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
 }))
 
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    disabled?: boolean
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({ children, disabled, onValueChange }: {
-      children: React.ReactNode
-      disabled?: boolean
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext.Provider value={{ disabled, onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectLabel: () => null,
-    SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <button data-testid="select-trigger" type="button" disabled={context.disabled} className={className}>
-            {children}
-          </button>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
-            empty select value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button data-testid={`select-${value}`} type="button" onClick={() => context.onValueChange?.(value)}>
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
@@ -87,16 +43,26 @@ vi.mock('copy-to-clipboard', () => ({
 }))
 
 vi.mock('@/app/components/base/input-with-copy', () => ({
-  default: ({ value, placeholder, onCopy }: { value: string, placeholder: string, onCopy: () => void }) => (
+  default: ({
+    value,
+    placeholder,
+    onCopy,
+  }: {
+    value: string
+    placeholder: string
+    onCopy: () => void
+  }) => (
     <div>
       <input value={value} placeholder={placeholder} readOnly />
-      <button data-testid="copy-input" type="button" onClick={onCopy}>Copy</button>
+      <button data-testid="copy-input" type="button" onClick={onCopy}>
+        Copy
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, children }: { title: string, children: React.ReactNode }) => (
+  default: ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div>
       <span>{title}</span>
       {children}
@@ -105,9 +71,19 @@ vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({ children, onCollapse, collapsed }: { children: React.ReactNode, onCollapse: (value: boolean) => void, collapsed: boolean }) => (
+  default: ({
+    children,
+    onCollapse,
+    collapsed,
+  }: {
+    children: React.ReactNode
+    onCollapse: (value: boolean) => void
+    collapsed: boolean
+  }) => (
     <div>
-      <button data-testid="toggle-output-vars" type="button" onClick={() => onCollapse(!collapsed)}>toggle output vars</button>
+      <button data-testid="toggle-output-vars" type="button" onClick={() => onCollapse(!collapsed)}>
+        toggle output vars
+      </button>
       {children}
     </div>
   ),
@@ -119,14 +95,23 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
 
 vi.mock('../components/header-table', () => ({
   default: ({ onChange }: { onChange: (value: Array<Record<string, string>>) => void }) => (
-    <button data-testid="header-table" type="button" onClick={() => onChange([{ key: 'Authorization', value: 'Bearer token' }])}>
+    <button
+      data-testid="header-table"
+      type="button"
+      onClick={() => onChange([{ key: 'Authorization', value: 'Bearer token' }])}
+    >
       header table
     </button>
   ),
 }))
 
 vi.mock('../components/parameter-table', () => ({
-  default: ({ title, onChange, placeholder, contentType }: {
+  default: ({
+    title,
+    onChange,
+    placeholder,
+    contentType,
+  }: {
     title: string
     onChange: (value: Array<Record<string, string>>) => void
     placeholder?: string
@@ -135,7 +120,11 @@ vi.mock('../components/parameter-table', () => ({
     <div>
       <span>{placeholder}</span>
       <span>{contentType}</span>
-      <button data-testid={`parameter-${title}`} type="button" onClick={() => onChange([{ key: title, value: 'value' }])}>
+      <button
+        data-testid={`parameter-${title}`}
+        type="button"
+        onClick={() => onChange([{ key: title, value: 'value' }])}
+      >
         {title}
       </button>
     </div>
@@ -143,13 +132,23 @@ vi.mock('../components/parameter-table', () => ({
 }))
 
 vi.mock('../components/paragraph-input', () => ({
-  default: ({ value, onChange, placeholder }: { value: string, onChange: (value: string) => void, placeholder: string }) => (
-    <textarea value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+  default: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string
+    onChange: (value: string) => void
+    placeholder: string
+  }) => (
+    <textarea value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
   ),
 }))
 
 vi.mock('../utils/render-output-vars', () => ({
-  OutputVariablesContent: ({ variables }: { variables: unknown[] }) => <div data-testid="output-variables">{variables.length}</div>,
+  OutputVariablesContent: ({ variables }: { variables: unknown[] }) => (
+    <div data-testid="output-variables">{variables.length}</div>
+  ),
 }))
 
 vi.mock('@/utils/urlValidation', () => ({
@@ -190,8 +189,9 @@ vi.mock('../use-config', () => ({
 }))
 
 const getStatusCodeInput = () => {
-  return screen.getAllByDisplayValue('200')
-    .find(element => element.getAttribute('aria-hidden') !== 'true') as HTMLInputElement
+  return screen
+    .getAllByDisplayValue('200')
+    .find((element) => element.getAttribute('aria-hidden') !== 'true') as HTMLInputElement
 }
 
 describe('WebhookTriggerPanel', () => {
@@ -244,7 +244,7 @@ describe('WebhookTriggerPanel', () => {
     it('should keep the content type selector aligned with the webhook url row width', () => {
       render(<Panel {...panelProps} />)
 
-      const contentTypeTrigger = screen.getAllByTestId('select-trigger')[1]
+      const contentTypeTrigger = screen.getAllByRole('combobox')[1]
 
       expect(contentTypeTrigger).toHaveClass('w-full')
     })
@@ -287,12 +287,15 @@ describe('WebhookTriggerPanel', () => {
   })
 
   describe('Interactions', () => {
-    it('should handle method, content type, table, response, and copy actions', () => {
+    it('should handle method, content type, table, response, and copy actions', async () => {
+      const user = userEvent.setup()
       render(<Panel {...panelProps} />)
 
       fireEvent.click(screen.getByTestId('copy-input'))
-      fireEvent.click(screen.getByTestId('select-GET'))
-      fireEvent.click(screen.getByTestId('select-text/plain'))
+      await user.click(screen.getAllByRole('combobox')[0]!)
+      await user.click(await screen.findByRole('option', { name: 'GET' }))
+      await user.click(screen.getAllByRole('combobox')[1]!)
+      await user.click(await screen.findByRole('option', { name: 'text/plain' }))
       fireEvent.click(screen.getByTestId('parameter-Query Parameters'))
       fireEvent.click(screen.getByTestId('header-table'))
       fireEvent.click(screen.getByTestId('parameter-Request Body Parameters'))
@@ -302,9 +305,15 @@ describe('WebhookTriggerPanel', () => {
       expect(mockToastSuccess).toHaveBeenCalledWith('workflow.nodes.triggerWebhook.urlCopied')
       expect(mockHandleMethodChange).toHaveBeenCalledWith('GET')
       expect(mockHandleContentTypeChange).toHaveBeenCalledWith('text/plain')
-      expect(mockHandleParamsChange).toHaveBeenCalledWith([{ key: 'Query Parameters', value: 'value' }])
-      expect(mockHandleHeadersChange).toHaveBeenCalledWith([{ key: 'Authorization', value: 'Bearer token' }])
-      expect(mockHandleBodyChange).toHaveBeenCalledWith([{ key: 'Request Body Parameters', value: 'value' }])
+      expect(mockHandleParamsChange).toHaveBeenCalledWith([
+        { key: 'Query Parameters', value: 'value' },
+      ])
+      expect(mockHandleHeadersChange).toHaveBeenCalledWith([
+        { key: 'Authorization', value: 'Bearer token' },
+      ])
+      expect(mockHandleBodyChange).toHaveBeenCalledWith([
+        { key: 'Request Body Parameters', value: 'value' },
+      ])
       expect(mockHandleResponseBodyChange).toHaveBeenCalledWith('updated body')
     })
 
@@ -321,20 +330,12 @@ describe('WebhookTriggerPanel', () => {
       fireEvent.click(screen.getByText('http://127.0.0.1:8000/debug'))
 
       expect(mockCopy).toHaveBeenCalledWith('http://127.0.0.1:8000/debug')
-      expect(screen.getByText('workflow.nodes.triggerWebhook.debugUrlPrivateAddressWarning')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
+      ).toBeInTheDocument()
 
       vi.runAllTimers()
       vi.useRealTimers()
-    })
-
-    it('should ignore empty method and content-type selections', () => {
-      render(<Panel {...panelProps} />)
-
-      fireEvent.click(screen.getAllByTestId('select-empty')[0]!)
-      fireEvent.click(screen.getAllByTestId('select-empty')[1]!)
-
-      expect(mockHandleMethodChange).not.toHaveBeenCalled()
-      expect(mockHandleContentTypeChange).not.toHaveBeenCalled()
     })
   })
 })

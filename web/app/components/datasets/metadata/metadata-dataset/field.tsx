@@ -8,11 +8,7 @@ type Props = Readonly<{
   children: React.ReactNode
 }>
 
-const Field: FC<Props> = ({
-  className,
-  label,
-  children,
-}) => {
+const Field: FC<Props> = ({ className, label, children }) => {
   return (
     <div className={className}>
       <div className="py-1 system-sm-semibold text-text-secondary">{label}</div>

@@ -16,6 +16,7 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveAppNotFoundError,
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -58,8 +59,7 @@ def _payload() -> dict[str, object]:
 @contextmanager
 def _plugin_inner_auth() -> Iterator[None]:
     with (
-        patch("configs.dify_config.PLUGIN_DAEMON_KEY", "plugin-daemon-key"),
-        patch("configs.dify_config.INNER_API_KEY_FOR_PLUGIN", "inner-key"),
+        config_overrides_context(PLUGIN_DAEMON_KEY="plugin-daemon-key", INNER_API_KEY_FOR_PLUGIN="inner-key"),
     ):
         yield
 

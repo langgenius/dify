@@ -4,6 +4,7 @@ import json
 from typing import Any
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 
 import core.rag.extractor.watercrawl.client as client_module
@@ -176,6 +177,22 @@ class TestWaterCrawlAPIClient:
         with pytest.raises(expected_exception):
             client.process_response(_response(status, {"message": "bad", "errors": {"url": ["x"]}}))
 
+    @pytest.mark.parametrize(
+        ("status", "expected_exception"),
+        [
+            (401, WaterCrawlAuthenticationError),
+            (403, WaterCrawlPermissionError),
+            (422, WaterCrawlBadRequestError),
+        ],
+    )
+    def test_process_response_error_statuses_with_non_json_body(self, status: int, expected_exception: type[Exception]):
+        client = WaterCrawlAPIClient(api_key="k")
+        response = _response(status, text="<html>upstream error</html>")
+        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
+
+        with pytest.raises(expected_exception):
+            client.process_response(response)
+
     def test_process_response_204_returns_none(self):
         client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(204, None)) is None
@@ -184,6 +201,14 @@ class TestWaterCrawlAPIClient:
         client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
+
+    def test_process_response_json_payload_with_invalid_body_raises_clear_error(self):
+        client = WaterCrawlAPIClient(api_key="k")
+        response = _response(200, text="<html>upstream error</html>")
+        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
+
+        with pytest.raises(ValueError, match="Invalid JSON response from WaterCrawl"):
+            client.process_response(response)
 
     def test_process_response_accepts_json_content_type_parameters(self):
         client = WaterCrawlAPIClient(api_key="k")
@@ -277,7 +302,10 @@ class TestWaterCrawlAPIClient:
         result = client.download_result({"result": "https://example.com/result.json"})
 
         assert result["result"] == {"markdown": "body"}
-        assert captured["timeout"] is not None
+        timeout = captured["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == 5.0
+        assert timeout.read == 30.0
         response.close.assert_called_once()
 
 

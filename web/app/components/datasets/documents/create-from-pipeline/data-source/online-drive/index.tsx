@@ -3,10 +3,13 @@ import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -34,8 +37,8 @@ const OnlineDrive = ({
 }: OnlineDriveProps) => {
   const docLink = useDocLink()
   const [isInitialMount, setIsInitialMount] = useState(true)
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const {
     nextPageParameters,
     breadcrumbs,
@@ -45,16 +48,18 @@ const OnlineDrive = ({
     selectedFileIds,
     onlineDriveFileList,
     currentCredentialId,
-  } = useDataSourceStoreWithSelector(useShallow(state => ({
-    nextPageParameters: state.nextPageParameters,
-    breadcrumbs: state.breadcrumbs,
-    prefix: state.prefix,
-    keywords: state.keywords,
-    bucket: state.bucket,
-    selectedFileIds: state.selectedFileIds,
-    onlineDriveFileList: state.onlineDriveFileList,
-    currentCredentialId: state.currentCredentialId,
-  })))
+  } = useDataSourceStoreWithSelector(
+    useShallow((state) => ({
+      nextPageParameters: state.nextPageParameters,
+      breadcrumbs: state.breadcrumbs,
+      prefix: state.prefix,
+      keywords: state.keywords,
+      bucket: state.bucket,
+      selectedFileIds: state.selectedFileIds,
+      onlineDriveFileList: state.onlineDriveFileList,
+      currentCredentialId: state.currentCredentialId,
+    })),
+  )
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
   const isLoadingRef = useRef(false)
@@ -69,9 +74,9 @@ const OnlineDrive = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDriveFiles = useCallback(async () => {
-    if (isLoadingRef.current)
-      return
-    const { nextPageParameters, prefix, bucket, onlineDriveFileList, currentCredentialId } = dataSourceStore.getState()
+    if (isLoadingRef.current) return
+    const { nextPageParameters, prefix, bucket, onlineDriveFileList, currentCredentialId } =
+      dataSourceStore.getState()
     setIsLoading(true)
     isLoadingRef.current = true
     ssePost(
@@ -90,7 +95,12 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setOnlineDriveFileList, isTruncated, currentNextPageParametersRef, setHasBucket } = dataSourceStore.getState()
+          const {
+            setOnlineDriveFileList,
+            isTruncated,
+            currentNextPageParametersRef,
+            setHasBucket,
+          } = dataSourceStore.getState()
           const {
             fileList: newFileList,
             isTruncated: newIsTruncated,
@@ -114,29 +124,31 @@ const OnlineDrive = ({
   }, [dataSourceStore, datasourceNodeRunURL, breadcrumbs])
 
   useEffect(() => {
-    if (!currentCredentialId)
-      return
+    if (!currentCredentialId) return
     if (isInitialMount) {
       // Only fetch files on initial mount if fileList is empty
-      if (onlineDriveFileList.length === 0)
-        getOnlineDriveFiles()
+      if (onlineDriveFileList.length === 0) getOnlineDriveFiles()
       setIsInitialMount(false)
-    }
-    else {
+    } else {
       getOnlineDriveFiles()
     }
   }, [nextPageParameters, prefix, bucket, currentCredentialId])
 
   const filteredOnlineDriveFileList = useMemo(() => {
     if (keywords)
-      return onlineDriveFileList.filter(file => file.name.toLowerCase().includes(keywords.toLowerCase()))
+      return onlineDriveFileList.filter((file) =>
+        file.name.toLowerCase().includes(keywords.toLowerCase()),
+      )
     return onlineDriveFileList
   }, [onlineDriveFileList, keywords])
 
-  const updateKeywords = useCallback((keywords: string) => {
-    const { setKeywords } = dataSourceStore.getState()
-    setKeywords(keywords)
-  }, [dataSourceStore])
+  const updateKeywords = useCallback(
+    (keywords: string) => {
+      const { setKeywords } = dataSourceStore.getState()
+      setKeywords(keywords)
+    },
+    [dataSourceStore],
+  )
 
   const resetKeywords = useCallback(() => {
     const { setKeywords } = dataSourceStore.getState()
@@ -144,50 +156,57 @@ const OnlineDrive = ({
     setKeywords('')
   }, [dataSourceStore])
 
-  const handleSelectFile = useCallback((file: OnlineDriveFile) => {
-    const { selectedFileIds, setSelectedFileIds } = dataSourceStore.getState()
-    if (file.type === OnlineDriveFileType.bucket)
-      return
-    const newSelectedFileList = produce(selectedFileIds, (draft) => {
-      if (draft.includes(file.id)) {
-        const index = draft.indexOf(file.id)
-        draft.splice(index, 1)
-      }
-      else {
-        if (!supportBatchUpload && draft.length >= 1)
-          return
-        draft.push(file.id)
-      }
-    })
-    setSelectedFileIds(newSelectedFileList)
-  }, [dataSourceStore, supportBatchUpload])
+  const handleSelectFile = useCallback(
+    (file: OnlineDriveFile) => {
+      const { selectedFileIds, setSelectedFileIds } = dataSourceStore.getState()
+      if (file.type === OnlineDriveFileType.bucket) return
+      const newSelectedFileList = produce(selectedFileIds, (draft) => {
+        if (draft.includes(file.id)) {
+          const index = draft.indexOf(file.id)
+          draft.splice(index, 1)
+        } else {
+          if (!supportBatchUpload && draft.length >= 1) return
+          draft.push(file.id)
+        }
+      })
+      setSelectedFileIds(newSelectedFileList)
+    },
+    [dataSourceStore, supportBatchUpload],
+  )
 
-  const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { breadcrumbs, prefix, setBreadcrumbs, setPrefix, setBucket, setOnlineDriveFileList, setSelectedFileIds } = dataSourceStore.getState()
-    if (file.type === OnlineDriveFileType.file)
-      return
-    setOnlineDriveFileList([])
-    if (file.type === OnlineDriveFileType.bucket) {
-      setBucket(file.name)
-    }
-    else {
-      setSelectedFileIds([])
-      const newBreadcrumbs = produce(breadcrumbs, (draft) => {
-        draft.push(file.name)
-      })
-      const newPrefix = produce(prefix, (draft) => {
-        draft.push(file.id)
-      })
-      setBreadcrumbs(newBreadcrumbs)
-      setPrefix(newPrefix)
-    }
-  }, [dataSourceStore])
+  const handleOpenFolder = useCallback(
+    (file: OnlineDriveFile) => {
+      const {
+        breadcrumbs,
+        prefix,
+        setBreadcrumbs,
+        setPrefix,
+        setBucket,
+        setOnlineDriveFileList,
+        setSelectedFileIds,
+      } = dataSourceStore.getState()
+      if (file.type === OnlineDriveFileType.file) return
+      setOnlineDriveFileList([])
+      if (file.type === OnlineDriveFileType.bucket) {
+        setBucket(file.name)
+      } else {
+        setSelectedFileIds([])
+        const newBreadcrumbs = produce(breadcrumbs, (draft) => {
+          draft.push(file.name)
+        })
+        const newPrefix = produce(prefix, (draft) => {
+          draft.push(file.id)
+        })
+        setBreadcrumbs(newBreadcrumbs)
+        setPrefix(newPrefix)
+      }
+    },
+    [dataSourceStore],
+  )
 
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   return (
     <div className="flex flex-col gap-y-2">

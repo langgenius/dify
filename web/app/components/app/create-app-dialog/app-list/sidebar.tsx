@@ -20,11 +20,24 @@ export default function Sidebar({ current, categories, onClick, onCreateFromBlan
   return (
     <div className="flex size-full flex-col">
       <ul className="pt-0.5">
-        <CategoryItem category={AppCategories.RECOMMENDED} active={current === AppCategories.RECOMMENDED} onClick={onClick} />
+        <CategoryItem
+          category={AppCategories.RECOMMENDED}
+          active={current === AppCategories.RECOMMENDED}
+          onClick={onClick}
+        />
       </ul>
-      <div className="mt-3 mb-0.5 px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{t('newAppFromTemplate.byCategories', { ns: 'app' })}</div>
+      <div className="mt-3 mb-0.5 px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">
+        {t(($) => $['newAppFromTemplate.byCategories'], { ns: 'app' })}
+      </div>
       <ul className="flex grow flex-col gap-0.5">
-        {categories.map(category => (<CategoryItem key={category} category={category} active={current === category} onClick={onClick} />))}
+        {categories.map((category) => (
+          <CategoryItem
+            key={category}
+            category={category}
+            active={current === category}
+            onClick={onClick}
+          />
+        ))}
       </ul>
       <Divider bgStyle="gradient" />
       <button
@@ -33,7 +46,9 @@ export default function Sidebar({ current, categories, onClick, onCreateFromBlan
         onClick={onCreateFromBlank}
       >
         <RiStickyNoteAddLine className="size-3.5" aria-hidden="true" />
-        <span className="system-xs-regular">{t('newApp.startFromBlank', { ns: 'app' })}</span>
+        <span className="system-xs-regular">
+          {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
+        </span>
       </button>
     </div>
   )
@@ -49,12 +64,20 @@ function CategoryItem({ category, active, onClick }: CategoryItemProps) {
     <li>
       <button
         type="button"
-        className={cn('group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent p-1 pl-3 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [&.active]:bg-state-base-active', active && 'active')}
-        onClick={() => { onClick?.(category) }}
+        className={cn(
+          'group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent p-1 pl-3 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [&.active]:bg-state-base-active',
+          active && 'active',
+        )}
+        onClick={() => {
+          onClick?.(category)
+        }}
       >
         <AppCategoryLabel
           category={category}
-          className={cn('system-sm-medium text-components-menu-item-text group-hover:text-components-menu-item-text-hover group-[.active]:text-components-menu-item-text-active', active && 'system-sm-semibold')}
+          className={cn(
+            'system-sm-medium text-components-menu-item-text group-hover:text-components-menu-item-text-hover group-[.active]:text-components-menu-item-text-active',
+            active && 'system-sm-semibold',
+          )}
         />
       </button>
     </li>
@@ -67,5 +90,11 @@ type AppCategoryLabelProps = {
 }
 export function AppCategoryLabel({ category, className }: AppCategoryLabelProps) {
   const { t } = useTranslation()
-  return <span className={className}>{category === AppCategories.RECOMMENDED ? t('newAppFromTemplate.sidebar.Recommended', { ns: 'app' }) : category}</span>
+  return (
+    <span className={className}>
+      {category === AppCategories.RECOMMENDED
+        ? t(($) => $['newAppFromTemplate.sidebar.Recommended'], { ns: 'app' })
+        : category}
+    </span>
+  )
 }

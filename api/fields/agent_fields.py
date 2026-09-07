@@ -99,6 +99,7 @@ class AgentRosterResponse(ResponseModel):
     archived_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
+    reference_count: int | None = None
     published_reference_count: int = 0
     published_node_reference_count: int = 0
     published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
@@ -170,6 +171,12 @@ class AgentLogConversationItemResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class AgentLogFeedbackResponse(ResponseModel):
+    rating: Literal["like", "dislike"]
+    content: str | None = None
+    from_source: Literal["user", "admin"]
+
+
 class AgentLogMessageItemResponse(ResponseModel):
     id: str
     message_id: str
@@ -180,6 +187,8 @@ class AgentLogMessageItemResponse(ResponseModel):
     error: str | None = None
     from_end_user_id: str | None = None
     from_account_id: str | None = None
+    feedback_enabled: bool = False
+    feedbacks: list[AgentLogFeedbackResponse] = Field(default_factory=list)
     message_tokens: int
     answer_tokens: int
     total_tokens: int
@@ -382,6 +391,7 @@ class AgentAppComposerResponse(ResponseModel):
     variant: Literal[ComposerVariant.AGENT_APP]
     agent: AgentComposerAgentResponse
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool
     draft: AgentConfigDraftSummaryResponse | None = None
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]

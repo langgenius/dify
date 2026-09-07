@@ -1,18 +1,13 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import {
-  memo,
-  useState,
-} from 'react'
+import { memo, useState } from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
-import {
-  useDSL,
-  usePanelInteractions,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
+import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import { useStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import PluginDependency from '../../workflow/plugin-dependency'
-import { useStore } from '../../workflow/store'
 import { useRagPipelineSearch } from '../hooks/use-rag-pipeline-search'
 import RagPipelinePanel from './panel'
 import PublishToast from './publish-toast'
@@ -22,46 +17,36 @@ import UpdateDSLModal from './update-dsl-modal'
 const RagPipelineChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-  const showImportDSLModal = useStore(s => s.showImportDSLModal)
-  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
-  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
-  const {
-    handlePaneContextmenuCancel,
-  } = usePanelInteractions()
-  const {
-    exportCheck,
-    handleExportDSL,
-  } = useDSL()
+  const showImportDSLModal = useStore((s) => s.showImportDSLModal)
+  const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
+  const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
+  const { exportCheck, handleExportDSL } = useDSL()
 
   // Initialize RAG pipeline search functionality
   useRagPipelineSearch()
 
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === DSL_EXPORT_CHECK)
-      setSecretEnvList(v.payload.data as EnvironmentVariable[])
+    if (v.type === DSL_EXPORT_CHECK) setSecretEnvList(v.payload.data as EnvironmentVariable[])
   })
 
   return (
     <>
       <PluginDependency />
-      {
-        canImportExportDSL && showImportDSLModal && (
-          <UpdateDSLModal
-            onCancel={() => setShowImportDSLModal(false)}
-            onBackup={exportCheck!}
-            onImport={handlePaneContextmenuCancel}
-          />
-        )
-      }
-      {
-        canImportExportDSL && secretEnvList.length > 0 && (
-          <DSLExportConfirmModal
-            envList={secretEnvList}
-            onConfirm={handleExportDSL!}
-            onClose={() => setSecretEnvList([])}
-          />
-        )
-      }
+      {canImportExportDSL && showImportDSLModal && (
+        <UpdateDSLModal
+          onCancel={() => setShowImportDSLModal(false)}
+          onBackup={exportCheck!}
+          onImport={handlePaneContextmenuCancel}
+        />
+      )}
+      {canImportExportDSL && secretEnvList.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvList}
+          onConfirm={handleExportDSL!}
+          onClose={() => setSecretEnvList([])}
+        />
+      )}
       <RagPipelineHeader />
       <RagPipelinePanel />
       <PublishToast />

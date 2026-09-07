@@ -1,3 +1,4 @@
+import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { ResourceVarInputs } from '../_base/types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
@@ -13,7 +14,7 @@ export type ToolVarInputs = ResourceVarInputs
 export type DataSourceNodeType = CommonNodeType & {
   fileExtensions?: string[]
   plugin_id: string
-  provider_type: string
+  provider_type: DatasourceProviderType
   provider_name: string
   datasource_name: string
   datasource_label: string

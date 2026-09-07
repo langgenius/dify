@@ -12,12 +12,9 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import {
-  RiArrowLeftLine,
-  RiCloseLine,
-} from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -33,14 +30,10 @@ type EventDetailDrawerProps = {
 }
 
 const getType = (type: string, t: TFunction) => {
-  if (type === 'number-input')
-    return t('setBuiltInTools.number', { ns: 'tools' })
-  if (type === 'text-input')
-    return t('setBuiltInTools.string', { ns: 'tools' })
-  if (type === 'checkbox')
-    return 'boolean'
-  if (type === 'file')
-    return t('setBuiltInTools.file', { ns: 'tools' })
+  if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
+  if (type === 'text-input') return t(($) => $['setBuiltInTools.string'], { ns: 'tools' })
+  if (type === 'checkbox') return 'boolean'
+  if (type === 'file') return t(($) => $['setBuiltInTools.file'], { ns: 'tools' })
   return type
 }
 
@@ -50,24 +43,23 @@ const convertSchemaToField = (schema: any): any => {
     type: Array.isArray(schema.type) ? schema.type[0] : schema.type || 'string',
   }
 
-  if (schema.description)
-    field.description = schema.description
+  if (schema.description) field.description = schema.description
 
   if (schema.properties) {
-    field.properties = Object.entries(schema.properties).reduce((acc, [key, value]: [string, any]) => ({
-      ...acc,
-      [key]: convertSchemaToField(value),
-    }), {})
+    field.properties = Object.entries(schema.properties).reduce(
+      (acc, [key, value]: [string, any]) => ({
+        ...acc,
+        [key]: convertSchemaToField(value),
+      }),
+      {},
+    )
   }
 
-  if (schema.required)
-    field.required = schema.required
+  if (schema.required) field.required = schema.required
 
-  if (schema.items)
-    field.items = convertSchemaToField(schema.items)
+  if (schema.items) field.items = convertSchemaToField(schema.items)
 
-  if (schema.enum)
-    field.enum = schema.enum
+  if (schema.enum) field.enum = schema.enum
 
   return field
 }
@@ -93,27 +85,33 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
       modal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DrawerPortal>
         <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+          <DrawerPopup
+            className={cn(
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+            )}
+          >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="relative border-b border-divider-subtle p-4 pb-3">
                 <div className="absolute top-3 right-3">
-                  <ActionButton onClick={onClose}>
-                    <RiCloseLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    onClick={onClose}
+                  >
+                    <RiCloseLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 </div>
                 <div
                   className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
                   onClick={onClose}
                 >
                   <RiArrowLeftLine className="size-4" />
-                  {t('detailPanel.operation.back', { ns: 'plugin' })}
+                  {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
                 </div>
                 <div className="flex items-center gap-1">
                   <Icon size="tiny" className="size-6" src={providerInfo.icon!} />
@@ -123,38 +121,54 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                     packageName={providerInfo.name.split('/').pop() || ''}
                   />
                 </div>
-                <div className="mt-1 system-md-semibold text-text-primary">{eventInfo?.identity?.label[language]}</div>
-                <Description className="mt-3 mb-2 h-auto" text={eventInfo.description[language]!} descriptionLineRows={2}></Description>
+                <div className="mt-1 system-md-semibold text-text-primary">
+                  {eventInfo?.identity?.label[language]}
+                </div>
+                <Description
+                  className="mt-3 mb-2 h-auto"
+                  text={eventInfo.description[language]!}
+                  descriptionLineRows={2}
+                ></Description>
               </div>
               <div className="flex h-full flex-col gap-2 overflow-y-auto px-4 pt-4 pb-2">
-                <div className="system-sm-semibold-uppercase text-text-secondary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
-                {parametersSchemas.length > 0
-                  ? (
-                      parametersSchemas.map((item, index) => (
-                        <div key={index} className="py-1">
-                          <div className="flex items-center gap-2">
-                            <div className="code-sm-semibold text-text-secondary">{item.label[language]}</div>
-                            <div className="system-xs-regular text-text-tertiary">
-                              {getType(item.type, t)}
-                            </div>
-                            {item.required && (
-                              <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
-                            )}
-                          </div>
-                          {item.description && (
-                            <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                              {item.description?.[language]}
-                            </div>
-                          )}
+                <div className="system-sm-semibold-uppercase text-text-secondary">
+                  {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
+                </div>
+                {parametersSchemas.length > 0 ? (
+                  parametersSchemas.map((item, index) => (
+                    <div key={index} className="py-1">
+                      <div className="flex items-center gap-2">
+                        <div className="code-sm-semibold text-text-secondary">
+                          {item.label[language]}
                         </div>
-                      ))
-                    )
-                  : <div className="system-xs-regular text-text-tertiary">{t('events.item.noParameters', { ns: 'pluginTrigger' })}</div>}
+                        <div className="system-xs-regular text-text-tertiary">
+                          {getType(item.type, t)}
+                        </div>
+                        {item.required && (
+                          <div className="system-xs-medium text-text-warning-secondary">
+                            {t(($) => $['setBuiltInTools.required'], { ns: 'tools' })}
+                          </div>
+                        )}
+                      </div>
+                      {item.description && (
+                        <div className="mt-0.5 system-xs-regular text-text-tertiary">
+                          {item.description?.[language]}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="system-xs-regular text-text-tertiary">
+                    {t(($) => $['events.item.noParameters'], { ns: 'pluginTrigger' })}
+                  </div>
+                )}
                 <Divider className="mt-1 mb-2 h-px" />
                 <div className="flex flex-col gap-2">
-                  <div className="system-sm-semibold-uppercase text-text-secondary">{t('events.output', { ns: 'pluginTrigger' })}</div>
-                  <div className="relative left-[-7px]">
-                    {outputFields.map(item => (
+                  <div className="system-sm-semibold-uppercase text-text-secondary">
+                    {t(($) => $['events.output'], { ns: 'pluginTrigger' })}
+                  </div>
+                  <div className="relative -left-1.75">
+                    {outputFields.map((item) => (
                       <Field
                         key={item.name}
                         name={item.name}

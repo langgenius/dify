@@ -12,15 +12,14 @@ export class CursorService {
   private onCursorUpdate: ((cursors: Record<string, CursorPosition>) => void) | null = null
   private onEmitPosition: ((position: CursorPosition) => void) | null = null
   private lastEmitTime = 0
-  private lastPosition: { x: number, y: number } | null = null
+  private lastPosition: { x: number; y: number } | null = null
 
   startTracking(
     containerRef: RefObject<HTMLElement>,
     onEmitPosition: (position: CursorPosition) => void,
     reactFlowInstance?: ReactFlowInstance,
   ): void {
-    if (this.isTracking)
-      this.stopTracking()
+    if (this.isTracking) this.stopTracking()
 
     this.containerRef = containerRef
     this.onEmitPosition = onEmitPosition
@@ -47,13 +46,11 @@ export class CursorService {
   }
 
   updateCursors(cursors: Record<string, CursorPosition>): void {
-    if (this.onCursorUpdate)
-      this.onCursorUpdate(cursors)
+    if (this.onCursorUpdate) this.onCursorUpdate(cursors)
   }
 
   private handleMouseMove = (event: MouseEvent): void => {
-    if (!this.containerRef?.current || !this.onEmitPosition)
-      return
+    if (!this.containerRef?.current || !this.onEmitPosition) return
 
     const rect = this.containerRef.current.getBoundingClientRect()
     let x = event.clientX - rect.left
@@ -72,9 +69,10 @@ export class CursorService {
     const now = Date.now()
     const timeThrottled = now - this.lastEmitTime > CURSOR_THROTTLE_MS
     const minDistance = CURSOR_MIN_MOVE_DISTANCE / (this.reactFlowInstance?.getZoom() || 1)
-    const distanceThrottled = !this.lastPosition
-      || (Math.abs(x - this.lastPosition.x) > minDistance)
-      || (Math.abs(y - this.lastPosition.y) > minDistance)
+    const distanceThrottled =
+      !this.lastPosition ||
+      Math.abs(x - this.lastPosition.x) > minDistance ||
+      Math.abs(y - this.lastPosition.y) > minDistance
 
     if (timeThrottled && distanceThrottled) {
       this.lastPosition = { x, y }

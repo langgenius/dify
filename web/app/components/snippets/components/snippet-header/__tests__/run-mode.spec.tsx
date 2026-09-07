@@ -21,12 +21,15 @@ const runningResult = {
   outputs_truncated: false,
 }
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
-  }),
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: workflowHookMocks.handleStopRun,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
+  useWorkflowStartRun: () => ({
+    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
   }),
 }))
 
@@ -60,21 +63,20 @@ describe('RunMode', () => {
   it('should stop the running workflow from the stop button and workflow stop event', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
-      <RunMode />,
-      {
-        initialStoreState: {
-          workflowRunningData: {
-            task_id: 'task-1',
-            result: runningResult,
-          },
+    renderWorkflowComponent(<RunMode />, {
+      initialStoreState: {
+        workflowRunningData: {
+          task_id: 'task-1',
+          result: runningResult,
         },
       },
-    )
+    })
 
     expect(screen.getByRole('button', { name: /workflow\.common\.running/i })).toBeDisabled()
 
-    await user.click(screen.getAllByRole('button')[1]!)
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.debug\.variableInspect\.trigger\.stop/i }),
+    )
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('task-1')
 
@@ -101,18 +103,17 @@ describe('RunMode', () => {
   it('should stop with an empty task id when running data has no task id', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
-      <RunMode />,
-      {
-        initialStoreState: {
-          workflowRunningData: {
-            result: runningResult,
-          },
+    renderWorkflowComponent(<RunMode />, {
+      initialStoreState: {
+        workflowRunningData: {
+          result: runningResult,
         },
       },
-    )
+    })
 
-    await user.click(screen.getAllByRole('button')[1]!)
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.debug\.variableInspect\.trigger\.stop/i }),
+    )
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('')
   })

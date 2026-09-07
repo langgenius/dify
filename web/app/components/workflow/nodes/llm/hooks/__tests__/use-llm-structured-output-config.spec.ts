@@ -42,13 +42,17 @@ describe('use-llm-structured-output-config', () => {
 
   it('detects supported models and updates structured output state', () => {
     mockUseModelList.mockReturnValue({
-      data: [{
-        provider: 'openai',
-        models: [{
-          model: 'gpt-4o',
-          features: [ModelFeatureEnum.StructuredOutput],
-        }],
-      }],
+      data: [
+        {
+          provider: 'openai',
+          models: [
+            {
+              model: 'gpt-4o',
+              features: [ModelFeatureEnum.StructuredOutput],
+            },
+          ],
+        },
+      ],
     } as ReturnType<typeof useModelList>)
 
     const inputRef = {
@@ -59,13 +63,15 @@ describe('use-llm-structured-output-config', () => {
     })
     const deleteNodeInspectorVars = vi.fn()
 
-    const { result } = renderHook(() => useLLMStructuredOutputConfig({
-      id: 'llm-node',
-      model: inputRef.current.model,
-      inputRef,
-      setInputs: handleSetInputs,
-      deleteNodeInspectorVars,
-    }))
+    const { result } = renderHook(() =>
+      useLLMStructuredOutputConfig({
+        id: 'llm-node',
+        model: inputRef.current.model,
+        inputRef,
+        setInputs: handleSetInputs,
+        deleteNodeInspectorVars,
+      }),
+    )
 
     expect(result.current.isModelSupportStructuredOutput).toBe(true)
     expect(result.current.structuredOutputCollapsed).toBe(true)
@@ -74,9 +80,12 @@ describe('use-llm-structured-output-config', () => {
       result.current.handleStructureOutputEnableChange(true)
     })
 
-    expect(handleSetInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      structured_output_enabled: true,
-    }))
+    expect(handleSetInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        structured_output_enabled: true,
+      }),
+    )
     expect(result.current.structuredOutputCollapsed).toBe(false)
     expect(deleteNodeInspectorVars).toHaveBeenCalledWith('llm-node')
 
@@ -96,47 +105,62 @@ describe('use-llm-structured-output-config', () => {
       result.current.handleStructureOutputEnableChange(false)
     })
 
-    expect(handleSetInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      structured_output: {
-        schema: {
-          type: Type.object,
-          properties: {
-            answer: {
-              type: Type.string,
+    expect(handleSetInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        structured_output: {
+          schema: {
+            type: Type.object,
+            properties: {
+              answer: {
+                type: Type.string,
+              },
             },
+            additionalProperties: false,
           },
-          additionalProperties: false,
         },
-      },
-    }))
-    expect(handleSetInputs).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      reasoning_format: 'separated',
-    }))
-    expect(handleSetInputs).toHaveBeenNthCalledWith(4, expect.objectContaining({
-      structured_output_enabled: false,
-    }))
+      }),
+    )
+    expect(handleSetInputs).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        reasoning_format: 'separated',
+      }),
+    )
+    expect(handleSetInputs).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        structured_output_enabled: false,
+      }),
+    )
   })
 
   it('returns undefined support when the model is missing from the list', () => {
     mockUseModelList.mockReturnValue({
-      data: [{
-        provider: 'anthropic',
-        models: [{
-          model: 'claude',
-          features: [],
-        }],
-      }],
+      data: [
+        {
+          provider: 'anthropic',
+          models: [
+            {
+              model: 'claude',
+              features: [],
+            },
+          ],
+        },
+      ],
       mutate: vi.fn(),
       isLoading: false,
     } as unknown as ReturnType<typeof useModelList>)
 
-    const { result } = renderHook(() => useLLMStructuredOutputConfig({
-      id: 'llm-node',
-      model: createPayload().model,
-      inputRef: { current: createPayload() } as MutableRefObject<LLMNodeType>,
-      setInputs: vi.fn(),
-      deleteNodeInspectorVars: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useLLMStructuredOutputConfig({
+        id: 'llm-node',
+        model: createPayload().model,
+        inputRef: { current: createPayload() } as MutableRefObject<LLMNodeType>,
+        setInputs: vi.fn(),
+        deleteNodeInspectorVars: vi.fn(),
+      }),
+    )
 
     expect(result.current.isModelSupportStructuredOutput).toBeUndefined()
   })

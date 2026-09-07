@@ -44,8 +44,13 @@ export function renderHitlExit(obj: HitlExitObject): string {
   return JSON.stringify(obj, null, 2)
 }
 
-type ActionRecord = { id: string, title?: string, button_style?: string }
-type InputRecord = { output_variable_name?: string, label?: string, type?: string, required?: boolean }
+type ActionRecord = { id: string; title?: string; button_style?: string }
+type InputRecord = {
+  output_variable_name?: string
+  label?: string
+  type?: string
+  required?: boolean
+}
 
 export function renderHitlBlock(_appId: string, payload: HitlPausePayload, isTTY: boolean): string {
   const d = payload.data
@@ -56,30 +61,33 @@ export function renderHitlBlock(_appId: string, payload: HitlPausePayload, isTTY
   const msgLines = d.form_content.split('\n')
   if (msgLines.length === 1) {
     lines.push(`  ${cs.dim('Message:')} ${d.form_content}`)
-  }
-  else {
+  } else {
     lines.push(`  ${cs.dim('Message:')}`)
-    for (const ml of msgLines)
-      lines.push(`    ${ml}`)
+    for (const ml of msgLines) lines.push(`    ${ml}`)
   }
 
   const actions = (Array.isArray(d.actions) ? d.actions : []) as ActionRecord[]
   if (actions.length > 0) {
-    const inline = actions.map((a) => {
-      const title = a.title ?? ''
-      return `${cs.cyan(`[${a.id}]`)} ${title}`
-    }).join('  ')
+    const inline = actions
+      .map((a) => {
+        const title = a.title ?? ''
+        return `${cs.cyan(`[${a.id}]`)} ${title}`
+      })
+      .join('  ')
     lines.push(`  ${cs.dim('Actions:')} ${inline}`)
   }
 
   const inputs = (Array.isArray(d.inputs) ? d.inputs : []) as InputRecord[]
   if (inputs.length > 0) {
-    const inline = inputs.map((inp) => {
-      const name = inp.output_variable_name ?? '?'
-      const label = typeof inp.label === 'string' && inp.label !== '' ? ` ${cs.dim(`— ${inp.label}`)}` : ''
-      const req = inp.required === true ? ` ${cs.yellow('*')}` : ''
-      return `- ${cs.cyan(name)}${req}${label}`
-    }).join('  ')
+    const inline = inputs
+      .map((inp) => {
+        const name = inp.output_variable_name ?? '?'
+        const label =
+          typeof inp.label === 'string' && inp.label !== '' ? ` ${cs.dim(`— ${inp.label}`)}` : ''
+        const req = inp.required === true ? ` ${cs.yellow('*')}` : ''
+        return `- ${cs.cyan(name)}${req}${label}`
+      })
+      .join('  ')
     lines.push(`  ${cs.dim('Inputs:')}   ${inline}`)
   }
 
@@ -87,9 +95,13 @@ export function renderHitlBlock(_appId: string, payload: HitlPausePayload, isTTY
   return `${lines.join('\n')}\n`
 }
 
-export function renderHitlOutput(appId: string, payload: HitlPausePayload, isText: boolean, isOutTTY: boolean): string {
-  if (isText)
-    return renderHitlBlock(appId, payload, isOutTTY)
+export function renderHitlOutput(
+  appId: string,
+  payload: HitlPausePayload,
+  isText: boolean,
+  isOutTTY: boolean,
+): string {
+  if (isText) return renderHitlBlock(appId, payload, isOutTTY)
   const obj = buildHitlExitObject(appId, payload)
   return `${renderHitlExit(obj)}\n`
 }
@@ -102,11 +114,9 @@ const APPROVAL_CHANNEL_LABELS: Record<string, string> = {
 }
 
 function describeApprovalChannels(channels: string[]): string {
-  const labels = channels.map(c => APPROVAL_CHANNEL_LABELS[c] ?? c)
-  if (labels.length <= 1)
-    return labels[0] ?? 'another channel'
-  if (labels.length === 2)
-    return `${labels[0]} or ${labels[1]}`
+  const labels = channels.map((c) => APPROVAL_CHANNEL_LABELS[c] ?? c)
+  if (labels.length <= 1) return labels[0] ?? 'another channel'
+  if (labels.length === 2) return `${labels[0]} or ${labels[1]}`
   return `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`
 }
 
@@ -115,23 +125,24 @@ function externalChannelNote(channels: string[]): string {
   return `form delivered via ${describeApprovalChannels(channels)} — resume only from ${where}`
 }
 
-export function renderHitlHint(appId: string, payload: HitlPausePayload, isErrTTY: boolean): string {
+export function renderHitlHint(
+  appId: string,
+  payload: HitlPausePayload,
+  isErrTTY: boolean,
+): string {
   const d = payload.data
   const cs = colorScheme(colorEnabled(isErrTTY))
   if (d.form_token === null) {
     const note = externalChannelNote(d.approval_channels ?? [])
-    if (!isErrTTY)
-      return `hint: workflow paused — ${note}\n`
+    if (!isErrTTY) return `hint: workflow paused — ${note}\n`
     return `${cs.warningIcon()} ${cs.bold('workflow paused')} — ${cs.dim(note)}\n`
   }
   const actions = (d.actions ?? []) as { id: string }[]
   let cmd = `difyctl resume app ${appId} ${d.form_token} --workflow-run-id ${payload.workflow_run_id}`
   if (actions.length > 1) {
     const firstAction = actions[0]?.id
-    if (firstAction !== undefined)
-      cmd += ` --action ${firstAction}`
+    if (firstAction !== undefined) cmd += ` --action ${firstAction}`
   }
-  if (!isErrTTY)
-    return `hint: workflow paused — resume with: ${cmd}\n`
+  if (!isErrTTY) return `hint: workflow paused — resume with: ${cmd}\n`
   return `${cs.warningIcon()} ${cs.bold('workflow paused')} — resume with:\n  ${cs.cyan(cmd)}\n`
 }

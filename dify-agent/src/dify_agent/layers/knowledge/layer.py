@@ -243,7 +243,9 @@ class DifyKnowledgeBaseLayer(
                                 "knowledge_set_id": knowledge_set.id,
                                 "error_code": exc.error_code,
                                 "status_code": exc.status_code,
+                                "error_message": str(exc),
                             },
+                            exc_info=True,
                         )
                         eager_results.append(
                             DifyKnowledgeEagerResult(
@@ -264,7 +266,9 @@ class DifyKnowledgeBaseLayer(
                             "knowledge_set_id": knowledge_set.id,
                             "error_code": exc.error_code,
                             "status_code": exc.status_code,
+                            "error_message": str(exc),
                         },
+                        exc_info=True,
                     )
                     raise
 
@@ -313,7 +317,9 @@ class DifyKnowledgeBaseLayer(
                         "knowledge_set_id": knowledge_set.id,
                         "error_code": exc.error_code,
                         "status_code": exc.status_code,
+                        "error_message": str(exc),
                     },
+                    exc_info=True,
                 )
                 return TEMPORARY_UNAVAILABLE_OBSERVATION
             logger.error(
@@ -325,7 +331,9 @@ class DifyKnowledgeBaseLayer(
                     "knowledge_set_id": knowledge_set.id,
                     "error_code": exc.error_code,
                     "status_code": exc.status_code,
+                    "error_message": str(exc),
                 },
+                exc_info=True,
             )
             raise
         return _format_observation(response, self.config)

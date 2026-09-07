@@ -10,9 +10,7 @@ export type ApiKeyAuthDataSourceListResponse = {
 
 export type ApiKeyAuthBindingPayload = {
   category: string
-  credentials: {
-    [key: string]: unknown
-  }
+  credentials: ApiKeyAuthCredentialsPayload
   provider: string
 }
 
@@ -29,6 +27,16 @@ export type ApiKeyAuthDataSourceItem = {
   updated_at: number
 }
 
+export type ApiKeyAuthCredentialsPayload = {
+  auth_type: string
+  config: ApiKeyAuthConfigPayload
+}
+
+export type ApiKeyAuthConfigPayload = {
+  api_key: string
+  [key: string]: unknown
+}
+
 export type GetApiKeyAuthDataSourceData = {
   body?: never
   path?: never
@@ -40,8 +48,8 @@ export type GetApiKeyAuthDataSourceResponses = {
   200: ApiKeyAuthDataSourceListResponse
 }
 
-export type GetApiKeyAuthDataSourceResponse
-  = GetApiKeyAuthDataSourceResponses[keyof GetApiKeyAuthDataSourceResponses]
+export type GetApiKeyAuthDataSourceResponse =
+  GetApiKeyAuthDataSourceResponses[keyof GetApiKeyAuthDataSourceResponses]
 
 export type PostApiKeyAuthDataSourceBindingData = {
   body: ApiKeyAuthBindingPayload
@@ -54,8 +62,8 @@ export type PostApiKeyAuthDataSourceBindingResponses = {
   200: SimpleResultResponse
 }
 
-export type PostApiKeyAuthDataSourceBindingResponse
-  = PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
+export type PostApiKeyAuthDataSourceBindingResponse =
+  PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
 
 export type DeleteApiKeyAuthDataSourceByBindingIdData = {
   body?: never
@@ -70,5 +78,5 @@ export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
   204: void
 }
 
-export type DeleteApiKeyAuthDataSourceByBindingIdResponse
-  = DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]
+export type DeleteApiKeyAuthDataSourceByBindingIdResponse =
+  DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]

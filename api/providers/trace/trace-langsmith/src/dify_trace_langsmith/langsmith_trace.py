@@ -154,6 +154,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -508,7 +509,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.delete_project(project_name=random_project_name)
             return True
         except Exception as e:
-            logger.debug("LangSmith API check failed: %s", str(e))
+            logger.debug("LangSmith API check failed", exc_info=True)
             raise ValueError(f"LangSmith API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -527,5 +528,5 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
             return project_url.split("/r/")[0]
         except Exception as e:
-            logger.debug("LangSmith get run url failed: %s", str(e))
+            logger.debug("LangSmith get run url failed", exc_info=True)
             raise ValueError(f"LangSmith get run url failed: {str(e)}")

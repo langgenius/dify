@@ -1,154 +1,528 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
+import inspect
+from collections.abc import Callable
+from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
-from controllers.common import wraps as common_wraps
-from controllers.console import console_ns
-from controllers.console import wraps as console_wraps
+from controllers.common.rbac import PlainApp
+from controllers.console import flask_admission
 from controllers.console.app import ops_trace as ops_trace_module
-from controllers.console.app import wraps as app_wraps
-from libs import login as login_lib
+from controllers.console.app.error import (
+    AppNotFoundError,
+    InvalidTracingConfigError,
+    TracingConfigAlreadyExistsError,
+    TracingConfigNotFoundError,
+    TracingConfigProcessingError,
+    TracingConfigVerificationFailedError,
+    UnsupportedTracingProviderError,
+)
+from libs.exception import BaseHTTPException
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
+from services.app_tracing_config_service import (
+    AppTracingConfigAlreadyExistsError,
+    AppTracingConfigAppNotFoundError,
+    AppTracingConfigInvalidConfigurationError,
+    AppTracingConfigInvalidProviderError,
+    AppTracingConfigNotFoundError,
+    AppTracingConfigProcessingError,
+    AppTracingConfigRecord,
+    AppTracingConfigVerificationFailedError,
+)
+from tests.unit_tests.config_override import apply_config_overrides
+
+APP_ID = "11111111-1111-1111-1111-111111111111"
+WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
+ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+PROVIDER = "langfuse"
+_MUTATION_METHODS = (
+    ops_trace_module.TraceAppConfigApi.post,
+    ops_trace_module.TraceAppConfigApi.patch,
+    ops_trace_module.TraceAppConfigApi.delete,
+)
+_CONTROLLER_METHODS: dict[str, Callable[..., object]] = {
+    "get": ops_trace_module.TraceAppConfigApi.get,
+    "post": ops_trace_module.TraceAppConfigApi.post,
+    "patch": ops_trace_module.TraceAppConfigApi.patch,
+    "delete": ops_trace_module.TraceAppConfigApi.delete,
+}
 
 
-def _make_account(role: TenantAccountRole) -> Account:
-    account = Account(name="tester", email="tester@example.com")
-    account.id = "account-123"  # type: ignore[assignment]
-    account.status = AccountStatus.ACTIVE
+def _service_method(tracing_configs: MagicMock, method_name: str) -> MagicMock:
+    return {
+        "get": tracing_configs.get,
+        "post": tracing_configs.create,
+        "patch": tracing_configs.update,
+        "delete": tracing_configs.delete,
+    }[method_name]
+
+
+def _account(role: TenantAccountRole) -> Account:
+    account = Account(
+        name="Trace User",
+        email=f"{role.value}@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = ACCOUNT_ID
     account.role = role
-    account._current_tenant = SimpleNamespace(id="tenant-123")  # type: ignore[assignment]
-    account._get_current_object = lambda: account  # type: ignore[attr-defined]
     return account
 
 
-def _make_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-123", tenant_id="tenant-123", status="normal", mode="chat")
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id=ACCOUNT_ID,
+        active_workspace_id=WORKSPACE_ID,
+    )
 
 
-def _patch_console_guards(
+def _original(method: Callable[..., object]) -> Callable[..., object]:
+    return inspect.unwrap(method)
+
+
+def _admission_injector(method: Callable[..., object]) -> Callable[..., object]:
+    return inspect.unwrap(
+        method,
+        stop=lambda candidate: "allowed_roles" in inspect.getclosurevars(candidate).nonlocals,
+    )
+
+
+@pytest.fixture
+def tracing_configs(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    service = MagicMock()
+    monkeypatch.setattr(
+        ops_trace_module,
+        "application_services",
+        lambda: SimpleNamespace(app_tracing_configs=service),
+    )
+    return service
+
+
+@pytest.mark.parametrize("method", _MUTATION_METHODS)
+def test_trace_config_mutations_reject_read_only_member_when_rbac_is_disabled(
+    app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    account: Account,
-    app_model: SimpleNamespace,
-    *,
-    rbac_enabled: bool = False,
+    method: Callable[..., object],
 ) -> None:
-    monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
-    monkeypatch.setattr(login_lib.dify_config, "RBAC_ENABLED", rbac_enabled)
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
-    monkeypatch.setattr(login_lib, "current_user", account)
-    monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(common_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
+    account = _account(TenantAccountRole.NORMAL)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    monkeypatch.setattr(
+        flask_admission,
+        "current_account_with_tenant",
+        lambda: AccountWithTenant(account=account, tenant_id=WORKSPACE_ID),
+    )
+
+    with app.test_request_context(), pytest.raises(Forbidden):
+        _admission_injector(method)(None, app_id=UUID(APP_ID))
 
 
-def _patch_payload(payload: dict[str, object] | None):
-    if payload is None:
-        return nullcontext()
-    return patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload)
+@pytest.mark.parametrize("method", _MUTATION_METHODS)
+def test_trace_config_mutations_require_app_tracing_permission_when_rbac_is_enabled(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: Callable[..., object],
+) -> None:
+    account = _account(TenantAccountRole.NORMAL)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    monkeypatch.setattr(
+        flask_admission,
+        "current_account_with_tenant",
+        lambda: AccountWithTenant(account=account, tenant_id=WORKSPACE_ID),
+    )
+    denied = MagicMock(side_effect=Forbidden())
+    monkeypatch.setattr(flask_admission, "enforce_rbac_checks", denied)
+
+    with app.test_request_context(), pytest.raises(Forbidden):
+        _admission_injector(method)(None, app_id=UUID(APP_ID))
+
+    denied.assert_called_once()
+    call = denied.call_args.kwargs
+    assert call["tenant_id"] == WORKSPACE_ID
+    assert call["account_id"] == ACCOUNT_ID
+    assert call["path_args"] == {"app_id": UUID(APP_ID)}
+    (check,) = call["checks"]
+    assert check.scene == ops_trace_module.RBACPermission.APP_TRACING_CONFIG
+    assert isinstance(check.locator, PlainApp)
+
+
+def test_trace_config_get_preserves_read_access_for_normal_member() -> None:
+    admission = _admission_injector(ops_trace_module.TraceAppConfigApi.get)
+
+    assert inspect.getclosurevars(admission).nonlocals["allowed_roles"] is None
+
+
+@pytest.mark.parametrize("method", _MUTATION_METHODS)
+def test_trace_config_mutations_preserve_legacy_edit_roles(method: Callable[..., object]) -> None:
+    admission = _admission_injector(method)
+
+    assert inspect.getclosurevars(admission).nonlocals["allowed_roles"] == frozenset(
+        {
+            TenantAccountRole.OWNER,
+            TenantAccountRole.ADMIN,
+            TenantAccountRole.EDITOR,
+        }
+    )
+
+
+def test_trace_app_config_get_empty_returns_exact_legacy_body(
+    app: Flask,
+    tracing_configs: MagicMock,
+) -> None:
+    tracing_configs.get.return_value = None
+
+    with app.test_request_context("/?tracing_provider=langfuse"):
+        result = _original(ops_trace_module.TraceAppConfigApi.get)(
+            ops_trace_module.TraceAppConfigApi(),
+            ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER),
+            _request_context(),
+            UUID(APP_ID),
+        )
+
+    assert result == {"has_not_configured": True}
+    tracing_configs.get.assert_called_once_with(
+        context=_request_context(),
+        app_id=APP_ID,
+        tracing_provider=PROVIDER,
+    )
+
+
+def test_trace_app_config_get_configured_returns_exact_legacy_body(
+    app: Flask,
+    tracing_configs: MagicMock,
+) -> None:
+    tracing_configs.get.return_value = AppTracingConfigRecord(
+        id="trace-config-1",
+        app_id=APP_ID,
+        tracing_provider=PROVIDER,
+        tracing_config={"public_key": "pk", "secret_key": "******"},
+        is_active=True,
+        created_at=datetime(2026, 1, 2, 3, 4, 5),
+        updated_at=datetime(2026, 1, 3, 4, 5, 6),
+    )
+
+    with app.test_request_context("/?tracing_provider=langfuse"):
+        result = _original(ops_trace_module.TraceAppConfigApi.get)(
+            ops_trace_module.TraceAppConfigApi(),
+            ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER),
+            _request_context(),
+            UUID(APP_ID),
+        )
+
+    assert result == {
+        "id": "trace-config-1",
+        "app_id": APP_ID,
+        "tracing_provider": PROVIDER,
+        "tracing_config": {"public_key": "pk", "secret_key": "******"},
+        "is_active": True,
+        "created_at": "2026-01-02 03:04:05",
+        "updated_at": "2026-01-03 04:05:06",
+    }
 
 
 @pytest.mark.parametrize(
-    ("method_name", "path", "payload", "service_method_name", "service_result"),
+    ("method_name", "expected_result"),
     [
-        (
-            "post",
-            "/console/api/apps/app-123/trace-config",
-            {"tracing_provider": "mlflow", "tracing_config": {"endpoint": "https://trace.example.com"}},
-            "create_tracing_app_config",
-            {"id": "trace-config-1"},
-        ),
-        (
-            "patch",
-            "/console/api/apps/app-123/trace-config",
-            {"tracing_provider": "mlflow", "tracing_config": {"endpoint": "https://trace.example.com"}},
-            "update_tracing_app_config",
-            True,
-        ),
-        (
-            "delete",
-            "/console/api/apps/app-123/trace-config?tracing_provider=mlflow",
-            None,
-            "delete_tracing_app_config",
-            True,
-        ),
+        pytest.param("post", ({"result": "success"}, 201), id="create"),
+        pytest.param("patch", {"result": "success"}, id="update"),
     ],
 )
-def test_trace_config_mutations_require_edit_permission(
+def test_trace_app_config_write_returns_expected_response(
     app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
+    tracing_configs: MagicMock,
     method_name: str,
-    path: str,
-    payload: dict[str, object] | None,
-    service_method_name: str,
-    service_result: object,
+    expected_result: object,
 ) -> None:
-    app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
-    account = _make_account(TenantAccountRole.NORMAL)
-    _patch_console_guards(monkeypatch, account, _make_app())
-    service_mock = MagicMock(return_value=service_result)
-    monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)
+    payload = ops_trace_module.TraceConfigPayload(
+        tracing_provider=PROVIDER,
+        tracing_config={"public_key": "pk", "secret_key": "sk"},
+    )
 
-    with app.test_request_context(path, method=method_name.upper(), json=payload):
-        with _patch_payload(payload):
-            with pytest.raises(Forbidden):
-                getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
+    with app.test_request_context("/", method=method_name.upper()):
+        result = _original(_CONTROLLER_METHODS[method_name])(
+            ops_trace_module.TraceAppConfigApi(),
+            payload,
+            _request_context(),
+            UUID(APP_ID),
+        )
 
-    service_mock.assert_not_called()
+    assert result == expected_result
+    _service_method(tracing_configs, method_name).assert_called_once_with(
+        context=_request_context(),
+        app_id=APP_ID,
+        tracing_provider=PROVIDER,
+        tracing_config={"public_key": "pk", "secret_key": "sk"},
+    )
+
+
+def test_trace_app_config_delete_returns_exact_204_response(
+    app: Flask,
+    tracing_configs: MagicMock,
+) -> None:
+    with app.test_request_context("/?tracing_provider=langfuse", method="DELETE"):
+        result = _original(ops_trace_module.TraceAppConfigApi.delete)(
+            ops_trace_module.TraceAppConfigApi(),
+            ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER),
+            _request_context(),
+            UUID(APP_ID),
+        )
+
+    assert result == ("", 204)
+    tracing_configs.delete.assert_called_once_with(
+        context=_request_context(),
+        app_id=APP_ID,
+        tracing_provider=PROVIDER,
+    )
+
+
+@pytest.mark.parametrize("method_name", ["get", "post", "patch", "delete"])
+def test_trace_app_config_maps_missing_app_to_404(
+    app: Flask,
+    tracing_configs: MagicMock,
+    method_name: str,
+) -> None:
+    service_method = _service_method(tracing_configs, method_name)
+    service_method.side_effect = AppTracingConfigAppNotFoundError()
+    query_or_payload = (
+        ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
+        if method_name in {"get", "delete"}
+        else ops_trace_module.TraceConfigPayload(tracing_provider=PROVIDER, tracing_config={})
+    )
+
+    with app.test_request_context("/"):
+        with pytest.raises(AppNotFoundError) as exc_info:
+            _original(_CONTROLLER_METHODS[method_name])(
+                ops_trace_module.TraceAppConfigApi(),
+                query_or_payload,
+                _request_context(),
+                UUID(APP_ID),
+            )
+
+    assert exc_info.value.code == 404
+    assert exc_info.value.error_code == "app_not_found"
 
 
 @pytest.mark.parametrize(
-    ("method_name", "path", "payload", "service_method_name", "service_result"),
+    ("method_name", "service_error", "expected_http_error", "expected_status", "expected_code"),
     [
-        (
+        pytest.param(
             "post",
-            "/console/api/apps/app-123/trace-config",
-            {"tracing_provider": "mlflow", "tracing_config": {"endpoint": "https://trace.example.com"}},
-            "create_tracing_app_config",
-            {"id": "trace-config-1"},
+            AppTracingConfigAlreadyExistsError(),
+            TracingConfigAlreadyExistsError,
+            409,
+            "trace_config_already_exists",
+            id="already-exists",
         ),
-        (
+        pytest.param(
             "patch",
-            "/console/api/apps/app-123/trace-config",
-            {"tracing_provider": "mlflow", "tracing_config": {"endpoint": "https://trace.example.com"}},
-            "update_tracing_app_config",
-            True,
+            AppTracingConfigNotFoundError(),
+            TracingConfigNotFoundError,
+            404,
+            "trace_config_not_found",
+            id="patch-not-found",
         ),
-        (
+        pytest.param(
             "delete",
-            "/console/api/apps/app-123/trace-config?tracing_provider=mlflow",
-            None,
-            "delete_tracing_app_config",
-            True,
+            AppTracingConfigNotFoundError(),
+            TracingConfigNotFoundError,
+            404,
+            "trace_config_not_found",
+            id="delete-not-found",
+        ),
+        pytest.param(
+            "get",
+            AppTracingConfigInvalidProviderError("unknown"),
+            UnsupportedTracingProviderError,
+            400,
+            "unsupported_tracing_provider",
+            id="get-unsupported-provider",
+        ),
+        pytest.param(
+            "post",
+            AppTracingConfigInvalidProviderError("unknown"),
+            UnsupportedTracingProviderError,
+            400,
+            "unsupported_tracing_provider",
+            id="post-unsupported-provider",
+        ),
+        pytest.param(
+            "patch",
+            AppTracingConfigInvalidProviderError("unknown"),
+            UnsupportedTracingProviderError,
+            400,
+            "unsupported_tracing_provider",
+            id="patch-unsupported-provider",
+        ),
+        pytest.param(
+            "delete",
+            AppTracingConfigInvalidProviderError("unknown"),
+            UnsupportedTracingProviderError,
+            400,
+            "unsupported_tracing_provider",
+            id="delete-unsupported-provider",
+        ),
+        pytest.param(
+            "post",
+            AppTracingConfigInvalidConfigurationError(),
+            InvalidTracingConfigError,
+            400,
+            "invalid_tracing_config",
+            id="post-invalid-config",
+        ),
+        pytest.param(
+            "patch",
+            AppTracingConfigInvalidConfigurationError(),
+            InvalidTracingConfigError,
+            400,
+            "invalid_tracing_config",
+            id="patch-invalid-config",
+        ),
+        pytest.param(
+            "post",
+            AppTracingConfigVerificationFailedError(),
+            TracingConfigVerificationFailedError,
+            400,
+            "tracing_config_verification_failed",
+            id="post-verification-failed",
+        ),
+        pytest.param(
+            "patch",
+            AppTracingConfigVerificationFailedError(),
+            TracingConfigVerificationFailedError,
+            400,
+            "tracing_config_verification_failed",
+            id="patch-verification-failed",
+        ),
+        pytest.param(
+            "get",
+            AppTracingConfigProcessingError(),
+            TracingConfigProcessingError,
+            500,
+            "tracing_config_processing_failed",
+            id="get-processing-failed",
+        ),
+        pytest.param(
+            "post",
+            AppTracingConfigProcessingError(),
+            TracingConfigProcessingError,
+            500,
+            "tracing_config_processing_failed",
+            id="post-processing-failed",
+        ),
+        pytest.param(
+            "patch",
+            AppTracingConfigProcessingError(),
+            TracingConfigProcessingError,
+            500,
+            "tracing_config_processing_failed",
+            id="patch-processing-failed",
+        ),
+        pytest.param(
+            "delete",
+            AppTracingConfigProcessingError(),
+            TracingConfigProcessingError,
+            500,
+            "tracing_config_processing_failed",
+            id="delete-processing-failed",
         ),
     ],
 )
-def test_trace_config_mutations_require_rbac_permission(
+def test_trace_app_config_maps_application_errors_at_the_controller_boundary(
     app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
+    tracing_configs: MagicMock,
     method_name: str,
-    path: str,
-    payload: dict[str, object] | None,
-    service_method_name: str,
-    service_result: object,
+    service_error: Exception,
+    expected_http_error: type[BaseHTTPException],
+    expected_status: int,
+    expected_code: str,
 ) -> None:
-    app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
-    account = _make_account(TenantAccountRole.NORMAL)
-    _patch_console_guards(monkeypatch, account, _make_app(), rbac_enabled=True)
-    monkeypatch.setattr(common_wraps.db, "session", SimpleNamespace(scalar=lambda _stmt: "other-account"))
-    monkeypatch.setattr(common_wraps.RBACService.CheckAccess, "check", MagicMock(return_value=False))
-    service_mock = MagicMock(return_value=service_result)
-    monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)
+    service_method = _service_method(tracing_configs, method_name)
+    service_method.side_effect = service_error
+    query_or_payload = (
+        ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
+        if method_name in {"get", "delete"}
+        else ops_trace_module.TraceConfigPayload(tracing_provider=PROVIDER, tracing_config={})
+    )
 
-    with app.test_request_context(path, method=method_name.upper(), json=payload):
-        with _patch_payload(payload):
-            with pytest.raises(Forbidden):
-                getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
+    with app.test_request_context("/"):
+        with pytest.raises(expected_http_error) as exc_info:
+            _original(_CONTROLLER_METHODS[method_name])(
+                ops_trace_module.TraceAppConfigApi(),
+                query_or_payload,
+                _request_context(),
+                UUID(APP_ID),
+            )
 
-    service_mock.assert_not_called()
+    assert exc_info.value.code == expected_status
+    assert exc_info.value.error_code == expected_code
+    assert exc_info.value.data == {
+        "code": expected_code,
+        "message": exc_info.value.description,
+        "status": expected_status,
+    }
+
+
+@pytest.mark.parametrize("method_name", ["get", "post", "patch", "delete"])
+def test_trace_app_config_maps_untyped_value_errors_to_internal_error(
+    app: Flask,
+    tracing_configs: MagicMock,
+    method_name: str,
+) -> None:
+    service_method = _service_method(tracing_configs, method_name)
+    service_method.side_effect = ValueError("internal detail")
+    query_or_payload = (
+        ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
+        if method_name in {"get", "delete"}
+        else ops_trace_module.TraceConfigPayload(tracing_provider=PROVIDER, tracing_config={})
+    )
+
+    with app.test_request_context("/"), pytest.raises(TracingConfigProcessingError) as exc_info:
+        _original(_CONTROLLER_METHODS[method_name])(
+            ops_trace_module.TraceAppConfigApi(),
+            query_or_payload,
+            _request_context(),
+            UUID(APP_ID),
+        )
+
+    assert exc_info.value.code == 500
+    assert exc_info.value.error_code == "tracing_config_processing_failed"
+    assert exc_info.value.description == "The tracing configuration could not be processed."
+    assert exc_info.value.data == {
+        "code": "tracing_config_processing_failed",
+        "message": "The tracing configuration could not be processed.",
+        "status": 500,
+    }
+
+
+@pytest.mark.parametrize("method_name", ["get", "post", "patch", "delete"])
+def test_trace_app_config_does_not_mask_unexpected_errors(
+    app: Flask,
+    tracing_configs: MagicMock,
+    method_name: str,
+) -> None:
+    service_method = _service_method(tracing_configs, method_name)
+    unexpected_error = RuntimeError("unexpected")
+    service_method.side_effect = unexpected_error
+    query_or_payload = (
+        ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
+        if method_name in {"get", "delete"}
+        else ops_trace_module.TraceConfigPayload(tracing_provider=PROVIDER, tracing_config={})
+    )
+
+    with app.test_request_context("/"), pytest.raises(RuntimeError) as exc_info:
+        _original(_CONTROLLER_METHODS[method_name])(
+            ops_trace_module.TraceAppConfigApi(),
+            query_or_payload,
+            _request_context(),
+            UUID(APP_ID),
+        )
+
+    assert exc_info.value is unexpected_error

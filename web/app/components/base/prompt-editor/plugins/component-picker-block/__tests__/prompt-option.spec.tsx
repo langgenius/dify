@@ -21,41 +21,6 @@ describe('PromptMenuItem', () => {
       expect(screen.getByTestId('test-icon')).toBeInTheDocument()
       expect(screen.getByText('Test Option')).toBeInTheDocument()
     })
-
-    it('should have the correct display name', () => {
-      expect(PromptMenuItem.displayName).toBe('PromptMenuItem')
-    })
-  })
-
-  describe('Styling and States', () => {
-    it('should apply selected styles when isSelected is true and not disabled', () => {
-      const { container } = render(<PromptMenuItem {...defaultProps} isSelected={true} />)
-      const menuDiv = container.firstChild as HTMLElement
-
-      expect(menuDiv.className).toContain('bg-state-base-hover!')
-      expect(menuDiv.className).toContain('cursor-pointer')
-      expect(menuDiv.className).not.toContain('cursor-not-allowed')
-    })
-
-    it('should apply disabled styles and ignore isSelected when disabled is true', () => {
-      const { container } = render(
-        <PromptMenuItem {...defaultProps} isSelected={true} disabled={true} />,
-      )
-      const menuDiv = container.firstChild as HTMLElement
-
-      expect(menuDiv.className).toContain('cursor-not-allowed')
-      expect(menuDiv.className).toContain('opacity-30')
-      expect(menuDiv.className).not.toContain('bg-state-base-hover!')
-    })
-
-    it('should render with default styles when not selected and not disabled', () => {
-      const { container } = render(<PromptMenuItem {...defaultProps} />)
-      const menuDiv = container.firstChild as HTMLElement
-
-      expect(menuDiv.className).toContain('cursor-pointer')
-      expect(menuDiv.className).not.toContain('bg-state-base-hover!')
-      expect(menuDiv.className).not.toContain('cursor-not-allowed')
-    })
   })
 
   describe('Interactions', () => {

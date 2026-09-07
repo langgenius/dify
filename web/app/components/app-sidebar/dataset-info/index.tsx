@@ -13,11 +13,9 @@ type DatasetInfoProps = {
   expand: boolean
 }
 
-const DatasetInfo = ({
-  expand,
-}: DatasetInfoProps) => {
+const DatasetInfo = ({ expand }: DatasetInfoProps) => {
   const { t } = useTranslation()
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
   const iconInfo = dataset.icon_info || {
     icon: '📙',
     icon_type: 'emoji',
@@ -33,9 +31,12 @@ const DatasetInfo = ({
         'relative overflow-hidden rounded-xl',
         expand ? 'p-2 hover:bg-state-base-hover' : 'flex items-center justify-center px-1 py-1.5',
       )}
-      aria-label={!expand ? dataset.name : undefined}
     >
-      <div className={cn(expand ? 'flex w-full items-start gap-2' : 'flex items-center justify-center')}>
+      <div
+        className={cn(
+          expand ? 'flex w-full items-start gap-2' : 'flex items-center justify-center',
+        )}
+      >
         <div className="flex shrink-0 items-center">
           <AppIcon
             size="medium"
@@ -45,6 +46,7 @@ const DatasetInfo = ({
             imageUrl={iconInfo.icon_url}
           />
         </div>
+        {!expand && <span className="sr-only">{dataset.name}</span>}
         {expand && (
           <>
             <div className="flex min-w-0 flex-1 flex-col items-start justify-start gap-0.5">
@@ -58,12 +60,21 @@ const DatasetInfo = ({
               </div>
               <div className="flex w-full min-w-0 items-center gap-2 system-2xs-medium-uppercase text-text-tertiary">
                 {isExternalProvider && (
-                  <span className="truncate">{t('externalTag', { ns: 'dataset' })}</span>
+                  <span className="truncate">{t(($) => $.externalTag, { ns: 'dataset' })}</span>
                 )}
                 {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                   <>
-                    <span className="shrink-0 truncate">{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
-                    <span className="min-w-0 truncate">{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
+                    <span className="shrink-0 truncate">
+                      {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], {
+                        ns: 'dataset',
+                      })}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      {formatIndexingTechniqueAndMethod(
+                        dataset.indexing_technique,
+                        dataset.retrieval_model_dict?.search_method,
+                      )}
+                    </span>
                   </>
                 )}
               </div>

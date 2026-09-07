@@ -30,10 +30,3 @@ export type App = {
   is_agent: boolean
   can_trial: boolean
 }
-
-export type InstalledApp = {
-  app: AppBasicInfo
-  id: string
-  uninstallable: boolean
-  is_pinned: boolean
-}

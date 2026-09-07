@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '.'
 import { Button } from '../button'
-import { FieldDescription, FieldRoot } from '../field'
+import { Field, FieldDescription } from '../field'
 import { Form } from '../form'
 
 const triggerWidth = 'w-64'
@@ -27,6 +27,14 @@ const cityItems = [
   { label: 'Paris', value: 'paris' },
 ]
 
+const deploymentRegionItems = [
+  { label: 'US East', value: 'us-east' },
+  { label: 'Europe West', value: 'eu-west' },
+  { label: 'Asia Pacific', value: 'ap-southeast' },
+] as const
+
+type DeploymentRegion = (typeof deploymentRegionItems)[number]['value']
+
 const meta = {
   title: 'Base/Form/Select',
   component: Select,
@@ -34,7 +42,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
+        component:
+          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single- or multiple-value pickers with groups, labels, separators, and keyboard selection.',
       },
     },
   },
@@ -51,7 +60,7 @@ export const Default: Story = {
         <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
-        <SelectContent listProps={{ 'aria-label': 'City options' }}>
+        <SelectContent>
           <SelectItem value="seattle">
             <SelectItemText>Seattle</SelectItemText>
             <SelectItemIndicator />
@@ -147,7 +156,7 @@ export const WithPlaceholder: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
-      {(['small', 'medium', 'large'] as const).map(size => (
+      {(['small', 'medium', 'large'] as const).map((size) => (
         <div key={size} className={triggerWidth}>
           <Select defaultValue="seattle">
             <SelectTrigger aria-label={`${size} select`} size={size}>
@@ -327,10 +336,72 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
+const MultipleControlledDemo = () => {
+  const [value, setValue] = React.useState<DeploymentRegion[]>(['us-east', 'eu-west'])
+
+  return (
+    <div className={triggerWidth}>
+      <Select<DeploymentRegion, true>
+        items={deploymentRegionItems}
+        multiple
+        value={value}
+        onValueChange={setValue}
+      >
+        <SelectLabel>Deployment regions</SelectLabel>
+        <SelectTrigger>
+          <SelectValue<DeploymentRegion, true>>
+            {(selectedRegions) => {
+              if (!selectedRegions?.length) return 'Choose regions'
+
+              const [firstSelectedRegion] = selectedRegions
+              if (!firstSelectedRegion) return 'Choose regions'
+
+              const firstRegion = deploymentRegionItems.find(
+                (item) => item.value === firstSelectedRegion,
+              )
+              const additionalRegionCount = selectedRegions.length - 1
+              const firstRegionLabel = firstRegion?.label ?? firstSelectedRegion
+
+              return additionalRegionCount > 0
+                ? `${firstRegionLabel} (+${additionalRegionCount} more)`
+                : firstRegionLabel
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {deploymentRegionItems.map((item) => (
+            <SelectItem<DeploymentRegion> key={item.value} value={item.value}>
+              <SelectItemText>{item.label}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+export const MultipleControlled: Story = {
+  render: () => <MultipleControlledDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Deployment regions' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveTextContent('US East (+1 more)')
+    await userEvent.click(trigger)
+
+    const asiaPacificOption = await body.findByRole('option', { name: 'Asia Pacific' })
+    await userEvent.click(asiaPacificOption)
+
+    await expect(trigger).toHaveTextContent('US East (+2 more)')
+    await expect(asiaPacificOption).toHaveAttribute('aria-selected', 'true')
+  },
+}
+
 export const InForm: Story = {
   render: () => (
     <Form aria-label="Timezone form" className="grid w-72 gap-3" onFormSubmit={() => undefined}>
-      <FieldRoot name="timezone">
+      <Field name="timezone">
         <Select name="timezone" defaultValue="utc">
           <SelectLabel>Timezone</SelectLabel>
           <SelectTrigger>
@@ -352,9 +423,11 @@ export const InForm: Story = {
           </SelectContent>
         </Select>
         <FieldDescription>Used to schedule workflow runs.</FieldDescription>
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </Form>
   ),

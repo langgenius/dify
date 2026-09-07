@@ -1,5 +1,5 @@
 import type { TokenStore } from './token-store'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { detectTokenStore, getTokenStore } from './manager'
 
 function memStore(label: string): TokenStore & { _label: string } {
@@ -58,7 +58,9 @@ describe('detectTokenStore', () => {
     const f = memStore('file')
     const result = await detectTokenStore({
       factory: {
-        keyring: () => { throw new Error('no backend') },
+        keyring: () => {
+          throw new Error('no backend')
+        },
         file: () => f,
       },
     })

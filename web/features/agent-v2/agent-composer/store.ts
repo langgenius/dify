@@ -1,37 +1,34 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from './form-state'
 import isEqual from 'fast-deep-equal'
 import { atom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
-export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
-export const agentComposerOriginalDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
-export const agentComposerPublishedDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
-export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(defaultAgentSoulConfigFormState)
+export const agentComposerSavedDraftAtom = atom<AgentSoulConfigFormState | undefined>(
+  defaultAgentSoulConfigFormState,
+)
+export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(
+  defaultAgentSoulConfigFormState,
+)
 
-export const rebaseAgentComposerDraftAtom = atom(null, (_get, set, {
-  draft,
-  originalConfig,
-}: {
-  draft: AgentSoulConfigFormState
-  originalConfig?: AgentSoulConfig
-}) => {
-  set(agentComposerOriginalConfigAtom, originalConfig)
-  set(agentComposerDraftAtom, draft)
-  set(agentComposerOriginalDraftAtom, draft)
-  set(agentComposerPublishedDraftAtom, draft)
-})
+export const rebaseAgentComposerDraftAtom = atom(
+  null,
+  (
+    _get,
+    set,
+    {
+      draft,
+    }: {
+      draft: AgentSoulConfigFormState
+    },
+  ) => {
+    set(agentComposerDraftAtom, draft)
+    set(agentComposerSavedDraftAtom, draft)
+  },
+)
 
 export const isAgentComposerDirtyAtom = atom((get) => {
-  const originalDraft = get(agentComposerOriginalDraftAtom)
+  const savedDraft = get(agentComposerSavedDraftAtom)
   const draft = get(agentComposerDraftAtom)
 
-  return !isEqual(draft, originalDraft ?? defaultAgentSoulConfigFormState)
-})
-
-export const hasAgentComposerUnpublishedChangesAtom = atom((get) => {
-  const publishedDraft = get(agentComposerPublishedDraftAtom)
-  const draft = get(agentComposerDraftAtom)
-
-  return !isEqual(draft, publishedDraft ?? defaultAgentSoulConfigFormState)
+  return !isEqual(draft, savedDraft ?? defaultAgentSoulConfigFormState)
 })

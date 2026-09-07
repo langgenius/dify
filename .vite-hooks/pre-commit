@@ -5,7 +5,6 @@ files=$(git diff --cached --name-only)
 # check if api or web directory is modified
 
 api_modified=false
-web_modified=false
 skip_web_checks=false
 
 git_path() {
@@ -28,10 +27,6 @@ do
         api/*.py)
             # set api_modified flag to true
             api_modified=true
-            ;;
-        web/*)
-            # set web_modified flag to true
-            web_modified=true
             ;;
     esac
 done

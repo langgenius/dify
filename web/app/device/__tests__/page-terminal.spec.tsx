@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 
 const mockPush = vi.fn()
@@ -35,10 +36,6 @@ vi.mock('@/service/device-flow', () => ({
   },
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({ queryKey: ['sys'], queryFn: async () => ({}) }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
 }))
@@ -57,6 +54,7 @@ let MockDeviceFlowError: MockDeviceFlowErrorCtor
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  document.title = ''
   mockSearchParams = {}
   // router.replace(pathname) in the real app drops the query string; mirror
   // that so useSearchParams reflects the cleared URL on the next render.
@@ -64,7 +62,9 @@ beforeEach(async () => {
     mockSearchParams = {}
   })
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
-  const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
+  const mod = (await import('@/service/device-flow')) as {
+    DeviceFlowError: MockDeviceFlowErrorCtor
+  }
   MockDeviceFlowError = mod.DeviceFlowError
 })
 
@@ -80,12 +80,17 @@ describe('error_expired terminal state', () => {
   it('shows "errorExpired.title" heading', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
+    await waitFor(() => {
+      expect(document.title).toBe('deviceFlow.errorExpired.title - Dify')
+    })
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
-    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }),
+    )
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText('deviceFlow.errorExpired.title')).not.toBeInTheDocument()
   })
@@ -161,7 +166,7 @@ describe('error_sso dedicated view', () => {
     render(<DevicePage />)
     await screen.findByText(TITLE)
     fireEvent.click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
-    await screen.findByText('chooser.subtitle')
+    await screen.findByText('deviceFlow.chooser.subtitle')
     expect(mockDeviceLookup).toHaveBeenCalledWith('ABCD-3456')
   })
 
@@ -169,5 +174,6 @@ describe('error_sso dedicated view', () => {
     render(<DevicePage />)
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument()
+    expect(document.title).toBe('deviceFlow.codeEntry.title - Dify')
   })
 })

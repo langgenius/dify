@@ -14,7 +14,11 @@
 //   channels               -> one channel name per line
 //   prerelease <channel>   -> "true" | "false"
 //   github-env             -> key=value lines (all fields CI needs) for $GITHUB_ENV
-//   validate               -> exit 1 if difyctl.release, version, or channel is malformed
+//   edge-version <sha>     -> <package version core>-edge.<sha>
+//   validate               -> exit 1 if difyctl.release, version, channel, or
+//                             difyctl.compat is malformed
+//   validate-version <version> <channel>
+//                          -> exit 1 unless version matches the channel's form
 //   compat-check <difyVer> -> exit 1 if difyVer outside compat.minDify..maxDify
 
 import { readFileSync, realpathSync } from 'node:fs'
@@ -22,6 +26,8 @@ import { fileURLToPath } from 'node:url'
 
 const BUN_TARGET_RE = /^bun-(linux|darwin|windows)-(x64|arm64)$/
 const SEMVER_CORE_LEN = 3
+const SEMVER_CORE_RE = /^\d+\.\d+\.\d+$/
+const COMPAT_BOUNDS = ['minDify', 'maxDify']
 
 // Add channels here: { name, prerelease, versionForm }.
 const CHANNELS = [
@@ -31,8 +37,8 @@ const CHANNELS = [
   { name: 'edge', prerelease: true, versionForm: /^\d+\.\d+\.\d+-edge\.[0-9a-f]{7,40}$/ },
 ]
 
-const channelByName = name => CHANNELS.find(c => c.name === name)
-const channelNames = () => CHANNELS.map(c => c.name).join(', ')
+const channelByName = (name) => CHANNELS.find((c) => c.name === name)
+const channelNames = () => CHANNELS.map((c) => c.name).join(', ')
 
 function parsePrecedence(v) {
   const s = String(v).replace(/^v/, '').replace(/\+.*$/, '')
@@ -51,8 +57,7 @@ function edgeVersion(sha) {
     die('edge-version requires a git short sha (7-40 hex chars)')
   const { version } = loadPkg()
   const core = versionCore(version)
-  if (!/^\d+\.\d+\.\d+$/.test(core))
-    die(`cannot derive edge base from version: ${version}`)
+  if (!SEMVER_CORE_RE.test(core)) die(`cannot derive edge base from version: ${version}`)
   return `${core}-edge.${sha}`
 }
 
@@ -63,8 +68,7 @@ function channelVersionProblem(version, channel) {
   if (typeof version !== 'string' || version.length === 0)
     return 'version must be a non-empty string'
   const ch = channelByName(channel)
-  if (!ch)
-    return `unknown channel: ${channel} (expected one of: ${channelNames()})`
+  if (!ch) return `unknown channel: ${channel} (expected one of: ${channelNames()})`
   if (!ch.versionForm.test(version))
     return `version ${version} does not match the ${channel} channel form`
   return null
@@ -72,8 +76,7 @@ function channelVersionProblem(version, channel) {
 
 function validateVersionForChannel(version, channelName) {
   const problem = channelVersionProblem(version, channelName)
-  if (problem)
-    die(problem)
+  if (problem) die(problem)
   return `valid: ${version} is a ${channelName} version`
 }
 
@@ -82,21 +85,16 @@ function comparePre(a, b) {
   const bparts = b.split('.')
   const len = Math.max(aparts.length, bparts.length)
   for (let i = 0; i < len; i++) {
-    if (aparts[i] === undefined)
-      return -1
-    if (bparts[i] === undefined)
-      return 1
+    if (aparts[i] === undefined) return -1
+    if (bparts[i] === undefined) return 1
     const an = /^\d+$/.test(aparts[i])
     const bn = /^\d+$/.test(bparts[i])
     if (an && bn) {
       const d = Number(aparts[i]) - Number(bparts[i])
-      if (d !== 0)
-        return d < 0 ? -1 : 1
-    }
-    else if (an !== bn) {
+      if (d !== 0) return d < 0 ? -1 : 1
+    } else if (an !== bn) {
       return an ? -1 : 1
-    }
-    else if (aparts[i] !== bparts[i]) {
+    } else if (aparts[i] !== bparts[i]) {
       return aparts[i] < bparts[i] ? -1 : 1
     }
   }
@@ -109,15 +107,11 @@ function comparePrecedence(a, b) {
   for (let i = 0; i < SEMVER_CORE_LEN; i++) {
     const x = A.nums[i] ?? 0
     const y = B.nums[i] ?? 0
-    if (x !== y)
-      return x < y ? -1 : 1
+    if (x !== y) return x < y ? -1 : 1
   }
-  if (A.pre === B.pre)
-    return 0
-  if (A.pre === '')
-    return 1
-  if (B.pre === '')
-    return -1
+  if (A.pre === B.pre) return 0
+  if (A.pre === '') return 1
+  if (B.pre === '') return -1
   return comparePre(A.pre, B.pre)
 }
 
@@ -126,11 +120,16 @@ function die(msg) {
   process.exit(1)
 }
 
+// Tests point this at a fixture manifest so their assertions stay fixed while
+// the real version and compat window move with every release. The name is
+// mirrored in test/fixtures/pkg-manifest.ts rather than imported from here,
+// because this file's shebang breaks the Windows test runner.
+const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
+
 function loadPkg() {
-  const pkgUrl = new URL('../package.json', import.meta.url)
-  const pkg = JSON.parse(readFileSync(pkgUrl, 'utf8'))
-  if (!pkg.difyctl?.release)
-    die('cli/package.json missing difyctl.release')
+  const pkgPath = process.env[PKG_PATH_ENV] || new URL('../package.json', import.meta.url)
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+  if (!pkg.difyctl?.release) die('cli/package.json missing difyctl.release')
   return {
     version: pkg.version,
     channel: pkg.difyctl.channel,
@@ -151,32 +150,29 @@ function githubEnv() {
     tagPrefix: release.tagPrefix,
     difyctlTag: `${release.tagPrefix}${version}`,
   }
-  return Object.entries(fields).map(([k, v]) => `${k}=${v}`).join('\n')
+  return Object.entries(fields)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n')
 }
 
 function requireVersion(version) {
-  if (!version)
-    die('version argument is required')
+  if (!version) die('version argument is required')
   return version
 }
 
 function assetName(release, version, id) {
-  const target = release.targets.find(t => t.id === id)
-  if (!target)
-    die(`unknown target id: ${id}`)
+  const target = release.targets.find((t) => t.id === id)
+  if (!target) die(`unknown target id: ${id}`)
   const suffix = target.exe ? '.exe' : ''
   return `${release.tagPrefix}${version}-${id}${suffix}`
 }
 
 function validateRelease(release) {
   const problems = []
-  const str = v => typeof v === 'string' && v.length > 0
-  if (!str(release.tagPrefix))
-    problems.push('tagPrefix must be a non-empty string')
-  if (!str(release.binName))
-    problems.push('binName must be a non-empty string')
-  if (!str(release.checksumsSuffix))
-    problems.push('checksumsSuffix must be a non-empty string')
+  const str = (v) => typeof v === 'string' && v.length > 0
+  if (!str(release.tagPrefix)) problems.push('tagPrefix must be a non-empty string')
+  if (!str(release.binName)) problems.push('binName must be a non-empty string')
+  if (!str(release.checksumsSuffix)) problems.push('checksumsSuffix must be a non-empty string')
   if (!Array.isArray(release.targets) || release.targets.length === 0) {
     problems.push('targets must be a non-empty array')
     return problems
@@ -184,15 +180,12 @@ function validateRelease(release) {
   const seen = new Set()
   for (const t of release.targets) {
     const label = t?.id ?? JSON.stringify(t)
-    if (!str(t?.id))
-      problems.push(`target ${label}: id must be a non-empty string`)
-    else if (seen.has(t.id))
-      problems.push(`duplicate target id: ${t.id}`)
+    if (!str(t?.id)) problems.push(`target ${label}: id must be a non-empty string`)
+    else if (seen.has(t.id)) problems.push(`duplicate target id: ${t.id}`)
     else seen.add(t.id)
     if (!str(t?.bunTarget) || !BUN_TARGET_RE.test(t.bunTarget))
       problems.push(`target ${label}: bunTarget must match ${BUN_TARGET_RE}`)
-    if (typeof t?.exe !== 'boolean')
-      problems.push(`target ${label}: exe must be a boolean`)
+    if (typeof t?.exe !== 'boolean') problems.push(`target ${label}: exe must be a boolean`)
     else if (str(t?.bunTarget) && t.exe !== t.bunTarget.startsWith('bun-windows-'))
       problems.push(`target ${label}: exe must be true iff bunTarget is bun-windows-*`)
   }
@@ -204,13 +197,26 @@ function validateVersionChannel(version, channel) {
   return problem ? [problem] : []
 }
 
+function validateCompat(compat) {
+  const problems = COMPAT_BOUNDS.filter((b) => !SEMVER_CORE_RE.test(compat[b] ?? '')).map(
+    (b) => `difyctl.compat.${b} must be a plain X.Y.Z version, found ${compat[b] ?? '(missing)'}`,
+  )
+  if (problems.length === 0 && comparePrecedence(compat.minDify, compat.maxDify) > 0)
+    problems.push(`difyctl.compat.minDify (${compat.minDify}) is above maxDify (${compat.maxDify})`)
+  return problems
+}
+
 function main(argv) {
   const [cmd, ...rest] = argv
   switch (cmd) {
     case 'tag':
       return `${loadPkg().release.tagPrefix}${requireVersion(rest[0])}`
     case 'asset':
-      return assetName(loadPkg().release, requireVersion(rest[0]), rest[1] ?? die('target id is required'))
+      return assetName(
+        loadPkg().release,
+        requireVersion(rest[0]),
+        rest[1] ?? die('target id is required'),
+      )
     case 'checksums': {
       const { release } = loadPkg()
       return `${release.tagPrefix}${requireVersion(rest[0])}${release.checksumsSuffix}`
@@ -218,9 +224,11 @@ function main(argv) {
     case 'tag-prefix':
       return loadPkg().release.tagPrefix
     case 'targets':
-      return loadPkg().release.targets.map(t => `${t.bunTarget}\t${t.id}\t${t.exe ? 1 : 0}`).join('\n')
+      return loadPkg()
+        .release.targets.map((t) => `${t.bunTarget}\t${t.id}\t${t.exe ? 1 : 0}`)
+        .join('\n')
     case 'channels':
-      return CHANNELS.map(c => c.name).join('\n')
+      return CHANNELS.map((c) => c.name).join('\n')
     case 'github-env':
       return githubEnv()
     case 'compat-check': {
@@ -228,22 +236,30 @@ function main(argv) {
       const difyVersion = requireVersion(rest[0])
       if (!compat.minDify || !compat.maxDify)
         die('cli/package.json missing difyctl.compat.minDify/maxDify')
-      if (comparePrecedence(difyVersion, compat.minDify) < 0 || comparePrecedence(difyVersion, compat.maxDify) > 0)
-        die(`Dify ${difyVersion} is outside difyctl compatibility window ${compat.minDify}..${compat.maxDify}; bump difyctl.compat in cli/package.json`)
+      if (
+        comparePrecedence(difyVersion, compat.minDify) < 0 ||
+        comparePrecedence(difyVersion, compat.maxDify) > 0
+      )
+        die(
+          `Dify ${difyVersion} is outside difyctl compatibility window ${compat.minDify}..${compat.maxDify}; bump difyctl.compat in cli/package.json`,
+        )
       return `compatible: Dify ${difyVersion} within ${compat.minDify}..${compat.maxDify}`
     }
     case 'prerelease': {
       const ch = channelByName(rest[0] ?? die('channel argument is required'))
-      if (!ch)
-        die(`unknown channel: ${rest[0]} (expected one of: ${channelNames()})`)
+      if (!ch) die(`unknown channel: ${rest[0]} (expected one of: ${channelNames()})`)
       return String(ch.prerelease)
     }
     case 'validate': {
-      const { version, channel, release } = loadPkg()
-      const problems = [...validateRelease(release), ...validateVersionChannel(version, channel)]
+      const { version, channel, compat, release } = loadPkg()
+      const problems = [
+        ...validateRelease(release),
+        ...validateCompat(compat),
+        ...validateVersionChannel(version, channel),
+      ]
       if (problems.length > 0)
         die(`invalid difyctl release config:\n  - ${problems.join('\n  - ')}`)
-      return `difyctl release valid: version=${version} channel=${channel} targets=${release.targets.length}`
+      return `difyctl release valid: version=${version} channel=${channel} compat=${compat.minDify}..${compat.maxDify} targets=${release.targets.length}`
     }
     case 'edge-version':
       return edgeVersion(rest[0])
@@ -257,9 +273,16 @@ function main(argv) {
   }
 }
 
-const invokedDirectly = process.argv[1]
-  && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-if (invokedDirectly)
-  process.stdout.write(`${main(process.argv.slice(2))}\n`)
+const invokedDirectly =
+  process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+if (invokedDirectly) process.stdout.write(`${main(process.argv.slice(2))}\n`)
 
-export { assetName, channelByName, CHANNELS, edgeVersion, loadPkg, validateVersionForChannel, versionCore }
+export {
+  assetName,
+  channelByName,
+  CHANNELS,
+  edgeVersion,
+  loadPkg,
+  validateVersionForChannel,
+  versionCore,
+}

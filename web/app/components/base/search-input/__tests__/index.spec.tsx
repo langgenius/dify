@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import userEvent from '@testing-library/user-event'
+import { createRef, useState } from 'react'
 import { SearchInput } from '..'
 
 describe('SearchInput', () => {
@@ -15,7 +16,10 @@ describe('SearchInput', () => {
 
     it('renders custom placeholder', () => {
       render(<SearchInput value="" onValueChange={() => {}} placeholder="Custom Placeholder" />)
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute('placeholder', 'Custom Placeholder')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute(
+        'placeholder',
+        'Custom Placeholder',
+      )
     })
 
     it('uses custom aria label', () => {
@@ -23,7 +27,20 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('uses a custom form name', () => {
+      render(<SearchInput name="provider-query" value="" onValueChange={() => {}} />)
+      expect(screen.getByRole('searchbox')).toHaveAttribute('name', 'provider-query')
+    })
+
+    it('exposes the input element through its ref', () => {
+      const ref = createRef<HTMLInputElement>()
+      render(<SearchInput ref={ref} value="" onValueChange={() => {}} />)
+
+      expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'common.operation.search' }))
+    })
+
     it('focuses the searchbox when autoFocus is enabled', () => {
+      // oxlint-disable-next-line jsx-a11y/no-autofocus
       render(<SearchInput value="" onValueChange={() => {}} autoFocus />)
       expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
     })
@@ -34,6 +51,27 @@ describe('SearchInput', () => {
 
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
+    })
+
+    it('keeps a disabled searchbox inert and exposes its description', () => {
+      render(
+        <>
+          <SearchInput
+            disabled
+            aria-describedby="search-unavailable"
+            value="has value"
+            onValueChange={() => {}}
+          />
+          <span id="search-unavailable">Search unavailable</span>
+        </>,
+      )
+
+      const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      expect(searchbox).toBeDisabled()
+      expect(searchbox).toHaveAccessibleDescription('Search unavailable')
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.clear' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -125,28 +163,23 @@ describe('SearchInput', () => {
       expect(onValueChange).toHaveBeenCalledWith('')
     })
 
-    it('calls onValueChange with empty string when clear button is clicked', () => {
-      const onValueChange = vi.fn()
-      render(<SearchInput value="has value" onValueChange={onValueChange} />)
+    it('clears the value and returns focus to the searchbox', async () => {
+      const user = userEvent.setup()
+
+      function ControlledSearchInput() {
+        const [value, setValue] = useState('has value')
+
+        return <SearchInput value={value} onValueChange={setValue} />
+      }
+
+      render(<ControlledSearchInput />)
 
       const clearButton = screen.getByLabelText('common.operation.clear')
-      fireEvent.click(clearButton)
-      expect(onValueChange).toHaveBeenCalledWith('')
-    })
+      await user.click(clearButton)
 
-    it('uses dify-ui input spacing for the search adornment', () => {
-      render(<SearchInput value="" onValueChange={() => {}} />)
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      expect(input).toHaveClass('ps-7')
-      expect(input).not.toHaveClass('h-[18px]')
-    })
-  })
-
-  describe('Style', () => {
-    it('applies custom className', () => {
-      const { container } = render(<SearchInput value="" onValueChange={() => {}} className="custom-test" />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-test')
+      const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      expect(searchbox).toHaveValue('')
+      expect(searchbox).toHaveFocus()
     })
   })
 })

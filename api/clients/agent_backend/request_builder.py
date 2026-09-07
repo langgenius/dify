@@ -11,11 +11,11 @@ composition-driven.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from agenton.compositor import CompositorSessionSnapshot
-from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
@@ -25,18 +25,22 @@ from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, Dif
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-    DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
-from dify_agent.layers.drive import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
 from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.user_prompt import (
+    DIFY_USER_PROMPT_LAYER_TYPE_ID,
+    DifyUserPromptFileConfig,
+    DifyUserPromptLayerConfig,
+)
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -46,8 +50,6 @@ from dify_agent.protocol import (
     LayerExitSignals,
     RunComposition,
     RunLayerSpec,
-    RunPurpose,
-    RuntimeLayerSpec,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
@@ -56,52 +58,78 @@ WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
 AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
+DIFY_RUNTIME_LAYER_ID = "runtime"
 DIFY_CONFIG_LAYER_ID = "config"
-DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
 DIFY_SHELL_LAYER_ID = "shell"
-
-
-def _filter_snapshot_to_specs(
-    snapshot: CompositorSessionSnapshot,
-    specs: list[RuntimeLayerSpec],
-) -> CompositorSessionSnapshot:
-    """Keep only snapshot layers whose names appear in the cleanup spec list.
-
-    The agenton compositor rejects a snapshot whose layer-name sequence does
-    not match the active composition exactly. Cleanup-replay drops plugin
-    layers, so we must drop the matching snapshot entries here.
-    """
-    kept_names = {spec.name for spec in specs}
-    filtered_layers: list[LayerSessionSnapshot] = [layer for layer in snapshot.layers if layer.name in kept_names]
-    if len(filtered_layers) == len(snapshot.layers):
-        return snapshot
-    return CompositorSessionSnapshot(schema_version=snapshot.schema_version, layers=filtered_layers)
+type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
 
 
 def _shell_layer_deps() -> dict[str, str]:
-    return {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-
-
-def _drive_layer_deps() -> dict[str, str]:
-    return {"shell": DIFY_SHELL_LAYER_ID}
+    return {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "runtime": DIFY_RUNTIME_LAYER_ID,
+    }
 
 
 def _config_layer_deps() -> dict[str, str]:
     return {"shell": DIFY_SHELL_LAYER_ID}
 
 
-def _shell_config_with_drive_ref(
-    shell_config: DifyShellLayerConfig | None,
-    drive_config: DifyDriveLayerConfig | None,
-) -> DifyShellLayerConfig:
-    config = shell_config or DifyShellLayerConfig()
-    if drive_config is None:
-        return config
-    return config.model_copy(update={"agent_stub_drive_ref": drive_config.drive_ref})
+def _markdown_backtick_fence(text: str) -> str:
+    """Choose a fence that will not terminate inside the prompt body."""
+    longest_backtick_run = max((len(match.group(0)) for match in re.finditer(r"`+", text)), default=0)
+    return "`" * max(3, longest_backtick_run + 1)
+
+
+_BUILD_DRAFT_AGENT_SOUL_PROMPT = """You are running in build mode.
+
+Objective:
+- Improve this agent's working environment, configuration, tools, files, notes,
+  and context so it can handle the intended task well.
+
+Guidance:
+- Treat the intended task as context for setup work, validation, and configuration decisions.
+- Perform concrete investigative or setup steps when they help improve or verify the agent configuration.
+- Use the installed `dify-agent` CLI when you need to inspect or persist Agent configuration."""
+
+
+def _wrap_build_draft_agent_soul_prompt(prompt: str | None) -> str:
+    """Reframe build-draft Agent Soul prompts as preparation work for a future run."""
+    prompt_body = (prompt or "").strip()
+    if not prompt_body:
+        return _BUILD_DRAFT_AGENT_SOUL_PROMPT + "\n\nIntended task for later normal runs:\nNo task prompt was provided."
+    fence = _markdown_backtick_fence(prompt_body)
+    return (
+        _BUILD_DRAFT_AGENT_SOUL_PROMPT
+        + f"\n\nIntended task for later normal runs:\n{fence}text\n{prompt_body}\n{fence}"
+    )
+
+
+def _agent_soul_prompt_for_layer(
+    prompt: str | None,
+    *,
+    config_version_kind: AgentConfigVersionKind,
+) -> str | None:
+    """Preserve normal snapshot/draft prompts and only wrap build-draft prompts.
+
+    The API-side layer adapter is the product boundary where Agent Soul text
+    becomes the model-facing system-prompt layer. ``snapshot`` and normal
+    ``draft`` runs pass through the original effective prompt unchanged, while
+    ``build_draft`` always emits a setup prompt. When an original prompt is
+    present, it is reframed as future-run context and embedded in a fenced
+    block; when it is blank, the setup instruction is still kept.
+    """
+    if config_version_kind != "build_draft":
+        if prompt is None:
+            return None
+        if not prompt.strip():
+            return None
+        return prompt
+    return _wrap_build_draft_agent_soul_prompt(prompt)
 
 
 class AgentBackendModelConfig(BaseModel):
@@ -110,8 +138,8 @@ class AgentBackendModelConfig(BaseModel):
     plugin_id: str
     model_provider: str
     model: str
-    credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
+    context_window_tokens: int | None = Field(default=None, gt=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -119,8 +147,12 @@ class AgentBackendModelConfig(BaseModel):
 # ``DifyPluginLLMLayerConfig.model_settings`` is pydantic_ai's ``ModelSettings``
 # TypedDict (closed: unknown keys are rejected, explicit ``None`` values fail the
 # per-field type checks). Agent Soul model settings carry a wider, nullable shape
-# (``stop`` / ``response_format`` plus null-padded fields), so the layer config
-# only receives the keys the runtime contract accepts.
+# (``stop`` / ``response_format`` plus null-padded fields, plus arbitrary
+# plugin-declared parameters such as Qwen's ``enable_thinking``), so the layer
+# config only receives the keys the runtime contract accepts directly; anything
+# else is forwarded through ``extra_body``, the TypedDict's own escape hatch for
+# provider-specific parameters (see
+# ``dify_agent.adapters.llm.model._map_model_settings_to_parameters``).
 _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "temperature",
     "top_p",
@@ -128,6 +160,7 @@ _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "frequency_penalty",
     "max_tokens",
 )
+_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop", "response_format"})
 
 
 def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
@@ -137,6 +170,15 @@ def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonVa
     stop = settings.get("stop")
     if isinstance(stop, list) and stop:
         sanitized["stop_sequences"] = stop
+
+    extra_body: dict[str, JsonValue] = {
+        key: value
+        for key, value in settings.items()
+        if key not in _AGENT_MODEL_SETTINGS_KNOWN_KEYS and value is not None
+    }
+    if extra_body:
+        sanitized["extra_body"] = extra_body
+
     return sanitized or None
 
 
@@ -160,25 +202,23 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
 
     model: AgentBackendModelConfig
     execution_context: DifyExecutionContextLayerConfig
+    backend_binding_ref: str = Field(min_length=1)
     workflow_node_job_prompt: str
     user_prompt: str
     agent_soul_prompt: str | None = None
-    purpose: RunPurpose = "workflow_node"
+    agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
-    # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
-    # through the back proxy, never inline content.
-    drive_config: DifyDriveLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement; a deferred call ends the run and
     # the workflow pauses via the existing HITL form mechanism (ENG-635).
     ask_human_config: DifyAskHumanLayerConfig | None = None
-    # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
-    # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
+    # Inject the sandboxed shell graph. Requires a deployment-selected runtime
+    # backend plus the product-resolved persistent Binding.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -186,7 +226,6 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     # (ENG-638). Keyed by the original deferred tool_call_id.
     deferred_tool_results: DeferredToolResultsPayload | None = None
     include_history: bool = True
-    suspend_on_exit: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
@@ -210,23 +249,22 @@ class AgentBackendAgentAppRunInput(BaseModel):
 
     model: AgentBackendModelConfig
     execution_context: DifyExecutionContextLayerConfig
+    backend_binding_ref: str = Field(min_length=1)
     user_prompt: str
+    user_files: list[DifyUserPromptFileConfig] = Field(default_factory=list)
     agent_soul_prompt: str | None = None
-    purpose: RunPurpose = "agent_app"
+    agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
-    # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
-    # through the back proxy, never inline content.
-    drive_config: DifyDriveLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement (ENG-635).
     ask_human_config: DifyAskHumanLayerConfig | None = None
-    # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
-    # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
+    # Inject the sandboxed shell graph. Requires a deployment-selected runtime
+    # backend plus the product-resolved persistent Binding.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -234,7 +272,6 @@ class AgentBackendAgentAppRunInput(BaseModel):
     # (ENG-638). Keyed by the original deferred tool_call_id.
     deferred_tool_results: DeferredToolResultsPayload | None = None
     include_history: bool = True
-    suspend_on_exit: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
@@ -254,20 +291,24 @@ class AgentBackendRunRequestBuilder:
         """Build an Agent App conversation-turn run request.
 
         Layer graph: optional Agent Soul system prompt → user prompt →
-        execution context → optional shell / config / drive / history
+        execution context → optional shell / config / history
         (multi-turn) → LLM → optional plugin-direct tools / core-routed tools /
         knowledge search / ask_human / structured output. Mirrors the
         workflow-node layer ordering minus the workflow-job / previous-node
         prompt.
         """
         layers: list[RunLayerSpec] = []
-        if run_input.agent_soul_prompt:
+        agent_soul_prompt = _agent_soul_prompt_for_layer(
+            run_input.agent_soul_prompt,
+            config_version_kind=run_input.agent_config_version_kind,
+        )
+        if agent_soul_prompt:
             layers.append(
                 RunLayerSpec(
                     name=AGENT_SOUL_PROMPT_LAYER_ID,
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_soul"},
-                    config=PromptLayerConfig(prefix=run_input.agent_soul_prompt),
+                    config=PromptLayerConfig(prefix=agent_soul_prompt),
                 )
             )
 
@@ -275,9 +316,9 @@ class AgentBackendRunRequestBuilder:
             [
                 RunLayerSpec(
                     name=AGENT_APP_USER_PROMPT_LAYER_ID,
-                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
+                    type=DIFY_USER_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_app_user_prompt"},
-                    config=PromptLayerConfig(user=run_input.user_prompt),
+                    config=DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_files),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
@@ -288,20 +329,25 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
-        include_shell = (
-            run_input.include_shell or run_input.config_layer_config is not None or run_input.drive_config is not None
-        )
+        include_shell = run_input.include_shell or run_input.config_layer_config is not None
         if include_shell:
-            # Sandboxed bash workspace (dify.shell). It enters before config/drive
-            # so eager pulls materialize content in the same filesystem used by
-            # model commands.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_RUNTIME_LAYER_ID,
+                    type=DIFY_RUNTIME_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref),
+                )
+            )
+            # Sandboxed bash workspace (dify.shell). It enters before config so
+            # eager pulls materialize content in the same filesystem used by model commands.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
                     deps=_shell_layer_deps(),
                     metadata=run_input.metadata,
-                    config=_shell_config_with_drive_ref(run_input.shell_config, run_input.drive_config),
+                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 
@@ -313,19 +359,6 @@ class AgentBackendRunRequestBuilder:
                     deps=_config_layer_deps(),
                     metadata=run_input.metadata,
                     config=run_input.config_layer_config,
-                )
-            )
-
-        if run_input.drive_config is not None:
-            # Drive Skills & Files declaration (dify.drive): the catalog plus
-            # prompt-mentioned entries eagerly pulled through the shell layer.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_DRIVE_LAYER_ID,
-                    type=DIFY_DRIVE_LAYER_TYPE_ID,
-                    deps=_drive_layer_deps(),
-                    metadata=run_input.metadata,
-                    config=run_input.drive_config,
                 )
             )
 
@@ -348,8 +381,8 @@ class AgentBackendRunRequestBuilder:
                     plugin_id=run_input.model.plugin_id,
                     model_provider=run_input.model.model_provider,
                     model=run_input.model.model,
-                    credentials=run_input.model.credentials,
                     model_settings=_agent_model_settings(run_input.model.model_settings),
+                    context_window_tokens=run_input.model.context_window_tokens,
                 ),
             )
         )
@@ -419,77 +452,33 @@ class AgentBackendRunRequestBuilder:
 
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
-            purpose=run_input.purpose,
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
             deferred_tool_results=run_input.deferred_tool_results,
-            on_exit=LayerExitSignals(
-                default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,
-            ),
-        )
-
-    def build_cleanup_request(
-        self,
-        *,
-        session_snapshot: CompositorSessionSnapshot,
-        runtime_layer_specs: list[RuntimeLayerSpec],
-        idempotency_key: str | None = None,
-        metadata: dict[str, JsonValue] | None = None,
-    ) -> CreateRunRequest:
-        """Build a lifecycle-only cleanup request that replays the prior layers.
-
-        The agenton compositor enforces that the session snapshot's layer names
-        match the active composition in order, so cleanup must replay the same
-        non-plugin layer graph that produced the snapshot. Plugin layers
-        (``dify.plugin.llm``, ``dify.plugin.tools``) are excluded from both the
-        composition and the snapshot before submission because their configs
-        may carry credentials or runtime-only declarations that are not
-        persisted between runs.
-        """
-        if not runtime_layer_specs:
-            raise ValueError(
-                "build_cleanup_request requires runtime_layer_specs; an empty "
-                "composition would fail the agent backend's snapshot validation."
-            )
-        request_metadata = dict(metadata or {})
-        request_metadata["agent_backend_lifecycle"] = "session_cleanup"
-        layers = [
-            RunLayerSpec(
-                name=spec.name,
-                type=spec.type,
-                deps=dict(spec.deps),
-                metadata=dict(spec.metadata),
-                config=spec.config,
-            )
-            for spec in runtime_layer_specs
-        ]
-        filtered_snapshot = _filter_snapshot_to_specs(session_snapshot, runtime_layer_specs)
-        return CreateRunRequest(
-            composition=RunComposition(layers=layers),
-            purpose="workflow_node",
-            idempotency_key=idempotency_key,
-            metadata=request_metadata,
-            session_snapshot=filtered_snapshot,
-            on_exit=LayerExitSignals(default=ExitIntent.DELETE),
+            on_exit=LayerExitSignals(default=ExitIntent.SUSPEND),
         )
 
     def build_for_workflow_node(self, run_input: AgentBackendWorkflowNodeRunInput) -> CreateRunRequest:
         """Build a workflow Agent Node run request without defining another wire schema.
 
         Layer graph mirrors the workflow surface: prompts → execution context →
-        optional shell / config / drive / history → LLM → optional
+        optional shell / config / history → LLM → optional
         plugin-direct tools / core-routed tools / knowledge search /
         ask_human / structured output.
         """
         layers: list[RunLayerSpec] = []
-        if run_input.agent_soul_prompt:
+        agent_soul_prompt = _agent_soul_prompt_for_layer(
+            run_input.agent_soul_prompt,
+            config_version_kind=run_input.agent_config_version_kind,
+        )
+        if agent_soul_prompt:
             layers.append(
                 RunLayerSpec(
                     name=AGENT_SOUL_PROMPT_LAYER_ID,
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_soul"},
-                    config=PromptLayerConfig(prefix=run_input.agent_soul_prompt),
+                    config=PromptLayerConfig(prefix=agent_soul_prompt),
                 )
             )
 
@@ -516,20 +505,25 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
-        include_shell = (
-            run_input.include_shell or run_input.config_layer_config is not None or run_input.drive_config is not None
-        )
+        include_shell = run_input.include_shell or run_input.config_layer_config is not None
         if include_shell:
-            # Sandboxed bash workspace (dify.shell). It enters before drive so
-            # drive can materialize mentioned targets with `dify-agent drive pull`
-            # in the same shell-visible filesystem used by model commands.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_RUNTIME_LAYER_ID,
+                    type=DIFY_RUNTIME_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref),
+                )
+            )
+            # Sandboxed bash workspace (dify.shell). It enters before config so
+            # eager pulls materialize content in the same filesystem used by model commands.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
                     deps=_shell_layer_deps(),
                     metadata=run_input.metadata,
-                    config=_shell_config_with_drive_ref(run_input.shell_config, run_input.drive_config),
+                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 
@@ -541,19 +535,6 @@ class AgentBackendRunRequestBuilder:
                     deps=_config_layer_deps(),
                     metadata=run_input.metadata,
                     config=run_input.config_layer_config,
-                )
-            )
-
-        if run_input.drive_config is not None:
-            # Drive Skills & Files declaration (dify.drive): the catalog plus
-            # prompt-mentioned entries eagerly pulled through the shell layer.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_DRIVE_LAYER_ID,
-                    type=DIFY_DRIVE_LAYER_TYPE_ID,
-                    deps=_drive_layer_deps(),
-                    metadata=run_input.metadata,
-                    config=run_input.drive_config,
                 )
             )
 
@@ -577,8 +558,8 @@ class AgentBackendRunRequestBuilder:
                         plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
-                        credentials=run_input.model.credentials,
                         model_settings=_agent_model_settings(run_input.model.model_settings),
+                        context_window_tokens=run_input.model.context_window_tokens,
                     ),
                 ),
             ]
@@ -649,18 +630,15 @@ class AgentBackendRunRequestBuilder:
 
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
-            purpose=run_input.purpose,
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
             deferred_tool_results=run_input.deferred_tool_results,
-            on_exit=LayerExitSignals(
-                default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,
-            ),
+            on_exit=LayerExitSignals(default=ExitIntent.SUSPEND),
         )
 
 
-_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key")
+_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key", "base64_data")
 
 
 def redact_for_agent_backend_log(value: object) -> object:
@@ -669,9 +647,10 @@ def redact_for_agent_backend_log(value: object) -> object:
         return redact_for_agent_backend_log(value.model_dump(mode="json", warnings=False))
     if isinstance(value, dict):
         redacted: dict[object, object] = {}
+        is_multimodal_file = value.get("type") == "image" and "filename" in value and "mime_type" in value
         for key, item in value.items():
             key_text = str(key).lower()
-            if any(part in key_text for part in _SENSITIVE_KEY_PARTS):
+            if any(part in key_text for part in _SENSITIVE_KEY_PARTS) or (is_multimodal_file and key_text == "url"):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = redact_for_agent_backend_log(item)

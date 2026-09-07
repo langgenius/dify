@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Longueur des morceaux",
   "embedding.segments": "Paragraphes",
   "embedding.textCleaning": "Pré-définition du texte et nettoyage",
+  "embedding.vectorSpaceEstimateExceeded.description": "Document reçu, mais le stockage vectoriel estimé à {{estimated}} MB dépasse la limite de votre forfait de {{limit}} MB. Aucun vecteur n’a donc été enregistré. Si un autre document est en cours de traitement ou vient d’échouer, réessayez plus tard. Sinon, réduisez la taille du fichier ou le nombre de segments.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Le stockage vectoriel estimé après l’import dépasse la capacité de votre forfait",
   "embedding.waiting": "En attente d'incorporation...",
   "list.action.addButton": "Ajouter un morceau",
   "list.action.archive": "Archive",

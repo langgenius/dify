@@ -10,7 +10,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Modal workflow for choosing an application avatar. Users can switch between emoji selections and image uploads (when enabled).',
+        component:
+          'Modal workflow for choosing an application avatar. Users can switch between emoji selections and image uploads (when enabled).',
       },
     },
     nextjs: {
@@ -32,7 +33,7 @@ const AppIconPickerDemo = () => {
   const [selection, setSelection] = useState<AppIconSelection | null>(null)
 
   return (
-    <div className="flex min-h-[320px] flex-col items-start gap-4 px-6 py-8 md:px-12">
+    <div className="flex min-h-80 flex-col items-start gap-4 px-6 py-8 md:px-12">
       <button
         type="button"
         className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
@@ -48,11 +49,7 @@ const AppIconPickerDemo = () => {
         </pre>
       </div>
 
-      <AppIconPicker
-        open={open}
-        onOpenChange={setOpen}
-        onSelect={setSelection}
-      />
+      <AppIconPicker open={open} onOpenChange={setOpen} onSelect={setSelection} />
     </div>
   )
 }

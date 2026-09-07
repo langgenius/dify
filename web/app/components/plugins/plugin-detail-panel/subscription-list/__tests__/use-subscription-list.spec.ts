@@ -1,6 +1,6 @@
 import type { SimpleDetail } from '../../store'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSubscriptionList } from '../use-subscription-list'
 
 let mockDetail: SimpleDetail | undefined
@@ -13,8 +13,9 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 vi.mock('../../store', () => ({
-  usePluginStore: (selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined) =>
-    selector({ detail: mockDetail }),
+  usePluginStore: (
+    selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined,
+  ) => selector({ detail: mockDetail }),
 }))
 
 beforeEach(() => {

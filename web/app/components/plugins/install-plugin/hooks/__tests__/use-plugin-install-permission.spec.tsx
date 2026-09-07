@@ -28,9 +28,7 @@ describe('usePluginInstallPermission', () => {
         currentDifyVersion: '1.2.3',
       })
       const wrapper = ({ children }: { children: ReactNode }) => (
-        <PluginInstallPermissionContext value={store}>
-          {children}
-        </PluginInstallPermissionContext>
+        <PluginInstallPermissionContext value={store}>{children}</PluginInstallPermissionContext>
       )
 
       const { result } = renderHook(() => usePluginInstallPermission(), { wrapper })
@@ -44,7 +42,7 @@ describe('usePluginInstallPermission', () => {
 
     it('should throw when provider is missing', () => {
       expect(() => {
-        renderHook(() => usePluginInstallPermissionStore(state => state.canInstallPlugin))
+        renderHook(() => usePluginInstallPermissionStore((state) => state.canInstallPlugin))
       }).toThrow('Missing PluginInstallPermissionProvider in the tree')
     })
   })

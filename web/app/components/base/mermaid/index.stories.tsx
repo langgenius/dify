@@ -11,11 +11,7 @@ flowchart LR
   D --> E[Send response]
 `
 
-const MermaidDemo = ({
-  theme = 'light',
-}: {
-  theme?: 'light' | 'dark'
-}) => {
+const MermaidDemo = ({ theme = 'light' }: { theme?: 'light' | 'dark' }) => {
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(theme)
 
   return (
@@ -25,7 +21,7 @@ const MermaidDemo = ({
         <button
           type="button"
           className="rounded-md border border-divider-subtle bg-background-default px-3 py-1 text-xs font-medium text-text-secondary hover:bg-state-base-hover"
-          onClick={() => setCurrentTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
+          onClick={() => setCurrentTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
         >
           Toggle theme
         </button>
@@ -42,7 +38,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Mermaid renderer with custom theme toggle and caching. Useful for visualizing agent flows.',
+        component:
+          'Mermaid renderer with custom theme toggle and caching. Useful for visualizing agent flows.',
       },
     },
   },

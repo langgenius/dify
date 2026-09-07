@@ -1,5 +1,8 @@
 import type { AppData, AppMeta } from '@/models/share'
+import type { WebAppAddress } from '@/service/webapp-address'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { webAppLogout } from '@/service/webapp-auth'
 import AuthenticatedLayout from '../authenticated-layout'
 
 type QueryState<TData> = {
@@ -17,6 +20,8 @@ const updateAppInfo = vi.fn()
 const updateAppParams = vi.fn()
 const updateWebAppMeta = vi.fn()
 const updateUserCanAccessApp = vi.fn()
+const replace = vi.fn()
+const webAppAddress: WebAppAddress = { kind: 'default', code: 'share-code' }
 
 const mockWebAppState = {
   shareCode: 'share-code',
@@ -67,13 +72,14 @@ const userCanAccessAppQueryState: QueryState<UserCanAccessApp> = {
 }
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
 }))
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/workflow/share-code',
   useRouter: () => ({
-    replace: vi.fn(),
+    replace,
   }),
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -90,6 +96,10 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-address', () => ({
+  resolveWebAppAddress: () => webAppAddress,
 }))
 
 const resetQueryStates = () => {
@@ -126,11 +136,12 @@ const resetQueryStates = () => {
   userCanAccessAppQueryState.isFetching = false
 }
 
-const renderLayout = () => render(
-  <AuthenticatedLayout>
-    <div>Workflow form content</div>
-  </AuthenticatedLayout>,
-)
+const renderLayout = () =>
+  render(
+    <AuthenticatedLayout>
+      <div>Workflow form content</div>
+    </AuthenticatedLayout>,
+  )
 
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {
@@ -158,5 +169,17 @@ describe('AuthenticatedLayout', () => {
 
       expect(screen.queryByText('Workflow form content')).not.toBeInTheDocument()
     })
+  })
+
+  it('should expose the unauthorized logout action as a button', async () => {
+    const user = userEvent.setup()
+    userCanAccessAppQueryState.data = { result: false }
+
+    renderLayout()
+
+    await user.click(screen.getByRole('button', { name: 'common.userProfile.logout' }))
+
+    expect(webAppLogout).toHaveBeenCalledWith(webAppAddress)
+    expect(replace).toHaveBeenCalledWith('/webapp-signin?redirect_url=%2Fworkflow%2Fshare-code')
   })
 })

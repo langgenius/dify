@@ -1,0 +1,151 @@
+import { navigateAfterWebAppLogin, resolveWebAppLoginRedirect } from '../login-redirect'
+
+describe('resolveWebAppLoginRedirect', () => {
+  // Covers the canonical relative redirect shape used by share applications.
+  describe('internal targets', () => {
+    it('should return the sanitized target and app code for a legacy encoded path', () => {
+      const result = resolveWebAppLoginRedirect(
+        encodeURIComponent('/chatbot/share-app?foo=bar#answer'),
+        'https://self-hosted.example.com',
+      )
+
+      expect(result).toEqual({
+        appCode: 'share-app',
+        address: { kind: 'default', code: 'share-app' },
+        target: { kind: 'internal', href: '/chatbot/share-app?foo=bar#answer' },
+      })
+    })
+
+    it('should preserve a nested OAuth callback without validating it as the top-level target', () => {
+      const redirectUrl = '/chatbot/share-app?redirect_uri=https%3A%2F%2Fclient.example%2Fcallback'
+
+      const result = resolveWebAppLoginRedirect(redirectUrl, 'https://self-hosted.example.com')
+
+      expect(result?.target.href).toBe(redirectUrl)
+      expect(result?.appCode).toBe('share-app')
+    })
+
+    it('should resolve an environment workflow redirect', () => {
+      const result = resolveWebAppLoginRedirect(
+        '/environment/workflow/workflow-app',
+        'https://self-hosted.example.com',
+      )
+
+      expect(result).toEqual({
+        appCode: 'workflow-app',
+        address: { kind: 'environment', code: 'workflow-app' },
+        target: { kind: 'internal', href: '/environment/workflow/workflow-app' },
+      })
+    })
+  })
+
+  // Covers absolute destinations accepted by the shared login redirect policy.
+  describe('absolute targets', () => {
+    it('should accept a same-origin self-hosted URL with a custom port', () => {
+      const result = resolveWebAppLoginRedirect(
+        'http://self-hosted.example.com:8080/chatbot/share-app',
+        'http://self-hosted.example.com:8080',
+      )
+
+      expect(result).toEqual({
+        appCode: 'share-app',
+        address: { kind: 'default', code: 'share-app' },
+        target: {
+          kind: 'absolute',
+          href: 'http://self-hosted.example.com:8080/chatbot/share-app',
+        },
+      })
+    })
+
+    it('should accept a trusted Dify subdomain URL', () => {
+      const result = resolveWebAppLoginRedirect(
+        'https://apps.eu.dify.ai/chatbot/share-app',
+        'https://cloud.dify.ai',
+      )
+
+      expect(result?.appCode).toBe('share-app')
+      expect(result?.target.kind).toBe('absolute')
+    })
+  })
+
+  // Invalid targets must not be allowed to influence application identity.
+  describe('invalid targets', () => {
+    it.each([
+      null,
+      '',
+      '/',
+      '/webapp-signin',
+      '/webapp-signin/check-code',
+      '/console/webapp-signin/check-code',
+      'https://evil.example/chatbot/evil-app',
+      '//evil.example/chatbot/evil-app',
+    ])('should return null for %s', (redirectUrl) => {
+      expect(resolveWebAppLoginRedirect(redirectUrl, 'https://self-hosted.example.com')).toBeNull()
+    })
+  })
+})
+
+describe('navigateAfterWebAppLogin', () => {
+  const routerReplace = vi.fn()
+  const locationReplace = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('location', {
+      ...window.location,
+      replace: locationReplace,
+    } as unknown as Location)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('reloads the document after an environment login', () => {
+    navigateAfterWebAppLogin(
+      {
+        appCode: 'environment-app',
+        address: { kind: 'environment', code: 'environment-app' },
+        target: { kind: 'internal', href: '/environment/chat/environment-app' },
+      },
+      routerReplace,
+      '',
+    )
+
+    expect(locationReplace).toHaveBeenCalledWith('/environment/chat/environment-app')
+    expect(routerReplace).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['/environment/chat/environment-app', '/console/environment/chat/environment-app'],
+    ['/console/environment/chat/environment-app', '/console/environment/chat/environment-app'],
+  ])('keeps the deployment base path when reloading %s', (href, expected) => {
+    navigateAfterWebAppLogin(
+      {
+        appCode: 'environment-app',
+        address: { kind: 'environment', code: 'environment-app' },
+        target: { kind: 'internal', href },
+      },
+      routerReplace,
+      '/console',
+    )
+
+    expect(locationReplace).toHaveBeenCalledWith(expected)
+    expect(routerReplace).not.toHaveBeenCalled()
+  })
+
+  it('keeps client navigation for an ordinary Web App login', () => {
+    navigateAfterWebAppLogin(
+      {
+        appCode: 'share-app',
+        address: { kind: 'default', code: 'share-app' },
+        target: { kind: 'internal', href: '/chatbot/share-app' },
+      },
+      routerReplace,
+      '',
+    )
+
+    expect(routerReplace).toHaveBeenCalledWith('/chatbot/share-app')
+    expect(locationReplace).not.toHaveBeenCalled()
+  })
+})

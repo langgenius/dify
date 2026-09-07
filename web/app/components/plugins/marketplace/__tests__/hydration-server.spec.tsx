@@ -1,6 +1,8 @@
+import type { DehydratedState } from '@tanstack/react-query'
+import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -15,29 +17,36 @@ vi.mock('@/utils/var', () => ({
 
 const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
+const mockSearchAdvanced = vi.fn()
 
 vi.mock('@/service/client', () => ({
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
   },
   marketplaceQuery: {
     collections: {
       queryKey: (params: unknown) => ['marketplace', 'collections', params],
     },
+    searchAdvanced: {
+      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
+    },
   },
 }))
 
-let serverQueryClient: QueryClient
+let queryClient: QueryClient
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => serverQueryClient,
-}))
+vi.mock('@/app/get-query-client', () => {
+  return {
+    getQueryClient: () => queryClient,
+  }
+})
 
 describe('HydrateQueryClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    serverQueryClient = new QueryClient({
+    queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     })
     mockCollections.mockResolvedValue({
@@ -45,6 +54,9 @@ describe('HydrateQueryClient', () => {
     })
     mockCollectionPlugins.mockResolvedValue({
       data: { plugins: [] },
+    })
+    mockSearchAdvanced.mockResolvedValue({
+      data: { plugins: [], total: 0 },
     })
   })
 
@@ -87,6 +99,23 @@ describe('HydrateQueryClient', () => {
     expect(mockCollections).toHaveBeenCalled()
   })
 
+  it('should dehydrate only Marketplace-owned queries', async () => {
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    const element = await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all' }),
+      children: <div>Child</div>,
+    })
+    const state = (element as ReactElement<{ state: DehydratedState }>).props.state
+
+    expect(state.queries).toHaveLength(1)
+    expect(state.queries[0]?.queryKey).toEqual([
+      'marketplace',
+      'collections',
+      { input: { query: { limit: 20 } } },
+    ])
+  })
+
   it('should prefetch when category has collections (tool)', async () => {
     const { HydrateQueryClient } = await import('../hydration-server')
 
@@ -98,7 +127,28 @@ describe('HydrateQueryClient', () => {
     expect(mockCollections).toHaveBeenCalled()
   })
 
-  it('should not prefetch when category does not have collections (model)', async () => {
+  it('should prefetch plugin search when q is present', async () => {
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all', q: 'openai' }),
+      children: <div>Child</div>,
+    })
+
+    expect(mockCollections).not.toHaveBeenCalled()
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { kind: 'plugins' },
+        body: expect.objectContaining({
+          page: 1,
+          query: 'openai',
+        }),
+      }),
+      expect.any(Object),
+    )
+  })
+
+  it('should prefetch when category does not have collections (model)', async () => {
     const { HydrateQueryClient } = await import('../hydration-server')
 
     await HydrateQueryClient({
@@ -107,9 +157,10 @@ describe('HydrateQueryClient', () => {
     })
 
     expect(mockCollections).not.toHaveBeenCalled()
+    expect(mockSearchAdvanced).toHaveBeenCalled()
   })
 
-  it('should not prefetch when category does not have collections (bundle)', async () => {
+  it('should prefetch when category does not have collections (bundle)', async () => {
     const { HydrateQueryClient } = await import('../hydration-server')
 
     await HydrateQueryClient({
@@ -118,5 +169,42 @@ describe('HydrateQueryClient', () => {
     })
 
     expect(mockCollections).not.toHaveBeenCalled()
+    expect(mockSearchAdvanced).toHaveBeenCalled()
+  })
+
+  it('should keep the catalog shell when collections prefetch fails', async () => {
+    mockCollections.mockRejectedValue(new Error('collections unavailable'))
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    const element = await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all' }),
+      children: <div>Child</div>,
+    })
+
+    const renderClient = new QueryClient()
+    const { getByText } = render(
+      <QueryClientProvider client={renderClient}>
+        {element as React.ReactElement}
+      </QueryClientProvider>,
+    )
+    expect(getByText('Child')).toBeInTheDocument()
+  })
+
+  it('should keep the catalog shell when plugin search prefetch fails', async () => {
+    mockSearchAdvanced.mockRejectedValue(new Error('search unavailable'))
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    const element = await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all', q: 'openai' }),
+      children: <div>Child</div>,
+    })
+
+    const renderClient = new QueryClient()
+    const { getByText } = render(
+      <QueryClientProvider client={renderClient}>
+        {element as React.ReactElement}
+      </QueryClientProvider>,
+    )
+    expect(getByText('Child')).toBeInTheDocument()
   })
 })

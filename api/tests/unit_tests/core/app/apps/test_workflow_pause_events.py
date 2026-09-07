@@ -1,8 +1,10 @@
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -24,27 +26,8 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
-from models.human_input import RecipientType
-
-
-class _FakeSession:
-    """Stub session: `execute` feeds the form-expiration query, `scalars` the recipients."""
-
-    def __init__(self, *, execute_rows=(), scalars_rows=()):
-        self._execute_rows = execute_rows
-        self._scalars_rows = scalars_rows
-
-    def execute(self, _stmt):
-        return list(self._execute_rows)
-
-    def scalars(self, _stmt):
-        return list(self._scalars_rows)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
+from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.workflow import Workflow, WorkflowType
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -59,8 +42,45 @@ class _RecordingWorkflowAppRunner(WorkflowAppRunner):
 class _FakeRuntimeState:
     variable_pool = object()
 
-    def get_paused_nodes(self):
-        return ["node-pause-1"]
+
+@pytest.fixture
+def sqlite_pause_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
+    """Bind pause-response queries to the shared SQLite session's database."""
+    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    return sqlite_session
+
+
+def _persist_human_input_form(
+    session: Session,
+    *,
+    recipients: list[tuple[RecipientType, str]] | None = None,
+) -> datetime:
+    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
+    form = HumanInputForm(
+        id="form-1",
+        tenant_id="tenant-id",
+        app_id="app-id",
+        workflow_run_id="run-id",
+        node_id="node-id",
+        form_definition='{"display_in_ui": true}',
+        rendered_content="Rendered",
+        expiration_time=expiration_time,
+    )
+    recipient_models = [
+        HumanInputFormRecipient(
+            id=f"recipient-{index}",
+            form_id=form.id,
+            delivery_id=f"delivery-{index}",
+            recipient_type=recipient_type,
+            recipient_payload="{}",
+            access_token=access_token,
+        )
+        for index, (recipient_type, access_token) in enumerate(recipients or ())
+    ]
+    session.add(form)
+    session.add_all(recipient_models)
+    session.commit()
+    return expiration_time
 
 
 def _build_runner():
@@ -74,12 +94,19 @@ def _build_runner():
         workflow_execution_id="run-id",
         user_id="user-id",
     )
-    workflow = SimpleNamespace(
-        graph_dict={},
+    workflow = Workflow.new(
         tenant_id="tenant-id",
-        environment_variables={},
-        id="workflow-id",
+        app_id="app-id",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({}),
+        features="{}",
+        created_by="account-id",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
     )
+    workflow.id = "workflow-id"
     queue_manager = SimpleNamespace(publish=lambda event, pub_from: None)
     return _RecordingWorkflowAppRunner(
         application_generate_entity=app_entity,
@@ -119,6 +146,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
         "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
         lambda **_: [enriched_reason],
     )
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
 
     runner._handle_event(workflow_entry, event)
 
@@ -127,7 +155,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     assert isinstance(queue_event, QueueWorkflowPausedEvent)
     assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
-    assert queue_event.paused_nodes == ["node-pause-1"]
+    assert queue_event.paused_nodes == ["node-human"]
 
 
 def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
@@ -143,10 +171,8 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
         workflow_id="workflow-id",
         workflow_execution_id="run-id",
     )
-    user = MagicMock(spec=Account)
+    user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
-    user.name = "Tester"
-    user.email = "tester@example.com"
     return WorkflowResponseConverter(
         application_generate_entity=application_generate_entity,
         user=user,
@@ -154,7 +180,12 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
     )
 
 
-def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: Session):
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -163,17 +194,13 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
         reason=WorkflowStartReason.INITIAL,
     )
 
-    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session = _FakeSession(
-        execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')],
-        scalars_rows=[
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.CONSOLE, access_token="console-token"),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+    expiration_time = _persist_human_input_form(
+        sqlite_pause_session,
+        recipients=[
+            (RecipientType.CONSOLE, "console-token"),
+            (RecipientType.BACKSTAGE, "backstage-token"),
         ],
     )
-
-    monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: session)
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
 
     reason = HumanInputRequired(
         form_id="form-1",
@@ -216,8 +243,11 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
 
 
-def _build_paused_human_input_response(monkeypatch, recipients):
-    """Drive the live OPENAPI pause path with the given recipients via a fake session."""
+def _build_paused_human_input_response(
+    session: Session,
+    recipients: list[tuple[RecipientType, str]],
+):
+    """Drive the live OPENAPI pause path with persisted forms and recipients."""
     converter = _build_converter(invoke_from=InvokeFrom.OPENAPI)
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -226,14 +256,7 @@ def _build_paused_human_input_response(monkeypatch, recipients):
         reason=WorkflowStartReason.INITIAL,
     )
 
-    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session = _FakeSession(
-        execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')],
-        scalars_rows=list(recipients),
-    )
-
-    monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: session)
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
+    _persist_human_input_form(session, recipients=recipients)
 
     reason = HumanInputRequired(
         form_id="form-1",
@@ -259,12 +282,17 @@ def _build_paused_human_input_response(monkeypatch, recipients):
     return responses
 
 
-def test_openapi_pause_without_web_app_recipient_emits_approval_channels(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_pause_session: Session):
     responses = _build_paused_human_input_response(
-        monkeypatch,
+        sqlite_pause_session,
         recipients=[
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.EMAIL_MEMBER, access_token="email-token"),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+            (RecipientType.EMAIL_MEMBER, "email-token"),
+            (RecipientType.BACKSTAGE, "backstage-token"),
         ],
     )
 
@@ -276,16 +304,17 @@ def test_openapi_pause_without_web_app_recipient_emits_approval_channels(monkeyp
     assert pause_resp.data.reasons[0]["approval_channels"] == ["console", "email"]
 
 
-def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pause_session: Session):
     responses = _build_paused_human_input_response(
-        monkeypatch,
+        sqlite_pause_session,
         recipients=[
-            SimpleNamespace(
-                form_id="form-1",
-                recipient_type=RecipientType.STANDALONE_WEB_APP,
-                access_token="web-app-token",
-            ),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+            (RecipientType.STANDALONE_WEB_APP, "web-app-token"),
+            (RecipientType.BACKSTAGE, "backstage-token"),
         ],
     )
 
@@ -297,7 +326,12 @@ def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(monkeypatc
     assert pause_resp.data.reasons[0]["approval_channels"] == ["console"]
 
 
-def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pause_session: Session):
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -306,11 +340,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatc
         reason=WorkflowStartReason.INITIAL,
     )
 
-    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session = _FakeSession(execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')])
-
-    monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: session)
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
+    _persist_human_input_form(sqlite_pause_session)
 
     reason = HumanInputRequired(
         form_id="form-1",

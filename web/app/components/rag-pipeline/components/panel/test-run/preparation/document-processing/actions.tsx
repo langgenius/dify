@@ -11,33 +11,27 @@ type ActionsProps = {
   onBack: () => void
 }
 
-const Actions = ({
-  formParams,
-  runDisabled,
-  onBack,
-}: ActionsProps) => {
+const Actions = ({ formParams, runDisabled, onBack }: ActionsProps) => {
   const { t } = useTranslation()
   const { form, isSubmitting, canSubmit } = formParams
-  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
+  const loading = isSubmitting || isRunning
 
   return (
     <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
-      <Button
-        variant="secondary"
-        onClick={onBack}
-      >
-        {t('operations.backToDataSource', { ns: 'datasetPipeline' })}
+      <Button variant="secondary" onClick={onBack}>
+        {t(($) => $['operations.backToDataSource'], { ns: 'datasetPipeline' })}
       </Button>
       <Button
         variant="primary"
         onClick={() => {
           form.handleSubmit()
         }}
-        disabled={runDisabled || isSubmitting || !canSubmit || isRunning}
-        loading={isSubmitting || isRunning}
+        disabled={runDisabled || (!canSubmit && !loading)}
+        loading={loading}
       >
-        {t('operations.process', { ns: 'datasetPipeline' })}
+        {t(($) => $['operations.process'], { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )

@@ -7,8 +7,7 @@ import { flow } from 'es-toolkit/compat'
 import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
 export const preprocessLaTeX = (content: string) => {
-  if (typeof content !== 'string')
-    return content
+  if (typeof content !== 'string') return content
 
   const codeBlockRegex = /```[\s\S]*?```/g
   const codeBlocks = content.match(codeBlockRegex) || []
@@ -19,7 +18,8 @@ export const preprocessLaTeX = (content: string) => {
     (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
     (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+    (str: string) =>
+      str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
   ])(processedContent)
 
   codeBlocks.forEach((block) => {
@@ -31,10 +31,57 @@ export const preprocessLaTeX = (content: string) => {
   return processedContent
 }
 
+/**
+ * Insert missing </think> before a nested <think> and at end of content.
+ * Tool-call interruptions often drop the close tag, which nests the reply
+ * inside the thinking HTML (github.com/langgenius/dify/issues/41558).
+ */
+export const closeUnclosedThinkTags = (content: string) => {
+  if (typeof content !== 'string' || !content.includes('<think>')) return content
+
+  const open = '<think>'
+  const close = '</think>'
+  let result = ''
+  let inside = false
+  let contentSinceOpen = false
+  let i = 0
+
+  while (i < content.length) {
+    if (content.startsWith(open, i)) {
+      if (inside && contentSinceOpen) result += close
+      else if (inside) {
+        i += open.length
+        continue
+      }
+      result += open
+      inside = true
+      contentSinceOpen = false
+      i += open.length
+      continue
+    }
+    if (content.startsWith(close, i)) {
+      result += close
+      inside = false
+      contentSinceOpen = false
+      i += close.length
+      continue
+    }
+    const ch = content.charAt(i)
+    result += ch
+    if (inside && ch.trim() !== '') contentSinceOpen = true
+    i += 1
+  }
+
+  if (inside) result += close
+
+  return result
+}
+
 export const preprocessThinkTag = (content: string) => {
   const thinkOpenTagRegex = /(<think>\s*)+/g
   const thinkCloseTagRegex = /(\s*<\/think>)+/g
   return flow([
+    closeUnclosedThinkTags,
     (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
     (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
     (str: string) => str.replace(/(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g, '$1\n'),
@@ -61,35 +108,30 @@ export const preprocessThinkTag = (content: string) => {
 export const customUrlTransform = (uri: string): string | undefined => {
   const PERMITTED_SCHEME_REGEX = /^(https?|ircs?|mailto|xmpp|abbr):$/i
 
-  if (uri.startsWith('#'))
-    return uri
+  if (uri.startsWith('#')) return uri
 
-  if (uri.startsWith('//'))
-    return uri
+  if (uri.startsWith('//')) return uri
 
   const colonIndex = uri.indexOf(':')
 
-  if (colonIndex === -1)
-    return uri
+  if (colonIndex === -1) return uri
 
   const slashIndex = uri.indexOf('/')
   const questionMarkIndex = uri.indexOf('?')
   const hashIndex = uri.indexOf('#')
 
   if (
-    (slashIndex !== -1 && colonIndex > slashIndex)
-    || (questionMarkIndex !== -1 && colonIndex > questionMarkIndex)
-    || (hashIndex !== -1 && colonIndex > hashIndex)
+    (slashIndex !== -1 && colonIndex > slashIndex) ||
+    (questionMarkIndex !== -1 && colonIndex > questionMarkIndex) ||
+    (hashIndex !== -1 && colonIndex > hashIndex)
   ) {
     return uri
   }
 
   const scheme = uri.substring(0, colonIndex + 1).toLowerCase()
-  if (PERMITTED_SCHEME_REGEX.test(scheme))
-    return uri
+  if (PERMITTED_SCHEME_REGEX.test(scheme)) return uri
 
-  if (ALLOW_UNSAFE_DATA_SCHEME && scheme === 'data:')
-    return uri
+  if (ALLOW_UNSAFE_DATA_SCHEME && scheme === 'data:') return uri
 
   return undefined
 }

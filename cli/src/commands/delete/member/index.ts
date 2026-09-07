@@ -21,13 +21,16 @@ export default class DeleteMember extends DifyCommand {
   }
 
   static override flags = {
-    'workspace': Flags.string({
+    workspace: Flags.string({
       char: 'w',
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
-    'yes': Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT],
+      default: '',
+    }),
+    yes: Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
   }
 
   async run(argv: string[]) {

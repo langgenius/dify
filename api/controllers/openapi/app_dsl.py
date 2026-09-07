@@ -4,19 +4,21 @@ from typing import cast
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
-from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 
 
@@ -30,7 +32,7 @@ class AppDslImportApi(Resource):
     a new app.
 
     Returns 202 when the DSL version requires an explicit confirmation step
-    (major version mismatch).  Callers must then POST to the confirm endpoint.
+    (major version mismatch).  Callers must then POST to the imports :confirm method.
     Returns 400 when the import failed due to invalid DSL or a business error.
     """
 
@@ -38,11 +40,7 @@ class AppDslImportApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-            resource_required=False,
-        ),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
     )
     @returns(200, Import, "Import completed")
     @returns(202, Import, "Import pending confirmation")
@@ -53,18 +51,21 @@ class AppDslImportApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.import_app(
-                account=account,
-                import_mode=body.mode,
-                yaml_content=body.yaml_content,
-                yaml_url=body.yaml_url,
-                name=body.name,
-                description=body.description,
-                icon_type=body.icon_type,
-                icon=body.icon,
-                icon_background=body.icon_background,
-                app_id=body.app_id,
-            )
+            try:
+                result = service.import_app(
+                    account=account,
+                    import_mode=body.mode,
+                    yaml_content=body.yaml_content,
+                    yaml_url=body.yaml_url,
+                    name=body.name,
+                    description=body.description,
+                    icon_type=body.icon_type,
+                    icon=body.icon,
+                    icon_background=body.icon_background,
+                    app_id=body.app_id,
+                )
+            except NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:
@@ -79,7 +80,7 @@ class AppDslImportApi(Resource):
                 return result, 200
 
 
-@openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>/confirm")
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>:confirm")
 class AppDslImportConfirmApi(Resource):
     """Confirm a pending DSL import identified by ``import_id``.
 
@@ -95,11 +96,7 @@ class AppDslImportConfirmApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(
-            resource_type=RBACResourceScope.APP,
-            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-            resource_required=False,
-        ),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace()),
     )
     @returns(200, Import, "Import confirmed")
     @returns(400, Import, "Import failed")
@@ -108,7 +105,10 @@ class AppDslImportConfirmApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.confirm_import(import_id=import_id, account=account)
+            try:
+                result = service.confirm_import(import_id=import_id, account=account)
+            except NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:
@@ -119,7 +119,7 @@ class AppDslImportConfirmApi(Resource):
         return result, 200
 
 
-@openapi_ns.route("/apps/<string:app_id>/export")
+@openapi_ns.route("/apps/<string:app_id>/dsl")
 class AppDslExportApi(Resource):
     """Export an app's current draft configuration as a DSL YAML string.
 
@@ -136,7 +136,7 @@ class AppDslExportApi(Resource):
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
     )
     @accepts(query=AppDslExportQuery)
     @returns(200, AppDslExportResponse, "Export successful")
@@ -145,6 +145,7 @@ class AppDslExportApi(Resource):
         try:
             data = AppDslService.export_dsl(
                 app_model=app,
+                session=db.session(),
                 include_secret=query.include_secret,
                 workflow_id=query.workflow_id,
             )
@@ -153,7 +154,7 @@ class AppDslExportApi(Resource):
         return AppDslExportResponse(data=data), 200
 
 
-@openapi_ns.route("/apps/<string:app_id>/check-dependencies")
+@openapi_ns.route("/apps/<string:app_id>/dependencies:check")
 class AppDslCheckDependenciesApi(Resource):
     """Check for leaked plugin dependencies after a DSL import.
 
@@ -167,7 +168,7 @@ class AppDslCheckDependenciesApi(Resource):
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
     )
     @returns(200, CheckDependenciesResult, "Dependencies checked")
     def get(self, app_id: str, *, auth_data: AuthData):

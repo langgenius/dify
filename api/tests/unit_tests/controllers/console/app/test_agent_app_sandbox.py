@@ -1,43 +1,88 @@
 from __future__ import annotations
 
 from inspect import unwrap
-from types import SimpleNamespace
+from types import FunctionType, SimpleNamespace
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
-from dify_agent.protocol import SandboxListResponse, SandboxReadResponse
+from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
 
 from controllers.console import agent_app_sandbox as module
+from models.account import Account
 from models.model import App, AppMode, IconType
-from services.agent_app_sandbox_service import AgentSandboxInfo, AgentSandboxInspectorError, AgentSandboxUploadDownload
+from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandboxInfo, AgentSandboxInspectorError
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 class _AgentAppService:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, str, str]] = []
+        self.calls: list[tuple[str, str, str, str, str, str, str, str]] = []
 
-    def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
-        self.calls.append(("info", tenant_id, app_id, conversation_id, ""))
-        return AgentSandboxInfo(session_id="abc1234", workspace_cwd="~/workspace/abc1234")
+    def resolve_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        return "app-1"
 
-    def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str) -> SandboxListResponse:
-        self.calls.append(("list", tenant_id, app_id, conversation_id, path))
-        return SandboxListResponse(path=path, entries=[], truncated=False)
+    def get_info(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_id: str,
+        caller_type: str,
+        caller_id: str,
+        account_id: str,
+    ) -> AgentSandboxInfo:
+        self.calls.append(("info", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, ""))
+        return AgentSandboxInfo(workspace_cwd=".")
 
-    def read_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str) -> SandboxReadResponse:
-        self.calls.append(("read", tenant_id, app_id, conversation_id, path))
-        return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
+    def list_files(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_id: str,
+        caller_type: str,
+        caller_id: str,
+        account_id: str,
+        path: str,
+    ) -> BindingFileListResponse:
+        self.calls.append(("list", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
+        return BindingFileListResponse(path=path, entries=[], truncated=False)
 
-    def upload_file(
-        self, *, tenant_id: str, app_id: str, conversation_id: str, path: str
-    ) -> AgentSandboxUploadDownload:
-        self.calls.append(("upload", tenant_id, app_id, conversation_id, path))
-        return AgentSandboxUploadDownload(url="https://files.example/report.txt")
+    def read_file(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_id: str,
+        caller_type: str,
+        caller_id: str,
+        account_id: str,
+        path: str,
+    ) -> BindingFileReadResponse:
+        self.calls.append(("read", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
+        return BindingFileReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
+
+    def download_file(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_id: str,
+        caller_type: str,
+        caller_id: str,
+        account_id: str,
+        path: str,
+    ) -> AgentSandboxDownload:
+        self.calls.append(("download", tenant_id, app_id, agent_id, caller_type, caller_id, account_id, path))
+        return AgentSandboxDownload(url="https://files.example/report.txt")
 
 
 class _WorkflowService:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, str, str, str | None, str]] = []
+        self.calls: list[tuple[str, ...]] = []
+
+    def resolve_app_id(self, *, tenant_id: str, app_id: str) -> str:
+        return app_id
 
     def list_files(
         self,
@@ -46,11 +91,12 @@ class _WorkflowService:
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
+        node_execution_id: str,
         path: str,
-    ) -> SandboxListResponse:
-        self.calls.append(("list", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return SandboxListResponse(path=path, entries=[], truncated=False)
+        session,
+    ) -> BindingFileListResponse:
+        self.calls.append(("list", tenant_id, app_id, workflow_run_id, node_id, path))
+        return BindingFileListResponse(path=path, entries=[], truncated=False)
 
     def read_file(
         self,
@@ -59,24 +105,26 @@ class _WorkflowService:
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
+        node_execution_id: str,
         path: str,
-    ) -> SandboxReadResponse:
-        self.calls.append(("read", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
+        session,
+    ) -> BindingFileReadResponse:
+        self.calls.append(("read", tenant_id, app_id, workflow_run_id, node_id, path))
+        return BindingFileReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
 
-    def upload_file(
+    def download_file(
         self,
         *,
         tenant_id: str,
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
+        node_execution_id: str,
+        account_id: str,
         path: str,
-    ) -> AgentSandboxUploadDownload:
-        self.calls.append(("upload", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return AgentSandboxUploadDownload(url="https://files.example/upload.txt")
+    ) -> AgentSandboxDownload:
+        self.calls.append(("download", tenant_id, app_id, workflow_run_id, node_id, account_id, path))
+        return AgentSandboxDownload(url="https://files.example/download.txt")
 
 
 def _app_model(app_id: str = "app-1") -> App:
@@ -91,6 +139,27 @@ def _app_model(app_id: str = "app-1") -> App:
         enable_site=False,
         enable_api=False,
     )
+
+
+def _account() -> Account:
+    account = Account(name="Sandbox Tester", email="sandbox-tester@example.com")
+    account.id = "account-1"
+    return account
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        module.WorkflowAgentSandboxListResource.get,
+        module.WorkflowAgentSandboxReadResource.get,
+        module.WorkflowAgentSandboxDownloadResource.post,
+    ],
+)
+def test_sandbox_resources_require_app_view_layout(method: FunctionType) -> None:
+    [check] = rbac_checks(method)
+
+    assert isinstance(check.locator, module.PlainApp)
+    assert check.scene == module.RBACPermission.APP_VIEW_LAYOUT
 
 
 def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
@@ -120,56 +189,58 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
 
 def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
+    account = _account()
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
     monkeypatch.setattr(
         module,
         "query_params_from_request",
-        lambda model: SimpleNamespace(conversation_id="conv-1", path="sub/report.txt"),
+        lambda model: SimpleNamespace(caller_type="build_draft", caller_id="build-1", path="sub/report.txt"),
     )
-    monkeypatch.setattr(
-        module,
-        "request",
-        SimpleNamespace(get_json=lambda silent=True: {"conversation_id": "conv-1", "path": "report.txt"}),
+    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), account, "tenant-1", "agent-1")
+    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), account, "tenant-1", "agent-1")
+    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), account, "tenant-1", "agent-1")
+    req_data = module.AgentSandboxDownloadPayload.model_validate(
+        {"caller_type": "build_draft", "caller_id": "build-1", "path": "report.txt"}
     )
+    download = unwrap(module.AgentAppSandboxDownloadResource.post)(object(), req_data, account, "tenant-1", "agent-1")
 
-    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1")
-    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1")
-    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), "tenant-1", "agent-1")
-    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), "tenant-1", "agent-1")
-
-    assert info == {"session_id": "abc1234", "workspace_cwd": "~/workspace/abc1234"}
+    assert info == {"workspace_cwd": "."}
     assert listing["path"] == "sub/report.txt"
     assert preview["text"] == "hello"
-    assert upload == {"url": "https://files.example/report.txt"}
+    assert download == {"url": "https://files.example/report.txt"}
     assert service.calls == [
-        ("info", "tenant-1", "app-1", "conv-1", ""),
-        ("list", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
-        ("read", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
-        ("upload", "tenant-1", "app-1", "conv-1", "report.txt"),
+        ("info", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", ""),
+        ("list", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "sub/report.txt"),
+        ("read", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "sub/report.txt"),
+        ("download", "tenant-1", "app-1", "agent-1", "build_draft", "build-1", "account-1", "report.txt"),
     ]
 
 
 def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     class FailingService:
+        def resolve_app_id(self, **kwargs):
+            return "app-1"
+
         def get_info(self, **kwargs):
-            raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
+            raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
         def list_files(self, **kwargs):
-            raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
+            raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
+    account = _account()
     monkeypatch.setattr(
-        module, "query_params_from_request", lambda model: SimpleNamespace(conversation_id="conv-1", path=".")
+        module,
+        "query_params_from_request",
+        lambda model: SimpleNamespace(caller_type="conversation", caller_id="conv-1", path="."),
     )
 
-    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1") == (
-        {"code": "no_active_session", "message": "no active session"},
+    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), account, "tenant-1", "agent-1") == (
+        {"code": "no_active_binding", "message": "no active binding"},
         404,
     )
-    assert unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1") == (
-        {"code": "no_active_session", "message": "no active session"},
+    assert unwrap(module.AgentAppSandboxListResource.get)(object(), account, "tenant-1", "agent-1") == (
+        {"code": "no_active_binding", "message": "no active binding"},
         404,
     )
 
@@ -180,12 +251,7 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
     monkeypatch.setattr(
         module,
         "query_params_from_request",
-        lambda model: SimpleNamespace(node_execution_id="exec-1", path="out.txt"),
-    )
-    monkeypatch.setattr(
-        module,
-        "request",
-        SimpleNamespace(get_json=lambda silent=True: {"node_execution_id": "exec-1", "path": "upload.txt"}),
+        lambda model: SimpleNamespace(node_execution_id="execution-1", path="out.txt"),
     )
     app_model = _app_model()
 
@@ -195,15 +261,19 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
     preview = unwrap(module.WorkflowAgentSandboxReadResource.get)(
         object(), "tenant-1", app_model, "run-1", "agent-node"
     )
-    upload = unwrap(module.WorkflowAgentSandboxUploadResource.post)(
-        object(), "tenant-1", app_model, "run-1", "agent-node"
+    req_data = module.WorkflowAgentSandboxDownloadPayload.model_validate(
+        {"node_execution_id": "execution-1", "path": "download.txt"}
+    )
+    account = _account()
+    download = unwrap(module.WorkflowAgentSandboxDownloadResource.post)(
+        object(), req_data, "tenant-1", account, "app-1", "run-1", "agent-node"
     )
 
     assert listing["path"] == "out.txt"
     assert preview["text"] == "hello"
-    assert upload == {"url": "https://files.example/upload.txt"}
+    assert download == {"url": "https://files.example/download.txt"}
     assert service.calls == [
-        ("list", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "out.txt"),
-        ("read", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "out.txt"),
-        ("upload", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "upload.txt"),
+        ("list", "tenant-1", "app-1", "run-1", "agent-node", "out.txt"),
+        ("read", "tenant-1", "app-1", "run-1", "agent-node", "out.txt"),
+        ("download", "tenant-1", "app-1", "run-1", "agent-node", "account-1", "download.txt"),
     ]

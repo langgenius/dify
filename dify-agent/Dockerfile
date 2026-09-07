@@ -6,8 +6,8 @@
 #   cd /app/api && .venv/bin/uvicorn dify_agent.server.app:app --host 0.0.0.0 --port 5050
 #
 # Unlike the dify-api image (which only installs the base `dify-agent`
-# dependency), this image installs the `[server]` extra, so jwcrypto,
-# shell-session-manager, fastapi, uvicorn, etc. are present and the server can
+# dependency), this image installs the `[server]` extra, so jwcrypto, fastapi,
+# uvicorn, etc. are present and the server can
 # actually start. dify-api is intentionally left lean.
 
 # base image

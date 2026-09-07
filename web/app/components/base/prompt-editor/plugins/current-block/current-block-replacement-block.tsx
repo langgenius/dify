@@ -2,25 +2,15 @@ import type { CurrentBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { $applyNodeReplacement } from 'lexical'
-import {
-  memo,
-  useCallback,
-  useEffect,
-} from 'react'
+import { memo, useCallback, useEffect } from 'react'
 import { CURRENT_PLACEHOLDER_TEXT } from '../../constants'
 import { decoratorTransform } from '../../utils'
 import { CustomTextNode } from '../custom-text/node'
-import {
-  $createCurrentBlockNode,
-  CurrentBlockNode,
-} from './node'
+import { $createCurrentBlockNode, CurrentBlockNode } from './node'
 
 const REGEX = new RegExp(CURRENT_PLACEHOLDER_TEXT)
 
-const CurrentBlockReplacementBlock = ({
-  generatorType,
-  onInsert,
-}: CurrentBlockType) => {
+const CurrentBlockReplacementBlock = ({ generatorType, onInsert }: CurrentBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -29,16 +19,14 @@ const CurrentBlockReplacementBlock = ({
   }, [editor])
 
   const createCurrentBlockNode = useCallback((): CurrentBlockNode => {
-    if (onInsert)
-      onInsert()
+    if (onInsert) onInsert()
     return $applyNodeReplacement($createCurrentBlockNode(generatorType))
   }, [onInsert, generatorType])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
-    if (matchArr === null)
-      return null
+    if (matchArr === null) return null
 
     const startOffset = matchArr.index
     const endOffset = startOffset + CURRENT_PLACEHOLDER_TEXT.length
@@ -51,7 +39,9 @@ const CurrentBlockReplacementBlock = ({
   useEffect(() => {
     REGEX.lastIndex = 0
     return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createCurrentBlockNode)),
+      editor.registerNodeTransform(CustomTextNode, (textNode) =>
+        decoratorTransform(textNode, getMatch, createCurrentBlockNode),
+      ),
     )
   }, [])
 

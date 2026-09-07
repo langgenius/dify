@@ -1,15 +1,8 @@
 import type { MutableRefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import type { DataSet } from '@/models/datasets'
-import {
-  produce,
-} from 'immer'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { produce } from 'immer'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchDatasets } from '@/service/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../utils'
@@ -63,47 +56,56 @@ const useKnowledgeDatasetSelection = ({
     })()
   }, [inputRef, setInputs])
 
-  const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
-    const {
-      mixtureHighQualityAndEconomic,
-      mixtureInternalAndExternal,
-      inconsistentEmbeddingModel,
-      allInternal,
-      allExternal,
-    } = getSelectedDatasetsMode(newDatasets)
-    const noMultiModalDatasets = newDatasets.every(dataset => !dataset.is_multimodal)
+  const handleOnDatasetsChange = useCallback(
+    (newDatasets: DataSet[]) => {
+      const {
+        mixtureHighQualityAndEconomic,
+        mixtureInternalAndExternal,
+        inconsistentEmbeddingModel,
+        allInternal,
+        allExternal,
+      } = getSelectedDatasetsMode(newDatasets)
+      const noMultiModalDatasets = newDatasets.every((dataset) => !dataset.is_multimodal)
 
-    const nextInputs = produce(inputs, (draft) => {
-      draft.dataset_ids = newDatasets.map(dataset => dataset.id)
+      const nextInputs = produce(inputs, (draft) => {
+        draft.dataset_ids = newDatasets.map((dataset) => dataset.id)
 
-      if (payloadRetrievalMode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(
-          draft.multiple_retrieval_config!,
-          newDatasets,
-          selectedDatasets,
-          fallbackRerankModel,
-        )
+        if (payloadRetrievalMode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
+          draft.multiple_retrieval_config = getMultipleRetrievalConfig(
+            draft.multiple_retrieval_config!,
+            newDatasets,
+            selectedDatasets,
+            fallbackRerankModel,
+          )
+        }
+
+        if (noMultiModalDatasets) draft.query_attachment_selector = []
+      })
+
+      updateDatasetsDetail(newDatasets)
+      setInputs(nextInputs)
+      setSelectedDatasets(newDatasets)
+
+      if (
+        (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)) ||
+        mixtureInternalAndExternal ||
+        allExternal
+      ) {
+        setRerankModelOpen(true)
       }
-
-      if (noMultiModalDatasets)
-        draft.query_attachment_selector = []
-    })
-
-    updateDatasetsDetail(newDatasets)
-    setInputs(nextInputs)
-    setSelectedDatasets(newDatasets)
-
-    if (
-      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
-      || mixtureInternalAndExternal
-      || allExternal
-    ) {
-      setRerankModelOpen(true)
-    }
-  }, [fallbackRerankModel, inputs, payloadRetrievalMode, selectedDatasets, setInputs, updateDatasetsDetail])
+    },
+    [
+      fallbackRerankModel,
+      inputs,
+      payloadRetrievalMode,
+      selectedDatasets,
+      setInputs,
+      updateDatasetsDetail,
+    ],
+  )
 
   const showImageQueryVarSelector = useMemo(() => {
-    return selectedDatasets.some(dataset => dataset.is_multimodal)
+    return selectedDatasets.some((dataset) => dataset.is_multimodal)
   }, [selectedDatasets])
 
   return {

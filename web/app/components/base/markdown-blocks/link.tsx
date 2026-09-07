@@ -11,8 +11,7 @@ const filePreviewPathPattern = /\/files\/[^/?#]+\/file-preview(?:[?#]|$)/
 const asAttachmentParamPattern = /[?&]as_attachment=/
 
 const withFilePreviewAttachment = (href: string) => {
-  if (!filePreviewPathPattern.test(href) || asAttachmentParamPattern.test(href))
-    return href
+  if (!filePreviewPathPattern.test(href) || asAttachmentParamPattern.test(href)) return href
 
   const url = new URL(href, 'http://dify.local')
   url.searchParams.set('as_attachment', 'true')
@@ -26,9 +25,17 @@ const Link = ({ node, children, ...props }: any) => {
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className={commonClassName} onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value || ''}>{node.children[0]?.value || ''}</abbr>
-  }
-  else {
+    return (
+      <button
+        type="button"
+        className={`${commonClassName} font-inherit inline appearance-none border-0 bg-transparent p-0 text-inherit`}
+        onClick={() => onSend?.(hidden_text)}
+        title={node.children[0]?.value || ''}
+      >
+        {node.children[0]?.value || ''}
+      </button>
+    )
+  } else {
     const rawHref = props.href || node.properties?.href
     const href = rawHref?.toString()
     if (href && /^#[\w-]+$/.test(href)) {
@@ -40,17 +47,28 @@ const Link = ({ node, children, ...props }: any) => {
         if (answerContainer) {
           const targetId = CSS.escape(href.toString().substring(1))
           const targetElement = answerContainer.querySelector(`[id="${targetId}"]`)
-          if (targetElement)
-            targetElement.scrollIntoView({ behavior: 'smooth' })
+          if (targetElement) targetElement.scrollIntoView({ behavior: 'smooth' })
         }
       }
-      return <a href={href} onClick={handleClick} className={commonClassName}>{children || 'ScrollView'}</a>
+      return (
+        <a href={href} onClick={handleClick} className={commonClassName}>
+          {children || 'ScrollView'}
+        </a>
+      )
     }
 
-    if (!href || !isValidUrl(href))
-      return <span>{children}</span>
+    if (!href || !isValidUrl(href)) return <span>{children}</span>
 
-    return <a href={withFilePreviewAttachment(href)} target="_blank" rel="noopener noreferrer" className={commonClassName}>{children || 'Download'}</a>
+    return (
+      <a
+        href={withFilePreviewAttachment(href)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={commonClassName}
+      >
+        {children || 'Download'}
+      </a>
+    )
   }
 }
 

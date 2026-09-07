@@ -1,11 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
 
 vi.mock('../../../card', () => ({
-  default: ({ installed, installFailed, titleLeft }: { installed: boolean, installFailed: boolean, titleLeft?: React.ReactNode }) => (
-    <div data-testid="card" data-installed={installed} data-failed={installFailed}>{titleLeft}</div>
+  default: ({
+    installed,
+    installFailed,
+    titleLeft,
+  }: {
+    installed: boolean
+    installFailed: boolean
+    titleLeft?: React.ReactNode
+  }) => (
+    <div data-testid="card" data-installed={installed} data-failed={installFailed}>
+      {titleLeft}
+    </div>
   ),
 }))
 
@@ -74,7 +84,14 @@ describe('Installed', () => {
       name: 'test-plugin',
       version: '1.0.0',
     } as never
-    render(<Installed payload={payload} installContextCategory={PluginCategoryEnum.extension} isFailed={false} onCancel={mockOnCancel} />)
+    render(
+      <Installed
+        payload={payload}
+        installContextCategory={PluginCategoryEnum.extension}
+        isFailed={false}
+        onCancel={mockOnCancel}
+      />,
+    )
 
     fireEvent.click(screen.getByText('common.operation.close'))
 
@@ -89,14 +106,26 @@ describe('Installed', () => {
       name: 'test-plugin',
       version: '1.0.0',
     } as never
-    render(<Installed payload={payload} installContextCategory={PluginCategoryEnum.trigger} isFailed={false} onCancel={mockOnCancel} />)
+    render(
+      <Installed
+        payload={payload}
+        installContextCategory={PluginCategoryEnum.trigger}
+        isFailed={false}
+        onCancel={mockOnCancel}
+      />,
+    )
 
-    expect(screen.getByText('installModal.installedSuccessfullyWithPageDesc')).toBeInTheDocument()
+    expect(
+      screen.getByText('plugin.installModal.installedSuccessfullyWithPageDesc'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('plugin.installModal.viewDetails'))
 
     expect(mockOnCancel).toHaveBeenCalled()
-    expect(screen.getByText('plugin.installModal.viewDetails').closest('a')).toHaveAttribute('href', '/integrations/extension')
+    expect(screen.getByText('plugin.installModal.viewDetails').closest('a')).toHaveAttribute(
+      'href',
+      '/integrations/extension',
+    )
     expect(document.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
   })
 

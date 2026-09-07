@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -85,6 +85,10 @@ def test_assembling_request_auth_header_assembly():
     assert headers["Authorization"] == "Bearer abc"
 
     tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_header_prefix": "basic", "api_key_value": "abc"}
+    headers = tool.assembling_request(parameters={})
+    assert headers["Authorization"] == "Basic abc"
+    assert tool.runtime.credentials["api_key_value"] == "abc"
+
     headers = tool.assembling_request(parameters={})
     assert headers["Authorization"] == "Basic abc"
 
@@ -237,7 +241,7 @@ def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch
         invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
 
-def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytest.MonkeyPatch):
+def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     openapi = {
         "parameters": [],
         "requestBody": {
@@ -277,11 +281,11 @@ def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytes
     monkeypatch.setattr(tool, "assembling_request", lambda parameters: {})
     monkeypatch.setattr(tool, "do_http_request", lambda *args, **kwargs: httpx.Response(200, text='{"a":1}'))
     monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse({"a": 1}, True))
-    messages = list(tool.invoke(session=MagicMock(), user_id="u1", tool_parameters={}))
+    messages = list(tool.invoke(session=sqlite_session, user_id="u1", tool_parameters={}))
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.JSON, ToolInvokeMessage.MessageType.TEXT]
 
     # _invoke text path
     monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse("plain", False))
-    messages = list(tool.invoke(session=MagicMock(), user_id="u1", tool_parameters={}))
+    messages = list(tool.invoke(session=sqlite_session, user_id="u1", tool_parameters={}))
     assert len(messages) == 1
     assert messages[0].message.text == "plain"

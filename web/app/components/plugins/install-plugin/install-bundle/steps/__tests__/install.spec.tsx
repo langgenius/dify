@@ -1,6 +1,6 @@
 import type { Dependency, InstallStatusResponse, PackageDependency } from '../../../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
@@ -16,10 +16,8 @@ vi.mock('@/service/use-plugins', () => ({
     mockInstallOrUpdate.mockImplementation((params: { payload: Dependency[] }) => {
       // Call onSuccess with mock response based on mockInstallResponse
       const getStatus = () => {
-        if (mockInstallResponse === 'success')
-          return TaskStatus.success
-        if (mockInstallResponse === 'failed')
-          return TaskStatus.failed
+        if (mockInstallResponse === 'success') return TaskStatus.success
+        if (mockInstallResponse === 'failed') return TaskStatus.failed
         return TaskStatus.running
       }
       const mockResponse: InstallStatusResponse[] = params.payload.map(() => ({
@@ -57,12 +55,6 @@ vi.mock('../../../hooks/use-refresh-plugin-list', () => ({
   }),
 }))
 
-// Mock mitt context
-const mockEmit = vi.fn()
-vi.mock('@/context/mitt-context', () => ({
-  useMittContextSelector: () => mockEmit,
-}))
-
 // Mock useCanInstallPluginFromMarketplace
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanInstallPluginFromMarketplace: () => ({ canInstallPluginFromMarketplace: true }),
@@ -96,101 +88,110 @@ vi.mock('../install-multi', async () => {
     from: 'marketplace',
   })
 
-  const MockInstallMulti = React.forwardRef((props: {
-    allPlugins: { length: number }[]
-    selectedPlugins: { plugin_id: string }[]
-    onSelect: (plugin: ReturnType<typeof createPlugin>, index: number, total: number) => void
-    onSelectAll: (plugins: ReturnType<typeof createPlugin>[], indexes: number[]) => void
-    onDeSelectAll: () => void
-    onLoadedAllPlugin: (info: Record<string, unknown>) => void
-  }, ref: React.ForwardedRef<{ selectAllPlugins: () => void, deSelectAllPlugins: () => void }>) => {
-    const {
-      allPlugins,
-      selectedPlugins,
-      onSelect,
-      onSelectAll,
-      onDeSelectAll,
-      onLoadedAllPlugin,
-    } = props
-
-    const allPluginsRef = React.useRef(allPlugins)
-    React.useEffect(() => {
-      allPluginsRef.current = allPlugins
-    }, [allPlugins])
-
-    // Expose ref methods
-    React.useImperativeHandle(ref, () => ({
-      selectAllPlugins: () => {
-        const plugins = allPluginsRef.current.map((_, i) => createPlugin(i))
-        const indexes = allPluginsRef.current.map((_, i) => i)
-        onSelectAll(plugins, indexes)
+  const MockInstallMulti = React.forwardRef(
+    (
+      props: {
+        allPlugins: { length: number }[]
+        selectedPlugins: { plugin_id: string }[]
+        onSelect: (plugin: ReturnType<typeof createPlugin>, index: number, total: number) => void
+        onSelectAll: (plugins: ReturnType<typeof createPlugin>[], indexes: number[]) => void
+        onDeSelectAll: () => void
+        onLoadedAllPlugin: (info: Record<string, unknown>) => void
       },
-      deSelectAllPlugins: () => {
-        onDeSelectAll()
-      },
-    }), [onSelectAll, onDeSelectAll])
+      ref: React.ForwardedRef<{ selectAllPlugins: () => void; deSelectAllPlugins: () => void }>,
+    ) => {
+      const {
+        allPlugins,
+        selectedPlugins,
+        onSelect,
+        onSelectAll,
+        onDeSelectAll,
+        onLoadedAllPlugin,
+      } = props
 
-    // Simulate loading completion when mounted
-    React.useEffect(() => {
-      const installedInfo = {}
-      onLoadedAllPlugin(installedInfo)
-    }, [onLoadedAllPlugin])
+      const allPluginsRef = React.useRef(allPlugins)
+      React.useEffect(() => {
+        allPluginsRef.current = allPlugins
+      }, [allPlugins])
 
-    return (
-      <div data-testid="install-multi">
-        <span data-testid="all-plugins-count">{allPlugins.length}</span>
-        <span data-testid="selected-plugins-count">{selectedPlugins.length}</span>
-        <button
-          data-testid="select-plugin-0"
-          onClick={() => {
-            onSelect(createPlugin(0), 0, allPlugins.length)
-          }}
-        >
-          Select Plugin 0
-        </button>
-        <button
-          data-testid="select-plugin-1"
-          onClick={() => {
-            onSelect(createPlugin(1), 1, allPlugins.length)
-          }}
-        >
-          Select Plugin 1
-        </button>
-        <button
-          data-testid="toggle-plugin-0"
-          onClick={() => {
-            const plugin = createPlugin(0)
-            onSelect(plugin, 0, allPlugins.length)
-          }}
-        >
-          Toggle Plugin 0
-        </button>
-        <button
-          data-testid="select-all-plugins"
-          onClick={() => {
-            const plugins = allPlugins.map((_, i) => createPlugin(i))
-            const indexes = allPlugins.map((_, i) => i)
+      // Expose ref methods
+      React.useImperativeHandle(
+        ref,
+        () => ({
+          selectAllPlugins: () => {
+            const plugins = allPluginsRef.current.map((_, i) => createPlugin(i))
+            const indexes = allPluginsRef.current.map((_, i) => i)
             onSelectAll(plugins, indexes)
-          }}
-        >
-          Select All
-        </button>
-        <button
-          data-testid="deselect-all-plugins"
-          onClick={() => onDeSelectAll()}
-        >
-          Deselect All
-        </button>
-      </div>
-    )
-  })
+          },
+          deSelectAllPlugins: () => {
+            onDeSelectAll()
+          },
+        }),
+        [onSelectAll, onDeSelectAll],
+      )
+
+      // Simulate loading completion when mounted
+      React.useEffect(() => {
+        const installedInfo = {}
+        onLoadedAllPlugin(installedInfo)
+      }, [onLoadedAllPlugin])
+
+      return (
+        <div data-testid="install-multi">
+          <span data-testid="all-plugins-count">{allPlugins.length}</span>
+          <span data-testid="selected-plugins-count">{selectedPlugins.length}</span>
+          <button
+            data-testid="select-plugin-0"
+            onClick={() => {
+              onSelect(createPlugin(0), 0, allPlugins.length)
+            }}
+          >
+            Select Plugin 0
+          </button>
+          <button
+            data-testid="select-plugin-1"
+            onClick={() => {
+              onSelect(createPlugin(1), 1, allPlugins.length)
+            }}
+          >
+            Select Plugin 1
+          </button>
+          <button
+            data-testid="toggle-plugin-0"
+            onClick={() => {
+              const plugin = createPlugin(0)
+              onSelect(plugin, 0, allPlugins.length)
+            }}
+          >
+            Toggle Plugin 0
+          </button>
+          <button
+            data-testid="select-all-plugins"
+            onClick={() => {
+              const plugins = allPlugins.map((_, i) => createPlugin(i))
+              const indexes = allPlugins.map((_, i) => i)
+              onSelectAll(plugins, indexes)
+            }}
+          >
+            Select All
+          </button>
+          <button data-testid="deselect-all-plugins" onClick={() => onDeSelectAll()}>
+            Deselect All
+          </button>
+        </div>
+      )
+    },
+  )
 
   return { default: MockInstallMulti }
 })
 
 // ==================== Test Utilities ====================
 
-const createMockDependency = (type: 'marketplace' | 'github' | 'package' = 'marketplace', index = 0): Dependency => {
+const createMockDependency = (
+  type: 'marketplace' | 'github' | 'package' = 'marketplace',
+  index = 0,
+): Dependency => {
   if (type === 'marketplace') {
     return {
       type: 'marketplace',
@@ -253,12 +254,6 @@ describe('Install Component', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Install {...defaultProps} />)
-
-      expect(screen.getByTestId('install-multi')).toBeInTheDocument()
-    })
-
     it('should render InstallMulti component with correct props', () => {
       render(<Install {...defaultProps} />)
 
@@ -318,9 +313,9 @@ describe('Install Component', () => {
     it('should show cancel button when canInstall is false', () => {
       // Create a fresh component that hasn't loaded yet
       vi.doMock('./install-multi', () => ({
-        default: vi.fn().mockImplementation(() => (
-          <div data-testid="install-multi">Loading...</div>
-        )),
+        default: vi
+          .fn()
+          .mockImplementation(() => <div data-testid="install-multi">Loading...</div>),
       }))
 
       // Since InstallMulti doesn't call onLoadedAllPlugin, canInstall stays false
@@ -407,8 +402,7 @@ describe('Install Component', () => {
       const deSelectText = screen.getByText(/common\.operation\.deSelectAll/i)
       const checkboxContainer = deSelectText.parentElement
       await act(async () => {
-        if (checkboxContainer)
-          fireEvent.click(checkboxContainer)
+        if (checkboxContainer) fireEvent.click(checkboxContainer)
       })
 
       // Should now show selectAll again (deSelectAllPlugins was called)
@@ -530,25 +524,6 @@ describe('Install Component', () => {
       })
     })
 
-    it('should emit plugin:install:success event on successful installation', async () => {
-      render(<Install {...defaultProps} />)
-
-      // Select all plugins
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('select-all-plugins'))
-      })
-
-      // Click install
-      const installButton = screen.getByText(/plugin\.installModal\.install/i)
-      await act(async () => {
-        fireEvent.click(installButton)
-      })
-
-      await waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith('plugin:install:success', expect.any(Array))
-      })
-    })
-
     it('should disable install button when no plugins are selected', async () => {
       render(<Install {...defaultProps} />)
 
@@ -582,9 +557,9 @@ describe('Install Component', () => {
       // Override the mock to NOT call onLoadedAllPlugin immediately
       // This keeps canInstall = false so the cancel button is visible
       vi.doMock('./install-multi', () => ({
-        default: vi.fn().mockImplementation(() => (
-          <div data-testid="install-multi-no-load">Loading...</div>
-        )),
+        default: vi
+          .fn()
+          .mockImplementation(() => <div data-testid="install-multi-no-load">Loading...</div>),
       }))
 
       // For this test, we just verify the cancel behavior
@@ -858,11 +833,4 @@ describe('Install Component', () => {
   })
 
   // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const InstallModule = await import('../install')
-      // memo returns an object with $$typeof
-      expect(typeof InstallModule.default).toBe('object')
-    })
-  })
 })

@@ -3,21 +3,36 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useNodeMetaData,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
+import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { NodeActionsDropdown } from '../index'
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
+vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-meta-data')>()
+
   return {
     ...actual,
     useNodeMetaData: vi.fn(),
-    useNodesInteractions: vi.fn(),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
     useNodesReadOnly: vi.fn(),
   }
 })
@@ -35,39 +50,37 @@ const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
-const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> => ({
-  data,
-  error: null,
-  refetch: vi.fn(),
-  isError: false,
-  isPending: false,
-  isLoading: false,
-  isSuccess: true,
-  isFetching: false,
-  isRefetching: false,
-  isLoadingError: false,
-  isRefetchError: false,
-  isInitialLoading: false,
-  isPaused: false,
-  isEnabled: true,
-  status: 'success',
-  fetchStatus: 'idle',
-  dataUpdatedAt: Date.now(),
-  errorUpdatedAt: 0,
-  failureCount: 0,
-  failureReason: null,
-  errorUpdateCount: 0,
-  isFetched: true,
-  isFetchedAfterMount: true,
-  isPlaceholderData: false,
-  isStale: false,
-  promise: Promise.resolve(data),
-} as UseQueryResult<T, Error>)
+const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
+  ({
+    data,
+    error: null,
+    refetch: vi.fn(),
+    isError: false,
+    isPending: false,
+    isLoading: false,
+    isSuccess: true,
+    isFetching: false,
+    isRefetching: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isInitialLoading: false,
+    isPaused: false,
+    isEnabled: true,
+    status: 'success',
+    fetchStatus: 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isPlaceholderData: false,
+    isStale: false,
+    promise: Promise.resolve(data),
+  }) as UseQueryResult<T, Error>
 
-const renderComponent = (
-  showHelpLink: boolean = true,
-  onOpenChange?: (open: boolean) => void,
-) =>
+const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
   renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"

@@ -5,8 +5,11 @@ This service archives workflow run logs for paid plan users older than the confi
 90 days) to S3-compatible storage.
 
 Archive V2 writes bundle-level Parquet objects. A bundle contains many workflow runs and their related table rows.
-Bundle metadata lives in the object-store manifest instead of a database table, so archive/delete/restore does not move
-the large-table retention problem into another OLTP table.
+Bundle metadata lives in the object-store manifest as the recoverable source of truth. Completed bundles are also
+published into a small database catalog so console listing, download, and maintenance jobs do not list object storage
+online. Archive success requires that catalog publication to commit. A retry reconciles only its known manifest key
+against an already-published shard index; a missing shard index fails closed rather than rebuilding it by scanning
+historical manifests.
 
 Archive campaigns should use fixed absolute UTC windows for every tenant-prefix/shard execution. Relative windows are
 evaluated at process start and are not safe for multi-day rollout because each command would scan a different window.
@@ -29,12 +32,12 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from threading import Lock
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, TypeVar, cast
 
 import click
 import pyarrow as pa
@@ -43,7 +46,7 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from graphon.enums import WorkflowType
 from libs.archive_storage import (
@@ -64,14 +67,22 @@ from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowN
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
+from services.retention.workflow_run.archive_bundle_index import (
+    ArchiveBundleManifest,
+    ArchiveBundleTableManifestEntry,
+    decode_archive_bundle_manifest,
+    upsert_archive_bundle_index_from_manifest,
+)
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
     ARCHIVE_BUNDLE_INDEX_NAME,
     ARCHIVE_BUNDLE_MANIFEST_NAME,
     ARCHIVE_BUNDLE_SCHEMA_VERSION,
 )
+from services.retention.workflow_run.db_retry import is_retryable_db_disconnect, run_with_db_retry
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 class TableStatsManifestEntry(TypedDict):
@@ -208,6 +219,8 @@ class WorkflowRunArchiver:
         "workflow_pause_reasons",
         "workflow_trigger_logs",
     ]
+    DB_RETRY_ATTEMPTS = 3
+    DB_RETRY_DELAYS_SECONDS = (1.0, 2.0)
 
     start_from: datetime.datetime | None
     end_before: datetime.datetime
@@ -455,16 +468,40 @@ class WorkflowRunArchiver:
         """Fetch a batch of workflow runs to archive."""
         repo = self._get_workflow_run_repo()
         tenant_ids = list(tenant_scope) if tenant_scope is not None else self.tenant_ids or None
-        return repo.get_runs_batch_by_time_range(
-            start_from=self.start_from,
-            end_before=self.end_before,
-            last_seen=last_seen,
-            batch_size=self.batch_size,
-            run_types=self.ARCHIVED_TYPE,
-            tenant_ids=tenant_ids,
-            tenant_prefixes=None if tenant_ids else self.tenant_prefixes or None,
-            run_shard_index=self.run_shard_index,
-            run_shard_total=self.run_shard_total,
+
+        return self._run_with_db_retry(
+            "workflow run batch fetch",
+            lambda: repo.get_runs_batch_by_time_range(
+                start_from=self.start_from,
+                end_before=self.end_before,
+                last_seen=last_seen,
+                batch_size=self.batch_size,
+                run_types=self.ARCHIVED_TYPE,
+                tenant_ids=tenant_ids,
+                tenant_prefixes=None if tenant_ids else self.tenant_prefixes or None,
+                run_shard_index=self.run_shard_index,
+                run_shard_total=self.run_shard_total,
+            ),
+        )
+
+    @staticmethod
+    def _is_retryable_db_disconnect(exc: BaseException) -> bool:
+        return is_retryable_db_disconnect(exc)
+
+    @staticmethod
+    def _safe_rollback(session: Session, bundle_id: str) -> None:
+        try:
+            session.rollback()
+        except Exception:
+            logger.warning("Failed to rollback archive session for bundle %s", bundle_id, exc_info=True)
+
+    def _run_with_db_retry(self, operation_name: str, operation: Callable[[], T]) -> T:
+        return run_with_db_retry(
+            operation_name,
+            operation,
+            logger=logger,
+            attempts=self.DB_RETRY_ATTEMPTS,
+            delays_seconds=self.DB_RETRY_DELAYS_SECONDS,
         )
 
     def _tenant_scan_scopes(self) -> list[list[str] | None]:
@@ -498,8 +535,8 @@ class WorkflowRunArchiver:
         if self.paid_tenant_ids is not None:
             return tenant_ids & self.paid_tenant_ids
 
-        if not dify_config.BILLING_ENABLED:
-            # If billing is not enabled, treat all tenants as paid
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            # Self-hosted editions have no Cloud billing plans, so treat all tenants as paid.
             return tenant_ids
 
         if not tenant_ids:
@@ -532,22 +569,53 @@ class WorkflowRunArchiver:
         if self.workers == 1 or len(bundle_groups) == 1:
             results: list[ArchiveResult] = []
             for bundle_runs in bundle_groups:
-                with session_maker() as session:
-                    results.append(self._archive_bundle(session, storage, bundle_runs))
+                results.append(self._archive_bundle_with_retry(session_maker, storage, bundle_runs))
             return results
 
         results = []
         max_workers = min(self.workers, len(bundle_groups))
 
         def archive_in_worker(bundle_runs: Sequence[WorkflowRun]) -> ArchiveResult:
-            with session_maker() as session:
-                return self._archive_bundle(session, storage, bundle_runs)
+            return self._archive_bundle_with_retry(session_maker, storage, bundle_runs)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(archive_in_worker, bundle_runs) for bundle_runs in bundle_groups]
             for future in as_completed(futures):
                 results.append(future.result())
         return results
+
+    def _archive_bundle_with_retry(
+        self,
+        session_maker: sessionmaker[Session],
+        storage: ArchiveStorage | None,
+        runs: Sequence[WorkflowRun],
+    ) -> ArchiveResult:
+        identity = self._build_bundle_identity(runs)
+
+        try:
+            return self._run_with_db_retry(
+                f"archive workflow run bundle {identity.bundle_id}",
+                lambda: self._archive_bundle_once(session_maker, storage, runs),
+            )
+        except Exception as exc:
+            logger.exception("Failed to archive workflow run bundle %s after retries", identity.bundle_id)
+            return ArchiveResult(
+                bundle_id=identity.bundle_id,
+                tenant_id=identity.tenant_id,
+                object_prefix=identity.object_prefix,
+                run_count=len(runs),
+                success=False,
+                error=str(exc),
+            )
+
+    def _archive_bundle_once(
+        self,
+        session_maker: sessionmaker[Session],
+        storage: ArchiveStorage | None,
+        runs: Sequence[WorkflowRun],
+    ) -> ArchiveResult:
+        with session_maker() as session:
+            return self._archive_bundle(session, storage, runs)
 
     def _archive_bundle(
         self,
@@ -574,7 +642,7 @@ class WorkflowRunArchiver:
                 if storage is None:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
                 if storage.object_exists(self._get_manifest_object_key(identity)):
-                    self._write_bundle_index(storage, identity)
+                    self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "bundle already archived"
@@ -585,6 +653,8 @@ class WorkflowRunArchiver:
                 runs = [run for run in runs if run.id not in archived_run_ids]
                 result.skipped_run_count = original_run_count - len(runs)
                 if not runs:
+                    # Historical catalog rows are a rollout precondition. New bundles commit their catalog row before
+                    # publishing the shard index, so this idempotency path never needs to rescan prior manifests.
                     result.run_count = 0
                     result.success = True
                     result.skipped = True
@@ -597,7 +667,7 @@ class WorkflowRunArchiver:
                 result.object_prefix = identity.object_prefix
                 result.run_count = len(runs)
                 if storage.object_exists(self._get_manifest_object_key(identity)):
-                    self._write_bundle_index(storage, identity)
+                    self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "filtered bundle already archived"
@@ -628,8 +698,10 @@ class WorkflowRunArchiver:
                 for table_name, payload in table_payloads.items():
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
-                self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
+                manifest = decode_archive_bundle_manifest(manifest_data)
+                upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
                 session.commit()
+                self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
 
                 logger.info(
                     "Archived workflow run bundle %s: tenant=%s runs=%s tables=%s object_prefix=%s",
@@ -645,12 +717,34 @@ class WorkflowRunArchiver:
                 result.success = True
 
         except Exception as e:
+            if self._is_retryable_db_disconnect(e):
+                self._safe_rollback(session, identity.bundle_id)
+                raise
             logger.exception("Failed to archive workflow run bundle %s", identity.bundle_id)
             result.error = str(e)
-            session.rollback()
+            self._safe_rollback(session, identity.bundle_id)
 
         result.elapsed_time = time.time() - start_time
         return result
+
+    def _sync_existing_bundle_index(
+        self,
+        session: Session,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+    ) -> None:
+        """Publish a known manifest to the DB catalog and reconcile its existing shard index."""
+        manifest_key = self._get_manifest_object_key(identity)
+        manifest_data = storage.get_object(manifest_key)
+        manifest = decode_archive_bundle_manifest(manifest_data)
+        upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
+        session.commit()
+        self._merge_bundle_manifest_into_index(
+            storage,
+            identity,
+            manifest["run_ids"],
+            require_existing_index=True,
+        )
 
     def _lock_runs_for_archive(
         self,
@@ -779,9 +873,9 @@ class WorkflowRunArchiver:
         identity: ArchiveBundleIdentity,
         runs: Sequence[WorkflowRun],
         table_stats: list[TableStats],
-    ) -> ArchiveManifestDict:
+    ) -> ArchiveBundleManifest:
         """Generate a manifest for the archived workflow run bundle."""
-        tables: dict[str, TableStatsManifestEntry] = {
+        tables: dict[str, ArchiveBundleTableManifestEntry] = {
             stat.table_name: {
                 "row_count": stat.row_count,
                 "checksum": stat.checksum,
@@ -793,6 +887,9 @@ class WorkflowRunArchiver:
         sorted_runs = sorted(runs, key=lambda run: (run.created_at, run.id))
         end_before = self.end_before
         if end_before is None:
+            raise ValueError("archive window end must be set")
+        formatted_end_before = self._format_window_datetime(end_before)
+        if formatted_end_before is None:
             raise ValueError("archive window end must be set")
         return ArchiveManifestDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
@@ -813,7 +910,7 @@ class WorkflowRunArchiver:
             archived_at=datetime.datetime.now(datetime.UTC).isoformat(),
             campaign_id=self.campaign_id,
             archive_window_start=self._format_window_datetime(self.start_from),
-            archive_window_end=end_before.isoformat(),
+            archive_window_end=formatted_end_before,
             run_shard=identity.shard,
             tables=tables,
             run_ids=[run.id for run in sorted_runs],
@@ -937,10 +1034,20 @@ class WorkflowRunArchiver:
         storage: ArchiveStorage,
         identity: ArchiveBundleIdentity,
         run_ids: Sequence[str],
+        *,
+        require_existing_index: bool = False,
     ) -> ArchiveBundleIndexDict:
+        """
+        Merge one bundle into its shard index.
+
+        Retries for a known manifest set ``require_existing_index`` so they never create a partial index by scanning
+        or overwriting a shard whose historical entries cannot be proven from this one manifest.
+        """
         index_key = self._get_index_object_key(identity)
         if storage.object_exists(index_key):
             index = self._load_bundle_index(storage, identity)
+        elif require_existing_index:
+            raise RuntimeError(f"archive shard index missing while reconciling known manifest: {index_key}")
         else:
             index = self._build_bundle_index(storage, identity)
 

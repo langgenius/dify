@@ -36,8 +36,8 @@ export type GetWorkflowByWorkflowRunIdEventsResponses = {
   200: EventStreamResponse
 }
 
-export type GetWorkflowByWorkflowRunIdEventsResponse
-  = GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
+export type GetWorkflowByWorkflowRunIdEventsResponse =
+  GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
   body?: never
@@ -56,5 +56,5 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsResponses = {
   200: WorkflowPauseDetailsResponse
 }
 
-export type GetWorkflowByWorkflowRunIdPauseDetailsResponse
-  = GetWorkflowByWorkflowRunIdPauseDetailsResponses[keyof GetWorkflowByWorkflowRunIdPauseDetailsResponses]
+export type GetWorkflowByWorkflowRunIdPauseDetailsResponse =
+  GetWorkflowByWorkflowRunIdPauseDetailsResponses[keyof GetWorkflowByWorkflowRunIdPauseDetailsResponses]

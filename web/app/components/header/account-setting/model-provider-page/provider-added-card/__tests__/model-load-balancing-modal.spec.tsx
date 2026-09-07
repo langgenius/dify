@@ -16,7 +16,7 @@ type CredentialData = {
     }>
   }
   current_credential_id: string
-  available_credentials: Array<{ credential_id: string, credential_name: string }>
+  available_credentials: Array<{ credential_id: string; credential_name: string }>
   current_credential_name: string
 }
 
@@ -32,8 +32,20 @@ let mockCredentialData: CredentialData | undefined = {
   load_balancing: {
     enabled: true,
     configs: [
-      { id: 'cfg-1', credential_id: 'cred-1', enabled: true, name: 'Default', credentials: { api_key: 'same-key' } },
-      { id: 'cfg-2', credential_id: 'cred-2', enabled: true, name: 'Backup', credentials: { api_key: 'backup-key' } },
+      {
+        id: 'cfg-1',
+        credential_id: 'cred-1',
+        enabled: true,
+        name: 'Default',
+        credentials: { api_key: 'same-key' },
+      },
+      {
+        id: 'cfg-2',
+        credential_id: 'cred-2',
+        enabled: true,
+        name: 'Backup',
+        credentials: { api_key: 'backup-key' },
+      },
     ],
   },
   current_credential_id: 'cred-1',
@@ -86,21 +98,43 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../model-load-balancing-configs', () => ({
-  default: ({ onUpdate, onRemove }: {
+  default: ({
+    onUpdate,
+    onRemove,
+  }: {
     onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
     onRemove?: (credentialId: string) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onUpdate?.(undefined, { __authorization_name__: 'New Key' })}>config add credential</button>
-      <button type="button" onClick={() => onUpdate?.({ credential: { credential_id: 'cred-1' } }, { __authorization_name__: 'Renamed Key' })}>config rename credential</button>
-      <button type="button" onClick={() => onRemove?.('cred-1')}>config remove</button>
+      <button
+        type="button"
+        onClick={() => onUpdate?.(undefined, { __authorization_name__: 'New Key' })}
+      >
+        config add credential
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onUpdate?.(
+            { credential: { credential_id: 'cred-1' } },
+            { __authorization_name__: 'Renamed Key' },
+          )
+        }
+      >
+        config rename credential
+      </button>
+      <button type="button" onClick={() => onRemove?.('cred-1')}>
+        config remove
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
   SwitchCredentialInLoadBalancing: ({ onUpdate }: { onUpdate: () => void }) => (
-    <button type="button" onClick={onUpdate}>switch credential</button>
+    <button type="button" onClick={onUpdate}>
+      switch credential
+    </button>
   ),
 }))
 
@@ -131,11 +165,7 @@ describe('ModelLoadBalancingModal', () => {
     fetch_from: 'predefined-model',
   } as unknown as ModelItem
 
-  const renderModal = (node: Parameters<typeof render>[0]) => render(
-    <>
-      {node}
-    </>,
-  )
+  const renderModal = (node: Parameters<typeof render>[0]) => render(<>{node}</>)
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -145,8 +175,20 @@ describe('ModelLoadBalancingModal', () => {
       load_balancing: {
         enabled: true,
         configs: [
-          { id: 'cfg-1', credential_id: 'cred-1', enabled: true, name: 'Default', credentials: { api_key: 'same-key' } },
-          { id: 'cfg-2', credential_id: 'cred-2', enabled: true, name: 'Backup', credentials: { api_key: 'backup-key' } },
+          {
+            id: 'cfg-1',
+            credential_id: 'cred-1',
+            enabled: true,
+            name: 'Default',
+            credentials: { api_key: 'same-key' },
+          },
+          {
+            id: 'cfg-2',
+            credential_id: 'cred-2',
+            enabled: true,
+            name: 'Backup',
+            credentials: { api_key: 'backup-key' },
+          },
         ],
       },
       current_credential_id: 'cred-1',
@@ -233,7 +275,9 @@ describe('ModelLoadBalancingModal', () => {
     await waitFor(() => {
       expect(mockRefetch).toHaveBeenCalled()
       expect(mockMutateAsync).toHaveBeenCalled()
-      const payload = mockMutateAsync.mock.calls[0]![0] as { load_balancing: { configs: Array<{ credentials: { api_key: string } }> } }
+      const payload = mockMutateAsync.mock.calls[0]![0] as {
+        load_balancing: { configs: Array<{ credentials: { api_key: string } }> }
+      }
       expect(payload.load_balancing.configs[0]!.credentials.api_key).toBe('[__HIDDEN__]')
       expect(mockNotify).toHaveBeenCalled()
       expect(mockHandleRefreshModel).toHaveBeenCalled()
@@ -410,8 +454,20 @@ describe('ModelLoadBalancingModal', () => {
       load_balancing: {
         enabled: true,
         configs: [
-          { id: 'cfg-1', credential_id: 'cred-1', enabled: true, name: 'Only One', credentials: { api_key: 'key' } },
-          { id: 'cfg-2', credential_id: 'cred-2', enabled: false, name: 'Disabled', credentials: { api_key: 'key2' } },
+          {
+            id: 'cfg-1',
+            credential_id: 'cred-1',
+            enabled: true,
+            name: 'Only One',
+            credentials: { api_key: 'key' },
+          },
+          {
+            id: 'cfg-2',
+            credential_id: 'cred-2',
+            enabled: false,
+            name: 'Disabled',
+            credentials: { api_key: 'key2' },
+          },
         ],
       },
     }
@@ -434,8 +490,20 @@ describe('ModelLoadBalancingModal', () => {
       load_balancing: {
         enabled: true,
         configs: [
-          { id: '', credential_id: 'cred-new', enabled: true, name: 'New Entry', credentials: { api_key: 'new-key' } },
-          { id: 'cfg-2', credential_id: 'cred-2', enabled: true, name: 'Backup', credentials: { api_key: 'backup-key' } },
+          {
+            id: '',
+            credential_id: 'cred-new',
+            enabled: true,
+            name: 'New Entry',
+            credentials: { api_key: 'new-key' },
+          },
+          {
+            id: 'cfg-2',
+            credential_id: 'cred-2',
+            enabled: true,
+            name: 'Backup',
+            credentials: { api_key: 'backup-key' },
+          },
         ],
       },
     }
@@ -455,7 +523,9 @@ describe('ModelLoadBalancingModal', () => {
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalled()
-      const payload = mockMutateAsync.mock.calls[0]![0] as { load_balancing: { configs: Array<{ credentials: { api_key: string } }> } }
+      const payload = mockMutateAsync.mock.calls[0]![0] as {
+        load_balancing: { configs: Array<{ credentials: { api_key: string } }> }
+      }
       // Entry without id should NOT be encoded as hidden
       expect(payload.load_balancing.configs[0]!.credentials.api_key).toBe('new-key')
     })
@@ -464,9 +534,7 @@ describe('ModelLoadBalancingModal', () => {
   it('should add new credential to draft config when update finds matching credential', async () => {
     mockRefetch.mockResolvedValue({
       data: {
-        available_credentials: [
-          { credential_id: 'cred-new', credential_name: 'New Key' },
-        ],
+        available_credentials: [{ credential_id: 'cred-new', credential_name: 'New Key' }],
       },
     })
 
@@ -498,9 +566,7 @@ describe('ModelLoadBalancingModal', () => {
   it('should not update draft config when handleUpdate credential name does not match any available credential', async () => {
     mockRefetch.mockResolvedValue({
       data: {
-        available_credentials: [
-          { credential_id: 'cred-other', credential_name: 'Other Key' },
-        ],
+        available_credentials: [{ credential_id: 'cred-other', credential_name: 'Other Key' }],
       },
     })
 
@@ -528,7 +594,9 @@ describe('ModelLoadBalancingModal', () => {
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalled()
       // The payload configs should only have the original 2 entries (no new one added)
-      const payload = mockMutateAsync.mock.calls[0]![0] as { load_balancing: { configs: unknown[] } }
+      const payload = mockMutateAsync.mock.calls[0]![0] as {
+        load_balancing: { configs: unknown[] }
+      }
       expect(payload.load_balancing.configs).toHaveLength(2)
     })
   })
@@ -548,7 +616,10 @@ describe('ModelLoadBalancingModal', () => {
     expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
 
     // Clicking the card when enabled=true toggles to disabled
-    const card = screen.getByText(/modelProvider\.auth\.providerManaged$/).closest('div[class]')!.closest('div[class]')!
+    const card = screen
+      .getByText(/modelProvider\.auth\.providerManaged$/)
+      .closest('div[class]')!
+      .closest('div[class]')!
     await user.click(card)
 
     // After toggling, title should show configModel (disabled state)
@@ -574,7 +645,11 @@ describe('ModelLoadBalancingModal', () => {
         open
         onSave={onSave}
         onClose={onClose}
-        credential={{ credential_id: 'cred-1', credential_name: 'Default' } as unknown as Parameters<typeof ModelLoadBalancingModal>[0]['credential']}
+        credential={
+          { credential_id: 'cred-1', credential_name: 'Default' } as unknown as Parameters<
+            typeof ModelLoadBalancingModal
+          >[0]['credential']
+        }
       />,
     )
 
@@ -685,16 +760,16 @@ describe('ModelLoadBalancingModal', () => {
     )
 
     // Assert: component renders without error (extendedSecretFormSchemas = [])
-    expect(screen.getAllByText(/modelProvider\.auth\.specifyModelCredential/).length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText(/modelProvider\.auth\.specifyModelCredential/).length,
+    ).toBeGreaterThan(0)
   })
 
   it('should not update draft config when rename finds no matching index in prevIndex', async () => {
     // Arrange: credential in payload does not match any config (prevIndex = -1)
     mockRefetch.mockResolvedValue({
       data: {
-        available_credentials: [
-          { credential_id: 'cred-99', credential_name: 'Unknown' },
-        ],
+        available_credentials: [{ credential_id: 'cred-99', credential_name: 'Unknown' }],
       },
     })
 
@@ -722,7 +797,9 @@ describe('ModelLoadBalancingModal', () => {
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalled()
-      const payload = mockMutateAsync.mock.calls[0]![0] as { load_balancing: { configs: unknown[] } }
+      const payload = mockMutateAsync.mock.calls[0]![0] as {
+        load_balancing: { configs: unknown[] }
+      }
       // Config count unchanged (still 2 from original)
       expect(payload.load_balancing.configs).toHaveLength(2)
     })

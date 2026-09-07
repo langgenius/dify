@@ -1,9 +1,19 @@
+import type {
+  WorkflowPaginationResponse,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  EnvironmentDeployment,
+  GetEnvironmentDeploymentResponse,
+  ListEnvironmentDeploymentsResponse,
+  WorkflowVersion,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
-  FetchWorkflowDraftResponse,
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
@@ -12,17 +22,21 @@ import type {
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AppModeEnum } from '@/types/app'
 import { del, get, patch, post, put } from './base'
-import { useInvalid, useReset } from './use-base'
+import { consoleQuery } from './client'
+import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
+import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
 
-export const useAppWorkflow = (appID: string) => {
-  return useQuery<FetchWorkflowDraftResponse | null>({
-    enabled: !!appID,
-    queryKey: [NAME_SPACE, 'publish', appID],
-    queryFn: () => get<FetchWorkflowDraftResponse | null>(`/apps/${appID}/workflows/publish`),
+type UseAppWorkflowOptions = Pick<UseQueryOptions, 'retry'>
+
+export const useAppWorkflow = (appID: string, options?: UseAppWorkflowOptions) => {
+  return useQuery({
+    ...appWorkflowQueryOptions(appID),
+    ...options,
   })
 }
 
@@ -49,15 +63,16 @@ export const useInvalidateWorkflowRunHistory = () => {
 export const useInvalidateAppWorkflow = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [NAME_SPACE, 'publish', appID],
-      },
-    )
+    return queryClient.invalidateQueries({
+      queryKey: appWorkflowQueryOptions(appID).queryKey,
+    })
   }
 }
 
-export const useWorkflowConfig = <T = WorkflowConfigResponse>(url: string, onSuccess: (v: T) => void) => {
+export const useWorkflowConfig = <T = WorkflowConfigResponse>(
+  url: string,
+  onSuccess: (v: T) => void,
+) => {
   return useQuery({
     enabled: !!url,
     queryKey: [NAME_SPACE, 'config', url],
@@ -77,32 +92,209 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
   return useInfiniteQuery({
     enabled: !!url,
     queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
-    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(url, {
-      params: {
-        page: pageParam,
-        limit,
-        user_id: userId || '',
-        named_only: !!namedOnly,
-      },
-    }),
-    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
+    queryFn: ({ pageParam = 1 }) =>
+      get<FetchWorkflowDraftPageResponse>(url, {
+        params: {
+          page: pageParam,
+          limit,
+          user_id: userId || '',
+          named_only: !!namedOnly,
+        },
+      }),
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : null),
     initialPageParam: initialPage,
   })
 }
 
 export const useResetWorkflowVersionHistory = () => {
-  return useReset([...WorkflowVersionHistoryKey])
+  const queryClient = useQueryClient()
+
+  return () =>
+    Promise.all([
+      queryClient.resetQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+      queryClient.resetQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+    ])
+}
+
+function syncWorkflowVersionMetadata(
+  version: WorkflowVersion | undefined,
+  updatedWorkflow: WorkflowResponse,
+) {
+  if (!version || version.id !== updatedWorkflow.id) return version
+  if (
+    version.marked_name === updatedWorkflow.marked_name &&
+    version.marked_comment === updatedWorkflow.marked_comment
+  )
+    return version
+
+  return {
+    ...version,
+    marked_name: updatedWorkflow.marked_name,
+    marked_comment: updatedWorkflow.marked_comment,
+  }
+}
+
+function syncEnvironmentDeploymentVersion(
+  environmentDeployment: EnvironmentDeployment,
+  updatedWorkflow: WorkflowResponse,
+) {
+  const deployment = environmentDeployment.deployment
+  if (!deployment) return environmentDeployment
+
+  const currentVersion = syncWorkflowVersionMetadata(deployment.current_version, updatedWorkflow)
+  const latestOperation = deployment.latest_operation
+  const targetVersion = syncWorkflowVersionMetadata(
+    latestOperation?.target_version,
+    updatedWorkflow,
+  )
+  const currentVersionChanged = currentVersion !== deployment.current_version
+  const targetVersionChanged = targetVersion !== latestOperation?.target_version
+
+  if (!currentVersionChanged && !targetVersionChanged) return environmentDeployment
+
+  return {
+    ...environmentDeployment,
+    deployment: {
+      ...deployment,
+      current_version: currentVersion,
+      latest_operation:
+        latestOperation && targetVersionChanged
+          ? {
+              ...latestOperation,
+              target_version: targetVersion,
+            }
+          : latestOperation,
+    },
+  }
+}
+
+function syncWorkflowVersionPages(
+  data: InfiniteData<WorkflowPaginationResponse> | undefined,
+  updatedWorkflow: WorkflowResponse,
+) {
+  if (!data) return data
+
+  let changed = false
+  const pages = data.pages.map((page) => {
+    let pageChanged = false
+    const items = page.items.map((workflow) => {
+      if (workflow.id !== updatedWorkflow.id) return workflow
+
+      changed = true
+      pageChanged = true
+      return updatedWorkflow
+    })
+
+    return pageChanged ? { ...page, items } : page
+  })
+
+  return changed ? { ...data, pages } : data
+}
+
+function syncEnvironmentDeployments(
+  data: ListEnvironmentDeploymentsResponse | undefined,
+  updatedWorkflow: WorkflowResponse,
+) {
+  if (!data) return data
+
+  let changed = false
+  const environmentDeployments = data.environment_deployments.map((deployment) => {
+    const updatedDeployment = syncEnvironmentDeploymentVersion(deployment, updatedWorkflow)
+    if (updatedDeployment !== deployment) changed = true
+    return updatedDeployment
+  })
+
+  return changed ? { ...data, environment_deployments: environmentDeployments } : data
+}
+
+function syncAppWorkflowVersionCaches(
+  queryClient: QueryClient,
+  appId: string,
+  updatedWorkflow: WorkflowResponse,
+) {
+  const publishedWorkflowQuery = appWorkflowQueryOptions(appId)
+
+  queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey, (workflow) =>
+    workflow?.id === updatedWorkflow.id ? updatedWorkflow : workflow,
+  )
+  queryClient.setQueriesData<InfiniteData<WorkflowPaginationResponse>>(
+    { queryKey: appWorkflowVersionsInfiniteQueryKey() },
+    (data) => syncWorkflowVersionPages(data, updatedWorkflow),
+  )
+}
+
+function syncWorkflowDeploymentCaches(
+  queryClient: QueryClient,
+  appId: string,
+  updatedWorkflow: WorkflowResponse,
+) {
+  const environmentDeploymentsQuery =
+    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+      input: {
+        params: {
+          app_id: appId,
+        },
+      },
+    })
+
+  queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(
+    environmentDeploymentsQuery.queryKey,
+    (data) => syncEnvironmentDeployments(data, updatedWorkflow),
+  )
+  queryClient.setQueriesData<GetEnvironmentDeploymentResponse>(
+    {
+      queryKey: consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.key({
+        type: 'query',
+      }),
+    },
+    (data) => {
+      if (!data) return data
+
+      const environmentDeployment = syncEnvironmentDeploymentVersion(
+        data.environment_deployment,
+        updatedWorkflow,
+      )
+      return environmentDeployment === data.environment_deployment
+        ? data
+        : { ...data, environment_deployment: environmentDeployment }
+    },
+  )
+
+  return environmentDeploymentsQuery.queryKey
 }
 
 export const useUpdateWorkflow = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (params: UpdateWorkflowParams) => patch(params.url, {
-      body: {
-        marked_name: params.title,
-        marked_comment: params.releaseNotes,
-      },
-    }),
+    mutationFn: (params: UpdateWorkflowParams) =>
+      patch<WorkflowResponse>(params.url, {
+        body: {
+          marked_name: params.title,
+          marked_comment: params.releaseNotes,
+        },
+      }),
+    onSuccess: (updatedWorkflow, params) => {
+      if (params.appId) syncAppWorkflowVersionCaches(queryClient, params.appId, updatedWorkflow)
+
+      const environmentDeploymentsQueryKey =
+        params.appId &&
+        (params.appMode === AppModeEnum.WORKFLOW || params.appMode === AppModeEnum.ADVANCED_CHAT)
+          ? syncWorkflowDeploymentCaches(queryClient, params.appId, updatedWorkflow)
+          : undefined
+      const invalidations = [
+        queryClient.invalidateQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+        queryClient.invalidateQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+      ]
+
+      if (environmentDeploymentsQueryKey) {
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQueryKey }),
+        )
+      }
+
+      return Promise.all(invalidations)
+    },
   })
 }
 
@@ -116,31 +308,42 @@ export const useDeleteWorkflow = () => {
 export const useRestoreWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) => post<CommonResponse & { updated_at: number, hash: string }>(url, {}, { silent: true }),
+    mutationFn: (url: string) =>
+      post<CommonResponse & { updated_at: number; hash: string }>(url, {}, { silent: true }),
   })
 }
 
 export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(params.url, {
-      body: {
-        marked_name: params.title,
-        marked_comment: params.releaseNotes,
-      },
-    }),
+    mutationFn: (params: PublishWorkflowParams) =>
+      post<CommonResponse & { created_at: number }>(params.url, {
+        body: {
+          marked_name: params.title,
+          marked_comment: params.releaseNotes,
+        },
+      }),
   })
 }
 
 const useLastRunKey = [NAME_SPACE, 'last-run']
-export const useLastRun = (flowType: FlowType, flowId: string, nodeId: string, enabled: boolean) => {
+export const useLastRun = (
+  flowType: FlowType,
+  flowId: string,
+  nodeId: string,
+  enabled: boolean,
+) => {
   return useQuery<NodeTracing>({
     enabled,
     queryKey: [...useLastRunKey, flowType, flowId, nodeId],
     queryFn: async () => {
-      return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`, {}, {
-        silent: true,
-      })
+      return get(
+        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`,
+        {},
+        {
+          silent: true,
+        },
+      )
     },
     retry: 0,
   })
@@ -160,7 +363,9 @@ export const useConversationVarValues = (flowType?: FlowType, flowId?: string) =
     enabled: !!flowId,
     queryKey: [NAME_SPACE, flowType, 'conversation var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
+      const { items } = (await get(
+        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`,
+      )) as { items: VarInInspect[] }
       return items
     },
   })
@@ -193,7 +398,9 @@ export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
     enabled: !!flowId,
     queryKey: [NAME_SPACE, flowType, 'sys var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
+      const { items } = (await get(
+        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`,
+      )) as { items: VarInInspect[] }
       return items
     },
   })
@@ -234,11 +441,7 @@ export const useDeleteInspectVar = (flowType: FlowType, flowId: string) => {
 export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'edit inspector var', flowId],
-    mutationFn: async ({ varId, ...rest }: {
-      varId: string
-      name?: string
-      value?: any
-    }) => {
+    mutationFn: async ({ varId, ...rest }: { varId: string; name?: string; value?: any }) => {
       return patch(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`, {
         body: rest,
       })
@@ -249,14 +452,22 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
 export const useTestEmailSender = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'test email sender'],
-    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string, inputs: Record<string, any> }) => {
+    mutationFn: async (data: {
+      appID: string
+      nodeID: string
+      deliveryID: string
+      inputs: Record<string, any>
+    }) => {
       const { appID, nodeID, deliveryID, inputs } = data
-      return post<CommonResponse>(`/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`, {
-        body: {
-          delivery_method_id: deliveryID,
-          inputs,
+      return post<CommonResponse>(
+        `/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`,
+        {
+          body: {
+            delivery_method_id: deliveryID,
+            inputs,
+          },
         },
-      })
+      )
     },
   })
 }

@@ -1,95 +1,42 @@
-import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
-import type { UsagePlanInfo } from '../../type'
-import { render } from '@testing-library/react'
-import { useAppContext } from '@/context/app-context'
+import type { Mock } from 'vite-plus/test'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useGetPricingPageLanguage } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
-import { Plan } from '../../type'
-import Pricing from '../index'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { Pricing } from '../index'
 
-type DialogProps = {
-  children: ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
+let mockConsoleState: Record<string, unknown> = {}
 
-let latestOnOpenChange: DialogProps['onOpenChange']
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, onOpenChange }: DialogProps) => {
-    latestOnOpenChange = onOpenChange
-    return <div data-testid="dialog">{children}</div>
-  },
-  DialogContent: ({ children, className }: { children: ReactNode, className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
+vi.mock('../content', () => ({
+  PricingContent: () => <div>pricing-content</div>,
 }))
 
-vi.mock('../header', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <button data-testid="pricing-header-close" onClick={onClose}>close</button>
-  ),
-}))
-
-vi.mock('../plan-switcher', () => ({
-  default: () => <div>plan-switcher</div>,
-}))
-
-vi.mock('../plans', () => ({
-  default: () => <div>plans</div>,
-}))
-
-vi.mock('../footer', () => ({
-  default: () => <div>footer</div>,
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
 
 vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: vi.fn(),
 }))
 
-const buildUsage = (): UsagePlanInfo => ({
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
-})
-
 describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    latestOnOpenChange = undefined
-    ;(useAppContext as Mock).mockReturnValue({
+    mockConsoleState = {
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['billing.manage'],
-    })
-    ;(useProviderContext as Mock).mockReturnValue({
-      plan: {
-        type: Plan.sandbox,
-        usage: buildUsage(),
-        total: buildUsage(),
-      },
-    })
+    }
     ;(useGetPricingPageLanguage as Mock).mockReturnValue('en')
   })
 
-  it('should only call onCancel when the dialog requests closing', () => {
+  it('should call onCancel when the pricing dialog is closed', async () => {
+    const user = userEvent.setup()
     const onCancel = vi.fn()
-    render(<Pricing onCancel={onCancel} />)
+    const { wrapper } = createConsoleQueryWrapper()
+    render(<Pricing onCancel={onCancel} />, { wrapper })
 
-    latestOnOpenChange?.(true)
-    latestOnOpenChange?.(false)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })

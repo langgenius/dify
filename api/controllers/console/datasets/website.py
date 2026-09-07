@@ -1,13 +1,12 @@
 from typing import Any, Literal
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, RootModel
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from libs.login import login_required
 from services.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
 
@@ -40,12 +39,11 @@ class WebsiteCrawlApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        payload = WebsiteCrawlPayload.model_validate(console_ns.payload or {})
-
+    @model_validate(WebsiteCrawlPayload)
+    def post(self, req_data: WebsiteCrawlPayload):
         # Create typed request and validate
         try:
-            api_request = WebsiteCrawlApiRequest.from_args(payload.model_dump())
+            api_request = WebsiteCrawlApiRequest.from_args(req_data.model_dump())
         except ValueError as e:
             raise WebsiteCrawlError(str(e))
 
@@ -69,12 +67,11 @@ class WebsiteCrawlStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, job_id: str):
-        args = WebsiteCrawlStatusQuery.model_validate(request.args.to_dict())
-
+    @model_validate(WebsiteCrawlStatusQuery)
+    def get(self, req_data: WebsiteCrawlStatusQuery, job_id: str):
         # Create typed request and validate
         try:
-            api_request = WebsiteCrawlStatusApiRequest.from_args(args.model_dump(), job_id)
+            api_request = WebsiteCrawlStatusApiRequest.from_args(req_data.model_dump(), job_id)
         except ValueError as e:
             raise WebsiteCrawlError(str(e))
 

@@ -11,8 +11,10 @@ export const isInstalledAppPath = (pathname: string, appId?: string) => {
   const installedPath = appId ? buildInstalledAppPath(appId) : '/installed'
   const legacyInstalledPath = appId ? buildLegacyInstalledAppPath(appId) : '/explore/installed'
 
-  return normalizedPathname === installedPath
-    || normalizedPathname.startsWith(`${installedPath}/`)
-    || normalizedPathname === legacyInstalledPath
-    || normalizedPathname.startsWith(`${legacyInstalledPath}/`)
+  return (
+    normalizedPathname === installedPath ||
+    normalizedPathname.startsWith(`${installedPath}/`) ||
+    normalizedPathname === legacyInstalledPath ||
+    normalizedPathname.startsWith(`${legacyInstalledPath}/`)
+  )
 }

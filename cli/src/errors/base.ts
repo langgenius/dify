@@ -38,8 +38,7 @@ export class BaseError extends Error implements PrintableError {
       code: this.code,
       message: this.message,
     }
-    if (this.hint !== undefined)
-      payload.hint = this.hint
+    if (this.hint !== undefined) payload.hint = this.hint
     return { error: payload }
   }
 
@@ -105,16 +104,11 @@ export class HttpClientError extends BaseError {
 
   override toEnvelope(): ErrorEnvelope {
     const envelope = super.toEnvelope()
-    if (this.httpStatus !== undefined)
-      envelope.error.http_status = this.httpStatus
-    if (this.method !== undefined)
-      envelope.error.method = this.method
-    if (this.url !== undefined)
-      envelope.error.url = this.url
-    if (this.rawResponse !== undefined)
-      envelope.error.raw_response = this.rawResponse
-    if (this.serverError !== undefined)
-      envelope.error.server = this.serverError
+    if (this.httpStatus !== undefined) envelope.error.http_status = this.httpStatus
+    if (this.method !== undefined) envelope.error.method = this.method
+    if (this.url !== undefined) envelope.error.url = this.url
+    if (this.rawResponse !== undefined) envelope.error.raw_response = this.rawResponse
+    if (this.serverError !== undefined) envelope.error.server = this.serverError
     return envelope
   }
 

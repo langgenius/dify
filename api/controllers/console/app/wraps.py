@@ -1,9 +1,9 @@
 """Controller decorators for console app resources.
 
-App-loading decorators prefer a session injected by
-`controllers.common.session.with_session` when present, while still supporting
-existing handlers that have not been migrated yet and still rely on
-Flask-SQLAlchemy's scoped `db.session`.
+`get_app_model` still supports legacy handlers backed by Flask-SQLAlchemy's
+scoped session. Preview handlers compose `get_previewable_app_model` under
+`controllers.common.session.with_session`; preview admission finishes before
+the request Session loads the accepted App.
 """
 
 from collections.abc import Callable
@@ -11,15 +11,27 @@ from functools import wraps
 from typing import cast, overload
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from controllers.common.session import with_session
 from controllers.console.app.error import AppNotFoundError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode
+from models.agent import AgentScope
+from services.app_service import AppService
 
-__all__ = ["get_app_model", "get_app_model_with_trial", "with_session"]
+__all__ = [
+    "get_app_model",
+    "get_previewable_app_model",
+    "with_session",
+]
+
+
+def _is_hidden_backing_app(app_model: App, session: Session | scoped_session) -> bool:
+    binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
+    return binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY
 
 
 def _load_app_model(session: Session, app_id: str) -> App | None:
@@ -28,6 +40,8 @@ def _load_app_model(session: Session, app_id: str) -> App | None:
     app_model = session.scalar(
         select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
     )
+    if app_model is not None and _is_hidden_backing_app(app_model, session):
+        return None
     return app_model
 
 
@@ -37,12 +51,16 @@ def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     app_model = db.session.scalar(
         select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
     )
+    if app_model is not None and _is_hidden_backing_app(app_model, db.session):
+        return None
     return app_model
 
 
-def _load_app_model_with_trial(app_id: str) -> App | None:
-    app_model = db.session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
-    return app_model
+def _load_previewable_app_model(session: Session, app_id: str) -> App | None:
+    """Load a normal App after preview admission completes outside the request Session."""
+    if not application_services().recommended_app_queries.is_previewable(app_id):
+        return None
+    return AppService.get_normal_app_by_id(app_id, session)
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
@@ -133,7 +151,7 @@ def get_app_model[**P, R](
 
 
 @overload
-def get_app_model_with_trial[**P, R](
+def get_previewable_app_model[**P, R](
     view: Callable[P, R],
     *,
     mode: AppMode | list[AppMode] | None = None,
@@ -141,18 +159,26 @@ def get_app_model_with_trial[**P, R](
 
 
 @overload
-def get_app_model_with_trial[**P, R](
+def get_previewable_app_model[**P, R](
     view: None = None,
     *,
     mode: AppMode | list[AppMode] | None = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
-def get_app_model_with_trial[**P, R](
+def get_previewable_app_model[**P, R](
     view: Callable[P, R] | None = None,
     *,
     mode: AppMode | list[AppMode] | None = None,
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    """Inject an App authorized for read-only template preview.
+
+    Preview reads accept either an explicit TrialApp registration or membership
+    in the recommended catalog. This does not grant trial execution, which is
+    separately protected by TrialAppResource's feature, registration, and quota
+    checks.
+    """
+
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -164,7 +190,10 @@ def get_app_model_with_trial[**P, R](
 
             del kwargs["app_id"]
 
-            app_model = _load_app_model_with_trial(app_id)
+            session = _get_injected_session(args)
+            if session is None:
+                raise RuntimeError("get_previewable_app_model requires @with_session")
+            app_model = _load_previewable_app_model(session, app_id)
 
             if not app_model:
                 raise AppNotFoundError()

@@ -4,7 +4,7 @@ import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import Tools from '../tools'
-import { ViewType } from '../view-type-select'
+import { ViewType } from '../types'
 import { createToolProvider } from './factories'
 
 vi.mock('@/context/i18n', () => ({
@@ -33,14 +33,7 @@ describe('Tools', () => {
   })
 
   it('shows the empty state when there are no tools and no search text', () => {
-    render(
-      <Tools
-        tools={[]}
-        onSelect={vi.fn()}
-        viewType={ViewType.flat}
-        hasSearchText={false}
-      />,
-    )
+    render(<Tools tools={[]} onSelect={vi.fn()} viewType={ViewType.flat} hasSearchText={false} />)
 
     expect(screen.getByText('No tools available')).toBeInTheDocument()
   })
@@ -73,7 +66,7 @@ describe('Tools', () => {
   })
 
   it('shows the alphabetical index in flat view when enough tools are present', () => {
-    const { container } = render(
+    render(
       <Tools
         tools={Array.from({ length: 11 }, (_, index) =>
           createToolProvider({
@@ -82,14 +75,16 @@ describe('Tools', () => {
               en_US: `${String.fromCharCode(65 + index)} Provider`,
               zh_Hans: `${String.fromCharCode(65 + index)} Provider`,
             },
-          }))}
+          }),
+        )}
         onSelect={vi.fn()}
         viewType={ViewType.flat}
         hasSearchText={false}
       />,
     )
 
-    expect(container.querySelector('.index-bar')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'A' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'K' })).toBeInTheDocument()
     expect(screen.getByText('A Provider')).toBeInTheDocument()
     expect(screen.getByText('K Provider')).toBeInTheDocument()
   })

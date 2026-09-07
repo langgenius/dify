@@ -2,6 +2,7 @@ from typing import override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -10,6 +11,7 @@ from core.app.entities.queue_entities import (
     QueueErrorEvent,
     QueueMessageEndEvent,
     QueueStopEvent,
+    QueueWorkflowPausedEvent,
 )
 from models.model import AppMode
 
@@ -42,10 +44,17 @@ class MessageBasedAppQueueManager(AppQueueManager):
 
         self._q.put(message)
 
-        if isinstance(
+        if isinstance(event, QueueWorkflowPausedEvent):
+            self.stop_listen(execution_state=AppExecutionState.PAUSED)
+        elif isinstance(
             event, QueueStopEvent | QueueErrorEvent | QueueMessageEndEvent | QueueAdvancedChatMessageEndEvent
         ):
-            self.stop_listen()
+            execution_state = (
+                AppExecutionState.PAUSED
+                if self.execution_state is AppExecutionState.PAUSED
+                else AppExecutionState.TERMINAL
+            )
+            self.stop_listen(execution_state=execution_state)
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             if self._app_mode == AppMode.ADVANCED_CHAT.value:

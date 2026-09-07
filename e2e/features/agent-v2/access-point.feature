@@ -1,22 +1,21 @@
 @agent-v2 @authenticated @access-point
 Feature: Agent v2 Access Point
   @core
-  Scenario: Access Point shows the available Agent v2 access surfaces
+  Scenario: Access Point keeps unpublished Agent v2 access unavailable
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    Then I should see the Agent v2 Access Point overview
+    Then the unpublished Agent v2 access surfaces should be unavailable
 
   @core @web-app-access
   Scenario: Web app access URL can be copied without changing orchestration
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And I record the current Agent v2 orchestration draft
     When I copy the Agent v2 Web app access URL
     Then the Agent v2 Web app access URL should show it was copied
     And the current Agent v2 orchestration draft should be unchanged
@@ -26,11 +25,9 @@ Feature: Agent v2 Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And I record the current Agent v2 orchestration draft
     When I launch the Agent v2 Web app
     Then the Agent v2 Web app should open in a new tab
     And the current Agent v2 orchestration draft should be unchanged
@@ -39,10 +36,9 @@ Feature: Agent v2 Access Point
   Scenario: Web app Embedded configuration opens from Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And I record the current Agent v2 orchestration draft
     And I open Agent v2 Embedded configuration
     Then I should see the Agent v2 Embedded configuration dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -51,10 +47,9 @@ Feature: Agent v2 Access Point
   Scenario: Web app customization opens from Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And I record the current Agent v2 orchestration draft
     And I open Agent v2 Web app customization
     Then I should see the Agent v2 Web app customization dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -63,10 +58,9 @@ Feature: Agent v2 Access Point
   Scenario: Web app settings open from Access Point without changing orchestration
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
-    And I record the current Agent v2 orchestration draft
     And I open Agent v2 Web app settings
     Then I should see the Agent v2 Web app settings dialog
     And the current Agent v2 orchestration draft should be unchanged
@@ -76,31 +70,17 @@ Feature: Agent v2 Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I disable Agent v2 Web app access
+    Then Agent v2 Web app access should be out of service
+    When I republish the Agent v2 draft via API
+    And I refresh the current page
     Then Agent v2 Web app access should be out of service
     When I enable Agent v2 Web app access
     Then Agent v2 Web app access should be in service
-    When I refresh the current page
-    Then Agent v2 Web app access should be in service
 
-  @web-app-access @published-web-app @feature-gated
-  Scenario: Disabled Web app public URL shows an unavailable state
-    Given I am signed in as the default E2E admin
-    And Agent v2 disabled Web app public unavailable state is available
-    And a basic configured Agent v2 test agent has been created via API
-    And the Agent v2 draft has been published via API
-    And Agent v2 Web app access has been enabled via API
-    When I open the Agent v2 configure page from the Agent Roster
-    And I switch to the Agent v2 Access Point section
-    And I disable Agent v2 Web app access
-    Then Agent v2 Web app access should be out of service
-    When I open the disabled Agent v2 Web app URL
-    Then the disabled Agent v2 Web app should show an unavailable state
-
-  @core @workflow-reference
+  @core @prepared @workflow-reference
   Scenario: Workflow access shows the referencing workflow
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is available
@@ -115,7 +95,7 @@ Feature: Agent v2 Access Point
   Scenario: Backend service API endpoint can be copied
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Backend service API endpoint
@@ -126,7 +106,8 @@ Feature: Agent v2 Access Point
   Scenario: Backend service API keys are managed without exposing existing secrets
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled with a key via API
+    And the Agent v2 draft has been published via API
+    And an Agent v2 Backend service API key has been created via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I open Agent v2 API key management
@@ -142,7 +123,7 @@ Feature: Agent v2 Access Point
   Scenario: Backend service API Reference opens from Access Point
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I open the Agent v2 API Reference
@@ -152,7 +133,7 @@ Feature: Agent v2 Access Point
   Scenario: Backend service API access can be disabled and restored from Access Point
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled via API
+    And the Agent v2 draft has been published via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I disable Agent v2 Backend service API access
@@ -168,10 +149,10 @@ Feature: Agent v2 Access Point
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled with a key via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API minimal request
     Then the Agent v2 Backend service API request should succeed with the normal E2E marker
 
@@ -182,7 +163,7 @@ Feature: Agent v2 Access Point
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
-    And Agent v2 Backend service API access has been enabled with a key via API
+    And an Agent v2 Backend service API key has been created via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I disable Agent v2 Backend service API access

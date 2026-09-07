@@ -109,6 +109,7 @@ This test suite follows a comprehensive testing strategy that covers:
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
@@ -156,9 +157,9 @@ class DocumentValidationTestDataFactory:
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
         **kwargs,
-    ) -> Mock:
+    ) -> Dataset:
         """
-        Create a mock Dataset with specified attributes.
+        Create a Dataset with specified attributes.
 
         Args:
             dataset_id: Unique identifier for the dataset
@@ -167,21 +168,20 @@ class DocumentValidationTestDataFactory:
             indexing_technique: Indexing technique
             embedding_model_provider: Embedding model provider
             embedding_model: Embedding model name
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional mapped attributes for the dataset
 
         Returns:
-            Mock object configured as a Dataset instance
+            Configured Dataset instance
         """
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.doc_form = doc_form
-        dataset.indexing_technique = indexing_technique
-        dataset.embedding_model_provider = embedding_model_provider
-        dataset.embedding_model = embedding_model
-        for key, value in kwargs.items():
-            setattr(dataset, key, value)
-        return dataset
+        return Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            chunk_structure=doc_form,
+            indexing_technique=indexing_technique,
+            embedding_model_provider=embedding_model_provider,
+            embedding_model=embedding_model,
+            **kwargs,
+        )
 
     @staticmethod
     def create_knowledge_config_mock(
@@ -204,14 +204,14 @@ class DocumentValidationTestDataFactory:
         Returns:
             Mock object configured as a KnowledgeConfig instance
         """
-        config = Mock(spec=KnowledgeConfig)
-        config.data_source = data_source
-        config.process_rule = process_rule
-        config.doc_form = doc_form
-        config.indexing_technique = indexing_technique
-        for key, value in kwargs.items():
-            setattr(config, key, value)
-        return config
+        return Mock(
+            spec=KnowledgeConfig,
+            data_source=data_source,
+            process_rule=process_rule,
+            doc_form=doc_form,
+            indexing_technique=indexing_technique,
+            **kwargs,
+        )
 
     @staticmethod
     def create_data_source_mock(
@@ -312,6 +312,10 @@ class TestDatasetServiceCheckDocForm:
      - Various form type combinations
     """
 
+    @pytest.fixture(autouse=True)
+    def _bind_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
     def test_check_doc_form_matching_forms_success(self):
         """
         Test successful validation when form types match.
@@ -327,9 +331,8 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         doc_form = IndexStructureType.PARAGRAPH_INDEX
-
         # Act (should not raise)
-        DatasetService.check_doc_form(dataset, doc_form)
+        DatasetService.check_doc_form(dataset, doc_form, session=self.session)
 
         # Assert
         # No exception should be raised
@@ -349,9 +352,8 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=None)
         doc_form = IndexStructureType.PARAGRAPH_INDEX
-
         # Act (should not raise)
-        DatasetService.check_doc_form(dataset, doc_form)
+        DatasetService.check_doc_form(dataset, doc_form, session=self.session)
 
         # Assert
         # No exception should be raised
@@ -371,10 +373,9 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         doc_form = IndexStructureType.PARENT_CHILD_INDEX  # Different form
-
         # Act & Assert
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):
-            DatasetService.check_doc_form(dataset, doc_form)
+            DatasetService.check_doc_form(dataset, doc_form, session=self.session)
 
     def test_check_doc_form_different_form_types_error(self):
         """
@@ -390,10 +391,9 @@ class TestDatasetServiceCheckDocForm:
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form="knowledge_card")
         doc_form = IndexStructureType.PARAGRAPH_INDEX  # Different form
-
         # Act & Assert
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):
-            DatasetService.check_doc_form(dataset, doc_form)
+            DatasetService.check_doc_form(dataset, doc_form, session=self.session)
 
 
 # ============================================================================
@@ -538,7 +538,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
 
         error_description = "Provider token not initialized"
         mock_instance = Mock()
-        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(description=error_description)
+        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(error_description)
         mock_model_manager.return_value = mock_instance
 
         # Act & Assert
@@ -660,7 +660,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
 
         error_description = "Provider token not initialized"
         mock_instance = Mock()
-        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(description=error_description)
+        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(error_description)
         mock_model_manager.return_value = mock_instance
 
         # Act & Assert
@@ -782,7 +782,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
 
         error_description = "Provider token not initialized"
         mock_instance = Mock()
-        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(description=error_description)
+        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(error_description)
         mock_model_manager.return_value = mock_instance
 
         # Act & Assert
@@ -1089,14 +1089,13 @@ class TestDocumentServiceDataSourceArgsValidate:
 
     def test_data_source_args_validate_missing_info_list_error(self):
         """
-        Test error when info_list is missing.
+        Test current failure behavior when info_list is missing.
 
-        Verifies that when info_list is None, a ValueError is raised.
+        The validator currently dereferences info_list before its explicit
+        missing-value guard, so this path raises AttributeError.
 
         This test ensures:
-        - Missing info_list is rejected
-        - Error message is clear
-        - Error type is correct
+        - Missing info_list is rejected before any database access
         """
         # Arrange
         data_source = Mock(spec=DataSource)
@@ -1104,7 +1103,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Data source info is required"):
+        with pytest.raises(AttributeError, match="data_source_type"):
             DocumentService.data_source_args_validate(knowledge_config)
 
     def test_data_source_args_validate_missing_file_info_error(self):

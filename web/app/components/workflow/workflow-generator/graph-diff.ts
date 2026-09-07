@@ -19,8 +19,8 @@ export type GraphDiff = {
  * so cosmetic re-layouts don't read as changes.
  */
 export const diffGraphs = (base: GeneratedGraph, next: GeneratedGraph): GraphDiff => {
-  const baseById = new Map(base.nodes.map(node => [node.id, node]))
-  const nextById = new Map(next.nodes.map(node => [node.id, node]))
+  const baseById = new Map(base.nodes.map((node) => [node.id, node]))
+  const nextById = new Map(next.nodes.map((node) => [node.id, node]))
 
   const added: string[] = []
   const changed: string[] = []
@@ -30,10 +30,9 @@ export const diffGraphs = (base: GeneratedGraph, next: GeneratedGraph): GraphDif
       added.push(id)
       continue
     }
-    if (JSON.stringify(prev.data) !== JSON.stringify(node.data))
-      changed.push(id)
+    if (JSON.stringify(prev.data) !== JSON.stringify(node.data)) changed.push(id)
   }
 
-  const removed = [...baseById.keys()].filter(id => !nextById.has(id))
+  const removed = [...baseById.keys()].filter((id) => !nextById.has(id))
   return { added, removed, changed }
 }

@@ -2,10 +2,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint
 from core.moderation.api.api import ApiModeration, ModerationInputParams, ModerationOutputParams
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension
 
 
@@ -48,9 +50,11 @@ class TestApiModeration:
 
     @patch("core.moderation.api.api.ApiModeration._get_api_based_extension")
     def test_validate_config_success(self, mock_get_extension, api_config):
-        mock_get_extension.return_value = MagicMock(spec=APIBasedExtension)
+        mock_get_extension.return_value = APIBasedExtension(
+            tenant_id="tenant-id", name="Test Extension", api_endpoint="https://example.com", api_key="test-key"
+        )
         ApiModeration.validate_config("test-tenant-id", api_config)
-        mock_get_extension.assert_called_once_with("test-tenant-id", "test-extension-id")
+        mock_get_extension.assert_called_once_with("test-tenant-id", "test-extension-id", db.session)
 
     def test_validate_config_missing_extension_id(self):
         config = {
@@ -134,9 +138,12 @@ class TestApiModeration:
     @patch("core.moderation.api.api.decrypt_token")
     @patch("core.moderation.api.api.APIBasedExtensionRequestor")
     def test_get_config_by_requestor_success(self, mock_requestor_cls, mock_decrypt, mock_get_ext, api_moderation):
-        mock_ext = MagicMock(spec=APIBasedExtension)
-        mock_ext.api_endpoint = "http://api.test"
-        mock_ext.api_key = "encrypted-key"
+        mock_ext = APIBasedExtension(
+            tenant_id="tenant-id",
+            name="Test Extension",
+            api_endpoint="http://api.test",
+            api_key="encrypted-key",
+        )
         mock_get_ext.return_value = mock_ext
 
         mock_decrypt.return_value = "decrypted-key"
@@ -149,7 +156,7 @@ class TestApiModeration:
         result = api_moderation._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, params)
 
         assert result == {"flagged": True}
-        mock_get_ext.assert_called_once_with("test-tenant-id", "test-extension-id")
+        mock_get_ext.assert_called_once_with("test-tenant-id", "test-extension-id", db.session)
         mock_decrypt.assert_called_once_with("test-tenant-id", "encrypted-key")
         mock_requestor_cls.assert_called_once_with("http://api.test", "decrypted-key")
         mock_requestor.request.assert_called_once_with(APIBasedExtensionPoint.APP_MODERATION_INPUT, params)
@@ -165,17 +172,25 @@ class TestApiModeration:
         with pytest.raises(ValueError, match="API-based Extension not found"):
             api_moderation._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, {})
 
-    @patch("core.moderation.api.api.db.session.scalar")
-    def test_get_api_based_extension(self, mock_scalar):
-        mock_ext = MagicMock(spec=APIBasedExtension)
-        mock_scalar.return_value = mock_ext
+    def test_get_api_based_extension(self, sqlite_session: Session) -> None:
+        target = APIBasedExtension(
+            tenant_id="tenant-1",
+            name="Target extension",
+            api_endpoint="https://example.com/moderate",
+            api_key="encrypted-key",
+        )
+        target.id = "ext-1"
+        other_tenant = APIBasedExtension(
+            tenant_id="tenant-2",
+            name="Other extension",
+            api_endpoint="https://example.com/other",
+            api_key="other-key",
+        )
+        other_tenant.id = "ext-2"
+        sqlite_session.add_all((target, other_tenant))
+        sqlite_session.commit()
 
-        result = ApiModeration._get_api_based_extension("tenant-1", "ext-1")
+        result = ApiModeration._get_api_based_extension("tenant-1", "ext-1", sqlite_session)
 
-        assert result == mock_ext
-        mock_scalar.assert_called_once()
-        # Verify the call has the correct filters
-        args, kwargs = mock_scalar.call_args
-        stmt = args[0]
-        # We can't easily inspect the statement without complex sqlalchemy tricks,
-        # but calling it is usually enough for unit tests if we mock the result.
+        assert result is target
+        assert ApiModeration._get_api_based_extension("tenant-1", "ext-2", sqlite_session) is None

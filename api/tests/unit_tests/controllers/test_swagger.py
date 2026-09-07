@@ -2,9 +2,16 @@
 
 import json
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from flask import Flask
+
+
+@pytest.fixture(autouse=True)
+def _swagger_config(config_overrides) -> None:
+    config_overrides(SWAGGER_UI_ENABLED=True)
+
 
 USER_PROPERTY_SCHEMA = {
     "description": (
@@ -154,13 +161,10 @@ def test_uuid_path_format_is_derived_from_route_converter():
     }
 
 
-def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_openapi_json_endpoints_render():
     from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -176,10 +180,12 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
 
         assert response.status_code == 200
         payload = response.get_json()
-        assert payload["openapi"].startswith("3.")
+        assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
         assert "schemas" in payload["components"]
         assert isinstance(payload["components"]["schemas"], dict)
+        if route == "/console/api/openapi.json":
+            assert "/test/retrieval" not in payload["paths"]
         missing_refs = _schema_refs(payload) - set(payload["components"]["schemas"])
         assert not missing_refs
         get_request_body_paths = [path for path, operation in _get_operations(payload) if "requestBody" in operation]
@@ -188,11 +194,8 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
-def test_service_document_file_routes_document_multipart_form_data(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_document_file_routes_document_multipart_form_data():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -218,7 +221,6 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
     for path in (
         "/datasets/{dataset_id}/documents/{document_id}",
         "/datasets/{dataset_id}/documents/{document_id}/update-by-file",
-        "/datasets/{dataset_id}/documents/{document_id}/update_by_file",
     ):
         update_operation = paths[path]["patch" if path.endswith("{document_id}") else "post"]
         update_schema = _multipart_form_schema(update_operation)
@@ -234,11 +236,8 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
         assert update_operation["requestBody"]["required"] is False
 
 
-def test_service_openapi_merges_public_api_reference_descriptions(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_merges_public_api_reference_descriptions():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -250,20 +249,17 @@ def test_service_openapi_merges_public_api_reference_descriptions(monkeypatch: p
     chat_operation = payload["paths"]["/chat-messages"]["post"]
     assert chat_operation["summary"] == "Send Chat Message"
     assert chat_operation["description"] == "Send a request to the chat application."
-    assert chat_operation["tags"] == ["Chats", "Chatflows"]
+    assert chat_operation["tags"] == ["Chatflows", "Chats"]
     assert chat_operation["responses"]["200"]["description"].startswith("Successful response.")
 
-    rename_operation = payload["paths"]["/conversations/{c_id}/name"]["post"]
+    rename_operation = payload["paths"]["/conversations/{conversation_id}/name"]["post"]
     assert rename_operation["summary"] == "Rename Conversation"
     assert rename_operation["tags"] == ["Conversations"]
-    assert _parameters_by_name(rename_operation)["c_id"]["description"] == "Conversation ID."
+    assert _parameters_by_name(rename_operation)["conversation_id"]["description"] == "Conversation ID."
 
 
-def test_service_document_list_documents_query_params_render(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_document_list_documents_query_params_render():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -278,11 +274,8 @@ def test_service_document_list_documents_query_params_render(monkeypatch: pytest
         assert params[name]["in"] == "query"
 
 
-def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_decorator_user_contracts():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -294,25 +287,33 @@ def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.
 
     required_json_user_operations = (
         ("/completion-messages", "post"),
-        ("/completion-messages/{task_id}/stop", "post"),
         ("/chat-messages", "post"),
-        ("/chat-messages/{task_id}/stop", "post"),
         ("/messages/{message_id}/feedbacks", "post"),
         ("/form/human_input/{form_token}", "post"),
         ("/workflows/run", "post"),
         ("/workflows/{workflow_id}/run", "post"),
-        ("/workflows/tasks/{task_id}/stop", "post"),
     )
     for path, method in required_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
 
+    task_stop_user_descriptions = {
+        "/completion-messages/{task_id}/stop": "Send the same",
+        "/chat-messages/{task_id}/stop": "Send the same",
+        "/workflows/tasks/{task_id}/stop": "does not need to match",
+    }
+    for path, expected_behavior in task_stop_user_descriptions.items():
+        schema = _json_body_schema(payload, paths[path]["post"])
+        assert expected_behavior in schema["properties"]["user"]["description"]
+        assert "user" in schema["required"]
+        assert "404" not in paths[path]["post"]["responses"]
+
     optional_json_user_operations = (
         ("/text-to-audio", "post"),
-        ("/conversations/{c_id}", "delete"),
-        ("/conversations/{c_id}/name", "post"),
-        ("/conversations/{c_id}/variables/{variable_id}", "put"),
+        ("/conversations/{conversation_id}", "delete"),
+        ("/conversations/{conversation_id}/name", "post"),
+        ("/conversations/{conversation_id}/variables/{variable_id}", "put"),
     )
     for path, method in optional_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
@@ -323,16 +324,13 @@ def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.
     assert messages_params["user"]["in"] == "query"
     assert messages_params["user"]["required"] is False
 
-    events_params = _parameters_by_name(paths["/workflow/{task_id}/events"]["get"])
+    events_params = _parameters_by_name(paths["/workflow/{workflow_run_id}/events"]["get"])
     assert events_params["user"]["in"] == "query"
     assert events_params["user"]["required"] is True
 
 
-def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_app_multipart_contracts():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -348,7 +346,7 @@ def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.M
             assert schema["properties"]["file"] == {
                 "description": (
                     "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-                    "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+                    "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
                 ),
                 "format": "binary",
                 "type": "string",
@@ -363,11 +361,8 @@ def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.M
     assert pipeline_schema["required"] == ["file"]
 
 
-def test_service_openapi_documents_non_json_response_media_types(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_non_json_response_media_types():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -381,37 +376,24 @@ def test_service_openapi_documents_non_json_response_media_types(monkeypatch: py
         "application/json",
         "text/event-stream",
     }
-    assert _response_content_types(paths["/workflow/{task_id}/events"]["get"]) == {"text/event-stream"}
-    assert _response_content_types(paths["/text-to-audio"]["post"]) == {"audio/mpeg"}
-    assert _response_content_types(paths["/files/{file_id}/preview"]["get"]) == {
-        "application/octet-stream",
-        "application/pdf",
+    assert _response_content_types(paths["/workflow/{workflow_run_id}/events"]["get"]) == {"text/event-stream"}
+    assert _response_content_types(paths["/text-to-audio"]["post"]) == {
         "audio/aac",
         "audio/flac",
         "audio/mp4",
         "audio/mpeg",
         "audio/ogg",
         "audio/wav",
-        "audio/x-m4a",
-        "image/gif",
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "text/plain",
-        "video/mp4",
-        "video/quicktime",
-        "video/webm",
+        "audio/webm",
     }
+    assert _response_content_types(paths["/files/{file_id}/preview"]["get"]) == {"*/*"}
     assert _response_content_types(paths["/datasets/{dataset_id}/documents/download-zip"]["post"]) == {
         "application/zip"
     }
 
 
-def test_service_openapi_documents_uuid_params_and_deprecated_routes(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_uuid_params_and_deprecated_routes():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -428,22 +410,29 @@ def test_service_openapi_documents_uuid_params_and_deprecated_routes(monkeypatch
         "type": "string",
     }
 
-    conversation_params = _parameters_by_name(paths["/conversations/{c_id}"]["delete"])
-    assert conversation_params["c_id"]["schema"] == {
+    conversation_params = _parameters_by_name(paths["/conversations/{conversation_id}"]["delete"])
+    assert conversation_params["conversation_id"]["schema"] == {
         "description": "Conversation ID.",
         "format": "uuid",
         "type": "string",
     }
 
-    assert paths["/datasets/{dataset_id}/document/create_by_file"]["post"]["deprecated"] is True
-    assert paths["/datasets/{dataset_id}/documents/{document_id}/update_by_text"]["post"]["deprecated"] is True
+    compatibility_paths = {
+        "/",
+        "/datasets/{dataset_id}/document/create_by_file",
+        "/datasets/{dataset_id}/document/create_by_text",
+        "/datasets/{dataset_id}/documents/{document_id}/update_by_file",
+        "/datasets/{dataset_id}/documents/{document_id}/update_by_text",
+        "/datasets/{dataset_id}/hit-testing",
+    }
+    assert compatibility_paths <= set(paths)
+    for path in compatibility_paths - {"/"}:
+        operation = next(value for key, value in paths[path].items() if key in {"post", "patch"})
+        assert operation["deprecated"] is True
 
 
-def test_service_openapi_documents_path_action_enums(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_path_action_enums():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -454,20 +443,17 @@ def test_service_openapi_documents_path_action_enums(monkeypatch: pytest.MonkeyP
     paths = payload["paths"]
 
     annotation_params = _parameters_by_name(paths["/apps/annotation-reply/{action}"]["post"])
-    assert annotation_params["action"]["schema"]["enum"] == ["enable", "disable"]
+    assert annotation_params["action"]["schema"]["enum"] == ["disable", "enable"]
 
     document_status_params = _parameters_by_name(paths["/datasets/{dataset_id}/documents/status/{action}"]["patch"])
-    assert document_status_params["action"]["schema"]["enum"] == ["enable", "disable", "archive", "un_archive"]
+    assert document_status_params["action"]["schema"]["enum"] == ["archive", "disable", "enable", "un_archive"]
 
     metadata_params = _parameters_by_name(paths["/datasets/{dataset_id}/metadata/built-in/{action}"]["post"])
-    assert metadata_params["action"]["schema"]["enum"] == ["enable", "disable"]
+    assert metadata_params["action"]["schema"]["enum"] == ["disable", "enable"]
 
 
-def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_conditional_payload_schemas():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -477,7 +463,7 @@ def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pyte
     payload = app.test_client().get("/v1/openapi.json").get_json()
     paths = payload["paths"]
 
-    rename_schema = _json_body_schema(payload, paths["/conversations/{c_id}/name"]["post"])
+    rename_schema = _json_body_schema(payload, paths["/conversations/{conversation_id}/name"]["post"])
     auto_generate_branch, manual_name_branch = rename_schema["anyOf"]
     assert auto_generate_branch["properties"]["auto_generate"]["enum"] == [True]
     assert auto_generate_branch["required"] == ["auto_generate"]
@@ -495,11 +481,8 @@ def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pyte
     assert without_text_branch["properties"]["text"]["type"] == "null"
 
 
-def test_service_openapi_does_not_encode_docs_coverage_boundaries(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_does_not_encode_docs_coverage_boundaries():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -518,16 +501,11 @@ def test_service_openapi_does_not_encode_docs_coverage_boundaries(monkeypatch: p
             assert "x-dify-api-reference-visibility" not in operation
             assert "x-dify-api-lifecycle" not in operation
 
-    assert paths["/datasets/{dataset_id}/document/create_by_text"]["post"]["deprecated"] is True
-    assert paths["/datasets/{dataset_id}/document/create_by_file"]["post"]["deprecated"] is True
     assert paths["/datasets/{dataset_id}/documents/{document_id}/update-by-file"]["post"]["deprecated"] is True
 
 
-def test_service_openapi_documents_auth_and_compatibility_payloads(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_auth_and_compatibility_payloads():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -542,6 +520,7 @@ def test_service_openapi_documents_auth_and_compatibility_payloads(monkeypatch: 
         "scheme": "bearer",
         "type": "http",
     }
+    assert payload["paths"]["/"]["get"]["security"] == []
 
     tag_unbinding_schema = payload["components"]["schemas"]["TagUnbindingPayload"]
     assert tag_unbinding_schema["description"] == (
@@ -550,15 +529,14 @@ def test_service_openapi_documents_auth_and_compatibility_payloads(monkeypatch: 
     tag_id_schema, tag_ids_schema = tag_unbinding_schema["anyOf"]
     assert tag_id_schema["properties"]["tag_id"]["description"] == ("Legacy single tag ID accepted by the Service API.")
     assert tag_id_schema["required"] == ["tag_id", "target_id"]
+    assert tag_ids_schema["properties"]["tag_id"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert "nullable" not in tag_ids_schema["properties"]["tag_id"]
     assert tag_ids_schema["properties"]["tag_ids"]["minItems"] == 1
     assert tag_ids_schema["required"] == ["tag_ids", "target_id"]
 
 
-def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_console_account_avatar_query_param_renders_as_query():
     from controllers.console import bp as console_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -574,13 +552,161 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
-def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path):
+def test_console_account_profile_patch_and_deprecated_aliases():
+    from controllers.console import bp as console_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    paths = payload["paths"]
+
+    profile_patch = paths["/account/profile"]["patch"]
+    assert profile_patch.get("deprecated") is not True
+    profile_patch_schema = _json_body_schema(payload, profile_patch)
+    assert profile_patch_schema["type"] == "object"
+    assert profile_patch_schema["additionalProperties"] is False
+    assert "required" not in profile_patch_schema
+    assert profile_patch_schema["properties"]["name"]["type"] == "string"
+
+    for path in (
+        "/account/name",
+        "/account/avatar",
+        "/account/interface-language",
+        "/account/interface-theme",
+        "/account/timezone",
+    ):
+        assert paths[path]["post"]["deprecated"] is True
+
+    assert paths["/account/avatar"]["get"].get("deprecated") is not True
+
+
+def test_console_agent_debug_conversation_refresh_has_no_body():
+    from controllers.console import bp as console_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/agent/{agent_id}/debug-conversation/refresh"]["post"]
+
+    assert "requestBody" not in operation
+    assert "AgentDebugConversationRefreshPayload" not in payload["components"]["schemas"]
+
+
+def test_console_member_invite_documents_bad_request_response():
+    from controllers.console import bp as console_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
+    response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
+
+    assert response_schema["$ref"] == "#/components/schemas/MemberInviteErrorResponse"
+    assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
+        "properties": {
+            "code": {
+                "enum": ["invalid_param", "invalid_role", "limit_exceeded"],
+                "title": "Code",
+                "type": "string",
+            },
+            "message": {"title": "Message", "type": "string"},
+            "status": {"const": 400, "title": "Status", "type": "integer"},
+        },
+        "required": ["code", "message", "status"],
+        "title": "MemberInviteErrorResponse",
+        "type": "object",
+    }
+
+
+def test_console_billing_routes_document_error_responses():
+    from controllers.console import bp as console_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    expected_responses = {
+        ("/billing/subscription", "get"): {
+            "422": "BillingUnprocessableEntityErrorResponse",
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
+        ("/billing/invoices", "get"): {
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
+        ("/compliance/download", "get"): {
+            "422": "BillingUnprocessableEntityErrorResponse",
+            "429": "ComplianceRateLimitErrorResponse",
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
+    }
+
+    for (path, method), responses in expected_responses.items():
+        operation = payload["paths"][path][method]
+        for status, model_name in responses.items():
+            schema = operation["responses"][status]["content"]["application/json"]["schema"]
+            assert schema["$ref"] == f"#/components/schemas/{model_name}"
+
+        if path.startswith("/billing/"):
+            forbidden_response = operation["responses"]["403"]
+            assert forbidden_response["description"] == "Forbidden"
+            assert "content" not in forbidden_response
+
+    expected_error_contracts = {
+        "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
+        "ComplianceRateLimitErrorResponse": ("compliance_rate_limit", 429),
+        "BillingOperationFailedErrorResponse": ("billing_operation_failed", 502),
+        "BillingUnavailableErrorResponse": ("billing_unavailable", 503),
+    }
+    schemas = payload["components"]["schemas"]
+    for model_name, (error_code, status) in expected_error_contracts.items():
+        properties = schemas[model_name]["properties"]
+        assert properties["code"]["const"] == error_code
+        assert properties["status"]["const"] == status
+
+    compliance_response = schemas["ComplianceDownloadResponse"]
+    assert set(compliance_response["properties"]) == {"url"}
+    assert compliance_response["required"] == ["url"]
+
+
+def test_console_model_provider_checkout_route_is_deprecated():
+    from controllers.console import bp as console_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/workspaces/current/model-providers/{provider}/checkout-url"]["get"]
+
+    assert operation["deprecated"] is True
+
+
+def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path: Path):
     from dev.generate_swagger_specs import generate_specs
 
     written_paths = generate_specs(tmp_path)
     console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
     payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
     operation = payload["paths"]["/workspaces/current/plugin/{category}/list"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert parameters["query"]["in"] == "query"
+    assert parameters["tags"]["in"] == "query"
+    assert parameters["tags"]["schema"]["type"] == "array"
+    assert parameters["language"]["in"] == "query"
     response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
         "#/components/schemas/"
     )
@@ -608,3 +734,114 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path)
     builtin_tool_schema = schemas["PluginCategoryBuiltinToolProviderResponse"]
     for field in ("plugin_unique_identifier", "team_credentials", "type", "tools"):
         assert field in builtin_tool_schema["properties"]
+
+
+def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path: Path):
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/workspaces/current/plugin/installed-ids"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert parameters["category"]["in"] == "query"
+    assert parameters["category"]["required"] is True
+    assert parameters["category"]["schema"]["enum"] == [
+        "agent-strategy",
+        "datasource",
+        "extension",
+        "model",
+        "tool",
+        "trigger",
+    ]
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    response_schema = payload["components"]["schemas"][response_ref]
+
+    assert response_schema["required"] == ["plugin_ids"]
+    assert response_schema["properties"] == {
+        "plugin_ids": {
+            "items": {"type": "string"},
+            "title": "Plugin Ids",
+            "type": "array",
+        }
+    }
+
+
+def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path: Path):
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/workspaces/current/model-providers/summary"]["get"]
+    assert operation.get("parameters", []) == []
+
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    response_schema = payload["components"]["schemas"][response_ref]
+    assert response_schema["required"] == ["data", "plugins"]
+    assert response_schema["properties"]["data"]["items"]["$ref"] == (
+        "#/components/schemas/ModelProviderSummaryResponse"
+    )
+    assert response_schema["properties"]["plugins"]["additionalProperties"]["$ref"] == (
+        "#/components/schemas/ModelProviderPluginSummaryResponse"
+    )
+
+    provider_properties = payload["components"]["schemas"]["ModelProviderSummaryResponse"]["properties"]
+    assert set(provider_properties) == {
+        "configurate_methods",
+        "custom_configuration",
+        "description",
+        "icon_small",
+        "icon_small_dark",
+        "is_configured",
+        "label",
+        "plugin_id",
+        "preferred_provider_type",
+        "provider",
+        "supported_model_types",
+        "system_configuration",
+    }
+    assert "provider_credential_schema" not in provider_properties
+    assert "model_credential_schema" not in provider_properties
+
+    custom_configuration_schema = payload["components"]["schemas"]["ModelProviderCustomConfigurationSummaryResponse"]
+    custom_configuration_properties = custom_configuration_schema["properties"]
+    assert set(custom_configuration_schema["required"]) == {
+        "available_credentials",
+        "current_credential_usable",
+        "has_custom_models",
+        "status",
+    }
+    assert set(custom_configuration_properties) == {
+        "available_credentials",
+        "current_credential_id",
+        "current_credential_name",
+        "current_credential_usable",
+        "has_custom_models",
+        "status",
+    }
+    assert custom_configuration_properties["available_credentials"]["items"]["$ref"] == (
+        "#/components/schemas/CredentialConfiguration"
+    )
+    assert "has_credentials" not in custom_configuration_properties
+
+    credential_properties = payload["components"]["schemas"]["CredentialConfiguration"]["properties"]
+    assert set(credential_properties) == {
+        "credential_id",
+        "credential_name",
+    }
+    assert "encrypted_config" not in credential_properties
+
+    plugin_properties = payload["components"]["schemas"]["ModelProviderPluginSummaryResponse"]["properties"]
+    assert set(plugin_properties) == {
+        "installation_id",
+        "plugin_id",
+        "plugin_unique_identifier",
+        "runtime_type",
+        "source",
+        "version",
+    }

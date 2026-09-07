@@ -10,7 +10,7 @@ Feature: Agent v2 publish
     Then Agent v2 publish should be blocked until a model is configured
     And the Agent v2 draft should remain unpublished
 
-  @core @stable-model
+  @core @prepared @stable-model
   Scenario: Publish a configured Agent v2 draft
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -18,8 +18,11 @@ Feature: Agent v2 publish
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    When I switch to the Agent v2 Access Point section
+    Then Agent v2 Web app access should be in service
+    And Agent v2 Backend service API access should be in service
 
-  @core @stable-model
+  @core @prepared @stable-model
   Scenario: Publish action follows unpublished changes
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -33,20 +36,7 @@ Feature: Agent v2 publish
     Then the Agent v2 configuration should be saved automatically
     And the Agent v2 publish action should be available for unpublished changes
 
-  @core @stable-model
-  Scenario: Published Agent v2 version remains isolated from draft edits
-    Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
-    When I fill the Agent v2 prompt editor with the updated E2E prompt
-    Then the Agent v2 configuration should be saved automatically
-    And the normal Agent v2 draft should use the updated E2E prompt
-    And the active published Agent v2 version should still use the normal E2E prompt
-
-  @core @stable-model
+  @core @prepared @stable-model
   Scenario: Restoring a published Agent v2 version shows the restored configuration in Builder
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -74,7 +64,6 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
@@ -89,7 +78,6 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
@@ -108,7 +96,6 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date

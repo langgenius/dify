@@ -3,7 +3,7 @@
  *
  * Scenario: an AI agent has loaded difyctl SKILL.md and drives difyctl to:
  *   1. Bootstrap  - read SKILL.md via `skills install --stdout`
- *   2. Discover   - `help -o json` for full command surface + contract
+ *   2. Discover   - compact sitemap, then per-command help
  *   3. Auth check - no token → exit 4 + JSON error envelope
  *   4. Discover apps    - `get app -o json`
  *   5. Describe app     - `describe app <id> -o json`
@@ -14,14 +14,14 @@
  *  10. Pipeline safety  - no ANSI/spinner, stdout/stderr separation
  *
  * PRD: §3 Agent-Driven, §5 Agent onboarding, Req 1.3/2.1/2.3/3.1-3.3
- * Agent Skills PRD: §4/§5.2 SKILL.md → help -o json discovery pattern
+ * Agent Skills PRD: §4/§5.2 SKILL.md → live command discovery
  *
  * Groups 1-3, 9: no auth required (local mode compatible)
  * Groups 4-8, 10: require DIFY_E2E_TOKEN / staging — wrapped with optionalIt
  */
 
 import type { AuthFixture, RunResult } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -45,14 +45,18 @@ const itWithWorkflow = optionalIt(Boolean(E.token) && Boolean(E.workflowAppId))
 const itWithHitl = optionalIt(Boolean(E.token) && Boolean(E.hitlAppId))
 
 // ---------------------------------------------------------------------------
-// 1 + 2. Skill bootstrap → help -o json discovery
+// 1 + 2. Skill bootstrap → compact sitemap → per-command help
 // ---------------------------------------------------------------------------
 
 describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
-  it('[P0] SKILL.md contains `difyctl help -o json` as the discovery entry point', async () => {
+  it('[P0] SKILL.md directs agents through compact sitemap and per-command help', async () => {
     const r = await run(['skills', 'install', '--stdout'])
     expect(r.exitCode).toBe(0)
-    expect(r.stdout).toContain('difyctl help -o json')
+    expect(r.stdout).toContain('difyctl help -o json --compact')
+    expect(r.stdout).toContain('difyctl help <path> -o json')
+    expect(r.stdout.indexOf('difyctl help -o json --compact')).toBeLessThan(
+      r.stdout.indexOf('difyctl help <path> -o json'),
+    )
   })
 
   it('[P0] SKILL.md enumerates no commands from the tree (zero drift surface)', async () => {
@@ -63,8 +67,7 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
     expect(skillR.exitCode).toBe(0)
     const ALLOWED = new Set(['resume app', 'skills install', 'version'])
     for (const { command } of commands) {
-      if (ALLOWED.has(command))
-        continue
+      if (ALLOWED.has(command)) continue
       expect(skillR.stdout, `skill must not enumerate "${command}"`).not.toContain(command)
     }
   })
@@ -103,9 +106,28 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
     )
   })
 
+  it('[P0] `help -o json --compact` emits only command, description, and effect', async () => {
+    const r = await run(['help', '-o', 'json', '--compact'])
+    expect(r.exitCode).toBe(0)
+    assertPipeFriendlyJson(r)
+    const map = JSON.parse(r.stdout) as {
+      commands: Array<Record<string, unknown>>
+      bin?: unknown
+      contract?: unknown
+    }
+    expect(map.bin).toBeUndefined()
+    expect(map.contract).toBeUndefined()
+    expect(map.commands.length).toBeGreaterThan(0)
+    for (const command of map.commands) {
+      expect(Object.keys(command)).toEqual(['command', 'description', 'effect'])
+      expect(typeof command.command).toBe('string')
+      expect(typeof command.effect).toBe('string')
+    }
+  })
+
   it('[P0] every command in help -o json has args, flags, examples arrays', async () => {
     const { commands } = JSON.parse((await run(['help', '-o', 'json'])).stdout) as {
-      commands: Array<{ command: string, args: unknown, flags: unknown, examples: unknown }>
+      commands: Array<{ command: string; args: unknown; flags: unknown; examples: unknown }>
     }
     for (const cmd of commands) {
       expect(Array.isArray(cmd.args), `${cmd.command}.args`).toBe(true)
@@ -138,7 +160,10 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
   })
 
   it('[P1] effect=read for get app, describe app', async () => {
-    for (const cmd of [['help', 'get', 'app', '-o', 'json'], ['help', 'describe', 'app', '-o', 'json']]) {
+    for (const cmd of [
+      ['help', 'get', 'app', '-o', 'json'],
+      ['help', 'describe', 'app', '-o', 'json'],
+    ]) {
       const r = await run(cmd)
       expect(r.exitCode).toBe(0)
       expect(JSON.parse(r.stdout).effect).toBe('read')
@@ -154,7 +179,14 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
   it('[P1] `help agent` covers DISCOVERY, AUTH, EXIT CODES, ERRORS, HUMAN-IN-THE-LOOP, RETRY', async () => {
     const r = await run(['help', 'agent'])
     expect(r.exitCode).toBe(0)
-    for (const section of ['DISCOVERY', 'AUTH', 'EXIT CODES', 'ERRORS', 'HUMAN-IN-THE-LOOP', 'RETRY'])
+    for (const section of [
+      'DISCOVERY',
+      'AUTH',
+      'EXIT CODES',
+      'ERRORS',
+      'HUMAN-IN-THE-LOOP',
+      'RETRY',
+    ])
       expect(r.stdout, `missing section: ${section}`).toContain(section)
   })
 })
@@ -169,8 +201,9 @@ describe('E2E / agent skill — auth error handling (no token)', () => {
     try {
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
       expect(r.exitCode).toBe(4)
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 
   it('[P0] no token + -o json → stderr is parseable JSON error envelope', async () => {
@@ -178,8 +211,9 @@ describe('E2E / agent skill — auth error handling (no token)', () => {
     try {
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
       assertErrorEnvelope(r)
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 
   it('[P0] error envelope has hint field pointing to recovery action', async () => {
@@ -190,8 +224,9 @@ describe('E2E / agent skill — auth error handling (no token)', () => {
       expect(typeof env.error.hint).toBe('string')
       expect(env.error.hint!.length).toBeGreaterThan(0)
       expect(env.error.hint).toMatch(/auth login|DIFY_TOKEN/i)
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 
   it('[P0] no token → stdout is empty (error only on stderr)', async () => {
@@ -199,8 +234,9 @@ describe('E2E / agent skill — auth error handling (no token)', () => {
     try {
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
       expect(r.stdout.trim()).toBe('')
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 
   it('[P1] usage error (bad flag) → non-zero exit, not exit 4 (agent can distinguish auth vs usage)', async () => {
@@ -212,8 +248,9 @@ describe('E2E / agent skill — auth error handling (no token)', () => {
       const r = await run(['get', 'app', '--unknown-flag-xyz-e2e'], { configDir: tc.configDir })
       expect(r.exitCode).not.toBe(0)
       expect(r.exitCode).not.toBe(4)
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 
   it('[P1] stderr is pure JSON on auth error — entire trim() parses as JSON', async () => {
@@ -221,8 +258,9 @@ describe('E2E / agent skill — auth error handling (no token)', () => {
     try {
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
       expect(() => JSON.parse(r.stderr.trim())).not.toThrow()
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 })
 
@@ -249,8 +287,9 @@ describe('E2E / agent skill — get app -o json (auth required)', () => {
     const r = await fx.r(['get', 'app', '-o', 'json'])
     assertExitCode(r, 0)
     const p = assertJson<unknown>(r)
-    const isIterable = Array.isArray(p)
-      || (typeof p === 'object' && p !== null && Array.isArray((p as Record<string, unknown>).data))
+    const isIterable =
+      Array.isArray(p) ||
+      (typeof p === 'object' && p !== null && Array.isArray((p as Record<string, unknown>).data))
     expect(isIterable).toBe(true)
   })
 
@@ -283,9 +322,11 @@ describe('E2E / agent skill — get app -o json (auth required)', () => {
     const r = await fx.r(['get', 'app', '-o', 'name'])
     assertExitCode(r, 0)
     assertNoAnsi(r.stdout, 'stdout')
-    const lines = r.stdout.trim().split('\n').filter(l => l.trim().length > 0)
-    for (const line of lines)
-      expect(line.trim()).not.toMatch(/\s/)
+    const lines = r.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim().length > 0)
+    for (const line of lines) expect(line.trim()).not.toMatch(/\s/)
   })
 
   itWithSso('[P0] [SSO] dfoe_ get app -o json → permitted-apps list envelope', async () => {
@@ -311,8 +352,9 @@ describe('E2E / agent skill — get app -o json (auth required)', () => {
       assertExitCode(r, 0)
       const parsed = assertJson<{ data: unknown[] }>(r)
       expect(Array.isArray(parsed.data), 'permitted-apps envelope has a data array').toBe(true)
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 })
 
@@ -340,16 +382,19 @@ describe('E2E / agent skill — describe app -o json (auth required)', () => {
     assertExitCode(r, 0)
     const desc = assertJson<Record<string, unknown>>(r)
     // describe app wraps mode under info: { info: { mode, name, ... }, parameters, input_schema }
-    expect((desc.info as Record<string, unknown>)).toHaveProperty('mode')
+    expect(desc.info as Record<string, unknown>).toHaveProperty('mode')
   })
 
-  itWithWorkflow('[P0] workflow app response has input schema — agent reads before run', async () => {
-    const r = await fx.r(['describe', 'app', E.workflowAppId, '-o', 'json'])
-    assertExitCode(r, 0)
-    const d = assertJson<Record<string, unknown>>(r)
-    const hasSchema = 'user_input_form' in d || 'parameters' in d || 'inputs' in d
-    expect(hasSchema, 'describe response must contain input schema').toBe(true)
-  })
+  itWithWorkflow(
+    '[P0] workflow app response has input schema — agent reads before run',
+    async () => {
+      const r = await fx.r(['describe', 'app', E.workflowAppId, '-o', 'json'])
+      assertExitCode(r, 0)
+      const d = assertJson<Record<string, unknown>>(r)
+      const hasSchema = 'user_input_form' in d || 'parameters' in d || 'inputs' in d
+      expect(hasSchema, 'describe response must contain input schema').toBe(true)
+    },
+  )
 
   itWithChat('[P0] stdout has no ANSI — pipe-safe', async () => {
     const r = await fx.r(['describe', 'app', E.chatAppId, '-o', 'json'])
@@ -381,10 +426,11 @@ describe('E2E / agent skill — run app -o json (auth required)', () => {
   })
 
   itWithChat('[P0] run chat app -o json → exit 0, valid JSON with answer field', async () => {
-    const r = await withRetry(
-      () => fx.r(['run', 'app', E.chatAppId, 'hello', '-o', 'json']),
-      { attempts: 5, delayMs: 4000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
-    )
+    const r = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'hello', '-o', 'json']), {
+      attempts: 5,
+      delayMs: 4000,
+      shouldRetry: (err) => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+    })
     assertExitCode(r, 0)
     const p = assertJson<Record<string, unknown>>(r)
     expect(p).toHaveProperty('answer')
@@ -393,31 +439,51 @@ describe('E2E / agent skill — run app -o json (auth required)', () => {
 
   itWithWorkflow('[P0] run workflow -o json → exit 0, JSON contains outputs', async () => {
     const r = await withRetry(
-      () => fx.r(['run', 'app', E.workflowAppId, '--inputs', JSON.stringify({ x: 'agent-e2e', num: 1, enum_var: 'A', paragraph: 'ok' }), '-o', 'json']),
-      { attempts: 5, delayMs: 4000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
+      () =>
+        fx.r([
+          'run',
+          'app',
+          E.workflowAppId,
+          '--inputs',
+          JSON.stringify({ x: 'agent-e2e', num: 1, enum_var: 'A', paragraph: 'ok' }),
+          '-o',
+          'json',
+        ]),
+      {
+        attempts: 5,
+        delayMs: 4000,
+        shouldRetry: (err) =>
+          err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+      },
     )
     assertExitCode(r, 0)
     const p = assertJson<Record<string, unknown>>(r)
-    const hasOutputs = 'outputs' in p
-      || ('data' in p && typeof p.data === 'object' && p.data !== null && 'outputs' in (p.data as object))
+    const hasOutputs =
+      'outputs' in p ||
+      ('data' in p &&
+        typeof p.data === 'object' &&
+        p.data !== null &&
+        'outputs' in (p.data as object))
     expect(hasOutputs, 'workflow -o json must contain outputs').toBe(true)
   })
 
   itWithChat('[P0] stdout has no ANSI — agent can JSON.parse directly', async () => {
-    const r = await withRetry(
-      () => fx.r(['run', 'app', E.chatAppId, 'pipe-test', '-o', 'json']),
-      { attempts: 5, delayMs: 4000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
-    )
+    const r = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'pipe-test', '-o', 'json']), {
+      attempts: 5,
+      delayMs: 4000,
+      shouldRetry: (err) => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+    })
     assertExitCode(r, 0)
     assertNoAnsi(r.stdout, 'stdout')
     assertPipeFriendlyJson(r)
   })
 
   itWithChat('[P0] stderr is empty on success', async () => {
-    const r = await withRetry(
-      () => fx.r(['run', 'app', E.chatAppId, 'clean-test', '-o', 'json']),
-      { attempts: 5, delayMs: 4000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
-    )
+    const r = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'clean-test', '-o', 'json']), {
+      attempts: 5,
+      delayMs: 4000,
+      shouldRetry: (err) => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+    })
     assertExitCode(r, 0)
     expect(r.stderr.trim()).toBe('')
   })
@@ -443,13 +509,16 @@ describe('E2E / agent skill — error handling for agent branching (auth require
     expect(r.stdout.trim()).toBe('')
   })
 
-  itWithAuth('[P0] error.code is stable across repeated calls (agent can cache branch logic)', async () => {
-    const r1 = await fx.r(['run', 'app', 'nonexistent-app-id-e2e-xyz', 'hello', '-o', 'json'])
-    const r2 = await fx.r(['run', 'app', 'nonexistent-app-id-e2e-xyz', 'hello', '-o', 'json'])
-    const e1 = assertErrorEnvelope(r1)
-    const e2 = assertErrorEnvelope(r2)
-    expect(e1.error.code).toBe(e2.error.code)
-  })
+  itWithAuth(
+    '[P0] error.code is stable across repeated calls (agent can cache branch logic)',
+    async () => {
+      const r1 = await fx.r(['run', 'app', 'nonexistent-app-id-e2e-xyz', 'hello', '-o', 'json'])
+      const r2 = await fx.r(['run', 'app', 'nonexistent-app-id-e2e-xyz', 'hello', '-o', 'json'])
+      const e1 = assertErrorEnvelope(r1)
+      const e2 = assertErrorEnvelope(r2)
+      expect(e1.error.code).toBe(e2.error.code)
+    },
+  )
 
   itWithAuth('[P0] entire stderr (trimmed) is parseable JSON — no mixed text prefix', async () => {
     const r = await fx.r(['run', 'app', 'nonexistent-app-id-e2e-xyz', 'hello', '-o', 'json'])
@@ -486,7 +555,11 @@ async function runHitlPause(fx: AuthFixture, input: string): Promise<RunResult> 
         throw new Error(`transient HITL run failure: ${result.stderr.slice(0, 200)}`)
       return result
     },
-    { attempts: 5, delayMs: 4000, shouldRetry: err => err instanceof Error && HITL_TRANSIENT_RE.test(err.message) },
+    {
+      attempts: 5,
+      delayMs: 4000,
+      shouldRetry: (err) => err instanceof Error && HITL_TRANSIENT_RE.test(err.message),
+    },
   )
 }
 
@@ -499,10 +572,13 @@ describe('E2E / agent skill — HITL pause handling (auth required)', () => {
     await fx.cleanup()
   })
 
-  itWithHitl('[P0] HITL app exits 0 and returns paused payload — agent resumes rather than retries', async () => {
-    const r = await runHitlPause(fx, 'agent-hitl-exit')
-    assertExitCode(r, 0)
-  })
+  itWithHitl(
+    '[P0] HITL app exits 0 and returns paused payload — agent resumes rather than retries',
+    async () => {
+      const r = await runHitlPause(fx, 'agent-hitl-exit')
+      assertExitCode(r, 0)
+    },
+  )
 
   itWithHitl('[P0] HITL stdout contains status:paused JSON payload', async () => {
     const r = await runHitlPause(fx, 'agent-hitl-status')
@@ -530,6 +606,18 @@ describe('E2E / agent skill — effect guard (no auth)', () => {
     expect(JSON.parse(r.stdout).effect).toBe('write')
   })
 
+  it('[P0] state-mutating import and context switches have effect=write', async () => {
+    for (const args of [
+      ['help', 'import', 'studio-app', '-o', 'json'],
+      ['help', 'use', 'account', '-o', 'json'],
+      ['help', 'use', 'host', '-o', 'json'],
+    ]) {
+      const r = await run(args)
+      expect(r.exitCode).toBe(0)
+      expect(JSON.parse(r.stdout).effect).toBe('write')
+    }
+  })
+
   it('[P0] auth devices revoke effect=destructive — agent must confirm before calling', async () => {
     const r = await run(['help', 'auth', 'devices', 'revoke', '-o', 'json'])
     expect(r.exitCode).toBe(0)
@@ -537,7 +625,10 @@ describe('E2E / agent skill — effect guard (no auth)', () => {
   })
 
   it('[P0] get app and describe app effect=read — agent can call freely', async () => {
-    for (const args of [['help', 'get', 'app', '-o', 'json'], ['help', 'describe', 'app', '-o', 'json']]) {
+    for (const args of [
+      ['help', 'get', 'app', '-o', 'json'],
+      ['help', 'describe', 'app', '-o', 'json'],
+    ]) {
       const r = await run(args)
       expect(r.exitCode).toBe(0)
       expect(JSON.parse(r.stdout).effect).toBe('read')
@@ -546,10 +637,10 @@ describe('E2E / agent skill — effect guard (no auth)', () => {
 
   it('[P0] no command in the full tree has undefined/null effect', async () => {
     const { commands } = JSON.parse((await run(['help', '-o', 'json'])).stdout) as {
-      commands: Array<{ command: string, effect: unknown }>
+      commands: Array<{ command: string; effect: unknown }>
     }
-    const bad = commands.filter(c => !c.effect || typeof c.effect !== 'string')
-    expect(bad.map(c => c.command)).toEqual([])
+    const bad = commands.filter((c) => !c.effect || typeof c.effect !== 'string')
+    expect(bad.map((c) => c.command)).toEqual([])
   })
 
   it('[P1] skills install effect=write', async () => {
@@ -588,7 +679,12 @@ describe('E2E / agent skill — pipeline safety (auth required)', () => {
   itWithChat('[P0] stdout is non-empty on success under -o json', async () => {
     const r = await withRetry(
       () => fx.r(['run', 'app', E.chatAppId, 'pipeline-test', '-o', 'json']),
-      { attempts: 5, delayMs: 4000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
+      {
+        attempts: 5,
+        delayMs: 4000,
+        shouldRetry: (err) =>
+          err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+      },
     )
     assertExitCode(r, 0)
     expect(r.stdout.trim().length).toBeGreaterThan(0)
@@ -600,8 +696,9 @@ describe('E2E / agent skill — pipeline safety (auth required)', () => {
     try {
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
       assertNoAnsi(r.stderr, 'stderr')
+    } finally {
+      await tc.cleanup()
     }
-    finally { await tc.cleanup() }
   })
 
   itWithAuth('[P1] stdout ends with newline (POSIX pipe convention)', async () => {

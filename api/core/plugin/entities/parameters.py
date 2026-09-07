@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from enum import StrEnum, auto
 from typing import Any, Union
 
@@ -46,6 +47,8 @@ class PluginParameterType(StrEnum):
     # MCP object and array type parameters
     ARRAY = CommonParameterType.ARRAY
     OBJECT = CommonParameterType.OBJECT
+    DATE = CommonParameterType.DATE
+    DATE_RANGE = CommonParameterType.DATE_RANGE
 
 
 class MCPServerParameterType(StrEnum):
@@ -92,13 +95,30 @@ class PluginParameter(BaseModel):
 
 
 def as_normal_type(typ: StrEnum):
+    if typ.value == PluginParameterType.DATE_RANGE:
+        return "object"
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
         PluginParameterType.CHECKBOX,
+        PluginParameterType.DATE,
     }:
         return "string"
     return typ.value
+
+
+def _validate_date(value: Any, name: str = "date") -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"The {name} parameter must be a string in YYYY-MM-DD format.")
+
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"The {name} parameter must be a valid date in YYYY-MM-DD format.") from exc
+
+    if parsed.isoformat() != value:
+        raise ValueError(f"The {name} parameter must use YYYY-MM-DD format.")
+    return value
 
 
 def cast_parameter_value(typ: StrEnum, value: Any, /):
@@ -115,6 +135,34 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
+            case PluginParameterType.DATE:
+                if value is None or value == "":
+                    return ""
+                return _validate_date(value)
+            case PluginParameterType.DATE_RANGE:
+                if value is None or value == "":
+                    return {}
+                if isinstance(value, dict):
+                    out: dict[str, str] = {}
+                    for key in ("start", "end"):
+                        if key not in value or value[key] is None or value[key] == "":
+                            continue
+                        out[key] = _validate_date(value[key], f"date-range {key}")
+                    if out.get("start") and out.get("end") and out["start"] > out["end"]:
+                        raise ValueError("The date-range start date must not be after the end date.")
+                    return out
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        if isinstance(parsed_value, dict):
+                            return cast_parameter_value(typ, parsed_value)
+                    except json.JSONDecodeError:
+                        pass
+                    stripped = value.strip()
+                    if not stripped:
+                        return {}
+                    return {"start": _validate_date(stripped, "date-range start")}
+                raise ValueError("The date-range parameter must be a JSON object, JSON string, or empty.")
 
             case PluginParameterType.BOOLEAN:
                 match value:
@@ -193,8 +241,10 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                 return str(value)
     except ValueError:
         raise
-    except Exception:
-        raise ValueError(f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}.")
+    except Exception as e:
+        raise ValueError(
+            f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}."
+        ) from e
 
 
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
@@ -202,7 +252,10 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     init frontend parameter by rule
     """
     parameter_value = value
-    if not parameter_value and parameter_value != 0:
+    is_empty_tools_selection = (
+        type == PluginParameterType.TOOLS_SELECTOR and isinstance(parameter_value, list) and not parameter_value
+    )
+    if not is_empty_tools_selection and not parameter_value and parameter_value != 0:
         # get default value
         parameter_value = rule.default
         if not parameter_value and rule.required:

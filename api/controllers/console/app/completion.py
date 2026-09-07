@@ -12,10 +12,12 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
+    AgentSessionConfigurationChangedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -26,9 +28,9 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -44,12 +46,12 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
+from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
@@ -157,14 +159,14 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=AppMode.COMPLETION)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
-    def post(self, session: Session, current_user: Account, app_model: App):
-        args_model = CompletionMessagePayload.model_validate(console_ns.payload)
-        args = args_model.model_dump(exclude_none=True, by_alias=True)
+    @get_app_model(mode=AppMode.COMPLETION)
+    @model_validate(CompletionMessagePayload)
+    def post(self, req_data: CompletionMessagePayload, session: Session, current_user: Account, app_model: App):
+        args = req_data.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args_model.response_mode != "blocking"
+        streaming = req_data.response_mode != "blocking"
         args["auto_generate_name"] = False
 
         try:
@@ -239,9 +241,9 @@ class ChatMessageApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
         return _create_chat_message(
             session=session, current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model
@@ -261,12 +263,14 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = AgentRosterService(session).get_agent_runtime_app_model(
+            tenant_id=current_tenant_id, agent_id=str(agent_id)
+        )
         return _create_chat_message(
             session=session,
             current_tenant_id=current_tenant_id,
@@ -288,12 +292,14 @@ class AgentBuildChatFinalizeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = AgentRosterService(session).get_agent_runtime_app_model(
+            tenant_id=current_tenant_id, agent_id=str(agent_id)
+        )
         return _create_build_chat_finalization_message(
             session=session,
             current_tenant_id=current_tenant_id,
@@ -327,32 +333,59 @@ class AgentChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user_id
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
 
 def _resolve_current_user_agent_debug_conversation_id(
-    *, current_tenant_id: str, current_user: Account, app_model: App, agent_id: str | None
+    *,
+    session: Session,
+    current_tenant_id: str,
+    current_user: Account,
+    app_model: App,
+    agent_id: str | None,
+    draft_type: AgentConfigDraftType,
+    start_new: bool = False,
 ) -> str:
-    roster_service = AgentRosterService(db.session)
-    if agent_id:
-        return roster_service.get_or_create_agent_app_debug_conversation_id(
+    """Resolve the current editor's Build or Preview conversation."""
+
+    roster_service = AgentRosterService(session)
+    resolved_agent_id = agent_id
+    if not resolved_agent_id:
+        agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
+        if agent is None:
+            raise AgentNotFoundError()
+        resolved_agent_id = agent.id
+
+    if draft_type == AgentConfigDraftType.DEBUG_BUILD:
+        return roster_service.get_or_create_build_conversation(
             tenant_id=current_tenant_id,
-            agent_id=agent_id,
+            agent_id=resolved_agent_id,
             account_id=current_user.id,
         )
-
-    agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
-    if agent is None:
-        raise AgentNotFoundError()
-    return roster_service.get_or_create_agent_app_debug_conversation_id(
+    if start_new:
+        return roster_service.rotate_preview_conversation(
+            tenant_id=current_tenant_id,
+            agent_id=resolved_agent_id,
+            account_id=current_user.id,
+        )
+    conversation_id = roster_service.get_current_preview_conversation(
         tenant_id=current_tenant_id,
-        agent_id=agent.id,
+        agent_id=resolved_agent_id,
         account_id=current_user.id,
     )
+    if conversation_id is None:
+        raise NotFound("Conversation Not Exists.")
+    return conversation_id
 
 
 def _create_chat_message(
@@ -368,11 +401,17 @@ def _create_chat_message(
     args = args_model.model_dump(exclude_none=True, by_alias=True)
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
+        draft_type = AgentConfigDraftType(args_model.draft_type)
+        # Preview follows the normal chat contract: an omitted/empty conversation ID starts a new
+        # conversation. Build chat keeps its stable mapping so build drafts and finalization stay continuous.
         debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+            session=session,
             current_tenant_id=current_tenant_id or app_model.tenant_id,
             current_user=current_user,
             app_model=app_model,
             agent_id=agent_id,
+            draft_type=draft_type,
+            start_new=draft_type == AgentConfigDraftType.DRAFT and not args_model.conversation_id,
         )
         if args_model.conversation_id and args_model.conversation_id != debug_conversation_id:
             raise NotFound("Conversation Not Exists.")
@@ -404,10 +443,12 @@ def _create_build_chat_finalization_message(
     *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+        session=session,
         current_tenant_id=current_tenant_id,
         current_user=current_user,
         app_model=app_model,
         agent_id=agent_id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
     args: dict[str, Any] = {
         "query": _BUILD_CHAT_FINALIZATION_QUERY,
@@ -581,6 +622,10 @@ def _raise_agent_stream_error_before_response(response):
             if isinstance(response, _ClosableStream):
                 response.close()
             message = error_payload.get("message")
+            if error_payload.get("code") == AgentSessionConfigurationChangedError.error_code:
+                raise AgentSessionConfigurationChangedError(
+                    str(message or AgentSessionConfigurationChangedError.description)
+                )
             raise CompletionRequestError(str(message or "Agent App chat failed."))
 
         return _prepend_stream_chunks(buffered, chunk, iterator)

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import PoweredByBrand from '../powered-by-brand'
 
 describe('PoweredByBrand', () => {
@@ -13,18 +13,19 @@ describe('PoweredByBrand', () => {
     )
 
     expect(screen.getByText('POWERED BY')).toBeInTheDocument()
-    expect(screen.getByAltText('logo')).toHaveAttribute('src', 'https://example.com/workspace-logo.png')
+    expect(screen.getByAltText('logo')).toHaveAttribute(
+      'src',
+      'https://example.com/workspace-logo.png',
+    )
   })
 
   it('should fall back to the custom web app logo when workspace branding is unavailable', () => {
-    render(
-      <PoweredByBrand
-        imgKey={42}
-        webappLogo="https://example.com/custom-logo.png"
-      />,
-    )
+    render(<PoweredByBrand imgKey={42} webappLogo="https://example.com/custom-logo.png" />)
 
-    expect(screen.getByAltText('logo')).toHaveAttribute('src', 'https://example.com/custom-logo.png?hash=42')
+    expect(screen.getByAltText('logo')).toHaveAttribute(
+      'src',
+      'https://example.com/custom-logo.png?hash=42',
+    )
   })
 
   it('should fall back to the Dify logo when no custom branding exists', () => {

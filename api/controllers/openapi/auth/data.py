@@ -6,31 +6,16 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import InternalServerError
 
-from configs import dify_config
-from core.rbac import RBACPermission, RBACResourceScope
+from controllers.common.rbac import RBACCheck
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 
-class Edition(StrEnum):
-    CE = "ce"
-    EE = "ee"
-    SAAS = "saas"
-
-
 class CallerKind(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
-
-
-def current_edition() -> Edition:
-    if dify_config.EDITION == "CLOUD":
-        return Edition.SAAS
-    if dify_config.ENTERPRISE_ENABLED:
-        return Edition.EE
-    return Edition.CE
 
 
 class ExternalIdentity(BaseModel):
@@ -40,23 +25,15 @@ class ExternalIdentity(BaseModel):
     issuer: str | None = None
 
 
-class RBACRequirement(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    resource_type: RBACResourceScope
-    scene: RBACPermission
-    resource_required: bool = True
-
-
 class RequestContext(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     token_type: TokenType
     scope: Scope | None = None
     path_params: dict[str, str]
     workspace_membership: bool = False
     allowed_roles: frozenset[TenantAccountRole] | None = None
-    rbac: RBACRequirement | None = None
+    rbac: RBACCheck | None = None
 
 
 class AuthData(BaseModel):
@@ -73,7 +50,7 @@ class AuthData(BaseModel):
     path_params: dict[str, str] = Field(default_factory=dict)
 
     allowed_roles: frozenset[TenantAccountRole] | None = None
-    rbac: RBACRequirement | None = None
+    rbac: RBACCheck | None = None
 
     app: App | None = None
     tenant: Tenant | None = None

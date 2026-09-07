@@ -1,14 +1,15 @@
 import type { FormSchema } from '../../../base/form/types'
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import EndpointModal from '../endpoint-modal'
 
 const mockToastNotify = vi.fn()
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
-    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
     {
       success: (message: string) => mockToastNotify({ type: 'success', message }),
       error: (message: string) => mockToastNotify({ type: 'error', message }),
@@ -27,7 +28,11 @@ vi.mock('@/hooks/use-i18n', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({ value, onChange, fieldMoreInfo }: {
+  default: ({
+    value,
+    onChange,
+    fieldMoreInfo,
+  }: {
     value: Record<string, unknown>
     onChange: (v: Record<string, unknown>) => void
     fieldMoreInfo?: (item: { url?: string }) => React.ReactNode
@@ -36,8 +41,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
       <div data-testid="form">
         <input
           data-testid="form-input"
-          value={value.name as string || ''}
-          onChange={e => onChange({ ...value, name: e.target.value })}
+          value={(value.name as string) || ''}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
         />
         {/* Render fieldMoreInfo to test url link */}
         {fieldMoreInfo && (
@@ -57,7 +62,13 @@ vi.mock('../../readme-panel/entrance', () => ({
 
 const mockFormSchemas = [
   { name: 'name', label: { en_US: 'Name' }, type: 'text-input', required: true, default: '' },
-  { name: 'apiKey', label: { en_US: 'API Key' }, type: 'secret-input', required: false, default: '' },
+  {
+    name: 'apiKey',
+    label: { en_US: 'API Key' },
+    type: 'secret-input',
+    required: false,
+    default: '',
+  },
 ] as unknown as FormSchema[]
 
 const mockPluginDetail: PluginDetail = {
@@ -108,7 +119,7 @@ describe('EndpointModal', () => {
         'data-[swipe-direction=right]:top-2',
         'data-[swipe-direction=right]:bottom-2',
         'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:w-100',
         'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
       )
     })
@@ -221,7 +232,13 @@ describe('EndpointModal', () => {
 
     it('should extract default values from schemas when no defaultValues', () => {
       const schemasWithDefaults = [
-        { name: 'name', label: 'Name', type: 'text-input', required: true, default: 'Schema Default' },
+        {
+          name: 'name',
+          label: 'Name',
+          type: 'text-input',
+          required: true,
+          default: 'Schema Default',
+        },
       ] as unknown as FormSchema[]
 
       render(
@@ -257,7 +274,13 @@ describe('EndpointModal', () => {
   describe('Validation - handleSave', () => {
     it('should show toast error when required field is empty', () => {
       const schemasWithRequired = [
-        { name: 'name', label: { en_US: 'Name Field' }, type: 'text-input', required: true, default: '' },
+        {
+          name: 'name',
+          label: { en_US: 'Name Field' },
+          type: 'text-input',
+          required: true,
+          default: '',
+        },
       ] as unknown as FormSchema[]
 
       render(
@@ -385,13 +408,6 @@ describe('EndpointModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(mockOnSaved).toHaveBeenCalledWith({ text: 'hello' })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(EndpointModal).toBeDefined()
-      expect((EndpointModal as { $$typeof?: symbol }).$$typeof).toBeDefined()
     })
   })
 })

@@ -19,13 +19,6 @@ const mentionStoreState = vi.hoisted(() => ({
     mentionStoreState.mentionableUsersCache[appId] = users
   },
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
@@ -53,10 +46,6 @@ vi.mock('../store', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="mention-avatar">{name}</div>,
-}))
-
 const mentionUsers: UserProfile[] = [
   {
     id: 'user-2',
@@ -78,13 +67,7 @@ function ControlledMentionInput({
   onSubmit: (content: string, mentionedUserIds: string[]) => void
 }) {
   const [value, setValue] = useState('')
-  return (
-    <MentionInput
-      value={value}
-      onChange={setValue}
-      onSubmit={onSubmit}
-    />
-  )
+  return <MentionInput value={value} onChange={setValue} onSubmit={onSubmit} />
 }
 
 describe('MentionInput', () => {
@@ -96,13 +79,7 @@ describe('MentionInput', () => {
   })
 
   it('loads mentionable users when cache is empty', async () => {
-    render(
-      <MentionInput
-        value=""
-        onChange={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    render(<MentionInput value="" onChange={vi.fn()} onSubmit={vi.fn()} />)
 
     await waitFor(() => {
       expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
@@ -121,7 +98,9 @@ describe('MentionInput', () => {
 
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
-    const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+    const textarea = screen.getByPlaceholderText(
+      'workflow.comments.placeholder.add',
+    ) as HTMLTextAreaElement
     textarea.focus()
     textarea.setSelectionRange(4, 4)
     fireEvent.change(textarea, { target: { value: '@Ali' } })
@@ -169,15 +148,12 @@ describe('MentionInput', () => {
       mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
 
       const { unmount } = render(
-        <MentionInput
-          value="draft"
-          onChange={vi.fn()}
-          onSubmit={vi.fn()}
-          autoFocus
-        />,
+        <MentionInput value="draft" onChange={vi.fn()} onSubmit={vi.fn()} autoFocus />,
       )
 
-      const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+      const textarea = screen.getByPlaceholderText(
+        'workflow.comments.placeholder.add',
+      ) as HTMLTextAreaElement
 
       act(() => {
         vi.runOnlyPendingTimers()
@@ -188,8 +164,7 @@ describe('MentionInput', () => {
       expect(textarea.selectionEnd).toBe(5)
 
       unmount()
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

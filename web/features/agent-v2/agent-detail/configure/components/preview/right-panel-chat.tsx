@@ -13,11 +13,18 @@ export function AgentConfigureRightPanelChat({
   onConversationComplete,
   onConversationIdChange,
   ...props
-}: Omit<Parameters<typeof AgentPreviewChat>[0], 'agentSoulConfig' | 'conversationId' | 'onConversationComplete' | 'onConversationIdChange'> & {
+}: Omit<
+  Parameters<typeof AgentPreviewChat>[0],
+  'agentSoulConfig' | 'conversationId' | 'onConversationComplete' | 'onConversationIdChange'
+> & {
   agentSoulConfig?: AgentSoulConfig
   conversationIds: AgentConfigureConversationIds
   mode: AgentConfigureRightPanelMode
-  onConversationComplete?: (mode: AgentConfigureRightPanelMode, conversationId: string, workflowRunId?: string) => void
+  onConversationComplete?: (
+    mode: AgentConfigureRightPanelMode,
+    conversationId: string,
+    workflowRunId?: string,
+  ) => void
   onConversationIdChange: (mode: AgentConfigureRightPanelMode, conversationId: string) => void
 }) {
   const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig)
@@ -29,23 +36,21 @@ export function AgentConfigureRightPanelChat({
     onConversationComplete?.(mode, completedConversationId, workflowRunId)
   }
 
-  return mode === 'build'
-    ? (
-        <AgentBuildChat
-          {...props}
-          conversationId={conversationId}
-          agentSoulConfig={previewAgentSoulConfig}
-          onConversationComplete={handleConversationComplete}
-          onConversationIdChange={handleConversationIdChange}
-        />
-      )
-    : (
-        <AgentPreviewChat
-          {...props}
-          conversationId={conversationId}
-          agentSoulConfig={previewAgentSoulConfig}
-          onConversationComplete={handleConversationComplete}
-          onConversationIdChange={handleConversationIdChange}
-        />
-      )
+  return mode === 'build' ? (
+    <AgentBuildChat
+      {...props}
+      conversationId={conversationId}
+      agentSoulConfig={previewAgentSoulConfig}
+      onConversationComplete={handleConversationComplete}
+      onConversationIdChange={handleConversationIdChange}
+    />
+  ) : (
+    <AgentPreviewChat
+      {...props}
+      conversationId={conversationId}
+      agentSoulConfig={previewAgentSoulConfig}
+      onConversationComplete={handleConversationComplete}
+      onConversationIdChange={handleConversationIdChange}
+    />
+  )
 }

@@ -34,7 +34,8 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
         )
 
         try:
-            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+            with session_factory.create_session() as session:
+                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
             vector.delete_by_metadata_field("annotation_id", annotation_id)
         except Exception:
             logger.exception("Delete annotation index failed when annotation deleted.")

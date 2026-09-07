@@ -1,9 +1,10 @@
-import Apps from '@/app/components/apps'
+import { Apps } from '@/app/components/apps'
+import { getRouteMetadata } from '@/app/route-metadata'
 
-const AppList = () => {
-  return (
-    <Apps />
-  )
+export function generateMetadata() {
+  return getRouteMetadata('common', ($) => $['menus.apps'])
 }
 
-export default AppList
+export default function AppsPage() {
+  return <Apps />
+}

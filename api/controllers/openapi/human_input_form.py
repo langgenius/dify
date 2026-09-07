@@ -1,8 +1,8 @@
 """
 OpenAPI bearer-authed human input form endpoints.
 
-GET  /apps/<app_id>/form/human_input/<form_token>  — fetch paused form definition
-POST /apps/<app_id>/form/human_input/<form_token>  — submit form response
+GET  /apps/<app_id>/human-input-forms/<form_token>         — fetch paused form definition
+POST /apps/<app_id>/human-input-forms/<form_token>:submit  — submit form response
 """
 
 from __future__ import annotations
@@ -15,14 +15,14 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.common.schema import register_schema_models
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     is_recipient_type_allowed_for_surface,
@@ -60,12 +60,12 @@ def _ensure_form_is_allowed_for_openapi(form) -> None:
         raise RecipientSurfaceMismatch()
 
 
-@openapi_ns.route("/apps/<string:app_id>/form/human_input/<string:form_token>")
+@openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @openapi_ns.response(200, "Form definition", openapi_ns.models[HumanInputFormDefinitionResponse.__name__])
     @auth_router.guard(
         scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
     )
     def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
         app_model, _caller, _caller_kind = auth_data.require_app_context()
@@ -79,9 +79,12 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
+
+@openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
+class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
     )
     @returns(200, FormSubmitResponse, description="Form submitted")
     @accepts(body=HumanInputFormSubmitPayload)

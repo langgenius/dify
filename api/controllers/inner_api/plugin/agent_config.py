@@ -2,20 +2,24 @@
 
 These endpoints are called by the dify-agent server with the inner API key.
 They resolve the requested Agent config version directly from Agent Soul JSON
-and never expose signed download URLs or drive-owned metadata.
+and authorize downloads with the existing Config target, tenant, and source
+ownership semantics. Download requests return metadata plus a short-lived,
+origin-free ``/files/*`` URI, never file bytes; the Sandbox fetches those bytes
+directly from the Dify API data plane.
 """
 
 from __future__ import annotations
 
-import io
+from typing import Literal
 
-from flask import request, send_file
+from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
+from models.agent_config_entities import validate_config_name, validate_config_skill_name
 from services.agent_config_service import (
     AgentConfigService,
     AgentConfigServiceError,
@@ -36,6 +40,24 @@ class _ConfigMutationRequest(BaseModel):
     user_id: str
     config_version_id: str
     config_version_kind: AgentConfigVersionKind
+
+
+class _ConfigDownloadSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["file", "skill"]
+    name: str
+
+    @model_validator(mode="after")
+    def validate_name(self) -> _ConfigDownloadSource:
+        self.name = validate_config_skill_name(self.name) if self.kind == "skill" else validate_config_name(self.name)
+        return self
+
+
+class _ConfigDownloadRequest(_ConfigTargetQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    config: _ConfigDownloadSource
 
 
 class _ConfigPushRequest(_ConfigMutationRequest):
@@ -99,28 +121,29 @@ class AgentConfigManifestApi(Resource):
             return _error_response(exc)
 
 
-@inner_api_ns.route("/agent-config/<string:agent_id>/skills/<string:name>/pull")
-class AgentConfigSkillPullApi(Resource):
+@inner_api_ns.route("/agent-config/<string:agent_id>/download-request")
+class AgentConfigDownloadRequestApi(Resource):
     @setup_required
     @plugin_inner_api_only
-    @inner_api_ns.doc("agent_config_skill_pull")
-    def get(self, agent_id: str, name: str):
+    @inner_api_ns.doc("agent_config_download_request")
+    def post(self, agent_id: str):
         try:
-            query = _target_query_from_request()
-            result = AgentConfigService().pull_skill(
-                tenant_id=query.tenant_id,
+            body = _ConfigDownloadRequest.model_validate(request.get_json(silent=True) or {})
+            result = AgentConfigService().request_download(
+                tenant_id=body.tenant_id,
                 agent_id=agent_id,
-                user_id=query.user_id,
-                config_version_id=query.config_version_id,
-                config_version_kind=query.config_version_kind,
-                name=name,
+                user_id=body.user_id,
+                config_version_id=body.config_version_id,
+                config_version_kind=body.config_version_kind,
+                kind=body.config.kind,
+                name=body.config.name,
             )
-            return send_file(
-                io.BytesIO(result.payload),
-                mimetype=result.mime_type,
-                as_attachment=True,
-                download_name=result.filename,
-            )
+            return {
+                "filename": result.filename,
+                "mime_type": result.mime_type,
+                "size": result.size,
+                "download_uri": result.download_uri,
+            }
         except ValidationError as exc:
             return {"code": "invalid_request", "message": str(exc)}, 400
         except AgentConfigServiceError as exc:
@@ -142,34 +165,6 @@ class AgentConfigSkillInspectApi(Resource):
                 config_version_id=query.config_version_id,
                 config_version_kind=query.config_version_kind,
                 name=name,
-            )
-        except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
-        except AgentConfigServiceError as exc:
-            return _error_response(exc)
-
-
-@inner_api_ns.route("/agent-config/<string:agent_id>/files/<string:name>/pull")
-class AgentConfigFilePullApi(Resource):
-    @setup_required
-    @plugin_inner_api_only
-    @inner_api_ns.doc("agent_config_file_pull")
-    def get(self, agent_id: str, name: str):
-        try:
-            query = _target_query_from_request()
-            result = AgentConfigService().pull_file(
-                tenant_id=query.tenant_id,
-                agent_id=agent_id,
-                user_id=query.user_id,
-                config_version_id=query.config_version_id,
-                config_version_kind=query.config_version_kind,
-                name=name,
-            )
-            return send_file(
-                io.BytesIO(result.payload),
-                mimetype=result.mime_type,
-                as_attachment=True,
-                download_name=result.filename,
             )
         except ValidationError as exc:
             return {"code": "invalid_request", "message": str(exc)}, 400

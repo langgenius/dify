@@ -1,6 +1,6 @@
 import type { Viewport } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { processNodesWithoutDataSource } from '../nodes'
 
@@ -23,7 +23,17 @@ vi.mock('@/app/components/workflow/note-node/types', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: ({ id, type, data, position }: { id: string, type?: string, data: object, position: { x: number, y: number } }) => ({
+  generateNewNode: ({
+    id,
+    type,
+    data,
+    position,
+  }: {
+    id: string
+    type?: string
+    data: object
+    position: { x: number; y: number }
+  }) => ({
     newNode: { id, type: type || 'custom', data, position },
   }),
 }))

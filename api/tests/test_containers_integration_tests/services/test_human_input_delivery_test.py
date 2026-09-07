@@ -1,7 +1,7 @@
 import json
 import uuid
 from io import BytesIO
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import httpx
 import pytest
@@ -9,7 +9,7 @@ from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import controllers.web.human_input_file_upload as human_input_file_upload_module
+import services.remote_file_service as remote_file_service_module
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -119,6 +119,7 @@ def test_human_input_delivery_test_sends_email(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
+        session=db_session_with_containers,
     )
 
     assert send_mock.call_count == 1
@@ -145,6 +146,7 @@ def test_human_input_delivery_test_form_accepts_file_upload(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
+        session=db_session_with_containers,
     )
 
     form = db_session_with_containers.scalar(
@@ -213,6 +215,7 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
+        session=db_session_with_containers,
     )
 
     form = db_session_with_containers.scalar(
@@ -254,10 +257,8 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
         },
         content=remote_content,
     )
-    head_mock = MagicMock(return_value=head_response)
-    get_mock = MagicMock(return_value=get_response)
-    monkeypatch.setattr(human_input_file_upload_module.ssrf_proxy, "head", head_mock)
-    monkeypatch.setattr(human_input_file_upload_module.ssrf_proxy, "get", get_mock)
+    request_mock = MagicMock(side_effect=[head_response, get_response])
+    monkeypatch.setattr(remote_file_service_module.remote_fetcher, "make_request", request_mock)
 
     upload_response = test_client_with_containers.post(
         "/api/human-input-forms/files",
@@ -269,8 +270,10 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
     assert upload_response.status_code == 201, upload_response.get_data(as_text=True)
     upload_file_id = upload_response.get_json()["id"]
     assert upload_response.get_json()["url"]
-    head_mock.assert_called_once_with(url=remote_url)
-    get_mock.assert_called_once_with(remote_url)
+    assert request_mock.call_args_list == [
+        call("HEAD", url=remote_url),
+        call("GET", url=remote_url),
+    ]
 
     db_session_with_containers.expire_all()
     upload_file = db_session_with_containers.get(UploadFile, upload_file_id)

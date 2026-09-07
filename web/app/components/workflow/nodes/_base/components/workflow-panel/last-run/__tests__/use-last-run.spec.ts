@@ -8,19 +8,25 @@ const mockHandleSyncWorkflowDraft = vi.fn()
 const mockShowSingleRun = vi.fn()
 const mockHandleRun = vi.fn()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-}))
+vi.mock('../../../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../../hooks/use-nodes-sync-draft')>()
 
-vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    }),
+  }
+})
+
+vi.mock('../../../../../../hooks/use-checklist', () => ({
   useWorkflowRunValidation: () => ({
     warningNodes: [],
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     conversationVars: [],
     systemVars: [],
@@ -57,18 +63,20 @@ describe('useLastRun', () => {
   })
 
   it('syncs the draft before opening a custom single-run form', () => {
-    const { result } = renderWorkflowHook(() => useLastRun({
-      id: 'data-source-node',
-      flowId: 'flow-id',
-      flowType: FlowType.appFlow,
-      data: {
-        type: BlockEnum.DataSource,
-        title: 'Data Source',
-        desc: '',
-      },
-      defaultRunInputData: {},
-      isPaused: false,
-    }))
+    const { result } = renderWorkflowHook(() =>
+      useLastRun({
+        id: 'data-source-node',
+        flowId: 'flow-id',
+        flowType: FlowType.appFlow,
+        data: {
+          type: BlockEnum.DataSource,
+          title: 'Data Source',
+          desc: '',
+        },
+        defaultRunInputData: {},
+        isPaused: false,
+      }),
+    )
 
     act(() => {
       result.current.handleSingleRun()

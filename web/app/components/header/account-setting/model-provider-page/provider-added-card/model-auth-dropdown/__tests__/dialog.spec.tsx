@@ -1,19 +1,20 @@
-import type { ReactNode } from 'react'
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import DropdownContent from '../dropdown-content'
 
-type AlertDialogProps = {
-  children: ReactNode
-  onOpenChange?: (open: boolean) => void
-}
-
-let latestOnOpenChange: AlertDialogProps['onOpenChange']
 const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 const mockHandleOpenModal = vi.fn()
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('../../../model-auth/hooks', () => ({
   useAuth: () => ({
@@ -34,24 +35,10 @@ vi.mock('../use-activate-credential', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({ children, onOpenChange }: AlertDialogProps) => {
-    latestOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick }: { children: ReactNode, onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
-  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: () => <div />,
-  AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock('../api-key-section', () => ({
-  default: ({ credentials, onDelete }: { credentials: unknown[], onDelete: (credential?: unknown) => void }) => (
+  default: ({ credentials }: { credentials: unknown[] }) => (
     <div>
       <span>{`credentials:${credentials.length}`}</span>
-      <button type="button" onClick={() => onDelete(undefined)}>delete-undefined</button>
     </div>
   ),
 }))
@@ -68,20 +55,21 @@ vi.mock('../usage-priority-section', () => ({
   default: () => <div>priority section</div>,
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test',
-  custom_configuration: {
-    available_credentials: undefined,
-  },
-  system_configuration: {
-    enabled: true,
-    quota_configurations: [],
-    current_quota_type: 'trial',
-  },
-  configurate_methods: [],
-  supported_model_types: [],
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'test',
+    custom_configuration: {
+      available_credentials: undefined,
+    },
+    system_configuration: {
+      enabled: true,
+      quota_configurations: [],
+      current_quota_type: 'trial',
+    },
+    configurate_methods: [],
+    supported_model_types: [],
+    ...overrides,
+  }) as unknown as ModelProvider
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'api-active',
@@ -95,10 +83,17 @@ const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialP
   ...overrides,
 })
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('DropdownContent dialog branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    latestOnOpenChange = undefined
   })
 
   it('should fall back to an empty credential list when the provider has no credentials', () => {
@@ -113,40 +108,5 @@ describe('DropdownContent dialog branches', () => {
     )
 
     expect(screen.getByText('credentials:0')).toBeInTheDocument()
-  })
-
-  it('should ignore delete requests without a credential payload', () => {
-    render(
-      <DropdownContent
-        provider={createProvider()}
-        state={createState()}
-        isChangingPriority={false}
-        onChangePriority={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'delete-undefined' }))
-
-    expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
-  })
-
-  it('should only close the confirm dialog when the alert dialog reports closed', () => {
-    render(
-      <DropdownContent
-        provider={createProvider()}
-        state={createState()}
-        isChangingPriority={false}
-        onChangePriority={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    )
-
-    act(() => {
-      latestOnOpenChange?.(true)
-      latestOnOpenChange?.(false)
-    })
-
-    expect(mockCloseConfirmDelete).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,18 +1,19 @@
 import type { SortType } from '@/service/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DocumentsHeader from '../documents-header'
 
 // Mock the context hooks
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 // Mock child components that require API calls
-vi.mock('@/app/components/datasets/common/document-status-with-action/auto-disabled-document', () => ({
-  default: () => <div data-testid="auto-disabled-document">AutoDisabledDocument</div>,
-}))
+vi.mock(
+  '@/app/components/datasets/common/document-status-with-action/auto-disabled-document',
+  () => ({
+    default: () => <div data-testid="auto-disabled-document">AutoDisabledDocument</div>,
+  }),
+)
 
 vi.mock('@/app/components/datasets/common/document-status-with-action/index-failed', () => ({
   default: () => <div data-testid="index-failed">IndexFailed</div>,
@@ -61,11 +62,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByText(/list\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)
@@ -87,7 +83,7 @@ describe('DocumentsHeader', () => {
 
     it('should render filter input', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
 
     it('should hide action controls by default when permissions are omitted', () => {
@@ -208,7 +204,7 @@ describe('DocumentsHeader', () => {
       const onInputChange = vi.fn()
       render(<DocumentsHeader {...defaultProps} onInputChange={onInputChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'search query' } })
 
       expect(onInputChange).toHaveBeenCalledWith('search query')

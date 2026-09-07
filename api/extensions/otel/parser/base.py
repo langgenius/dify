@@ -3,7 +3,7 @@ Base parser interface and utilities for OpenTelemetry node parsers.
 
 Content gating: ``should_include_content()`` controls whether content-bearing
 span attributes (inputs, outputs, prompts, completions, documents) are written.
-Gate is only active in EE (``ENTERPRISE_ENABLED=True``) when
+Gate is only active in the Enterprise edition when
 ``ENTERPRISE_INCLUDE_CONTENT=False``; CE behaviour is unchanged.
 """
 
@@ -15,6 +15,7 @@ from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File
@@ -26,9 +27,9 @@ from graphon.variables import Segment
 def should_include_content() -> bool:
     """Return True if content should be written to spans.
 
-    CE (ENTERPRISE_ENABLED=False): always True — no behaviour change.
+    Community and Cloud editions: always True — no behaviour change.
     """
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
     return dify_config.ENTERPRISE_INCLUDE_CONTENT
 

@@ -148,6 +148,8 @@ class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
     knowledge_base_setting: dict[str, Any] | None = Field(default=None)
+    marked_name: str | None = Field(default=None, max_length=20)
+    marked_comment: str | None = Field(default=None, max_length=100)
 
 
 class SnippetImportPayload(BaseModel):
@@ -165,3 +167,9 @@ class IncludeSecretQuery(BaseModel):
     """Query parameter for including secret variables in export."""
 
     include_secret: str = Field(default="false", description="Whether to include secret variables")
+
+
+class SnippetExportQuery(IncludeSecretQuery):
+    """Query parameters for exporting a snippet workflow as DSL."""
+
+    workflow_id: str | None = Field(default=None, description="Specific published workflow version to export")

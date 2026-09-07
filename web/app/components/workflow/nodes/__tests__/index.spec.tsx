@@ -87,26 +87,14 @@ const baseNodeProps = {
 
 describe('workflow nodes index', () => {
   it('should render the mapped node inside the base node shell', () => {
-    render(
-      <CustomNode
-        id="node-1"
-        data={createNodeData()}
-        {...baseNodeProps}
-      />,
-    )
+    render(<CustomNode id="node-1" data={createNodeData()} {...baseNodeProps} />)
 
     expect(screen.getByText('base-node:node-1:start')).toBeInTheDocument()
     expect(screen.getByText('start-node-component')).toBeInTheDocument()
   })
 
   it('should render the mapped panel inside the base panel shell for custom nodes', () => {
-    render(
-      <Panel
-        type={CUSTOM_NODE}
-        id="node-1"
-        data={createNodeData()}
-      />,
-    )
+    render(<Panel type={CUSTOM_NODE} id="node-1" data={createNodeData()} />)
 
     expect(screen.getByText('base-panel:node-1:start')).toBeInTheDocument()
     expect(screen.getByText('start-panel-component')).toBeInTheDocument()
@@ -114,35 +102,19 @@ describe('workflow nodes index', () => {
 
   it('should remount the base panel when a node keeps its id but changes type', () => {
     const { rerender } = render(
-      <Panel
-        type={CUSTOM_NODE}
-        id="node-1"
-        data={createStartPlaceholderData()}
-      />,
+      <Panel type={CUSTOM_NODE} id="node-1" data={createStartPlaceholderData()} />,
     )
 
     expect(screen.getByText('base-panel-initial:start-placeholder')).toBeInTheDocument()
 
-    rerender(
-      <Panel
-        type={CUSTOM_NODE}
-        id="node-1"
-        data={createNodeData()}
-      />,
-    )
+    rerender(<Panel type={CUSTOM_NODE} id="node-1" data={createNodeData()} />)
 
     expect(screen.getByText('base-panel:node-1:start')).toBeInTheDocument()
     expect(screen.getByText('base-panel-initial:start')).toBeInTheDocument()
   })
 
   it('should return null for non-custom panel types', () => {
-    const { container } = render(
-      <Panel
-        type="default"
-        id="node-1"
-        data={createNodeData()}
-      />,
-    )
+    const { container } = render(<Panel type="default" id="node-1" data={createNodeData()} />)
 
     expect(container).toBeEmptyDOMElement()
   })

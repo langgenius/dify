@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { DisplayContent } from '../display-content'
 import { PreviewType } from '../types'
 
@@ -13,12 +14,7 @@ describe('variable inspect display content', () => {
   it('renders markdown code view and forwards text edits', () => {
     const handleTextChange = vi.fn()
 
-    render(
-      <DisplayContent
-        {...baseProps}
-        handleTextChange={handleTextChange}
-      />,
-    )
+    render(<DisplayContent {...baseProps} handleTextChange={handleTextChange} />)
 
     expect(screen.getByText('MARKDOWN')).toBeInTheDocument()
 
@@ -29,15 +25,18 @@ describe('variable inspect display content', () => {
     expect(handleTextChange).toHaveBeenCalledWith('updated markdown')
   })
 
-  it('keeps the active view selected when clicking the selected segmented control item', () => {
+  it('keeps the active view selected when clicking the selected segmented control item', async () => {
+    const user = userEvent.setup()
     render(<DisplayContent {...baseProps} />)
 
-    const codeButton = screen.getByRole('button', { name: 'workflow.nodes.templateTransform.code' })
+    const codeOption = screen.getByRole('radio', {
+      name: 'workflow.nodes.templateTransform.code',
+    })
 
-    expect(codeButton).toHaveAttribute('aria-pressed', 'true')
+    expect(codeOption).toHaveAttribute('aria-checked', 'true')
 
-    fireEvent.click(codeButton)
+    await user.click(codeOption)
 
-    expect(codeButton).toHaveAttribute('aria-pressed', 'true')
+    expect(codeOption).toHaveAttribute('aria-checked', 'true')
   })
 })

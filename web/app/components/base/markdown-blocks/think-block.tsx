@@ -4,33 +4,25 @@ import ThinkingDetails from './thinking-details'
 import { useElapsedTimer } from './use-elapsed-timer'
 
 const hasEndThink = (children: any): boolean => {
-  if (typeof children === 'string')
-    return children.includes('[ENDTHINKFLAG]')
+  if (typeof children === 'string') return children.includes('[ENDTHINKFLAG]')
 
-  if (Array.isArray(children))
-    return children.some(child => hasEndThink(child))
+  if (Array.isArray(children)) return children.some((child) => hasEndThink(child))
 
-  if (children?.props?.children)
-    return hasEndThink(children.props.children)
+  if (children?.props?.children) return hasEndThink(children.props.children)
 
   return false
 }
 
 const removeEndThink = (children: any): any => {
-  if (typeof children === 'string')
-    return children.replace('[ENDTHINKFLAG]', '')
+  if (typeof children === 'string') return children.replace('[ENDTHINKFLAG]', '')
 
-  if (Array.isArray(children))
-    return children.map(child => removeEndThink(child))
+  if (Array.isArray(children)) return children.map((child) => removeEndThink(child))
 
   if (children?.props?.children) {
-    return React.cloneElement(
-      children,
-      {
-        ...children.props,
-        children: removeEndThink(children.props.children),
-      },
-    )
+    return React.cloneElement(children, {
+      ...children.props,
+      children: removeEndThink(children.props.children),
+    })
   }
 
   return children
@@ -53,8 +45,7 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
   const displayContent = removeEndThink(children)
   const { 'data-think': isThink = false, className, open, ...rest } = props
 
-  if (!isThink)
-    return (<details {...props}>{children}</details>)
+  if (!isThink) return <details {...props}>{children}</details>
 
   return (
     <ThinkingDetails

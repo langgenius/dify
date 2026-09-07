@@ -276,6 +276,7 @@ class RequestRequestDownloadFile(BaseModel):
         "validation",
     ]
     file: RequestDownloadFileMapping
+    for_external: bool = True
 
     model_config = ConfigDict(extra="forbid")
 

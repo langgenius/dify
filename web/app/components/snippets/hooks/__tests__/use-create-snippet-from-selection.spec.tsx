@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react'
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -24,22 +26,37 @@ vi.mock('../use-create-snippet', () => ({
   }),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { error: vi.fn() },
+}))
+
 type DialogProps = {
   selectedGraph?: SnippetCanvasData
   inputFields?: SnippetInputField[]
 }
 
-const createNode = (
-  id: string,
-  data: Record<string, unknown>,
-): Node => ({
-  id,
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  width: 200,
-  height: 100,
-  data,
-} as unknown as Node)
+const createNode = (id: string, data: Record<string, unknown>): Node =>
+  ({
+    id,
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    width: 200,
+    height: 100,
+    data,
+  }) as unknown as Node
+
+const llmEnvironmentVariable: EnvironmentVariable = {
+  id: 'model-env',
+  name: 'MODEL_NAME',
+  value: {
+    provider: 'new-provider',
+    name: 'new-model',
+    mode: 'chat',
+    completion_params: { temperature: 0.8 },
+  },
+  value_type: 'llm',
+  description: '',
+}
 
 describe('useCreateSnippetFromSelection', () => {
   beforeEach(() => {
@@ -57,17 +74,21 @@ describe('useCreateSnippetFromSelection', () => {
           '{{#rag.query#}}',
           '{{#source.result#}}',
         ].join(' '),
+        model: { provider: 'old-provider', name: 'old-model', mode: 'chat', completion_params: {} },
         model_selector: ['env', 'MODEL_NAME'],
       }),
     ]
     const edges: Edge[] = []
     const onClose = vi.fn()
 
-    const { result } = renderHook(() => useCreateSnippetFromSelection({
-      edges,
-      selectedNodes,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges,
+        environmentVariables: [llmEnvironmentVariable],
+        selectedNodes,
+        onClose,
+      }),
+    )
 
     act(() => {
       result.current.handleOpenCreateSnippet()
@@ -100,27 +121,90 @@ describe('useCreateSnippetFromSelection', () => {
         type: PipelineInputVarType.textInput,
         required: true,
       },
-      {
-        label: 'MODEL_NAME',
-        variable: 'MODEL_NAME',
-        type: PipelineInputVarType.textInput,
-        required: true,
-      },
     ])
-    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as Record<string, unknown> | undefined
+    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as
+      | Record<string, unknown>
+      | undefined
 
-    expect(nodeData?.prompt).toBe([
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.API_KEY#}}`,
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_name#}}`,
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_id#}}`,
-      '{{#rag.query#}}',
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.result#}}`,
-    ].join(' '))
-    expect(nodeData?.model_selector).toEqual([
-      SNIPPET_INPUT_FIELD_NODE_ID,
+    expect(nodeData?.prompt).toBe(
+      [
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.API_KEY#}}`,
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_name#}}`,
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_id#}}`,
+        '{{#rag.query#}}',
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.result#}}`,
+      ].join(' '),
+    )
+    expect(nodeData?.model_selector).toBeUndefined()
+    expect(nodeData?.model).toEqual({
+      provider: 'new-provider',
+      name: 'new-model',
+      mode: 'chat',
+      completion_params: { temperature: 0.8 },
+    })
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should preserve legacy non-environment model selectors', () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        model: {
+          provider: 'static-provider',
+          name: 'static-model',
+          mode: 'chat',
+          completion_params: {},
+        },
+        model_selector: ['start', 'MODEL_NAME'],
+      }),
+    ]
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose: vi.fn(),
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
+    expect(dialogProps.inputFields).toEqual([])
+    expect((dialogProps.selectedGraph?.nodes[0]?.data as LLMNodeType).model_selector).toEqual([
+      'start',
       'MODEL_NAME',
     ])
-    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should reject an unresolved LLM environment model when creating a snippet', () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        model: {
+          provider: 'stale-provider',
+          name: 'stale-model',
+          mode: 'chat',
+          completion_params: {},
+        },
+        model_selector: [],
+      }),
+    ]
+    const onClose = vi.fn()
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    expect(toast.error).toHaveBeenCalled()
+    expect(mockHandleOpenCreateSnippetDialog).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should convert system variables used by if-else and variable aggregator nodes', () => {
@@ -131,15 +215,19 @@ describe('useCreateSnippetFromSelection', () => {
       }),
       createNode('if-else', {
         type: BlockEnum.IfElse,
-        cases: [{
-          case_id: 'case-1',
-          conditions: [{
-            id: 'condition-1',
-            variable_selector: ['sys', 'query'],
-            comparison_operator: 'contains',
-            value: 'hello',
-          }],
-        }],
+        cases: [
+          {
+            case_id: 'case-1',
+            conditions: [
+              {
+                id: 'condition-1',
+                variable_selector: ['sys', 'query'],
+                comparison_operator: 'contains',
+                value: 'hello',
+              },
+            ],
+          },
+        ],
       }),
       createNode('variable-aggregator', {
         type: BlockEnum.VariableAggregator,
@@ -149,23 +237,26 @@ describe('useCreateSnippetFromSelection', () => {
         ],
         advanced_settings: {
           group_enabled: true,
-          groups: [{
-            groupId: 'group-1',
-            group_name: 'Group1',
-            variables: [
-              ['sys', 'workflow_id'],
-            ],
-          }],
+          groups: [
+            {
+              groupId: 'group-1',
+              group_name: 'Group1',
+              variables: [['sys', 'workflow_id']],
+            },
+          ],
         },
       }),
     ]
     const onClose = vi.fn()
 
-    const { result } = renderHook(() => useCreateSnippetFromSelection({
-      edges: [],
-      selectedNodes,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
 
     act(() => {
       result.current.handleOpenCreateSnippet()
@@ -194,23 +285,29 @@ describe('useCreateSnippetFromSelection', () => {
       },
     ])
 
-    const ifElseNode = dialogProps.selectedGraph?.nodes.find(node => node.id === 'if-else')
-    const aggregatorNode = dialogProps.selectedGraph?.nodes.find(node => node.id === 'variable-aggregator')
+    const ifElseNode = dialogProps.selectedGraph?.nodes.find((node) => node.id === 'if-else')
+    const aggregatorNode = dialogProps.selectedGraph?.nodes.find(
+      (node) => node.id === 'variable-aggregator',
+    )
     const ifElseData = ifElseNode?.data as Record<string, unknown>
     const aggregatorData = aggregatorNode?.data as {
       variables?: string[][]
       advanced_settings?: { groups?: Array<{ variables?: string[][] }> }
     }
 
-    expect(ifElseData.cases).toEqual([{
-      case_id: 'case-1',
-      conditions: [{
-        id: 'condition-1',
-        variable_selector: [SNIPPET_INPUT_FIELD_NODE_ID, 'query'],
-        comparison_operator: 'contains',
-        value: 'hello',
-      }],
-    }])
+    expect(ifElseData.cases).toEqual([
+      {
+        case_id: 'case-1',
+        conditions: [
+          {
+            id: 'condition-1',
+            variable_selector: [SNIPPET_INPUT_FIELD_NODE_ID, 'query'],
+            comparison_operator: 'contains',
+            value: 'hello',
+          },
+        ],
+      },
+    ])
     expect(aggregatorData.variables).toEqual([
       [SNIPPET_INPUT_FIELD_NODE_ID, 'files'],
       ['llm', 'text'],
@@ -233,11 +330,14 @@ describe('useCreateSnippetFromSelection', () => {
     ]
     const onClose = vi.fn()
 
-    const { result } = renderHook(() => useCreateSnippetFromSelection({
-      edges: [],
-      selectedNodes,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
 
     act(() => {
       result.current.handleOpenCreateSnippet()

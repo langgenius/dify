@@ -13,7 +13,7 @@ src/commands/
   <topic>/
     <verb>/
       index.ts        ← command class (extends DifyCommand; the ONLY file the registry discovers)
-      run.ts          ← business logic (not a command, invisible to the registry)
+      run.ts          ← optional behavior owner (not a command, invisible to the registry)
       handlers.ts     ← helpers
       guide.ts        ← agent guide string (optional)
       *.test.ts       ← tests
@@ -23,7 +23,7 @@ src/commands/
       <shared>.ts
 ```
 
-The registry generator (`pnpm tree:gen` → `src/commands/tree.ts`) discovers
+The registry generator (`pnpm tree:gen` → `src/commands/tree.generated.ts`) discovers
 commands only via `**/index.+(js|cjs|mjs|ts)`. All other files in command
 folders are invisible to the registry — add freely without glob exclusions.
 Folders prefixed with `_` (e.g. `_shared/`, `_strategies/`) are excluded from
@@ -32,12 +32,13 @@ registry discovery and from coverage checks.
 ## Adding a new command
 
 1. Create `src/commands/<topic>/<verb>/index.ts` extending `DifyCommand`.
-1. Add business logic in sibling files (e.g. `run.ts`, `handlers.ts`).
+1. Keep small owner-local behavior in `index.ts`; extract sibling modules such as `run.ts` or `handlers.ts` when logic needs independent tests, reuse, or a clearer owner.
 1. Run `pnpm tree:gen` to regenerate the command tree (also runs implicitly via `prebuild`/`predev`/`pretest`).
 1. Run `pnpm test` to verify coverage.
 
 ## Adding an agent guide
 
+<!-- prettier-ignore -->
 1. Create `src/commands/<topic>/<verb>/guide.ts` exporting a plain string:
    ```ts
    export const agentGuide = `
@@ -53,7 +54,9 @@ registry discovery and from coverage checks.
    import { agentGuide } from './guide.js'
 
    export default class MyCmd extends DifyCommand {
-     static agentGuide = agentGuide
+     override agentGuide(): string {
+       return agentGuide
+     }
    }
    ```
 1. The guide appears at the bottom of `difyctl <cmd> --help` automatically.

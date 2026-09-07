@@ -23,8 +23,10 @@ export function shortVersion(): string {
 
 export function longVersion(): string {
   const { version, commit, buildDate, channel } = versionInfo
-  return `difyctl ${version} (commit ${commit.slice(0, 7)}, built ${buildDate}, channel ${channel})\n`
-    + `compat: ${compatString()}`
+  return (
+    `difyctl ${version} (commit ${commit.slice(0, 7)}, built ${buildDate}, channel ${channel})\n` +
+    `compat: ${compatString()}`
+  )
 }
 
 export function userAgent(): string {

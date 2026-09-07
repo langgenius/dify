@@ -1,5 +1,5 @@
-import type * as React from 'react'
 import type { TriggerOption } from '../test-run-menu'
+import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TriggerType } from '../test-run-menu'
@@ -9,33 +9,6 @@ import {
   SingleOptionTrigger,
   useShortcutMenu,
 } from '../test-run-menu-helpers'
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
-  const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
-
-  const useDropdownMenuContext = () => {
-    const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
-    return context
-  }
-
-  return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
-      <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div>{children}</div>
-      </DropdownMenuContext>
-    ),
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => {
-      const { open } = useDropdownMenuContext()
-      return open ? <div>{children}</div> : null
-    },
-    DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement>, className?: string }) => (
-      <button type="button" className={className} onClick={onClick}>{children}</button>
-    ),
-  }
-})
 
 const createOption = (overrides: Partial<TriggerOption> = {}): TriggerOption => ({
   id: 'user-input',
@@ -60,11 +33,11 @@ describe('test-run-menu helpers', () => {
     expect(getNormalizedShortcutKey(new KeyboardEvent('keydown', { key: '1' }))).toBe('1')
 
     render(
-      <OptionRow
-        option={option}
-        shortcutKey="1"
-        onSelect={onSelect}
-      />,
+      <DropdownMenu open>
+        <DropdownMenuContent>
+          <OptionRow option={option} shortcutKey="1" onSelect={onSelect} />
+        </DropdownMenuContent>
+      </DropdownMenu>,
     )
 
     expect(screen.getByText('1')).toBeInTheDocument()
@@ -78,13 +51,17 @@ describe('test-run-menu helpers', () => {
     const handleSelect = vi.fn()
     const option = createOption({ id: 'run-all', type: TriggerType.All, name: 'Run All' })
 
-    const { rerender, unmount } = renderHook(({ open }) => useShortcutMenu({
-      open,
-      shortcutMappings: [{ option, shortcutKey: '~' }],
-      handleSelect,
-    }), {
-      initialProps: { open: true },
-    })
+    const { rerender, unmount } = renderHook(
+      ({ open }) =>
+        useShortcutMenu({
+          open,
+          shortcutMappings: [{ option, shortcutKey: '~' }],
+          handleSelect,
+        }),
+      {
+        initialProps: { open: true },
+      },
+    )
 
     fireEvent.keyDown(window, { key: '`' })
     fireEvent.keyDown(window, { key: '`', altKey: true })
@@ -112,9 +89,7 @@ describe('test-run-menu helpers', () => {
     const originalOnClick = vi.fn()
 
     const { rerender } = render(
-      <SingleOptionTrigger runSoleOption={runSoleOption}>
-        Open directly
-      </SingleOptionTrigger>,
+      <SingleOptionTrigger runSoleOption={runSoleOption}>Open directly</SingleOptionTrigger>,
     )
 
     await user.click(screen.getByText('Open directly'))

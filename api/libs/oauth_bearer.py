@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.rate_limit import enforce_bearer_rate_limit
@@ -317,6 +318,14 @@ AUDIT_OAUTH_EXPIRED = "oauth.token_expired"
 ScopeVariant = Literal["account", "external_sso"]
 
 
+class _TokenCacheClient(Protocol):
+    def delete(self, *names: str | bytes) -> object: ...
+
+
+def invalidate_oauth_token_cache(client: _TokenCacheClient, token_hash: str) -> None:
+    client.delete(TOKEN_CACHE_KEY_FMT.format(hash=token_hash))
+
+
 class OAuthAccessTokenResolver:
     """``.for_account()`` / ``.for_external_sso()`` are variant-scoped views
     sharing DB + cache plumbing.
@@ -384,7 +393,7 @@ class OAuthAccessTokenResolver:
                 row_id,
                 extra={"audit": True, "token_id": str(row_id)},
             )
-        self._redis.delete(self._cache_key(token_hash))
+        invalidate_oauth_token_cache(self._redis, token_hash)
         self.cache_set_negative(token_hash)
 
 
@@ -531,7 +540,7 @@ def require_workspace_member(ctx: AuthContext, tenant_id: str) -> None:
     No-op on EE (gateway RBAC owns tenant isolation) and for SSO subjects
     (no `tenant_account_joins` row by definition).
     """
-    if dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
         return
     if ctx.subject_type != SubjectType.ACCOUNT or ctx.account_id is None:
         return

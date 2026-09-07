@@ -5,10 +5,7 @@ type DatasetCardSkeletonProps = {
   count?: number
 }
 
-const DatasetCardSkeleton = ({
-  label,
-  count = 6,
-}: DatasetCardSkeletonProps) => (
+const DatasetCardSkeleton = ({ label, count = 6 }: DatasetCardSkeletonProps) => (
   <div className="contents" role="status" aria-label={label} aria-live="polite">
     {Array.from({ length: count }, (_, index) => (
       <div

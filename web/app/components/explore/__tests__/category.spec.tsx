@@ -72,9 +72,17 @@ describe('Category', () => {
     it('should render categories as a radio group', () => {
       renderComponent({ value: 'Writing' })
 
-      expect(screen.getByRole('radiogroup', { name: 'explore.tryApp.category' })).toHaveClass('bg-transparent')
-      expect(screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })).toHaveAttribute('aria-checked', 'false')
-      expect(screen.getByRole('radio', { name: 'explore.category.Writing' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('radiogroup', { name: 'explore.tryApp.category' })).toHaveClass(
+        'bg-transparent',
+      )
+      expect(screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
+      expect(screen.getByRole('radio', { name: 'explore.category.Writing' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
   })
 })

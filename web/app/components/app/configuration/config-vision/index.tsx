@@ -22,44 +22,46 @@ import ParamConfig from './param-config'
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
-  const file = useFeatures(s => s.features.file)
+  const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
 
   const isImageEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.image) ?? false
 
-  const handleChange = useCallback((value: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (value: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      if (value) {
-        draft.file!.allowed_file_types = Array.from(new Set([
-          ...(draft.file?.allowed_file_types || []),
-          SupportUploadFileTypes.image,
-          ...(isAllowVideoUpload ? [SupportUploadFileTypes.video] : []),
-        ]))
-      }
-      else {
-        draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
-          type => type !== SupportUploadFileTypes.image && (isAllowVideoUpload ? type !== SupportUploadFileTypes.video : true),
-        )
-      }
-
-      if (draft.file) {
-        draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
-        draft.file.image = {
-          ...draft.file.image,
-          enabled: value,
+      const newFeatures = produce(features, (draft) => {
+        if (value) {
+          draft.file!.allowed_file_types = Array.from(
+            new Set([
+              ...(draft.file?.allowed_file_types || []),
+              SupportUploadFileTypes.image,
+              ...(isAllowVideoUpload ? [SupportUploadFileTypes.video] : []),
+            ]),
+          )
+        } else {
+          draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
+            (type) =>
+              type !== SupportUploadFileTypes.image &&
+              (isAllowVideoUpload ? type !== SupportUploadFileTypes.video : true),
+          )
         }
-      }
-    })
-    setFeatures(newFeatures)
-  }, [featuresStore, isAllowVideoUpload])
 
-  if (!isShowVisionConfig || (readonly && !isImageEnabled))
-    return null
+        if (draft.file) {
+          draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
+          draft.file.image = {
+            ...draft.file.image,
+            enabled: value,
+          }
+        }
+      })
+      setFeatures(newFeatures)
+    },
+    [featuresStore, isAllowVideoUpload],
+  )
+
+  if (!isShowVisionConfig || (readonly && !isImageEnabled)) return null
 
   return (
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
@@ -69,63 +71,66 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">
+          {t(($) => $['vision.name'], { ns: 'appDebug' })}
+        </div>
         <Infotip
-          aria-label={t('vision.description', { ns: 'appDebug' })}
+          aria-label={t(($) => $['vision.description'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t('vision.description', { ns: 'appDebug' })}
+          {t(($) => $['vision.description'], { ns: 'appDebug' })}
         </Infotip>
       </div>
       <div className="flex shrink-0 items-center">
-        {readonly
-          ? (
-              <>
-                <div className="mr-2 flex items-center gap-0.5">
-                  <div className="system-xs-medium-uppercase text-text-tertiary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
-                  <Infotip
-                    aria-label={t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' })}
-                    popupClassName="w-[180px]"
-                  >
-                    {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
-                      <div key={item}>{item}</div>
-                    ))}
-                  </Infotip>
-                </div>
-                <div className="flex items-center gap-1">
-                  <OptionCard
-                    title={t('vision.visionSettings.high', { ns: 'appDebug' })}
-                    selected={file?.image?.detail === Resolution.high}
-                    onSelect={noop}
-                    className={cn(
-                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
-                      file?.image?.detail !== Resolution.high && 'hover:border-components-option-card-option-border',
-                    )}
-                  />
-                  <OptionCard
-                    title={t('vision.visionSettings.low', { ns: 'appDebug' })}
-                    selected={file?.image?.detail === Resolution.low}
-                    onSelect={noop}
-                    className={cn(
-                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
-                      file?.image?.detail !== Resolution.low && 'hover:border-components-option-card-option-border',
-                    )}
-                  />
-                </div>
-              </>
-            )
-          : (
-              <>
-                <ParamConfig />
-                <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
-                <Switch
-                  checked={isImageEnabled}
-                  onCheckedChange={handleChange}
-                  size="md"
-                />
-              </>
-            )}
-
+        {readonly ? (
+          <>
+            <div className="mr-2 flex items-center gap-0.5">
+              <div className="system-xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+              </div>
+              <Infotip
+                aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                  ns: 'appDebug',
+                })}
+                popupClassName="w-[180px]"
+              >
+                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
+                  .split('\n')
+                  .map((item) => (
+                    <div key={item}>{item}</div>
+                  ))}
+              </Infotip>
+            </div>
+            <div className="flex items-center gap-1">
+              <OptionCard
+                title={t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' })}
+                selected={file?.image?.detail === Resolution.high}
+                onSelect={noop}
+                className={cn(
+                  'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
+                  file?.image?.detail !== Resolution.high &&
+                    'hover:border-components-option-card-option-border',
+                )}
+              />
+              <OptionCard
+                title={t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' })}
+                selected={file?.image?.detail === Resolution.low}
+                onSelect={noop}
+                className={cn(
+                  'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
+                  file?.image?.detail !== Resolution.low &&
+                    'hover:border-components-option-card-option-border',
+                )}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <ParamConfig />
+            <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
+            <Switch checked={isImageEnabled} onCheckedChange={handleChange} size="md" />
+          </>
+        )}
       </div>
     </div>
   )

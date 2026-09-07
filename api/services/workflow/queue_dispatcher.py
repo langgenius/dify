@@ -10,6 +10,7 @@ with appropriate queue routing and priority assignment.
 from enum import StrEnum
 
 from configs import dify_config
+from enums import DeploymentEdition
 from services.billing_service import BillingService
 
 
@@ -92,7 +93,7 @@ class QueueDispatcherManager:
         Returns:
             Appropriate queue dispatcher instance
         """
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 billing_info = BillingService.get_info(tenant_id)
                 plan = billing_info.get("subscription", {}).get("plan", "sandbox")
@@ -100,7 +101,7 @@ class QueueDispatcherManager:
                 # If billing service fails, default to sandbox
                 plan = "sandbox"
         else:
-            # If billing is disabled, use team tier as default
+            # Self-hosted editions use the team queue by default.
             plan = "team"
 
         dispatcher_class = cls.PLAN_DISPATCHER_MAP.get(

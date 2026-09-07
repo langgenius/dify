@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiGlobalLine } from '@remixicon/react'
-
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_REQUEST_URL_BLOCK_COMMAND } from './index'
@@ -10,22 +9,22 @@ type RequestURLBlockComponentProps = {
   nodeKey: string
 }
 
-const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
-  nodeKey,
-}) => {
+const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({ nodeKey }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_REQUEST_URL_BLOCK_COMMAND)
 
   return (
     <div
       className={cn(
-        'group/wrap relative mx-0.5 flex h-[18px] items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 select-none hover:border-[#7839ee]',
+        'group/wrap relative mx-0.5 flex h-4.5 items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 select-none hover:border-[#7839ee]',
         isSelected && 'border-[#7839ee]! hover:border-[#7839ee]!',
       )}
       ref={ref}
     >
       <RiGlobalLine className="mr-0.5 size-3.5 text-util-colors-violet-violet-600" />
-      <div className="system-xs-medium text-util-colors-violet-violet-600">{t('promptEditor.requestURL.item.title', { ns: 'common' })}</div>
+      <div className="system-xs-medium text-util-colors-violet-violet-600">
+        {t(($) => $['promptEditor.requestURL.item.title'], { ns: 'common' })}
+      </div>
     </div>
   )
 }

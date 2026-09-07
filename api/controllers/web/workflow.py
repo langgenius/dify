@@ -14,6 +14,7 @@ from controllers.web.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
@@ -30,6 +31,9 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -76,7 +80,10 @@ class WorkflowRunApi(WebApiResource):
                 streaming=True,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -129,4 +136,4 @@ class WorkflowTaskStopApi(WebApiResource):
         # New graph engine command channel mechanism
         GraphEngineManager(redis_client).send_stop_command(task_id)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

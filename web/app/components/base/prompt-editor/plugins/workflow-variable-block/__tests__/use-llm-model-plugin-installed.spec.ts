@@ -6,8 +6,9 @@ import { useLlmModelPluginInstalled } from '../use-llm-model-plugin-installed'
 let mockModelProviders: Array<{ provider: string }> = []
 
 vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: <T>(selector: (state: { modelProviders: Array<{ provider: string }> }) => T): T =>
-    selector({ modelProviders: mockModelProviders }),
+  useProviderContextSelector: <T>(
+    selector: (state: { modelProviders: Array<{ provider: string }> }) => T,
+  ): T => selector({ modelProviders: mockModelProviders }),
 }))
 
 const createWorkflowNodesMap = (node: Record<string, unknown>): WorkflowNodesMap =>
@@ -17,7 +18,7 @@ const createWorkflowNodesMap = (node: Record<string, unknown>): WorkflowNodesMap
       type: BlockEnum.Start,
       ...node,
     },
-  } as unknown as WorkflowNodesMap)
+  }) as unknown as WorkflowNodesMap
 
 describe('useLlmModelPluginInstalled', () => {
   beforeEach(() => {
@@ -59,9 +60,7 @@ describe('useLlmModelPluginInstalled', () => {
   })
 
   it('should return false when the matching model plugin is not installed', () => {
-    mockModelProviders = [
-      { provider: 'langgenius/anthropic/claude' },
-    ]
+    mockModelProviders = [{ provider: 'langgenius/anthropic/claude' }]
     const workflowNodesMap = createWorkflowNodesMap({
       id: 'target',
       type: BlockEnum.LLM,

@@ -5,17 +5,18 @@ import CustomConnectionLine from '../custom-connection-line'
 
 const createConnectionLineProps = (
   overrides: Partial<ComponentProps<typeof CustomConnectionLine>> = {},
-): ComponentProps<typeof CustomConnectionLine> => ({
-  fromX: 10,
-  fromY: 20,
-  toX: 70,
-  toY: 80,
-  fromPosition: Position.Right,
-  toPosition: Position.Left,
-  connectionLineType: undefined,
-  connectionStatus: null,
-  ...overrides,
-} as ComponentProps<typeof CustomConnectionLine>)
+): ComponentProps<typeof CustomConnectionLine> =>
+  ({
+    fromX: 10,
+    fromY: 20,
+    toX: 70,
+    toY: 80,
+    fromPosition: Position.Right,
+    toPosition: Position.Left,
+    connectionLineType: undefined,
+    connectionStatus: null,
+    ...overrides,
+  }) as ComponentProps<typeof CustomConnectionLine>
 
 describe('CustomConnectionLine', () => {
   it('should render the bezier path and target marker', () => {

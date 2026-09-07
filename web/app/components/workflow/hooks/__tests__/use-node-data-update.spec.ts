@@ -5,7 +5,8 @@ import { WorkflowRunningStatus } from '../../types'
 import { useNodeDataUpdate } from '../use-node-data-update'
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 describe('useNodeDataUpdate', () => {
   beforeEach(() => {

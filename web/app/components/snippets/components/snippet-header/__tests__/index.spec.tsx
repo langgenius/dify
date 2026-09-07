@@ -84,13 +84,7 @@ describe('SnippetHeader', () => {
 
   it('should show publish loading state while publishing', () => {
     render(
-      <SnippetHeader
-        snippetId="snippet-1"
-        canSave
-        canEdit
-        isPublishing
-        onPublish={mockPublish}
-      />,
+      <SnippetHeader snippetId="snippet-1" canSave canEdit isPublishing onPublish={mockPublish} />,
     )
 
     expectLoadingButton(screen.getByRole('button', { name: /snippet\.publishButton/i }))

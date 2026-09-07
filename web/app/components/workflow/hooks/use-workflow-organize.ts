@@ -1,10 +1,7 @@
 import { useCallback } from 'react'
 import { useReactFlow } from 'reactflow'
 import { useWorkflowStore } from '../store'
-import {
-  getLayoutByELK,
-  getLayoutForChildNodes,
-} from '../utils/elk-layout'
+import { getLayoutByELK, getLayoutForChildNodes } from '../utils/elk-layout'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
@@ -25,25 +22,24 @@ export const useWorkflowOrganize = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleLayout = useCallback(async () => {
-    if (getNodesReadOnly())
-      return
+    if (getNodesReadOnly()) return
 
     workflowStore.setState({ nodeAnimation: true })
-    const {
-      nodes,
-      edges,
-      setNodes,
-    } = collaborativeWorkflow.getState()
+    const { nodes, edges, setNodes } = collaborativeWorkflow.getState()
     const parentNodes = getLayoutContainerNodes(nodes)
 
     const childLayoutEntries = await Promise.all(
-      parentNodes.map(async node => [node.id, await getLayoutForChildNodes(node.id, nodes, edges)] as const),
+      parentNodes.map(
+        async (node) => [node.id, await getLayoutForChildNodes(node.id, nodes, edges)] as const,
+      ),
     )
-    const childLayoutsMap = childLayoutEntries.reduce((acc, [nodeId, layout]) => {
-      if (layout)
-        acc[nodeId] = layout
-      return acc
-    }, {} as Record<string, NonNullable<Awaited<ReturnType<typeof getLayoutForChildNodes>>>>)
+    const childLayoutsMap = childLayoutEntries.reduce(
+      (acc, [nodeId, layout]) => {
+        if (layout) acc[nodeId] = layout
+        return acc
+      },
+      {} as Record<string, NonNullable<Awaited<ReturnType<typeof getLayoutForChildNodes>>>>,
+    )
 
     const nodesWithUpdatedSizes = applyContainerSizeChanges(
       nodes,
@@ -63,7 +59,14 @@ export const useWorkflowOrganize = () => {
     setTimeout(() => {
       handleSyncWorkflowDraft()
     })
-  }, [getNodesReadOnly, handleSyncWorkflowDraft, reactflow, saveStateToHistory, collaborativeWorkflow, workflowStore])
+  }, [
+    getNodesReadOnly,
+    handleSyncWorkflowDraft,
+    reactflow,
+    saveStateToHistory,
+    collaborativeWorkflow,
+    workflowStore,
+  ])
 
   return {
     handleLayout,

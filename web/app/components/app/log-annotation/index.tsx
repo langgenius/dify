@@ -13,10 +13,8 @@ type Props = Readonly<{
   pageType: PageType
 }>
 
-const LogAnnotation: FC<Props> = ({
-  pageType,
-}) => {
-  const appDetail = useAppStore(state => state.appDetail)
+const LogAnnotation: FC<Props> = ({ pageType }) => {
+  const appDetail = useAppStore((state) => state.appDetail)
 
   if (!appDetail) {
     return (
@@ -29,9 +27,13 @@ const LogAnnotation: FC<Props> = ({
   return (
     <div className="flex h-full flex-col px-6 pt-3">
       <div className="h-0 grow">
-        {pageType === PageType.log && appDetail.mode !== AppModeEnum.WORKFLOW && (<Log appDetail={appDetail} />)}
-        {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
-        {pageType === PageType.log && appDetail.mode === AppModeEnum.WORKFLOW && (<WorkflowLog appDetail={appDetail} />)}
+        {pageType === PageType.log && appDetail.mode !== AppModeEnum.WORKFLOW && (
+          <Log appDetail={appDetail} />
+        )}
+        {pageType === PageType.annotation && <Annotation appDetail={appDetail} />}
+        {pageType === PageType.log && appDetail.mode === AppModeEnum.WORKFLOW && (
+          <WorkflowLog appDetail={appDetail} />
+        )}
       </div>
     </div>
   )

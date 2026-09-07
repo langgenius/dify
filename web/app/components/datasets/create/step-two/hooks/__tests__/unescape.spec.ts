@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import unescape from '../unescape'
 
 describe('unescape', () => {
@@ -35,8 +35,8 @@ describe('unescape', () => {
     expect(unescape('\\\\')).toBe('\\')
   })
 
-  it('should unescape \\\'  to single quote', () => {
-    expect(unescape('\\\'')).toBe('\'')
+  it("should unescape \\'  to single quote", () => {
+    expect(unescape("\\'")).toBe("'")
   })
 
   it('should unescape \\" to double quote', () => {

@@ -11,12 +11,7 @@ type Props = Readonly<{
   onCancel: () => void
 }>
 
-const AddInputField: FC<Props> = ({
-  nodeId,
-  unavailableVariableNames,
-  onSave,
-  onCancel,
-}) => {
+const AddInputField: FC<Props> = ({ nodeId, unavailableVariableNames, onSave, onCancel }) => {
   return (
     <InputField
       nodeId={nodeId}

@@ -2,16 +2,6 @@ import sys
 import types
 from typing import cast
 
-import pytest
-from pydantic import BaseModel
-
-
-if "pydantic_settings" not in sys.modules:
-    pydantic_settings = types.ModuleType("pydantic_settings")
-    pydantic_settings.BaseSettings = BaseModel
-    pydantic_settings.SettingsConfigDict = dict
-    sys.modules["pydantic_settings"] = pydantic_settings
-
 if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     graphon_module = types.ModuleType("graphon")
     model_runtime_module = types.ModuleType("graphon.model_runtime")
@@ -19,8 +9,8 @@ if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     llm_entities_module = types.ModuleType("graphon.model_runtime.entities.llm_entities")
     message_entities_module = types.ModuleType("graphon.model_runtime.entities.message_entities")
 
-    llm_entities_module.LLMResultChunk = type("LLMResultChunk", (), {})
-    llm_entities_module.LLMUsage = type("LLMUsage", (), {})
+    setattr(llm_entities_module, "LLMResultChunk", type("LLMResultChunk", (), {}))
+    setattr(llm_entities_module, "LLMUsage", type("LLMUsage", (), {}))
 
     for name in (
         "AssistantPromptMessage",
@@ -44,10 +34,10 @@ if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     sys.modules["graphon.model_runtime.entities.llm_entities"] = llm_entities_module
     sys.modules["graphon.model_runtime.entities.message_entities"] = message_entities_module
 
-    graphon_module.model_runtime = model_runtime_module
-    model_runtime_module.entities = entities_module
-    entities_module.llm_entities = llm_entities_module
-    entities_module.message_entities = message_entities_module
+    setattr(graphon_module, "model_runtime", model_runtime_module)
+    setattr(model_runtime_module, "entities", entities_module)
+    setattr(entities_module, "llm_entities", llm_entities_module)
+    setattr(entities_module, "message_entities", message_entities_module)
 
 if "jsonschema" not in sys.modules:
     jsonschema_module = types.ModuleType("jsonschema")
@@ -75,24 +65,27 @@ if "jsonschema" not in sys.modules:
     def _validator_for(schema):
         return _Validator
 
-    jsonschema_module.SchemaError = _SchemaError
-    jsonschema_exceptions_module.ValidationError = _ValidationError
-    jsonschema_protocols_module.Validator = _Validator
-    jsonschema_validators_module.validator_for = _validator_for
+    setattr(jsonschema_module, "SchemaError", _SchemaError)
+    setattr(jsonschema_exceptions_module, "ValidationError", _ValidationError)
+    setattr(jsonschema_protocols_module, "Validator", _Validator)
+    setattr(jsonschema_validators_module, "validator_for", _validator_for)
 
     sys.modules["jsonschema"] = jsonschema_module
     sys.modules["jsonschema.exceptions"] = jsonschema_exceptions_module
     sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
     sys.modules["jsonschema.validators"] = jsonschema_validators_module
 
-from dify_agent.adapters.shell.config import ShellAdapterSettings
-from dify_agent.adapters.shell.protocols import ShellProviderProtocol
+from dify_agent.layers.config import DIFY_CONFIG_LAYER_TYPE_ID, DifyConfigLayerConfig
+from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.runtime_backend import ExecutionBindingBackend, HomeSnapshotBackend, RuntimeBackendProfile
 
 
 class FakeProvider:
@@ -102,54 +95,40 @@ class FakeProvider:
         raise AssertionError("create should not be called by these tests")
 
 
-def test_default_layer_providers_register_shell_layer_with_configured_token_factory(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured_settings: list[ShellAdapterSettings] = []
-    fake_provider = FakeProvider()
+def _runtime_backend_profile() -> RuntimeBackendProfile:
+    return RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, cast(object, FakeProvider())),
+        execution_bindings=cast(ExecutionBindingBackend, cast(object, FakeProvider())),
+    )
 
-    def fake_create_shell_provider(settings: ShellAdapterSettings) -> ShellProviderProtocol:
-        captured_settings.append(settings)
-        return cast(ShellProviderProtocol, fake_provider)
 
-    monkeypatch.setattr("dify_agent.adapters.shell.factory.create_shell_provider", fake_create_shell_provider)
+def test_default_layer_providers_register_config_layer() -> None:
+    providers = create_default_layer_providers()
+
+    config_provider = next(provider for provider in providers if provider.type_id == DIFY_CONFIG_LAYER_TYPE_ID)
+    config = DifyConfigLayerConfig(agent_id="agent-1")
+    layer = config_provider.create_layer(config)
+
+    assert isinstance(layer, DifyConfigLayer)
+    assert layer.type_id == DIFY_CONFIG_LAYER_TYPE_ID
+    assert layer.config == config
+
+
+def test_default_layer_providers_register_runtime_layer() -> None:
+    profile = _runtime_backend_profile()
 
     providers = create_default_layer_providers(
-        shellctl_entrypoint="http://shellctl.example",
-        shellctl_auth_token="shell-secret",
+        runtime_backend_profile=profile,
     )
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
     shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
+    runtime_provider = next(provider for provider in providers if provider.type_id == DIFY_RUNTIME_LAYER_TYPE_ID)
+    runtime_layer = runtime_provider.create_layer(DifyRuntimeLayerConfig(backend_binding_ref="binding-1"))
 
     assert isinstance(shell_layer, DifyShellLayer)
-    assert shell_layer.shell_provider is fake_provider
-    assert len(captured_settings) == 1
-    assert captured_settings[0].shellctl_entrypoint == "http://shellctl.example"
-    assert captured_settings[0].shellctl_auth_token == "shell-secret"
-
-
-def test_default_layer_providers_keep_empty_shellctl_token_by_default(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured_settings: list[ShellAdapterSettings] = []
-
-    def fake_create_shell_provider(settings: ShellAdapterSettings) -> ShellProviderProtocol:
-        captured_settings.append(settings)
-        return cast(ShellProviderProtocol, FakeProvider())
-
-    monkeypatch.setattr("dify_agent.adapters.shell.factory.create_shell_provider", fake_create_shell_provider)
-
-    providers = create_default_layer_providers(shellctl_entrypoint="http://shellctl.example")
-    shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
-    _ = shell_provider.create_layer(DifyShellLayerConfig())
-
-    assert len(captured_settings) == 1
-    assert captured_settings[0].shellctl_auth_token is None
-
-
-def test_shell_provider_rejects_blank_settings_entrypoint_when_default_providers_are_built() -> None:
-    with pytest.raises(ValueError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
-        _ = create_default_layer_providers(shellctl_entrypoint="   ")
+    assert isinstance(runtime_layer, DifyRuntimeLayer)
+    assert runtime_layer.backend is profile.execution_bindings
+    assert {provider.type_id for provider in providers} >= {"dify.runtime", "dify.shell"}
 
 
 def test_default_layer_providers_forward_agent_stub_token_factory() -> None:
@@ -164,7 +143,7 @@ def test_default_layer_providers_forward_agent_stub_token_factory() -> None:
         return f"token-for:{execution_context.tenant_id}:{session_id}"
 
     providers = create_default_layer_providers(
-        shellctl_entrypoint="http://shellctl.example",
+        runtime_backend_profile=_runtime_backend_profile(),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=build_agent_stub_token,
     )

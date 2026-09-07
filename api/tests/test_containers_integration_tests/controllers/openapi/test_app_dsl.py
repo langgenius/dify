@@ -51,7 +51,7 @@ def external_deps() -> Generator[dict[str, object], None, None]:
         patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
         patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
         patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-        patch("services.app_service.FeatureService") as mock_feature_service,
+        patch("services.app_service.SystemFeatureService") as mock_feature_service,
         patch("services.app_service.EnterpriseService") as mock_enterprise_service,
     ):
         mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -65,7 +65,7 @@ def external_deps() -> Generator[dict[str, object], None, None]:
         mock_model_instance.get_default_model_instance.return_value = None
         mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")
 
-        mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+        mock_feature_service.is_webapp_auth_enabled.return_value = False
         mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
         mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
@@ -74,8 +74,8 @@ def external_deps() -> Generator[dict[str, object], None, None]:
 
 def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, Account]:
     fake = Faker()
-    with patch("services.account_service.FeatureService") as mock_account_feature_service:
-        mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+    with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+        mock_account_feature_service.is_registration_allowed.return_value = True
         account = AccountService.create_account(
             email=fake.email(),
             name=fake.name(),
@@ -96,7 +96,7 @@ def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, A
             api_rph=100,
             api_rpm=10,
         )
-        app_model = AppService().create_app(tenant.id, app_args, account)
+        app_model = AppService().create_app(tenant.id, app_args, account, session=db_session)
     return app_model, account
 
 
@@ -167,7 +167,7 @@ class TestDslImportConfirm:
 
         api = AppDslImportConfirmApi()
         with app.test_request_context(
-            f"/openapi/v1/workspaces/{tenant.id}/apps/imports/{import_id}/confirm", method="POST"
+            f"/openapi/v1/workspaces/{tenant.id}/apps/imports/{import_id}:confirm", method="POST"
         ):
             result, code = unwrap(api.post)(
                 api, workspace_id=tenant.id, import_id=import_id, auth_data=auth_for(account)
@@ -198,7 +198,7 @@ class TestDslExport:
         db_session_with_containers.commit()
 
         api = AppDslExportApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/export"):
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
             response, code = unwrap(api.get)(
                 api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model), query=AppDslExportQuery()
             )
@@ -216,7 +216,7 @@ class TestDslExport:
         app_model, account = _app_and_account(db_session_with_containers, mode="workflow")
 
         api = AppDslExportApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/export"):
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
             result, code = unwrap(api.get)(
                 api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model), query=AppDslExportQuery()
             )
@@ -232,7 +232,7 @@ class TestDslCheckDependencies:
         app_model, account = _app_and_account(db_session_with_containers, mode="chat")
 
         api = AppDslCheckDependenciesApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/check-dependencies"):
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies:check"):
             result, code = unwrap(api.get)(api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model))
 
         assert code == 200

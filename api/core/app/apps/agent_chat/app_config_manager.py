@@ -2,6 +2,8 @@ import uuid
 from collections.abc import Mapping
 from typing import Any, cast
 
+from sqlalchemy.orm import Session
+
 from core.agent.entities import AgentEntity
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
@@ -20,7 +22,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.entities.agent_entities import PlanningStrategy
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
 OLD_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
 
@@ -41,6 +43,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         app_model_config: AppModelConfig,
         conversation: Conversation | None = None,
         override_config_dict: AppModelConfigDict | None = None,
+        *,
+        annotation_reply: AnnotationReplyConfig | None,
     ) -> AgentChatAppConfig:
         """
         Convert app model config to agent chat app config
@@ -58,7 +62,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
 
         if config_from != EasyUIBasedAppModelConfigFrom.ARGS:
-            app_model_config_dict = app_model_config.to_dict()
+            app_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
             config_dict = app_model_config_dict.copy()
         else:
             if not override_config_dict:
@@ -88,7 +92,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]) -> AppModelConfigDict:
+    def config_validate(cls, tenant_id: str, config: Mapping[str, Any], session: Session) -> AppModelConfigDict:
         """
         Validate for agent chat app model config
 
@@ -116,7 +120,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         related_config_keys.extend(current_related_config_keys)
 
         # agent_mode
-        config, current_related_config_keys = cls.validate_agent_mode_and_set_defaults(tenant_id, config)
+        config, current_related_config_keys = cls.validate_agent_mode_and_set_defaults(tenant_id, config, session)
         related_config_keys.extend(current_related_config_keys)
 
         # opening_statement
@@ -144,7 +148,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         # dataset configs
         # dataset_query_variable
         config, current_related_config_keys = DatasetConfigManager.validate_and_set_defaults(
-            tenant_id, app_mode, config
+            tenant_id, app_mode, config, session
         )
         related_config_keys.extend(current_related_config_keys)
 
@@ -163,7 +167,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
 
     @classmethod
     def validate_agent_mode_and_set_defaults(
-        cls, tenant_id: str, config: dict[str, Any]
+        cls, tenant_id: str, config: dict[str, Any], session: Session
     ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate agent_mode and set defaults for agent feature
@@ -220,7 +224,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
                     except ValueError:
                         raise ValueError("id in dataset must be of UUID type")
 
-                    if not DatasetConfigManager.is_dataset_exists(tenant_id, tool_item["id"]):
+                    if not DatasetConfigManager.is_dataset_exists(tenant_id, tool_item["id"], session):
                         raise ValueError("Dataset ID does not exist, please check your permission.")
             else:
                 # latest style, use key-value pair

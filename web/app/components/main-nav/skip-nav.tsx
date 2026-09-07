@@ -6,17 +6,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 export const MAIN_CONTENT_ID = 'main-content'
 const MAIN_CONTENT_HREF = `#${MAIN_CONTENT_ID}`
 
-export function SkipNav({
-  className,
-  children,
-  onClick,
-  ...props
-}: ComponentProps<'a'>) {
+export function SkipNav({ className, children, onClick, ...props }: ComponentProps<'a'>) {
   const handleClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
     onClick?.(event)
 
-    if (event.defaultPrevented)
-      return
+    if (event.defaultPrevented) return
 
     document.getElementById(MAIN_CONTENT_ID)?.focus()
   }

@@ -3,16 +3,20 @@ import format from '..'
 
 type ExecutionMetadata = NonNullable<NodeTracing['execution_metadata']>
 
-const createExecutionMetadata = (overrides: Partial<ExecutionMetadata> = {}): ExecutionMetadata => ({
+const createExecutionMetadata = (
+  overrides: Partial<ExecutionMetadata> = {},
+): ExecutionMetadata => ({
   total_tokens: 0,
   total_price: 0,
   currency: 'USD',
   ...overrides,
 })
 
-const createTrace = (overrides: Omit<Partial<NodeTracing>, 'execution_metadata'> & {
-  execution_metadata?: Partial<ExecutionMetadata>
-}): NodeTracing => {
+const createTrace = (
+  overrides: Omit<Partial<NodeTracing>, 'execution_metadata'> & {
+    execution_metadata?: Partial<ExecutionMetadata>
+  },
+): NodeTracing => {
   const { execution_metadata, ...rest } = overrides
 
   return {

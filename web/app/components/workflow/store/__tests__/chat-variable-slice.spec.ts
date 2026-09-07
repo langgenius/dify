@@ -59,7 +59,9 @@ describe('Chat Variable Slice', () => {
   describe('setConversationVariables', () => {
     it('should update conversationVariables', () => {
       const store = createStore()
-      const vars: ConversationVariable[] = [{ id: 'cv1', name: 'history', value: [], value_type: ChatVarType.String, description: '' }]
+      const vars: ConversationVariable[] = [
+        { id: 'cv1', name: 'history', value: [], value_type: ChatVarType.String, description: '' },
+      ]
       store.getState().setConversationVariables(vars)
       expect(store.getState().conversationVariables).toEqual(vars)
     })

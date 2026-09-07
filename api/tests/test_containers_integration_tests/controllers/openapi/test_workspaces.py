@@ -24,7 +24,7 @@ class TestWorkspacesList:
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            result = unwrap(api.get)(api, auth_data=auth_for(account))
+            result = unwrap(api.get)(api, db_session_with_containers, auth_data=auth_for(account))
 
         ids = {w.id for w in result.workspaces}
         assert ids == {owner_tenant.id}
@@ -45,7 +45,7 @@ class TestWorkspacesList:
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            result = unwrap(api.get)(api, auth_data=auth_for(account))
+            result = unwrap(api.get)(api, db_session_with_containers, auth_data=auth_for(account))
 
         assert {w.id for w in result.workspaces} == {owner_tenant.id, second.id}
 
@@ -60,7 +60,9 @@ class TestWorkspaceDetail:
 
         api = WorkspaceByIdApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}"):
-            detail = unwrap(api.get)(api, workspace_id=tenant.id, auth_data=auth_for(account))
+            detail = unwrap(api.get)(
+                api, db_session_with_containers, workspace_id=tenant.id, auth_data=auth_for(account)
+            )
 
         assert detail.id == tenant.id
         assert detail.role == TenantAccountRole.OWNER.value
@@ -80,7 +82,9 @@ class TestWorkspaceDetail:
         api = WorkspaceByIdApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{someone_elses_ws.id}"):
             with pytest.raises(NotFound):
-                unwrap(api.get)(api, workspace_id=someone_elses_ws.id, auth_data=auth_for(outsider))
+                unwrap(api.get)(
+                    api, db_session_with_containers, workspace_id=someone_elses_ws.id, auth_data=auth_for(outsider)
+                )
 
 
 class TestWorkspaceSwitch:
@@ -96,7 +100,9 @@ class TestWorkspaceSwitch:
 
         api = WorkspaceSwitchApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{target.id}/switch", method="POST"):
-            detail = unwrap(api.post)(api, workspace_id=target.id, auth_data=auth_for(account))
+            detail = unwrap(api.post)(
+                api, db_session_with_containers, workspace_id=target.id, auth_data=auth_for(account)
+            )
 
         # Response reflects the post-switch state.
         assert detail.id == target.id
@@ -105,7 +111,9 @@ class TestWorkspaceSwitch:
         # And the switch persisted: the previously-current owner workspace is no
         # longer current (verified through the real read path).
         with app.test_request_context("/openapi/v1/workspaces"):
-            listing = unwrap(WorkspacesApi().get)(WorkspacesApi(), auth_data=auth_for(account))
+            listing = unwrap(WorkspacesApi().get)(
+                WorkspacesApi(), db_session_with_containers, auth_data=auth_for(account)
+            )
         by_id = {w.id: w for w in listing.workspaces}
         assert by_id[target.id].current is True
         assert by_id[owner_tenant.id].current is False
@@ -118,6 +126,8 @@ class TestWorkspaceSwitch:
         assert outsider_ws is not None
 
         api = WorkspaceSwitchApi()
-        with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}/switch", method="POST"):
+        with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", method="POST"):
             with pytest.raises(NotFound):
-                unwrap(api.post)(api, workspace_id=outsider_ws.id, auth_data=auth_for(account))
+                unwrap(api.post)(
+                    api, db_session_with_containers, workspace_id=outsider_ws.id, auth_data=auth_for(account)
+                )

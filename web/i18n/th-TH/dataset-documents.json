@@ -13,6 +13,8 @@
   "embedding.segmentLength": "ความยาวของก้อน",
   "embedding.segments": "ย่อหน้า",
   "embedding.textCleaning": "การกําหนดข้อความล่วงหน้าและการทําความสะอาด",
+  "embedding.vectorSpaceEstimateExceeded.description": "ได้รับเอกสารแล้ว แต่พื้นที่จัดเก็บเวกเตอร์โดยประมาณคือ {{estimated}} MB ซึ่งเกินขีดจำกัดแพ็กเกจ {{limit}} MB จึงไม่มีการเขียนเวกเตอร์ หากมีเอกสารอื่นกำลังประมวลผลหรือเพิ่งประมวลผลล้มเหลว โปรดลองอีกครั้งภายหลัง มิฉะนั้น ให้ลดขนาดไฟล์หรือจำนวนชังก์",
+  "embedding.vectorSpaceEstimateExceeded.title": "พื้นที่จัดเก็บเวกเตอร์โดยประมาณหลังอัปโหลดเกินความจุของแพ็กเกจ",
   "embedding.waiting": "กำลังรอสัญญาณ...",
   "list.action.addButton": "เพิ่มก้อน",
   "list.action.archive": "หอจดหมายเหตุ",

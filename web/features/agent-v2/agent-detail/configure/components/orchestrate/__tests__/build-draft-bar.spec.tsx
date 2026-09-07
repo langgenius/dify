@@ -20,9 +20,7 @@ const changeSummary: AgentBuildDraftChangeSummary = {
     },
     { id: 'file-1', name: 'index.json', operation: 'added', icon: 'json' },
   ],
-  envVariables: [
-    { id: 'env-1', name: 'API_KEY', operation: 'updated' },
-  ],
+  envVariables: [{ id: 'env-1', name: 'API_KEY', operation: 'updated' }],
 }
 
 describe('AgentBuildDraftBar', () => {
@@ -31,17 +29,12 @@ describe('AgentBuildDraftBar', () => {
     const onApply = vi.fn()
     const onDiscard = vi.fn()
 
-    render(
-      <AgentBuildDraftBar
-        changesCount={1}
-        disabled
-        onApply={onApply}
-        onDiscard={onDiscard}
-      />,
-    )
+    render(<AgentBuildDraftBar changesCount={1} disabled onApply={onApply} onDiscard={onDiscard} />)
 
     const applyButton = screen.getByRole('button', { name: 'custom.apply' })
-    const discardButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })
+    const discardButton = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.buildDraft.discard',
+    })
 
     expect(applyButton).toBeDisabled()
     expect(discardButton).toBeDisabled()
@@ -59,16 +52,13 @@ describe('AgentBuildDraftBar', () => {
     const onDiscard = vi.fn()
 
     render(
-      <AgentBuildDraftBar
-        changesCount={1}
-        isApplying
-        onApply={onApply}
-        onDiscard={onDiscard}
-      />,
+      <AgentBuildDraftBar changesCount={1} isApplying onApply={onApply} onDiscard={onDiscard} />,
     )
 
     const applyButton = screen.getByRole('button', { name: 'custom.apply' })
-    const discardButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })
+    const discardButton = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.buildDraft.discard',
+    })
 
     expect(applyButton).toHaveAttribute('aria-disabled', 'true')
     expect(applyButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
@@ -83,16 +73,13 @@ describe('AgentBuildDraftBar', () => {
 
   it('should disable both actions while discard is pending', () => {
     render(
-      <AgentBuildDraftBar
-        changesCount={1}
-        isDiscarding
-        onApply={vi.fn()}
-        onDiscard={vi.fn()}
-      />,
+      <AgentBuildDraftBar changesCount={1} isDiscarding onApply={vi.fn()} onDiscard={vi.fn()} />,
     )
 
     expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }),
+    ).toBeDisabled()
   })
 
   it('should show build draft change metadata', () => {
@@ -108,7 +95,11 @@ describe('AgentBuildDraftBar', () => {
     expect(container.firstElementChild).toHaveClass('w-full')
     expect(container.firstElementChild).not.toHaveClass('w-fit')
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":0}' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":0}',
+      }),
+    ).toBeInTheDocument()
     expect(document.querySelector('.i-ri-arrow-right-s-line')).toBeInTheDocument()
 
     rerender(
@@ -121,7 +112,11 @@ describe('AgentBuildDraftBar', () => {
     )
 
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":2}' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":2}',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('should open build draft change details from the metadata trigger', async () => {
@@ -151,7 +146,9 @@ describe('AgentBuildDraftBar', () => {
       />,
     )
 
-    const changesTrigger = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":5}' })
+    const changesTrigger = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":5}',
+    })
 
     await user.click(changesTrigger)
 
@@ -162,13 +159,27 @@ describe('AgentBuildDraftBar', () => {
     expect(screen.getByText('tender-analyzer')).toBeInTheDocument()
     expect(screen.getByText('figma-code-connect')).toBeInTheDocument()
     expect(screen.getByText('build_note.md')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.buildNoteDescription')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.buildDraft.buildNoteDescription'),
+    ).toBeInTheDocument()
     expect(screen.getByText('index.json')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.advancedSettings.envEditor.shortLabel')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.advancedSettings.envEditor.shortLabel'),
+    ).toBeInTheDocument()
     expect(screen.getByText('API_KEY')).toBeInTheDocument()
     expect(document.querySelector('.text-text-accent')).toHaveClass('i-ri-add-circle-fill')
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }),
+    )
+    expect(onDiscard).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'agentV2.agentDetail.configure.clearSessionConfirm.title',
+      }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await user.click(screen.getByRole('button', { name: 'custom.apply' }))
 
     expect(onDiscard).toHaveBeenCalledTimes(1)
@@ -182,21 +193,20 @@ describe('AgentBuildDraftBar', () => {
     const onApply = vi.fn()
     const onDiscard = vi.fn()
 
-    render(
-      <AgentBuildDraftBar
-        changesCount={0}
-        onApply={onApply}
-        onDiscard={onDiscard}
-      />,
-    )
+    render(<AgentBuildDraftBar changesCount={0} onApply={onApply} onDiscard={onDiscard} />)
 
-    const discardButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })
+    const discardButton = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.buildDraft.discard',
+    })
     const applyButton = screen.getByRole('button', { name: 'custom.apply' })
 
     expect(discardButton).toBeEnabled()
     expect(applyButton).toBeEnabled()
 
     await user.click(discardButton)
+    expect(onDiscard).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await user.click(applyButton)
 
     expect(onDiscard).toHaveBeenCalledTimes(1)

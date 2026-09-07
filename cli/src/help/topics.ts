@@ -59,8 +59,7 @@ function renderEnvironment(): string {
   let out = 'ENVIRONMENT VARIABLES\n\n'
   for (const v of ENV_REGISTRY) {
     out += `  ${v.name}\n      ${v.description}\n`
-    if (v.sensitive)
-      out += '      (treat as secret; never echoed)\n'
+    if (v.sensitive) out += '      (treat as secret; never echoed)\n'
     out += '\n'
   }
   return out
@@ -88,9 +87,11 @@ APP vs STUDIO-APP
   noun supports.
 
 DISCOVERY
-  difyctl help -o json        full command tree + this contract, machine-readable
-  difyctl get app -o json     list apps (ids + modes)
-  difyctl describe app <id>   one app's mode and input schema
+  difyctl help -o json --compact      complete command map for discovery
+  difyctl help <path> -o json         inspect the selected command; the only source of flags
+  difyctl help -o json                full command tree + contract for troubleshooting
+  difyctl get app -o json             list apps (ids + modes)
+  difyctl describe app <id>           one app's mode and input schema
 
 AUTH
   Interactive:     difyctl auth login         (browser device flow)
@@ -138,5 +139,5 @@ export const TOPICS: readonly HelpTopic[] = [
 ]
 
 export function findTopic(name: string): HelpTopic | undefined {
-  return TOPICS.find(t => t.name === name)
+  return TOPICS.find((t) => t.name === name)
 }

@@ -1,5 +1,6 @@
 {
   "allTags": "Alle Schlagwörter",
+  "clearSelectedTags": "Ausgewählte Tags löschen: {{tags}}",
   "searchTags": "Such-Tags",
   "tags.agent": "Agent",
   "tags.business": "Geschäft",

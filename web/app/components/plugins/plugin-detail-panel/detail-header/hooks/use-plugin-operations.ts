@@ -23,12 +23,12 @@ type UsePluginOperationsParams = {
     setIsDowngrade: (downgrade: boolean) => void
   }
   isFromMarketplace: boolean
-  onUpdate?: (isDelete?: boolean) => void
+  onUpdate?: (isDelete?: boolean) => void | Promise<void>
 }
 
 type UsePluginOperationsReturn = {
   handleUpdate: (isDowngrade?: boolean) => Promise<void>
-  handleUpdatedFromMarketplace: () => void
+  handleUpdatedFromMarketplace: () => Promise<void>
   handleDelete: () => Promise<void>
 }
 
@@ -48,78 +48,77 @@ export const usePluginOperations = ({
 
   const { id, meta, plugin_id } = detail
   const { author, category, name } = detail.declaration || detail
-  const handlePluginUpdated = useCallback((isDelete?: boolean) => {
-    invalidateCheckInstalled()
-    onUpdate?.(isDelete)
-  }, [invalidateCheckInstalled, onUpdate])
+  const handlePluginUpdated = useCallback(
+    async (isDelete?: boolean) => {
+      invalidateCheckInstalled()
+      await onUpdate?.(isDelete)
+    },
+    [invalidateCheckInstalled, onUpdate],
+  )
 
-  const handleUpdate = useCallback(async (isDowngrade?: boolean) => {
-    if (!canUpdatePlugin)
-      return
+  const handleUpdate = useCallback(
+    async (isDowngrade?: boolean) => {
+      if (!canUpdatePlugin) return
 
-    if (isFromMarketplace) {
-      versionPicker.setIsDowngrade(!!isDowngrade)
-      modalStates.showUpdateModal()
-      return
-    }
+      if (isFromMarketplace) {
+        versionPicker.setIsDowngrade(!!isDowngrade)
+        modalStates.showUpdateModal()
+        return
+      }
 
-    if (!meta?.repo || !meta?.version || !meta?.package) {
-      toast.error('Missing plugin metadata for GitHub update')
-      return
-    }
+      if (!meta?.repo || !meta?.version || !meta?.package) {
+        toast.error('Missing plugin metadata for GitHub update')
+        return
+      }
 
-    const owner = meta.repo.split('/')[0] || author
-    const repo = meta.repo.split('/')[1] || name
-    const fetchedReleases = await fetchReleases(owner, repo)
-    if (fetchedReleases.length === 0)
-      return
+      const owner = meta.repo.split('/')[0] || author
+      const repo = meta.repo.split('/')[1] || name
+      const fetchedReleases = await fetchReleases(owner, repo)
+      if (fetchedReleases.length === 0) return
 
-    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
-    toast(toastProps.message, { type: toastProps.type })
+      const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
+      toast(toastProps.message, { type: toastProps.type })
 
-    if (needUpdate) {
-      setShowUpdatePluginModal({
-        onSaveCallback: () => {
-          handlePluginUpdated()
-        },
-        payload: {
-          type: PluginSource.github,
-          category,
-          github: {
-            originalPackageInfo: {
-              id: detail.plugin_unique_identifier,
-              repo: meta.repo,
-              version: meta.version,
-              package: meta.package,
-              releases: fetchedReleases,
+      if (needUpdate) {
+        setShowUpdatePluginModal({
+          onSaveCallback: () => handlePluginUpdated(),
+          payload: {
+            type: PluginSource.github,
+            category,
+            github: {
+              originalPackageInfo: {
+                id: detail.plugin_unique_identifier,
+                repo: meta.repo,
+                version: meta.version,
+                package: meta.package,
+                releases: fetchedReleases,
+              },
             },
           },
-        },
-      })
-    }
-  }, [
-    canUpdatePlugin,
-    isFromMarketplace,
-    meta,
-    author,
-    name,
-    fetchReleases,
-    checkForUpdates,
-    setShowUpdatePluginModal,
-    detail,
-    handlePluginUpdated,
-    modalStates,
-    versionPicker,
-  ])
+        })
+      }
+    },
+    [
+      canUpdatePlugin,
+      isFromMarketplace,
+      meta,
+      author,
+      name,
+      setShowUpdatePluginModal,
+      detail,
+      handlePluginUpdated,
+      modalStates,
+      versionPicker,
+    ],
+  )
 
-  const handleUpdatedFromMarketplace = useCallback(() => {
-    handlePluginUpdated()
+  const handleUpdatedFromMarketplace = useCallback(async () => {
+    await handlePluginUpdated()
     modalStates.hideUpdateModal()
   }, [handlePluginUpdated, modalStates])
 
   const handleDelete = useCallback(async () => {
-    if (!canDeletePlugin)
-      return
+    if (!canDeletePlugin) return
 
     modalStates.showDeleting()
     const res = await uninstallPlugin(id)
@@ -127,7 +126,7 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
+      toast.success(t(($) => $['action.deleteSuccess'], { ns: 'plugin' }))
       handlePluginUpdated(true)
       refreshPluginList({ category })
 

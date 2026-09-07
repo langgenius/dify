@@ -321,8 +321,13 @@ class OceanBaseVector(BaseVector):
 
             from sqlalchemy import text
 
-            # Validate key to prevent injection in JSON path
-            if not re.match(r"^[a-zA-Z0-9_.]+$", key):
+            # Validate key to prevent injection in JSON path.
+            # Use re.fullmatch instead of re.match to reject trailing newlines.
+            # Python's '$' matches at end-of-string OR just before a trailing
+            # newline, so re.match accepts "user_id\n". re.fullmatch requires
+            # the whole string to match.
+            # Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
+            if not re.fullmatch(r"[a-zA-Z0-9_.]+", key):
                 raise ValueError(f"Invalid characters in metadata key: {key}")
 
             # Use parameterized query to prevent SQL injection
@@ -454,11 +459,14 @@ class OceanBaseVector(BaseVector):
         _where_clause = None
         if document_ids_filter:
             # Validate document IDs to prevent SQL injection
-            # Document IDs should be alphanumeric with hyphens and underscores
+            # Document IDs should be alphanumeric with hyphens and underscores.
+            # Use re.fullmatch instead of re.match to reject trailing newlines.
+            # See the metadata-key validator above for the rationale.
+            # Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
             import re
 
             for doc_id in document_ids_filter:
-                if not isinstance(doc_id, str) or not re.match(r"^[a-zA-Z0-9_-]+$", doc_id):
+                if not isinstance(doc_id, str) or not re.fullmatch(r"[a-zA-Z0-9_-]+", doc_id):
                     raise ValueError(f"Invalid document ID format: {doc_id}")
 
             # Safe to use in query after validation

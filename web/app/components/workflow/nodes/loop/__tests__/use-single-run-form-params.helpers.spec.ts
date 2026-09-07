@@ -24,15 +24,16 @@ vi.mock('../../_base/components/variable/utils', () => ({
   isSystemVar: (...args: unknown[]) => mockIsSystemVar(...args),
 }))
 
-const createNode = (id: string, title: string, type = BlockEnum.Tool): Node => ({
-  id,
-  position: { x: 0, y: 0 },
-  data: {
-    title,
-    desc: '',
-    type,
-  },
-} as Node)
+const createNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
+  ({
+    id,
+    position: { x: 0, y: 0 },
+    data: {
+      title,
+      desc: '',
+      type,
+    },
+  }) as Node
 
 const createInputVar = (variable: string, label: InputVar['label'] = variable): InputVar => ({
   type: InputVarType.textInput,
@@ -73,16 +74,18 @@ describe('use-single-run-form-params helpers', () => {
       ['tool-node', 'value'],
       ['start-node', 'answer'],
     ])
-    expect(getVarSelectorsFromCase({
-      logical_operator: LogicalOperator.or,
-      conditions: [
-        nestedCondition,
-        createCondition({
-          id: 'condition-2',
-          variable_selector: ['other-node', 'result'],
-        }),
-      ],
-    })).toEqual([
+    expect(
+      getVarSelectorsFromCase({
+        logical_operator: LogicalOperator.or,
+        conditions: [
+          nestedCondition,
+          createCondition({
+            id: 'condition-2',
+            variable_selector: ['other-node', 'result'],
+          }),
+        ],
+      }),
+    ).toEqual([
       ['tool-node', 'value'],
       ['start-node', 'answer'],
       ['other-node', 'result'],
@@ -126,7 +129,11 @@ describe('use-single-run-form-params helpers', () => {
         case 'tool-a':
           return [['sys', 'files']]
         case 'tool-b':
-          return [['start-node', 'answer'], ['current-node', 'self'], ['inner-node', 'secret']]
+          return [
+            ['start-node', 'answer'],
+            ['current-node', 'self'],
+            ['inner-node', 'secret'],
+          ]
         default:
           return []
       }
@@ -134,19 +141,22 @@ describe('use-single-run-form-params helpers', () => {
     mockGetNodeUsedVarPassToServerKey.mockImplementation((_node: Node, selector: string[]) => {
       return selector[0] === 'sys' ? ['sys_files', 'sys_files_backup'] : 'answer_key'
     })
-    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) => nodes.find(node => node.id === id))
+    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) =>
+      nodes.find((node) => node.id === id),
+    )
     mockIsSystemVar.mockImplementation((selector: string[]) => selector[0] === 'sys')
 
-    const toVarInputs = vi.fn((variables: Variable[]) => variables.map(variable => createInputVar(
-      variable.variable,
-      variable.label as InputVar['label'],
-    )))
+    const toVarInputs = vi.fn((variables: Variable[]) =>
+      variables.map((variable) =>
+        createInputVar(variable.variable, variable.label as InputVar['label']),
+      ),
+    )
 
     const result = buildUsedOutVars({
       loopChildrenNodes,
       currentNodeId: 'current-node',
       canChooseVarNodes: [startNode, sysNode, ...loopChildrenNodes],
-      isNodeInLoop: nodeId => nodeId === 'inner-node',
+      isNodeInLoop: (nodeId) => nodeId === 'inner-node',
       toVarInputs,
     })
 
@@ -196,10 +206,7 @@ describe('use-single-run-form-params helpers', () => {
   it('should derive dependent vars from payload and filter current node references', () => {
     const dependentVars = getDependentVarsFromLoopPayload({
       nodeId: 'loop-node',
-      usedOutVars: [
-        createInputVar('start-node.answer'),
-        createInputVar('loop-node.internal'),
-      ],
+      usedOutVars: [createInputVar('start-node.answer'), createInputVar('loop-node.internal')],
       breakConditions: [
         createCondition({
           variable_selector: ['tool-node', 'value'],

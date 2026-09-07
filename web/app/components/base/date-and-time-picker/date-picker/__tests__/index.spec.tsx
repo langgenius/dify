@@ -1,21 +1,8 @@
 import type { DatePickerProps } from '../../types'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import dayjs from '../../utils/dayjs'
 import DatePicker from '../index'
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, className }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-  }) => (
-    <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined} className={className as string | undefined}>
-      {children}
-    </button>
-  ),
-}))
 
 // Mock scrollIntoView
 beforeAll(() => {
@@ -30,9 +17,12 @@ const createDatePickerProps = (overrides: Partial<DatePickerProps> = {}): DatePi
   ...overrides,
 })
 
+const getDateTrigger = () =>
+  screen.getByRole('button', { name: /^(time.defaultPlaceholder|Select date)/ })
+
 // Helper to open the picker
 const openPicker = () => {
-  const input = screen.getByRole('textbox')
+  const input = getDateTrigger()
   fireEvent.click(input)
 }
 
@@ -47,14 +37,14 @@ describe('DatePicker', () => {
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(getDateTrigger())!.toBeInTheDocument()
     })
 
     it('should render with custom placeholder', () => {
       const props = createDatePickerProps({ placeholder: 'Select date' })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toHaveAttribute('placeholder', 'Select date')
+      expect(getDateTrigger())!.toHaveTextContent('Select date')
     })
 
     it('should display formatted date value when value is provided', () => {
@@ -62,14 +52,33 @@ describe('DatePicker', () => {
       const props = createDatePickerProps({ value })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
+      expect(getDateTrigger()).not.toHaveTextContent('time.defaultPlaceholder')
+    })
+
+    it('should keep the accessible name in sync with the displayed draft date', async () => {
+      const user = userEvent.setup()
+      const props = createDatePickerProps({
+        value: dayjs('2024-06-15'),
+        placeholder: 'Select date',
+        needTimePicker: false,
+      })
+      render(<DatePicker {...props} />)
+
+      const trigger = getDateTrigger()
+      const initialText = trigger.textContent
+
+      await user.click(trigger)
+      await user.click(screen.getByRole('button', { name: '20' }))
+
+      expect(trigger.textContent).not.toBe(initialText)
+      expect(trigger).toHaveAccessibleName(`Select date: ${trigger.textContent}`)
     })
 
     it('should render with empty value when no value is provided', () => {
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toHaveValue('')
+      expect(getDateTrigger())!.toHaveTextContent('time.defaultPlaceholder')
     })
 
     it('should normalize value with timezone applied', () => {
@@ -77,7 +86,7 @@ describe('DatePicker', () => {
       const props = createDatePickerProps({ value, timezone: 'America/New_York' })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
+      expect(getDateTrigger()).not.toHaveTextContent('time.defaultPlaceholder')
     })
 
     it('should normalize non-Dayjs value input', () => {
@@ -85,7 +94,7 @@ describe('DatePicker', () => {
       const props = createDatePickerProps({ value })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
+      expect(getDateTrigger()).not.toHaveTextContent('time.defaultPlaceholder')
     })
   })
 
@@ -107,7 +116,8 @@ describe('DatePicker', () => {
       openPicker()
       openPicker() // second click closes
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(getDateTrigger()).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should restore selected date from value when reopening', () => {
@@ -122,19 +132,18 @@ describe('DatePicker', () => {
       expect(screen.getByText(/2024/))!.toBeInTheDocument()
     })
 
-    it('should close when clicking outside the container', () => {
+    it('should close when clicking outside the container', async () => {
+      const user = userEvent.setup()
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
       openPicker()
-      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
 
-      act(() => {
-        document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-      })
+      await user.click(document.body)
 
-      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.queryAllByText(/daysInWeek/)).toHaveLength(0)
+      expect(getDateTrigger()).toBeInTheDocument()
     })
   })
 
@@ -188,7 +197,10 @@ describe('DatePicker', () => {
     })
 
     it('should render time picker options in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -203,7 +215,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when hour is selected in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -222,7 +237,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when minute is selected in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -239,7 +257,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when period is changed in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -333,7 +354,7 @@ describe('DatePicker', () => {
 
       // The date should now appear in the header/display
       // The date should now appear in the header/display
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(getDateTrigger())!.toBeInTheDocument()
     })
 
     it('should immediately confirm when noConfirm is true and a date is clicked', () => {
@@ -379,8 +400,16 @@ describe('DatePicker', () => {
   describe('Clear Behavior', () => {
     it('should call onClear when clear is clicked while picker is closed', () => {
       const onClear = vi.fn()
-      const renderTrigger = vi.fn(({ handleClear }) => (
-        <button data-testid="clear-trigger" onClick={handleClear}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClear }) => (
+        <button
+          {...triggerProps}
+          data-testid="clear-trigger"
+          onClick={(event) => {
+            event.preventDefault()
+            handleClear(event)
+            triggerProps.onClick?.(event)
+          }}
+        >
           Clear
         </button>
       ))
@@ -396,12 +425,13 @@ describe('DatePicker', () => {
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
-    it('should clear selected date without calling onClear when picker is open', () => {
+    it('should clear selected date without calling onClear when picker is open', async () => {
+      const user = userEvent.setup()
       const onClear = vi.fn()
       const onChange = vi.fn()
-      const renderTrigger = vi.fn(({ handleClickTrigger, handleClear }) => (
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClear }) => (
         <div>
-          <button data-testid="open-trigger" onClick={handleClickTrigger}>
+          <button {...triggerProps} data-testid="open-trigger">
             Open
           </button>
           <button data-testid="clear-trigger" onClick={handleClear}>
@@ -417,9 +447,9 @@ describe('DatePicker', () => {
       })
       render(<DatePicker {...props} />)
 
-      fireEvent.click(screen.getByTestId('open-trigger'))
-      fireEvent.click(screen.getByTestId('clear-trigger'))
-      fireEvent.click(screen.getByText(/operation\.ok/))
+      await user.click(screen.getByRole('button', { name: 'Open' }))
+      await user.click(screen.getByRole('button', { name: 'Clear' }))
+      await user.click(screen.getByRole('button', { name: /operation\.ok/ }))
 
       expect(onClear).not.toHaveBeenCalled()
       expect(onChange).toHaveBeenCalledWith(undefined)
@@ -555,8 +585,8 @@ describe('DatePicker', () => {
   // Custom trigger
   describe('Custom Trigger', () => {
     it('should use renderTrigger when provided', () => {
-      const renderTrigger = vi.fn(({ handleClickTrigger }) => (
-        <button data-testid="custom-trigger" onClick={handleClickTrigger}>
+      const renderTrigger = vi.fn((triggerProps) => (
+        <button {...triggerProps} data-testid="custom-trigger">
           Custom
         </button>
       ))
@@ -568,8 +598,8 @@ describe('DatePicker', () => {
     })
 
     it('should open picker when custom trigger is clicked', () => {
-      const renderTrigger = vi.fn(({ handleClickTrigger }) => (
-        <button data-testid="custom-trigger" onClick={handleClickTrigger}>
+      const renderTrigger = vi.fn((triggerProps) => (
+        <button {...triggerProps} data-testid="custom-trigger">
           Custom
         </button>
       ))
@@ -580,6 +610,24 @@ describe('DatePicker', () => {
       fireEvent.click(screen.getByTestId('custom-trigger'))
 
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
+    })
+
+    it('should expose Base UI trigger state and props to a custom trigger', () => {
+      const renderTrigger = vi.fn((triggerProps, state) => (
+        <button {...triggerProps} data-testid="state-trigger">
+          {state.open ? 'Open' : 'Closed'}
+        </button>
+      ))
+
+      render(<DatePicker {...createDatePickerProps({ renderTrigger })} />)
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Closed')
+      expect(screen.getByTestId('state-trigger')).not.toHaveAttribute('data-popup-open')
+
+      fireEvent.click(screen.getByTestId('state-trigger'))
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Open')
+      expect(screen.getByTestId('state-trigger')).toHaveAttribute('data-popup-open')
     })
   })
 
@@ -608,7 +656,7 @@ describe('DatePicker', () => {
       })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(getDateTrigger())!.toBeInTheDocument()
     })
 
     it('should call onChange when timezone changes with a value', () => {
@@ -673,7 +721,7 @@ describe('DatePicker', () => {
       rerender(<DatePicker {...props} timezone="Asia/Tokyo" />)
 
       expect(onChange).toHaveBeenCalledTimes(1)
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(getDateTrigger())!.toBeInTheDocument()
     })
   })
 

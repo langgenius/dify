@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Dolžina segmentov",
   "embedding.segments": "Odstavki",
   "embedding.textCleaning": "Predobdelava in čiščenje besedila",
+  "embedding.vectorSpaceEstimateExceeded.description": "Dokument je bil prejet, vendar je ocenjena velikost vektorske shrambe {{estimated}} MB, kar presega omejitev vašega paketa {{limit}} MB, zato vektorji niso bili shranjeni. Če se drug dokument obdeluje ali je njegova obdelava pravkar spodletela, poskusite znova pozneje. Sicer zmanjšajte velikost datoteke ali število segmentov.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Ocenjena poraba vektorskega prostora po nalaganju presega omejitev vašega paketa",
   "embedding.waiting": "Čakanje na zajemanje...",
   "list.action.addButton": "Dodaj del",
   "list.action.archive": "Arhiviraj",

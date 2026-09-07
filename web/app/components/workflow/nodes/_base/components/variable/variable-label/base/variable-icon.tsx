@@ -8,21 +8,10 @@ export type VariableIconProps = {
   variables?: string[]
   variableCategory?: VarInInspectType | string
 }
-const VariableIcon = ({
-  className,
-  variables = [],
-  variableCategory,
-}: VariableIconProps) => {
+const VariableIcon = ({ className, variables = [], variableCategory }: VariableIconProps) => {
   const VarIcon = useVarIcon(variables, variableCategory)
 
-  return VarIcon && (
-    <VarIcon
-      className={cn(
-        'size-3.5 shrink-0',
-        className,
-      )}
-    />
-  )
+  return VarIcon && <VarIcon className={cn('size-3.5 shrink-0', className)} />
 }
 
 export default memo(VariableIcon)

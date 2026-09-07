@@ -1,7 +1,7 @@
 import type { Topic } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEdgesInteractions } from '../../../../hooks'
+import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
 import ClassList from '../class-list'
 
 vi.mock('react-sortablejs', () => ({
@@ -9,8 +9,8 @@ vi.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('../../../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks')>()
+vi.mock('../../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-edges-interactions')>()
   return {
     ...actual,
     useEdgesInteractions: vi.fn(),
@@ -32,8 +32,15 @@ vi.mock('../class-item', () => ({
   }) => (
     <div>
       <div>{`${index}:${payload.name}`}</div>
-      <button type="button" onClick={() => onChange({ ...payload, name: `${payload.name} updated` })}>change-item</button>
-      <button type="button" onClick={onRemove}>remove-item</button>
+      <button
+        type="button"
+        onClick={() => onChange({ ...payload, name: `${payload.name} updated` })}
+      >
+        change-item
+      </button>
+      <button type="button" onClick={onRemove}>
+        remove-item
+      </button>
     </div>
   ),
 }))
@@ -72,21 +79,27 @@ describe('question-classifier/class-list', () => {
     )
 
     await user.click(screen.getAllByText('change-item')[0]!)
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ name: 'Billing questions updated' }),
-    ]))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ name: 'Billing questions updated' })]),
+    )
 
     await user.click(screen.getAllByText('remove-item')[0]!)
     expect(handleEdgeDeleteByDeleteBranch).toHaveBeenCalledWith('node-1', 'topic-1')
 
-    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }))
-    expect(screen.queryByText('workflow.nodes.questionClassifiers.addClass')).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
+    )
+    expect(
+      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+    ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }))
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
+    )
     await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ name: '' }),
-    ]))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ name: '' })]),
+    )
   })
 
   it('hides drag and add affordances when readonly', () => {
@@ -100,7 +113,9 @@ describe('question-classifier/class-list', () => {
       />,
     )
 
-    expect(screen.queryByText('workflow.nodes.questionClassifiers.addClass')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+    ).not.toBeInTheDocument()
     expect(container.querySelector('.handle')).toBeNull()
   })
 })

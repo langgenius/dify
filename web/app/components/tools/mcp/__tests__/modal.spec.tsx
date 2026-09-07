@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -24,34 +24,15 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 // toggle stays hidden even when sso_enforced_for_signin is true.
 const mockSystemFeatures = vi.hoisted(() => ({
   sso_enforced_for_signin: false,
-  sso_enforced_for_signin_protocol: '' as 'oidc' | 'oauth2' | 'saml' | '',
+  sso_enforced_for_signin_protocol: null as SsoProtocol | null,
 }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['mock-system-features'],
-    queryFn: async () => mockSystemFeatures,
-  }),
-}))
-
 describe('MCPModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    // useSuspenseQuery(systemFeaturesQueryOptions) reads from this key —
-    // pre-populate so the modal renders synchronously instead of suspending.
-    queryClient.setQueryData(['mock-system-features'], mockSystemFeatures)
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-  }
+  const createWrapper = () =>
+    createConsoleQueryWrapper({ systemFeatures: mockSystemFeatures }).wrapper
 
   const defaultProps = {
     show: true,
@@ -60,11 +41,6 @@ describe('MCPModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
-    })
-
     it('should not render when show is false', () => {
       render(<MCPModal {...defaultProps} show={false} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.title')).not.toBeInTheDocument()
@@ -73,6 +49,7 @@ describe('MCPModal', () => {
     it('should render create title when no data is provided', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('tools.mcp.modal.title')
     })
 
     it('should render edit title when data is provided', () => {
@@ -135,7 +112,9 @@ describe('MCPModal', () => {
     it('should update server identifier input value', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
       fireEvent.change(identifierInput, { target: { value: 'my-server' } })
 
       expect(identifierInput)!.toHaveValue('my-server')
@@ -212,6 +191,15 @@ describe('MCPModal', () => {
       expect(onHide).toHaveBeenCalled()
     })
 
+    it('should call onHide when the dialog requests close', () => {
+      const onHide = vi.fn()
+      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
     it('should have confirm button disabled when form is empty', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -225,7 +213,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -244,7 +234,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -271,7 +263,9 @@ describe('MCPModal', () => {
       // Fill fields with invalid URL
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'not-a-valid-url' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -281,7 +275,7 @@ describe('MCPModal', () => {
       fireEvent.click(confirmButton)
 
       // Wait a bit and verify onConfirm was not called
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerUrl')
     })
@@ -293,7 +287,9 @@ describe('MCPModal', () => {
       // Fill fields with invalid server identifier
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -303,7 +299,7 @@ describe('MCPModal', () => {
       fireEvent.click(confirmButton)
 
       // Wait a bit and verify onConfirm was not called
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerIdentifier')
     })
@@ -438,7 +434,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -473,7 +471,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -504,12 +504,14 @@ describe('MCPModal', () => {
         server_identifier: 'test-server',
         icon: { content: '🔗', background: '#6366F1' },
         masked_headers: {
-          'Authorization': 'Bearer token',
+          Authorization: 'Bearer token',
           'X-Custom': 'value',
         },
       } as unknown as ToolWithProvider
 
-      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       // Switch to headers tab
       const headersTab = screen.getByText('tools.mcp.modal.headers')
@@ -546,7 +548,9 @@ describe('MCPModal', () => {
         icon: { content: '🚀', background: '#FF0000' },
       } as unknown as ToolWithProvider
 
-      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       // Don't change the URL, just submit
       const saveButton = screen.getByText('tools.mcp.modal.save')
@@ -571,7 +575,9 @@ describe('MCPModal', () => {
         icon: { content: '🚀', background: '#FF0000' },
       } as unknown as ToolWithProvider
 
-      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       // Change the URL
       const urlInput = screen.getByDisplayValue('https://existing.com/mcp')
@@ -598,7 +604,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -626,7 +634,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -671,7 +681,9 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Find the app icon container with cursor-pointer and rounded-2xl classes
-      const appIconContainer = document.querySelector('[class*="rounded-2xl"][class*="cursor-pointer"]')
+      const appIconContainer = document.querySelector(
+        '[class*="rounded-2xl"][class*="cursor-pointer"]',
+      )
 
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
@@ -686,7 +698,9 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Open the icon picker
-      const appIconContainer = document.querySelector('[class*="rounded-2xl"][class*="cursor-pointer"]')
+      const appIconContainer = document.querySelector(
+        '[class*="rounded-2xl"][class*="cursor-pointer"]',
+      )
 
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
@@ -708,7 +722,9 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Open the icon picker
-      const appIconContainer = document.querySelector('[class*="rounded-2xl"][class*="cursor-pointer"]')
+      const appIconContainer = document.querySelector(
+        '[class*="rounded-2xl"][class*="cursor-pointer"]',
+      )
 
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
@@ -730,29 +746,26 @@ describe('MCPModal', () => {
   describe('Forward-user-identity toggle', () => {
     beforeEach(() => {
       mockSystemFeatures.sso_enforced_for_signin = false
-      mockSystemFeatures.sso_enforced_for_signin_protocol = ''
+      mockSystemFeatures.sso_enforced_for_signin_protocol = null
     })
 
     // Helper: turn SSO on with a refresh-capable protocol so the toggle is
     // visible. Use this for any test that needs the field rendered.
     const enableRefreshCapableSSO = () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oidc'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oidc
     }
 
     const fillRequiredFields = () => {
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder'),
-        { target: { value: 'https://example.com/mcp' } },
-      )
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder'),
-        { target: { value: 'srv' } },
-      )
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder'),
-        { target: { value: 'srv-id' } },
-      )
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder'), {
+        target: { value: 'https://example.com/mcp' },
+      })
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder'), {
+        target: { value: 'srv' },
+      })
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder'), {
+        target: { value: 'srv-id' },
+      })
     }
 
     it('does not render the toggle when SSO is not configured', () => {
@@ -770,14 +783,14 @@ describe('MCPModal', () => {
 
     it('does not render the toggle when SSO protocol is SAML (no refresh model)', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'saml'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.saml
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.forwardUserIdentity')).not.toBeInTheDocument()
     })
 
     it('renders the toggle when SSO protocol is OAuth2', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oauth2'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oauth2
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.forwardUserIdentity')).toBeInTheDocument()
     })
@@ -785,10 +798,7 @@ describe('MCPModal', () => {
     it('submits identity_mode="off" by default (toggle off)', async () => {
       enableRefreshCapableSSO()
       const onConfirm = vi.fn()
-      render(
-        <MCPModal {...defaultProps} onConfirm={onConfirm} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
       fillRequiredFields()
       fireEvent.click(screen.getByText('tools.mcp.modal.confirm'))
@@ -805,10 +815,7 @@ describe('MCPModal', () => {
     it('submits identity_mode="idp_token" when toggle is flipped on', async () => {
       enableRefreshCapableSSO()
       const onConfirm = vi.fn()
-      render(
-        <MCPModal {...defaultProps} onConfirm={onConfirm} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
       fillRequiredFields()
       const fwdSwitch = screen.getByRole('switch', {
@@ -838,10 +845,9 @@ describe('MCPModal', () => {
         identity_mode: 'idp_token',
       } as unknown as ToolWithProvider
 
-      render(
-        <MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
       fireEvent.click(screen.getByText('tools.mcp.modal.save'))
 
       await waitFor(() => {
@@ -866,10 +872,7 @@ describe('MCPModal', () => {
         identity_mode: 'idp_token',
       } as unknown as ToolWithProvider
 
-      render(
-        <MCPModal {...defaultProps} data={mockData} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       expect(
         screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),
@@ -887,10 +890,7 @@ describe('MCPModal', () => {
         identity_mode: 'off',
       } as unknown as ToolWithProvider
 
-      render(
-        <MCPModal {...defaultProps} data={mockData} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       expect(
         screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),

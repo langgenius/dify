@@ -1,12 +1,10 @@
 'use client'
 
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
+import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
-
-export type { Placement }
 
 /**
  * Tooltip is an **ephemeral hint** tied to a trigger (typically an icon button,
@@ -27,25 +25,26 @@ export type { Placement }
  *
  * If you need interactive affordances (buttons, links, forms) use `Popover`.
  */
-export const TooltipProvider = BaseTooltip.Provider
-export const Tooltip = BaseTooltip.Root
-export const TooltipTrigger = BaseTooltip.Trigger
+const TooltipProvider = BaseTooltip.Provider
+const Tooltip = BaseTooltip.Root
+const TooltipTrigger = BaseTooltip.Trigger
 
-type TooltipContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  positionerClassName?: string
-  className?: string
-} & Omit<BaseTooltip.Popup.Props, 'children' | 'className'>
+type TooltipProviderProps = BaseTooltip.Provider.Props
+type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
+type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
-export function TooltipContent({
+type TooltipContentProps = Omit<BaseTooltip.Popup.Props, 'children' | 'className'> &
+  Pick<BaseTooltip.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+    children: React.ReactNode
+    placement?: Placement
+    className?: string
+  }
+
+function TooltipContent({
   children,
   placement = 'top',
   sideOffset = 8,
   alignOffset = 0,
-  positionerClassName,
   className,
   ...props
 }: TooltipContentProps) {
@@ -58,7 +57,7 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', positionerClassName)}
+        className="z-50 outline-hidden"
       >
         <BaseTooltip.Popup
           className={cn(
@@ -74,3 +73,7 @@ export function TooltipContent({
     </BaseTooltip.Portal>
   )
 }
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
+
+export type { TooltipContentProps, TooltipProps, TooltipProviderProps, TooltipTriggerProps }

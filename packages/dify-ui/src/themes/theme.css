@@ -56,18 +56,32 @@
   --color-background-interaction-from-bg-2: var(--color-background-interaction-from-bg-2);
   --color-background-gradient-bg-fill-chat-bg-1: var(--color-background-gradient-bg-fill-chat-bg-1);
   --color-background-gradient-bg-fill-chat-bg-2: var(--color-background-gradient-bg-fill-chat-bg-2);
-  --color-background-gradient-bg-fill-chat-bubble-bg-1: var(--color-background-gradient-bg-fill-chat-bubble-bg-1);
-  --color-background-gradient-bg-fill-chat-bubble-bg-2: var(--color-background-gradient-bg-fill-chat-bubble-bg-2);
-  --color-background-gradient-bg-fill-debug-bg-1: var(--color-background-gradient-bg-fill-debug-bg-1);
-  --color-background-gradient-bg-fill-debug-bg-2: var(--color-background-gradient-bg-fill-debug-bg-2);
+  --color-background-gradient-bg-fill-chat-bubble-bg-1: var(
+    --color-background-gradient-bg-fill-chat-bubble-bg-1
+  );
+  --color-background-gradient-bg-fill-chat-bubble-bg-2: var(
+    --color-background-gradient-bg-fill-chat-bubble-bg-2
+  );
+  --color-background-gradient-bg-fill-debug-bg-1: var(
+    --color-background-gradient-bg-fill-debug-bg-1
+  );
+  --color-background-gradient-bg-fill-debug-bg-2: var(
+    --color-background-gradient-bg-fill-debug-bg-2
+  );
 
   --color-background-gradient-mask-gray: var(--color-background-gradient-mask-gray);
   --color-background-gradient-mask-transparent: var(--color-background-gradient-mask-transparent);
-  --color-background-gradient-mask-transparent-dark: var(--color-background-gradient-mask-transparent-dark);
+  --color-background-gradient-mask-transparent-dark: var(
+    --color-background-gradient-mask-transparent-dark
+  );
   --color-background-gradient-mask-side-panel-1: var(--color-background-gradient-mask-side-panel-1);
   --color-background-gradient-mask-side-panel-2: var(--color-background-gradient-mask-side-panel-2);
-  --color-background-gradient-mask-input-clear-1: var(--color-background-gradient-mask-input-clear-1);
-  --color-background-gradient-mask-input-clear-2: var(--color-background-gradient-mask-input-clear-2);
+  --color-background-gradient-mask-input-clear-1: var(
+    --color-background-gradient-mask-input-clear-1
+  );
+  --color-background-gradient-mask-input-clear-2: var(
+    --color-background-gradient-mask-input-clear-2
+  );
 
   --color-state-base-hover-subtle: var(--color-state-base-hover-subtle);
   --color-state-base-hover: var(--color-state-base-hover);
@@ -118,7 +132,9 @@
   --color-workflow-link-line-failure-active: var(--color-workflow-link-line-failure-active);
   --color-workflow-link-line-failure-handle: var(--color-workflow-link-line-failure-handle);
   --color-workflow-link-line-failure-button-bg: var(--color-workflow-link-line-failure-button-bg);
-  --color-workflow-link-line-failure-button-hover: var(--color-workflow-link-line-failure-button-hover);
+  --color-workflow-link-line-failure-button-hover: var(
+    --color-workflow-link-line-failure-button-hover
+  );
 
   --color-workflow-link-line-success-active: var(--color-workflow-link-line-success-active);
   --color-workflow-link-line-success-handle: var(--color-workflow-link-line-success-handle);
@@ -135,34 +151,52 @@
   --color-workflow-display-outline: var(--color-workflow-display-outline);
   --color-workflow-display-vignette-dark: var(--color-workflow-display-vignette-dark);
   --color-workflow-display-success-bg: var(--color-workflow-display-success-bg);
-  --color-workflow-display-success-bg-line-pattern: var(--color-workflow-display-success-bg-line-pattern);
+  --color-workflow-display-success-bg-line-pattern: var(
+    --color-workflow-display-success-bg-line-pattern
+  );
   --color-workflow-display-success-border-1: var(--color-workflow-display-success-border-1);
   --color-workflow-display-success-border-2: var(--color-workflow-display-success-border-2);
-  --color-workflow-display-success-vignette-color: var(--color-workflow-display-success-vignette-color);
+  --color-workflow-display-success-vignette-color: var(
+    --color-workflow-display-success-vignette-color
+  );
 
   --color-workflow-display-error-bg: var(--color-workflow-display-error-bg);
-  --color-workflow-display-error-bg-line-pattern: var(--color-workflow-display-error-bg-line-pattern);
+  --color-workflow-display-error-bg-line-pattern: var(
+    --color-workflow-display-error-bg-line-pattern
+  );
   --color-workflow-display-error-border-1: var(--color-workflow-display-error-border-1);
   --color-workflow-display-error-border-2: var(--color-workflow-display-error-border-2);
   --color-workflow-display-error-vignette-color: var(--color-workflow-display-error-vignette-color);
 
   --color-workflow-display-warning-bg: var(--color-workflow-display-warning-bg);
-  --color-workflow-display-warning-bg-line-pattern: var(--color-workflow-display-warning-bg-line-pattern);
+  --color-workflow-display-warning-bg-line-pattern: var(
+    --color-workflow-display-warning-bg-line-pattern
+  );
   --color-workflow-display-warning-border-1: var(--color-workflow-display-warning-border-1);
   --color-workflow-display-warning-border-2: var(--color-workflow-display-warning-border-2);
-  --color-workflow-display-warning-vignette-color: var(--color-workflow-display-warning-vignette-color);
+  --color-workflow-display-warning-vignette-color: var(
+    --color-workflow-display-warning-vignette-color
+  );
 
   --color-workflow-display-normal-bg: var(--color-workflow-display-normal-bg);
-  --color-workflow-display-normal-bg-line-pattern: var(--color-workflow-display-normal-bg-line-pattern);
+  --color-workflow-display-normal-bg-line-pattern: var(
+    --color-workflow-display-normal-bg-line-pattern
+  );
   --color-workflow-display-normal-border-1: var(--color-workflow-display-normal-border-1);
   --color-workflow-display-normal-border-2: var(--color-workflow-display-normal-border-2);
-  --color-workflow-display-normal-vignette-color: var(--color-workflow-display-normal-vignette-color);
+  --color-workflow-display-normal-vignette-color: var(
+    --color-workflow-display-normal-vignette-color
+  );
 
   --color-workflow-display-disabled-bg: var(--color-workflow-display-disabled-bg);
-  --color-workflow-display-disabled-bg-line-pattern: var(--color-workflow-display-disabled-bg-line-pattern);
+  --color-workflow-display-disabled-bg-line-pattern: var(
+    --color-workflow-display-disabled-bg-line-pattern
+  );
   --color-workflow-display-disabled-border-1: var(--color-workflow-display-disabled-border-1);
   --color-workflow-display-disabled-border-2: var(--color-workflow-display-disabled-border-2);
-  --color-workflow-display-disabled-vignette-color: var(--color-workflow-display-disabled-vignette-color);
+  --color-workflow-display-disabled-vignette-color: var(
+    --color-workflow-display-disabled-vignette-color
+  );
   --color-workflow-display-disabled-outline: var(--color-workflow-display-disabled-outline);
 
   --color-workflow-canvas-workflow-dot-color: var(--color-workflow-canvas-workflow-dot-color);
@@ -211,7 +245,9 @@
   --color-components-icon-bg-midnight-soft: var(--color-components-icon-bg-midnight-soft);
 
   --color-components-avatar-default-avatar-bg: var(--color-components-avatar-default-avatar-bg);
-  --color-components-avatar-mask-darkmode-dimmed: var(--color-components-avatar-mask-darkmode-dimmed);
+  --color-components-avatar-mask-darkmode-dimmed: var(
+    --color-components-avatar-mask-darkmode-dimmed
+  );
   --color-components-avatar-shape-fill-stop-0: var(--color-components-avatar-shape-fill-stop-0);
   --color-components-avatar-shape-fill-stop-100: var(--color-components-avatar-shape-fill-stop-100);
 
@@ -220,67 +256,163 @@
 
   --color-components-chat-input-audio-bg: var(--color-components-chat-input-audio-bg);
   --color-components-chat-input-audio-bg-alt: var(--color-components-chat-input-audio-bg-alt);
-  --color-components-chat-input-audio-wave-default: var(--color-components-chat-input-audio-wave-default);
-  --color-components-chat-input-audio-wave-active: var(--color-components-chat-input-audio-wave-active);
+  --color-components-chat-input-audio-wave-default: var(
+    --color-components-chat-input-audio-wave-default
+  );
+  --color-components-chat-input-audio-wave-active: var(
+    --color-components-chat-input-audio-wave-active
+  );
   --color-components-chat-input-bg-mask-1: var(--color-components-chat-input-bg-mask-1);
   --color-components-chat-input-bg-mask-2: var(--color-components-chat-input-bg-mask-2);
   --color-components-chat-input-border: var(--color-components-chat-input-border);
 
   --color-components-label-gray: var(--color-components-label-gray);
 
-  --color-components-premium-badge-highlight-stop-0: var(--color-components-premium-badge-highlight-stop-0);
-  --color-components-premium-badge-highlight-stop-100: var(--color-components-premium-badge-highlight-stop-100);
-  --color-components-premium-badge-orange-bg-stop-0: var(--color-components-premium-badge-orange-bg-stop-0);
-  --color-components-premium-badge-orange-bg-stop-100: var(--color-components-premium-badge-orange-bg-stop-100);
-  --color-components-premium-badge-orange-stroke-stop-0: var(--color-components-premium-badge-orange-stroke-stop-0);
-  --color-components-premium-badge-orange-stroke-stop-100: var(--color-components-premium-badge-orange-stroke-stop-100);
-  --color-components-premium-badge-orange-text-stop-0: var(--color-components-premium-badge-orange-text-stop-0);
-  --color-components-premium-badge-orange-text-stop-100: var(--color-components-premium-badge-orange-text-stop-100);
+  --color-components-premium-badge-highlight-stop-0: var(
+    --color-components-premium-badge-highlight-stop-0
+  );
+  --color-components-premium-badge-highlight-stop-100: var(
+    --color-components-premium-badge-highlight-stop-100
+  );
+  --color-components-premium-badge-orange-bg-stop-0: var(
+    --color-components-premium-badge-orange-bg-stop-0
+  );
+  --color-components-premium-badge-orange-bg-stop-100: var(
+    --color-components-premium-badge-orange-bg-stop-100
+  );
+  --color-components-premium-badge-orange-stroke-stop-0: var(
+    --color-components-premium-badge-orange-stroke-stop-0
+  );
+  --color-components-premium-badge-orange-stroke-stop-100: var(
+    --color-components-premium-badge-orange-stroke-stop-100
+  );
+  --color-components-premium-badge-orange-text-stop-0: var(
+    --color-components-premium-badge-orange-text-stop-0
+  );
+  --color-components-premium-badge-orange-text-stop-100: var(
+    --color-components-premium-badge-orange-text-stop-100
+  );
   --color-components-premium-badge-orange-glow: var(--color-components-premium-badge-orange-glow);
-  --color-components-premium-badge-orange-glow-hover: var(--color-components-premium-badge-orange-glow-hover);
-  --color-components-premium-badge-orange-bg-stop-0-hover: var(--color-components-premium-badge-orange-bg-stop-0-hover);
-  --color-components-premium-badge-orange-bg-stop-100-hover: var(--color-components-premium-badge-orange-bg-stop-100-hover);
-  --color-components-premium-badge-orange-stroke-stop-0-hover: var(--color-components-premium-badge-orange-stroke-stop-0-hover);
-  --color-components-premium-badge-orange-stroke-stop-100-hover: var(--color-components-premium-badge-orange-stroke-stop-100-hover);
+  --color-components-premium-badge-orange-glow-hover: var(
+    --color-components-premium-badge-orange-glow-hover
+  );
+  --color-components-premium-badge-orange-bg-stop-0-hover: var(
+    --color-components-premium-badge-orange-bg-stop-0-hover
+  );
+  --color-components-premium-badge-orange-bg-stop-100-hover: var(
+    --color-components-premium-badge-orange-bg-stop-100-hover
+  );
+  --color-components-premium-badge-orange-stroke-stop-0-hover: var(
+    --color-components-premium-badge-orange-stroke-stop-0-hover
+  );
+  --color-components-premium-badge-orange-stroke-stop-100-hover: var(
+    --color-components-premium-badge-orange-stroke-stop-100-hover
+  );
 
-  --color-components-premium-badge-blue-bg-stop-0: var(--color-components-premium-badge-blue-bg-stop-0);
-  --color-components-premium-badge-blue-bg-stop-100: var(--color-components-premium-badge-blue-bg-stop-100);
-  --color-components-premium-badge-blue-stroke-stop-0: var(--color-components-premium-badge-blue-stroke-stop-0);
-  --color-components-premium-badge-blue-stroke-stop-100: var(--color-components-premium-badge-blue-stroke-stop-100);
-  --color-components-premium-badge-blue-text-stop-0: var(--color-components-premium-badge-blue-text-stop-0);
-  --color-components-premium-badge-blue-text-stop-100: var(--color-components-premium-badge-blue-text-stop-100);
+  --color-components-premium-badge-blue-bg-stop-0: var(
+    --color-components-premium-badge-blue-bg-stop-0
+  );
+  --color-components-premium-badge-blue-bg-stop-100: var(
+    --color-components-premium-badge-blue-bg-stop-100
+  );
+  --color-components-premium-badge-blue-stroke-stop-0: var(
+    --color-components-premium-badge-blue-stroke-stop-0
+  );
+  --color-components-premium-badge-blue-stroke-stop-100: var(
+    --color-components-premium-badge-blue-stroke-stop-100
+  );
+  --color-components-premium-badge-blue-text-stop-0: var(
+    --color-components-premium-badge-blue-text-stop-0
+  );
+  --color-components-premium-badge-blue-text-stop-100: var(
+    --color-components-premium-badge-blue-text-stop-100
+  );
   --color-components-premium-badge-blue-glow: var(--color-components-premium-badge-blue-glow);
-  --color-components-premium-badge-blue-glow-hover: var(--color-components-premium-badge-blue-glow-hover);
-  --color-components-premium-badge-blue-bg-stop-0-hover: var(--color-components-premium-badge-blue-bg-stop-0-hover);
-  --color-components-premium-badge-blue-bg-stop-100-hover: var(--color-components-premium-badge-blue-bg-stop-100-hover);
-  --color-components-premium-badge-blue-stroke-stop-0-hover: var(--color-components-premium-badge-blue-stroke-stop-0-hover);
-  --color-components-premium-badge-blue-stroke-stop-100-hover: var(--color-components-premium-badge-blue-stroke-stop-100-hover);
+  --color-components-premium-badge-blue-glow-hover: var(
+    --color-components-premium-badge-blue-glow-hover
+  );
+  --color-components-premium-badge-blue-bg-stop-0-hover: var(
+    --color-components-premium-badge-blue-bg-stop-0-hover
+  );
+  --color-components-premium-badge-blue-bg-stop-100-hover: var(
+    --color-components-premium-badge-blue-bg-stop-100-hover
+  );
+  --color-components-premium-badge-blue-stroke-stop-0-hover: var(
+    --color-components-premium-badge-blue-stroke-stop-0-hover
+  );
+  --color-components-premium-badge-blue-stroke-stop-100-hover: var(
+    --color-components-premium-badge-blue-stroke-stop-100-hover
+  );
 
-  --color-components-premium-badge-indigo-bg-stop-0: var(--color-components-premium-badge-indigo-bg-stop-0);
-  --color-components-premium-badge-indigo-bg-stop-100: var(--color-components-premium-badge-indigo-bg-stop-100);
-  --color-components-premium-badge-indigo-stroke-stop-0: var(--color-components-premium-badge-indigo-stroke-stop-0);
-  --color-components-premium-badge-indigo-stroke-stop-100: var(--color-components-premium-badge-indigo-stroke-stop-100);
-  --color-components-premium-badge-indigo-text-stop-0: var(--color-components-premium-badge-indigo-text-stop-0);
-  --color-components-premium-badge-indigo-text-stop-100: var(--color-components-premium-badge-indigo-text-stop-100);
+  --color-components-premium-badge-indigo-bg-stop-0: var(
+    --color-components-premium-badge-indigo-bg-stop-0
+  );
+  --color-components-premium-badge-indigo-bg-stop-100: var(
+    --color-components-premium-badge-indigo-bg-stop-100
+  );
+  --color-components-premium-badge-indigo-stroke-stop-0: var(
+    --color-components-premium-badge-indigo-stroke-stop-0
+  );
+  --color-components-premium-badge-indigo-stroke-stop-100: var(
+    --color-components-premium-badge-indigo-stroke-stop-100
+  );
+  --color-components-premium-badge-indigo-text-stop-0: var(
+    --color-components-premium-badge-indigo-text-stop-0
+  );
+  --color-components-premium-badge-indigo-text-stop-100: var(
+    --color-components-premium-badge-indigo-text-stop-100
+  );
   --color-components-premium-badge-indigo-glow: var(--color-components-premium-badge-indigo-glow);
-  --color-components-premium-badge-indigo-glow-hover: var(--color-components-premium-badge-indigo-glow-hover);
-  --color-components-premium-badge-indigo-bg-stop-0-hover: var(--color-components-premium-badge-indigo-bg-stop-0-hover);
-  --color-components-premium-badge-indigo-bg-stop-100-hover: var(--color-components-premium-badge-indigo-bg-stop-100-hover);
-  --color-components-premium-badge-indigo-stroke-stop-0-hover: var(--color-components-premium-badge-indigo-stroke-stop-0-hover);
-  --color-components-premium-badge-indigo-stroke-stop-100-hover: var(--color-components-premium-badge-indigo-stroke-stop-100-hover);
+  --color-components-premium-badge-indigo-glow-hover: var(
+    --color-components-premium-badge-indigo-glow-hover
+  );
+  --color-components-premium-badge-indigo-bg-stop-0-hover: var(
+    --color-components-premium-badge-indigo-bg-stop-0-hover
+  );
+  --color-components-premium-badge-indigo-bg-stop-100-hover: var(
+    --color-components-premium-badge-indigo-bg-stop-100-hover
+  );
+  --color-components-premium-badge-indigo-stroke-stop-0-hover: var(
+    --color-components-premium-badge-indigo-stroke-stop-0-hover
+  );
+  --color-components-premium-badge-indigo-stroke-stop-100-hover: var(
+    --color-components-premium-badge-indigo-stroke-stop-100-hover
+  );
 
-  --color-components-premium-badge-grey-bg-stop-0: var(--color-components-premium-badge-grey-bg-stop-0);
-  --color-components-premium-badge-grey-bg-stop-100: var(--color-components-premium-badge-grey-bg-stop-100);
-  --color-components-premium-badge-grey-stroke-stop-0: var(--color-components-premium-badge-grey-stroke-stop-0);
-  --color-components-premium-badge-grey-stroke-stop-100: var(--color-components-premium-badge-grey-stroke-stop-100);
-  --color-components-premium-badge-grey-text-stop-0: var(--color-components-premium-badge-grey-text-stop-0);
-  --color-components-premium-badge-grey-text-stop-100: var(--color-components-premium-badge-grey-text-stop-100);
+  --color-components-premium-badge-grey-bg-stop-0: var(
+    --color-components-premium-badge-grey-bg-stop-0
+  );
+  --color-components-premium-badge-grey-bg-stop-100: var(
+    --color-components-premium-badge-grey-bg-stop-100
+  );
+  --color-components-premium-badge-grey-stroke-stop-0: var(
+    --color-components-premium-badge-grey-stroke-stop-0
+  );
+  --color-components-premium-badge-grey-stroke-stop-100: var(
+    --color-components-premium-badge-grey-stroke-stop-100
+  );
+  --color-components-premium-badge-grey-text-stop-0: var(
+    --color-components-premium-badge-grey-text-stop-0
+  );
+  --color-components-premium-badge-grey-text-stop-100: var(
+    --color-components-premium-badge-grey-text-stop-100
+  );
   --color-components-premium-badge-grey-glow: var(--color-components-premium-badge-grey-glow);
-  --color-components-premium-badge-grey-glow-hover: var(--color-components-premium-badge-grey-glow-hover);
-  --color-components-premium-badge-grey-bg-stop-0-hover: var(--color-components-premium-badge-grey-bg-stop-0-hover);
-  --color-components-premium-badge-grey-bg-stop-100-hover: var(--color-components-premium-badge-grey-bg-stop-100-hover);
-  --color-components-premium-badge-grey-stroke-stop-0-hover: var(--color-components-premium-badge-grey-stroke-stop-0-hover);
-  --color-components-premium-badge-grey-stroke-stop-100-hover: var(--color-components-premium-badge-grey-stroke-stop-100-hover);
+  --color-components-premium-badge-grey-glow-hover: var(
+    --color-components-premium-badge-grey-glow-hover
+  );
+  --color-components-premium-badge-grey-bg-stop-0-hover: var(
+    --color-components-premium-badge-grey-bg-stop-0-hover
+  );
+  --color-components-premium-badge-grey-bg-stop-100-hover: var(
+    --color-components-premium-badge-grey-bg-stop-100-hover
+  );
+  --color-components-premium-badge-grey-stroke-stop-0-hover: var(
+    --color-components-premium-badge-grey-stroke-stop-0-hover
+  );
+  --color-components-premium-badge-grey-stroke-stop-100-hover: var(
+    --color-components-premium-badge-grey-stroke-stop-100-hover
+  );
 
   --color-components-dropzone-bg: var(--color-components-dropzone-bg);
   --color-components-dropzone-bg-alt: var(--color-components-dropzone-bg-alt);
@@ -299,10 +431,18 @@
   --color-components-panel-gradient-1: var(--color-components-panel-gradient-1);
   --color-components-panel-gradient-2: var(--color-components-panel-gradient-2);
   --color-components-panel-on-panel-item-bg: var(--color-components-panel-on-panel-item-bg);
-  --color-components-panel-on-panel-item-bg-transparent: var(--color-components-panel-on-panel-item-bg-transparent);
-  --color-components-panel-on-panel-item-bg-hover: var(--color-components-panel-on-panel-item-bg-hover);
-  --color-components-panel-on-panel-item-bg-hover-transparent: var(--color-components-panel-on-panel-item-bg-hover-transparent);
-  --color-components-panel-on-panel-item-bg-destructive-hover-transparent: var(--color-components-panel-on-panel-item-bg-destructive-hover-transparent);
+  --color-components-panel-on-panel-item-bg-transparent: var(
+    --color-components-panel-on-panel-item-bg-transparent
+  );
+  --color-components-panel-on-panel-item-bg-hover: var(
+    --color-components-panel-on-panel-item-bg-hover
+  );
+  --color-components-panel-on-panel-item-bg-hover-transparent: var(
+    --color-components-panel-on-panel-item-bg-hover-transparent
+  );
+  --color-components-panel-on-panel-item-bg-destructive-hover-transparent: var(
+    --color-components-panel-on-panel-item-bg-destructive-hover-transparent
+  );
   --color-components-panel-on-panel-item-bg-alt: var(--color-components-panel-on-panel-item-bg-alt);
 
   --color-components-marketplace-header-bg: var(--color-components-marketplace-header-bg);
@@ -330,8 +470,12 @@
   --color-components-input-text-filled-blue: var(--color-components-input-text-filled-blue);
   --color-components-input-border-hover: var(--color-components-input-border-hover);
   --color-components-input-border-active: var(--color-components-input-border-active);
-  --color-components-input-border-active-prompt-1: var(--color-components-input-border-active-prompt-1);
-  --color-components-input-border-active-prompt-2: var(--color-components-input-border-active-prompt-2);
+  --color-components-input-border-active-prompt-1: var(
+    --color-components-input-border-active-prompt-1
+  );
+  --color-components-input-border-active-prompt-2: var(
+    --color-components-input-border-active-prompt-2
+  );
   --color-components-input-border-destructive: var(--color-components-input-border-destructive);
 
   --color-components-progress-brand-progress: var(--color-components-progress-brand-progress);
@@ -355,76 +499,160 @@
   --color-components-progress-error-bg: var(--color-components-progress-error-bg);
 
   --color-components-progress-bar-progress: var(--color-components-progress-bar-progress);
-  --color-components-progress-bar-progress-highlight: var(--color-components-progress-bar-progress-highlight);
-  --color-components-progress-bar-progress-solid: var(--color-components-progress-bar-progress-solid);
+  --color-components-progress-bar-progress-highlight: var(
+    --color-components-progress-bar-progress-highlight
+  );
+  --color-components-progress-bar-progress-solid: var(
+    --color-components-progress-bar-progress-solid
+  );
   --color-components-progress-bar-border: var(--color-components-progress-bar-border);
   --color-components-progress-bar-bg: var(--color-components-progress-bar-bg);
 
   --color-components-button-button-seam: var(--color-components-button-button-seam);
   --color-components-button-primary-text: var(--color-components-button-primary-text);
-  --color-components-button-primary-text-disabled: var(--color-components-button-primary-text-disabled);
+  --color-components-button-primary-text-disabled: var(
+    --color-components-button-primary-text-disabled
+  );
   --color-components-button-primary-bg: var(--color-components-button-primary-bg);
   --color-components-button-primary-bg-hover: var(--color-components-button-primary-bg-hover);
   --color-components-button-primary-bg-disabled: var(--color-components-button-primary-bg-disabled);
   --color-components-button-primary-border: var(--color-components-button-primary-border);
-  --color-components-button-primary-border-hover: var(--color-components-button-primary-border-hover);
-  --color-components-button-primary-border-disabled: var(--color-components-button-primary-border-disabled);
+  --color-components-button-primary-border-hover: var(
+    --color-components-button-primary-border-hover
+  );
+  --color-components-button-primary-border-disabled: var(
+    --color-components-button-primary-border-disabled
+  );
 
   --color-components-button-secondary-text: var(--color-components-button-secondary-text);
-  --color-components-button-secondary-text-disabled: var(--color-components-button-secondary-text-disabled);
+  --color-components-button-secondary-text-disabled: var(
+    --color-components-button-secondary-text-disabled
+  );
   --color-components-button-secondary-bg: var(--color-components-button-secondary-bg);
   --color-components-button-secondary-bg-hover: var(--color-components-button-secondary-bg-hover);
-  --color-components-button-secondary-bg-disabled: var(--color-components-button-secondary-bg-disabled);
+  --color-components-button-secondary-bg-disabled: var(
+    --color-components-button-secondary-bg-disabled
+  );
   --color-components-button-secondary-border: var(--color-components-button-secondary-border);
-  --color-components-button-secondary-border-hover: var(--color-components-button-secondary-border-hover);
-  --color-components-button-secondary-border-disabled: var(--color-components-button-secondary-border-disabled);
+  --color-components-button-secondary-border-hover: var(
+    --color-components-button-secondary-border-hover
+  );
+  --color-components-button-secondary-border-disabled: var(
+    --color-components-button-secondary-border-disabled
+  );
 
-  --color-components-button-secondary-accent-text: var(--color-components-button-secondary-accent-text);
-  --color-components-button-secondary-accent-text-disabled: var(--color-components-button-secondary-accent-text-disabled);
+  --color-components-button-secondary-accent-text: var(
+    --color-components-button-secondary-accent-text
+  );
+  --color-components-button-secondary-accent-text-disabled: var(
+    --color-components-button-secondary-accent-text-disabled
+  );
   --color-components-button-secondary-accent-bg: var(--color-components-button-secondary-accent-bg);
-  --color-components-button-secondary-accent-bg-hover: var(--color-components-button-secondary-accent-bg-hover);
-  --color-components-button-secondary-accent-bg-disabled: var(--color-components-button-secondary-accent-bg-disabled);
-  --color-components-button-secondary-accent-border: var(--color-components-button-secondary-accent-border);
-  --color-components-button-secondary-accent-border-hover: var(--color-components-button-secondary-accent-border-hover);
-  --color-components-button-secondary-accent-border-disabled: var(--color-components-button-secondary-accent-border-disabled);
+  --color-components-button-secondary-accent-bg-hover: var(
+    --color-components-button-secondary-accent-bg-hover
+  );
+  --color-components-button-secondary-accent-bg-disabled: var(
+    --color-components-button-secondary-accent-bg-disabled
+  );
+  --color-components-button-secondary-accent-border: var(
+    --color-components-button-secondary-accent-border
+  );
+  --color-components-button-secondary-accent-border-hover: var(
+    --color-components-button-secondary-accent-border-hover
+  );
+  --color-components-button-secondary-accent-border-disabled: var(
+    --color-components-button-secondary-accent-border-disabled
+  );
 
   --color-components-button-tertiary-text: var(--color-components-button-tertiary-text);
-  --color-components-button-tertiary-text-disabled: var(--color-components-button-tertiary-text-disabled);
+  --color-components-button-tertiary-text-disabled: var(
+    --color-components-button-tertiary-text-disabled
+  );
   --color-components-button-tertiary-bg: var(--color-components-button-tertiary-bg);
   --color-components-button-tertiary-bg-hover: var(--color-components-button-tertiary-bg-hover);
-  --color-components-button-tertiary-bg-disabled: var(--color-components-button-tertiary-bg-disabled);
+  --color-components-button-tertiary-bg-disabled: var(
+    --color-components-button-tertiary-bg-disabled
+  );
 
   --color-components-button-ghost-text: var(--color-components-button-ghost-text);
   --color-components-button-ghost-text-disabled: var(--color-components-button-ghost-text-disabled);
   --color-components-button-ghost-bg-hover: var(--color-components-button-ghost-bg-hover);
 
-  --color-components-button-destructive-primary-text: var(--color-components-button-destructive-primary-text);
-  --color-components-button-destructive-primary-text-disabled: var(--color-components-button-destructive-primary-text-disabled);
-  --color-components-button-destructive-primary-bg: var(--color-components-button-destructive-primary-bg);
-  --color-components-button-destructive-primary-bg-hover: var(--color-components-button-destructive-primary-bg-hover);
-  --color-components-button-destructive-primary-bg-disabled: var(--color-components-button-destructive-primary-bg-disabled);
-  --color-components-button-destructive-primary-border: var(--color-components-button-destructive-primary-border);
-  --color-components-button-destructive-primary-border-hover: var(--color-components-button-destructive-primary-border-hover);
-  --color-components-button-destructive-primary-border-disabled: var(--color-components-button-destructive-primary-border-disabled);
+  --color-components-button-destructive-primary-text: var(
+    --color-components-button-destructive-primary-text
+  );
+  --color-components-button-destructive-primary-text-disabled: var(
+    --color-components-button-destructive-primary-text-disabled
+  );
+  --color-components-button-destructive-primary-bg: var(
+    --color-components-button-destructive-primary-bg
+  );
+  --color-components-button-destructive-primary-bg-hover: var(
+    --color-components-button-destructive-primary-bg-hover
+  );
+  --color-components-button-destructive-primary-bg-disabled: var(
+    --color-components-button-destructive-primary-bg-disabled
+  );
+  --color-components-button-destructive-primary-border: var(
+    --color-components-button-destructive-primary-border
+  );
+  --color-components-button-destructive-primary-border-hover: var(
+    --color-components-button-destructive-primary-border-hover
+  );
+  --color-components-button-destructive-primary-border-disabled: var(
+    --color-components-button-destructive-primary-border-disabled
+  );
 
-  --color-components-button-destructive-secondary-text: var(--color-components-button-destructive-secondary-text);
-  --color-components-button-destructive-secondary-text-disabled: var(--color-components-button-destructive-secondary-text-disabled);
-  --color-components-button-destructive-secondary-bg: var(--color-components-button-destructive-secondary-bg);
-  --color-components-button-destructive-secondary-bg-hover: var(--color-components-button-destructive-secondary-bg-hover);
-  --color-components-button-destructive-secondary-bg-disabled: var(--color-components-button-destructive-secondary-bg-disabled);
-  --color-components-button-destructive-secondary-border: var(--color-components-button-destructive-secondary-border);
-  --color-components-button-destructive-secondary-border-hover: var(--color-components-button-destructive-secondary-border-hover);
-  --color-components-button-destructive-secondary-border-disabled: var(--color-components-button-destructive-secondary-border-disabled);
+  --color-components-button-destructive-secondary-text: var(
+    --color-components-button-destructive-secondary-text
+  );
+  --color-components-button-destructive-secondary-text-disabled: var(
+    --color-components-button-destructive-secondary-text-disabled
+  );
+  --color-components-button-destructive-secondary-bg: var(
+    --color-components-button-destructive-secondary-bg
+  );
+  --color-components-button-destructive-secondary-bg-hover: var(
+    --color-components-button-destructive-secondary-bg-hover
+  );
+  --color-components-button-destructive-secondary-bg-disabled: var(
+    --color-components-button-destructive-secondary-bg-disabled
+  );
+  --color-components-button-destructive-secondary-border: var(
+    --color-components-button-destructive-secondary-border
+  );
+  --color-components-button-destructive-secondary-border-hover: var(
+    --color-components-button-destructive-secondary-border-hover
+  );
+  --color-components-button-destructive-secondary-border-disabled: var(
+    --color-components-button-destructive-secondary-border-disabled
+  );
 
-  --color-components-button-destructive-tertiary-text: var(--color-components-button-destructive-tertiary-text);
-  --color-components-button-destructive-tertiary-text-disabled: var(--color-components-button-destructive-tertiary-text-disabled);
-  --color-components-button-destructive-tertiary-bg: var(--color-components-button-destructive-tertiary-bg);
-  --color-components-button-destructive-tertiary-bg-hover: var(--color-components-button-destructive-tertiary-bg-hover);
-  --color-components-button-destructive-tertiary-bg-disabled: var(--color-components-button-destructive-tertiary-bg-disabled);
+  --color-components-button-destructive-tertiary-text: var(
+    --color-components-button-destructive-tertiary-text
+  );
+  --color-components-button-destructive-tertiary-text-disabled: var(
+    --color-components-button-destructive-tertiary-text-disabled
+  );
+  --color-components-button-destructive-tertiary-bg: var(
+    --color-components-button-destructive-tertiary-bg
+  );
+  --color-components-button-destructive-tertiary-bg-hover: var(
+    --color-components-button-destructive-tertiary-bg-hover
+  );
+  --color-components-button-destructive-tertiary-bg-disabled: var(
+    --color-components-button-destructive-tertiary-bg-disabled
+  );
 
-  --color-components-button-destructive-ghost-text: var(--color-components-button-destructive-ghost-text);
-  --color-components-button-destructive-ghost-text-disabled: var(--color-components-button-destructive-ghost-text-disabled);
-  --color-components-button-destructive-ghost-bg-hover: var(--color-components-button-destructive-ghost-bg-hover);
+  --color-components-button-destructive-ghost-text: var(
+    --color-components-button-destructive-ghost-text
+  );
+  --color-components-button-destructive-ghost-text-disabled: var(
+    --color-components-button-destructive-ghost-text-disabled
+  );
+  --color-components-button-destructive-ghost-bg-hover: var(
+    --color-components-button-destructive-ghost-bg-hover
+  );
 
   --color-components-button-indigo-bg: var(--color-components-button-indigo-bg);
   --color-components-button-indigo-bg-hover: var(--color-components-button-indigo-bg-hover);
@@ -437,16 +665,22 @@
   --color-components-button-debug-bg-disabled: var(--color-components-button-debug-bg-disabled);
   --color-components-button-debug-border: var(--color-components-button-debug-border);
   --color-components-button-debug-border-hover: var(--color-components-button-debug-border-hover);
-  --color-components-button-debug-border-disabled: var(--color-components-button-debug-border-disabled);
+  --color-components-button-debug-border-disabled: var(
+    --color-components-button-debug-border-disabled
+  );
 
   --color-components-checkbox-icon: var(--color-components-checkbox-icon);
   --color-components-checkbox-icon-disabled: var(--color-components-checkbox-icon-disabled);
   --color-components-checkbox-bg: var(--color-components-checkbox-bg);
   --color-components-checkbox-bg-hover: var(--color-components-checkbox-bg-hover);
   --color-components-checkbox-bg-disabled: var(--color-components-checkbox-bg-disabled);
-  --color-components-checkbox-bg-disabled-checked: var(--color-components-checkbox-bg-disabled-checked);
+  --color-components-checkbox-bg-disabled-checked: var(
+    --color-components-checkbox-bg-disabled-checked
+  );
   --color-components-checkbox-bg-unchecked: var(--color-components-checkbox-bg-unchecked);
-  --color-components-checkbox-bg-unchecked-hover: var(--color-components-checkbox-bg-unchecked-hover);
+  --color-components-checkbox-bg-unchecked-hover: var(
+    --color-components-checkbox-bg-unchecked-hover
+  );
   --color-components-checkbox-border: var(--color-components-checkbox-border);
   --color-components-checkbox-border-hover: var(--color-components-checkbox-border-hover);
   --color-components-checkbox-border-disabled: var(--color-components-checkbox-border-disabled);
@@ -456,7 +690,9 @@
   --color-components-radio-bg-disabled: var(--color-components-radio-bg-disabled);
   --color-components-radio-border-checked: var(--color-components-radio-border-checked);
   --color-components-radio-border-checked-hover: var(--color-components-radio-border-checked-hover);
-  --color-components-radio-border-checked-disabled: var(--color-components-radio-border-checked-disabled);
+  --color-components-radio-border-checked-disabled: var(
+    --color-components-radio-border-checked-disabled
+  );
   --color-components-radio-border: var(--color-components-radio-border);
   --color-components-radio-border-hover: var(--color-components-radio-border-hover);
   --color-components-radio-border-disabled: var(--color-components-radio-border-disabled);
@@ -469,14 +705,24 @@
   --color-components-toggle-bg-disabled: var(--color-components-toggle-bg-disabled);
   --color-components-toggle-bg-unchecked: var(--color-components-toggle-bg-unchecked);
   --color-components-toggle-bg-unchecked-hover: var(--color-components-toggle-bg-unchecked-hover);
-  --color-components-toggle-bg-unchecked-disabled: var(--color-components-toggle-bg-unchecked-disabled);
+  --color-components-toggle-bg-unchecked-disabled: var(
+    --color-components-toggle-bg-unchecked-disabled
+  );
 
   --color-components-option-card-option-bg: var(--color-components-option-card-option-bg);
   --color-components-option-card-option-border: var(--color-components-option-card-option-border);
-  --color-components-option-card-option-bg-hover: var(--color-components-option-card-option-bg-hover);
-  --color-components-option-card-option-border-hover: var(--color-components-option-card-option-border-hover);
-  --color-components-option-card-option-selected-bg: var(--color-components-option-card-option-selected-bg);
-  --color-components-option-card-option-selected-border: var(--color-components-option-card-option-selected-border);
+  --color-components-option-card-option-bg-hover: var(
+    --color-components-option-card-option-bg-hover
+  );
+  --color-components-option-card-option-border-hover: var(
+    --color-components-option-card-option-border-hover
+  );
+  --color-components-option-card-option-selected-bg: var(
+    --color-components-option-card-option-selected-bg
+  );
+  --color-components-option-card-option-selected-border: var(
+    --color-components-option-card-option-selected-border
+  );
 
   --color-components-slider-knob: var(--color-components-slider-knob);
   --color-components-slider-knob-border: var(--color-components-slider-knob-border);
@@ -494,15 +740,27 @@
   --color-components-menu-item-text: var(--color-components-menu-item-text);
   --color-components-menu-item-text-hover: var(--color-components-menu-item-text-hover);
   --color-components-menu-item-text-active: var(--color-components-menu-item-text-active);
-  --color-components-menu-item-text-active-accent: var(--color-components-menu-item-text-active-accent);
+  --color-components-menu-item-text-active-accent: var(
+    --color-components-menu-item-text-active-accent
+  );
   --color-components-menu-item-bg-hover: var(--color-components-menu-item-bg-hover);
   --color-components-menu-item-bg-active: var(--color-components-menu-item-bg-active);
 
-  --color-components-segmented-control-bg-normal: var(--color-components-segmented-control-bg-normal);
-  --color-components-segmented-control-item-active-bg: var(--color-components-segmented-control-item-active-bg);
-  --color-components-segmented-control-item-active-border: var(--color-components-segmented-control-item-active-border);
-  --color-components-segmented-control-item-active-accent-bg: var(--color-components-segmented-control-item-active-accent-bg);
-  --color-components-segmented-control-item-active-accent-border: var(--color-components-segmented-control-item-active-accent-border);
+  --color-components-segmented-control-bg-normal: var(
+    --color-components-segmented-control-bg-normal
+  );
+  --color-components-segmented-control-item-active-bg: var(
+    --color-components-segmented-control-item-active-bg
+  );
+  --color-components-segmented-control-item-active-border: var(
+    --color-components-segmented-control-item-active-border
+  );
+  --color-components-segmented-control-item-active-accent-bg: var(
+    --color-components-segmented-control-item-active-accent-bg
+  );
+  --color-components-segmented-control-item-active-accent-border: var(
+    --color-components-segmented-control-item-active-accent-border
+  );
 
   --color-components-badge-white-to-dark: var(--color-components-badge-white-to-dark);
   --color-components-badge-white-to-dark-alpha: var(--color-components-badge-white-to-dark-alpha);
@@ -513,27 +771,61 @@
   --color-components-badge-bg-gray-soft: var(--color-components-badge-bg-gray-soft);
   --color-components-badge-bg-dimm: var(--color-components-badge-bg-dimm);
 
-  --color-components-badge-status-light-border-outer: var(--color-components-badge-status-light-border-outer);
-  --color-components-badge-status-light-high-light: var(--color-components-badge-status-light-high-light);
-  --color-components-badge-status-light-success-bg: var(--color-components-badge-status-light-success-bg);
-  --color-components-badge-status-light-success-border-inner: var(--color-components-badge-status-light-success-border-inner);
-  --color-components-badge-status-light-success-halo: var(--color-components-badge-status-light-success-halo);
+  --color-components-badge-status-light-border-outer: var(
+    --color-components-badge-status-light-border-outer
+  );
+  --color-components-badge-status-light-high-light: var(
+    --color-components-badge-status-light-high-light
+  );
+  --color-components-badge-status-light-success-bg: var(
+    --color-components-badge-status-light-success-bg
+  );
+  --color-components-badge-status-light-success-border-inner: var(
+    --color-components-badge-status-light-success-border-inner
+  );
+  --color-components-badge-status-light-success-halo: var(
+    --color-components-badge-status-light-success-halo
+  );
 
-  --color-components-badge-status-light-warning-bg: var(--color-components-badge-status-light-warning-bg);
-  --color-components-badge-status-light-warning-border-inner: var(--color-components-badge-status-light-warning-border-inner);
-  --color-components-badge-status-light-warning-halo: var(--color-components-badge-status-light-warning-halo);
+  --color-components-badge-status-light-warning-bg: var(
+    --color-components-badge-status-light-warning-bg
+  );
+  --color-components-badge-status-light-warning-border-inner: var(
+    --color-components-badge-status-light-warning-border-inner
+  );
+  --color-components-badge-status-light-warning-halo: var(
+    --color-components-badge-status-light-warning-halo
+  );
 
-  --color-components-badge-status-light-error-bg: var(--color-components-badge-status-light-error-bg);
-  --color-components-badge-status-light-error-border-inner: var(--color-components-badge-status-light-error-border-inner);
-  --color-components-badge-status-light-error-halo: var(--color-components-badge-status-light-error-halo);
+  --color-components-badge-status-light-error-bg: var(
+    --color-components-badge-status-light-error-bg
+  );
+  --color-components-badge-status-light-error-border-inner: var(
+    --color-components-badge-status-light-error-border-inner
+  );
+  --color-components-badge-status-light-error-halo: var(
+    --color-components-badge-status-light-error-halo
+  );
 
-  --color-components-badge-status-light-normal-bg: var(--color-components-badge-status-light-normal-bg);
-  --color-components-badge-status-light-normal-border-inner: var(--color-components-badge-status-light-normal-border-inner);
-  --color-components-badge-status-light-normal-halo: var(--color-components-badge-status-light-normal-halo);
+  --color-components-badge-status-light-normal-bg: var(
+    --color-components-badge-status-light-normal-bg
+  );
+  --color-components-badge-status-light-normal-border-inner: var(
+    --color-components-badge-status-light-normal-border-inner
+  );
+  --color-components-badge-status-light-normal-halo: var(
+    --color-components-badge-status-light-normal-halo
+  );
 
-  --color-components-badge-status-light-disabled-bg: var(--color-components-badge-status-light-disabled-bg);
-  --color-components-badge-status-light-disabled-border-inner: var(--color-components-badge-status-light-disabled-border-inner);
-  --color-components-badge-status-light-disabled-halo: var(--color-components-badge-status-light-disabled-halo);
+  --color-components-badge-status-light-disabled-bg: var(
+    --color-components-badge-status-light-disabled-bg
+  );
+  --color-components-badge-status-light-disabled-border-inner: var(
+    --color-components-badge-status-light-disabled-border-inner
+  );
+  --color-components-badge-status-light-disabled-halo: var(
+    --color-components-badge-status-light-disabled-halo
+  );
 
   --color-components-tab-active: var(--color-components-tab-active);
 
@@ -541,29 +833,57 @@
   --color-components-main-nav-text-active: var(--color-components-main-nav-text-active);
   --color-components-main-nav-nav-button-border: var(--color-components-main-nav-nav-button-border);
   --color-components-main-nav-nav-button-text: var(--color-components-main-nav-nav-button-text);
-  --color-components-main-nav-nav-button-text-active: var(--color-components-main-nav-nav-button-text-active);
+  --color-components-main-nav-nav-button-text-active: var(
+    --color-components-main-nav-nav-button-text-active
+  );
   --color-components-main-nav-nav-button-bg: var(--color-components-main-nav-nav-button-bg);
-  --color-components-main-nav-nav-button-bg-hover: var(--color-components-main-nav-nav-button-bg-hover);
-  --color-components-main-nav-nav-button-bg-active: var(--color-components-main-nav-nav-button-bg-active);
+  --color-components-main-nav-nav-button-bg-hover: var(
+    --color-components-main-nav-nav-button-bg-hover
+  );
+  --color-components-main-nav-nav-button-bg-active: var(
+    --color-components-main-nav-nav-button-bg-active
+  );
 
   --color-components-main-nav-nav-user-border: var(--color-components-main-nav-nav-user-border);
 
   --color-components-main-nav-glass-inner-glow: var(--color-components-main-nav-glass-inner-glow);
-  --color-components-main-nav-glass-shadow-reflection: var(--color-components-main-nav-glass-shadow-reflection);
-  --color-components-main-nav-glass-shadow-reflection-glow: var(--color-components-main-nav-glass-shadow-reflection-glow);
+  --color-components-main-nav-glass-shadow-reflection: var(
+    --color-components-main-nav-glass-shadow-reflection
+  );
+  --color-components-main-nav-glass-shadow-reflection-glow: var(
+    --color-components-main-nav-glass-shadow-reflection-glow
+  );
   --color-components-main-nav-glass-text-glow: var(--color-components-main-nav-glass-text-glow);
-  --color-components-main-nav-glass-surface-first: var(--color-components-main-nav-glass-surface-first);
-  --color-components-main-nav-glass-surface-middle-1: var(--color-components-main-nav-glass-surface-middle-1);
-  --color-components-main-nav-glass-surface-middle-2: var(--color-components-main-nav-glass-surface-middle-2);
+  --color-components-main-nav-glass-surface-first: var(
+    --color-components-main-nav-glass-surface-first
+  );
+  --color-components-main-nav-glass-surface-middle-1: var(
+    --color-components-main-nav-glass-surface-middle-1
+  );
+  --color-components-main-nav-glass-surface-middle-2: var(
+    --color-components-main-nav-glass-surface-middle-2
+  );
   --color-components-main-nav-glass-surface-end: var(--color-components-main-nav-glass-surface-end);
 
-  --color-components-main-nav-glass-edge-reflection-first: var(--color-components-main-nav-glass-edge-reflection-first);
-  --color-components-main-nav-glass-edge-reflection-middle: var(--color-components-main-nav-glass-edge-reflection-middle);
-  --color-components-main-nav-glass-edge-reflection-end: var(--color-components-main-nav-glass-edge-reflection-end);
+  --color-components-main-nav-glass-edge-reflection-first: var(
+    --color-components-main-nav-glass-edge-reflection-first
+  );
+  --color-components-main-nav-glass-edge-reflection-middle: var(
+    --color-components-main-nav-glass-edge-reflection-middle
+  );
+  --color-components-main-nav-glass-edge-reflection-end: var(
+    --color-components-main-nav-glass-edge-reflection-end
+  );
 
-  --color-components-main-nav-glass-edge-highlight-first: var(--color-components-main-nav-glass-edge-highlight-first);
-  --color-components-main-nav-glass-edge-highlight-middle: var(--color-components-main-nav-glass-edge-highlight-middle);
-  --color-components-main-nav-glass-edge-highlight-end: var(--color-components-main-nav-glass-edge-highlight-end);
+  --color-components-main-nav-glass-edge-highlight-first: var(
+    --color-components-main-nav-glass-edge-highlight-first
+  );
+  --color-components-main-nav-glass-edge-highlight-middle: var(
+    --color-components-main-nav-glass-edge-highlight-middle
+  );
+  --color-components-main-nav-glass-edge-highlight-end: var(
+    --color-components-main-nav-glass-edge-highlight-end
+  );
 
   --color-components-chart-bg: var(--color-components-chart-bg);
   --color-components-chart-line: var(--color-components-chart-line);
@@ -609,14 +929,30 @@
   --color-third-party-model-bg-anthropic: var(--color-third-party-model-bg-anthropic);
   --color-third-party-model-bg-default: var(--color-third-party-model-bg-default);
 
-  --color-util-colors-orange-dark-orange-dark-50: var(--color-util-colors-orange-dark-orange-dark-50);
-  --color-util-colors-orange-dark-orange-dark-100: var(--color-util-colors-orange-dark-orange-dark-100);
-  --color-util-colors-orange-dark-orange-dark-200: var(--color-util-colors-orange-dark-orange-dark-200);
-  --color-util-colors-orange-dark-orange-dark-300: var(--color-util-colors-orange-dark-orange-dark-300);
-  --color-util-colors-orange-dark-orange-dark-400: var(--color-util-colors-orange-dark-orange-dark-400);
-  --color-util-colors-orange-dark-orange-dark-500: var(--color-util-colors-orange-dark-orange-dark-500);
-  --color-util-colors-orange-dark-orange-dark-600: var(--color-util-colors-orange-dark-orange-dark-600);
-  --color-util-colors-orange-dark-orange-dark-700: var(--color-util-colors-orange-dark-orange-dark-700);
+  --color-util-colors-orange-dark-orange-dark-50: var(
+    --color-util-colors-orange-dark-orange-dark-50
+  );
+  --color-util-colors-orange-dark-orange-dark-100: var(
+    --color-util-colors-orange-dark-orange-dark-100
+  );
+  --color-util-colors-orange-dark-orange-dark-200: var(
+    --color-util-colors-orange-dark-orange-dark-200
+  );
+  --color-util-colors-orange-dark-orange-dark-300: var(
+    --color-util-colors-orange-dark-orange-dark-300
+  );
+  --color-util-colors-orange-dark-orange-dark-400: var(
+    --color-util-colors-orange-dark-orange-dark-400
+  );
+  --color-util-colors-orange-dark-orange-dark-500: var(
+    --color-util-colors-orange-dark-orange-dark-500
+  );
+  --color-util-colors-orange-dark-orange-dark-600: var(
+    --color-util-colors-orange-dark-orange-dark-600
+  );
+  --color-util-colors-orange-dark-orange-dark-700: var(
+    --color-util-colors-orange-dark-orange-dark-700
+  );
 
   --color-util-colors-orange-orange-50: var(--color-util-colors-orange-orange-50);
   --color-util-colors-orange-orange-100: var(--color-util-colors-orange-orange-100);
@@ -626,7 +962,9 @@
   --color-util-colors-orange-orange-500: var(--color-util-colors-orange-orange-500);
   --color-util-colors-orange-orange-600: var(--color-util-colors-orange-orange-600);
   --color-util-colors-orange-orange-700: var(--color-util-colors-orange-orange-700);
-  --color-util-colors-orange-orange-100-transparent: var(--color-util-colors-orange-orange-100-transparent);
+  --color-util-colors-orange-orange-100-transparent: var(
+    --color-util-colors-orange-orange-100-transparent
+  );
 
   --color-util-colors-pink-pink-50: var(--color-util-colors-pink-pink-50);
   --color-util-colors-pink-pink-100: var(--color-util-colors-pink-pink-100);
@@ -718,14 +1056,30 @@
   --color-util-colors-green-green-600: var(--color-util-colors-green-green-600);
   --color-util-colors-green-green-700: var(--color-util-colors-green-green-700);
 
-  --color-util-colors-green-light-green-light-50: var(--color-util-colors-green-light-green-light-50);
-  --color-util-colors-green-light-green-light-100: var(--color-util-colors-green-light-green-light-100);
-  --color-util-colors-green-light-green-light-200: var(--color-util-colors-green-light-green-light-200);
-  --color-util-colors-green-light-green-light-300: var(--color-util-colors-green-light-green-light-300);
-  --color-util-colors-green-light-green-light-400: var(--color-util-colors-green-light-green-light-400);
-  --color-util-colors-green-light-green-light-500: var(--color-util-colors-green-light-green-light-500);
-  --color-util-colors-green-light-green-light-600: var(--color-util-colors-green-light-green-light-600);
-  --color-util-colors-green-light-green-light-700: var(--color-util-colors-green-light-green-light-700);
+  --color-util-colors-green-light-green-light-50: var(
+    --color-util-colors-green-light-green-light-50
+  );
+  --color-util-colors-green-light-green-light-100: var(
+    --color-util-colors-green-light-green-light-100
+  );
+  --color-util-colors-green-light-green-light-200: var(
+    --color-util-colors-green-light-green-light-200
+  );
+  --color-util-colors-green-light-green-light-300: var(
+    --color-util-colors-green-light-green-light-300
+  );
+  --color-util-colors-green-light-green-light-400: var(
+    --color-util-colors-green-light-green-light-400
+  );
+  --color-util-colors-green-light-green-light-500: var(
+    --color-util-colors-green-light-green-light-500
+  );
+  --color-util-colors-green-light-green-light-600: var(
+    --color-util-colors-green-light-green-light-600
+  );
+  --color-util-colors-green-light-green-light-700: var(
+    --color-util-colors-green-light-green-light-700
+  );
 
   --color-util-colors-warning-warning-50: var(--color-util-colors-warning-warning-50);
   --color-util-colors-warning-warning-100: var(--color-util-colors-warning-warning-100);
@@ -825,5 +1179,4 @@
   --color-brand-color-opacity-800: var(--color-brand-color-opacity-800);
   --color-brand-color-opacity-900: var(--color-brand-color-opacity-900);
   --color-brand-color-opacity-1000: var(--color-brand-color-opacity-1000);
-
 }

@@ -10,19 +10,27 @@ import type {
   UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
+import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import DatasetDetailContext from '@/context/dataset-detail'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import {
+  useDocumentDetail,
+  useInvalidDocumentDetail,
+  useInvalidDocumentList,
+} from '@/service/knowledge/use-document'
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -32,12 +40,12 @@ type DocumentSettingsProps = {
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const handleOpenAccountSetting = useCallback(() => {
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('provider')
+  }, [setSettingsDestination])
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
   const invalidDocumentDetail = useInvalidDocumentDetail()
@@ -54,11 +62,18 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     documentId,
     params: { metadata: 'without' },
   })
+  const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  useDocumentTitle(`${settingsTitle} · ${documentTitle} · ${datasetTitle}`)
 
   const dataSourceInfo = documentDetail?.data_source_info
 
   // Type guards for DataSourceInfo union
-  const isLegacyDataSourceInfo = (info: DataSourceInfo | undefined): info is LegacyDataSourceInfo => {
+  const isLegacyDataSourceInfo = (
+    info: DataSourceInfo | undefined,
+  ): info is LegacyDataSourceInfo => {
     return !!info && 'upload_file' in info
   }
   const isWebsiteCrawlInfo = (info: DataSourceInfo | undefined): info is WebsiteCrawlInfo => {
@@ -105,10 +120,12 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const files = useMemo<CustomFile[]>(() => {
     // Handle upload_file_id format
     if (uploadFileIdInfo) {
-      return [{
-        id: uploadFileIdInfo.upload_file_id,
-        name: documentDetail?.name || '',
-      } as unknown as CustomFile]
+      return [
+        {
+          id: uploadFileIdInfo.upload_file_id,
+          name: documentDetail?.name || '',
+        } as unknown as CustomFile,
+      ]
     }
 
     // Handle legacy upload_file format
@@ -119,36 +136,50 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     // Handle local file info format
     if (localFileInfo) {
       const { related_id, name, extension } = localFileInfo
-      return [{
-        id: related_id,
-        name,
-        extension,
-      } as unknown as CustomFile]
+      return [
+        {
+          id: related_id,
+          name,
+          extension,
+        } as unknown as CustomFile,
+      ]
     }
 
     return []
   }, [uploadFileIdInfo, legacyInfo?.upload_file, localFileInfo, documentDetail?.name])
 
   const websitePages = useMemo(() => {
-    if (!websiteInfo)
-      return []
-    return [{
-      title: websiteInfo.title,
-      source_url: websiteInfo.source_url,
-      markdown: websiteInfo.content,
-      description: websiteInfo.description,
-    }]
+    if (!websiteInfo) return []
+    return [
+      {
+        title: websiteInfo.title,
+        source_url: websiteInfo.source_url,
+        markdown: websiteInfo.content,
+        description: websiteInfo.description,
+      },
+    ]
   }, [websiteInfo])
 
-  const crawlOptions = (dataSourceInfo && typeof dataSourceInfo === 'object' && 'includes' in dataSourceInfo && 'excludes' in dataSourceInfo)
-    ? dataSourceInfo as unknown as CrawlOptions
-    : undefined
+  const crawlOptions =
+    dataSourceInfo &&
+    typeof dataSourceInfo === 'object' &&
+    'includes' in dataSourceInfo &&
+    'excludes' in dataSourceInfo
+      ? (dataSourceInfo as unknown as CrawlOptions)
+      : undefined
 
-  const websiteCrawlProvider = (websiteInfo?.provider ?? legacyInfo?.provider) as DataSourceProvider | undefined
+  const websiteCrawlProvider = (websiteInfo?.provider ?? legacyInfo?.provider) as
+    | DataSourceProvider
+    | undefined
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
   if (error)
-    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
+    return (
+      <AppUnavailable
+        code={500}
+        unknownReason={t(($) => $['error.unavailable'], { ns: 'datasetCreation' }) as string}
+      />
+    )
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
@@ -161,7 +192,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type as DataSourceType}
             notionPages={currentPage ? [currentPage as unknown as NotionPage] : []}
-            notionCredentialId={legacyInfo?.credential_id || onlineDocumentInfo?.credential_id || ''}
+            notionCredentialId={
+              legacyInfo?.credential_id || onlineDocumentInfo?.credential_id || ''
+            }
             websitePages={websitePages}
             websiteCrawlProvider={websiteCrawlProvider}
             websiteCrawlJobId={websiteCrawlJobId || ''}

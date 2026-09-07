@@ -1,6 +1,7 @@
 import type { StrategyDetail as StrategyDetailType } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import StrategyDetail from '../strategy-detail'
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -76,7 +77,7 @@ describe('StrategyDetail', () => {
         'data-[swipe-direction=right]:top-2',
         'data-[swipe-direction=right]:bottom-2',
         'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:w-100',
         'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
       )
     })
@@ -116,13 +117,12 @@ describe('StrategyDetail', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onHide when close button clicked', () => {
+    it('should call onHide when close button clicked', async () => {
+      const user = userEvent.setup()
+
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      // Find the close button (ActionButton with action-btn class)
-      const closeButton = screen.getAllByRole('button').find(btn => btn.classList.contains('action-btn'))
-      if (closeButton)
-        fireEvent.click(closeButton)
+      await user.click(screen.getByRole('button', { name: /operation\.close|close/i }))
 
       expect(mockOnHide).toHaveBeenCalledTimes(1)
     })
@@ -142,7 +142,9 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'number-input' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithNumber} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail provider={mockProvider} detail={detailWithNumber} onHide={mockOnHide} />,
+      )
 
       expect(screen.getByText('tools.setBuiltInTools.number'))!.toBeInTheDocument()
     })
@@ -152,7 +154,9 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'checkbox' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithCheckbox} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail provider={mockProvider} detail={detailWithCheckbox} onHide={mockOnHide} />,
+      )
 
       expect(screen.getByText('boolean'))!.toBeInTheDocument()
     })
@@ -172,7 +176,13 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'array[tools]' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithArrayTools} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail
+          provider={mockProvider}
+          detail={detailWithArrayTools}
+          onHide={mockOnHide}
+        />,
+      )
 
       expect(screen.getByText('multiple-tool-select'))!.toBeInTheDocument()
     })
@@ -182,7 +192,9 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'custom-type' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithUnknown} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail provider={mockProvider} detail={detailWithUnknown} onHide={mockOnHide} />,
+      )
 
       expect(screen.getByText('custom-type'))!.toBeInTheDocument()
     })
@@ -197,7 +209,10 @@ describe('StrategyDetail', () => {
     })
 
     it('should handle no output schema', () => {
-      const detailNoOutput = { ...mockDetail, output_schema: undefined as unknown as Record<string, unknown> }
+      const detailNoOutput = {
+        ...mockDetail,
+        output_schema: undefined as unknown as Record<string, unknown>,
+      }
       render(<StrategyDetail provider={mockProvider} detail={detailNoOutput} onHide={mockOnHide} />)
 
       expect(screen.queryByText('OUTPUT')).not.toBeInTheDocument()

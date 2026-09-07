@@ -7,9 +7,14 @@ const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseVarList = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
@@ -58,9 +63,11 @@ describe('answer/use-config', () => {
       result.current.handleAnswerChange('Updated answer')
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      answer: 'Updated answer',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        answer: 'Updated answer',
+      }),
+    )
     expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
     expect(result.current.handleAddVariable).toBe(mockHandleAddVariable)
     expect(result.current.readOnly).toBe(false)
@@ -69,13 +76,17 @@ describe('answer/use-config', () => {
   it('should filter out array-object variables from the prompt editor picker', () => {
     const { result } = renderHook(() => useConfig('answer-node', currentInputs))
 
-    expect(result.current.filterVar({
-      variable: 'items',
-      type: VarType.arrayObject,
-    })).toBe(false)
-    expect(result.current.filterVar({
-      variable: 'message',
-      type: VarType.string,
-    })).toBe(true)
+    expect(
+      result.current.filterVar({
+        variable: 'items',
+        type: VarType.arrayObject,
+      }),
+    ).toBe(false)
+    expect(
+      result.current.filterVar({
+        variable: 'message',
+        type: VarType.string,
+      }),
+    ).toBe(true)
   })
 })

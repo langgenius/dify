@@ -1,4 +1,4 @@
-"""POST /openapi/v1/apps/<app_id>/run — mode-agnostic runner."""
+"""POST /openapi/v1/apps/<app_id>:run — mode-agnostic runner."""
 
 from __future__ import annotations
 
@@ -20,14 +20,14 @@ from werkzeug.exceptions import (
 
 import services
 from controllers.common.fields import EventStreamResponse
-from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.console.app.wraps import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -35,6 +35,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -57,6 +58,9 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -70,6 +74,8 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise NotFound(str(ex))
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
         raise BadRequest(str(ex))
+    except TriggerWorkflowServiceModeUnavailableServiceError:
+        raise TriggerWorkflowServiceModeUnavailableError()
     except services.errors.conversation.ConversationNotExistsError:
         raise NotFound("Conversation Not Exists.")
     except services.errors.conversation.ConversationCompletedError:
@@ -138,11 +144,11 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
 }
 
 
-@openapi_ns.route("/apps/<string:app_id>/run")
+@openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
     )
     @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
@@ -174,11 +180,11 @@ class AppRunApi(Resource):
         return helper.compact_generate_response(stream_obj)
 
 
-@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
+@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+        rbac=RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),
     )
     @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):

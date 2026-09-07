@@ -1,29 +1,27 @@
-"""Local tests for the shellctl shell adapter and env-driven provider factory."""
+"""Local tests for the shellctl command adapter."""
 
 from __future__ import annotations
 
 import asyncio
-import base64
-from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import cast
 
-import httpx
+import httpx2 as httpx
 import pytest
+from shellctl.client import ShellctlClientError
+from shellctl.shared import JobMode
 
-from dify_agent.adapters.shell import shellctl
-from dify_agent.adapters.shell.config import ShellAdapterSettings
-from dify_agent.adapters.shell.factory import create_shell_provider
-from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellProviderError
-from dify_agent.adapters.shell.shellctl import ShellFileTransferError, ShellctlProvider
+from dify_agent.adapters.shell.protocols import ShellProviderError
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands
 
 
 @dataclass(slots=True)
 class _Job:
-    job_id: str
-    status: str = "running"
+    job_id: str = "job-1"
+    status: str = "exited"
     done: bool = True
-    output: str = ""
-    offset: int = 0
+    output: str = "ok"
+    offset: int = 2
     truncated: bool = False
     exit_code: int | None = 0
     output_path: str | None = "/tmp/output.log"
@@ -31,378 +29,136 @@ class _Job:
 
 @dataclass(slots=True)
 class _Status:
-    job_id: str
+    job_id: str = "job-1"
     status: str = "terminated"
     done: bool = True
-    offset: int = 0
+    offset: int = 2
     exit_code: int | None = 130
 
 
 @dataclass(slots=True)
-class _RunCall:
-    script: str
-    cwd: str | None
-    env: dict[str, str] | None
-    timeout: float
-
-
-type _RunHandler = Callable[[str, str | None, dict[str, str] | None, float], _Job]
-type _WaitHandler = Callable[[str, int, float], _Job]
-type _InputHandler = Callable[[str, str, int, float], _Job]
-type _TerminateHandler = Callable[[str, float], _Status]
-
-
-@dataclass(slots=True)
-class FakeShellctlClient:
-    run_handler: _RunHandler | None = None
-    wait_handler: _WaitHandler | None = None
-    input_handler: _InputHandler | None = None
-    tail_handler: Callable[[str], _Job] | None = None
-    terminate_handler: _TerminateHandler | None = None
-    run_calls: list[_RunCall] = field(default_factory=list)
+class _Client:
+    run_result: object = field(default_factory=_Job)
+    delete_error: Exception | None = None
+    run_calls: list[tuple[str, str | None, dict[str, str] | None, float, JobMode]] = field(default_factory=list)
     wait_calls: list[tuple[str, int, float]] = field(default_factory=list)
-    input_calls: list[tuple[str, str, int, float]] = field(default_factory=list)
-    terminate_calls: list[tuple[str, float]] = field(default_factory=list)
     delete_calls: list[tuple[str, bool, float | None]] = field(default_factory=list)
-    closed: bool = False
 
-    async def run(self, script, *, cwd=None, env=None, timeout=30.0):
-        self.run_calls.append(_RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
-        if self.run_handler is not None:
-            return self.run_handler(script, cwd, env, timeout)
-        return _Job(job_id="job", status="exited", done=True, exit_code=0)
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd=None,
+        env=None,
+        timeout=30.0,
+        mode: JobMode = JobMode.PTY,
+    ):
+        self.run_calls.append((script, cwd, env, timeout, mode))
+        if isinstance(self.run_result, Exception):
+            raise self.run_result
+        return self.run_result
 
-    async def wait(self, job_id, *, offset, timeout=30.0):
+    async def wait(self, job_id: str, *, offset: int, timeout=30.0):
         self.wait_calls.append((job_id, offset, timeout))
-        if self.wait_handler is not None:
-            return self.wait_handler(job_id, offset, timeout)
-        return _Job(job_id=job_id, status="exited", done=True, offset=offset, exit_code=0)
+        return _Job(job_id=job_id)
 
-    async def input(self, job_id, text, *, offset, timeout=30.0):
-        self.input_calls.append((job_id, text, offset, timeout))
-        if self.input_handler is not None:
-            return self.input_handler(job_id, text, offset, timeout)
-        return _Job(job_id=job_id, status="exited", done=True, offset=offset, exit_code=0)
+    async def input(self, job_id: str, text: str, *, offset: int, timeout=30.0):
+        return _Job(job_id=job_id)
 
-    async def tail(self, job_id):
-        if self.tail_handler is not None:
-            return self.tail_handler(job_id)
-        return _Job(job_id=job_id, status="exited", done=True, output="", exit_code=0)
+    async def tail(self, job_id: str):
+        return _Job(job_id=job_id)
 
-    async def terminate(self, job_id, grace_seconds=10.0):
-        self.terminate_calls.append((job_id, grace_seconds))
-        if self.terminate_handler is not None:
-            return self.terminate_handler(job_id, grace_seconds)
+    async def terminate(self, job_id: str, grace_seconds=10.0):
         return _Status(job_id=job_id)
 
-    async def delete(self, job_id, *, force=False, grace_seconds=None):
+    async def delete(self, job_id: str, *, force=False, grace_seconds=None):
         self.delete_calls.append((job_id, force, grace_seconds))
+        if self.delete_error is not None:
+            raise self.delete_error
+        return object()
+
+    async def close(self) -> None:
         return None
 
-    async def close(self):
-        self.closed = True
+
+def _client(client: _Client) -> ShellctlClientProtocol:
+    return cast(ShellctlClientProtocol, cast(object, client))
 
 
-def _provider(client: FakeShellctlClient) -> ShellctlProvider:
-    return ShellctlProvider(entrypoint="http://shellctl", token="", client_factory=lambda: client)
-
-
-def test_factory_unknown_provider_raises() -> None:
-    settings = ShellAdapterSettings(shell_provider="nope")
-    with pytest.raises(ValueError, match="Unknown shell provider"):
-        create_shell_provider(settings)
-
-
-def test_factory_shellctl_requires_entrypoint() -> None:
-    settings = ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint=None)
-    with pytest.raises(ValueError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
-        create_shell_provider(settings)
-
-
-def test_factory_builds_shellctl_provider_from_settings() -> None:
-    settings = ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint="http://shellctl.example")
-    provider = create_shell_provider(settings)
-    assert isinstance(provider, ShellctlProvider)
-    assert provider.entrypoint == "http://shellctl.example"
-    assert provider.token == ""
-
-
-def test_provider_create_opens_only_live_resource_and_close_closes_client() -> None:
-    client = FakeShellctlClient()
+def test_commands_apply_runtime_layout_and_home_environment() -> None:
+    client = _Client()
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
-        assert client.run_calls == []
-        await resource.close()
+        commands = ShellctlCommands(_client(client), home_dir="/home/binding", workspace_dir="/workspace")
+        result = await commands.run("pwd", cwd="reports", env={"TOKEN": "value"}, timeout=2.5)
+        assert result.output == "ok"
 
     asyncio.run(scenario())
-    assert client.closed is True
-
-
-def test_commands_forward_parameters_and_map_metadata() -> None:
-    client = FakeShellctlClient(
-        run_handler=lambda script, cwd, env, timeout: _Job(
-            job_id="run-job",
-            status="running",
-            done=False,
-            output="abc",
-            offset=3,
-            truncated=True,
-            exit_code=None,
-            output_path="/tmp/run.log",
-        ),
-        wait_handler=lambda job_id, offset, timeout: _Job(
-            job_id=job_id,
-            status="running",
-            done=False,
-            output="def",
-            offset=6,
-            truncated=False,
-            exit_code=None,
-            output_path="/tmp/run.log",
-        ),
-        input_handler=lambda job_id, text, offset, timeout: _Job(
-            job_id=job_id,
-            status="exited",
-            done=True,
-            output="ghi",
-            offset=9,
-            truncated=False,
-            exit_code=0,
-            output_path="/tmp/run.log",
-        ),
-        tail_handler=lambda job_id: _Job(
-            job_id=job_id,
-            status="exited",
-            done=True,
-            output="tail",
-            offset=11,
-            truncated=False,
-            exit_code=0,
-            output_path="/tmp/tail.log",
-        ),
-        terminate_handler=lambda job_id, grace_seconds: _Status(
-            job_id=job_id,
-            status="terminated",
-            done=True,
-            offset=12,
-            exit_code=130,
-        ),
-    )
-
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        run_result = await resource.commands.run("pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)
-        wait_result = await resource.commands.wait("run-job", offset=3, timeout=4.0)
-        read_result = await resource.commands.read_output("run-job", offset=6)
-        input_result = await resource.commands.input("run-job", "ls\n", offset=6, timeout=5.0)
-        interrupt_result = await resource.commands.interrupt("run-job", grace_seconds=1.5)
-        tail_result = await resource.commands.tail("run-job")
-        await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
-        await resource.close()
-
-        assert run_result == ShellCommandResult(
-            job_id="run-job",
-            status="running",
-            done=False,
-            exit_code=None,
-            output="abc",
-            offset=3,
-            truncated=True,
-            output_path="/tmp/run.log",
-        )
-        assert wait_result.offset == 6
-        assert read_result.offset == 6
-        assert input_result.exit_code == 0
-        assert interrupt_result.status == "terminated"
-        assert tail_result.output_path == "/tmp/tail.log"
-
-    asyncio.run(scenario())
-
-    assert client.run_calls == [_RunCall(script="pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)]
-    assert client.wait_calls == [
-        ("run-job", 3, 4.0),
-        ("run-job", 6, 0.0),
+    assert client.run_calls == [
+        ("pwd", "/workspace/reports", {"TOKEN": "value", "HOME": "/home/binding"}, 2.5, JobMode.PTY)
     ]
-    assert client.input_calls == [("run-job", "ls\n", 6, 5.0)]
-    assert client.terminate_calls == [("run-job", 1.5)]
-    assert client.delete_calls == [("run-job", True, 2.0)]
 
 
-def test_commands_map_http_timeout_to_shell_provider_error() -> None:
+def test_commands_forward_stdio_mode() -> None:
+    client = _Client()
+
+    async def scenario() -> None:
+        commands = ShellctlCommands(_client(client))
+        await commands.run("printf result", timeout=2.5, mode="stdio")
+
+    asyncio.run(scenario())
+    assert client.run_calls == [("printf result", None, None, 2.5, JobMode.STDIO)]
+
+
+def test_commands_reject_cwd_outside_runtime_layout() -> None:
+    async def scenario() -> None:
+        commands = ShellctlCommands(_client(_Client()), home_dir="/home/binding", workspace_dir="/workspace")
+        with pytest.raises(ValueError, match="outside this RuntimeLease"):
+            await commands.run("pwd", cwd="/var/private", timeout=2.5)
+
+    asyncio.run(scenario())
+
+
+def test_read_output_uses_nonblocking_wait() -> None:
+    client = _Client()
+
+    async def scenario() -> None:
+        commands = ShellctlCommands(_client(client))
+        result = await commands.read_output("job-1", offset=7)
+        assert result.job_id == "job-1"
+
+    asyncio.run(scenario())
+    assert client.wait_calls == [("job-1", 7, 0.0)]
+
+
+def test_commands_map_http_and_structured_errors() -> None:
     request = httpx.Request("POST", "http://shellctl.example/v1/jobs")
-    client = FakeShellctlClient(
-        run_handler=lambda script, cwd, env, timeout: (_ for _ in ()).throw(
-            httpx.ReadTimeout("timed out", request=request)
+
+    async def scenario() -> None:
+        timeout_commands = ShellctlCommands(
+            _client(_Client(run_result=httpx.ReadTimeout("timed out", request=request)))
         )
-    )
+        with pytest.raises(ShellProviderError) as timeout_error:
+            await timeout_commands.run("pwd", timeout=2.5)
+        assert timeout_error.value.code == "timeout"
 
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        with pytest.raises(ShellProviderError, match="timed out") as exc_info:
-            await resource.commands.run("pwd", timeout=2.5)
-        assert exc_info.value.code == "timeout"
-
-    asyncio.run(scenario())
-
-
-def test_commands_map_http_request_error_to_shell_provider_error() -> None:
-    request = httpx.Request("POST", "http://shellctl.example/v1/jobs/run")
-    client = FakeShellctlClient(
-        wait_handler=lambda job_id, offset, timeout: (_ for _ in ()).throw(
-            httpx.ConnectError("connection failed", request=request)
+        missing_commands = ShellctlCommands(
+            _client(_Client(run_result=ShellctlClientError(404, "sandbox_not_found", "expired")))
         )
-    )
-
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        with pytest.raises(ShellProviderError, match="connection failed") as exc_info:
-            await resource.commands.wait("run-job", offset=3, timeout=4.0)
-        assert exc_info.value.code == "request_error"
+        with pytest.raises(ShellProviderError) as missing_error:
+            await missing_commands.run("pwd", timeout=2.5)
+        assert missing_error.value.code == "sandbox_not_found"
+        assert missing_error.value.status_code == 404
 
     asyncio.run(scenario())
 
 
-def test_delete_maps_http_timeout_to_shell_provider_error() -> None:
-    request = httpx.Request("DELETE", "http://shellctl.example/v1/jobs/run-job")
-
-    @dataclass(slots=True)
-    class DeleteTimeoutClient(FakeShellctlClient):
-        async def delete(self, job_id, *, force=False, grace_seconds=None):
-            self.delete_calls.append((job_id, force, grace_seconds))
-            raise httpx.ReadTimeout("delete timed out", request=request)
-
-    client = DeleteTimeoutClient()
+def test_delete_treats_missing_job_as_already_deleted() -> None:
+    client = _Client(delete_error=ShellctlClientError(404, "job_not_found", "missing"))
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
-        with pytest.raises(ShellProviderError, match="delete timed out") as exc_info:
-            await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
-        assert exc_info.value.code == "timeout"
+        commands = ShellctlCommands(_client(client))
+        await commands.delete("job-1", force=True)
 
     asyncio.run(scenario())
-    assert client.delete_calls == [("run-job", True, 2.0)]
-
-
-def test_delete_maps_http_request_error_to_shell_provider_error() -> None:
-    request = httpx.Request("DELETE", "http://shellctl.example/v1/jobs/run-job")
-
-    @dataclass(slots=True)
-    class DeleteRequestErrorClient(FakeShellctlClient):
-        async def delete(self, job_id, *, force=False, grace_seconds=None):
-            self.delete_calls.append((job_id, force, grace_seconds))
-            raise httpx.ConnectError("delete connection failed", request=request)
-
-    client = DeleteRequestErrorClient()
-
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        with pytest.raises(ShellProviderError, match="delete connection failed") as exc_info:
-            await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
-        assert exc_info.value.code == "request_error"
-
-    asyncio.run(scenario())
-    assert client.delete_calls == [("run-job", True, 2.0)]
-
-
-def test_files_upload_and_download_still_work() -> None:
-    content = b"hello \x00 world"
-    encoded = base64.b64encode(content).decode("ascii")
-    client = FakeShellctlClient(
-        run_handler=lambda script, cwd, env, timeout: (
-            _Job(job_id="ul-job", status="exited", done=True, exit_code=0)
-            if "base64 -d" in script
-            else _Job(
-                job_id="dl-job",
-                status="exited",
-                done=True,
-                exit_code=0,
-                output=f"noise{shellctl._TRANSFER_BEGIN}{encoded}{shellctl._TRANSFER_END}tail",
-            )
-        )
-    )
-
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        await resource.files.upload(content=content, remote_path="out.bin", cwd="~/workspace/abc12ff")
-        downloaded = await resource.files.download(remote_path="report.txt", cwd="~/workspace/abc12ff")
-        assert downloaded == content
-
-    asyncio.run(scenario())
-
-
-def test_file_transfer_timeout_is_an_end_to_end_budget(monkeypatch: pytest.MonkeyPatch) -> None:
-    clock = {"value": 100.0}
-
-    def fake_monotonic() -> float:
-        return clock["value"]
-
-    monkeypatch.setattr(shellctl.time, "monotonic", fake_monotonic)
-
-    def run_handler(script: str, cwd: str | None, env: dict[str, str] | None, timeout: float) -> _Job:
-        del script, cwd, env
-        assert timeout == pytest.approx(5.0, rel=0, abs=0.01)
-        clock["value"] = 103.5
-        return _Job(job_id="upload-job", status="running", done=False, output="part-1", offset=6, exit_code=None)
-
-    def wait_handler(job_id: str, offset: int, timeout: float) -> _Job:
-        assert job_id == "upload-job"
-        assert offset == 6
-        assert timeout == pytest.approx(1.5, rel=0, abs=0.01)
-        return _Job(job_id=job_id, status="exited", done=True, output="part-2", offset=12, exit_code=0)
-
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-
-    async def scenario() -> None:
-        transfer = shellctl.ShellctlFileTransfer(client=client, timeout=5.0)
-        await transfer.upload(content=b"payload", remote_path="out.bin")
-
-    asyncio.run(scenario())
-    assert client.delete_calls == [("upload-job", True, None)]
-
-
-def test_file_transfer_timeout_exhaustion_raises_timeout_and_still_deletes_job(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    clock = {"value": 100.0}
-
-    def fake_monotonic() -> float:
-        return clock["value"]
-
-    monkeypatch.setattr(shellctl.time, "monotonic", fake_monotonic)
-
-    def run_handler(script: str, cwd: str | None, env: dict[str, str] | None, timeout: float) -> _Job:
-        del script, cwd, env
-        assert timeout == pytest.approx(5.0, rel=0, abs=0.01)
-        clock["value"] = 106.0
-        return _Job(job_id="upload-job", status="running", done=False, output="part-1", offset=6, exit_code=None)
-
-    client = FakeShellctlClient(run_handler=run_handler)
-
-    async def scenario() -> None:
-        transfer = shellctl.ShellctlFileTransfer(client=client, timeout=5.0)
-        with pytest.raises(ShellProviderError, match="timed out") as exc_info:
-            await transfer.upload(content=b"payload", remote_path="out.bin")
-        assert exc_info.value.code == "timeout"
-
-    asyncio.run(scenario())
-    assert client.delete_calls == [("upload-job", True, None)]
-
-
-def test_download_missing_file_raises() -> None:
-    client = FakeShellctlClient(
-        run_handler=lambda script, cwd, env, timeout: _Job(
-            job_id="dl-job",
-            status="exited",
-            done=True,
-            output="",
-            exit_code=shellctl._DOWNLOAD_MISSING_EXIT_CODE,
-        )
-    )
-
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        with pytest.raises(ShellFileTransferError, match="not found"):
-            await resource.files.download(remote_path="missing.txt")
-
-    asyncio.run(scenario())
+    assert client.delete_calls == [("job-1", True, None)]

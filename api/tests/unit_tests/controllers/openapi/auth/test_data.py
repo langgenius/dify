@@ -1,38 +1,14 @@
 import uuid
-from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
 from controllers.openapi.auth.data import (
     AuthData,
-    Edition,
     ExternalIdentity,
     RequestContext,
-    current_edition,
 )
 from libs.oauth_bearer import Scope, TokenType
-
-
-def test_current_edition_saas():
-    with patch("controllers.openapi.auth.data.dify_config") as cfg:
-        cfg.EDITION = "CLOUD"
-        cfg.ENTERPRISE_ENABLED = True
-        assert current_edition() == Edition.SAAS
-
-
-def test_current_edition_ee():
-    with patch("controllers.openapi.auth.data.dify_config") as cfg:
-        cfg.EDITION = "SELF_HOSTED"
-        cfg.ENTERPRISE_ENABLED = True
-        assert current_edition() == Edition.EE
-
-
-def test_current_edition_ce():
-    with patch("controllers.openapi.auth.data.dify_config") as cfg:
-        cfg.EDITION = "SELF_HOSTED"
-        cfg.ENTERPRISE_ENABLED = False
-        assert current_edition() == Edition.CE
 
 
 def test_external_identity_frozen():

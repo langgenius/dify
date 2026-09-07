@@ -12,10 +12,7 @@ type StepIndicatorProps = {
   steps: Step[]
 }
 
-const StepIndicator = ({
-  currentStep,
-  steps,
-}: StepIndicatorProps) => {
+const StepIndicator = ({ currentStep, steps }: StepIndicatorProps) => {
   return (
     <div className="flex items-center gap-x-2 px-4 pb-2">
       {steps.map((step, index) => {
@@ -24,7 +21,10 @@ const StepIndicator = ({
         return (
           <div key={index} className="flex items-center gap-x-2">
             <div
-              className={cn('flex items-center gap-x-1', isCurrentStep ? 'text-state-accent-solid' : 'text-text-tertiary')}
+              className={cn(
+                'flex items-center gap-x-1',
+                isCurrentStep ? 'text-state-accent-solid' : 'text-text-tertiary',
+              )}
             >
               {isCurrentStep && <div className="size-1 rounded-full bg-state-accent-solid" />}
               <span className="system-2xs-semibold-uppercase">{step.label}</span>

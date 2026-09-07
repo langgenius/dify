@@ -1,21 +1,14 @@
 import type { FC } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import {
-  BLUR_COMMAND,
-  COMMAND_PRIORITY_EDITOR,
-  FOCUS_COMMAND,
-} from 'lexical'
+import { BLUR_COMMAND, COMMAND_PRIORITY_EDITOR, FOCUS_COMMAND } from 'lexical'
 import { useEffect } from 'react'
 
 type OnBlurBlockProps = {
   onBlur?: () => void
   onFocus?: () => void
 }
-const OnBlurBlock: FC<OnBlurBlockProps> = ({
-  onBlur,
-  onFocus,
-}) => {
+const OnBlurBlock: FC<OnBlurBlockProps> = ({ onBlur, onFocus }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -25,8 +18,7 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
         (event) => {
           const target = event?.relatedTarget as HTMLElement
           if (!target?.classList?.contains('var-search-input')) {
-            if (onBlur)
-              onBlur()
+            if (onBlur) onBlur()
           }
           return true
         },
@@ -35,8 +27,7 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
       editor.registerCommand(
         FOCUS_COMMAND,
         () => {
-          if (onFocus)
-            onFocus()
+          if (onFocus) onFocus()
           return true
         },
         COMMAND_PRIORITY_EDITOR,

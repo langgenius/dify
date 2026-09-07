@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/app/components/workflow/types', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('@/app/components/workflow/types')
@@ -18,20 +18,19 @@ vi.mock('@/app/components/workflow/types', async () => {
 const { useDatasourceOptions } = await import('../use-datasource-options')
 
 describe('useDatasourceOptions', () => {
-  const createNode = (id: string, title: string, type: string): Node<DataSourceNodeType> => ({
-    id,
-    position: { x: 0, y: 0 },
-    data: {
-      type,
-      title,
-      provider_type: 'local_file',
-    },
-  } as unknown as Node<DataSourceNodeType>)
+  const createNode = (id: string, title: string, type: string): Node<DataSourceNodeType> =>
+    ({
+      id,
+      position: { x: 0, y: 0 },
+      data: {
+        type,
+        title,
+        provider_type: 'local_file',
+      },
+    }) as unknown as Node<DataSourceNodeType>
 
   it('should return empty array for no datasource nodes', () => {
-    const nodes = [
-      createNode('n1', 'LLM Node', 'llm'),
-    ]
+    const nodes = [createNode('n1', 'LLM Node', 'llm')]
     const { result } = renderHook(() => useDatasourceOptions(nodes))
     expect(result.current).toEqual([])
   })

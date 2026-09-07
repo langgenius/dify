@@ -6,10 +6,7 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiPlayList2Line,
-  RiSparklingFill,
-} from '@remixicon/react'
+import { RiPlayList2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -20,7 +17,12 @@ import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
-import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
+import {
+  AppSourceType,
+  fetchMoreLikeThis,
+  submitHumanInputForm,
+  updateFeedback,
+} from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import GenerationActionGroups from './action-groups'
 import {
@@ -56,6 +58,7 @@ type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   isShowTextToSpeech?: boolean
+  hideLogAction?: boolean
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
@@ -84,6 +87,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   isShowTextToSpeech,
+  hideLogAction,
   hideProcessDetail,
   siteInfo,
   inSidePanel,
@@ -96,15 +100,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<FeedbackType>({
     rating: null,
   })
-  const {
-    config,
-  } = useChatContext()
+  const { config } = useChatContext()
 
-  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
-  const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
+  const setCurrentLogItem = useAppStore((s) => s.setCurrentLogItem)
+  const setShowPromptLogModal = useAppStore((s) => s.setShowPromptLogModal)
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, appSourceType, installedAppId)
+    await updateFeedback(
+      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+      appSourceType,
+      installedAppId,
+    )
     setChildFeedback(childFeedback)
   }
 
@@ -126,13 +132,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
+    hideLogAction,
     siteInfo,
     taskId,
   }
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.warning(t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return
     }
     startQuerying()
@@ -147,9 +154,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   useEffect(() => {
     if (controlClearMoreLikeThis) {
-      // eslint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setChildMessageId(null)
-      // eslint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setCompletionRes('')
     }
   }, [controlClearMoreLikeThis])
@@ -157,7 +164,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   // regeneration clear child
   useEffect(() => {
     if (isLoading)
-      // eslint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setChildMessageId(null)
   }, [isLoading])
 
@@ -176,29 +183,39 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     setCurrentTab(tab)
   }
   useEffect(() => {
-    // eslint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line eslint-react/set-state-in-effect
     setCurrentTab(getDefaultGenerationTab(workflowProcessData))
   }, [workflowProcessData])
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
-    if (appSourceType === AppSourceType.installedApp)
-      await submitHumanInputFormService(formToken, formData)
-    else
-      await submitHumanInputForm(formToken, formData)
-  }, [appSourceType])
+  const handleSubmitHumanInputForm = useCallback(
+    async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (appSourceType === AppSourceType.installedApp)
+        await submitHumanInputFormService(formToken, formData)
+      else await submitHumanInputForm(formToken, formData)
+    },
+    [appSourceType],
+  )
 
   return (
     <>
       <div className={cn('relative', !isTop && 'mt-3', className)}>
         {isLoading && (
-          <div className={cn('flex h-10 items-center', !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg')}><Loading type="area" /></div>
+          <div
+            className={cn(
+              'flex h-10 items-center',
+              !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
+            )}
+          >
+            <Loading type="area" />
+          </div>
         )}
         {!isLoading && (
           <>
             {/* result content */}
-            <div className={cn(
-              'relative',
-              !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
-            )}
+            <div
+              className={cn(
+                'relative',
+                !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
+              )}
             >
               <WorkflowBody
                 content={content}
@@ -214,33 +231,42 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 workflowProcessData={workflowProcessData}
               />
               {!workflowProcessData && taskId && (
-                <div className={cn('sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
+                <div
+                  className={cn(
+                    'sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary',
+                    isError && 'text-text-destructive',
+                  )}
+                >
                   <RiPlayList2Line className="mr-1 size-3" />
-                  <span>{t('generation.execution', { ns: 'share' })}</span>
+                  <span>{t(($) => $['generation.execution'], { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{getGenerationTaskLabel(taskId, depth)}</span>
                 </div>
               )}
               {isError && (
-                <div className="p-4 pt-0 body-lg-regular text-text-quaternary">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
+                <div className="p-4 pt-0 body-lg-regular text-text-quaternary">
+                  {t(($) => $['generation.batchFailed.outputPlaceholder'], { ns: 'share' })}
+                </div>
               )}
-              {!workflowProcessData && !isError && (typeof content === 'string') && (
+              {!workflowProcessData && !isError && typeof content === 'string' && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
                   <Markdown content={content} />
                 </div>
               )}
             </div>
             {/* meta data */}
-            <div className={cn(
-              'relative mt-1 h-4 px-4 system-xs-regular text-text-quaternary',
-              isMobile && ((childMessageId || isQuerying) && depth < MAX_GENERATION_DEPTH) && 'pl-10',
-            )}
+            <div
+              className={cn(
+                'relative mt-1 h-4 px-4 system-xs-regular text-text-quaternary',
+                isMobile &&
+                  (childMessageId || isQuerying) &&
+                  depth < MAX_GENERATION_DEPTH &&
+                  'pl-10',
+              )}
             >
               {!isWorkflow && (
                 <span>
-                  {content?.length}
-                  {' '}
-                  {t('unit.char', { ns: 'common' })}
+                  {content?.length} {t(($) => $['unit.char'], { ns: 'common' })}
                 </span>
               )}
               {/* action buttons */}
@@ -251,6 +277,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   currentTab={currentTab}
                   depth={depth}
                   feedback={feedback}
+                  hideLogAction={hideLogAction}
                   isError={isError}
                   isInWebApp={isInWebApp}
                   isResponding={isResponding}
@@ -271,16 +298,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             </div>
             {/* more like this elements */}
             {!isTop && (
-              <div className={cn(
-                'absolute top-[-32px] flex h-[33px] w-4 justify-center',
-                isMobile ? 'left-[17px]' : 'left-[50%] translate-x-[-50%]',
-              )}
+              <div
+                className={cn(
+                  'absolute -top-8 flex h-8.25 w-4 justify-center',
+                  isMobile ? 'left-4.25' : 'left-[50%] translate-x-[-50%]',
+                )}
               >
                 <div className="h-full w-0.5 bg-divider-regular"></div>
-                <div className={cn(
-                  'absolute left-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
-                  isMobile ? 'top-[3.5px]' : 'top-2',
-                )}
+                <div
+                  className={cn(
+                    'absolute left-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
+                    isMobile ? 'top-[3.5px]' : 'top-2',
+                  )}
                 >
                   <RiSparklingFill className="size-3 text-text-primary-on-surface" />
                 </div>
@@ -289,8 +318,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           </>
         )}
       </div>
-      {((childMessageId || isQuerying) && depth < MAX_GENERATION_DEPTH) && (
-        <GenerationItem {...childProps as any} />
+      {(childMessageId || isQuerying) && depth < MAX_GENERATION_DEPTH && (
+        <GenerationItem {...(childProps as any)} />
       )}
     </>
   )

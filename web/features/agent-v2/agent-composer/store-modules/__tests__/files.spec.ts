@@ -1,12 +1,8 @@
 import { createStore } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { defaultAgentSoulConfigFormState } from '../../form-state'
 import { agentComposerDraftAtom } from '../../store'
-import {
-  clearAgentConfigNoteAtom,
-  removeAgentFileAtom,
-  upsertAgentFileAtom,
-} from '../files'
+import { clearAgentConfigNoteAtom, removeAgentFileAtom, upsertAgentFileAtom } from '../files'
 
 describe('agent composer files store', () => {
   it('should upsert and remove files from the latest draft state', () => {

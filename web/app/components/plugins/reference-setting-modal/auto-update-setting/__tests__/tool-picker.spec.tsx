@@ -1,6 +1,6 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
 
@@ -18,54 +18,6 @@ vi.mock('@/service/use-plugins', () => ({
 vi.mock('@/app/components/base/loading', () => ({
   default: () => <div data-testid="loading">loading</div>,
 }))
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => (
-    <PopoverContext.Provider value={{ open: !!open, setOpen: (nextOpen: boolean) => onOpenChange?.(nextOpen) }}>
-      {children}
-    </PopoverContext.Provider>
-  )
-
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
-    return (
-      <div onClick={() => setOpen(!open)}>
-        {render}
-      </div>
-    )
-  }
-
-  const PopoverContent = ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
-    const { open } = React.useContext(PopoverContext)
-    return open ? <div data-testid="popover-content" className={className}>{children}</div> : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
 
 vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
   default: ({
@@ -85,18 +37,20 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
       <div>{placeholder}</div>
       <div data-testid="search-state">{search}</div>
       <div data-testid="tags-state">{tags.join(',')}</div>
-      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>set-query</button>
-      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>set-tags</button>
+      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>
+        set-query
+      </button>
+      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>
+        set-tags
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../no-data-placeholder', () => ({
-  default: ({
-    noPlugins,
-  }: {
-    noPlugins?: boolean
-  }) => <div data-testid="no-data">{String(noPlugins)}</div>,
+  default: ({ noPlugins }: { noPlugins?: boolean }) => (
+    <div data-testid="no-data">{String(noPlugins)}</div>
+  ),
 }))
 
 vi.mock('../tool-item', () => ({
@@ -112,7 +66,9 @@ vi.mock('../tool-item', () => ({
     <div data-testid="tool-item">
       <span>{payload.plugin_id}</span>
       <span>{String(isChecked)}</span>
-      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>toggle</button>
+      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>
+        toggle
+      </button>
     </div>
   ),
 }))
@@ -122,14 +78,15 @@ const createPlugin = (
   source: PluginDetail['source'],
   category: string,
   tags: string[],
-): PluginDetail => ({
-  plugin_id: pluginId,
-  source,
-  declaration: {
-    category,
-    tags,
-  },
-} as PluginDetail)
+): PluginDetail =>
+  ({
+    plugin_id: pluginId,
+    source,
+    declaration: {
+      category,
+      tags,
+    },
+  }) as PluginDetail
 
 describe('ToolPicker', () => {
   beforeEach(() => {
@@ -144,7 +101,7 @@ describe('ToolPicker', () => {
     const onShowChange = vi.fn()
     render(
       <ToolPicker
-        trigger={<span>trigger</span>}
+        trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
         isShow={false}
@@ -154,7 +111,7 @@ describe('ToolPicker', () => {
 
     fireEvent.click(screen.getByText('trigger'))
 
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    expect(onShowChange).toHaveBeenCalledWith(true, expect.any(Object))
   })
 
   it('renders loading content while installed plugins are loading', () => {

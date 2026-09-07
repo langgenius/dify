@@ -1,5 +1,5 @@
 import { useTempConfigDir } from '@test/fixtures/config-dir'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { loadConfig } from '@/config/config-loader'
 import { emptyConfig } from '@/config/schema'
 import { saveConfig } from './config-writer'
@@ -12,8 +12,7 @@ describe('saveConfig', () => {
     await saveConfig(getConfigurationStore(), { ...emptyConfig() })
     const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
-    if (r.found)
-      expect(r.config.schema_version).toBe(1)
+    if (r.found) expect(r.config.schema_version).toBe(1)
   })
 
   it('overrides a stale schema_version on save', async () => {
@@ -23,8 +22,7 @@ describe('saveConfig', () => {
     })
     const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
-    if (r.found)
-      expect(r.config.schema_version).toBe(1)
+    if (r.found) expect(r.config.schema_version).toBe(1)
   })
 
   it('round-trips defaults + state', async () => {

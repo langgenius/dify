@@ -1,99 +1,125 @@
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import useAccessControlStore from '@/context/access-control-store'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
-const mockUseAppWhiteListSubjects = vi.fn()
-
-vi.mock('@/service/access-control', () => ({
-  useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
-}))
+const mockAddMemberOrGroupDialog = vi.hoisted(() => vi.fn())
 
 vi.mock('../add-member-or-group-pop', () => ({
-  default: () => <div data-testid="add-member-or-group-dialog" />,
+  default: (props: Record<string, unknown>) => {
+    mockAddMemberOrGroupDialog(props)
+    return null
+  },
 }))
 
-const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
-  id: 'group-1',
-  name: 'Group One',
-  groupSize: 5,
-  ...overrides,
-} as AccessControlGroup)
+const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup =>
+  ({
+    id: 'group-1',
+    name: 'Group One',
+    groupSize: 5,
+    ...overrides,
+  }) as AccessControlGroup
 
-const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount => ({
-  id: 'member-1',
-  name: 'Member One',
-  email: 'member@example.com',
-  avatar: '',
-  avatarUrl: '',
-  ...overrides,
-} as AccessControlAccount)
+const createMember = (overrides: Partial<AccessControlAccount> = {}): AccessControlAccount =>
+  ({
+    id: 'member-1',
+    name: 'Member One',
+    email: 'member@example.com',
+    avatar: '',
+    avatarUrl: '',
+    ...overrides,
+  }) as AccessControlAccount
 
 describe('SpecificGroupsOrMembers', () => {
   const baseGroup = createGroup()
   const baseMember = createMember()
+  const subjects = {
+    groups: [baseGroup],
+    members: [baseMember],
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useAccessControlStore.setState({
-      appId: '',
-      specificGroups: [],
-      specificMembers: [],
-      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      selectedGroupsForBreadcrumb: [],
-    })
-    mockUseAppWhiteListSubjects.mockReturnValue({
-      isPending: false,
-      data: {
-        groups: [baseGroup],
-        members: [baseMember],
-      },
-    })
   })
 
   it('should render the collapsed row when not in specific mode', () => {
-    useAccessControlStore.setState({
-      currentMenu: AccessMode.ORGANIZATION,
-    })
-
-    render(<SpecificGroupsOrMembers />)
+    render(
+      <SpecificGroupsOrMembers
+        accessMode={AccessMode.ORGANIZATION}
+        subjects={subjects}
+        subjectsStatus="success"
+        onSubjectsChange={vi.fn()}
+      />,
+    )
 
     expect(screen.getByText('app.accessControlDialog.accessItems.specific')).toBeInTheDocument()
-    expect(screen.queryByTestId('add-member-or-group-dialog')).not.toBeInTheDocument()
+    expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
   })
 
-  it('should show loading while whitelist subjects are pending', async () => {
-    mockUseAppWhiteListSubjects.mockReturnValue({
-      isPending: true,
-      data: undefined,
-    })
+  it('should show loading while whitelist subjects are pending', () => {
+    const { container } = render(
+      <SpecificGroupsOrMembers
+        accessMode={AccessMode.SPECIFIC_GROUPS_MEMBERS}
+        subjects={{ groups: [], members: [] }}
+        subjectsStatus="loading"
+        onSubjectsChange={vi.fn()}
+      />,
+    )
 
-    const { container } = render(<SpecificGroupsOrMembers />)
-
-    await waitFor(() => {
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
-    })
+    expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+    expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
   })
 
-  it('should render fetched groups and members and support removal', async () => {
-    useAccessControlStore.setState({ appId: 'app-1' })
+  it('should expose the failed load and allow retry without rendering an empty selection', async () => {
+    const user = userEvent.setup()
+    const onRetrySubjects = vi.fn()
 
-    render(<SpecificGroupsOrMembers />)
+    render(
+      <SpecificGroupsOrMembers
+        accessMode={AccessMode.SPECIFIC_GROUPS_MEMBERS}
+        subjects={{ groups: [], members: [] }}
+        subjectsStatus="error"
+        onSubjectsChange={vi.fn()}
+        onRetrySubjects={onRetrySubjects}
+      />,
+    )
 
-    await waitFor(() => {
-      expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
-      expect(screen.getByText(baseMember.name)).toBeInTheDocument()
-    })
+    expect(screen.getByRole('alert')).toHaveTextContent('common.dynamicSelect.error')
+    expect(screen.queryByText('app.accessControlDialog.noGroupsOrMembers')).not.toBeInTheDocument()
+    expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onRetrySubjects).toHaveBeenCalledTimes(1)
+  })
+
+  it('should render controlled groups and members and report removals', async () => {
+    const user = userEvent.setup()
+    const onSubjectsChange = vi.fn()
+
+    render(
+      <SpecificGroupsOrMembers
+        accessMode={AccessMode.SPECIFIC_GROUPS_MEMBERS}
+        subjects={subjects}
+        subjectsStatus="success"
+        onSubjectsChange={onSubjectsChange}
+      />,
+    )
+
+    expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
+    expect(screen.getByText(baseMember.name)).toBeInTheDocument()
 
     const removeButtons = screen.getAllByRole('button', { name: /operation\.remove$/ })
-    const groupRemove = removeButtons[0]!
-    const memberRemove = removeButtons[1]!
+    await user.click(removeButtons[0]!)
+    expect(onSubjectsChange).toHaveBeenCalledWith({
+      groups: [],
+      members: [baseMember],
+    })
 
-    fireEvent.click(groupRemove)
-    expect(useAccessControlStore.getState().specificGroups).toEqual([])
-
-    fireEvent.click(memberRemove)
-    expect(useAccessControlStore.getState().specificMembers).toEqual([])
+    await user.click(removeButtons[1]!)
+    expect(onSubjectsChange).toHaveBeenCalledWith({
+      groups: [baseGroup],
+      members: [],
+    })
   })
 })

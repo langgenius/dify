@@ -23,18 +23,18 @@ class TestWebConversationService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Mock ModelManager for model configuration
             mock_model_instance = mock_model_manager.return_value
@@ -62,9 +62,7 @@ class TestWebConversationService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(
@@ -90,7 +88,7 @@ class TestWebConversationService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app, account
 
@@ -312,7 +310,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify the conversation was pinned
 
@@ -346,10 +344,10 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation first time
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Pin the conversation again
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify only one pinned conversation record exists
 
@@ -380,7 +378,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, end_user, fake)
 
         # Pin the conversation
-        WebConversationService.pin(app, conversation.id, end_user)
+        WebConversationService.pin(app, conversation.id, end_user, db_session_with_containers)
 
         # Verify the conversation was pinned
 
@@ -412,7 +410,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation first
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify it was pinned
 
@@ -430,7 +428,7 @@ class TestWebConversationService:
         assert pinned_conversation is not None
 
         # Unpin the conversation
-        WebConversationService.unpin(app, conversation.id, account)
+        WebConversationService.unpin(app, conversation.id, account, db_session_with_containers)
 
         # Verify it was unpinned
         pinned_conversation = (
@@ -459,7 +457,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Try to unpin a conversation that was never pinned
-        WebConversationService.unpin(app, conversation.id, account)
+        WebConversationService.unpin(app, conversation.id, account, db_session_with_containers)
 
         # Verify no pinned conversation record exists
 
@@ -509,7 +507,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Try to pin with None user
-        WebConversationService.pin(app, conversation.id, None)
+        WebConversationService.pin(app, conversation.id, None, db_session_with_containers)
 
         # Verify no pinned conversation was created
 
@@ -537,7 +535,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation first
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify it was pinned
 
@@ -555,7 +553,7 @@ class TestWebConversationService:
         assert pinned_conversation is not None
 
         # Try to unpin with None user
-        WebConversationService.unpin(app, conversation.id, None)
+        WebConversationService.unpin(app, conversation.id, None, db_session_with_containers)
 
         # Verify the conversation is still pinned
         pinned_conversation = (

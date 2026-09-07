@@ -2,10 +2,16 @@ import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/t
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Node, PromptItem } from '@/app/components/workflow/types'
-import { describe, expect, it } from 'vitest'
+import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
+import { describe, expect, it } from 'vite-plus/test'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, InputVarType, PromptRole, VarType } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  EditionType,
+  InputVarType,
+  PromptRole,
+  VarType,
+} from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
@@ -44,6 +50,37 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 
 describe('variable utils', () => {
   describe('toNodeAvailableVars', () => {
+    it('excludes LLM environment aliases from generic variable pickers', () => {
+      const environmentVariables: EnvironmentVariable[] = [
+        {
+          id: 'text-env',
+          name: 'query',
+          value: 'hello',
+          value_type: 'string',
+          description: '',
+        },
+        {
+          id: 'llm-env',
+          name: 'shared_model',
+          value: { provider: 'provider', name: 'model', mode: 'chat' },
+          value_type: 'llm',
+          description: '',
+        },
+      ]
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [],
+        isChatMode: false,
+        environmentVariables,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars.find((item) => item.nodeId === 'env')?.vars).toEqual([
+        expect.objectContaining({ variable: 'env.query', type: 'string' }),
+      ])
+    })
+
     it('uses Agent v2 default declared outputs for agent nodes', () => {
       const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
@@ -64,15 +101,11 @@ describe('variable utils', () => {
         expect.arrayContaining([
           expect.objectContaining({
             nodeId: 'node-1',
-            vars: [
-              { variable: 'text', type: VarType.string },
-              { variable: 'files', type: VarType.arrayFile },
-              { variable: 'json', type: VarType.object },
-            ],
+            vars: [{ variable: 'text', type: VarType.string }],
           }),
         ]),
       )
-      expect(availableVars.find(item => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
         variable: 'usage',
         type: VarType.object,
       })
@@ -113,16 +146,13 @@ describe('variable utils', () => {
           expect.objectContaining({
             nodeId: 'node-1',
             vars: [
+              { variable: 'text', type: VarType.string },
               { variable: 'summary', type: VarType.string },
               { variable: 'attachments', type: VarType.arrayFile },
             ],
           }),
         ]),
       )
-      expect(availableVars.find(item => item.nodeId === 'node-1')?.vars).not.toContainEqual({
-        variable: 'text',
-        type: VarType.string,
-      })
     })
   })
 
@@ -138,6 +168,15 @@ describe('variable utils', () => {
       )
 
       expect(getNodeUsedVars(node)).toContainEqual(['env', 'API_KEY'])
+    })
+
+    it('should read an LLM model environment selector', () => {
+      const node = createNode<LLMNodeType>({
+        ...createLLMNodeData([]),
+        model_selector: ['env', 'for_summarize'],
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['env', 'for_summarize'])
     })
 
     it('should read variables from human input email body', () => {
@@ -239,6 +278,17 @@ describe('variable utils', () => {
         text: '{{#env.RENAMED_KEY#}}',
         jinja2_text: 'Hello {{#env.RENAMED_KEY#}}',
       })
+    })
+
+    it('should replace an LLM model environment selector', () => {
+      const node = createNode<LLMNodeType>({
+        ...createLLMNodeData([]),
+        model_selector: ['env', 'for_summarize'],
+      })
+
+      const updatedNode = updateNodeVars(node, ['env', 'for_summarize'], ['env', 'for_research'])
+
+      expect((updatedNode.data as LLMNodeType).model_selector).toEqual(['env', 'for_research'])
     })
 
     it('should replace agent task references', () => {

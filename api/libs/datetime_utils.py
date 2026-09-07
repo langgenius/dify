@@ -17,11 +17,16 @@ class _NowFunction(Protocol):
 _now_func: _NowFunction = datetime.datetime.now
 
 
+def utc_now() -> datetime.datetime:
+    """Return a timezone-aware datetime representing the current UTC time."""
+    return _now_func(datetime.UTC)
+
+
 def naive_utc_now() -> datetime.datetime:
     """Return a naive datetime object (without timezone information)
     representing current UTC time.
     """
-    return _now_func(datetime.UTC).replace(tzinfo=None)
+    return utc_now().replace(tzinfo=None)
 
 
 def ensure_naive_utc(dt: datetime.datetime) -> datetime.datetime:
@@ -33,6 +38,15 @@ def ensure_naive_utc(dt: datetime.datetime) -> datetime.datetime:
     if dt.tzinfo is None:
         return dt
     return dt.astimezone(datetime.UTC).replace(tzinfo=None)
+
+
+def to_utc_timestamp(dt: datetime.datetime) -> int:
+    """Convert a datetime to Unix epoch seconds, assuming naive values are UTC.
+
+    Persisted datetimes may be returned without timezone information. Treat
+    those values as UTC instead of interpreting them in the host timezone.
+    """
+    return int(ensure_naive_utc(dt).replace(tzinfo=datetime.UTC).timestamp())
 
 
 def parse_time_range(

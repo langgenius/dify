@@ -30,7 +30,7 @@ class ToolParameterCache:
             try:
                 cached_tool_parameter = cached_tool_parameter.decode("utf-8")
                 cached_tool_parameter = json.loads(cached_tool_parameter)
-            except JSONDecodeError:
+            except (JSONDecodeError, UnicodeDecodeError):
                 return None
 
             return dict(cached_tool_parameter)

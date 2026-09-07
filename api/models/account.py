@@ -88,13 +88,18 @@ class AccountStatus(enum.StrEnum):
 
 class Account(UserMixin, TypeBase):
     __tablename__ = "accounts"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="account_pkey"), sa.Index("account_email_idx", "email"))
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="account_pkey"),
+        sa.Index("account_email_idx", "email"),
+        sa.Index("account_normalized_email_idx", "normalized_email"),
+    )
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255))
+    normalized_email: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     password: Mapped[str | None] = mapped_column(String(255), default=None)
     password_salt: Mapped[str | None] = mapped_column(String(255), default=None)
     avatar: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
@@ -129,13 +134,8 @@ class Account(UserMixin, TypeBase):
         return self._current_tenant
 
     @current_tenant.setter
-    def current_tenant(self, tenant: "Tenant"):
+    def current_tenant(self, tenant: "Tenant") -> None:
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_join_query = select(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
-            )
-            tenant_join = session.scalar(tenant_join_query)
-            tenant_query = select(Tenant).where(Tenant.id == tenant.id)
             # TODO: A workaround to reload the tenant with `expire_on_commit=False`, allowing
             # access to it after the session has been closed.
             # This prevents `DetachedInstanceError` when accessing the tenant outside
@@ -143,7 +143,16 @@ class Account(UserMixin, TypeBase):
             # (The `tenant` argument is typically loaded by `db.session` without the
             # `expire_on_commit=False` flag, meaning its lifetime is tied to the web
             # request's lifecycle.)
-            tenant_reloaded = session.scalars(tenant_query).one()
+            self.set_current_tenant_with_session(tenant, session=session)
+
+    def set_current_tenant_with_session(self, tenant: "Tenant", *, session: Session) -> None:
+        """Set the current tenant and role using the caller-owned session."""
+        tenant_join_query = select(TenantAccountJoin).where(
+            TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
+        )
+        tenant_join = session.scalar(tenant_join_query)
+        tenant_query = select(Tenant).where(Tenant.id == tenant.id)
+        tenant_reloaded = session.scalars(tenant_query).one()
 
         if tenant_join:
             self.role = TenantAccountRole(tenant_join.role)
@@ -155,20 +164,21 @@ class Account(UserMixin, TypeBase):
     def current_tenant_id(self) -> str | None:
         return self._current_tenant.id if self._current_tenant else None
 
-    def set_tenant_id(self, tenant_id: str):
-        query = (
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.account_id == self.id)
-        )
+    def set_tenant_id(self, tenant_id: str) -> None:
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_account_join = session.execute(query).first()
-            if not tenant_account_join:
-                return
-            tenant, join = tenant_account_join
-            self.role = TenantAccountRole(join.role)
-            self._current_tenant = tenant
+            self.set_tenant_id_with_session(tenant_id, session=session)
+
+    def set_tenant_id_with_session(self, tenant_id: str, *, session: Session) -> None:
+        """Set the current tenant by id using the caller-owned session."""
+        query = select(Tenant, TenantAccountJoin).where(
+            Tenant.id == tenant_id, TenantAccountJoin.tenant_id == Tenant.id, TenantAccountJoin.account_id == self.id
+        )
+        tenant_account_join = session.execute(query).first()
+        if not tenant_account_join:
+            return
+        tenant, join = tenant_account_join
+        self.role = TenantAccountRole(join.role)
+        self._current_tenant = tenant
 
     @property
     def current_role(self):
@@ -176,15 +186,6 @@ class Account(UserMixin, TypeBase):
 
     def get_status(self) -> AccountStatus:
         return self.status
-
-    @classmethod
-    def get_by_openid(cls, provider: str, open_id: str):
-        account_integrate = db.session.execute(
-            select(AccountIntegrate).where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
-        ).scalar_one_or_none()
-        if account_integrate:
-            return db.session.scalar(select(Account).where(Account.id == account_integrate.account_id))
-        return None
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
@@ -270,9 +271,9 @@ class Tenant(TypeBase):
         DateTime, server_default=func.current_timestamp(), init=False, onupdate=func.current_timestamp()
     )
 
-    def get_accounts(self) -> list[Account]:
+    def get_accounts(self, *, session: Session) -> list[Account]:
         return list(
-            db.session.scalars(
+            session.scalars(
                 select(Account).where(
                     Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
                 )
@@ -302,7 +303,7 @@ class TenantAccountJoin(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     account_id: Mapped[str] = mapped_column(StringUUID)
-    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
+    current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false(), default=False)
     role: Mapped[TenantAccountRole] = mapped_column(
         EnumText(TenantAccountRole, length=16), server_default="normal", default=TenantAccountRole.NORMAL
     )

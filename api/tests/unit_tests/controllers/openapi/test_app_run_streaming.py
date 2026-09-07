@@ -72,7 +72,7 @@ def test_run_chat_always_calls_generate_with_streaming_true(
         "AppGenerateService",
         GenerateService,
     )
-    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/run", method="POST"):
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}:run", method="POST"):
         _run_chat(
             _make_app(),
             _make_account(),
@@ -84,9 +84,9 @@ def test_run_chat_always_calls_generate_with_streaming_true(
 
 
 def test_stop_task_endpoint_registered(openapi_app):
-    """POST /openapi/v1/apps/<id>/tasks/<task_id>/stop must be registered."""
+    """POST /openapi/v1/apps/<id>/tasks/<task_id>:stop must be registered."""
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
-    assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>/stop" in rules
+    assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>:stop" in rules
 
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
@@ -117,7 +117,7 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipel
     )
 
     api = AppRunTaskStopApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1/stop", method="POST"):
+    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
         result = api.post.__wrapped__(
             api,
             app_id="app-1",

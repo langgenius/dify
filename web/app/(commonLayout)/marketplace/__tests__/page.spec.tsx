@@ -1,28 +1,39 @@
 import type { ReactNode } from 'react'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import MarketplacePage from '../page'
+import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/app/components/plugins/marketplace', () => ({
-  default: ({ showInstallButton }: { showInstallButton?: boolean }) => (
-    <div data-show-install={String(!!showInstallButton)}>Marketplace</div>
+vi.mock('@/app/components/plugins/marketplace/marketplace-install-permission-provider', () => ({
+  default: ({ children }: { children: ReactNode }) => (
+    <section aria-label="install permission">{children}</section>
   ),
 }))
 
-vi.mock('@/app/components/plugins/marketplace/marketplace-install-permission-provider', () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock('@/app/components/plugins/marketplace/embedded', () => ({
+  EmbeddedMarketplace: () => <p>Embedded marketplace home</p>,
 }))
 
-describe('MarketplacePage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+describe('embedded marketplace home route', () => {
+  it('does not stream async server children that Flight would double-resolve', () => {
+    const source = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../page.tsx'),
+      'utf8',
+    )
+
+    expect(source).not.toMatch(/const MarketplacePage = async/)
+    expect(source).not.toContain('HydrateQueryClient')
+    expect(source).not.toContain('AccountSection')
+    expect(source).not.toContain('homeHeaderActions')
   })
 
-  describe('Rendering', () => {
-    it('should keep marketplace card install actions enabled', () => {
-      render(<MarketplacePage />)
+  it('renders the client marketplace home inside the install-permission provider', async () => {
+    const { default: MarketplacePage } = await import('../page')
+    render(<MarketplacePage />)
 
-      expect(screen.getByText('Marketplace')).toHaveAttribute('data-show-install', 'true')
-    })
+    const permission = screen.getByRole('region', { name: 'install permission' })
+
+    expect(permission).toContainElement(screen.getByText('Embedded marketplace home'))
   })
 })

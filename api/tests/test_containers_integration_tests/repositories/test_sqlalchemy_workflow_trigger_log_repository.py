@@ -125,8 +125,7 @@ def test_delete_by_run_ids_empty_short_circuits(db_session_with_containers: Sess
         remaining_count = db_session_with_containers.scalar(
             select(func.count())
             .select_from(WorkflowTriggerLog)
-            .where(WorkflowTriggerLog.tenant_id == tenant_id)
-            .where(WorkflowTriggerLog.workflow_run_id == run_id)
+            .where(WorkflowTriggerLog.tenant_id == tenant_id, WorkflowTriggerLog.workflow_run_id == run_id)
         )
         assert remaining_count == 1
     finally:

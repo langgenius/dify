@@ -7,11 +7,7 @@ type ItemProps = {
   onBreadcrumbClick: (index: number) => void
 }
 
-const Item = ({
-  name,
-  index,
-  onBreadcrumbClick,
-}: ItemProps) => {
+const Item = ({ name, index, onBreadcrumbClick }: ItemProps) => {
   return (
     <DropdownMenuItem
       className="rounded-lg px-3 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"

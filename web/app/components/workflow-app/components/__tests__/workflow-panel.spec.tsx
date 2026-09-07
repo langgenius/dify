@@ -2,11 +2,13 @@ import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { AppModeEnum } from '@/types/app'
 import WorkflowPanel from '../workflow-panel'
 
 type AppStoreState = {
   appDetail?: {
     id?: string
+    mode?: AppModeEnum
     workflow?: {
       id?: string
     }
@@ -55,6 +57,7 @@ vi.mock('@/app/components/workflow/panel', () => ({
       restoreVersionUrl: (versionId: string) => string
       updateVersionUrl: (versionId: string) => string
       latestVersionId?: string
+      appMode?: AppModeEnum
     }
   }) => (
     <div
@@ -64,6 +67,7 @@ vi.mock('@/app/components/workflow/panel', () => ({
       data-restore-version-url={versionHistoryPanelProps?.restoreVersionUrl('version-1') ?? ''}
       data-update-version-url={versionHistoryPanelProps?.updateVersionUrl('version-1') ?? ''}
       data-latest-version-id={versionHistoryPanelProps?.latestVersionId ?? ''}
+      data-app-mode={versionHistoryPanelProps?.appMode ?? ''}
     >
       <div data-testid="panel-left">{components?.left}</div>
       <div data-testid="panel-right">{components?.right}</div>
@@ -94,8 +98,14 @@ vi.mock('@/app/components/base/message-log-modal', () => ({
     defaultTab?: string
     onCancel: () => void
   }) => (
-    <div data-testid="message-log-modal" data-current-log-id={currentLogItem?.id ?? ''} data-default-tab={defaultTab ?? ''}>
-      <button type="button" onClick={onCancel}>close-message-log</button>
+    <div
+      data-testid="message-log-modal"
+      data-current-log-id={currentLogItem?.id ?? ''}
+      data-default-tab={defaultTab ?? ''}
+    >
+      <button type="button" onClick={onCancel}>
+        close-message-log
+      </button>
     </div>
   ),
 }))
@@ -124,7 +134,7 @@ vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
   default: () => <div data-testid="global-variable-panel">global-variable</div>,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../../hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
@@ -134,6 +144,7 @@ describe('WorkflowPanel', () => {
     appStoreState = {
       appDetail: {
         id: 'app-123',
+        mode: AppModeEnum.WORKFLOW,
         workflow: {
           id: 'workflow-version-id',
         },
@@ -159,9 +170,13 @@ describe('WorkflowPanel', () => {
     const panel = await screen.findByTestId('panel')
     expect(panel).toHaveAttribute('data-version-list-url', '/apps/app-123/workflows')
     expect(panel).toHaveAttribute('data-delete-version-url', '/apps/app-123/workflows/version-1')
-    expect(panel).toHaveAttribute('data-restore-version-url', '/apps/app-123/workflows/version-1/restore')
+    expect(panel).toHaveAttribute(
+      'data-restore-version-url',
+      '/apps/app-123/workflows/version-1/restore',
+    )
     expect(panel).toHaveAttribute('data-update-version-url', '/apps/app-123/workflows/version-1')
     expect(panel).toHaveAttribute('data-latest-version-id', 'workflow-version-id')
+    expect(panel).toHaveAttribute('data-app-mode', AppModeEnum.WORKFLOW)
   })
 
   it('should render and close the message log modal from the left panel slot', async () => {
@@ -173,7 +188,10 @@ describe('WorkflowPanel', () => {
 
     render(<WorkflowPanel />)
 
-    expect(await screen.findByTestId('message-log-modal')).toHaveAttribute('data-current-log-id', 'log-1')
+    expect(await screen.findByTestId('message-log-modal')).toHaveAttribute(
+      'data-current-log-id',
+      'log-1',
+    )
     expect(screen.getByTestId('message-log-modal')).toHaveAttribute('data-default-tab', 'detail')
 
     await user.click(screen.getByRole('button', { name: /close-message-log/i }))

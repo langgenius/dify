@@ -25,7 +25,9 @@ describe('useWorkflowNodeLoopStarted', () => {
       )
     })
 
-    expect(store.getState().workflowRunningData!.tracing![0]!.status).toBe(NodeRunningStatus.Running)
+    expect(store.getState().workflowRunningData!.tracing![0]!.status).toBe(
+      NodeRunningStatus.Running,
+    )
 
     await waitFor(() => {
       const transform = result.current.reactFlowStore.getState().transform
@@ -33,11 +35,13 @@ describe('useWorkflowNodeLoopStarted', () => {
       expect(transform[1]).toBe(310)
       expect(transform[2]).toBe(1)
 
-      const node = result.current.nodes.find(item => item.id === 'n1')
+      const node = result.current.nodes.find((item) => item.id === 'n1')
       expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
       expect(getNodeRuntimeState(node)._loopLength).toBe(5)
       expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(NodeRunningStatus.Running)
+      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+        NodeRunningStatus.Running,
+      )
     })
   })
 })

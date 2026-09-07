@@ -26,8 +26,8 @@ type AppReaderFactory = (http: HttpClient) => AppReader
 
 // Maps each auth subject to the app reader for its surface.
 const APP_READER_BY_SUBJECT: Readonly<Record<SubjectKindValue, AppReaderFactory>> = {
-  [SubjectKind.Account]: http => new AppsClient(http),
-  [SubjectKind.External]: http => new PermittedExternalAppsClient(http),
+  [SubjectKind.Account]: (http) => new AppsClient(http),
+  [SubjectKind.External]: (http) => new PermittedExternalAppsClient(http),
 }
 
 export function selectAppReader(active: ActiveContext, http: HttpClient): AppReader {

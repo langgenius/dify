@@ -22,13 +22,7 @@ describe('FieldTitle', () => {
 
   it('should toggle local collapsed state and notify onCollapse when enabled', () => {
     const onCollapse = vi.fn()
-    const { container } = render(
-      <FieldTitle
-        title="Models"
-        showArrow
-        onCollapse={onCollapse}
-      />,
-    )
+    const { container } = render(<FieldTitle title="Models" showArrow onCollapse={onCollapse} />)
 
     const header = screen.getByText('Models').closest('.group\\/collapse')
     const arrow = container.querySelector('[aria-hidden="true"]')

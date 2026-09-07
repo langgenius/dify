@@ -29,33 +29,61 @@ export function usePrepareAgentBuildDraftBeforeRun({
       },
     },
   })
-  const checkoutBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.checkout.post.mutationOptions())
-  const { mutateAsync: checkoutBuildDraft, isPending: isCheckingOutBuildDraft } = checkoutBuildDraftMutation
+  const checkoutBuildDraftMutation = useMutation(
+    consoleQuery.agent.byAgentId.buildDraft.checkout.post.mutationOptions(),
+  )
+  const { mutateAsync: checkoutBuildDraft, isPending: isCheckingOutBuildDraft } =
+    checkoutBuildDraftMutation
+
+  const checkoutBuildDraftFromNormalDraft = useCallback(
+    async (force: boolean) => {
+      if (!agentId) return
+
+      const buildDraft = await checkoutBuildDraft({
+        params: {
+          agent_id: agentId,
+        },
+        body: {
+          force,
+        },
+      })
+      queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraft)
+      rebaseComposerDraft?.(buildDraft.agent_soul as AgentSoulConfig | undefined)
+      setSoulSourceOverride?.('build-draft')
+      return buildDraft.agent_soul as AgentSoulConfig | undefined
+    },
+    [
+      agentId,
+      buildDraftQueryOptions.queryKey,
+      checkoutBuildDraft,
+      queryClient,
+      rebaseComposerDraft,
+      setSoulSourceOverride,
+    ],
+  )
 
   const prepareBuildDraftBeforeRun = useCallback(async () => {
-    if (!agentId)
-      return
-
-    if (isBuildDraftActive)
-      return buildDraftAgentSoulConfig
+    if (!agentId) return
 
     await saveDraft()
 
-    const buildDraft = await checkoutBuildDraft({
-      params: {
-        agent_id: agentId,
-      },
-      body: {
-        force: false,
-      },
-    })
-    queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraft)
-    rebaseComposerDraft?.(buildDraft.agent_soul as AgentSoulConfig | undefined)
-    setSoulSourceOverride?.('build-draft')
-    return buildDraft.agent_soul as AgentSoulConfig | undefined
-  }, [agentId, buildDraftAgentSoulConfig, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, rebaseComposerDraft, saveDraft, setSoulSourceOverride])
+    if (isBuildDraftActive) return buildDraftAgentSoulConfig
+
+    return checkoutBuildDraftFromNormalDraft(false)
+  }, [
+    agentId,
+    buildDraftAgentSoulConfig,
+    checkoutBuildDraftFromNormalDraft,
+    isBuildDraftActive,
+    saveDraft,
+  ])
+  const forceCheckoutBuildDraft = useCallback(
+    () => checkoutBuildDraftFromNormalDraft(true),
+    [checkoutBuildDraftFromNormalDraft],
+  )
 
   return {
+    forceCheckoutBuildDraft,
     isCheckingOutBuildDraft,
     prepareBuildDraftBeforeRun,
   }

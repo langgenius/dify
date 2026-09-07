@@ -1,3 +1,5 @@
+"""Unit tests for Langfuse trace translation with real SQLite-backed lookups."""
+
 import collections
 import logging
 from datetime import UTC, datetime, timedelta
@@ -15,6 +17,7 @@ from dify_trace_langfuse.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
+from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -28,7 +31,7 @@ from core.ops.entities.trace_entity import (
 )
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser
-from models.enums import MessageStatus
+from models.enums import EndUserType, MessageStatus
 
 
 def _dt() -> datetime:
@@ -44,97 +47,60 @@ def langfuse_config():
 def trace_instance(langfuse_config, monkeypatch: pytest.MonkeyPatch):
     # Mock Langfuse client to avoid network calls
     mock_client = MagicMock()
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: mock_client)
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.LangfuseAPI", lambda **kwargs: mock_client)
 
     instance = LangFuseDataTrace(langfuse_config)
     return instance
 
 
 def test_init(langfuse_config, monkeypatch: pytest.MonkeyPatch):
-    from opentelemetry.sdk.trace import TracerProvider
-
     mock_langfuse = MagicMock()
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", mock_langfuse)
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.LangfuseAPI", mock_langfuse)
     monkeypatch.setenv("FILES_URL", "http://test.url")
 
     instance = LangFuseDataTrace(langfuse_config)
 
     mock_langfuse.assert_called_once()
     kwargs = mock_langfuse.call_args.kwargs
-    assert kwargs["public_key"] == langfuse_config.public_key
-    assert kwargs["secret_key"] == langfuse_config.secret_key
-    assert kwargs["host"] == langfuse_config.host
-    assert isinstance(kwargs["tracer_provider"], TracerProvider)
-    assert kwargs["tracer_provider"] is instance._tracer_provider
+    assert kwargs["username"] == langfuse_config.public_key
+    assert kwargs["password"] == langfuse_config.secret_key
+    assert kwargs["base_url"] == langfuse_config.host
     assert instance.file_base_url == "http://test.url"
 
 
-def test_init_passes_isolated_tracer_provider_to_langfuse(langfuse_config, monkeypatch: pytest.MonkeyPatch):
-    """Regression test for langfuse v3 SDK side effect.
+def test_same_public_key_uses_independent_api_clients(monkeypatch: pytest.MonkeyPatch):
+    clients = [MagicMock(), MagicMock()]
+    create_client = MagicMock(side_effect=clients)
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.LangfuseAPI", create_client)
 
-    Without an explicit ``tracer_provider=`` kwarg, the Langfuse v3 SDK
-    attaches a ``LangfuseSpanProcessor`` to the *global* OpenTelemetry
-    TracerProvider — siphoning every Flask / Celery / SQLAlchemy span in the
-    process into the tenant's Langfuse project. See langfuse upgrade-path
-    docs (v2 -> v3) and GitHub discussion #9136.
-
-    The fix is to construct an isolated ``TracerProvider`` and pass it via
-    ``tracer_provider=`` so the SDK never touches the global one.
-    """
-    from opentelemetry import trace as otel_trace_api
-    from opentelemetry.sdk.trace import TracerProvider
-
-    captured: dict[str, object] = {}
-
-    def fake_langfuse(**kwargs):
-        captured.update(kwargs)
-        return MagicMock()
-
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", fake_langfuse)
-
-    instance = LangFuseDataTrace(langfuse_config)
-
-    # 1. tracer_provider kwarg must be supplied (drives the no-pollution branch
-    #    in langfuse.LangfuseResourceManager._init_tracer_provider).
-    assert "tracer_provider" in captured, (
-        "Langfuse() must receive an explicit tracer_provider=; without it the "
-        "v3 SDK attaches its SpanProcessor to the global OTEL TracerProvider."
+    first = LangFuseDataTrace(
+        LangfuseConfig(public_key="shared", secret_key="secret-a", host="https://tenant-a.example")
+    )
+    second = LangFuseDataTrace(
+        LangfuseConfig(public_key="shared", secret_key="secret-b", host="https://tenant-b.example")
     )
 
-    passed_provider = captured["tracer_provider"]
-    assert isinstance(passed_provider, TracerProvider)
-    assert passed_provider is instance._tracer_provider
-
-    # 2. The instance's provider must not be the global one.
-    global_provider = otel_trace_api.get_tracer_provider()
-    assert passed_provider is not global_provider
-
-
-def test_close_shuts_down_tracer_provider(langfuse_config, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: MagicMock())
-
-    instance = LangFuseDataTrace(langfuse_config)
-    provider = instance._tracer_provider
-    provider_shutdown = MagicMock()
-    monkeypatch.setattr(provider, "shutdown", provider_shutdown)
-
-    instance.close()
-
-    provider_shutdown.assert_called_once()
-    assert instance._tracer_provider is None
+    assert first.langfuse_client is clients[0]
+    assert second.langfuse_client is clients[1]
+    assert [
+        (call.kwargs["base_url"], call.kwargs["username"], call.kwargs["password"])
+        for call in create_client.call_args_list
+    ] == [
+        ("https://tenant-a.example", "shared", "secret-a"),
+        ("https://tenant-b.example", "shared", "secret-b"),
+    ]
 
 
 def test_close_is_idempotent(langfuse_config, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: MagicMock())
+    http_client = MagicMock()
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.httpx.Client", lambda **kwargs: http_client)
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.LangfuseAPI", MagicMock())
 
     instance = LangFuseDataTrace(langfuse_config)
-    provider_shutdown = MagicMock()
-    monkeypatch.setattr(instance._tracer_provider, "shutdown", provider_shutdown)
-
     instance.close()
     instance.close()
 
-    provider_shutdown.assert_called_once()
+    http_client.close.assert_called_once()
 
 
 def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
@@ -187,7 +153,10 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_with_message_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     # Setup trace info
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
@@ -211,10 +180,10 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.Monk
         error="",
     )
 
-    # Mock DB and Repositories
-    mock_session = MagicMock()
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: mock_session)
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     # Mock node executions
     node_llm = MagicMock()
@@ -291,7 +260,10 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.Monk
     assert other_span.level == LevelEnum.ERROR
 
 
-def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_no_message_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -314,8 +286,10 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.Monkey
         error="",
     )
 
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
@@ -332,7 +306,10 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.Monkey
     assert trace_data.name == TraceTaskName.WORKFLOW_TRACE
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_missing_app_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -353,8 +330,10 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.Monke
         workflow_app_log_id="log-1",
         error="",
     )
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     with pytest.raises(ValueError, match="No app_id found in trace_info metadata"):
         trace_instance.workflow_trace(trace_info)
@@ -404,7 +383,8 @@ def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     assert gen_data.usage.total == 30
 
 
-def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session) -> None:
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -434,20 +414,32 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyP
         error=None,
     )
 
-    # Mock DB session for EndUser lookup
-    mock_end_user = MagicMock(spec=EndUser)
-    mock_end_user.session_id = "session-id-123"
+    end_user = EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        session_id="session-id-123",
+    )
+    engine = sqlite3_session.get_bind()
+    with Session(engine) as write_session:
+        write_session.add(end_user)
+        write_session.commit()
 
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db.session.get", lambda model, pk: mock_end_user)
+    with Session(engine) as read_session:
+        monkeypatch.setattr(
+            "dify_trace_langfuse.langfuse_trace.db",
+            SimpleNamespace(engine=engine, session=read_session),
+        )
 
-    trace_instance.add_trace = MagicMock()
-    trace_instance.add_generation = MagicMock()
+        trace_instance.add_trace = MagicMock()
+        trace_instance.add_generation = MagicMock()
 
-    trace_instance.message_trace(trace_info)
+        trace_instance.message_trace(trace_info)
 
-    trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
-    assert trace_data.user_id == "session-id-123"
-    assert trace_data.metadata["user_id"] == "session-id-123"
+        trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
+        assert trace_data.user_id == "session-id-123"
+        assert trace_data.metadata["user_id"] == "session-id-123"
 
 
 def test_message_trace_none_data(trace_instance):
@@ -594,11 +586,11 @@ def test_generate_name_trace(trace_instance):
 def test_add_trace_success(trace_instance):
     data = LangfuseTrace(id="t1", name="trace")
     trace_instance.add_trace(data)
-    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
+    trace_instance.langfuse_client.ingestion.batch.assert_called_once()
 
 
 def test_add_trace_error(trace_instance):
-    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
+    trace_instance.langfuse_client.ingestion.batch.side_effect = Exception("error")
     data = LangfuseTrace(id="t1", name="trace")
     with pytest.raises(ValueError, match="LangFuse Failed to create trace: error"):
         trace_instance.add_trace(data)
@@ -607,11 +599,11 @@ def test_add_trace_error(trace_instance):
 def test_add_span_success(trace_instance):
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     trace_instance.add_span(data)
-    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
+    trace_instance.langfuse_client.ingestion.batch.assert_called_once()
 
 
 def test_add_span_error(trace_instance):
-    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
+    trace_instance.langfuse_client.ingestion.batch.side_effect = Exception("error")
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     with pytest.raises(ValueError, match="LangFuse Failed to create span: error"):
         trace_instance.add_span(data)
@@ -627,11 +619,11 @@ def test_update_span(trace_instance):
 def test_add_generation_success(trace_instance):
     data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
     trace_instance.add_generation(data)
-    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
+    trace_instance.langfuse_client.ingestion.batch.assert_called_once()
 
 
 def test_add_generation_error(trace_instance):
-    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
+    trace_instance.langfuse_client.ingestion.batch.side_effect = Exception("error")
     data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
     with pytest.raises(ValueError, match="LangFuse Failed to create generation: error"):
         trace_instance.add_generation(data)
@@ -645,12 +637,18 @@ def test_update_generation(trace_instance):
 
 
 def test_api_check_success(trace_instance):
-    trace_instance.langfuse_client.auth_check.return_value = True
+    trace_instance.langfuse_client.projects.get.return_value = MagicMock(data=[MagicMock()])
     assert trace_instance.api_check() is True
 
 
+def test_api_check_rejects_empty_project_list(trace_instance):
+    trace_instance.langfuse_client.projects.get.return_value = MagicMock(data=[])
+    with pytest.raises(ValueError, match="no project found for the provided credentials"):
+        trace_instance.api_check()
+
+
 def test_api_check_error(trace_instance):
-    trace_instance.langfuse_client.auth_check.side_effect = Exception("fail")
+    trace_instance.langfuse_client.projects.get.side_effect = Exception("fail")
     with pytest.raises(ValueError, match="LangFuse API check failed: fail"):
         trace_instance.api_check()
 
@@ -658,12 +656,12 @@ def test_api_check_error(trace_instance):
 def test_get_project_key_success(trace_instance):
     mock_data = MagicMock()
     mock_data.id = "proj-1"
-    trace_instance.langfuse_client.api.projects.get.return_value = MagicMock(data=[mock_data])
+    trace_instance.langfuse_client.projects.get.return_value = MagicMock(data=[mock_data])
     assert trace_instance.get_project_key() == "proj-1"
 
 
 def test_get_project_key_error(trace_instance):
-    trace_instance.langfuse_client.api.projects.get.side_effect = Exception("fail")
+    trace_instance.langfuse_client.projects.get.side_effect = Exception("fail")
     with pytest.raises(ValueError, match="LangFuse get project key failed: fail"):
         trace_instance.get_project_key()
 
@@ -709,8 +707,12 @@ def test_langfuse_trace_entity_with_list_dict_input():
     assert data.input[0]["content"] == "hello"
 
 
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
 def test_workflow_trace_handles_usage_extraction_error(
-    trace_instance, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    trace_instance,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    sqlite3_session: Session,
 ):
     # Setup trace info to trigger LLM node usage extraction
     trace_info = WorkflowTraceInfo(
@@ -758,8 +760,10 @@ def test_workflow_trace_handles_usage_extraction_error(
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_langfuse.langfuse_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
     trace_instance.add_trace = MagicMock()

@@ -84,8 +84,8 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 session.flush()
                 session.refresh(user_model)
 
-    except Exception:
-        raise ValueError("user not found")
+    except Exception as e:
+        raise ValueError("user not found") from e
 
     return user_model
 
@@ -131,13 +131,13 @@ def plugin_data[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 data = request.get_json()
-            except Exception:
-                raise ValueError("invalid json")
+            except Exception as e:
+                raise ValueError("invalid json") from e
 
             try:
                 payload = payload_type.model_validate(data)
             except Exception as e:
-                raise ValueError(f"invalid payload: {str(e)}")
+                raise ValueError(f"invalid payload: {str(e)}") from e
 
             kwargs["payload"] = payload
             return view_func(*args, **kwargs)

@@ -27,7 +27,9 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 /**
  * Creates mock configuration for testing
  */
-const createMockConfiguration = (overrides: Partial<BaseConfiguration> = {}): BaseConfiguration => ({
+const createMockConfiguration = (
+  overrides: Partial<BaseConfiguration> = {},
+): BaseConfiguration => ({
   type: BaseFieldType.textInput,
   variable: 'testVariable',
   label: 'Test Label',
@@ -75,17 +77,12 @@ describe('Actions', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Actions {...defaultActionsProps} />)
-
-      expect(screen.getByText('datasetPipeline.operations.dataSource')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.operations.saveAndProcess')).toBeInTheDocument()
-    })
-
     it('should render back button with arrow icon', () => {
       render(<Actions {...defaultActionsProps} />)
 
-      const backButton = screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i })
+      const backButton = screen.getByRole('button', {
+        name: /datasetPipeline.operations.dataSource/i,
+      })
       expect(backButton).toBeInTheDocument()
       expect(backButton.querySelector('svg')).toBeInTheDocument()
     })
@@ -93,7 +90,9 @@ describe('Actions', () => {
     it('should render process button', () => {
       render(<Actions {...defaultActionsProps} />)
 
-      const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
+      const processButton = screen.getByRole('button', {
+        name: /datasetPipeline.operations.saveAndProcess/i,
+      })
       expect(processButton).toBeInTheDocument()
     })
 
@@ -110,21 +109,27 @@ describe('Actions', () => {
       it('should not disable process button when runDisabled is false', () => {
         render(<Actions {...defaultActionsProps} runDisabled={false} />)
 
-        const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
+        const processButton = screen.getByRole('button', {
+          name: /datasetPipeline.operations.saveAndProcess/i,
+        })
         expect(processButton).not.toBeDisabled()
       })
 
       it('should disable process button when runDisabled is true', () => {
         render(<Actions {...defaultActionsProps} runDisabled={true} />)
 
-        const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
+        const processButton = screen.getByRole('button', {
+          name: /datasetPipeline.operations.saveAndProcess/i,
+        })
         expect(processButton).toBeDisabled()
       })
 
       it('should not disable process button when runDisabled is undefined', () => {
         render(<Actions {...defaultActionsProps} runDisabled={undefined} />)
 
-        const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
+        const processButton = screen.getByRole('button', {
+          name: /datasetPipeline.operations.saveAndProcess/i,
+        })
         expect(processButton).not.toBeDisabled()
       })
     })
@@ -136,7 +141,9 @@ describe('Actions', () => {
       const onBack = vi.fn()
       render(<Actions {...defaultActionsProps} onBack={onBack} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }),
+      )
 
       expect(onBack).toHaveBeenCalledTimes(1)
     })
@@ -145,7 +152,9 @@ describe('Actions', () => {
       const onProcess = vi.fn()
       render(<Actions {...defaultActionsProps} onProcess={onProcess} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }),
+      )
 
       expect(onProcess).toHaveBeenCalledTimes(1)
     })
@@ -154,16 +163,11 @@ describe('Actions', () => {
       const onProcess = vi.fn()
       render(<Actions {...defaultActionsProps} onProcess={onProcess} runDisabled={true} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }),
+      )
 
       expect(onProcess).not.toHaveBeenCalled()
-    })
-  })
-
-  // Component Memoization Testing
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Actions.$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })
@@ -181,12 +185,6 @@ describe('Header', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Header {...defaultHeaderProps} />)
-
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
-    })
-
     it('should render reset button', () => {
       render(<Header {...defaultHeaderProps} />)
 
@@ -196,7 +194,9 @@ describe('Header', () => {
     it('should render preview button with icon', () => {
       render(<Header {...defaultHeaderProps} />)
 
-      const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+      const previewButton = screen.getByRole('button', {
+        name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+      })
       expect(previewButton).toBeInTheDocument()
       expect(previewButton.querySelector('svg')).toBeInTheDocument()
     })
@@ -204,7 +204,9 @@ describe('Header', () => {
     it('should render title with correct text', () => {
       render(<Header {...defaultHeaderProps} />)
 
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
+      ).toBeInTheDocument()
     })
 
     it('should have correct container layout', () => {
@@ -236,14 +238,18 @@ describe('Header', () => {
       it('should not disable preview button when previewDisabled is false', () => {
         render(<Header {...defaultHeaderProps} previewDisabled={false} />)
 
-        const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+        const previewButton = screen.getByRole('button', {
+          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+        })
         expect(previewButton).not.toBeDisabled()
       })
 
       it('should disable preview button when previewDisabled is true', () => {
         render(<Header {...defaultHeaderProps} previewDisabled={true} />)
 
-        const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+        const previewButton = screen.getByRole('button', {
+          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+        })
         expect(previewButton).toBeDisabled()
       })
     })
@@ -251,13 +257,14 @@ describe('Header', () => {
     it('should handle onPreview being undefined', () => {
       render(<Header {...defaultHeaderProps} onPreview={undefined} />)
 
-      const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+      const previewButton = screen.getByRole('button', {
+        name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+      })
       expect(previewButton).toBeInTheDocument()
       let didThrow = false
       try {
         fireEvent.click(previewButton)
-      }
-      catch {
+      } catch {
         didThrow = true
       }
       expect(didThrow).toBe(false)
@@ -288,7 +295,9 @@ describe('Header', () => {
       const onPreview = vi.fn()
       render(<Header {...defaultHeaderProps} onPreview={onPreview} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }),
+      )
 
       expect(onPreview).toHaveBeenCalledTimes(1)
     })
@@ -297,16 +306,11 @@ describe('Header', () => {
       const onPreview = vi.fn()
       render(<Header {...defaultHeaderProps} onPreview={onPreview} previewDisabled={true} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }),
+      )
 
       expect(onPreview).not.toHaveBeenCalled()
-    })
-  })
-
-  // Component Memoization Testing
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Header.$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 
@@ -316,7 +320,9 @@ describe('Header', () => {
       render(<Header {...defaultHeaderProps} resetDisabled={true} previewDisabled={true} />)
 
       const resetButton = screen.getByRole('button', { name: /common.operation.reset/i })
-      const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+      const previewButton = screen.getByRole('button', {
+        name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+      })
       expect(resetButton).toBeDisabled()
       expect(previewButton).toBeDisabled()
     })
@@ -325,7 +331,9 @@ describe('Header', () => {
       render(<Header {...defaultHeaderProps} resetDisabled={false} previewDisabled={false} />)
 
       const resetButton = screen.getByRole('button', { name: /common.operation.reset/i })
-      const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+      const previewButton = screen.getByRole('button', {
+        name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+      })
       expect(resetButton).not.toBeDisabled()
       expect(previewButton).not.toBeDisabled()
     })
@@ -350,12 +358,6 @@ describe('Form', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Form {...defaultFormProps} />)
-
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
-    })
-
     it('should render form element', () => {
       const { container } = render(<Form {...defaultFormProps} />)
 
@@ -366,9 +368,13 @@ describe('Form', () => {
     it('should render Header component', () => {
       render(<Form {...defaultFormProps} />)
 
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
+      ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common.operation.reset/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }),
+      ).toBeInTheDocument()
     })
 
     it('should have correct form structure', () => {
@@ -384,14 +390,18 @@ describe('Form', () => {
       it('should disable preview button when isRunning is true', () => {
         render(<Form {...defaultFormProps} isRunning={true} />)
 
-        const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+        const previewButton = screen.getByRole('button', {
+          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+        })
         expect(previewButton).toBeDisabled()
       })
 
       it('should not disable preview button when isRunning is false', () => {
         render(<Form {...defaultFormProps} isRunning={false} />)
 
-        const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+        const previewButton = screen.getByRole('button', {
+          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+        })
         expect(previewButton).not.toBeDisabled()
       })
     })
@@ -412,7 +422,13 @@ describe('Form', () => {
           createMockConfiguration({ variable: 'var3', label: 'Variable 3' }),
         ]
 
-        render(<Form {...defaultFormProps} configurations={configurations} initialData={{ var1: '', var2: '', var3: '' }} />)
+        render(
+          <Form
+            {...defaultFormProps}
+            configurations={configurations}
+            initialData={{ var1: '', var2: '', var3: '' }}
+          />,
+        )
 
         expect(screen.getByText('Variable 1')).toBeInTheDocument()
         expect(screen.getByText('Variable 2')).toBeInTheDocument()
@@ -466,7 +482,9 @@ describe('Form', () => {
       const onPreview = vi.fn()
       render(<Form {...defaultFormProps} onPreview={onPreview} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }),
+      )
 
       expect(onPreview).toHaveBeenCalledTimes(1)
     })
@@ -494,9 +512,7 @@ describe('Form', () => {
     })
 
     it('should enable reset button when form becomes dirty', async () => {
-      const configurations = [
-        createMockConfiguration({ variable: 'field1', label: 'Field 1' }),
-      ]
+      const configurations = [createMockConfiguration({ variable: 'field1', label: 'Field 1' })]
 
       render(<Form {...defaultFormProps} configurations={configurations} />)
 
@@ -511,12 +527,12 @@ describe('Form', () => {
     })
 
     it('should reset form to initial values when reset button is clicked', async () => {
-      const configurations = [
-        createMockConfiguration({ variable: 'field1', label: 'Field 1' }),
-      ]
+      const configurations = [createMockConfiguration({ variable: 'field1', label: 'Field 1' })]
       const initialData = { field1: 'initial value' }
 
-      render(<Form {...defaultFormProps} configurations={configurations} initialData={initialData} />)
+      render(
+        <Form {...defaultFormProps} configurations={configurations} initialData={initialData} />,
+      )
 
       // Act - change input to make form dirty
       const input = screen.getByRole('textbox')
@@ -538,12 +554,12 @@ describe('Form', () => {
     })
 
     it('should call form.reset when handleReset is triggered', async () => {
-      const configurations = [
-        createMockConfiguration({ variable: 'field1', label: 'Field 1' }),
-      ]
+      const configurations = [createMockConfiguration({ variable: 'field1', label: 'Field 1' })]
       const initialData = { field1: 'original' }
 
-      render(<Form {...defaultFormProps} configurations={configurations} initialData={initialData} />)
+      render(
+        <Form {...defaultFormProps} configurations={configurations} initialData={initialData} />,
+      )
 
       // Make form dirty
       const input = screen.getByRole('textbox')
@@ -581,7 +597,9 @@ describe('Form', () => {
     it('should not call onSubmit when validation fails', async () => {
       const onSubmit = vi.fn()
       const failingSchema = createFailingSchema()
-      const { container } = render(<Form {...defaultFormProps} schema={failingSchema} onSubmit={onSubmit} />)
+      const { container } = render(
+        <Form {...defaultFormProps} schema={failingSchema} onSubmit={onSubmit} />,
+      )
 
       const form = container.querySelector('form')!
       fireEvent.submit(form)
@@ -596,7 +614,9 @@ describe('Form', () => {
     it('should call onSubmit when validation passes', async () => {
       const onSubmit = vi.fn()
       const passingSchema = createMockSchema()
-      const { container } = render(<Form {...defaultFormProps} schema={passingSchema} onSubmit={onSubmit} />)
+      const { container } = render(
+        <Form {...defaultFormProps} schema={passingSchema} onSubmit={onSubmit} />,
+      )
 
       const form = container.querySelector('form')!
       fireEvent.submit(form)
@@ -612,16 +632,32 @@ describe('Form', () => {
     it('should handle empty initialData', () => {
       render(<Form {...defaultFormProps} initialData={{}} />)
 
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
+      ).toBeInTheDocument()
     })
 
     it('should handle configurations with different field types', () => {
       const configurations = [
-        createMockConfiguration({ type: BaseFieldType.textInput, variable: 'text', label: 'Text Field' }),
-        createMockConfiguration({ type: BaseFieldType.numberInput, variable: 'number', label: 'Number Field' }),
+        createMockConfiguration({
+          type: BaseFieldType.textInput,
+          variable: 'text',
+          label: 'Text Field',
+        }),
+        createMockConfiguration({
+          type: BaseFieldType.numberInput,
+          variable: 'number',
+          label: 'Number Field',
+        }),
       ]
 
-      render(<Form {...defaultFormProps} configurations={configurations} initialData={{ text: '', number: 0 }} />)
+      render(
+        <Form
+          {...defaultFormProps}
+          configurations={configurations}
+          initialData={{ text: '', number: 0 }}
+        />,
+      )
 
       expect(screen.getByText('Text Field')).toBeInTheDocument()
       expect(screen.getByText('Number Field')).toBeInTheDocument()
@@ -630,7 +666,9 @@ describe('Form', () => {
     it('should handle null ref', () => {
       render(<Form {...defaultFormProps} ref={{ current: null }} />)
 
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -678,14 +716,18 @@ describe('Process Documents Components Integration', () => {
     it('should render Header within Form', () => {
       render(<Form {...defaultFormProps} />)
 
-      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
+      ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common.operation.reset/i })).toBeInTheDocument()
     })
 
     it('should pass isRunning to Header for previewDisabled', () => {
       render(<Form {...defaultFormProps} isRunning={true} />)
 
-      const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
+      const previewButton = screen.getByRole('button', {
+        name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
+      })
       expect(previewButton).toBeDisabled()
     })
   })

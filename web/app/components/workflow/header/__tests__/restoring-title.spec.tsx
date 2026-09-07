@@ -88,6 +88,22 @@ describe('RestoringTitle', () => {
     expect(container).toHaveTextContent('Alice')
   })
 
+  it('should render the version number when the marked name is empty', () => {
+    const currentVersion = createVersion({
+      marked_name: '',
+      version_number: 5,
+    })
+
+    const { container } = renderWorkflowComponent(<RestoringTitle />, {
+      initialStoreState: {
+        currentVersion,
+      },
+    })
+
+    expect(container).toHaveTextContent('# 5')
+    expect(container).not.toHaveTextContent('workflow.versionHistory.defaultName')
+  })
+
   it('should render an empty creator name when the version creator name is missing', () => {
     const currentVersion = createVersion({
       created_by: {

@@ -4,7 +4,7 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from configs import dify_config
-from controllers.common.wraps import enforce_rbac_access
+from controllers.common.rbac import enforce_rbac_checks
 from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
@@ -62,12 +62,10 @@ def check_rbac_permission(data: AuthData) -> None:
         return
     if data.account_id is None or data.tenant is None:
         raise Forbidden("rbac context missing")
-    enforce_rbac_access(
+    enforce_rbac_checks(
         tenant_id=str(data.tenant.id),
         account_id=str(data.account_id),
-        resource_type=req.resource_type,
-        scene=req.scene,
-        resource_required=req.resource_required,
+        checks=[req],
         path_args=dict(data.path_params),
     )
 
@@ -82,7 +80,7 @@ def check_app_api_enabled(data: AuthData) -> None:
 def check_app_access(data: AuthData) -> None:
     if data.tenant is None:
         return
-    if not TenantService.account_belongs_to_tenant(db.session, data.account_id, data.tenant.id):
+    if not TenantService.account_belongs_to_tenant(data.account_id, data.tenant.id, session=db.session()):
         raise Forbidden("subject_no_app_access")
 
 
@@ -127,5 +125,5 @@ def _resolve_user_id(data: AuthData) -> str | None:
         return str(data.account_id) if data.account_id is not None else None
     if data.external_identity is None:
         return None
-    account = AccountService.get_account_by_email(db.session, data.external_identity.email)
+    account = AccountService.get_account_by_email(data.external_identity.email, session=db.session())
     return str(account.id) if account is not None else None

@@ -13,6 +13,8 @@
   "embedding.segmentLength": "最大なチャンクの長さ",
   "embedding.segments": "段落",
   "embedding.textCleaning": "テキストの前処理ルール",
+  "embedding.vectorSpaceEstimateExceeded.description": "ドキュメントを受け取りましたが、ベクトルストレージの推定使用量（{{estimated}} MB）がプラン上限（{{limit}} MB）を超えるため、ベクトルは書き込まれませんでした。別のドキュメントが処理中または処理に失敗した直後の場合は、しばらくしてから再試行してください。それ以外の場合は、ファイルサイズまたはチャンク数を減らしてください。",
+  "embedding.vectorSpaceEstimateExceeded.title": "アップロード後の推定ベクトルストレージがプラン容量を超えています",
   "embedding.waiting": "埋め込み待機中...",
   "list.action.addButton": "チャンクを追加",
   "list.action.archive": "アーカイブ",

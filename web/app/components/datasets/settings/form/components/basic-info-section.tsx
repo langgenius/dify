@@ -3,11 +3,11 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
 import type { AppIconType } from '@/types/app'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Input from '@/app/components/base/input'
 import PermissionSelector from '../../permission-selector'
 
 const rowClass = 'flex gap-x-1'
@@ -57,7 +57,9 @@ const BasicInfoSection = ({
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="flex grow items-center gap-x-2">
           <AppIcon
@@ -71,9 +73,10 @@ const BasicInfoSection = ({
             showEditIcon={!readonly}
           />
           <Input
+            aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onValueChange={(nextValue) => setName(nextValue)}
           />
         </div>
       </div>
@@ -81,16 +84,18 @@ const BasicInfoSection = ({
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="grow">
           <Textarea
-            aria-label={t('form.desc', { ns: 'datasetSettings' })}
+            aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}
             className="resize-none"
-            placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
             value={description}
-            onValueChange={value => setDescription(value)}
+            onValueChange={(value) => setDescription(value)}
           />
         </div>
       </div>
@@ -98,14 +103,16 @@ const BasicInfoSection = ({
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.permissions'], { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="grow">
           <PermissionSelector
             disabled={!currentDataset?.embedding_available || readonly}
             permission={permission}
             value={selectedMemberIDs}
-            onChange={v => setPermission(v)}
+            onChange={(v) => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
             memberList={memberList}
           />
@@ -115,9 +122,11 @@ const BasicInfoSection = ({
       {showAppIconPicker && (
         <AppIconPicker
           open={showAppIconPicker}
-          initialEmoji={iconInfo.icon_type === 'emoji'
-            ? { icon: iconInfo.icon, background: iconInfo.icon_background }
-            : undefined}
+          initialEmoji={
+            iconInfo.icon_type === 'emoji'
+              ? { icon: iconInfo.icon, background: iconInfo.icon_background }
+              : undefined
+          }
           onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
         />

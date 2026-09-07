@@ -29,10 +29,13 @@ dayjs.extend(relativeTime)
 
 export const useFormatTimeFromNow = () => {
   const locale = useLocale()
-  const formatTimeFromNow = useCallback((time: number) => {
-    const dayjsLocale = localeMap[locale] ?? 'en'
-    return dayjs(time).locale(dayjsLocale).fromNow()
-  }, [locale])
+  const formatTimeFromNow = useCallback(
+    (time: number) => {
+      const dayjsLocale = localeMap[locale] ?? 'en'
+      return dayjs(time).locale(dayjsLocale).fromNow()
+    },
+    [locale],
+  )
 
   return { formatTimeFromNow }
 }

@@ -4,11 +4,7 @@ import { RiArrowUpSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMonths } from '../hooks'
 
-const Header: FC<YearAndMonthPickerHeaderProps> = ({
-  selectedYear,
-  selectedMonth,
-  onClick,
-}) => {
+const Header: FC<YearAndMonthPickerHeaderProps> = ({ selectedYear, selectedMonth, onClick }) => {
   const months = useMonths()
 
   return (

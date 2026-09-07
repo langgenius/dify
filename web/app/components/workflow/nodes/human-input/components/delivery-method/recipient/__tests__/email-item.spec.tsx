@@ -19,22 +19,19 @@ describe('human-input/delivery-method/recipient/email-item', () => {
       last_login_at: '2026-01-03T00:00:00Z',
     }
     const { container } = render(
-      <EmailItem
-        email="owner@example.com"
-        data={member}
-        onDelete={handleDelete}
-        isError={false}
-      />,
+      <EmailItem email="owner@example.com" data={member} onDelete={handleDelete} isError={false} />,
     )
 
     expect(screen.getByText('Owner')).toBeInTheDocument()
     expect(screen.getByText('common.members.you')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.cursor-pointer') as SVGElement)
-    expect(handleDelete).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'member-1',
-      email: 'owner@example.com',
-    }))
+    expect(handleDelete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'member-1',
+        email: 'owner@example.com',
+      }),
+    )
   })
 
   it('should show an error style and hide delete when disabled', () => {
@@ -52,13 +49,7 @@ describe('human-input/delivery-method/recipient/email-item', () => {
       last_login_at: '2026-01-03T00:00:00Z',
     }
     const { container } = render(
-      <EmailItem
-        email="owner@example.com"
-        data={member}
-        onDelete={vi.fn()}
-        disabled
-        isError
-      />,
+      <EmailItem email="owner@example.com" data={member} onDelete={vi.fn()} disabled isError />,
     )
 
     expect(screen.getByTitle('missing@example.com')).toBeInTheDocument()

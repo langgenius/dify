@@ -25,17 +25,16 @@ export type DescribeAppDeps = {
   readonly envLookup?: (k: string) => string | undefined
 }
 
-export async function runDescribeApp(opts: DescribeAppOptions, deps: DescribeAppDeps): Promise<AppDescribeOutput> {
+export async function runDescribeApp(
+  opts: DescribeAppOptions,
+  deps: DescribeAppDeps,
+): Promise<AppDescribeOutput> {
   const apps = selectAppReader(deps.active, deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
   const io = deps.io ?? nullStreams()
-  const result = await runWithSpinner(
-    { io, label: 'Fetching app details' },
-    async () => {
-      if (opts.refresh === true)
-        await meta.invalidate(opts.appId)
-      return meta.get(opts.appId, [FieldInfo, FieldParameters, FieldInputSchema])
-    },
-  )
+  const result = await runWithSpinner({ io, label: 'Fetching app details' }, async () => {
+    if (opts.refresh === true) await meta.invalidate(opts.appId)
+    return meta.get(opts.appId, [FieldInfo, FieldParameters, FieldInputSchema])
+  })
   return new AppDescribeOutput(result)
 }

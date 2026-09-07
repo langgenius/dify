@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -21,9 +22,11 @@ def test_get_plugin_pkg_url_contains_unique_identifier() -> None:
     assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in url
 
 
-def test_download_plugin_pkg_delegates_with_configured_size(mocker: MockerFixture) -> None:
+def test_download_plugin_pkg_delegates_with_configured_size(
+    mocker: MockerFixture, config_overrides: Callable[..., None]
+) -> None:
     mocked_download = mocker.patch("core.helper.marketplace.download_with_size_limit", return_value=b"pkg")
-    mocker.patch("core.helper.marketplace.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 1234)
+    config_overrides(PLUGIN_MAX_PACKAGE_SIZE=1234)
 
     result = download_plugin_pkg("langgenius/openai:0.4.2@checksum")
 
@@ -114,8 +117,35 @@ def test_fetch_global_plugin_manifest_caches_each_plugin(mocker: MockerFixture) 
     )
     setex_mock = mocker.patch("core.helper.marketplace.redis_client.setex")
 
-    fetch_global_plugin_manifest("prefix:", 60)
+    cached_count = fetch_global_plugin_manifest("prefix:", 60)
 
+    assert cached_count == 2
     assert validate_mock.call_count == 2
     setex_mock.assert_any_call(name="prefix:plugin-a", time=60, value='{"id":"a"}')
     setex_mock.assert_any_call(name="prefix:plugin-b", time=60, value='{"id":"b"}')
+
+
+def test_fetch_global_plugin_manifest_reports_zero_for_empty_snapshot(mocker: MockerFixture) -> None:
+    """An empty snapshot must be reported so callers can fall back instead of upgrading nothing."""
+    empty_plugins: list[dict[str, object]] = []
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {"metadata": {"plugin_count": 0}, "plugins": empty_plugins}
+    mocker.patch("core.helper.marketplace.httpx.get", return_value=response)
+    setex_mock = mocker.patch("core.helper.marketplace.redis_client.setex")
+
+    cached_count = fetch_global_plugin_manifest("prefix:", 60)
+
+    assert cached_count == 0
+    setex_mock.assert_not_called()
+
+
+def test_fetch_global_plugin_manifest_reports_zero_when_plugins_key_missing(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {"metadata": {"plugin_count": 0}}
+    mocker.patch("core.helper.marketplace.httpx.get", return_value=response)
+    setex_mock = mocker.patch("core.helper.marketplace.redis_client.setex")
+
+    assert fetch_global_plugin_manifest("prefix:", 60) == 0
+    setex_mock.assert_not_called()

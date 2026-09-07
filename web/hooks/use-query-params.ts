@@ -13,19 +13,7 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import type { SettingsTab } from '@/app/components/header/account-setting/constants'
-import {
-  createParser,
-  parseAsStringEnum,
-  parseAsStringLiteral,
-  useQueryState,
-  useQueryStates,
-} from 'nuqs'
-import { useCallback } from 'react'
-import {
-  ACCOUNT_SETTING_MODAL_ACTION,
-  SETTINGS_TAB_VALUES,
-} from '@/app/components/header/account-setting/constants'
+import { createParser, useQueryState, useQueryStates } from 'nuqs'
 
 /**
  * Modal State Query Parameters
@@ -34,8 +22,8 @@ import {
 export const PRICING_MODAL_QUERY_PARAM = 'pricing'
 export const PRICING_MODAL_QUERY_VALUE = 'open'
 const parseAsPricingModal = createParser<boolean>({
-  parse: value => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
-  serialize: value => (value ? PRICING_MODAL_QUERY_VALUE : ''),
+  parse: (value) => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
+  serialize: (value) => (value ? PRICING_MODAL_QUERY_VALUE : ''),
 })
   .withDefault(false)
   .withOptions({ history: 'push' })
@@ -50,55 +38,7 @@ const parseAsPricingModal = createParser<boolean>({
  * setIsOpen(false) // Removes ?pricing
  */
 export function usePricingModal() {
-  return useQueryState(
-    PRICING_MODAL_QUERY_PARAM,
-    parseAsPricingModal,
-  )
-}
-
-const settingsTabValues = [...SETTINGS_TAB_VALUES] as SettingsTab[]
-const parseAsAccountSettingAction = parseAsStringLiteral([ACCOUNT_SETTING_MODAL_ACTION] as const)
-const parseAsSettingsTab = parseAsStringEnum<SettingsTab>(settingsTabValues)
-
-/**
- * Hook to manage account setting modal state via URL
- * @returns [state, setState] - Object with isOpen + payload (tab) and setter
- *
- * @example
- * const [accountModalState, setAccountModalState] = useAccountSettingModal()
- * setAccountModalState({ payload: 'billing' }) // Sets ?action=showSettings&tab=billing
- * setAccountModalState(null) // Removes both params
- */
-export function useAccountSettingModal() {
-  const [accountState, setAccountState] = useQueryStates(
-    {
-      action: parseAsAccountSettingAction,
-      tab: parseAsSettingsTab,
-    },
-    {
-      history: 'replace',
-    },
-  )
-
-  const setState = useCallback(
-    (state: { payload: SettingsTab } | null) => {
-      if (!state) {
-        setAccountState({ action: null, tab: null }, { history: 'replace' })
-        return
-      }
-      const shouldPush = accountState.action !== ACCOUNT_SETTING_MODAL_ACTION
-      setAccountState(
-        { action: ACCOUNT_SETTING_MODAL_ACTION, tab: state.payload },
-        { history: shouldPush ? 'push' : 'replace' },
-      )
-    },
-    [accountState.action, setAccountState],
-  )
-
-  const isOpen = accountState.action === ACCOUNT_SETTING_MODAL_ACTION
-  const currentTab = isOpen ? accountState.tab : null
-
-  return [{ isOpen, payload: currentTab }, setState] as const
+  return useQueryState(PRICING_MODAL_QUERY_PARAM, parseAsPricingModal)
 }
 
 /**
@@ -121,31 +61,31 @@ const parseAsPackageId = createParser<string>({
         return typeof first === 'string' ? first : null
       }
       return value
-    }
-    catch {
+    } catch {
       return value
     }
   },
-  serialize: value => JSON.stringify([value]),
+  serialize: (value) => JSON.stringify([value]),
 })
 
 const parseAsBundleInfo = createParser<BundleInfoQuery>({
   parse: (value) => {
     try {
       const parsed = JSON.parse(value) as Partial<BundleInfoQuery>
-      if (parsed
-        && typeof parsed.org === 'string'
-        && typeof parsed.name === 'string'
-        && typeof parsed.version === 'string') {
+      if (
+        parsed &&
+        typeof parsed.org === 'string' &&
+        typeof parsed.name === 'string' &&
+        typeof parsed.version === 'string'
+      ) {
         return { org: parsed.org, name: parsed.name, version: parsed.version }
       }
-    }
-    catch {
+    } catch {
       return null
     }
     return null
   },
-  serialize: value => JSON.stringify(value),
+  serialize: (value) => JSON.stringify(value),
 })
 
 /**

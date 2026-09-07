@@ -64,8 +64,12 @@ const flattenCollections = (collections: ImportedCollections, prefix: string) =>
 
     const applyCollectionSize = <T extends IconData | AliasData>(iconData: T): T => ({
       ...iconData,
-      ...(iconData.width === undefined && collection.width !== undefined ? { width: collection.width } : {}),
-      ...(iconData.height === undefined && collection.height !== undefined ? { height: collection.height } : {}),
+      ...(iconData.width === undefined && collection.width !== undefined
+        ? { width: collection.width }
+        : {}),
+      ...(iconData.height === undefined && collection.height !== undefined
+        ? { height: collection.height }
+        : {}),
     })
 
     for (const [iconName, iconData] of Object.entries(collection.icons ?? {}))

@@ -1,13 +1,14 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook } from '@/test/console/render'
 import { useCredentialPermissions } from './use-credential-permissions'
 
-let mockWorkspacePermissionKeys: string[] | null = []
+let mockWorkspacePermissionKeys: string[] = []
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] | null }) => unknown) => selector({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
 
 describe('useCredentialPermissions', () => {
   beforeEach(() => {
@@ -39,8 +40,8 @@ describe('useCredentialPermissions', () => {
     })
   })
 
-  it('should handle missing workspace permissions as no credential capabilities', () => {
-    mockWorkspacePermissionKeys = null
+  it('should handle empty workspace permissions as no credential capabilities', () => {
+    mockWorkspacePermissionKeys = []
 
     const { result } = renderHook(() => useCredentialPermissions())
 

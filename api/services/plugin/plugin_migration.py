@@ -282,7 +282,9 @@ class PluginMigration:
                 return []
 
             agent_app_model_config_ids = [
-                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT
+                app.app_model_config_id
+                for app in apps
+                if app.is_agent_with_session(session=session) or app.mode == AppMode.AGENT_CHAT
             ]
 
             rs = session.scalars(select(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids))).all()
@@ -416,10 +418,9 @@ class PluginMigration:
                 data = _tenant_plugin_adapter.validate_json(line)
                 tenant_id = data["tenant_id"]
                 plugin_ids = data["plugins"]
-                plugin_not_exist: list[str] = []
-                for plugin_id in plugin_ids:
-                    if plugin_id not in package_identifier_by_plugin_id:
-                        plugin_not_exist.append(plugin_id)
+                plugin_not_exist = [
+                    plugin_id for plugin_id in plugin_ids if plugin_id not in package_identifier_by_plugin_id
+                ]
 
                 if plugin_not_exist:
                     not_installed.append(
@@ -456,7 +457,9 @@ class PluginMigration:
         )
 
     @classmethod
-    def install_rag_pipeline_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
+    def install_rag_pipeline_plugins(
+        cls, extracted_plugins: str, output_file: str, workers: int = 100, *, session: Session
+    ) -> None:
         """
         Install rag pipeline plugins.
         """
@@ -511,7 +514,9 @@ class PluginMigration:
         total_failed_tenant = 0
         while True:
             # paginate
-            tenants = paginate_query(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
+            tenants = paginate_query(
+                sa.select(Tenant).order_by(Tenant.created_at.desc()), session=session, page=page, per_page=100
+            )
             if tenants.items is None or len(tenants.items) == 0:
                 break
 

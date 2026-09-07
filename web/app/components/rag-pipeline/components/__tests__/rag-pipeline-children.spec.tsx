@@ -4,7 +4,9 @@ import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import RagPipelineChildren from '../rag-pipeline-children'
 
 let mockShowImportDSLModal = false
-let mockSubscription: ((value: { type: string, payload?: { data?: EnvironmentVariable[] } }) => void) | null = null
+let mockSubscription:
+  | ((value: { type: string; payload?: { data?: EnvironmentVariable[] } }) => void)
+  | null = null
 
 const {
   mockSetShowImportDSLModal,
@@ -25,7 +27,9 @@ const {
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
-      useSubscription: (callback: (value: { type: string, payload?: { data?: EnvironmentVariable[] } }) => void) => {
+      useSubscription: (
+        callback: (value: { type: string; payload?: { data?: EnvironmentVariable[] } }) => void,
+      ) => {
         mockSubscription = callback
       },
     },
@@ -33,17 +37,22 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: {
-    showImportDSLModal: boolean
-    setShowImportDSLModal: typeof mockSetShowImportDSLModal
-  }) => unknown) => selector({
-    showImportDSLModal: mockShowImportDSLModal,
-    setShowImportDSLModal: mockSetShowImportDSLModal,
-  }),
+  useStore: (
+    selector: (state: {
+      showImportDSLModal: boolean
+      setShowImportDSLModal: typeof mockSetShowImportDSLModal
+    }) => unknown,
+  ) =>
+    selector({
+      showImportDSLModal: mockShowImportDSLModal,
+      setShowImportDSLModal: mockSetShowImportDSLModal,
+    }),
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean } }) => T): T =>
+  useHooksStore: <T,>(
+    selector: (state: { accessControl: { canImportExportDSL: boolean } }) => T,
+  ): T =>
     selector({
       accessControl: {
         canImportExportDSL: true,
@@ -51,11 +60,14 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
   useDSL: () => ({
     exportCheck: mockExportCheck,
     handleExportDSL: mockHandleExportDSL,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
   }),
@@ -65,7 +77,7 @@ vi.mock('../../hooks/use-rag-pipeline-search', () => ({
   useRagPipelineSearch: mockUseRagPipelineSearch,
 }))
 
-vi.mock('../../../workflow/plugin-dependency', () => ({
+vi.mock('@/app/components/workflow/plugin-dependency', () => ({
   default: () => <div data-testid="plugin-dependency" />,
 }))
 
@@ -100,7 +112,7 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
     onClose: () => void
   }) => (
     <div data-testid="dsl-export-modal">
-      <div>{envList.map(env => env.name).join(',')}</div>
+      <div>{envList.map((env) => env.name).join(',')}</div>
       <button onClick={onConfirm}>confirm export</button>
       <button onClick={onClose}>close export</button>
     </div>

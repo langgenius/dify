@@ -8,22 +8,29 @@ export const useFormSubmit = (token: string) => {
   const [success, setSuccess] = useState(false)
   const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
 
-  const submit = useCallback((inputs: Record<string, HumanInputFieldValue>, actionID: string, formInputs: FormInputItem[]) => {
-    submitForm(
-      {
-        token,
-        data: {
-          inputs: getProcessedHumanInputFormInputs(formInputs, inputs) || {},
-          action: actionID,
+  const submit = useCallback(
+    (
+      inputs: Record<string, HumanInputFieldValue>,
+      actionID: string,
+      formInputs: FormInputItem[],
+    ) => {
+      submitForm(
+        {
+          token,
+          data: {
+            inputs: getProcessedHumanInputFormInputs(formInputs, inputs) || {},
+            action: actionID,
+          },
         },
-      },
-      {
-        onSuccess: () => {
-          setSuccess(true)
+        {
+          onSuccess: () => {
+            setSuccess(true)
+          },
         },
-      },
-    )
-  }, [submitForm, token])
+      )
+    },
+    [submitForm, token],
+  )
 
   return {
     isSubmitting,

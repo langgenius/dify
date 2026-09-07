@@ -21,21 +21,18 @@ vi.mock('../../hooks', () => ({
 }))
 
 function renderWithProvider(ui: React.ReactElement) {
-  return render(
-    <FileContextProvider>
-      {ui}
-    </FileContextProvider>,
-  )
+  return render(<FileContextProvider>{ui}</FileContextProvider>)
 }
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
-  enabled: true,
-  allowed_file_types: ['image'],
-  allowed_file_upload_methods: ['local_file', 'remote_url'],
-  allowed_file_extensions: [],
-  number_limits: 5,
-  ...overrides,
-} as unknown as FileUpload)
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
+  ({
+    enabled: true,
+    allowed_file_types: ['image'],
+    allowed_file_upload_methods: ['local_file', 'remote_url'],
+    allowed_file_extensions: [],
+    number_limits: 5,
+    ...overrides,
+  }) as unknown as FileUpload
 
 describe('FileUploaderInChatInput', () => {
   beforeEach(() => {
@@ -45,7 +42,9 @@ describe('FileUploaderInChatInput', () => {
   it('should render a named attachment trigger', () => {
     renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
 
-    expect(screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ }),
+    ).toBeInTheDocument()
   })
 
   it('should render FileFromLinkOrLocal when not readonly', () => {
@@ -65,9 +64,10 @@ describe('FileUploaderInChatInput', () => {
 
   it('should render button with attachment icon for local_file upload method', () => {
     renderWithProvider(
-      <FileUploaderInChatInput fileConfig={createFileConfig({
-        allowed_file_upload_methods: ['local_file'],
-      } as unknown as Partial<FileUpload>)}
+      <FileUploaderInChatInput
+        fileConfig={createFileConfig({
+          allowed_file_upload_methods: ['local_file'],
+        } as unknown as Partial<FileUpload>)}
       />,
     )
 
@@ -77,9 +77,10 @@ describe('FileUploaderInChatInput', () => {
 
   it('should render button with attachment icon for remote_url upload method', () => {
     renderWithProvider(
-      <FileUploaderInChatInput fileConfig={createFileConfig({
-        allowed_file_upload_methods: ['remote_url'],
-      } as unknown as Partial<FileUpload>)}
+      <FileUploaderInChatInput
+        fileConfig={createFileConfig({
+          allowed_file_upload_methods: ['remote_url'],
+        } as unknown as Partial<FileUpload>)}
       />,
     )
 

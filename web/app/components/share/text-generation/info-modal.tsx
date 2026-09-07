@@ -1,7 +1,9 @@
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { appDefaultIconBackground } from '@/config'
 
@@ -11,23 +13,29 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-const InfoModal = ({
-  isShow,
-  onClose,
-  data,
-}: Props) => {
+const InfoModal = ({ isShow, onClose, data }: Props) => {
+  const { t } = useTranslation()
   const [currentYear] = React.useState(() => new Date().getFullYear())
 
   return (
     <Dialog
       open={isShow}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DialogContent className="w-full max-w-100 min-w-100 overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
 
         <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
           <AppIcon
@@ -45,17 +53,10 @@ const InfoModal = ({
             {/* copyright */}
             {data?.copyright && (
               <div>
-                Copyright ©
-                {' '}
-                {currentYear}
-                {' '}
-                {data?.copyright}
-                . All Rights Reserved.
+                Copyright © {currentYear} {data?.copyright}. All Rights Reserved.
               </div>
             )}
-            {data?.custom_disclaimer && (
-              <div className="mt-2">{data.custom_disclaimer}</div>
-            )}
+            {data?.custom_disclaimer && <div className="mt-2">{data.custom_disclaimer}</div>}
           </div>
         </div>
       </DialogContent>

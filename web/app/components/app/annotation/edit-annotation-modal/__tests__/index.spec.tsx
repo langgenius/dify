@@ -304,15 +304,11 @@ describe('EditAnnotationModal', () => {
       await user.click(saveButton)
 
       // Assert
-      expect(mockEditAnnotation).toHaveBeenCalledWith(
-        'test-app-id',
-        'test-annotation-id',
-        {
-          message_id: 'test-message-id',
-          question: 'Modified query',
-          answer: 'Test answer',
-        },
-      )
+      expect(mockEditAnnotation).toHaveBeenCalledWith('test-app-id', 'test-annotation-id', {
+        message_id: 'test-message-id',
+        question: 'Modified query',
+        answer: 'Test answer',
+      })
     })
   })
 
@@ -357,7 +353,9 @@ describe('EditAnnotationModal', () => {
       // Assert - Confirm dialog should not be visible initially
       // Assert - Confirm dialog should not be visible initially
       // Assert - Confirm dialog should not be visible initially
-      expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('appDebug.feature.annotation.removeConfirm'),
+      ).not.toBeInTheDocument()
     })
 
     it('should show confirm modal when remove is clicked', async () => {
@@ -415,7 +413,9 @@ describe('EditAnnotationModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
-        expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('appDebug.feature.annotation.removeConfirm'),
+        ).not.toBeInTheDocument()
       })
     })
   })

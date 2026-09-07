@@ -2,19 +2,56 @@ from __future__ import annotations
 
 import json
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask
+from flask import Flask, request
+from sqlalchemy.orm import Session
 
 from controllers.console.app import generator as generator_module
 from controllers.console.app.error import ProviderNotInitializeError
+from controllers.console.app.generator import (
+    InstructionGeneratePayload,
+    InstructionTemplatePayload,
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    WorkflowGeneratePayload,
+    WorkflowInstructionSuggestionsPayload,
+)
 from core.errors.error import ProviderTokenNotInitError
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
+
+
+def _persist_app(session: Session, *, tenant_id: str = "t1") -> App:
+    app_model = App(
+        id="app-1",
+        tenant_id=tenant_id,
+        name="Workflow App",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=None,
+    )
+    session.add(app_model)
+    session.commit()
+    return app_model
 
 
 def _model_config_payload():
     return {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+
+
+def _workflow(graph_dict: dict[str, object]) -> Workflow:
+    return Workflow(
+        id="workflow-1",
+        tenant_id="t1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(graph_dict),
+    )
 
 
 def _install_workflow_service(monkeypatch: pytest.MonkeyPatch, workflow):
@@ -43,7 +80,7 @@ def test_rule_generate_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
         method="POST",
         json={"instruction": "do it", "model_config": _model_config_payload()},
     ):
-        response = method(api, "t1")
+        response = method(api, RuleGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert response == {"rules": []}
 
@@ -63,15 +100,14 @@ def test_rule_code_generate_maps_token_error(app: Flask, monkeypatch: pytest.Mon
         json={"instruction": "do it", "model_config": _model_config_payload()},
     ):
         with pytest.raises(ProviderNotInitializeError):
-            method(api, "t1")
+            method(api, RuleCodeGeneratePayload.model_validate(request.get_json()), "t1")
 
 
-def test_instruction_generate_app_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_instruction_generate_app_not_found(app: Flask, sqlite_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-
-    session = MagicMock()
-    session.scalar.return_value = None
+    _persist_app(sqlite_session, tenant_id="other-tenant")
 
     with app.test_request_context(
         "/console/api/instruction-generate",
@@ -83,25 +119,23 @@ def test_instruction_generate_app_not_found(app: Flask, monkeypatch: pytest.Monk
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(
+            api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1"
+        )
 
     assert status == 400
     assert response["error"] == "app app-1 not found"
-    stmt = session.scalar.call_args.args[0]
-    compiled = stmt.compile()
-    statement = str(compiled)
-    assert "apps.id" in statement
-    assert "apps.tenant_id" in statement
-    assert "app-1" in compiled.params.values()
-    assert "t1" in compiled.params.values()
+    assert sqlite_session.get(App, "app-1") is not None
 
 
-def test_instruction_generate_workflow_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_instruction_generate_workflow_not_found(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
+    app_model = _persist_app(sqlite_session)
     _install_workflow_service(monkeypatch, workflow=None)
 
     with app.test_request_context(
@@ -114,20 +148,24 @@ def test_instruction_generate_workflow_not_found(app: Flask, monkeypatch: pytest
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(
+            api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1"
+        )
 
     assert status == 400
     assert response["error"] == "workflow app-1 not found"
 
 
-def test_instruction_generate_node_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_instruction_generate_node_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
+    app_model = _persist_app(sqlite_session)
 
-    workflow = SimpleNamespace(graph_dict={"nodes": []})
+    workflow = _workflow({"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)
 
     with app.test_request_context(
@@ -140,21 +178,23 @@ def test_instruction_generate_node_missing(app: Flask, monkeypatch: pytest.Monke
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(
+            api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1"
+        )
 
     assert status == 400
     assert response["error"] == "node node-1 not found"
 
 
-def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
+    app_model = _persist_app(sqlite_session)
 
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _workflow(
+        {
             "nodes": [
                 {"id": "node-1", "data": {"type": "code"}},
             ]
@@ -173,18 +213,19 @@ def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPa
             "model_config": _model_config_payload(),
         },
     ):
-        response = method(api, session, "t1")
+        response = method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")
 
     assert response == {"code": "x"}
     assert workflow_service.app_model is app_model
-    assert workflow_service.session is session
+    assert workflow_service.session is sqlite_session
 
 
-def test_instruction_generate_legacy_modify(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_instruction_generate_legacy_modify(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-    session = SimpleNamespace()
-
     monkeypatch.setattr(
         generator_module.LLMGenerator,
         "instruction_modify_legacy",
@@ -202,16 +243,15 @@ def test_instruction_generate_legacy_modify(app: Flask, monkeypatch: pytest.Monk
             "model_config": _model_config_payload(),
         },
     ):
-        response = method(api, session, "t1")
+        response = method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")
 
     assert response == {"instruction": "ok"}
 
 
-def test_instruction_generate_incompatible_params(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_instruction_generate_incompatible_params(app: Flask, sqlite_session: Session) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-    session = SimpleNamespace()
-
     with app.test_request_context(
         "/console/api/instruction-generate",
         method="POST",
@@ -223,7 +263,9 @@ def test_instruction_generate_incompatible_params(app: Flask, monkeypatch: pytes
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method(api, session, "t1")
+        response, status = method(
+            api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1"
+        )
 
     assert status == 400
     assert response["error"] == "incompatible parameters"
@@ -238,7 +280,7 @@ def test_instruction_template_prompt(app: Flask) -> None:
         method="POST",
         json={"type": "prompt"},
     ):
-        response = method(api)
+        response = method(api, InstructionTemplatePayload.model_validate(request.get_json()))
 
     assert "data" in response
 
@@ -253,7 +295,7 @@ def test_instruction_template_invalid_type(app: Flask) -> None:
         json={"type": "unknown"},
     ):
         with pytest.raises(ValueError):
-            method(api)
+            method(api, InstructionTemplatePayload.model_validate(request.get_json()))
 
 
 # ─ /workflow-generate ─────────────────────────────────────────────────────────
@@ -266,6 +308,20 @@ def _workflow_generate_payload() -> dict:
         "ideal_output": "A 3-sentence summary.",
         "model_config": _model_config_payload(),
     }
+
+
+def _workflow_graph(*, node_id: str | None = None) -> dict:
+    nodes = []
+    if node_id:
+        nodes.append(
+            {
+                "id": node_id,
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start"},
+            }
+        )
+    return {"nodes": nodes, "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
 
 
 def _stub_workflow_service(monkeypatch: pytest.MonkeyPatch, returns=None, raises: Exception | None = None):
@@ -286,10 +342,15 @@ def test_workflow_generate_returns_service_result(app: Flask, monkeypatch: pytes
     method = unwrap(api.post)
 
     expected = {
-        "graph": {"nodes": [{"id": "node-1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+        "graph": _workflow_graph(node_id="node-1"),
         "message": "Summarize",
+        "app_name": "",
+        "icon": "",
         "error": "",
+        "errors": [],
+        "mode": None,
     }
+    expected["graph"]["nodes"][0]["parentId"] = "container-1"
     _stub_workflow_service(monkeypatch, returns=expected)
 
     with app.test_request_context(
@@ -297,9 +358,20 @@ def test_workflow_generate_returns_service_result(app: Flask, monkeypatch: pytes
         method="POST",
         json=_workflow_generate_payload(),
     ):
-        response = method(api, "t1")
+        response = method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert response == expected
+
+
+def test_workflow_generate_response_schema_is_concrete() -> None:
+    schema = generator_module.WorkflowGenerateResponse.model_json_schema()
+
+    assert schema["properties"]["graph"]["$ref"].endswith("/$defs/WorkflowGraph")
+    error_items = schema["properties"]["errors"]["items"]
+    assert error_items["$ref"].endswith("/$defs/WorkflowGenerateErrorResponse")
+    assert set(schema["$defs"]["WorkflowGenerateErrorCode"]["enum"]) == {
+        code.value for code in generator_module.WorkflowGenerateErrorCode
+    }
 
 
 def test_workflow_generate_maps_provider_token_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -316,7 +388,7 @@ def test_workflow_generate_maps_provider_token_error(app: Flask, monkeypatch: py
         json=_workflow_generate_payload(),
     ):
         with pytest.raises(ProviderNotInitializeError):
-            method(api, "t1")
+            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_maps_quota_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -334,7 +406,7 @@ def test_workflow_generate_maps_quota_error(app: Flask, monkeypatch: pytest.Monk
         json=_workflow_generate_payload(),
     ):
         with pytest.raises(ProviderQuotaExceededError):
-            method(api, "t1")
+            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_maps_model_not_support_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -352,7 +424,7 @@ def test_workflow_generate_maps_model_not_support_error(app: Flask, monkeypatch:
         json=_workflow_generate_payload(),
     ):
         with pytest.raises(ProviderModelCurrentlyNotSupportError):
-            method(api, "t1")
+            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_maps_invoke_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -370,7 +442,7 @@ def test_workflow_generate_maps_invoke_error(app: Flask, monkeypatch: pytest.Mon
         json=_workflow_generate_payload(),
     ):
         with pytest.raises(CompletionRequestError):
-            method(api, "t1")
+            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_accepts_advanced_chat_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -397,7 +469,7 @@ def test_workflow_generate_accepts_advanced_chat_mode(app: Flask, monkeypatch: p
         method="POST",
         json=payload,
     ):
-        method(api, "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert captured["mode"] == "advanced-chat"
     assert captured["instruction"] == "Summarize a URL"
@@ -421,7 +493,7 @@ def test_workflow_generate_forwards_current_graph_for_refine(app: Flask, monkeyp
 
     monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph", _capture)
 
-    graph = {"nodes": [{"id": "node1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
+    graph = _workflow_graph(node_id="node1")
     payload = _workflow_generate_payload()
     payload["current_graph"] = graph
     with app.test_request_context(
@@ -429,7 +501,7 @@ def test_workflow_generate_forwards_current_graph_for_refine(app: Flask, monkeyp
         method="POST",
         json=payload,
     ):
-        method(api, "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert captured["current_graph"] == graph
 
@@ -456,7 +528,7 @@ def test_workflow_generate_current_graph_defaults_to_none(app: Flask, monkeypatc
         method="POST",
         json=_workflow_generate_payload(),
     ):
-        method(api, "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert captured["current_graph"] is None
 
@@ -483,7 +555,7 @@ def test_workflow_generate_accepts_auto_mode(app: Flask, monkeypatch: pytest.Mon
     payload = _workflow_generate_payload()
     payload["mode"] = "auto"
     with app.test_request_context("/console/api/workflow-generate", method="POST", json=payload):
-        response = method(api, "t1")
+        response = method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert captured["mode"] == "auto"
     assert response["mode"] == "advanced-chat"
@@ -563,7 +635,7 @@ def test_workflow_instruction_suggestions_route_returns_list(app: Flask, monkeyp
         method="POST",
         json={"mode": "workflow", "language": "French", "count": 3},
     ):
-        response = method(api, "t1")
+        response = method(api, WorkflowInstructionSuggestionsPayload.model_validate(request.get_json()), "t1")
 
     assert response == {"suggestions": ["Summarize a URL", "Translate text"]}
     assert captured["mode"] == "workflow"
@@ -587,7 +659,7 @@ def test_workflow_instruction_suggestions_route_empty_is_valid_200(app: Flask, m
         method="POST",
         json={"mode": "advanced-chat"},
     ):
-        response = method(api, "t1")
+        response = method(api, WorkflowInstructionSuggestionsPayload.model_validate(request.get_json()), "t1")
 
     assert response == {"suggestions": []}
 
@@ -613,7 +685,7 @@ def test_workflow_generate_stream_emits_plan_then_result(app: Flask, monkeypatch
 
     def _stream(**_kwargs):
         yield ("plan", {"title": "Summarizer", "mode": "workflow", "nodes": []})
-        yield ("result", {"graph": {"nodes": []}, "error": "", "mode": "workflow"})
+        yield ("result", {"graph": _workflow_graph(), "error": "", "mode": "workflow"})
 
     monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph_stream", _stream)
 
@@ -622,7 +694,7 @@ def test_workflow_generate_stream_emits_plan_then_result(app: Flask, monkeypatch
         method="POST",
         json=_workflow_generate_payload(),
     ):
-        response = method(api, "t1")
+        response = method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
         assert response.mimetype == "text/event-stream"
         frames = _read_sse_frames(response)
 
@@ -649,7 +721,7 @@ def test_workflow_generate_stream_provider_error_emits_result_event(
         method="POST",
         json=_workflow_generate_payload(),
     ):
-        response = method(api, "t1")
+        response = method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
         frames = _read_sse_frames(response)
 
     assert len(frames) == 1
@@ -666,7 +738,7 @@ def test_workflow_generate_stream_rejects_empty_instruction(app: Flask, monkeypa
     payload = _workflow_generate_payload()
     payload["instruction"] = "   "
     with app.test_request_context("/console/api/workflow-generate/stream", method="POST", json=payload):
-        response, status = method(api, "t1")
+        response, status = method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
     assert status == 400
     assert response["errors"][0]["code"] == "EMPTY_INSTRUCTION"

@@ -311,6 +311,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 # Use DraftVariableSaver to create offloaded variable (this mimics production)
                 saver = DraftVariableSaver(
                     session=session,
+                    tenant_id=self._test_tenant_id,
                     app_id=self._test_app_id,
                     node_id="test_offload_node",
                     node_type=BuiltinNodeTypes.LLM,  # Use a real node type

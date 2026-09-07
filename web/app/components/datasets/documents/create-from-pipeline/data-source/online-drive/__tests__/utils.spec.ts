@@ -1,5 +1,5 @@
 import type { OnlineDriveData } from '@/types/pipeline'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import { convertOnlineDriveData, isBucketListInitiation, isFile } from '../utils'
 

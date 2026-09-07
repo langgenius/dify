@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import s from './style.module.css'
 
@@ -28,40 +29,40 @@ const getWidthStyle = (imgNum: number) => {
   }
 }
 
-const ImageGallery: FC<Props> = ({
-  srcs,
-}) => {
+const ImageGallery: FC<Props> = ({ srcs }) => {
+  const { t } = useTranslation('common')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')} data-testid="image-gallery">
-      {srcs.map((src, index) => (
-        !src
-          ? null
-          : (
-              <img
-                key={index}
-                className={s.item}
-                style={imgStyle}
-                src={src}
-                alt=""
-                data-testid="gallery-image" // Added for testing
-                onClick={() => setImagePreviewUrl(src)}
-                onError={e => e.currentTarget.remove()}
-              />
-            )
-      ))}
-      {
-        imagePreviewUrl && (
-          <ImagePreview
-            url={imagePreviewUrl}
-            onCancel={() => setImagePreviewUrl('')}
-            title=""
-          />
-        )
-      }
+      {srcs.map((src, index) =>
+        !src ? null : (
+          <button
+            type="button"
+            key={index}
+            className={s.item}
+            style={imgStyle}
+            aria-label={t(($) => $['imageGallery.previewImage'], {
+              index: index + 1,
+              total: imgNum,
+            })}
+            onClick={() => setImagePreviewUrl(src)}
+          >
+            <img
+              className={s.image}
+              src={src}
+              alt=""
+              data-testid="gallery-image" // Added for testing
+              onError={(e) => e.currentTarget.parentElement?.remove()}
+            />
+          </button>
+        ),
+      )}
+      {imagePreviewUrl && (
+        <ImagePreview url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} title="" />
+      )}
     </div>
   )
 }

@@ -28,7 +28,7 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('../../utils', async importOriginal => ({
+vi.mock('../../utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../utils')>()),
   initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
   initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
@@ -57,9 +57,11 @@ describe('useWorkflowUpdate', () => {
 
     expect(mockInitialNodes).toHaveBeenCalled()
     expect(mockInitialEdges).toHaveBeenCalled()
-    expect(mockEventEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'WORKFLOW_DATA_UPDATE',
-    }))
+    expect(mockEventEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WORKFLOW_DATA_UPDATE',
+      }),
+    )
     expect(mockSetViewport).toHaveBeenCalledTimes(1)
     expect(mockSetViewport).toHaveBeenCalledWith({ x: 10, y: 20, zoom: 0.5 })
   })

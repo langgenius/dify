@@ -13,9 +13,21 @@ from typing import Annotated, Any, cast
 from flask_restx import Namespace
 from pydantic import BaseModel, WithJsonSchema
 
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
+
 USER_DESCRIPTION = (
     "User identifier, unique within the application. This identifier scopes data access; resources created with "
     "one `user` value are only visible when queried with the same `user` value."
+)
+SCOPED_TASK_STOP_USER_DESCRIPTION = (
+    "End-user identifier, defined by your app and unique within it. Send the same `user` value used for the original "
+    "generation request. See "
+    "[End User Identity](/api-reference/guides/end-user-identity)."
+)
+WORKFLOW_TASK_STOP_USER_DESCRIPTION = (
+    "End-user identifier, defined by your app and unique within it. It does not need to match the `user` that "
+    "started the run; the stop applies to the task regardless of `user`. See "
+    "[End User Identity](/api-reference/guides/end-user-identity)."
 )
 USER_PROPERTY_SCHEMA: dict[str, object] = {"description": USER_DESCRIPTION, "type": "string"}
 USER_QUERY_PARAM: dict[str, object] = {
@@ -38,33 +50,55 @@ USER_FETCH_FROM_ATTR = "_dify_service_api_user_fetch_from"
 USER_REQUIRED_ATTR = "_dify_service_api_user_required"
 JSON_USER_FETCH_FROM = "JSON"
 
+
+def _input_file_variant(transfer_method: str, source: str) -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "type": {
+                "description": "File type.",
+                "enum": ["document", "image", "audio", "video", "custom"],
+                "type": "string",
+            },
+            "transfer_method": {
+                "description": (
+                    "Transfer method: `remote_url` for a file URL or persisted uploaded-file reference, "
+                    "`local_file` for an uploaded file."
+                ),
+                "enum": [transfer_method],
+                "type": "string",
+            },
+            "url": {
+                "description": "File URL when `transfer_method` is `remote_url`.",
+                "format": "url",
+                "type": "string",
+            },
+            "remote_url": {
+                "description": "Legacy alias of `url` when `transfer_method` is `remote_url`.",
+                "format": "url",
+                "type": "string",
+            },
+            "upload_file_id": {
+                "description": (
+                    "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API. "
+                    "Required for `local_file`; also accepted with `remote_url` for compatibility with persisted "
+                    "file references."
+                ),
+                "type": "string",
+            },
+        },
+        "required": ["type", "transfer_method", source],
+    }
+
+
 INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
     "type": "object",
-    "required": ["type", "transfer_method"],
-    "properties": {
-        "type": {
-            "description": "File type.",
-            "enum": ["document", "image", "audio", "video", "custom"],
-            "type": "string",
-        },
-        "transfer_method": {
-            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
-            "enum": ["remote_url", "local_file"],
-            "type": "string",
-        },
-        "url": {
-            "description": "File URL when `transfer_method` is `remote_url`.",
-            "format": "url",
-            "type": "string",
-        },
-        "upload_file_id": {
-            "description": (
-                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API when "
-                "`transfer_method` is `local_file`."
-            ),
-            "type": "string",
-        },
-    },
+    "anyOf": [
+        _input_file_variant("remote_url", "url"),
+        _input_file_variant("remote_url", "remote_url"),
+        _input_file_variant("remote_url", "upload_file_id"),
+        _input_file_variant("local_file", "upload_file_id"),
+    ],
 }
 INPUT_FILE_LIST_SCHEMA: dict[str, object] = {
     "anyOf": [{"items": INPUT_FILE_ITEM_SCHEMA, "type": "array"}, {"type": "null"}]
@@ -89,17 +123,24 @@ def expect_with_user(namespace: Namespace, model: type[BaseModel]):
     return decorator
 
 
-def expect_user_json(namespace: Namespace):
+def expect_user_json(
+    namespace: Namespace,
+    *,
+    model_name: str | None = None,
+    user_description: str = USER_DESCRIPTION,
+):
     """Document a JSON request body that only carries the Service API ``user``."""
 
     def decorator(view_func):
         required = _json_user_required(view_func)
         schema: dict[str, object] = {"properties": {}, "title": "ServiceApiUserPayload", "type": "object"}
-        _add_user_property(schema, required=required)
-        model_name = "RequiredServiceApiUserPayload" if required else "OptionalServiceApiUserPayload"
-        if model_name not in namespace.models:
-            namespace.schema_model(model_name, schema)
-        return namespace.expect(namespace.models[model_name], validate=False)(view_func)
+        _add_user_property(schema, required=required, description=user_description)
+        resolved_model_name = model_name or (
+            "RequiredServiceApiUserPayload" if required else "OptionalServiceApiUserPayload"
+        )
+        if resolved_model_name not in namespace.models:
+            namespace.schema_model(resolved_model_name, schema)
+        return namespace.expect(namespace.models[resolved_model_name], validate=False)(view_func)
 
     return decorator
 
@@ -125,7 +166,10 @@ def event_stream_response(namespace: Namespace):
 
 def binary_response(namespace: Namespace, media_type: str | Sequence[str]):
     media_types = [media_type] if isinstance(media_type, str) else list(media_type)
-    return namespace.doc(produces=media_types)
+    return namespace.doc(
+        produces=media_types,
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: media_types},
+    )
 
 
 def _json_user_required(view_func) -> bool:
@@ -136,7 +180,7 @@ def _json_user_required(view_func) -> bool:
     return bool(getattr(view_func, USER_REQUIRED_ATTR, False))
 
 
-def _add_user_property(schema: dict[str, object], *, required: bool) -> None:
+def _add_user_property(schema: dict[str, object], *, required: bool, description: str = USER_DESCRIPTION) -> None:
     variants: list[dict[str, object]] = []
     for keyword in ("anyOf", "oneOf"):
         candidates = schema.get(keyword)
@@ -145,15 +189,15 @@ def _add_user_property(schema: dict[str, object], *, required: bool) -> None:
 
     if variants:
         for variant in variants:
-            _add_user_property_to_object_schema(variant, required=required)
+            _add_user_property_to_object_schema(variant, required=required, description=description)
 
-    _add_user_property_to_object_schema(schema, required=required)
+    _add_user_property_to_object_schema(schema, required=required, description=description)
 
 
-def _add_user_property_to_object_schema(schema: dict[str, object], *, required: bool) -> None:
+def _add_user_property_to_object_schema(schema: dict[str, object], *, required: bool, description: str) -> None:
     properties = schema.setdefault("properties", {})
     if isinstance(properties, dict):
-        cast(dict[str, object], properties)["user"] = USER_PROPERTY_SCHEMA
+        cast(dict[str, object], properties)["user"] = {"description": description, "type": "string"}
 
     if required:
         required_fields = schema.setdefault("required", [])

@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 
 

@@ -52,14 +52,14 @@ export class ContextListOutput {
   }
 
   tableRows(): readonly (readonly TableCell[])[] {
-    return this.rows.map(r => r.tableRow())
+    return this.rows.map((r) => r.tableRow())
   }
 
   name(): string {
-    return this.rows.map(r => r.name()).join('\n')
+    return this.rows.map((r) => r.name()).join('\n')
   }
 
   json() {
-    return { contexts: this.rows.map(r => r.json()) }
+    return { contexts: this.rows.map((r) => r.json()) }
   }
 }

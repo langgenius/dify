@@ -22,32 +22,36 @@ export type LayoutSliceShape = {
   setVariableInspectPanelHeight: (height: number) => void
 }
 
-export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
+export const createLayoutSlice: StateCreator<LayoutSliceShape> = (set) => ({
   workflowCanvasWidth: undefined,
   workflowCanvasHeight: undefined,
-  setWorkflowCanvasWidth: width => set(state =>
-    state.workflowCanvasWidth === width ? state : ({ workflowCanvasWidth: width })),
-  setWorkflowCanvasHeight: height => set(state =>
-    state.workflowCanvasHeight === height ? state : ({ workflowCanvasHeight: height })),
+  setWorkflowCanvasWidth: (width) =>
+    set((state) => (state.workflowCanvasWidth === width ? state : { workflowCanvasWidth: width })),
+  setWorkflowCanvasHeight: (height) =>
+    set((state) =>
+      state.workflowCanvasHeight === height ? state : { workflowCanvasHeight: height },
+    ),
   rightPanelWidth: undefined,
-  setRightPanelWidth: width => set(state =>
-    state.rightPanelWidth === width ? state : ({ rightPanelWidth: width })),
+  setRightPanelWidth: (width) =>
+    set((state) => (state.rightPanelWidth === width ? state : { rightPanelWidth: width })),
   nodePanelWidth: 400,
-  setNodePanelWidth: width => set(state =>
-    state.nodePanelWidth === width ? state : ({ nodePanelWidth: width })),
+  setNodePanelWidth: (width) =>
+    set((state) => (state.nodePanelWidth === width ? state : { nodePanelWidth: width })),
   previewPanelWidth: 400,
-  setPreviewPanelWidth: width => set(state =>
-    state.previewPanelWidth === width ? state : ({ previewPanelWidth: width })),
+  setPreviewPanelWidth: (width) =>
+    set((state) => (state.previewPanelWidth === width ? state : { previewPanelWidth: width })),
   otherPanelWidth: 400,
-  setOtherPanelWidth: width => set(state =>
-    state.otherPanelWidth === width ? state : ({ otherPanelWidth: width })),
+  setOtherPanelWidth: (width) =>
+    set((state) => (state.otherPanelWidth === width ? state : { otherPanelWidth: width })),
   bottomPanelWidth: 480,
-  setBottomPanelWidth: width => set(state =>
-    state.bottomPanelWidth === width ? state : ({ bottomPanelWidth: width })),
+  setBottomPanelWidth: (width) =>
+    set((state) => (state.bottomPanelWidth === width ? state : { bottomPanelWidth: width })),
   bottomPanelHeight: 324,
-  setBottomPanelHeight: height => set(state =>
-    state.bottomPanelHeight === height ? state : ({ bottomPanelHeight: height })),
+  setBottomPanelHeight: (height) =>
+    set((state) => (state.bottomPanelHeight === height ? state : { bottomPanelHeight: height })),
   variableInspectPanelHeight: 320,
-  setVariableInspectPanelHeight: height => set(state =>
-    state.variableInspectPanelHeight === height ? state : ({ variableInspectPanelHeight: height })),
+  setVariableInspectPanelHeight: (height) =>
+    set((state) =>
+      state.variableInspectPanelHeight === height ? state : { variableInspectPanelHeight: height },
+    ),
 })

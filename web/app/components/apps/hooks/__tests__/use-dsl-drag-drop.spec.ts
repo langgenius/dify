@@ -45,11 +45,11 @@ describe('useDSLDragDrop', () => {
 
   describe('Basic functionality', () => {
     it('should return dragging state', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -57,11 +57,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should initialize with dragging as false', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -71,11 +71,11 @@ describe('useDSLDragDrop', () => {
 
   describe('Drag events', () => {
     it('should set dragging to true on dragenter with files', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -90,11 +90,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should not set dragging on dragenter without files', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -108,11 +108,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should handle dragover event', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -127,11 +127,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should set dragging to false on dragleave when leaving container', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -154,47 +154,46 @@ describe('useDSLDragDrop', () => {
       expect(result.current.dragging).toBe(false)
     })
 
-    it('should not set dragging to false on dragleave when within container', () => {
-      const containerRef = { current: container }
-      const childElement = document.createElement('div')
-      container.appendChild(childElement)
+    it('should keep dragging while moving from the viewport to its sibling overlay', () => {
+      const dropZoneRef = { current: container }
+      const viewport = document.createElement('div')
+      const overlay = document.createElement('div')
+      container.append(viewport, overlay)
 
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
       const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
       act(() => {
-        container.dispatchEvent(enterEvent)
+        viewport.dispatchEvent(enterEvent)
       })
       expect(result.current.dragging).toBe(true)
 
       const leaveEvent = createDragEvent('dragleave')
       Object.defineProperty(leaveEvent, 'relatedTarget', {
-        value: childElement,
+        value: overlay,
         writable: false,
       })
 
       act(() => {
-        container.dispatchEvent(leaveEvent)
+        viewport.dispatchEvent(leaveEvent)
       })
 
       expect(result.current.dragging).toBe(true)
-
-      container.removeChild(childElement)
     })
   })
 
   describe('Drop functionality', () => {
     it('should call onDSLFileDropped for .yaml file', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -209,11 +208,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should call onDSLFileDropped for .yml file', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -228,11 +227,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should call onDSLFileDropped for uppercase .YAML file', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -247,11 +246,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should not call onDSLFileDropped for non-yaml file', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -266,11 +265,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should set dragging to false on drop', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -289,11 +288,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should handle drop with no dataTransfer', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -319,11 +318,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should handle drop with empty files array', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -337,11 +336,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should only process the first file when multiple files are dropped', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -360,11 +359,11 @@ describe('useDSLDragDrop', () => {
 
   describe('Enabled prop', () => {
     it('should not add event listeners when enabled is false', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
           enabled: false,
         }),
       )
@@ -380,12 +379,12 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should return dragging as false when enabled is false even if state is true', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result, rerender } = renderHook(
         ({ enabled }) =>
           useDSLDragDrop({
             onDSLFileDropped: mockOnDSLFileDropped,
-            containerRef,
+            dropZoneRef,
             enabled,
           }),
         { initialProps: { enabled: true } },
@@ -402,11 +401,11 @@ describe('useDSLDragDrop', () => {
     })
 
     it('should default enabled to true', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -422,13 +421,13 @@ describe('useDSLDragDrop', () => {
 
   describe('Cleanup', () => {
     it('should remove event listeners on unmount', () => {
-      const containerRef = { current: container }
+      const dropZoneRef = { current: container }
       const removeEventListenerSpy = vi.spyOn(container, 'removeEventListener')
 
       const { unmount } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
@@ -444,28 +443,28 @@ describe('useDSLDragDrop', () => {
   })
 
   describe('Edge cases', () => {
-    it('should handle null containerRef', () => {
-      const containerRef = { current: null }
+    it('should handle null dropZoneRef', () => {
+      const dropZoneRef = { current: null }
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
       expect(result.current.dragging).toBe(false)
     })
 
-    it('should handle containerRef changing to null', () => {
-      const containerRef = { current: container as HTMLDivElement | null }
+    it('should handle dropZoneRef changing to null', () => {
+      const dropZoneRef = { current: container as HTMLDivElement | null }
       const { result, rerender } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
+          dropZoneRef,
         }),
       )
 
-      containerRef.current = null
+      dropZoneRef.current = null
       rerender()
 
       expect(result.current.dragging).toBe(false)

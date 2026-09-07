@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import useWebAppBrand from '../hooks/use-web-app-brand'
 import CustomWebAppBrand from '../index'
 
@@ -9,13 +9,16 @@ vi.mock('../hooks/use-web-app-brand', () => ({
 
 const mockUseWebAppBrand = vi.mocked(useWebAppBrand)
 
-const createHookState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> = {}): ReturnType<typeof useWebAppBrand> => ({
+const createHookState = (
+  overrides: Partial<ReturnType<typeof useWebAppBrand>> = {},
+): ReturnType<typeof useWebAppBrand> => ({
   fileId: '',
   imgKey: 100,
   uploadProgress: 0,
   uploading: false,
   webappLogo: 'https://example.com/replace.png',
   webappBrandRemoved: false,
+  isCustomConfigUnavailable: false,
   uploadDisabled: false,
   workspaceLogo: 'https://example.com/workspace-logo.png',
   isSandbox: false,
@@ -101,6 +104,18 @@ describe('CustomWebAppBrand', () => {
       expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
       expect(screen.getByRole('button', { name: 'custom.change' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
+    })
+
+    it('should disable brand edits while the custom config is unavailable', () => {
+      renderComponent({
+        fileId: 'new-logo',
+        isCustomConfigUnavailable: true,
+        uploadDisabled: true,
+      })
+
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('button', { name: 'custom.change' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
     })
 

@@ -5,7 +5,7 @@ import { realStreams } from '@/sys/io/streams'
 import { runWhoami } from './whoami'
 
 export default class Whoami extends DifyCommand {
-  static override description = 'Print the active subject\'s identity'
+  static override description = "Print the active subject's identity"
 
   static override examples = [
     '<%= config.bin %> auth whoami',

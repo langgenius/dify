@@ -4,10 +4,7 @@ import type {
 } from './i18n-prune/core'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import {
-  analyzeUnusedTranslations,
-  removeUnusedTranslations,
-} from './i18n-prune/core'
+import { analyzeUnusedTranslations, removeUnusedTranslations } from './i18n-prune/core'
 
 type CliArgs = {
   write: boolean
@@ -54,16 +51,14 @@ function parseArgs(argv: string[]): CliArgs {
     }
     if (arg === '--file') {
       const { values, nextIndex } = collectValues(argv, index)
-      if (!values.length)
-        args.errors.push('--file requires at least one value')
+      if (!values.length) args.errors.push('--file requires at least one value')
       args.files.push(...values)
       index = nextIndex
       continue
     }
     if (arg === '--lang') {
       const { values, nextIndex } = collectValues(argv, index)
-      if (!values.length)
-        args.errors.push('--lang requires at least one value')
+      if (!values.length) args.errors.push('--lang requires at least one value')
       args.locales.push(...values)
       index = nextIndex
       continue
@@ -95,19 +90,25 @@ function countUnusedKeys(result: AnalyzeUnusedTranslationsResult) {
   return Object.values(result.unusedKeysByNamespace).reduce((total, keys) => total + keys.length, 0)
 }
 
-function printHumanSummary(result: AnalyzeUnusedTranslationsResult, removed?: RemoveUnusedTranslationsResult) {
+function printHumanSummary(
+  result: AnalyzeUnusedTranslationsResult,
+  removed?: RemoveUnusedTranslationsResult,
+) {
   const totalUnused = countUnusedKeys(result)
   console.log(`Found ${totalUnused} unused i18n keys.`)
 
   for (const [namespace, keys] of Object.entries(result.unusedKeysByNamespace)) {
     console.log(`\n${namespace} (${keys.length})`)
-    for (const key of keys)
-      console.log(`  - ${key}`)
+    for (const key of keys) console.log(`  - ${key}`)
   }
 
   if (result.protectedNamespaces.length) {
-    console.log(`\nProtected namespaces with unresolved dynamic keys: ${result.protectedNamespaces.join(', ')}`)
-    console.log('These namespaces were not pruned because at least one key could not be statically resolved.')
+    console.log(
+      `\nProtected namespaces with unresolved dynamic keys: ${result.protectedNamespaces.join(', ')}`,
+    )
+    console.log(
+      'These namespaces were not pruned because at least one key could not be statically resolved.',
+    )
   }
 
   if (result.dynamicKeyPatterns.length) {
@@ -120,10 +121,8 @@ function printHumanSummary(result: AnalyzeUnusedTranslationsResult, removed?: Re
       console.log(`  ... ${result.dynamicKeyPatterns.length - 20} more`)
   }
 
-  if (removed)
-    console.log(`\nRemoved ${removed.removedKeys.length} keys across locale files.`)
-  else if (totalUnused)
-    console.log('\nRun again with --write to remove these keys.')
+  if (removed) console.log(`\nRemoved ${removed.removedKeys.length} keys across locale files.`)
+  else if (totalUnused) console.log('\nRun again with --write to remove these keys.')
 }
 
 async function runCli() {
@@ -134,8 +133,7 @@ async function runCli() {
   }
 
   if (args.errors.length) {
-    for (const error of args.errors)
-      console.error(error)
+    for (const error of args.errors) console.error(error)
     printHelp()
     process.exitCode = 1
     return
@@ -148,13 +146,11 @@ async function runCli() {
 
   if (args.json) {
     console.log(JSON.stringify({ analysis: result, removal: removed }, null, 2))
-  }
-  else {
+  } else {
     printHumanSummary(result, removed)
   }
 
-  if (!args.write && countUnusedKeys(result))
-    process.exitCode = 1
+  if (!args.write && countUnusedKeys(result)) process.exitCode = 1
 }
 
 const entryPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : ''

@@ -1,9 +1,6 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
@@ -12,16 +9,13 @@ type FileUploaderInChatInputProps = {
   fileConfig: FileUpload
   readonly?: boolean
 }
-const FileUploaderInChatInput = ({
-  fileConfig,
-  readonly,
-}: FileUploaderInChatInputProps) => {
+const FileUploaderInChatInput = ({ fileConfig, readonly }: FileUploaderInChatInputProps) => {
   const { t } = useTranslation()
-  const renderTrigger = useCallback((_open: boolean) => {
+  const renderTrigger = useCallback(() => {
     return (
       <button
         type="button"
-        aria-label={t('fileUploader.uploadFromComputer', { ns: 'common' })}
+        aria-label={t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
         className={cn(
           'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg p-1.5 text-text-tertiary outline-hidden',
           'hover:bg-state-base-hover hover:text-text-secondary',
@@ -38,18 +32,20 @@ const FileUploaderInChatInput = ({
 
   return (
     <span className="inline-flex size-8 shrink-0 items-center justify-center">
-      {
-        readonly
-          ? renderTrigger(false)
-          : (
-              <FileFromLinkOrLocal
-                trigger={renderTrigger}
-                fileConfig={fileConfig}
-                showFromLocal={fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)}
-                showFromLink={fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)}
-              />
-            )
-      }
+      {readonly ? (
+        renderTrigger()
+      ) : (
+        <FileFromLinkOrLocal
+          trigger={renderTrigger()}
+          fileConfig={fileConfig}
+          showFromLocal={fileConfig?.allowed_file_upload_methods?.includes(
+            TransferMethod.local_file,
+          )}
+          showFromLink={fileConfig?.allowed_file_upload_methods?.includes(
+            TransferMethod.remote_url,
+          )}
+        />
+      )}
     </span>
   )
 }

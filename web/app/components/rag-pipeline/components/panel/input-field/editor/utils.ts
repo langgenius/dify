@@ -35,16 +35,11 @@ export const convertToInputFieldFormData = (data?: InputVar): FormData => {
     allowedTypesAndExtensions: {},
   }
 
-  if (default_value !== undefined && default_value !== null)
-    formData.default = default_value
-  if (tooltips !== undefined && tooltips !== null)
-    formData.tooltips = tooltips
-  if (placeholder !== undefined && placeholder !== null)
-    formData.placeholder = placeholder
-  if (unit !== undefined && unit !== null)
-    formData.unit = unit
-  if (allowed_file_upload_methods)
-    formData.allowedFileUploadMethods = allowed_file_upload_methods
+  if (default_value !== undefined && default_value !== null) formData.default = default_value
+  if (tooltips !== undefined && tooltips !== null) formData.tooltips = tooltips
+  if (placeholder !== undefined && placeholder !== null) formData.placeholder = placeholder
+  if (unit !== undefined && unit !== null) formData.unit = unit
+  if (allowed_file_upload_methods) formData.allowedFileUploadMethods = allowed_file_upload_methods
   if (allowed_file_types && allowed_file_extensions) {
     formData.allowedTypesAndExtensions = {
       allowedFileTypes: allowed_file_types,

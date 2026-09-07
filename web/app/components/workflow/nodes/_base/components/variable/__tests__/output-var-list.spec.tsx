@@ -3,11 +3,11 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import OutputVarList from '../output-var-list'
 
 vi.mock('../var-type-picker', () => ({
-  default: (props: { value: string, onChange: (v: string) => void, readonly: boolean }) => (
+  default: (props: { value: string; onChange: (v: string) => void; readonly: boolean }) => (
     <select
       data-testid="var-type-picker"
       value={props.value ?? ''}
-      onChange={e => props.onChange(e.target.value)}
+      onChange={(e) => props.onChange(e.target.value)}
       disabled={props.readonly}
     >
       <option value="string">string</option>
@@ -43,7 +43,9 @@ describe('OutputVarList', () => {
         readonly={false}
         outputs={outputs}
         outputKeyOrders={outputKeyOrders}
-        onChange={(newOutputs) => { captured = newOutputs }}
+        onChange={(newOutputs) => {
+          captured = newOutputs
+        }}
         onRemove={vi.fn()}
       />,
     )

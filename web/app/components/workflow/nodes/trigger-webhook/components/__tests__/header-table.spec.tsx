@@ -7,31 +7,32 @@ describe('trigger-webhook/header-table', () => {
   it('updates header names and required flags through the real generic table', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const headers: WebhookHeader[] = [{
-      name: 'x-request-id',
-      required: false,
-    }]
+    const headers: WebhookHeader[] = [
+      {
+        name: 'x-request-id',
+        required: false,
+      },
+    ]
 
-    render(
-      <HeaderTable
-        headers={headers}
-        onChange={onChange}
-      />,
-    )
+    render(<HeaderTable headers={headers} onChange={onChange} />)
 
     fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value: 'Auth Token' } })
-    expect(onChange).toHaveBeenLastCalledWith([{
-      name: 'Auth_Token',
-      required: false,
-    }])
+    expect(onChange).toHaveBeenLastCalledWith([
+      {
+        name: 'Auth_Token',
+        required: false,
+      },
+    ])
 
     onChange.mockClear()
     await user.click(screen.getAllByRole('checkbox')[0]!)
 
-    expect(onChange).toHaveBeenCalledWith([{
-      name: 'x-request-id',
-      required: true,
-    }])
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        name: 'x-request-id',
+        required: true,
+      },
+    ])
   })
 
   it('renders readonly rows without the trailing editable row', () => {

@@ -8,7 +8,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
  * Hook for getting datasource options from pipeline nodes
  */
 export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) => {
-  const datasourceNodes = pipelineNodes.filter(node => node.data.type === BlockEnum.DataSource)
+  const datasourceNodes = pipelineNodes.filter((node) => node.data.type === BlockEnum.DataSource)
 
   const options = useMemo(() => {
     const options: DataSourceOption[] = []

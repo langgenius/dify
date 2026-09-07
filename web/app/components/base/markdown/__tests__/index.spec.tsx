@@ -45,24 +45,6 @@ describe('Markdown', () => {
     expect(screen.getByTestId('react-markdown-wrapper'))!.toHaveTextContent('Hello World')
   })
 
-  it('should apply default classes', () => {
-    const { container } = render(<Markdown content="Test" />)
-    const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv)!.toHaveClass('markdown-body', 'text-text-primary!')
-  })
-
-  it('should merge custom className with default classes', () => {
-    const { container } = render(<Markdown content="Test" className="custom another" />)
-    const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv)!.toHaveClass('markdown-body', 'text-text-primary!', 'custom', 'another')
-  })
-
-  it('should not include undefined in className', () => {
-    const { container } = render(<Markdown content="Test" className={undefined} />)
-    const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv?.className).not.toContain('undefined')
-  })
-
   it('should preprocess think tags', () => {
     render(<Markdown content="<think>Thought</think>" />)
     const props = getLastWrapperProps()

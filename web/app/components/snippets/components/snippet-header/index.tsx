@@ -2,10 +2,7 @@
 
 import type { HeaderProps } from '@/app/components/workflow/header'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Header from '@/app/components/workflow/header'
 import RunMode from './run-mode'
@@ -26,13 +23,8 @@ const PublishAction = ({
   const { t } = useTranslation('snippet')
 
   return (
-    <Button
-      variant="primary"
-      loading={isPublishing}
-      disabled={isPublishing || !canSave}
-      onClick={onPublish}
-    >
-      {t('publishButton')}
+    <Button variant="primary" loading={isPublishing} disabled={!canSave} onClick={onPublish}>
+      {t(($) => $.publishButton)}
     </Button>
   )
 }
@@ -55,17 +47,9 @@ const SnippetHeader = ({
     return {
       normal: {
         components: {
-          left: (
-            canEdit
-              ? (
-                  <PublishAction
-                    canSave={canSave}
-                    isPublishing={isPublishing}
-                    onPublish={onPublish}
-                  />
-                )
-              : null
-          ),
+          left: canEdit ? (
+            <PublishAction canSave={canSave} isPublishing={isPublishing} onPublish={onPublish} />
+          ) : null,
         },
         controls: {
           showEnvButton: false,
@@ -73,7 +57,7 @@ const SnippetHeader = ({
         },
         runAndHistoryProps: {
           showRunButton: true,
-          runButtonText: t('testRunButton'),
+          runButtonText: t(($) => $.testRunButton),
           viewHistoryProps,
           components: {
             RunMode,

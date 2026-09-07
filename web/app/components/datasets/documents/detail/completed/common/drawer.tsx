@@ -46,8 +46,7 @@ export function CompletedDrawer({
   panelContentClassName,
   modal = false,
 }: CompletedDrawerProps) {
-  if (!open)
-    return null
+  if (!open) return null
 
   return (
     <Drawer
@@ -55,14 +54,10 @@ export function CompletedDrawer({
       modal={modal}
       swipeDirection={SIDE_TO_SWIPE_DIRECTION[side]}
       disablePointerDismissal
-      onOpenChange={nextOpen => !nextOpen && onClose()}
+      onOpenChange={(nextOpen) => !nextOpen && onClose()}
     >
       <DrawerPortal>
-        {modal && (
-          <DrawerBackdrop
-            onClick={onClose}
-          />
-        )}
+        {modal && <DrawerBackdrop onClick={onClose} />}
         <DrawerViewport className="pointer-events-none">
           <DrawerPopup
             aria-modal={modal ? 'true' : 'false'}
