@@ -47,7 +47,7 @@ from repositories.explore_banner_query_repository import ExploreBannerQueryRepos
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.installation_state_repository import InstallationStateRepository
-from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -157,6 +157,8 @@ from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
+from services.installed_app_completion_service import InstalledAppCompletionService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -263,6 +265,7 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
+    installed_app_completion: InstalledAppCompletionService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -409,8 +412,15 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(session_factory=database_client)
+    installed_apps = SQLAlchemyInstalledAppRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    app_definitions = AppDefinitionQueryService(
+        definitions=app_definition_repository,
+        builtin_icon_url_prefix=(
+            dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        ),
+    )
     webapp_access = WebAppAccessQueryService(
         access=WebAppAccessQueryRepository(session_factory=database_client),
         webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
@@ -594,12 +604,7 @@ def build_application_services(
                 enabled=dify_config.RBAC_ENABLED,
             ),
         ),
-        app_definitions=AppDefinitionQueryService(
-            definitions=app_definition_repository,
-            builtin_icon_url_prefix=(
-                dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-            ),
-        ),
+        app_definitions=app_definitions,
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
@@ -626,8 +631,13 @@ def build_application_services(
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=webapp_access,
         installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=database_client),
+            installed_apps=installed_apps,
             is_user_allowed=webapp_access.is_user_allowed,
+        ),
+        installed_app_completion=InstalledAppCompletionService(
+            app_definitions=app_definitions,
+            usage=installed_apps,
+            runtime=AppGenerateServiceCompletionRuntime(session_factory=database_client),
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
