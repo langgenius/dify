@@ -30,12 +30,6 @@ export const parseLimit = (limit: number) => {
   return limit
 }
 
-export const parseRateLimit = (limit: number) => {
-  if (limit === 0 || limit === -1) return NUM_INFINITE
-
-  return limit
-}
-
 const normalizeResetDate = (resetDate: number) => {
   if (resetDate <= 0) return null
 
