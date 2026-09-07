@@ -543,6 +543,7 @@ function ResourceConfiguration({
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
   const previewSourceRef = useRef<Source | undefined>(undefined)
   const committedRef = useRef(false)
+  const sourceNameInitializedRef = useRef(Boolean(draft.sourceName.trim()))
   const [previewSource, setPreviewSource] = useState<Source>()
   const [previewError, setPreviewError] = useState(false)
   const [selected, setSelected] = useState<Map<string, SelectableResource>>(() => new Map())
@@ -959,13 +960,20 @@ function ResourceConfiguration({
   const loadingMore = driveTransport ? filesQuery.isFetchingNextPage : pagesQuery.isFetchingNextPage
 
   useEffect(() => {
-    if (draft.sourceName.trim()) return
+    if (sourceNameInitializedRef.current) return
+    if (draft.sourceName.trim()) {
+      sourceNameInitializedRef.current = true
+      return
+    }
     const suggestedName =
       pageResources[0]?.groupName ??
       rootFileResources[0]?.bucket ??
       connection.name ??
       provider.displayName
-    if (suggestedName) onDraftChange({ ...draft, sourceName: suggestedName })
+    if (suggestedName) {
+      sourceNameInitializedRef.current = true
+      onDraftChange({ ...draft, sourceName: suggestedName })
+    }
   }, [
     connection.name,
     draft,
