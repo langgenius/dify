@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import override
 
 import pytest
+from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -25,7 +27,7 @@ from services.knowledge_fs.app_execution_capability import (
 )
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import KnowledgeFSResearchTaskCreatePayload
-from services.knowledge_fs.product_remote import KnowledgeFSRemoteJSONRequest
+from services.knowledge_fs.product_remote import KnowledgeFSRemoteJSONRequest, UnavailableKnowledgeFSProductRemote
 
 pytestmark = pytest.mark.parametrize(
     "sqlite_session",
@@ -60,11 +62,12 @@ class Broker:
         )
 
 
-class Remote:
+class Remote(UnavailableKnowledgeFSProductRemote):
     def __init__(self) -> None:
         self.calls: list[KnowledgeFSRemoteJSONRequest] = []
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
         self.calls.append(request)
         return {
             "id": "task-1",

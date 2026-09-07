@@ -83,7 +83,7 @@ def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(
 
     ack = remote.activate_dify_workspace_integration(request)
 
-    assert ack.active is True
+    assert ack.active
     assert ack.applied is True
     assert ack.replayed is False
     assert captured["method"] == "POST"
@@ -233,7 +233,7 @@ def test_freeze_uses_exact_internal_worker_capability_path_body_and_ack(
 
     ack = remote.freeze_dify_workspace_integration(request)
 
-    assert ack.frozen is True
+    assert ack.frozen
     assert ack.applied is True
     assert captured["method"] == "POST"
     assert captured["url"] == "https://knowledge-fs.test/internal/dify-integration/freeze"

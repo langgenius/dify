@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import patch
 
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -72,7 +74,7 @@ _LATER_SHADOW_DIFF_COLUMNS = {
 }
 
 
-def _load_migration_module():
+def _load_migration_module() -> ModuleType:
     spec = importlib.util.spec_from_file_location("knowledge_fs_cutover", _MIGRATION_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
@@ -81,16 +83,12 @@ def _load_migration_module():
     return module
 
 
-def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> None:
+def _run_migration_step(module: ModuleType, engine: sa.Engine, step_name: str) -> None:
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
         operations = Operations(context)
-        original_op = module.op
-        module.op = operations
-        try:
-            getattr(module, step_name)()
-        finally:
-            module.op = original_op
+        with patch.object(module, "op", operations):
+            {"upgrade": module.upgrade, "downgrade": module.downgrade}[step_name]()
 
 
 def test_upgrade_matches_models_and_has_only_cutover_ledger_dependencies() -> None:

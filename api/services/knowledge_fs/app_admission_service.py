@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import NamedTuple, Protocol
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.knowledge_fs.errors import (
+    KnowledgeFSAppAdmissionError,
+    KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppBindingNotEnabledError,
+    KnowledgeFSAppChannelDisabledError,
+    KnowledgeFSAppSpaceUnavailableError,
+)
 from libs.datetime_utils import naive_utc_now
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
@@ -24,26 +31,6 @@ from services.knowledge_fs.revocation_commands import (
 )
 
 
-class KnowledgeFSAppAdmissionError(RuntimeError):
-    """The app is not explicitly bound to an enabled KnowledgeFS channel."""
-
-
-class KnowledgeFSAppBindingNotEnabledError(KnowledgeFSAppAdmissionError):
-    """The requested app binding is missing, revoked, or outside the caller scope."""
-
-
-class KnowledgeFSAppChannelDisabledError(KnowledgeFSAppAdmissionError):
-    """The requested app caller channel is disabled for the control-space."""
-
-
-class KnowledgeFSAppSpaceUnavailableError(KnowledgeFSAppAdmissionError):
-    """The bound control-space is not active and provisioned for product traffic."""
-
-
-class KnowledgeFSAppAuthorizationNotReadyError(KnowledgeFSAppAdmissionError):
-    """Required local authorization policy or revision state is unavailable."""
-
-
 class KnowledgeFSAppPrincipalProfile(NamedTuple):
     tenant_id: str
     control_space_id: str
@@ -57,6 +44,18 @@ class KnowledgeFSAppPrincipalProfile(NamedTuple):
     space_acl_epoch: int
     external_access_epoch: int
     content_policy_revision: int
+
+
+class KnowledgeFSAppAdmissionPort(Protocol):
+    def admit(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        control_space_id: str,
+        caller_kind: KnowledgeFSAppSpaceJoinType,
+        operation_id: str,
+    ) -> KnowledgeFSAppPrincipalProfile: ...
 
 
 class KnowledgeFSAppAdmissionService:

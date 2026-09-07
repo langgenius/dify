@@ -1,3 +1,28 @@
+from datetime import UTC, datetime
+
+from services.knowledge_fs.product_dto import KnowledgeFSSourceWorkflowResponse
+
+
+def source_workflow(**overrides: object) -> KnowledgeFSSourceWorkflowResponse:
+    return KnowledgeFSSourceWorkflowResponse.model_validate(
+        {
+            "id": "workflow-1",
+            "knowledge_space_id": "space-1",
+            "kind": "import",
+            "state": "running",
+            "checkpoint": "pending",
+            "execution_attempts": 0,
+            "max_execution_attempts": 3,
+            "progress_completed": 0,
+            "progress_failed": 0,
+            "progress_skipped": 0,
+            "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+            "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
+            **overrides,
+        }
+    )
+
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -184,7 +209,7 @@ def test_resume_committed_source_import_restores_pending_marker() -> None:
         status="error",
         version=5,
     )
-    workflow = SimpleNamespace(id="import-1", source_id="source-1")
+    workflow = source_workflow(id="import-1", source_id="source-1")
 
     with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
         resume_committed_source_import(
@@ -226,7 +251,7 @@ def test_resume_completed_initial_website_import_repairs_source_state() -> None:
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
-            workflow=SimpleNamespace(id="import-1", source_id="source-1", state="completed"),
+            workflow=source_workflow(id="import-1", source_id="source-1", state="completed"),
         )
 
     update = facade.update_source.call_args.kwargs["payload"]
@@ -265,7 +290,7 @@ def test_resume_legacy_initial_website_import_falls_back_to_manual_sync() -> Non
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
-            workflow=SimpleNamespace(id="import-1", source_id="source-1", state="completed"),
+            workflow=source_workflow(id="import-1", source_id="source-1", state="completed"),
         )
 
     pending = facade.update_source.call_args.kwargs["payload"].metadata["pendingImport"]
@@ -288,7 +313,7 @@ def test_resume_committed_source_import_redispatches_an_existing_pending_marker(
         status="syncing",
         version=5,
     )
-    workflow = SimpleNamespace(id="import-1", source_id="source-1")
+    workflow = source_workflow(id="import-1", source_id="source-1")
 
     with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
         resume_committed_source_import(
@@ -331,7 +356,7 @@ def test_resume_committed_source_import_redispatches_after_source_revision_confl
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
-            workflow=SimpleNamespace(id="import-1", source_id="source-1"),
+            workflow=source_workflow(id="import-1", source_id="source-1"),
         )
 
     delay.assert_called_once_with(
@@ -368,7 +393,7 @@ def test_resume_committed_source_import_redispatches_after_remote_update_failure
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
-            workflow=SimpleNamespace(id="import-1", source_id="source-1"),
+            workflow=source_workflow(id="import-1", source_id="source-1"),
         )
 
     delay.assert_called_once_with(
@@ -401,7 +426,7 @@ def test_resume_committed_source_import_ignores_a_different_workflow_marker() ->
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
-            workflow=SimpleNamespace(id="import-1", source_id="source-1"),
+            workflow=source_workflow(id="import-1", source_id="source-1"),
         )
 
     facade.update_source.assert_not_called()
@@ -410,7 +435,7 @@ def test_resume_committed_source_import_ignores_a_different_workflow_marker() ->
 
 def test_retry_or_resume_reconciles_an_already_completed_import() -> None:
     facade = MagicMock()
-    workflow = SimpleNamespace(id="import-1", source_id="source-1", state="completed")
+    workflow = source_workflow(id="import-1", source_id="source-1", state="completed")
     facade.get_source_workflow.return_value = workflow
     facade.get_source.return_value = SimpleNamespace(
         id="source-1",

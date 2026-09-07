@@ -115,7 +115,7 @@ def _dataset_list_access_scope(
             if _has_dataset_list_permission(override.permission_keys)
         }
     include_own_datasets = False
-    if getattr(whitelist_scope, "unrestricted", False):
+    if whitelist_scope.unrestricted:
         filtered_dataset_ids = permission_dataset_ids
         include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
     else:
@@ -893,7 +893,7 @@ class DatasetKnowledgeFSUpgradeJobsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)

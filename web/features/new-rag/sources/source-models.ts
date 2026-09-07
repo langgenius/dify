@@ -4,7 +4,6 @@ import type {
   KnowledgeFsSourceConnectionResponse,
   KnowledgeFsSourceProviderListResponse,
   KnowledgeFsSourceResponse,
-  KnowledgeFsSourceSyncPolicyPayload,
   KnowledgeFsSourceSyncPolicyResponse,
   KnowledgeFsSourceWorkflowResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
@@ -117,8 +116,6 @@ export type SourceSyncPolicy = {
   updatedAt: string
 }
 
-export type SourceSyncPolicyBody = KnowledgeFsSourceSyncPolicyPayload
-
 const SOURCE_WORKFLOW_SUCCESS_STATES = new Set([
   'complete',
   'completed',
@@ -153,7 +150,7 @@ function sourceImportMetadata(value: unknown) {
   return metadata
 }
 
-export function sourceWorkflowStatus(state: string): Source['status'] {
+function sourceWorkflowStatus(state: string): Source['status'] {
   const normalized = state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
   if (SOURCE_WORKFLOW_FAILURE_STATES.has(normalized)) return 'error'
   if (SOURCE_WORKFLOW_SUCCESS_STATES.has(normalized)) return 'active'
@@ -164,7 +161,7 @@ export function sourceWorkflowIsActive(workflow?: SourceWorkflowRun) {
   return workflow !== undefined && sourceWorkflowStatus(workflow.state) === 'syncing'
 }
 
-export function isInitialSource(source: Source) {
+function isInitialSource(source: Source) {
   const requestId = source.metadata.clientRequestId
 
   return (
@@ -390,9 +387,7 @@ export function crawlPreviewPageListFromApi(
   }
 }
 
-export function sourceSyncPolicyFromApi(
-  policy: KnowledgeFsSourceSyncPolicyResponse,
-): SourceSyncPolicy {
+function sourceSyncPolicyFromApi(policy: KnowledgeFsSourceSyncPolicyResponse): SourceSyncPolicy {
   return {
     createdAt: policy.created_at,
     customIntervalSeconds: policy.custom_interval_seconds ?? undefined,

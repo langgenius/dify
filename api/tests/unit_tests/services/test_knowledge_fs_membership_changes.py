@@ -23,6 +23,7 @@ from services.knowledge_fs.membership_changes import (
     apply_workspace_rbac_role_change,
 )
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandError
+from tests.unit_tests.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 
 @pytest.mark.parametrize(
@@ -75,8 +76,8 @@ def test_member_removal_reassigns_owned_spaces_and_revokes_grants_atomically(sql
     assert revision.membership_epoch == 1
     assert revision.space_acl_epoch == 1
     assert command is not None
-    assert command.command_payload["principal"] == "dify-account:member-1"
-    assert command.command_payload["reason_code"] == "workspace_membership_removed"
+    assert revoke_payload(command)["principal"] == "dify-account:member-1"
+    assert revoke_payload(command)["reason_code"] == "workspace_membership_removed"
 
 
 @pytest.mark.parametrize(
@@ -123,7 +124,7 @@ def test_workspace_role_change_advances_each_space_epoch_and_revokes_affected_pr
     commands = tuple(sqlite_session.scalars(select(KnowledgeFSLifecycleOutbox)))
     assert [revision.membership_epoch for revision in revisions] == [1, 1]
     assert len(commands) == 2
-    assert {command.command_payload["reason_code"] for command in commands} == {"workspace_role_changed"}
+    assert {revoke_payload(command)["reason_code"] for command in commands} == {"workspace_role_changed"}
 
 
 @pytest.mark.parametrize(
@@ -155,11 +156,13 @@ def test_workspace_rbac_role_change_revokes_every_interactive_grant_without_touc
                 control_space_id=space.id,
                 trace_id="trace-service-grant",
                 jti_hash=f"sha256:{sha256(b'service-grant').hexdigest()}",
-                claims_summary={
-                    "caller_kind": "service_api",
-                    "grant_id": "20000000-0000-4000-8000-000000000033",
-                    "subject": "dify-api-credential:credential-1",
-                },
+                claims_summary=claims_summary(
+                    tenant_id="tenant-1",
+                    control_space_id=space.id,
+                    caller_kind="service_api",
+                    grant_id="20000000-0000-4000-8000-000000000033",
+                    subject="dify-api-credential:credential-1",
+                ),
             ),
         ]
     )
@@ -171,11 +174,11 @@ def test_workspace_rbac_role_change_revokes_every_interactive_grant_without_touc
     sqlite_session.expire_all()
     commands = tuple(sqlite_session.scalars(select(KnowledgeFSLifecycleOutbox)))
     assert revision.membership_epoch == 1
-    assert {command.command_payload["principal"] for command in commands} == {
+    assert {revoke_payload(command)["principal"] for command in commands} == {
         "dify-account:member-1",
         "dify-account:member-2",
     }
-    assert {command.command_payload["reason_code"] for command in commands} == {"workspace_rbac_role_changed"}
+    assert {revoke_payload(command)["reason_code"] for command in commands} == {"workspace_rbac_role_changed"}
 
 
 @pytest.mark.parametrize(
@@ -281,9 +284,11 @@ def _audit(space: KnowledgeFSControlSpace, account_id: str, grant_id: str) -> Kn
         control_space_id=space.id,
         trace_id=f"trace-{grant_id}",
         jti_hash=f"sha256:{sha256(grant_id.encode()).hexdigest()}",
-        claims_summary={
-            "caller_kind": "interactive",
-            "grant_id": grant_id,
-            "subject": f"dify-account:{account_id}",
-        },
+        claims_summary=claims_summary(
+            tenant_id="tenant-1",
+            control_space_id=space.id,
+            caller_kind="interactive",
+            grant_id=grant_id,
+            subject=f"dify-account:{account_id}",
+        ),
     )

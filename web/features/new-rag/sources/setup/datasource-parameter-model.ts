@@ -39,7 +39,7 @@ const LEGACY_WEBSITE_PARAMETER_SCHEMAS: DatasourceParameterSchema[] = [
 export type DatasourceParameterValue = boolean | number | string
 export type DatasourceParameters = Record<string, DatasourceParameterValue>
 
-export type DatasourceParameterOption = {
+type DatasourceParameterOption = {
   label: Record<string, string | undefined>
   value: string
 }

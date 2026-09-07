@@ -20,6 +20,7 @@ from models.knowledge_fs import (
     KnowledgeFSStagedUpload,
     KnowledgeFSStagedUploadStatus,
 )
+from tests.unit_tests.services.knowledge_fs_fakes import reservation_summary
 
 _KNOWLEDGE_FS_MODELS = (
     KnowledgeFSControlSpace,
@@ -60,7 +61,7 @@ def test_knowledge_fs_tables_are_independent_from_dataset_and_document_models() 
     }
 
     for model in _KNOWLEDGE_FS_MODELS:
-        table = model.__table__
+        table = model.metadata.tables[model.__tablename__]
         dependency_text = " ".join(
             [table.name, *(column.name for column in table.columns), *(fk.target_fullname for fk in table.foreign_keys)]
         ).lower()
@@ -69,7 +70,7 @@ def test_knowledge_fs_tables_are_independent_from_dataset_and_document_models() 
 
 
 def test_control_space_registration_and_child_tenant_boundaries_are_unique() -> None:
-    control_table = KnowledgeFSControlSpace.__table__
+    control_table = KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__]
     assert any(
         index.unique and tuple(column.name for column in index.columns) == ("tenant_id", "knowledge_space_id")
         for index in control_table.indexes
@@ -92,7 +93,8 @@ def test_control_space_registration_and_child_tenant_boundaries_are_unique() -> 
     }
     for model, columns in expected_child_identity.items():
         assert any(
-            _constraint_column_names(constraint) == columns for constraint in _unique_constraints(model.__table__)
+            _constraint_column_names(constraint) == columns
+            for constraint in _unique_constraints(model.metadata.tables[model.__tablename__])
         )
 
 
@@ -104,7 +106,9 @@ def test_external_access_is_fail_closed_and_credentials_never_store_raw_secrets(
     assert policy.mcp_enabled is False
     assert policy.revision == 0
 
-    credential_columns = set(KnowledgeFSApiCredential.__table__.columns.keys())
+    credential_columns = set(
+        KnowledgeFSApiCredential.metadata.tables[KnowledgeFSApiCredential.__tablename__].columns.keys()
+    )
     assert {"credential_hash", "credential_prefix", "credential_last4", "allowed_actions"} <= credential_columns
     assert "secret" not in credential_columns
     assert "token" not in credential_columns
@@ -119,7 +123,9 @@ def test_lifecycle_outbox_supports_every_p1a_command_and_revision_fences() -> No
         "revoke",
         "repair",
     }
-    outbox_columns = set(KnowledgeFSLifecycleOutbox.__table__.columns.keys())
+    outbox_columns = set(
+        KnowledgeFSLifecycleOutbox.metadata.tables[KnowledgeFSLifecycleOutbox.__tablename__].columns.keys()
+    )
     assert {
         "operation_id",
         "idempotency_key",
@@ -132,10 +138,12 @@ def test_lifecycle_outbox_supports_every_p1a_command_and_revision_fences() -> No
         "retain_until",
     } <= outbox_columns
 
-    control_columns = set(KnowledgeFSControlSpace.__table__.columns.keys())
+    control_columns = set(KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__].columns.keys())
     assert {"knowledge_space_revision", "deletion_irreversible_at"} <= control_columns
 
-    revision_columns = set(KnowledgeFSAuthorizationRevision.__table__.columns.keys())
+    revision_columns = set(
+        KnowledgeFSAuthorizationRevision.metadata.tables[KnowledgeFSAuthorizationRevision.__tablename__].columns.keys()
+    )
     assert {
         "membership_epoch",
         "space_acl_epoch",
@@ -146,7 +154,7 @@ def test_lifecycle_outbox_supports_every_p1a_command_and_revision_fences() -> No
 
 
 def test_staged_upload_has_single_claim_and_resumable_session_fields() -> None:
-    columns = set(KnowledgeFSStagedUpload.__table__.columns.keys())
+    columns = set(KnowledgeFSStagedUpload.metadata.tables[KnowledgeFSStagedUpload.__tablename__].columns.keys())
     assert {
         "tenant_id",
         "account_id",
@@ -175,7 +183,11 @@ def test_staged_upload_has_single_claim_and_resumable_session_fields() -> None:
 
 
 def test_capability_audit_persists_only_sanitized_issuance_evidence() -> None:
-    audit_columns = set(KnowledgeFSCapabilityIssuanceAudit.__table__.columns.keys())
+    audit_columns = set(
+        KnowledgeFSCapabilityIssuanceAudit.metadata.tables[
+            KnowledgeFSCapabilityIssuanceAudit.__tablename__
+        ].columns.keys()
+    )
     assert {
         "tenant_id",
         "control_space_id",
@@ -185,7 +197,11 @@ def test_capability_audit_persists_only_sanitized_issuance_evidence() -> None:
     } <= audit_columns
     assert {"token", "raw_jti", "jti"}.isdisjoint(audit_columns)
 
-    reservation_columns = set(KnowledgeFSCapabilityIssuanceReservation.__table__.columns.keys())
+    reservation_columns = set(
+        KnowledgeFSCapabilityIssuanceReservation.metadata.tables[
+            KnowledgeFSCapabilityIssuanceReservation.__tablename__
+        ].columns.keys()
+    )
     assert {
         "tenant_id",
         "control_space_id",
@@ -206,11 +222,13 @@ def test_capability_audit_persists_only_sanitized_issuance_evidence() -> None:
         trace_id="trace-1",
         subject="dify-account:account-1",
         caller_kind="interactive",
-        request_summary={
-            "caller_kind": "interactive",
-            "grant_id": "20000000-0000-4000-8000-000000000001",
-            "subject": "dify-account:account-1",
-        },
+        request_summary=reservation_summary(
+            tenant_id="tenant-1",
+            control_space_id="space-1",
+            caller_kind="interactive",
+            grant_id="20000000-0000-4000-8000-000000000001",
+            subject="dify-account:account-1",
+        ),
     )
     assert reservation.status is KnowledgeFSCapabilityIssuanceReservationStatus.RESERVED
 
@@ -218,7 +236,9 @@ def test_capability_audit_persists_only_sanitized_issuance_evidence() -> None:
 def test_outbox_schema_requires_lease_and_terminal_state_consistency() -> None:
     constraints = {
         str(constraint.sqltext)
-        for constraint in KnowledgeFSLifecycleOutbox.__table__.constraints
+        for constraint in KnowledgeFSLifecycleOutbox.metadata.tables[
+            KnowledgeFSLifecycleOutbox.__tablename__
+        ].constraints
         if isinstance(constraint, sa.CheckConstraint)
     }
     joined_constraints = " ".join(constraints)

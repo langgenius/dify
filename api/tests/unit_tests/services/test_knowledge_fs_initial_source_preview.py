@@ -28,7 +28,7 @@ from services.knowledge_fs.product_dto import (
 _CREDENTIAL = object()
 
 
-def _service(credential=_CREDENTIAL) -> tuple[KnowledgeFSInitialSourcePreviewService, MagicMock]:
+def _service(credential: object = _CREDENTIAL) -> tuple[KnowledgeFSInitialSourcePreviewService, MagicMock]:
     session = MagicMock()
     session.scalar.return_value = credential
     context = MagicMock()

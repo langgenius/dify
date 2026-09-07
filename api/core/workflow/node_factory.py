@@ -39,6 +39,7 @@ from core.workflow.node_runtime import (
     DifyToolFileManager,
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
+    build_knowledge_fs_node_dependencies,
 )
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
@@ -496,6 +497,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
             KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
+                **build_knowledge_fs_node_dependencies(),
                 "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(
                     credentials_provider=self._llm_credentials_provider,
                     model_factory=self._llm_model_factory,

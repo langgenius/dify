@@ -5035,7 +5035,7 @@
   },
   "web/service/knowledge/use-dataset.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 8
+      "count": 7
     },
     "no-restricted-imports": {
       "count": 1

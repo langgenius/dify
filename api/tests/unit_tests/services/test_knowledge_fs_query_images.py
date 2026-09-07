@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from contextlib import nullcontext
 from types import SimpleNamespace
 
@@ -195,7 +196,7 @@ def test_load_query_image_stops_when_stream_exceeds_declared_size(monkeypatch: p
     _install_files(monkeypatch, [upload])
     image_stream = iter((b"\x89PNG\r\n\x1a\n", b"unexpected"))
 
-    def load(_key: str, *, stream: bool = False):
+    def load(_key: str, *, stream: bool = False) -> Iterator[bytes]:
         assert stream is True
         return image_stream
 
@@ -213,6 +214,7 @@ def test_load_query_image_stops_when_stream_exceeds_declared_size(monkeypatch: p
 
 def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ownership(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
     upload = _upload(account_id="another-account", size=len(body))
@@ -223,7 +225,7 @@ def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ow
             return upload
 
     monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
-    monkeypatch.setattr(query_images.dify_config, "SECRET_KEY", "test-secret")
+    config_overrides(SECRET_KEY="test-secret")
     monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
     monkeypatch.setattr(query_images.storage, "load", lambda _key, **_kwargs: iter((body,)))
     reference = query_images.issue_workflow_query_image_reference(
@@ -256,7 +258,10 @@ def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ow
     assert wrong_subject.value.code == "QUERY_IMAGE_GRANT_INVALID"
 
 
-def test_workflow_grant_loads_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_grant_loads_tool_files(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
     tool_file = SimpleNamespace(
         file_key="tool-files/image.png",
@@ -277,7 +282,7 @@ def test_workflow_grant_loads_tool_files(monkeypatch: pytest.MonkeyPatch) -> Non
 
     monkeypatch.setattr(query_images.session_factory, "create_session", lambda: nullcontext(_ToolFileSession()))
     monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
-    monkeypatch.setattr(query_images.dify_config, "SECRET_KEY", "test-secret")
+    config_overrides(SECRET_KEY="test-secret")
     monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
     monkeypatch.setattr(query_images.storage, "load", lambda _key, **_kwargs: iter((body,)))
 

@@ -17,7 +17,7 @@ import {
 export type SourceSort = 'name-asc' | 'name-desc' | null
 
 const PAGE_SIZE = 200
-export const MAX_AUTO_CURSOR_PAGES = 5
+const MAX_AUTO_CURSOR_PAGES = 5
 const AWAIT_INITIAL_SOURCE_POLL_INTERVAL = 2000
 const SOURCE_POLL_INTERVAL = 3000
 
@@ -29,9 +29,9 @@ export const sourcesSearchAtom = atom('')
 export const sourcesSortAtom = atom<SourceSort>(null)
 export const sourcesAwaitedOperationIdAtom = atom<string | null>(null)
 
-export const sourceOverridesAtom = atom<Record<string, Source>>({})
+const sourceOverridesAtom = atom<Record<string, Source>>({})
 export const removedSourceIdsAtom = atom<Set<string>>(new Set<string>())
-export const sourcePollingTimeoutAtom = atom<{
+const sourcePollingTimeoutAtom = atom<{
   awaitedOperationId: string | null
   timedOut: boolean
 }>({ awaitedOperationId: null, timedOut: false })

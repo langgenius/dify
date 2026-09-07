@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import patch
 
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -43,7 +45,7 @@ _LATER_CLEANUP_COLUMNS = {
 }
 
 
-def _load_migration_module(path: Path = _MIGRATION_PATH):
+def _load_migration_module(path: Path = _MIGRATION_PATH) -> ModuleType:
     spec = importlib.util.spec_from_file_location(path.stem, path)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
@@ -52,16 +54,12 @@ def _load_migration_module(path: Path = _MIGRATION_PATH):
     return module
 
 
-def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> None:
+def _run_migration_step(module: ModuleType, engine: sa.Engine, step_name: str) -> None:
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
         operations = Operations(context)
-        original_op = module.op
-        module.op = operations
-        try:
-            getattr(module, step_name)()
-        finally:
-            module.op = original_op
+        with patch.object(module, "op", operations):
+            {"upgrade": module.upgrade, "downgrade": module.downgrade}[step_name]()
 
 
 def test_upgrade_matches_cleanup_authorization_model_and_only_references_cutover_ledger() -> None:

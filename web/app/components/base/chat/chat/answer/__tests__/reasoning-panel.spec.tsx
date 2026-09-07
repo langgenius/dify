@@ -55,12 +55,12 @@ describe('ReasoningPanel', () => {
     })
     // Answer starts → done latches; timer must stop at 0.7s.
     rerender(<ReasoningPanel content={{ llm: 'thinking' }} done />)
-    expect(screen.getByText(/chat\.thought/)).toHaveTextContent('common.chat.thought(0.7s)')
+    expect(screen.getByText('common.chat.thought').closest('summary')).toHaveTextContent('(0.7s)')
     rerender(<ReasoningPanel content={{ llm: 'thinking' }} done={false} />)
     act(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(screen.getByText(/chat\.thought/)).toHaveTextContent('common.chat.thought(0.7s)')
+    expect(screen.getByText('common.chat.thought').closest('summary')).toHaveTextContent('(0.7s)')
   })
 
   it('concatenates reasoning from multiple LLM nodes', () => {

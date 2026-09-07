@@ -16,7 +16,9 @@ describe('ResearchAnswer', () => {
     )
 
     expect(await screen.findByText(/chat\.thought/)).toBeInTheDocument()
-    expect(await screen.findByText(/chat\.thinking/)).toHaveTextContent('(0.0s)')
+    expect((await screen.findByText('common.chat.thinking')).closest('summary')).toHaveTextContent(
+      '(0.0s)',
+    )
   })
 
   it('keeps elapsed seconds out of the thought accessible name', async () => {
@@ -60,7 +62,9 @@ describe('ResearchAnswer', () => {
       />,
     )
 
-    expect(await screen.findByText(/chat\.thinking/)).toHaveTextContent('(0.0s)')
+    expect((await screen.findByText('common.chat.thinking')).closest('summary')).toHaveTextContent(
+      '(0.0s)',
+    )
     expect(screen.queryByText(/chat\.thought/)).not.toBeInTheDocument()
   })
 })

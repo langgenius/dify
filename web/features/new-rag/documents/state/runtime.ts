@@ -64,9 +64,6 @@ export const documentCanRetryReadAtom = atom(
 export const documentWritePermissionStatusAtom = atom(
   (get) => get(documentPermissionRuntimeAtom).recoverySurface.writeStatus,
 )
-export const documentPermissionRefreshingAtom = atom(
-  (get) => get(documentPermissionRuntimeAtom).workspacePermissionRefreshing,
-)
 export const documentPermissionInitializedAtom = atom(
   (get) => get(documentPermissionRuntimeAtom).initialized,
 )
@@ -76,10 +73,6 @@ export const documentAuxiliaryReadPermissionDeniedAtom = atom(
 
 export const denyDocumentWriteAtom = atom(null, (get) => {
   get(documentPermissionRuntimeAtom).denyWrite()
-})
-
-export const retryDocumentWorkspacePermissionAtom = atom(null, (get) => {
-  void get(documentPermissionRuntimeAtom).retryWorkspacePermission()
 })
 
 export const retryDocumentReadAtom = atom(null, (get) => {

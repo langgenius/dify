@@ -38,7 +38,7 @@ const MIN_SYNC_INTERVAL_SECONDS = HOUR_SECONDS
 const MAX_SYNC_INTERVAL_SECONDS = 30 * DAY_SECONDS
 export const DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS = 36 * HOUR_SECONDS
 
-export type SyncPolicyMode = 'custom' | 'interval' | 'manual'
+type SyncPolicyMode = 'custom' | 'interval' | 'manual'
 export type SyncPolicyValue = {
   customIntervalSeconds?: number
   mode: SyncPolicyMode

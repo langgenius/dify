@@ -46,7 +46,7 @@ export type KnowledgeFsTaskFailureMessageKey =
   | 'taskFailure.temporary'
   | 'taskFailure.upload'
 
-export type KnowledgeFsTaskFailureStageKey =
+type KnowledgeFsTaskFailureStageKey =
   | 'taskFailure.stage.chunking_indexing'
   | 'taskFailure.stage.graph_admission'
   | 'taskFailure.stage.outline_summary'
@@ -225,7 +225,7 @@ const failureStageKeyByStage: Readonly<Record<string, KnowledgeFsTaskFailureStag
  * Human-readable pipeline stage for a failure, when the stage is one of the document pipeline
  * phases. Source workflow checkpoints have no user-facing label and yield nothing.
  */
-export function knowledgeFsTaskFailureStageKey(
+function knowledgeFsTaskFailureStageKey(
   failure: KnowledgeFsPublicFailureResponse | undefined,
 ): KnowledgeFsTaskFailureStageKey | undefined {
   const stage = failure?.stage?.trim().toLowerCase()
@@ -233,7 +233,7 @@ export function knowledgeFsTaskFailureStageKey(
 }
 
 /** Support reference to quote when asking an administrator for help. */
-export function knowledgeFsTaskFailureReference(
+function knowledgeFsTaskFailureReference(
   failure: KnowledgeFsPublicFailureResponse | undefined,
 ): string | undefined {
   return failure?.traceId?.trim() || undefined

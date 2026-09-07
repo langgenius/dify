@@ -30,7 +30,11 @@ def test_cutover_ledger_has_strict_phases_watermarks_fences_and_atomic_switches(
         "observing",
         "ready_for_cleanup",
     ]
-    columns = set(KnowledgeFSWorkspaceCutoverLedger.__table__.columns.keys())
+    columns = set(
+        KnowledgeFSWorkspaceCutoverLedger.metadata.tables[
+            KnowledgeFSWorkspaceCutoverLedger.__tablename__
+        ].columns.keys()
+    )
     assert {
         "source_revision_watermark",
         "final_revision_watermark",
@@ -81,7 +85,7 @@ def test_cutover_ledger_has_strict_phases_watermarks_fences_and_atomic_switches(
 def test_cutover_evidence_models_depend_only_on_the_workspace_ledger() -> None:
     ledger_table = KnowledgeFSWorkspaceCutoverLedger.__tablename__
     for model in _MODELS:
-        table = model.__table__
+        table = model.metadata.tables[model.__tablename__]
         assert not model.__mapper__.relationships
         assert {foreign_key.column.table.name for foreign_key in table.foreign_keys} <= {ledger_table}
         if model is KnowledgeFSWorkspaceCutoverLedger:
@@ -99,7 +103,9 @@ def test_quarantine_resolution_is_fully_auditable_and_versioned() -> None:
         "evidence",
         "resolved_at",
         "row_version",
-    } <= set(KnowledgeFSMigrationQuarantine.__table__.columns.keys())
+    } <= set(
+        KnowledgeFSMigrationQuarantine.metadata.tables[KnowledgeFSMigrationQuarantine.__tablename__].columns.keys()
+    )
 
 
 def test_shadow_evidence_has_append_only_history_and_versioned_current_disposition() -> None:
@@ -107,10 +113,18 @@ def test_shadow_evidence_has_append_only_history_and_versioned_current_dispositi
         "current_evidence_digest",
         "last_observed_at",
         "row_version",
-    } <= set(KnowledgeFSShadowAuthorizationDiff.__table__.columns.keys())
+    } <= set(
+        KnowledgeFSShadowAuthorizationDiff.metadata.tables[
+            KnowledgeFSShadowAuthorizationDiff.__tablename__
+        ].columns.keys()
+    )
     assert {
         "producer",
         "observed_at",
         "observed_revision",
         "evidence_digest",
-    } <= set(KnowledgeFSShadowAuthorizationObservation.__table__.columns.keys())
+    } <= set(
+        KnowledgeFSShadowAuthorizationObservation.metadata.tables[
+            KnowledgeFSShadowAuthorizationObservation.__tablename__
+        ].columns.keys()
+    )

@@ -167,7 +167,7 @@ def _ready_ledger(tenant_id: str, *, cas_version: int = 9) -> KnowledgeFSWorkspa
 
 
 class _Clock:
-    def __init__(self, value: datetime):
+    def __init__(self, value: datetime) -> None:
         self.value = value
 
     def __call__(self) -> datetime:

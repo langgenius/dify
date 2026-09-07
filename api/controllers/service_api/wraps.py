@@ -1,6 +1,5 @@
 import inspect
 import logging
-import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
@@ -12,7 +11,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
@@ -25,15 +24,15 @@ from controllers.service_api.schema import (
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
-from models.dataset import Dataset, RateLimitLog
+from models.dataset import Dataset
 from models.model import ApiToken, App
 from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
+from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -269,29 +268,10 @@ def check_knowledge_rate_limit(api_token: ApiToken) -> None:
     service routes, which authenticate inside their own profile helper rather than through
     a decorator. No-op unless the workspace has a knowledge rate limit (cloud billing).
     """
-    knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
-    if not knowledge_rate_limit.enabled:
-        return
-
-    current_time = int(time.time() * 1000)
-    key = f"rate_limit_{api_token.tenant_id}"
-
-    redis_client.zadd(key, {current_time: current_time})
-
-    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-    request_count = redis_client.zcard(key)
-
-    if request_count > knowledge_rate_limit.limit:
-        # add ratelimit record
-        rate_limit_log = RateLimitLog(
-            tenant_id=api_token.tenant_id,
-            subscription_plan=knowledge_rate_limit.subscription_plan,
-            operation="knowledge",
-        )
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            session.add(rate_limit_log)
-        raise Forbidden("Sorry, you have reached the knowledge base request rate limit of your subscription.")
+    try:
+        enforce_knowledge_rate_limit(api_token.tenant_id)
+    except KnowledgeRateLimitExceededError as error:
+        raise Forbidden(str(error)) from error
 
 
 def cloud_edition_billing_rate_limit_check[**P, R](

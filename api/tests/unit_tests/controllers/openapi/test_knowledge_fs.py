@@ -2,17 +2,24 @@ from __future__ import annotations
 
 import inspect
 import uuid
+from typing import Protocol, runtime_checkable
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
+from werkzeug.routing.rules import Rule
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.data import AuthData
 
 
-def _route(app: Flask, path: str):
+@runtime_checkable
+class ResourceView(Protocol):
+    view_class: type
+
+
+def _route(app: Flask, path: str) -> Rule:
     return next(rule for rule in app.url_map.iter_rules() if rule.rule == path)
 
 
@@ -43,14 +50,17 @@ def test_each_knowledge_fs_command_has_its_own_command_oriented_openapi_route() 
 
     for path, (view_class, method) in expected.items():
         rule = _route(app, path)
-        assert app.view_functions[rule.endpoint].view_class is view_class
+        view = app.view_functions[rule.endpoint]
+        assert isinstance(view, ResourceView)
+        assert view.view_class is view_class
+        assert rule.methods is not None
         assert method in rule.methods
 
     registered_paths = {rule.rule for rule in app.url_map.iter_rules()}
     assert not any("/knowledge-fs/spaces/" in path or "/entries" in path for path in registered_paths)
 
 
-def test_list_controller_adapts_public_pagination_to_the_product_operation(monkeypatch) -> None:
+def test_list_controller_adapts_public_pagination_to_the_product_operation(monkeypatch: pytest.MonkeyPatch) -> None:
     from controllers.openapi import knowledge_fs as module
     from controllers.openapi.knowledge_fs import KnowledgeFsEntryListApi
     from services.knowledge_fs.product_dto import KnowledgeFSListResponse
@@ -220,21 +230,35 @@ def test_each_custom_interface_delegates_with_an_internal_product_query(
             }
         ),
     }
-    getattr(facade, facade_method).return_value = product_responses[facade_method]
+    delegate = Mock(return_value=product_responses[facade_method])
+    facade.configure_mock(**{facade_method: delegate})
     monkeypatch.setattr(module, "_knowledge_fs_facade", lambda: facade)
     account_id = uuid.uuid4()
-    api_class = getattr(module, api_name)
-    public_model_name = {
-        "KnowledgeFsEntryTreeApi": "KnowledgeFSEntryTreeQuery",
-        "KnowledgeFsEntryContentSearchApi": "KnowledgeFSEntryContentSearchQuery",
-        "KnowledgeFsEntrySearchApi": "KnowledgeFSEntrySearchQuery",
-        "KnowledgeFsEntryCompareApi": "KnowledgeFSEntryComparePayload",
-        "KnowledgeFsEntryReadContentApi": "KnowledgeFSEntryReadContentQuery",
-        "KnowledgeFsEntryInspectApi": "KnowledgeFSEntryInspectQuery",
+    api_class, handler = {
+        "KnowledgeFsEntryTreeApi": (module.KnowledgeFsEntryTreeApi, module.KnowledgeFsEntryTreeApi.get),
+        "KnowledgeFsEntryContentSearchApi": (
+            module.KnowledgeFsEntryContentSearchApi,
+            module.KnowledgeFsEntryContentSearchApi.get,
+        ),
+        "KnowledgeFsEntrySearchApi": (module.KnowledgeFsEntrySearchApi, module.KnowledgeFsEntrySearchApi.get),
+        "KnowledgeFsEntryCompareApi": (module.KnowledgeFsEntryCompareApi, module.KnowledgeFsEntryCompareApi.post),
+        "KnowledgeFsEntryReadContentApi": (
+            module.KnowledgeFsEntryReadContentApi,
+            module.KnowledgeFsEntryReadContentApi.get,
+        ),
+        "KnowledgeFsEntryInspectApi": (module.KnowledgeFsEntryInspectApi, module.KnowledgeFsEntryInspectApi.get),
     }[api_name]
-    public_model = getattr(module, public_model_name).model_validate(public_query)
+    public_model_type = {
+        "KnowledgeFsEntryTreeApi": module.KnowledgeFSEntryTreeQuery,
+        "KnowledgeFsEntryContentSearchApi": module.KnowledgeFSEntryContentSearchQuery,
+        "KnowledgeFsEntrySearchApi": module.KnowledgeFSEntrySearchQuery,
+        "KnowledgeFsEntryCompareApi": module.KnowledgeFSEntryComparePayload,
+        "KnowledgeFsEntryReadContentApi": module.KnowledgeFSEntryReadContentQuery,
+        "KnowledgeFsEntryInspectApi": module.KnowledgeFSEntryInspectQuery,
+    }[api_name]
+    public_model = public_model_type.model_validate(public_query)
 
-    result = inspect.unwrap(getattr(api_class, method_name))(
+    result = inspect.unwrap(handler)(
         api_class(),
         workspace_id="workspace-1",
         knowledge_space_id="space-1",
@@ -243,14 +267,24 @@ def test_each_custom_interface_delegates_with_an_internal_product_query(
     )
 
     assert isinstance(result, BaseModel)
-    getattr(facade, facade_method).assert_called_once()
-    call = getattr(facade, facade_method).call_args.kwargs
+    delegate.assert_called_once()
+    call = delegate.call_args.kwargs
     assert call["tenant_id"] == "workspace-1"
     assert call["account_id"] == str(account_id)
     assert call["control_space_id"] == "space-1"
-    assert isinstance(call["query"], getattr(product_dto, product_query_type))
+    assert isinstance(
+        call["query"],
+        {
+            "KnowledgeFSCatQuery": product_dto.KnowledgeFSCatQuery,
+            "KnowledgeFSDiffQuery": product_dto.KnowledgeFSDiffQuery,
+            "KnowledgeFSFindQuery": product_dto.KnowledgeFSFindQuery,
+            "KnowledgeFSGrepQuery": product_dto.KnowledgeFSGrepQuery,
+            "KnowledgeFSStatQuery": product_dto.KnowledgeFSStatQuery,
+            "KnowledgeFSTreeQuery": product_dto.KnowledgeFSTreeQuery,
+        }[product_query_type],
+    )
     for field, value in expected_fields.items():
-        assert getattr(call["query"], field) == value
+        assert call["query"].model_dump()[field] == value
 
 
 def test_knowledge_fs_facade_uses_the_configured_runtime(monkeypatch: pytest.MonkeyPatch) -> None:

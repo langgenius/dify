@@ -1,10 +1,12 @@
 from types import SimpleNamespace
+from typing import Never
 from unittest.mock import MagicMock, call, patch
 
 from models.account import AccountStatus
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewCanceledError
 from services.knowledge_fs.product_dto import KnowledgeFSInitialSourcePreviewResponse
 from tasks.knowledge_fs_initial_source_preview_tasks import run_knowledge_fs_initial_source_preview
+from tests.unit_tests.tasks.task_options import task_options
 
 
 def _payload() -> dict[str, object]:
@@ -19,7 +21,7 @@ def _payload() -> dict[str, object]:
 
 
 def test_preview_task_uses_the_dataset_queue() -> None:
-    assert run_knowledge_fs_initial_source_preview.queue == "dataset"
+    assert task_options(run_knowledge_fs_initial_source_preview)["queue"] == "dataset"
 
 
 def test_preview_task_persists_running_and_completed_states() -> None:
@@ -151,8 +153,10 @@ def test_preview_task_keeps_a_cooperatively_canceled_job_terminal() -> None:
     job_service.get.return_value = SimpleNamespace(status="canceled")
     preview_service = MagicMock()
 
-    def preview(**kwargs):
-        assert kwargs["is_canceled"]() is True
+    def preview(**kwargs: object) -> Never:
+        is_canceled = kwargs["is_canceled"]
+        assert callable(is_canceled)
+        assert is_canceled() is True
         raise KnowledgeFSInitialSourcePreviewCanceledError("canceled")
 
     preview_service.preview.side_effect = preview

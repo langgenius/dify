@@ -10,9 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.providers.knowledge_fs.knowledge_fs import KnowledgeFSProvider
-from core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task import (
-    KnowledgeFSCreateResearchTaskTool,
-)
+from core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task import KnowledgeFSCreateResearchTaskTool
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
@@ -54,7 +52,7 @@ def _run_context() -> DifyRunContext:
     )
 
 
-def _tool(*, tool_invoke_from: ToolInvokeFrom, run_context: DifyRunContext | None):
+def _tool(*, tool_invoke_from: ToolInvokeFrom, run_context: DifyRunContext | None) -> KnowledgeFSCreateResearchTaskTool:
     provider = KnowledgeFSProvider()
     base_tool = provider.get_tool("create_research_task")
     assert base_tool is not None
@@ -153,6 +151,7 @@ def test_tool_is_a_real_agent_and_workflow_consumer_using_run_context_identity(
     assert messages[0].type is ToolInvokeMessage.MessageType.JSON
     message = messages[0].message
     assert isinstance(message, ToolInvokeMessage.JsonMessage)
+    assert isinstance(message.json_object, dict)
     assert message.json_object["id"] == "task-1"
 
 

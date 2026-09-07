@@ -208,12 +208,9 @@ export type KnowledgeFsDocumentStagedUploadPayload = {
   upload_id: string
 }
 
-export type KnowledgeFsDocumentStagedUploadAcceptedResponse = {
-  compilation_job_id: string
-  document_asset_id: string
-  status?: 'accepted'
-  upload_id: string
-}
+export type KnowledgeFsDocumentCreateAcceptedResponse =
+  | KnowledgeFsDocumentStagedUploadAcceptedResponse
+  | KnowledgeFsDocumentUploadAcceptedResponse
 
 export type KnowledgeFsBulkDocumentDeletePayload = {
   documents: Array<KnowledgeFsBulkDocumentDeleteItemPayload>
@@ -1566,6 +1563,24 @@ export type KnowledgeFsBackgroundTaskFailureResponse = {
   job_id?: string | null
 }
 
+export type KnowledgeFsDocumentStagedUploadAcceptedResponse = {
+  compilation_job_id: string
+  document_asset_id: string
+  status?: 'accepted'
+  upload_id: string
+}
+
+export type KnowledgeFsDocumentUploadAcceptedResponse = {
+  asset: KnowledgeFsDocumentResponse
+  asset_status_url?: string | null
+  compilation_job: KnowledgeFsDocumentUploadCompilationJobResponse
+  document_revision: number
+  logical_document: KnowledgeFsDocumentUploadLogicalDocumentResponse
+  logical_document_id: string
+  status?: 'accepted' | null
+  status_url: string
+}
+
 export type KnowledgeFsBulkDocumentDeleteItemPayload = {
   documentId: string
   expectedRevision: number
@@ -2267,6 +2282,16 @@ export type KnowledgeFsScoreThresholdIntent = {
   value?: number | null
 }
 
+export type KnowledgeFsDocumentUploadCompilationJobResponse = {
+  id: string
+  stage: 'queued'
+}
+
+export type KnowledgeFsDocumentUploadLogicalDocumentResponse = {
+  id: string
+  revision: number
+}
+
 export type KnowledgeFsDurableDeletionErrorResponse = {
   code: string
   message: string
@@ -2797,7 +2822,7 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
-  202: KnowledgeFsDocumentStagedUploadAcceptedResponse
+  202: KnowledgeFsDocumentCreateAcceptedResponse
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =

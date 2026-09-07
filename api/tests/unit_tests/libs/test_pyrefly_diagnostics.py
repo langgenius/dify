@@ -80,3 +80,10 @@ def test_extract_diagnostics_returns_empty_for_non_error_output() -> None:
 
     # Assert
     assert diagnostics == ""
+
+
+def test_extract_diagnostics_keeps_indented_warning_that_fails_strict_checks() -> None:
+    output = "WARN uv workspace warning\n WARN Missing attribute [missing-attribute]\n   --> tests/example.py:1:1\n"
+    assert render_diagnostics(output, exit_code=1) == (
+        "WARN uv workspace warning\nWARN Missing attribute [missing-attribute]\n   --> tests/example.py:1:1\n"
+    )

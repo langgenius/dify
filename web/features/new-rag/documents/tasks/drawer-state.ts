@@ -37,7 +37,7 @@ export const taskDrawerOrderedBaseTasksAtom = atom((get) => {
   return selectTaskDrawerTasks(get(drawerTasksAtom), get(documentTaskDrawerVisibleLimitAtom))
 })
 
-export const taskDrawerActionCountsAtom = atom((get) => {
+const taskDrawerActionCountsAtom = atom((get) => {
   const tasks = get(taskDrawerOrderedBaseTasksAtom)
   return {
     cancel: tasks.filter(taskCanCancel).length,
@@ -45,7 +45,7 @@ export const taskDrawerActionCountsAtom = atom((get) => {
   }
 })
 
-export const taskDrawerDocumentsPendingAtom = atom((get) => {
+const taskDrawerDocumentsPendingAtom = atom((get) => {
   return Boolean(get(documentsQueryHasNextPageAtom) || get(documentsQueryIsFetchingNextPageAtom))
 })
 

@@ -130,7 +130,7 @@ function compilationJobIsTerminal(job: { run_state?: string | null; stage?: stri
   )
 }
 
-export function documentTaskIsActive(state: string | undefined) {
+function documentTaskIsActive(state: string | undefined) {
   return (
     state === 'dispatch_pending' ||
     state === 'queued' ||

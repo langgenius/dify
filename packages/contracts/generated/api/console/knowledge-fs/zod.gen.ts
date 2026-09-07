@@ -43,16 +43,6 @@ export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
 })
 
 /**
- * KnowledgeFSDocumentStagedUploadAcceptedResponse
- */
-export const zKnowledgeFsDocumentStagedUploadAcceptedResponse = z.object({
-  compilation_job_id: z.string(),
-  document_asset_id: z.string(),
-  status: z.literal('accepted').optional().default('accepted'),
-  upload_id: z.string(),
-})
-
-/**
  * KnowledgeFSDocumentReindexPayload
  */
 export const zKnowledgeFsDocumentReindexPayload = z.object({
@@ -1336,6 +1326,16 @@ export const zKnowledgeFsBackgroundTaskListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSDocumentStagedUploadAcceptedResponse
+ */
+export const zKnowledgeFsDocumentStagedUploadAcceptedResponse = z.object({
+  compilation_job_id: z.string(),
+  document_asset_id: z.string(),
+  status: z.literal('accepted').optional().default('accepted'),
+  upload_id: z.string(),
+})
+
+/**
  * KnowledgeFSBulkDocumentDeleteItemPayload
  */
 export const zKnowledgeFsBulkDocumentDeleteItemPayload = z.object({
@@ -2512,6 +2512,46 @@ export const zKnowledgeFsSpaceCreatePayload = z.object({
 })
 
 /**
+ * KnowledgeFSDocumentUploadCompilationJobResponse
+ */
+export const zKnowledgeFsDocumentUploadCompilationJobResponse = z.object({
+  id: z.string(),
+  stage: z.literal('queued'),
+})
+
+/**
+ * KnowledgeFSDocumentUploadLogicalDocumentResponse
+ */
+export const zKnowledgeFsDocumentUploadLogicalDocumentResponse = z.object({
+  id: z.string(),
+  revision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDocumentUploadAcceptedResponse
+ */
+export const zKnowledgeFsDocumentUploadAcceptedResponse = z.object({
+  asset: zKnowledgeFsDocumentResponse,
+  asset_status_url: z.string().nullish(),
+  compilation_job: zKnowledgeFsDocumentUploadCompilationJobResponse,
+  document_revision: z.int().gte(1),
+  logical_document: zKnowledgeFsDocumentUploadLogicalDocumentResponse,
+  logical_document_id: z.string(),
+  status: z.literal('accepted').nullish(),
+  status_url: z.string(),
+})
+
+/**
+ * KnowledgeFSDocumentCreateAcceptedResponse
+ *
+ * Accepted staged or legacy multipart upload, preserving both response shapes.
+ */
+export const zKnowledgeFsDocumentCreateAcceptedResponse = z.union([
+  zKnowledgeFsDocumentStagedUploadAcceptedResponse,
+  zKnowledgeFsDocumentUploadAcceptedResponse,
+])
+
+/**
  * KnowledgeFSDurableDeletionErrorResponse
  */
 export const zKnowledgeFsDurableDeletionErrorResponse = z.object({
@@ -3416,7 +3456,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
  * KnowledgeFS document accepted for processing
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
-  zKnowledgeFsDocumentStagedUploadAcceptedResponse
+  zKnowledgeFsDocumentCreateAcceptedResponse
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
   zKnowledgeFsBulkDocumentDeletePayload

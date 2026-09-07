@@ -40,13 +40,13 @@ export function taskWithStreamProgress(
   }
 }
 
-export function compareTaskRecency(left: BackgroundTask, right: BackgroundTask) {
+function compareTaskRecency(left: BackgroundTask, right: BackgroundTask) {
   if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
   if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
   return right.id.localeCompare(left.id)
 }
 
-export function newestTasks(
+function newestTasks(
   tasks: BackgroundTask[],
   limit: number,
   predicate: (task: BackgroundTask) => boolean,

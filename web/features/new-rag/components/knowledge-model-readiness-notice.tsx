@@ -41,7 +41,7 @@ export function KnowledgeModelReadinessNotice({
       />
       <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
         {title}
-        {description && (
+        {description != null && description !== false && (
           <>
             <span aria-hidden> — </span>
             {description}

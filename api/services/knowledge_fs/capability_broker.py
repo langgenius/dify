@@ -63,6 +63,43 @@ class KnowledgeFSAuthorizationSnapshot(NamedTuple):
     content_policy_revision: int
 
 
+class KnowledgeFSProductCapabilityIssuer(Protocol):
+    def issue_interactive(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        operation_id: str,
+        resource_id: str | None = None,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability: ...
+
+    def issue_namespace_interactive(
+        self, *, tenant_id: str, account_id: str, operation_id: str, trace_id: str | None = None
+    ) -> KnowledgeFSIssuedProductCapability: ...
+
+    def issue_service(
+        self,
+        *,
+        profile: KnowledgeFSServiceApiProfile,
+        operation_id: str,
+        resource_id: str | None = None,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability: ...
+
+
+class KnowledgeFSAppCapabilityIssuer(Protocol):
+    def issue_app(
+        self,
+        *,
+        profile: KnowledgeFSAppPrincipalProfile,
+        operation_id: str,
+        resource_id: str | None = None,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability: ...
+
+
 class KnowledgeFSCapabilityBroker:
     def __init__(
         self,

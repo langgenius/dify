@@ -13,8 +13,8 @@ from services.knowledge_fs.buffered_upload_admission import (
     KnowledgeFSBufferedUploadAdmissionPort,
 )
 from services.knowledge_fs.capability_broker import (
-    KnowledgeFSCapabilityBroker,
     KnowledgeFSIssuedProductCapability,
+    KnowledgeFSProductCapabilityIssuer,
 )
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
@@ -139,6 +139,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSStatResponse,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSTraceListResponse,
+    KnowledgeFSTraceResponse,
     KnowledgeFSTreeQuery,
     KnowledgeFSTreeResponse,
     KnowledgeFSUploadPartPresignPayload,
@@ -180,7 +181,7 @@ class KnowledgeFSDataFacade:
     def __init__(
         self,
         *,
-        broker: KnowledgeFSCapabilityBroker,
+        broker: KnowledgeFSProductCapabilityIssuer,
         remote: KnowledgeFSProductRemotePort,
         buffered_upload_admission: KnowledgeFSBufferedUploadAdmissionPort = (
             DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION
@@ -195,10 +196,10 @@ class KnowledgeFSDataFacade:
         self._query_image_previews = query_image_previews
 
     @staticmethod
-    def _query_images_of(*responses: object) -> list[KnowledgeFSQueryImageResponse]:
-        # Responses are validated DTOs in production; unit tests may substitute opaque objects for
-        # the validated value, which simply carry no query images.
-        return [image for response in responses for image in (getattr(response, "query_images", None) or ())]
+    def _query_images_of(
+        *responses: KnowledgeFSResearchTaskResponse | KnowledgeFSAnswerTraceResponse | KnowledgeFSTraceResponse,
+    ) -> list[KnowledgeFSQueryImageResponse]:
+        return [image for response in responses for image in response.query_images]
 
     def _attach_query_image_previews(
         self, *, tenant_id: str, account_id: str, images: Iterable[KnowledgeFSQueryImageResponse]

@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,10 +12,23 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.plugin.backwards_invocation.datasource import PluginDatasourceBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeDatasource
+from models.account import Tenant
 
 
-def datasource_payload(**overrides) -> RequestInvokeDatasource:
-    values = {
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test workspace")
+    tenant.id = "tenant-1"
+    return tenant
+
+
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test workspace")
+    tenant.id = "tenant-1"
+    return tenant
+
+
+def datasource_payload(**overrides: object) -> RequestInvokeDatasource:
+    values: dict[str, object] = {
         "credential_id": "credential-1",
         "datasource": "notion_datasource",
         "datasource_parameters": {"cursor": "next"},
@@ -44,7 +56,7 @@ def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None
     payload = datasource_payload()
     message = OnlineDocumentPagesMessage(result=[])
     runtime = MagicMock()
-    runtime.runtime.credentials = {}
+    runtime.runtime.credentials = dict[str, object]()
     runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
     runtime.get_online_document_pages.return_value = iter([message])
     controller = MagicMock()
@@ -65,7 +77,7 @@ def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None
         result = list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )
@@ -114,7 +126,7 @@ def test_validate_credentials_uses_resolved_provider_controller() -> None:
         result = list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )
@@ -136,7 +148,7 @@ def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
     )
     message = MagicMock()
     runtime = MagicMock()
-    runtime.runtime.credentials = {}
+    runtime.runtime.credentials = dict[str, object]()
     runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
     runtime.get_website_crawl.return_value = iter([message])
     controller = MagicMock()
@@ -157,7 +169,7 @@ def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
         result = list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )
@@ -180,7 +192,7 @@ def test_invoke_online_document_content_builds_the_dify_request_entity() -> None
     )
     message = MagicMock()
     runtime = MagicMock()
-    runtime.runtime.credentials = {}
+    runtime.runtime.credentials = dict[str, object]()
     runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
     runtime.get_online_document_page_content.return_value = iter([message])
     controller = MagicMock()
@@ -201,7 +213,7 @@ def test_invoke_online_document_content_builds_the_dify_request_entity() -> None
         result = list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )
@@ -247,9 +259,12 @@ def test_invoke_online_drive_builds_typed_dify_requests(
     )
     message = MagicMock()
     runtime = MagicMock()
-    runtime.runtime.credentials = {}
+    runtime.runtime.credentials = dict[str, object]()
     runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
-    getattr(runtime, method_name).return_value = iter([message])
+    {
+        "online_drive_browse_files": runtime.online_drive_browse_files,
+        "online_drive_download_file": runtime.online_drive_download_file,
+    }[method_name].return_value = iter([message])
     controller = MagicMock()
     controller.entity.provider_type = DatasourceProviderType.ONLINE_DRIVE
     controller.need_credentials = True
@@ -268,13 +283,16 @@ def test_invoke_online_drive_builds_typed_dify_requests(
         result = list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )
 
     assert result == [message]
-    call = getattr(runtime, method_name).call_args
+    call = {
+        "online_drive_browse_files": runtime.online_drive_browse_files,
+        "online_drive_download_file": runtime.online_drive_download_file,
+    }[method_name].call_args
     assert call.kwargs["user_id"] == "user-1"
     assert call.kwargs["provider_type"] == DatasourceProviderType.ONLINE_DRIVE
     assert call.kwargs["request"] == request_type.model_validate(request_data)
@@ -301,7 +319,7 @@ def test_invoke_rejects_missing_required_credential() -> None:
         list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )
@@ -322,7 +340,7 @@ def test_invoke_rejects_provider_declaration_type_mismatch() -> None:
         list(
             PluginDatasourceBackwardsInvocation.invoke(
                 user_id="user-1",
-                tenant=SimpleNamespace(id="tenant-1"),
+                tenant=_tenant(),
                 payload=payload,
             )
         )

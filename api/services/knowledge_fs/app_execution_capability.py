@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Literal, Protocol, cast
+from typing import Protocol, cast
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import JsonValue
 
 from core.app.entities.app_invoke_entities import DifyRunContext
+from core.knowledge_fs.resource import (
+    KnowledgeResourceRef,
+)
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
-from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionService
-from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker, KnowledgeFSIssuedProductCapability
+from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionPort
+from services.knowledge_fs.capability_broker import KnowledgeFSAppCapabilityIssuer, KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import (
     KnowledgeFSMetadataFieldListQuery,
     KnowledgeFSMetadataFieldListResponse,
@@ -33,23 +36,6 @@ from services.knowledge_fs.product_remote import (
 )
 
 
-class KnowledgeResourceRef(BaseModel):
-    """A typed app configuration reference to one Dify-owned KnowledgeFS control-space."""
-
-    kind: Literal["knowledge_fs"]
-    control_space_id: str = Field(min_length=1, max_length=1_000)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    @field_validator("control_space_id")
-    @classmethod
-    def normalize_control_space_id(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("KnowledgeFS control-space reference is required")
-        return normalized
-
-
 class KnowledgeFSWorkflowFailedRetrievalCaptureCapability(Protocol):
     def capture_workflow_failed_retrieval(
         self,
@@ -65,8 +51,8 @@ class KnowledgeFSAppExecutionCapabilityService:
     def __init__(
         self,
         *,
-        admission: KnowledgeFSAppAdmissionService,
-        broker: KnowledgeFSCapabilityBroker,
+        admission: KnowledgeFSAppAdmissionPort,
+        broker: KnowledgeFSAppCapabilityIssuer,
         remote: KnowledgeFSProductRemotePort,
     ) -> None:
         self._admission = admission

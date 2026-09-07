@@ -8,6 +8,9 @@ from typing import Protocol
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.knowledge_fs.errors import (
+    KnowledgeFSAppBindingManagementError,
+)
 from libs.datetime_utils import naive_utc_now
 from models.enums import AppStatus
 from models.knowledge_fs import (
@@ -24,10 +27,6 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandPort
-
-
-class KnowledgeFSAppBindingManagementError(RuntimeError):
-    """An app binding cannot be created or changed safely."""
 
 
 class KnowledgeFSAppBindingAuthorizationPort(Protocol):

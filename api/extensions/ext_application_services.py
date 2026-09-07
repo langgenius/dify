@@ -154,6 +154,7 @@ from services.file_grant_service import FileGrantService
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -717,6 +718,7 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     app.extensions[_EXTENSION_KEY] = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,

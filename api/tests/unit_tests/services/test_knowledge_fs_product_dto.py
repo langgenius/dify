@@ -467,7 +467,7 @@ def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() ->
     with pytest.raises(ValidationError):
         KnowledgeFSRetrievalMetadataFilters(tags=[f"tag-{index}" for index in range(101)])
     with pytest.raises(ValidationError):
-        KnowledgeFSRetrievalTestPayload(query="camera", queryId="not-a-uuid")
+        KnowledgeFSRetrievalTestPayload.model_validate({"query": "camera", "queryId": "not-a-uuid"})
 
 
 def test_retrieval_test_payload_accepts_transient_workflow_image_grants() -> None:
@@ -754,7 +754,7 @@ def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
     with pytest.raises(ValidationError):
         KnowledgeFSGrepQuery(path="/knowledge", query=" ")
     with pytest.raises(ValidationError):
-        KnowledgeFSListQuery(path="/knowledge", limit=101)
+        KnowledgeFSListQuery.model_validate({"path": "/knowledge", "limit": 101})
 
 
 def test_knowledge_fs_responses_translate_each_kfs_wire_shape() -> None:
@@ -1659,11 +1659,11 @@ def test_trace_responses_carry_the_caller_source_and_default_to_retrieval_tests(
         "created_at": "2026-09-04T10:00:00.000Z",
         "id": "trace-1",
         "mode": "fast",
-        "profile": {},
+        "profile": dict[str, object](),
         "query": "why",
         "result_count": 2,
-        "scores": {},
-        "stages": [],
+        "scores": dict[str, object](),
+        "stages": list[str](),
     }
 
     assert KnowledgeFSTraceResponse.model_validate(base).source == "retrieval_test"
@@ -1677,7 +1677,12 @@ def test_trace_responses_carry_the_caller_source_and_default_to_retrieval_tests(
 
 
 def test_retrieval_test_response_exposes_the_recorded_history_trace_id() -> None:
-    base = {"items": [], "metrics": {"degradationFlags": [], "totalMs": 4}, "mode": "fast", "traceId": "trace-a"}
+    base = {
+        "items": list[str](),
+        "metrics": {"degradationFlags": list[str](), "totalMs": 4},
+        "mode": "fast",
+        "traceId": "trace-a",
+    }
     assert KnowledgeFSRetrievalTestResponse.model_validate(base).answer_trace_id is None
     assert (
         KnowledgeFSRetrievalTestResponse.model_validate(

@@ -207,9 +207,10 @@ class GatewayTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sum(result[0]["status"] == 429 for result in output), 19)
 
     async def test_slow_response_client_cannot_hold_admission_past_deadline(self):
-        gateway = self.gateway(wall_seconds=0.3)
+        # Allow subprocess import time even while other local test workers are busy.
+        gateway = self.gateway(wall_seconds=1)
         output = await asyncio.wait_for(
-            request(gateway, multipart(), blocked_send=True), timeout=1
+            request(gateway, multipart(), blocked_send=True), timeout=3
         )
         self.assertEqual(
             [
@@ -220,6 +221,15 @@ class GatewayTests(unittest.IsolatedAsyncioTestCase):
             [201],
         )
         self.assertEqual(gateway.active, 0)
+
+    async def test_stalled_error_response_releases_admission_and_temp_files(self):
+        gateway = self.gateway(input_bytes=1)
+        output = await asyncio.wait_for(
+            request(gateway, multipart(), blocked_send=True), timeout=3
+        )
+        self.assertEqual(output[0]["status"], 413)
+        self.assertEqual(gateway.active, 0)
+        self.assertEqual(list(Path(self.settings.temp_root).iterdir()), [])
 
     async def test_filesystem_failure_does_not_leak_slot(self):
         gateway = self.gateway()

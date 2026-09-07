@@ -1,6 +1,6 @@
 import { createParser } from 'nuqs'
 
-export const CREATOR_FILTER_MAX_ID_LENGTH = 255
+const CREATOR_FILTER_MAX_ID_LENGTH = 255
 export const CREATOR_FILTER_MAX_SELECTION = 100
 
 const normalizeCreatorIds = (creatorIds: string[]) => {

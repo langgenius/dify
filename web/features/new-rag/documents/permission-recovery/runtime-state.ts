@@ -1,4 +1,4 @@
-export type PermissionRecoveryReadStatus = 'readable' | 'readDenied' | 'retrying'
+type PermissionRecoveryReadStatus = 'readable' | 'readDenied' | 'retrying'
 export type PermissionRecoveryWriteStatus = 'writable' | 'writeDenied' | 'refreshing' | 'readOnly'
 
 const DOCUMENT_DENIED = 1

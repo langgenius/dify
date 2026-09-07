@@ -347,7 +347,7 @@ export function SourceSyncPolicyField({
   )
 }
 
-export function SourceConnectionRequiredCard({
+function SourceConnectionRequiredCard({
   actionLabel,
   description,
   disabled = false,

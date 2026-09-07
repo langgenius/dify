@@ -59,10 +59,45 @@ class Budget:
     workbook_cells: int = 0
 
     def consume(self, key: str, amount: int = 1) -> None:
-        value = getattr(self, key) + amount
-        if value > getattr(self.limits, key):
-            raise Rejected(key)
-        setattr(self, key, value)
+        match key:
+            case "attachments":
+                if self.attachments + amount > self.limits.attachments:
+                    raise Rejected(key)
+                self.attachments += amount
+            case "mime_parts":
+                if self.mime_parts + amount > self.limits.mime_parts:
+                    raise Rejected(key)
+                self.mime_parts += amount
+            case "decoded_bytes":
+                if self.decoded_bytes + amount > self.limits.decoded_bytes:
+                    raise Rejected(key)
+                self.decoded_bytes += amount
+            case "archive_entries":
+                if self.archive_entries + amount > self.limits.archive_entries:
+                    raise Rejected(key)
+                self.archive_entries += amount
+            case "expanded_bytes":
+                if self.expanded_bytes + amount > self.limits.expanded_bytes:
+                    raise Rejected(key)
+                self.expanded_bytes += amount
+            case "xml_bytes":
+                if self.xml_bytes + amount > self.limits.xml_bytes:
+                    raise Rejected(key)
+                self.xml_bytes += amount
+            case "xml_nodes":
+                if self.xml_nodes + amount > self.limits.xml_nodes:
+                    raise Rejected(key)
+                self.xml_nodes += amount
+            case "sheets":
+                if self.sheets + amount > self.limits.sheets:
+                    raise Rejected(key)
+                self.sheets += amount
+            case "workbook_cells":
+                if self.workbook_cells + amount > self.limits.workbook_cells:
+                    raise Rejected(key)
+                self.workbook_cells += amount
+            case _:
+                raise ValueError(f"Unknown admission budget: {key}")
 
 
 ATTACHMENT_EXTENSIONS = frozenset(

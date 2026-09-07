@@ -1882,6 +1882,7 @@ def test_observation_requires_passing_smoke_full_window_and_maximum_task_ttl(
         rolled_back_at=_BASE_TIME + timedelta(hours=4),
     )
     assert rolled_back.phase is KnowledgeFSWorkspaceCutoverPhase.FROZEN
+    assert rolled_back.legacy_acl_read_only is True
 
 
 def _smoke_results(tenant_id: str, *, stream: bool) -> CutoverSmokeResultsInput:
@@ -1906,4 +1907,3 @@ def _smoke_results(tenant_id: str, *, stream: bool) -> CutoverSmokeResultsInput:
             "evidence_references": {name: f"evidence://smoke/{name}" for name in checks},
         }
     )
-    assert rolled_back.legacy_acl_read_only is True

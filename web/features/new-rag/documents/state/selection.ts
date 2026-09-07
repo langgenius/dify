@@ -58,20 +58,20 @@ const selectableFilteredDocumentsAtom = atom((get) =>
   get(filteredDocumentsAtom).filter((document) => document.status !== 'deleting'),
 )
 
-export const allFilteredDocumentsSelectedAtom = atom((get) => {
+const allFilteredDocumentsSelectedAtom = atom((get) => {
   const selectedDocumentIds = get(validSelectedDocumentIdsAtom)
   const documents = get(selectableFilteredDocumentsAtom)
   return documents.length > 0 && documents.every((document) => selectedDocumentIds.has(document.id))
 })
 
-export const someFilteredDocumentsSelectedAtom = atom((get) => {
+const someFilteredDocumentsSelectedAtom = atom((get) => {
   const selectedDocumentIds = get(validSelectedDocumentIdsAtom)
   return get(selectableFilteredDocumentsAtom).some((document) =>
     selectedDocumentIds.has(document.id),
   )
 })
 
-export const documentSelectionInvalidAtom = atom((get) => {
+const documentSelectionInvalidAtom = atom((get) => {
   const selectedDocuments = get(selectedDocumentsAtom)
   return (
     selectedDocuments.length !== get(validSelectedDocumentIdsAtom).size ||
@@ -114,9 +114,7 @@ export const downloadableDocumentIdsAtom = atom((get) => {
   return selectedDocuments.map((document) => document.id)
 })
 
-export const hasSelectableDocumentsAtom = atom(
-  (get) => get(selectableFilteredDocumentsAtom).length > 0,
-)
+const hasSelectableDocumentsAtom = atom((get) => get(selectableFilteredDocumentsAtom).length > 0)
 
 export const documentTableSelectionFactsAtom = atom((get) => {
   const canWrite = get(documentCanWriteAtom)

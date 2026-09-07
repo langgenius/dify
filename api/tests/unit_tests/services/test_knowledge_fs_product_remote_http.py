@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+from typing import Never
 
 import httpx
 import pytest
+from httpx._models import Response
 
 from core.helper import ssrf_proxy
 from services.knowledge_fs import product_remote_http
@@ -31,7 +33,7 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
         headers={"Content-Type": "application/json"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -71,7 +73,7 @@ def test_remote_client_uses_a_dedicated_research_retrieval_timeout(
         headers={"Content-Type": "application/json"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured_timeouts.append(kwargs["timeout"])
         return response
 
@@ -121,7 +123,7 @@ def test_remote_client_allows_quality_replay_evidence_detail_query(
         headers={"Content-Type": "application/json"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -161,7 +163,7 @@ def test_remote_client_streams_sse_through_internal_capability_transport(
         },
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -234,7 +236,7 @@ def test_remote_client_posts_bounded_multipart_with_capability_only_headers(
         headers={"Content-Type": "application/json"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -269,7 +271,7 @@ def test_remote_client_posts_bounded_multipart_with_capability_only_headers(
 def test_remote_client_rejects_manifest_mismatch_before_io(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = 0
 
-    def fail_make_request(**kwargs):
+    def fail_make_request(**kwargs: object) -> Never:
         nonlocal calls
         _ = kwargs
         calls += 1
@@ -315,7 +317,7 @@ def test_remote_client_allows_only_validated_idempotency_headers(monkeypatch: py
     captured: dict[str, object] = {}
     response = httpx.Response(202, json={"status": "accepted"}, headers={"Content-Type": "application/json"})
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -381,7 +383,7 @@ def test_remote_client_forwards_query_image_grants_only_for_retrieval(
 def test_remote_client_rejects_operation_request_limit_before_io(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = 0
 
-    def fail_make_request(**kwargs):
+    def fail_make_request(**kwargs: object) -> Never:
         nonlocal calls
         _ = kwargs
         calls += 1
@@ -418,7 +420,7 @@ def test_remote_client_enforces_the_operation_response_limit(monkeypatch: pytest
 
     monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
 
-    def fake_buffer_response(buffered: httpx.Response, *, max_response_bytes: int):
+    def fake_buffer_response(buffered: httpx.Response, *, max_response_bytes: int) -> Response:
         nonlocal captured_limit
         captured_limit = max_response_bytes
         return buffered
@@ -443,6 +445,7 @@ def test_remote_client_enforces_the_operation_response_limit(monkeypatch: pytest
         )
     )
 
+    assert isinstance(result, dict)
     assert result["revision"] == 1
     assert captured_limit == 256 * 1024
 
@@ -465,7 +468,7 @@ def test_binary_remote_binds_only_small_file_bytes_parent_space_and_capability(
         headers={"Content-Type": "application/json"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -505,7 +508,7 @@ def test_binary_remote_rejects_oversize_and_preserves_kfs_validation_status(
 ) -> None:
     calls = 0
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         nonlocal calls
         _ = kwargs
         calls += 1
@@ -562,7 +565,7 @@ def test_batch_summary_uses_exact_capability_route_and_parses_camel_case(
         headers={"Content-Type": "application/json"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 
@@ -591,7 +594,7 @@ def test_batch_summary_rejects_out_of_scope_response_and_invalid_input_before_io
 ) -> None:
     calls = 0
 
-    def fake_make_request(**_kwargs):
+    def fake_make_request(**_kwargs) -> Response:
         nonlocal calls
         calls += 1
         return httpx.Response(
@@ -1003,7 +1006,7 @@ def test_sse_remote_supports_get_stream_without_request_body(monkeypatch: pytest
         headers={"Content-Type": "text/event-stream"},
     )
 
-    def fake_make_request(**kwargs):
+    def fake_make_request(**kwargs: object) -> Response:
         captured.update(kwargs)
         return response
 

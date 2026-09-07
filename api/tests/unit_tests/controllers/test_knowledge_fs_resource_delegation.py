@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from hashlib import sha256
 from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
+from pydantic import BaseModel
 from werkzeug.exceptions import NotFound, ServiceUnavailable
 
 from controllers.console.knowledge_fs import resources as console_resources
@@ -43,95 +47,135 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSPublicFailureResponse,
     KnowledgeFSQueryCreatePayload,
+    KnowledgeFSSourceResponse,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSStreamCapabilityPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
+from services.knowledge_fs.runtime import KnowledgeFSRuntime
 from tests.unit_tests.config_override import apply_config_overrides
 
 _RAW_RESULT = object()
 
 
-def _invoke(resource_module: object, class_name: str, method_name: str, *args: object) -> object:
-    resource_type = getattr(resource_module, class_name)
-    method = unwrap(getattr(resource_type, method_name))
-    return method(resource_type(), *args)
+def source_response(**overrides: object) -> KnowledgeFSSourceResponse:
+    return KnowledgeFSSourceResponse.model_validate(
+        {
+            "id": "source-1",
+            "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+            "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
+            "knowledge_space_id": "space-1",
+            "name": "Source",
+            "permission_scope": [],
+            "status": "active",
+            "metadata": {},
+            "type": "web",
+            "uri": "https://example.com",
+            "version": 1,
+            **overrides,
+        }
+    )
+
+
+def _invoke[R](resource_type: type[Resource], handler: Callable[..., R], *args: object) -> R:
+    return unwrap(handler)(resource_type(), *args)
 
 
 # Each case names the public resource, HTTP method, route arguments, and the one
 # application boundary that owns the operation. Route-specific identifiers are
 # asserted below so accidental delegation to a sibling resource is observable.
 _CONSOLE_DELEGATION_CASES = (
-    ("KnowledgeFSSpacesApi", "get", (), "application", "list_spaces", {}),
-    ("KnowledgeFSSpacesApi", "post", (), "application", "create_space", {}),
-    ("KnowledgeFSSpaceApi", "get", ("space-1",), "application", "get_space", {"control_space_id": "space-1"}),
     (
-        "KnowledgeFSSpaceApi",
-        "patch",
+        console_resources.KnowledgeFSSpacesApi,
+        console_resources.KnowledgeFSSpacesApi.get,
+        (),
+        "application",
+        "list_spaces",
+        dict[str, object](),
+    ),
+    (
+        console_resources.KnowledgeFSSpacesApi,
+        console_resources.KnowledgeFSSpacesApi.post,
+        (),
+        "application",
+        "create_space",
+        dict[str, object](),
+    ),
+    (
+        console_resources.KnowledgeFSSpaceApi,
+        console_resources.KnowledgeFSSpaceApi.get,
+        ("space-1",),
+        "application",
+        "get_space",
+        {"control_space_id": "space-1"},
+    ),
+    (
+        console_resources.KnowledgeFSSpaceApi,
+        console_resources.KnowledgeFSSpaceApi.patch,
         ("space-1",),
         "application",
         "update_space",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceApi,
+        console_resources.KnowledgeFSSpaceApi.delete,
         ("space-1",),
         "application",
         "delete_space",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpacePermissionsApi",
-        "get",
+        console_resources.KnowledgeFSSpacePermissionsApi,
+        console_resources.KnowledgeFSSpacePermissionsApi.get,
         ("space-1",),
         "control_plane",
         "list_permissions",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceMembersApi",
-        "put",
+        console_resources.KnowledgeFSSpaceMembersApi,
+        console_resources.KnowledgeFSSpaceMembersApi.put,
         ("space-1",),
         "control_plane",
         "replace_members",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceExternalAccessApi",
-        "get",
+        console_resources.KnowledgeFSSpaceExternalAccessApi,
+        console_resources.KnowledgeFSSpaceExternalAccessApi.get,
         ("space-1",),
         "control_plane",
         "get_external_access",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceExternalAccessApi",
-        "put",
+        console_resources.KnowledgeFSSpaceExternalAccessApi,
+        console_resources.KnowledgeFSSpaceExternalAccessApi.put,
         ("space-1",),
         "control_plane",
         "update_external_access",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceAppBindingsApi",
-        "get",
+        console_resources.KnowledgeFSSpaceAppBindingsApi,
+        console_resources.KnowledgeFSSpaceAppBindingsApi.get,
         ("space-1",),
         "app_bindings",
         "list",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceAppBindingsApi",
-        "put",
+        console_resources.KnowledgeFSSpaceAppBindingsApi,
+        console_resources.KnowledgeFSSpaceAppBindingsApi.put,
         ("space-1",),
         "app_bindings",
         "upsert",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceAppBindingApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceAppBindingApi,
+        console_resources.KnowledgeFSSpaceAppBindingApi.delete,
         ("space-1", KnowledgeFSAppSpaceJoinType.AGENT.value, "app-1"),
         "app_bindings",
         "revoke",
@@ -141,42 +185,49 @@ _CONSOLE_DELEGATION_CASES = (
             "caller_kind": KnowledgeFSAppSpaceJoinType.AGENT,
         },
     ),
-    ("KnowledgeFSSpaceSettingsApi", "get", ("space-1",), "facade", "get_settings", {"control_space_id": "space-1"}),
     (
-        "KnowledgeFSSpaceSettingsApi",
-        "patch",
+        console_resources.KnowledgeFSSpaceSettingsApi,
+        console_resources.KnowledgeFSSpaceSettingsApi.get,
+        ("space-1",),
+        "facade",
+        "get_settings",
+        {"control_space_id": "space-1"},
+    ),
+    (
+        console_resources.KnowledgeFSSpaceSettingsApi,
+        console_resources.KnowledgeFSSpaceSettingsApi.patch,
         ("space-1",),
         "facade",
         "update_settings",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceOverviewQueryOutcomesApi",
-        "get",
+        console_resources.KnowledgeFSSpaceOverviewQueryOutcomesApi,
+        console_resources.KnowledgeFSSpaceOverviewQueryOutcomesApi.get,
         ("space-1",),
         "facade",
         "get_overview_query_outcomes",
         {"control_space_id": "space-1", "window": "24h"},
     ),
     (
-        "KnowledgeFSSpaceOverviewInventoryApi",
-        "get",
+        console_resources.KnowledgeFSSpaceOverviewInventoryApi,
+        console_resources.KnowledgeFSSpaceOverviewInventoryApi.get,
         ("space-1",),
         "facade",
         "get_overview_inventory",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceOverviewAttentionApi",
-        "get",
+        console_resources.KnowledgeFSSpaceOverviewAttentionApi,
+        console_resources.KnowledgeFSSpaceOverviewAttentionApi.get,
         ("space-1",),
         "facade",
         "list_overview_attention",
         {"control_space_id": "space-1", "include_dismissed": False, "limit": 50},
     ),
     (
-        "KnowledgeFSSpaceOverviewActivityApi",
-        "get",
+        console_resources.KnowledgeFSSpaceOverviewActivityApi,
+        console_resources.KnowledgeFSSpaceOverviewActivityApi.get,
         ("space-1",),
         "facade",
         "list_overview_activity",
@@ -194,120 +245,120 @@ _CONSOLE_DELEGATION_CASES = (
         },
     ),
     (
-        "KnowledgeFSSpaceOverviewHealthApi",
-        "get",
+        console_resources.KnowledgeFSSpaceOverviewHealthApi,
+        console_resources.KnowledgeFSSpaceOverviewHealthApi.get,
         ("space-1",),
         "facade",
         "get_overview_health",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentsApi",
-        "get",
+        console_resources.KnowledgeFSSpaceDocumentsApi,
+        console_resources.KnowledgeFSSpaceDocumentsApi.get,
         ("space-1",),
         "facade",
         "list_documents",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceBulkDocumentsApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceBulkDocumentsApi,
+        console_resources.KnowledgeFSSpaceBulkDocumentsApi.delete,
         ("space-1",),
         "facade",
         "bulk_delete_documents",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentReindexApi",
-        "post",
+        console_resources.KnowledgeFSSpaceDocumentReindexApi,
+        console_resources.KnowledgeFSSpaceDocumentReindexApi.post,
         ("space-1",),
         "facade",
         "reindex_documents",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentApi",
-        "get",
+        console_resources.KnowledgeFSSpaceDocumentApi,
+        console_resources.KnowledgeFSSpaceDocumentApi.get,
         ("space-1", "document-1"),
         "facade",
         "get_document",
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentApi",
-        "patch",
+        console_resources.KnowledgeFSSpaceDocumentApi,
+        console_resources.KnowledgeFSSpaceDocumentApi.patch,
         ("space-1", "document-1"),
         "facade",
         "update_document_metadata",
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
-        "KnowledgeFSSpaceMetadataApi",
-        "get",
+        console_resources.KnowledgeFSSpaceMetadataApi,
+        console_resources.KnowledgeFSSpaceMetadataApi.get,
         ("space-1",),
         "facade",
         "list_metadata_fields",
         {"control_space_id": "space-1", "cursor": None, "limit": 100},
     ),
     (
-        "KnowledgeFSSpaceMetadataApi",
-        "post",
+        console_resources.KnowledgeFSSpaceMetadataApi,
+        console_resources.KnowledgeFSSpaceMetadataApi.post,
         ("space-1",),
         "facade",
         "create_metadata_field",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceMetadataFieldApi",
-        "patch",
+        console_resources.KnowledgeFSSpaceMetadataFieldApi,
+        console_resources.KnowledgeFSSpaceMetadataFieldApi.patch,
         ("space-1", "field-1"),
         "facade",
         "update_metadata_field",
         {"control_space_id": "space-1", "field_id": "field-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceDocumentApi,
+        console_resources.KnowledgeFSSpaceDocumentApi.delete,
         ("space-1", "document-1"),
         "facade",
         "delete_document",
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
-        "KnowledgeFSSpaceLogicalDocumentApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceLogicalDocumentApi,
+        console_resources.KnowledgeFSSpaceLogicalDocumentApi.delete,
         ("space-1", "document-1"),
         "facade",
         "delete_logical_document",
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentOutlineApi",
-        "get",
+        console_resources.KnowledgeFSSpaceDocumentOutlineApi,
+        console_resources.KnowledgeFSSpaceDocumentOutlineApi.get,
         ("space-1", "document-1"),
         "facade",
         "get_document_outline",
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentRevisionsApi",
-        "get",
+        console_resources.KnowledgeFSSpaceDocumentRevisionsApi,
+        console_resources.KnowledgeFSSpaceDocumentRevisionsApi.get,
         ("space-1", "document-1"),
         "facade",
         "list_document_revisions",
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
-        "KnowledgeFSSpaceDocumentChunksApi",
-        "get",
+        console_resources.KnowledgeFSSpaceDocumentChunksApi,
+        console_resources.KnowledgeFSSpaceDocumentChunksApi.get,
         ("space-1", "document-1", 3),
         "facade",
         "list_document_chunks",
         {"control_space_id": "space-1", "document_id": "document-1", "revision": 3},
     ),
     (
-        "KnowledgeFSSpaceDocumentChunkApi",
-        "get",
+        console_resources.KnowledgeFSSpaceDocumentChunkApi,
+        console_resources.KnowledgeFSSpaceDocumentChunkApi.get,
         ("space-1", "document-1", 3, "chunk-1"),
         "facade",
         "get_document_chunk",
@@ -319,56 +370,56 @@ _CONSOLE_DELEGATION_CASES = (
         },
     ),
     (
-        "KnowledgeFSSpaceCompilationJobApi",
-        "get",
+        console_resources.KnowledgeFSSpaceCompilationJobApi,
+        console_resources.KnowledgeFSSpaceCompilationJobApi.get,
         ("space-1", "job-1"),
         "facade",
         "get_compilation_job",
         {"control_space_id": "space-1", "job_id": "job-1"},
     ),
     (
-        "KnowledgeFSSpaceCompilationJobApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceCompilationJobApi,
+        console_resources.KnowledgeFSSpaceCompilationJobApi.delete,
         ("space-1", "job-1"),
         "facade",
         "cancel_compilation_job",
         {"control_space_id": "space-1", "job_id": "job-1"},
     ),
     (
-        "KnowledgeFSSpaceCompilationJobRetryApi",
-        "post",
+        console_resources.KnowledgeFSSpaceCompilationJobRetryApi,
+        console_resources.KnowledgeFSSpaceCompilationJobRetryApi.post,
         ("space-1", "job-1"),
         "facade",
         "retry_compilation_job",
         {"control_space_id": "space-1", "job_id": "job-1"},
     ),
     (
-        "KnowledgeFSSpaceBulkJobApi",
-        "get",
+        console_resources.KnowledgeFSSpaceBulkJobApi,
+        console_resources.KnowledgeFSSpaceBulkJobApi.get,
         ("space-1", "job-1"),
         "facade",
         "get_bulk_job",
         {"control_space_id": "space-1", "job_id": "job-1"},
     ),
     (
-        "KnowledgeFSSpaceBackgroundTasksApi",
-        "get",
+        console_resources.KnowledgeFSSpaceBackgroundTasksApi,
+        console_resources.KnowledgeFSSpaceBackgroundTasksApi.get,
         ("space-1",),
         "facade",
         "list_background_tasks",
         {"control_space_id": "space-1", "cursor": None, "limit": 50},
     ),
     (
-        "KnowledgeFSSpaceBackgroundTaskCancelApi",
-        "post",
+        console_resources.KnowledgeFSSpaceBackgroundTaskCancelApi,
+        console_resources.KnowledgeFSSpaceBackgroundTaskCancelApi.post,
         ("space-1", "source", "task-1"),
         "facade",
         "cancel_background_task",
         {"control_space_id": "space-1", "task_kind": "source", "task_id": "task-1"},
     ),
     (
-        "KnowledgeFSSpaceBackgroundTaskRetryApi",
-        "post",
+        console_resources.KnowledgeFSSpaceBackgroundTaskRetryApi,
+        console_resources.KnowledgeFSSpaceBackgroundTaskRetryApi.post,
         ("space-1", "document_bulk", "task-1"),
         "facade",
         "retry_background_task",
@@ -379,224 +430,224 @@ _CONSOLE_DELEGATION_CASES = (
         },
     ),
     (
-        "KnowledgeFSSpaceSourcesApi",
-        "get",
+        console_resources.KnowledgeFSSpaceSourcesApi,
+        console_resources.KnowledgeFSSpaceSourcesApi.get,
         ("space-1",),
         "facade",
         "list_sources",
         {"control_space_id": "space-1", "limit": 50},
     ),
     (
-        "KnowledgeFSSpaceSourcesApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSourcesApi,
+        console_resources.KnowledgeFSSpaceSourcesApi.post,
         ("space-1",),
         "facade",
         "create_source",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceApi",
-        "get",
+        console_resources.KnowledgeFSSpaceSourceApi,
+        console_resources.KnowledgeFSSpaceSourceApi.get,
         ("space-1", "source-1"),
         "facade",
         "get_source",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceApi",
-        "patch",
+        console_resources.KnowledgeFSSpaceSourceApi,
+        console_resources.KnowledgeFSSpaceSourceApi.patch,
         ("space-1", "source-1"),
         "facade",
         "update_source",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceSourceApi,
+        console_resources.KnowledgeFSSpaceSourceApi.delete,
         ("space-1", "source-1"),
         "facade",
         "delete_source",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceTestApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSourceTestApi,
+        console_resources.KnowledgeFSSpaceSourceTestApi.post,
         ("space-1", "source-1"),
         "facade",
         "test_source",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceSyncApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSourceSyncApi,
+        console_resources.KnowledgeFSSpaceSourceSyncApi.post,
         ("space-1", "source-1"),
         "facade",
         "sync_source",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceWorkflowImportApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSourceWorkflowImportApi,
+        console_resources.KnowledgeFSSpaceSourceWorkflowImportApi.post,
         ("space-1", "source-1"),
         "facade",
         "import_source_workflow",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourcePagesApi",
-        "get",
+        console_resources.KnowledgeFSSpaceSourcePagesApi,
+        console_resources.KnowledgeFSSpaceSourcePagesApi.get,
         ("space-1", "source-1"),
         "facade",
         "list_source_pages",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourcePageImportApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSourcePageImportApi,
+        console_resources.KnowledgeFSSpaceSourcePageImportApi.post,
         ("space-1", "source-1"),
         "facade",
         "import_source_pages",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceFilesApi",
-        "get",
+        console_resources.KnowledgeFSSpaceSourceFilesApi,
+        console_resources.KnowledgeFSSpaceSourceFilesApi.get,
         ("space-1", "source-1"),
         "facade",
         "list_source_files",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceFileImportApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSourceFileImportApi,
+        console_resources.KnowledgeFSSpaceSourceFileImportApi.post,
         ("space-1", "source-1"),
         "facade",
         "import_source_files",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceResearchTasksApi",
-        "get",
+        console_resources.KnowledgeFSSpaceResearchTasksApi,
+        console_resources.KnowledgeFSSpaceResearchTasksApi.get,
         ("space-1",),
         "facade",
         "list_research_tasks",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceResearchTasksApi",
-        "post",
+        console_resources.KnowledgeFSSpaceResearchTasksApi,
+        console_resources.KnowledgeFSSpaceResearchTasksApi.post,
         ("space-1",),
         "facade",
         "create_research_task",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceResearchTaskPlanApi",
-        "post",
+        console_resources.KnowledgeFSSpaceResearchTaskPlanApi,
+        console_resources.KnowledgeFSSpaceResearchTaskPlanApi.post,
         ("space-1",),
         "facade",
         "plan_research_task",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceResearchTaskApi",
-        "get",
+        console_resources.KnowledgeFSSpaceResearchTaskApi,
+        console_resources.KnowledgeFSSpaceResearchTaskApi.get,
         ("space-1", "task-1"),
         "facade",
         "get_research_task",
         {"control_space_id": "space-1", "task_id": "task-1"},
     ),
     (
-        "KnowledgeFSSpaceResearchTaskApi",
-        "delete",
+        console_resources.KnowledgeFSSpaceResearchTaskApi,
+        console_resources.KnowledgeFSSpaceResearchTaskApi.delete,
         ("space-1", "task-1"),
         "facade",
         "cancel_research_task",
         {"control_space_id": "space-1", "task_id": "task-1"},
     ),
     (
-        "KnowledgeFSSpaceResearchTaskPartialsApi",
-        "get",
+        console_resources.KnowledgeFSSpaceResearchTaskPartialsApi,
+        console_resources.KnowledgeFSSpaceResearchTaskPartialsApi.get,
         ("space-1", "task-1"),
         "facade",
         "list_research_task_partials",
         {"control_space_id": "space-1", "task_id": "task-1"},
     ),
     (
-        "KnowledgeFSSpaceTracesApi",
-        "get",
+        console_resources.KnowledgeFSSpaceTracesApi,
+        console_resources.KnowledgeFSSpaceTracesApi.get,
         ("space-1",),
         "facade",
         "list_traces",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceTraceApi",
-        "get",
+        console_resources.KnowledgeFSSpaceTraceApi,
+        console_resources.KnowledgeFSSpaceTraceApi.get,
         ("space-1", "trace-1"),
         "facade",
         "get_trace",
         {"control_space_id": "space-1", "trace_id": "trace-1"},
     ),
     (
-        "KnowledgeFSSpaceTraceEvidenceApi",
-        "get",
+        console_resources.KnowledgeFSSpaceTraceEvidenceApi,
+        console_resources.KnowledgeFSSpaceTraceEvidenceApi.get,
         ("space-1", "trace-1"),
         "facade",
         "list_trace_entries",
         {"control_space_id": "space-1", "trace_id": "trace-1", "kind": "evidence"},
     ),
     (
-        "KnowledgeFSSpaceTraceConflictsApi",
-        "get",
+        console_resources.KnowledgeFSSpaceTraceConflictsApi,
+        console_resources.KnowledgeFSSpaceTraceConflictsApi.get,
         ("space-1", "trace-1"),
         "facade",
         "list_trace_entries",
         {"control_space_id": "space-1", "trace_id": "trace-1", "kind": "conflicts"},
     ),
     (
-        "KnowledgeFSSpaceTraceMissingApi",
-        "get",
+        console_resources.KnowledgeFSSpaceTraceMissingApi,
+        console_resources.KnowledgeFSSpaceTraceMissingApi.get,
         ("space-1", "trace-1"),
         "facade",
         "list_trace_entries",
         {"control_space_id": "space-1", "trace_id": "trace-1", "kind": "missing"},
     ),
     (
-        "KnowledgeFSSpaceUploadSessionsApi",
-        "post",
+        console_resources.KnowledgeFSSpaceUploadSessionsApi,
+        console_resources.KnowledgeFSSpaceUploadSessionsApi.post,
         ("space-1",),
         "facade",
         "create_upload_session",
         {"control_space_id": "space-1"},
     ),
     (
-        "KnowledgeFSSpaceUploadSessionPartPresignApi",
-        "post",
+        console_resources.KnowledgeFSSpaceUploadSessionPartPresignApi,
+        console_resources.KnowledgeFSSpaceUploadSessionPartPresignApi.post,
         ("space-1", "session-1", 3),
         "facade",
         "presign_upload_session_part",
         {"control_space_id": "space-1", "upload_session_id": "session-1", "part_number": 3},
     ),
     (
-        "KnowledgeFSSpaceUploadSessionCompleteApi",
-        "post",
+        console_resources.KnowledgeFSSpaceUploadSessionCompleteApi,
+        console_resources.KnowledgeFSSpaceUploadSessionCompleteApi.post,
         ("space-1", "session-1"),
         "facade",
         "complete_upload_session",
         {"control_space_id": "space-1", "upload_session_id": "session-1"},
     ),
     (
-        "KnowledgeFSSpaceUploadSessionAbortApi",
-        "post",
+        console_resources.KnowledgeFSSpaceUploadSessionAbortApi,
+        console_resources.KnowledgeFSSpaceUploadSessionAbortApi.post,
         ("space-1", "session-1"),
         "facade",
         "abort_upload_session",
         {"control_space_id": "space-1", "upload_session_id": "session-1"},
     ),
     (
-        "KnowledgeFSSpaceSmallFileUploadApi",
-        "post",
+        console_resources.KnowledgeFSSpaceSmallFileUploadApi,
+        console_resources.KnowledgeFSSpaceSmallFileUploadApi.post,
         ("space-1", "session-1"),
         "facade",
         "upload_small_file",
@@ -611,8 +662,8 @@ _CONSOLE_DELEGATION_CASES = (
 )
 def test_console_resources_delegate_one_tenant_scoped_product_operation(
     monkeypatch: pytest.MonkeyPatch,
-    class_name: str,
-    method_name: str,
+    class_name: type[Resource],
+    method_name: Callable[..., object],
     route_args: tuple[object, ...],
     component_name: str,
     delegate_name: str,
@@ -620,8 +671,8 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
 ) -> None:
     payload = (
         KnowledgeFSSourceUpdatePayload(name="Renamed")
-        if class_name == "KnowledgeFSSpaceSourceApi" and method_name == "patch"
-        else SimpleNamespace(members=("member-1",))
+        if class_name.__name__ == "KnowledgeFSSpaceSourceApi" and method_name.__name__ == "patch"
+        else SimpleNamespace(members=("member-1",), query_images=[])
     )
     runtime = SimpleNamespace(
         application=MagicMock(),
@@ -629,8 +680,14 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         app_bindings=MagicMock(),
         facade=MagicMock(),
     )
-    delegate = getattr(runtime, component_name).__getattr__(delegate_name)
-    delegate.return_value = _RAW_RESULT
+    component = {
+        "application": runtime.application,
+        "control_plane": runtime.control_plane,
+        "app_bindings": runtime.app_bindings,
+        "facade": runtime.facade,
+    }[component_name]
+    delegate = MagicMock(return_value=_RAW_RESULT)
+    component.configure_mock(**{delegate_name: delegate})
     dump_response = MagicMock(side_effect=lambda schema, raw: (schema.__name__, raw))
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
@@ -641,7 +698,7 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
     app = Flask(__name__)
 
     with app.test_request_context("/", method="POST"):
-        result = _invoke(console_resources, class_name, method_name, *route_args)
+        result = _invoke(class_name, method_name, *route_args)
 
     delegate.assert_called_once()
     call_fields = delegate.call_args.kwargs
@@ -650,12 +707,12 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
     for field_name, expected in expected_fields.items():
         assert call_fields[field_name] == expected
     if "payload" in call_fields:
-        if class_name == "KnowledgeFSSpaceSourceApi" and method_name == "patch":
+        if class_name.__name__ == "KnowledgeFSSpaceSourceApi" and method_name.__name__ == "patch":
             assert call_fields["payload"] == payload
         else:
             assert call_fields["payload"] is payload
     if "members" in call_fields:
-        assert call_fields["members"] == payload.members
+        assert call_fields["members"] == ("member-1",)
     if "idempotency_key" in call_fields:
         assert call_fields["idempotency_key"] == "idempotency-1"
     if dump_response.called:
@@ -674,7 +731,11 @@ def test_console_document_reference_delegates_exact_asset_identity(monkeypatch: 
     app = Flask(__name__)
 
     with app.test_request_context("/?document_asset_id=asset-1&document_asset_version=7"):
-        result = _invoke(console_resources, "KnowledgeFSSpaceDocumentReferenceApi", "get", "space-1")
+        result = _invoke(
+            console_resources.KnowledgeFSSpaceDocumentReferenceApi,
+            console_resources.KnowledgeFSSpaceDocumentReferenceApi.get,
+            "space-1",
+        )
 
     assert result is _RAW_RESULT
     facade.resolve_document_reference.assert_called_once_with(
@@ -698,7 +759,7 @@ def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pyte
     with app.test_request_context(
         "/?page=2&limit=10&creator_ids=creator-1&creator_ids=creator-2&tag_ids=tag-1&tag_ids=tag-2&query=%20Support%20"
     ):
-        result = _invoke(console_resources, "KnowledgeFSSpacesApi", "get")
+        result = _invoke(console_resources.KnowledgeFSSpacesApi, console_resources.KnowledgeFSSpacesApi.get)
 
     application.list_spaces.assert_called_once_with(
         tenant_id="tenant-1",
@@ -733,9 +794,8 @@ def test_console_source_update_does_not_start_sync_before_resource_selection(
 
     with app.test_request_context("/", method="PATCH"):
         result = _invoke(
-            console_resources,
-            "KnowledgeFSSpaceSourceApi",
-            "patch",
+            console_resources.KnowledgeFSSpaceSourceApi,
+            console_resources.KnowledgeFSSpaceSourceApi.patch,
             "space-1",
             "source-1",
         )
@@ -785,8 +845,9 @@ def test_console_source_update_commits_complete_edit_selection(
     facade = MagicMock()
     facade.update_source.return_value = SimpleNamespace(version=4)
     selection_kind = selection["kind"]
+    assert isinstance(selection_kind, str)
     provider_kind = {"online_document": "online-document", "online_drive": "online-drive"}.get(selection_kind)
-    original = SimpleNamespace(
+    original = source_response(
         metadata={"providerKind": provider_kind} if provider_kind is not None else {},
         type="web" if selection_kind == "website_crawl" else "connector",
         uri="https://old.example.com",
@@ -813,9 +874,8 @@ def test_console_source_update_commits_complete_edit_selection(
 
     with app.test_request_context("/", method="PATCH"):
         result = _invoke(
-            console_resources,
-            "KnowledgeFSSpaceSourceApi",
-            "patch",
+            console_resources.KnowledgeFSSpaceSourceApi,
+            console_resources.KnowledgeFSSpaceSourceApi.patch,
             "space-1",
             "source-1",
         )
@@ -836,7 +896,7 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     facade = MagicMock()
-    source = SimpleNamespace(
+    source = source_response(
         metadata={"crawled": {"https://example.com/a": {}}},
         sync_policy=None,
         type="web",
@@ -863,9 +923,8 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
 
     with app.test_request_context("/", method="PATCH"):
         result = _invoke(
-            console_resources,
-            "KnowledgeFSSpaceSourceApi",
-            "patch",
+            console_resources.KnowledgeFSSpaceSourceApi,
+            console_resources.KnowledgeFSSpaceSourceApi.patch,
             "space-1",
             "source-1",
         )
@@ -877,7 +936,7 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
 
 
 def test_source_edit_reimports_when_selection_adds_a_canonical_duplicate() -> None:
-    source = SimpleNamespace(
+    source = source_response(
         metadata={"crawled": {"https://docs.dify.ai/a": {}}},
         status="active",
         type="web",
@@ -900,7 +959,7 @@ def test_source_edit_reimports_when_selection_adds_a_canonical_duplicate() -> No
 
 
 def test_source_edit_ignores_order_when_canonical_url_multiplicity_is_unchanged() -> None:
-    source = SimpleNamespace(
+    source = source_response(
         metadata={
             "crawled": {
                 "https://docs.dify.ai/a/": {},
@@ -928,7 +987,7 @@ def test_source_edit_ignores_order_when_canonical_url_multiplicity_is_unchanged(
 
 
 def test_source_edit_uses_latest_effective_website_selection_instead_of_stale_crawl_metadata() -> None:
-    source = SimpleNamespace(
+    source = source_response(
         metadata={
             "crawled": {"https://docs.dify.ai/old": {}},
             "initialPreview": {"canonicalSourceUrls": ["https://docs.dify.ai/old"]},
@@ -967,7 +1026,7 @@ def test_source_edit_uses_latest_effective_website_selection_instead_of_stale_cr
 def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() -> None:
     provider_item_id = '["workspace-a","page-a"]'
     identity_hash = sha256(f"online-document\0{provider_item_id}".encode()).hexdigest()
-    source = SimpleNamespace(
+    source = source_response(
         metadata={
             "providerKind": "online-document",
             "__knowledgeFsProviderSelection": {"identityHashes": [identity_hash]},
@@ -1000,7 +1059,7 @@ def test_console_source_update_applies_policy_without_creating_import_work(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     facade = MagicMock()
-    source = SimpleNamespace(version=5, sync_policy=None)
+    source = source_response(version=5, sync_policy=None)
     facade.get_source.return_value = source
     facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
     policy = SimpleNamespace(revision=3)
@@ -1019,9 +1078,8 @@ def test_console_source_update_applies_policy_without_creating_import_work(
 
     with app.test_request_context("/", method="PATCH"):
         result = _invoke(
-            console_resources,
-            "KnowledgeFSSpaceSourceApi",
-            "patch",
+            console_resources.KnowledgeFSSpaceSourceApi,
+            console_resources.KnowledgeFSSpaceSourceApi.patch,
             "space-1",
             "source-1",
         )
@@ -1047,9 +1105,8 @@ def test_console_metadata_delete_forwards_row_version_cas(monkeypatch: pytest.Mo
 
     with app.test_request_context("/?expectedRowVersion=7", method="DELETE"):
         result = _invoke(
-            console_resources,
-            "KnowledgeFSSpaceMetadataFieldApi",
-            "delete",
+            console_resources.KnowledgeFSSpaceMetadataFieldApi,
+            console_resources.KnowledgeFSSpaceMetadataFieldApi.delete,
             "space-1",
             "field-1",
         )
@@ -1140,9 +1197,8 @@ def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
 
     with app.test_request_context("/?window=7d"):
         result = _invoke(
-            console_resources,
-            "KnowledgeFSSpaceOverviewStatsApi",
-            "get",
+            console_resources.KnowledgeFSSpaceOverviewStatsApi,
+            console_resources.KnowledgeFSSpaceOverviewStatsApi.get,
             "control-space-1",
         )
 
@@ -1175,46 +1231,58 @@ def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
 
 
 _SERVICE_DELEGATION_CASES = (
-    ("KnowledgeFSServiceBulkDocumentsApi", "delete", ("space-1",), "bulkDeleteDocuments", {}),
-    ("KnowledgeFSServiceDocumentReindexApi", "post", ("space-1",), "reindexDocuments", {}),
     (
-        "KnowledgeFSServiceDocumentApi",
-        "get",
+        service_resources.KnowledgeFSServiceBulkDocumentsApi,
+        service_resources.KnowledgeFSServiceBulkDocumentsApi.delete,
+        ("space-1",),
+        "bulkDeleteDocuments",
+        dict[str, object](),
+    ),
+    (
+        service_resources.KnowledgeFSServiceDocumentReindexApi,
+        service_resources.KnowledgeFSServiceDocumentReindexApi.post,
+        ("space-1",),
+        "reindexDocuments",
+        dict[str, object](),
+    ),
+    (
+        service_resources.KnowledgeFSServiceDocumentApi,
+        service_resources.KnowledgeFSServiceDocumentApi.get,
         ("space-1", "document-1"),
         "getDocument",
         {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
     ),
     (
-        "KnowledgeFSServiceDocumentApi",
-        "patch",
+        service_resources.KnowledgeFSServiceDocumentApi,
+        service_resources.KnowledgeFSServiceDocumentApi.patch,
         ("space-1", "document-1"),
         "updateDocumentMetadata",
         {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
     ),
     (
-        "KnowledgeFSServiceDocumentApi",
-        "delete",
+        service_resources.KnowledgeFSServiceDocumentApi,
+        service_resources.KnowledgeFSServiceDocumentApi.delete,
         ("space-1", "document-1"),
         "deleteDocument",
         {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
     ),
     (
-        "KnowledgeFSServiceDocumentOutlineApi",
-        "get",
+        service_resources.KnowledgeFSServiceDocumentOutlineApi,
+        service_resources.KnowledgeFSServiceDocumentOutlineApi.get,
         ("space-1", "document-1"),
         "getDocumentOutline",
         {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
     ),
     (
-        "KnowledgeFSServiceDocumentRevisionsApi",
-        "get",
+        service_resources.KnowledgeFSServiceDocumentRevisionsApi,
+        service_resources.KnowledgeFSServiceDocumentRevisionsApi.get,
         ("space-1", "document-1"),
         "listDocumentRevisions",
         {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
     ),
     (
-        "KnowledgeFSServiceDocumentChunksApi",
-        "get",
+        service_resources.KnowledgeFSServiceDocumentChunksApi,
+        service_resources.KnowledgeFSServiceDocumentChunksApi.get,
         ("space-1", "document-1", 3),
         "listDocumentChunks",
         {
@@ -1223,8 +1291,8 @@ _SERVICE_DELEGATION_CASES = (
         },
     ),
     (
-        "KnowledgeFSServiceDocumentChunkApi",
-        "get",
+        service_resources.KnowledgeFSServiceDocumentChunkApi,
+        service_resources.KnowledgeFSServiceDocumentChunkApi.get,
         ("space-1", "document-1", 3, "chunk-1"),
         "getDocumentChunk",
         {
@@ -1232,132 +1300,156 @@ _SERVICE_DELEGATION_CASES = (
             "path_parameters": (("documentId", "document-1"), ("revision", "3"), ("chunkId", "chunk-1")),
         },
     ),
-    ("KnowledgeFSServiceCompilationJobApi", "get", ("space-1", "job-1"), "getCompilationJob", {"resource_id": "job-1"}),
     (
-        "KnowledgeFSServiceCompilationJobApi",
-        "delete",
+        service_resources.KnowledgeFSServiceCompilationJobApi,
+        service_resources.KnowledgeFSServiceCompilationJobApi.get,
+        ("space-1", "job-1"),
+        "getCompilationJob",
+        {"resource_id": "job-1"},
+    ),
+    (
+        service_resources.KnowledgeFSServiceCompilationJobApi,
+        service_resources.KnowledgeFSServiceCompilationJobApi.delete,
         ("space-1", "job-1"),
         "cancelCompilationJob",
         {"resource_id": "job-1"},
     ),
     (
-        "KnowledgeFSServiceCompilationJobRetryApi",
-        "post",
+        service_resources.KnowledgeFSServiceCompilationJobRetryApi,
+        service_resources.KnowledgeFSServiceCompilationJobRetryApi.post,
         ("space-1", "job-1"),
         "retryCompilationJob",
         {"resource_id": "job-1"},
     ),
-    ("KnowledgeFSServiceBulkJobApi", "get", ("space-1", "job-1"), "getBulkJob", {"resource_id": "job-1"}),
     (
-        "KnowledgeFSServiceSourceApi",
-        "get",
+        service_resources.KnowledgeFSServiceBulkJobApi,
+        service_resources.KnowledgeFSServiceBulkJobApi.get,
+        ("space-1", "job-1"),
+        "getBulkJob",
+        {"resource_id": "job-1"},
+    ),
+    (
+        service_resources.KnowledgeFSServiceSourceApi,
+        service_resources.KnowledgeFSServiceSourceApi.get,
         ("space-1", "source-1"),
         "getSource",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourceApi",
-        "patch",
+        service_resources.KnowledgeFSServiceSourceApi,
+        service_resources.KnowledgeFSServiceSourceApi.patch,
         ("space-1", "source-1"),
         "updateSource",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourceApi",
-        "delete",
+        service_resources.KnowledgeFSServiceSourceApi,
+        service_resources.KnowledgeFSServiceSourceApi.delete,
         ("space-1", "source-1"),
         "deleteSource",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourceTestApi",
-        "post",
+        service_resources.KnowledgeFSServiceSourceTestApi,
+        service_resources.KnowledgeFSServiceSourceTestApi.post,
         ("space-1", "source-1"),
         "testSource",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourceCrawlApi",
-        "post",
+        service_resources.KnowledgeFSServiceSourceCrawlApi,
+        service_resources.KnowledgeFSServiceSourceCrawlApi.post,
         ("space-1", "source-1"),
         "crawlSource",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourcePagesApi",
-        "get",
+        service_resources.KnowledgeFSServiceSourcePagesApi,
+        service_resources.KnowledgeFSServiceSourcePagesApi.get,
         ("space-1", "source-1"),
         "listSourcePages",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourcePageImportApi",
-        "post",
+        service_resources.KnowledgeFSServiceSourcePageImportApi,
+        service_resources.KnowledgeFSServiceSourcePageImportApi.post,
         ("space-1", "source-1"),
         "importSourcePages",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourceFilesApi",
-        "get",
+        service_resources.KnowledgeFSServiceSourceFilesApi,
+        service_resources.KnowledgeFSServiceSourceFilesApi.get,
         ("space-1", "source-1"),
         "listSourceFiles",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
     (
-        "KnowledgeFSServiceSourceFileImportApi",
-        "post",
+        service_resources.KnowledgeFSServiceSourceFileImportApi,
+        service_resources.KnowledgeFSServiceSourceFileImportApi.post,
         ("space-1", "source-1"),
         "importSourceFiles",
         {"resource_id": "source-1", "path_parameters": (("sourceId", "source-1"),)},
     ),
-    ("KnowledgeFSServiceResearchTasksApi", "post", ("space-1",), "createResearchTask", {"bind_space_in_body": True}),
-    ("KnowledgeFSServiceResearchTaskPlanApi", "post", ("space-1",), "planResearchTask", {"bind_space_in_body": True}),
     (
-        "KnowledgeFSServiceResearchTaskApi",
-        "get",
+        service_resources.KnowledgeFSServiceResearchTasksApi,
+        service_resources.KnowledgeFSServiceResearchTasksApi.post,
+        ("space-1",),
+        "createResearchTask",
+        {"bind_space_in_body": True},
+    ),
+    (
+        service_resources.KnowledgeFSServiceResearchTaskPlanApi,
+        service_resources.KnowledgeFSServiceResearchTaskPlanApi.post,
+        ("space-1",),
+        "planResearchTask",
+        {"bind_space_in_body": True},
+    ),
+    (
+        service_resources.KnowledgeFSServiceResearchTaskApi,
+        service_resources.KnowledgeFSServiceResearchTaskApi.get,
         ("space-1", "task-1"),
         "getResearchTask",
         {"resource_id": "task-1"},
     ),
     (
-        "KnowledgeFSServiceResearchTaskApi",
-        "delete",
+        service_resources.KnowledgeFSServiceResearchTaskApi,
+        service_resources.KnowledgeFSServiceResearchTaskApi.delete,
         ("space-1", "task-1"),
         "cancelResearchTask",
         {"resource_id": "task-1"},
     ),
     (
-        "KnowledgeFSServiceResearchTaskPartialsApi",
-        "get",
+        service_resources.KnowledgeFSServiceResearchTaskPartialsApi,
+        service_resources.KnowledgeFSServiceResearchTaskPartialsApi.get,
         ("space-1", "task-1"),
         "listResearchTaskPartials",
         {"resource_id": "task-1"},
     ),
     (
-        "KnowledgeFSServiceTraceApi",
-        "get",
+        service_resources.KnowledgeFSServiceTraceApi,
+        service_resources.KnowledgeFSServiceTraceApi.get,
         ("space-1", "trace-1"),
         "getTrace",
         {"resource_id": "trace-1", "path_parameters": (("traceId", "trace-1"),)},
     ),
     (
-        "KnowledgeFSServiceTraceEvidenceApi",
-        "get",
+        service_resources.KnowledgeFSServiceTraceEvidenceApi,
+        service_resources.KnowledgeFSServiceTraceEvidenceApi.get,
         ("space-1", "trace-1"),
         "listTraceEvidence",
         {"resource_id": "trace-1", "path_parameters": (("traceId", "trace-1"),)},
     ),
     (
-        "KnowledgeFSServiceTraceConflictsApi",
-        "get",
+        service_resources.KnowledgeFSServiceTraceConflictsApi,
+        service_resources.KnowledgeFSServiceTraceConflictsApi.get,
         ("space-1", "trace-1"),
         "listTraceConflicts",
         {"resource_id": "trace-1", "path_parameters": (("traceId", "trace-1"),)},
     ),
     (
-        "KnowledgeFSServiceTraceMissingApi",
-        "get",
+        service_resources.KnowledgeFSServiceTraceMissingApi,
+        service_resources.KnowledgeFSServiceTraceMissingApi.get,
         ("space-1", "trace-1"),
         "listTraceMissing",
         {"resource_id": "trace-1", "path_parameters": (("traceId", "trace-1"),)},
@@ -1371,8 +1463,8 @@ _SERVICE_DELEGATION_CASES = (
 )
 def test_service_resources_bind_route_identifiers_to_one_declared_operation(
     monkeypatch: pytest.MonkeyPatch,
-    class_name: str,
-    method_name: str,
+    class_name: type[Resource],
+    method_name: Callable[..., object],
     route_args: tuple[object, ...],
     operation_id: str,
     expected_fields: dict[str, object],
@@ -1388,7 +1480,7 @@ def test_service_resources_bind_route_identifiers_to_one_declared_operation(
     app = Flask(__name__)
 
     with app.test_request_context("/", method="POST"):
-        _invoke(service_resources, class_name, method_name, *route_args)
+        _invoke(class_name, method_name, *route_args)
 
     execute.assert_called_once()
     call_fields = execute.call_args.kwargs
@@ -1408,20 +1500,48 @@ def test_service_resources_bind_route_identifiers_to_one_declared_operation(
 @pytest.mark.parametrize(
     ("class_name", "method_name", "operation_id"),
     [
-        ("KnowledgeFSServiceDocumentsApi", "get", "listDocuments"),
-        ("KnowledgeFSServiceSettingsApi", "get", "getSettings"),
-        ("KnowledgeFSServiceSettingsApi", "patch", "updateSettings"),
-        ("KnowledgeFSServiceSourcesApi", "get", "listSources"),
-        ("KnowledgeFSServiceSourcesApi", "post", "createSource"),
-        ("KnowledgeFSServiceResearchTasksApi", "get", "listResearchTasks"),
-        ("KnowledgeFSServiceTracesApi", "get", "listTraces"),
+        (
+            service_resources.KnowledgeFSServiceDocumentsApi,
+            service_resources.KnowledgeFSServiceDocumentsApi.get,
+            "listDocuments",
+        ),
+        (
+            service_resources.KnowledgeFSServiceSettingsApi,
+            service_resources.KnowledgeFSServiceSettingsApi.get,
+            "getSettings",
+        ),
+        (
+            service_resources.KnowledgeFSServiceSettingsApi,
+            service_resources.KnowledgeFSServiceSettingsApi.patch,
+            "updateSettings",
+        ),
+        (
+            service_resources.KnowledgeFSServiceSourcesApi,
+            service_resources.KnowledgeFSServiceSourcesApi.get,
+            "listSources",
+        ),
+        (
+            service_resources.KnowledgeFSServiceSourcesApi,
+            service_resources.KnowledgeFSServiceSourcesApi.post,
+            "createSource",
+        ),
+        (
+            service_resources.KnowledgeFSServiceResearchTasksApi,
+            service_resources.KnowledgeFSServiceResearchTasksApi.get,
+            "listResearchTasks",
+        ),
+        (
+            service_resources.KnowledgeFSServiceTracesApi,
+            service_resources.KnowledgeFSServiceTracesApi.get,
+            "listTraces",
+        ),
     ],
 )
 @pytest.mark.parametrize("cursor", [None, "cursor-2"])
 def test_service_credential_routes_validate_profile_before_facade_delegation(
     monkeypatch: pytest.MonkeyPatch,
-    class_name: str,
-    method_name: str,
+    class_name: type[Resource],
+    method_name: Callable[..., object],
     operation_id: str,
     cursor: str | None,
 ) -> None:
@@ -1437,7 +1557,7 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
     query_string = {"cursor": cursor} if cursor is not None else None
 
     with app.test_request_context("/", method="POST", query_string=query_string):
-        _invoke(service_resources, class_name, method_name, "space-1")
+        _invoke(class_name, method_name, "space-1")
 
     validate_profile.assert_called_once_with(runtime, operation_id=operation_id, control_space_id="space-1")
     assert facade.execute_service.call_args.kwargs["profile"] is profile
@@ -1448,14 +1568,14 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
 
 
 @pytest.mark.parametrize(
-    ("resource_module", "class_name"),
+    "class_name",
     [
-        (console_resources, "KnowledgeFSSpaceQueriesApi"),
+        console_resources.KnowledgeFSSpaceQueriesApi,
     ],
 )
-def test_deprecated_buffered_routes_fail_closed(resource_module: object, class_name: str) -> None:
+def test_deprecated_buffered_routes_fail_closed(class_name: type[console_resources.KnowledgeFSSpaceQueriesApi]) -> None:
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="deprecated"):
-        _invoke(resource_module, class_name, "post", "space-1")
+        _invoke(class_name, class_name.post, "space-1")
 
 
 def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1483,9 +1603,21 @@ def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: p
     app = Flask(__name__)
 
     with app.test_request_context("/", method="POST"):
-        query = _invoke(console_resources, "KnowledgeFSSpaceQueryAdmissionApi", "post", "space-1")
-        task = _invoke(console_resources, "KnowledgeFSTaskStreamCapabilityApi", "post", "task/1")
-        legacy_query = _invoke(console_resources, "KnowledgeFSSpaceQueryStreamCapabilityApi", "post", "space-1")
+        query = _invoke(
+            console_resources.KnowledgeFSSpaceQueryAdmissionApi,
+            console_resources.KnowledgeFSSpaceQueryAdmissionApi.post,
+            "space-1",
+        )
+        task = _invoke(
+            console_resources.KnowledgeFSTaskStreamCapabilityApi,
+            console_resources.KnowledgeFSTaskStreamCapabilityApi.post,
+            "task/1",
+        )
+        legacy_query = _invoke(
+            console_resources.KnowledgeFSSpaceQueryStreamCapabilityApi,
+            console_resources.KnowledgeFSSpaceQueryStreamCapabilityApi.post,
+            "space-1",
+        )
 
     assert query.request.knowledge_space_id == "knowledge-space-1"
     assert query.url == "https://dify.example/console/api/knowledge-fs/query-stream"
@@ -1522,7 +1654,11 @@ def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: py
     app = Flask(__name__)
 
     with app.test_request_context("/", method="POST"):
-        response = _invoke(service_resources, "KnowledgeFSServiceQueryAdmissionApi", "post", "space-1")
+        response = _invoke(
+            service_resources.KnowledgeFSServiceQueryAdmissionApi,
+            service_resources.KnowledgeFSServiceQueryAdmissionApi.post,
+            "space-1",
+        )
 
     broker.issue_service.assert_called_once_with(profile=profile, operation_id="createQuery")
     assert response.request.knowledge_space_id == "knowledge-space-1"
@@ -1583,7 +1719,13 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
 
     assert service_resources._runtime() is runtime
     get_runtime.assert_called_once_with(session_maker)
-    query = SimpleNamespace(model_dump=lambda **_: {"enabled": True, "disabled": False, "count": 2})
+
+    class Query(BaseModel):
+        enabled: bool = True
+        disabled: bool = False
+        count: int = 2
+
+    query = Query()
     assert service_resources._query_pairs(query) == (
         ("enabled", "true"),
         ("disabled", "false"),
@@ -1606,13 +1748,13 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
 def test_console_request_rejections_preserve_conflict_size_and_validation_contracts() -> None:
     from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
-    expected = {
-        HTTPStatus.BAD_REQUEST: KnowledgeFSInvalidRequestHTTPError,
-        HTTPStatus.FORBIDDEN: KnowledgeFSAccessDeniedHTTPError,
-        HTTPStatus.CONFLICT: KnowledgeFSConflictHTTPError,
-        HTTPStatus.REQUEST_ENTITY_TOO_LARGE: KnowledgeFSRequestTooLargeHTTPError,
-        HTTPStatus.UNPROCESSABLE_ENTITY: KnowledgeFSRequestRejectedHTTPError,
-        HTTPStatus.TOO_MANY_REQUESTS: KnowledgeFSRateLimitHTTPError,
+    expected: dict[Literal[400, 403, 409, 413, 422, 429], type[Exception]] = {
+        400: KnowledgeFSInvalidRequestHTTPError,
+        403: KnowledgeFSAccessDeniedHTTPError,
+        409: KnowledgeFSConflictHTTPError,
+        413: KnowledgeFSRequestTooLargeHTTPError,
+        422: KnowledgeFSRequestRejectedHTTPError,
+        429: KnowledgeFSRateLimitHTTPError,
     }
     for status, http_error in expected.items():
         reject = console_resources._knowledge_fs_errors(
@@ -1749,12 +1891,12 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
             fail()
 
     rejected_mappings = (
-        (HTTPStatus.BAD_REQUEST, KnowledgeFSServiceInvalidRequestHTTPError),
-        (HTTPStatus.FORBIDDEN, KnowledgeFSServiceAccessDeniedHTTPError),
-        (HTTPStatus.CONFLICT, KnowledgeFSServiceConflictHTTPError),
-        (HTTPStatus.REQUEST_ENTITY_TOO_LARGE, KnowledgeFSServiceRequestTooLargeHTTPError),
-        (HTTPStatus.UNPROCESSABLE_ENTITY, KnowledgeFSServiceRequestRejectedHTTPError),
-        (HTTPStatus.TOO_MANY_REQUESTS, KnowledgeFSServiceRateLimitHTTPError),
+        (400, KnowledgeFSServiceInvalidRequestHTTPError),
+        (403, KnowledgeFSServiceAccessDeniedHTTPError),
+        (409, KnowledgeFSServiceConflictHTTPError),
+        (413, KnowledgeFSServiceRequestTooLargeHTTPError),
+        (422, KnowledgeFSServiceRequestRejectedHTTPError),
+        (429, KnowledgeFSServiceRateLimitHTTPError),
     )
     for status, http_error in rejected_mappings:
         fail = service_resources._service_api_errors(
@@ -1781,7 +1923,7 @@ def test_console_small_file_reader_rejects_malformed_and_empty_multipart_bodies(
     assert too_large.value.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
 
     malformed_payloads = (
-        {},
+        dict[str, object](),
         {"file": (BytesIO(b"content"), "")},
         {"file": (BytesIO(b""), "empty.txt")},
     )
@@ -1807,9 +1949,8 @@ def test_console_app_binding_route_rejects_unknown_caller_kind_before_revoke(
 
     with pytest.raises(KnowledgeFSAppBindingManagementError, match="caller kind"):
         _invoke(
-            console_resources,
-            "KnowledgeFSSpaceAppBindingApi",
-            "delete",
+            console_resources.KnowledgeFSSpaceAppBindingApi,
+            console_resources.KnowledgeFSSpaceAppBindingApi.delete,
             "space-1",
             "unknown-caller",
             "app-1",
@@ -1822,7 +1963,7 @@ def test_service_profile_hides_unknown_operations_before_dataset_key_authorizati
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     authorization = SimpleNamespace(authorize=MagicMock())
-    runtime = SimpleNamespace(service_api_authorization=authorization)
+    runtime = MagicMock(spec=KnowledgeFSRuntime, service_api_authorization=authorization)
     monkeypatch.setattr(service_resources, "product_operation_action", MagicMock(side_effect=KeyError("unknown")))
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="unknownOperation"):

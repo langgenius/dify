@@ -20,7 +20,7 @@ def logical_document(
     *,
     active: KnowledgeFSDocumentRevisionResponse | None,
     status: Literal["deleting", "failed", "pending", "ready"] = "ready",
-):
+) -> KnowledgeFSLogicalDocumentResponse:
     return KnowledgeFSLogicalDocumentResponse(
         active=active,
         active_revision=active.revision if active else None,

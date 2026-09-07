@@ -60,7 +60,7 @@ class FakeStorage:
         self.deleted: list[str] = []
 
     def save(self, filename: str, data: bytes) -> None:
-        self.objects[filename] = bytes(data)
+        self.objects[filename] = data
 
     def load_once(self, filename: str) -> bytes:
         try:
@@ -476,7 +476,7 @@ def test_stage_removes_file_when_staging_row_cannot_commit(
     failing_session.commit.side_effect = RuntimeError("database unavailable")
     calls = 0
 
-    def session_maker_with_failure(**kwargs: object):
+    def session_maker_with_failure(**kwargs: object) -> MagicMock | Session:
         nonlocal calls
         del kwargs
         calls += 1

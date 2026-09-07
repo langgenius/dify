@@ -569,7 +569,7 @@ class TestCloudEditionBillingRateLimitCheck:
         return app
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
+    @patch("services.knowledge_rate_limit_service.FeatureService.get_knowledge_rate_limit")
     def test_allows_within_rate_limit(self, mock_get_rate_limit, mock_validate_token, app: Flask):
         """Test that request is allowed when within rate limit."""
         # Arrange
@@ -581,7 +581,7 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_get_rate_limit.return_value = mock_rate_limit
 
         # Mock redis operations
-        with patch("controllers.service_api.wraps.redis_client") as mock_redis:
+        with patch("services.knowledge_rate_limit_service.redis_client") as mock_redis:
             mock_redis.zcard.return_value = 50  # Under limit
 
             @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -598,7 +598,7 @@ class TestCloudEditionBillingRateLimitCheck:
             mock_redis.zremrangebyscore.assert_called_once()
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
+    @patch("services.knowledge_rate_limit_service.FeatureService.get_knowledge_rate_limit")
     @pytest.mark.parametrize("sqlite_session", [(RateLimitLog,)], indirect=True)
     def test_rejects_over_rate_limit(
         self,
@@ -622,9 +622,9 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_get_rate_limit.return_value = mock_rate_limit
 
         with (
-            patch("controllers.service_api.wraps.redis_client") as mock_redis,
+            patch("services.knowledge_rate_limit_service.redis_client") as mock_redis,
             patch(
-                "controllers.service_api.wraps.db",
+                "services.knowledge_rate_limit_service.db",
                 SimpleNamespace(engine=sqlite_session.get_bind()),
             ),
         ):

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,7 +14,9 @@ from models.knowledge_fs import (
     KnowledgeFSCapabilityIssuanceReservation,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermission,
+    KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSDeleteCommandPayload,
     KnowledgeFSExternalAccessPolicy,
     KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
@@ -22,6 +26,7 @@ from services.knowledge_fs.control_space_commands import (
     KnowledgeFSProvisionIntent,
 )
 from services.knowledge_fs.control_space_lifecycle import KnowledgeFSWorkspaceDeletionBlockedError
+from tests.unit_tests.services.knowledge_fs_fakes import provision_payload, reservation_summary
 
 
 def _service(sqlite_session: Session) -> KnowledgeFSControlSpaceCommandService:
@@ -95,12 +100,12 @@ def test_create_provision_intent_persists_default_access_revision_and_outbox_ato
     assert commands[0].expected_control_space_version == 0
     assert commands[0].command_payload["idempotency_key"] == "provision-idempotency-1"
     assert result.model_setup_required is False
-    assert commands[0].command_payload["model_intent"] == {
+    assert provision_payload(commands[0])["model_intent"] == {
         "pluginId": "langgenius/openai",
         "provider": "openai",
         "model": "text-embedding-3-small",
     }
-    assert commands[0].command_payload["profile_intent"]["defaultMode"] == "fast"
+    assert provision_payload(commands[0])["profile_intent"]["defaultMode"] == "fast"
 
 
 @pytest.mark.parametrize(
@@ -143,7 +148,9 @@ def test_create_provision_intent_omits_unconfigured_models(sqlite_session: Sessi
 )
 def test_create_provision_intent_requires_an_enabled_rerank_model(sqlite_session: Session) -> None:
     service = _service(sqlite_session)
-    profile_intent = dict(_provision_intent().profile_intent or {})
+    original_profile = _provision_intent().profile_intent
+    assert original_profile is not None
+    profile_intent = original_profile.copy()
     profile_intent["rerank"] = {"enabled": False}
     intent = _provision_intent()._replace(profile_intent=profile_intent)
 
@@ -194,12 +201,20 @@ def test_single_and_workspace_deletion_use_the_same_durable_entrypoint(sqlite_se
     )
     workspace_commands = service.request_workspace_cleanup(tenant_id="tenant-1")
 
+    assert replay.outbox is not None
+    assert single.outbox is not None
+    assert replay.outbox is not None
+    assert single.outbox is not None
     assert replay.outbox.id == single.outbox.id
     assert single.control_space.state is KnowledgeFSControlSpaceState.DELETING
     assert single.outbox.expected_control_space_version == 1
-    assert single.outbox.command_payload["knowledge_space_id"] == "space-1"
+    assert single.outbox.operation is KnowledgeFSLifecycleOperation.DELETE
+    delete_payload = cast(KnowledgeFSDeleteCommandPayload, single.outbox.command_payload)
+    assert delete_payload["knowledge_space_id"] == "space-1"
     assert {command.control_space.id for command in workspace_commands} == {first.id, second.id}
-    assert all(command.outbox.operation is KnowledgeFSLifecycleOperation.DELETE for command in workspace_commands)
+    for command in workspace_commands:
+        assert command.outbox is not None
+        assert command.outbox.operation is KnowledgeFSLifecycleOperation.DELETE
 
 
 @pytest.mark.parametrize(
@@ -243,7 +258,7 @@ def test_workspace_finalizer_cannot_bypass_remote_deletion_and_purges_only_delet
                 tenant_id="tenant-1",
                 control_space_id=control_space.id,
                 account_id="account-1",
-                role="owner",
+                role=KnowledgeFSControlSpacePermissionRole.OWNER,
             ),
             KnowledgeFSAuthorizationRevision(
                 tenant_id="tenant-1",
@@ -256,11 +271,13 @@ def test_workspace_finalizer_cannot_bypass_remote_deletion_and_purges_only_delet
                 trace_id="trace-finalize",
                 subject="dify-account:account-1",
                 caller_kind="interactive",
-                request_summary={
-                    "caller_kind": "interactive",
-                    "grant_id": "20000000-0000-4000-8000-000000000001",
-                    "subject": "dify-account:account-1",
-                },
+                request_summary=reservation_summary(
+                    tenant_id="tenant-1",
+                    control_space_id=control_space.id,
+                    caller_kind="interactive",
+                    grant_id="20000000-0000-4000-8000-000000000001",
+                    subject="dify-account:account-1",
+                ),
             ),
             KnowledgeFSLifecycleOutbox(
                 tenant_id="tenant-1",

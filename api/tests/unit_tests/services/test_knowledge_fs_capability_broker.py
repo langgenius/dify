@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from types import SimpleNamespace
-from typing import Literal, cast
+from typing import Literal, cast, override
 
 import pytest
 import sqlalchemy as sa
@@ -31,10 +31,11 @@ from services.knowledge_fs.product_service import AuthorizedKnowledgeFSControlSp
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from services.knowledge_fs_capability import CapabilityIssueRequest
+from tests.unit_tests.services.knowledge_fs_fakes import revoke_payload
 
 
 class FakeProduct:
-    def __init__(self, space: KnowledgeFSControlSpace):
+    def __init__(self, space: KnowledgeFSControlSpace) -> None:
         self.space = space
         self.calls: list[KnowledgeFSProductPermission] = []
 
@@ -75,7 +76,7 @@ class FakeIssuer:
     def __init__(self) -> None:
         self.requests: list[CapabilityIssueRequest] = []
 
-    def issue(self, request: CapabilityIssueRequest):
+    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
         self.requests.append(request)
         return SimpleNamespace(
             token="signed-capability",
@@ -84,7 +85,8 @@ class FakeIssuer:
 
 
 class AuditFailingOnceIssuer(FakeIssuer):
-    def issue(self, request: CapabilityIssueRequest):
+    @override
+    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
         self.requests.append(request)
         if len(self.requests) == 1:
             raise RuntimeError("issuance audit persistence failed")
@@ -106,7 +108,8 @@ class NarrowingIssuer(FakeIssuer):
         self._principal_kind = principal_kind
         self.saw_committed_reservation = False
 
-    def issue(self, request: CapabilityIssueRequest):
+    @override
+    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
         with self._maker() as session:
             reservation = session.scalar(
                 sa.select(KnowledgeFSCapabilityIssuanceReservation).where(
@@ -538,7 +541,7 @@ def test_concurrent_narrowing_scans_committed_reservation_before_signing(
     assert reservation is not None
     assert reservation.status is KnowledgeFSCapabilityIssuanceReservationStatus.ISSUED
     assert command is not None
-    assert command.command_payload["grant_id"] == reservation.grant_id
+    assert revoke_payload(command)["grant_id"] == reservation.grant_id
 
 
 @pytest.mark.parametrize("principal_kind", ["service", "app"])

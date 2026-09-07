@@ -1,19 +1,32 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Literal, TypedDict
 from unittest.mock import MagicMock
 
 import pytest
+from celery.app.task import Context
 from celery.exceptions import Retry
 
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from tasks import knowledge_fs_failed_retrieval_tasks as task_module
+from tests.unit_tests.tasks.task_options import task_options
 
 EVENT_ID = "019fac9f-bfb0-75ee-9af5-252ebafbac1e"
 
 
-def _task_kwargs() -> dict[str, str]:
+class FailedRetrievalTaskArguments(TypedDict):
+    event_id: str
+    tenant_id: str
+    app_id: str
+    control_space_id: str
+    query: str
+    mode: Literal["fast", "deep", "research"]
+    retrieval_trace_id: str
+
+
+def _task_kwargs() -> FailedRetrievalTaskArguments:
     return {
         "event_id": EVENT_ID,
         "tenant_id": "tenant-1",
@@ -39,7 +52,7 @@ def _install_failing_capability(monkeypatch: pytest.MonkeyPatch, error: Exceptio
 
 def _run_task_with_retries(retries: int) -> None:
     task = task_module.capture_workflow_failed_retrieval_task
-    task.push_request(retries=retries)
+    task.request_stack.push(Context(retries=retries))
     try:
         task.run(**_task_kwargs())
     finally:
@@ -47,7 +60,7 @@ def _run_task_with_retries(retries: int) -> None:
 
 
 def test_failed_retrieval_task_runs_on_dataset_queue_and_reauthorizes_app(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     capability = MagicMock()
     capability.capture_workflow_failed_retrieval.return_value = SimpleNamespace(
@@ -64,7 +77,7 @@ def test_failed_retrieval_task_runs_on_dataset_queue_and_reauthorizes_app(
 
     task_module.capture_workflow_failed_retrieval_task.run(**_task_kwargs())
 
-    assert task_module.capture_workflow_failed_retrieval_task.queue == "dataset"
+    assert task_options(task_module.capture_workflow_failed_retrieval_task)["queue"] == "dataset"
     call = capability.capture_workflow_failed_retrieval.call_args.kwargs
     assert call["tenant_id"] == "tenant-1"
     assert call["app_id"] == "app-1"
@@ -74,7 +87,7 @@ def test_failed_retrieval_task_runs_on_dataset_queue_and_reauthorizes_app(
     assert call["payload"].retrieval_trace_id == "retrieval-trace-1"
 
 
-def test_enqueue_is_idempotency_aware_and_never_propagates_broker_failure(monkeypatch) -> None:
+def test_enqueue_is_idempotency_aware_and_never_propagates_broker_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     delay = MagicMock()
     monkeypatch.setattr(task_module.capture_workflow_failed_retrieval_task, "delay", delay)
 
@@ -86,7 +99,7 @@ def test_enqueue_is_idempotency_aware_and_never_propagates_broker_failure(monkey
     task_module.enqueue_workflow_failed_retrieval_capture(**_task_kwargs())
 
 
-def test_terminal_admission_rejection_is_swallowed(monkeypatch) -> None:
+def test_terminal_admission_rejection_is_swallowed(monkeypatch: pytest.MonkeyPatch) -> None:
     capability = MagicMock()
     capability.capture_workflow_failed_retrieval.side_effect = KnowledgeFSAppAdmissionError("not admitted")
     monkeypatch.setattr(

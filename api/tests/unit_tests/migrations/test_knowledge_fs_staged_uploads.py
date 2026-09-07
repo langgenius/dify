@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import patch
 
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -15,7 +17,7 @@ _MIGRATION_PATH = (
 )
 
 
-def _load_migration():
+def _load_migration() -> ModuleType:
     spec = importlib.util.spec_from_file_location(_MIGRATION_PATH.stem, _MIGRATION_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load KnowledgeFS staged-upload migration")
@@ -24,15 +26,11 @@ def _load_migration():
     return module
 
 
-def _run(module: object, engine: sa.Engine, step: str) -> None:
+def _run(module: ModuleType, engine: sa.Engine, step: str) -> None:
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
-        original_op = module.op
-        module.op = operations
-        try:
-            getattr(module, step)()
-        finally:
-            module.op = original_op
+        with patch.object(module, "op", operations):
+            {"upgrade": module.upgrade, "downgrade": module.downgrade}[step]()
 
 
 def test_staged_upload_migration_matches_model_and_merges_heads() -> None:

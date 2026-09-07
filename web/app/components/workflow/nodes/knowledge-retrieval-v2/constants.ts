@@ -45,12 +45,4 @@ export const KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT: Var[] = [
   },
 ]
 
-export const KNOWLEDGE_RETRIEVAL_V2_NODE_KINDS = [
-  'chunk',
-  'section',
-  'table',
-  'image',
-  'summary',
-] as const
-
 export const KNOWLEDGE_RETRIEVAL_V2_TOP_N_MAX = 100

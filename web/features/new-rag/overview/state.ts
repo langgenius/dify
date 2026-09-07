@@ -9,7 +9,6 @@ import { consoleQuery } from '@/service/client'
 import { OVERVIEW_REFRESH_INTERVAL, overviewRefreshInterval } from './overview-format'
 
 export const OVERVIEW_WINDOWS = ['24h', '7d', '30d'] as const
-export type OverviewWindow = (typeof OVERVIEW_WINDOWS)[number]
 
 const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'queued',

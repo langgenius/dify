@@ -1,8 +1,8 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import { Provider as JotaiProvider, useAtomValue } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
 import { Suspense } from 'react'
@@ -16,7 +16,6 @@ import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
-  refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '../permission-state'
@@ -210,9 +209,6 @@ function ConsoleBootstrapProbe() {
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const refreshPermissionsAfterMutationDenial = useSetAtom(
-    refreshWorkspacePermissionKeysAfterMutationDenialAtom,
-  )
 
   return (
     <>
@@ -256,9 +252,6 @@ function ConsoleBootstrapProbe() {
         dataset operator:
         {String(isCurrentWorkspaceDatasetOperator)}
       </span>
-      <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
-        refresh permissions after denial
-      </button>
     </>
   )
 }
@@ -424,33 +417,6 @@ describe('Console bootstrap', () => {
 
       expect(await screen.findByText('workspace loading:true')).toBeInTheDocument()
       expect(screen.getByText('permission loading:true')).toBeInTheDocument()
-    })
-  })
-
-  describe('Refresh actions', () => {
-    it('starts a fresh permission request without waiting for an older request', async () => {
-      const { queryClient } = renderConsoleBootstrap()
-      await screen.findByText('dataset keys:dataset.acl.edit')
-      const olderRequest = new Promise(() => {})
-      let permissionRequestCount = 0
-      mockGetPermissionKeys.mockImplementation(() => {
-        permissionRequestCount += 1
-        if (permissionRequestCount === 1) return olderRequest
-        return Promise.resolve({
-          workspace: { permission_keys: [] },
-          app: { default_permission_keys: [], overrides: [] },
-          dataset: { default_permission_keys: ['dataset.acl.readonly'], overrides: [] },
-        })
-      })
-
-      const backgroundRefresh = queryClient.refetchQueries({
-        queryKey: ['current-permissions'],
-      })
-      await waitFor(() => expect(permissionRequestCount).toBe(1))
-      fireEvent.click(screen.getByRole('button', { name: /refresh permissions after denial/i }))
-      await waitFor(() => expect(permissionRequestCount).toBe(2))
-      expect(await screen.findByText('dataset keys:dataset.acl.readonly')).toBeInTheDocument()
-      await backgroundRefresh
     })
   })
 

@@ -8,7 +8,6 @@ import {
   buildDocumentDetailModel,
   chunkCharacterCount,
   chunkContentParts,
-  chunkMetadataEntries,
   chunkTreeLabel,
   initialDocumentRevision,
   placeDocumentMultimodalItems,
@@ -461,20 +460,9 @@ describe('document detail model', () => {
     ).toBe(2)
   })
 
-  it('counts unicode characters and formats metadata deterministically', () => {
+  it('counts unicode graphemes', () => {
     expect(chunkCharacterCount('A📙B')).toBe(3)
     expect(chunkCharacterCount('👨‍👩‍👧‍👦')).toBe(1)
-    expect(
-      chunkMetadataEntries({
-        page: 2,
-        section: 'Security',
-        tags: ['sso', 'saml'],
-      }),
-    ).toEqual([
-      ['page', '2'],
-      ['section', 'Security'],
-      ['tags', '["sso","saml"]'],
-    ])
   })
 
   it('bounds explicit tree labels without reading chunk content', () => {

@@ -1,18 +1,6 @@
 import type { KnowledgeRetrievalV2Mode, KnowledgeRetrievalV2SpaceSummary } from './types'
 
 const MAX_CONTROL_SPACES = 10
-const MAX_FILTER_VALUES = 100
-
-export const parseMetadataFilterValues = (value: string): string[] => {
-  return Array.from(
-    new Set(
-      value
-        .split(/[,\n]/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, MAX_FILTER_VALUES)
-}
 
 export const toggleControlSpaceId = (selected: string[], controlSpaceId: string): string[] => {
   if (selected.includes(controlSpaceId)) return selected.filter((id) => id !== controlSpaceId)

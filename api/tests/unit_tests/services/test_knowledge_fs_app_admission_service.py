@@ -24,6 +24,7 @@ from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppChannelDisabledError,
     KnowledgeFSAppSpaceUnavailableError,
 )
+from tests.unit_tests.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 _SQLITE_TABLES = (
     KnowledgeFSControlSpace,
@@ -104,11 +105,13 @@ def test_agent_admission_requires_explicit_join_and_enabled_channel(sqlite_sessi
             control_space_id=space.id,
             trace_id="trace-app",
             jti_hash=f"sha256:{'c' * 64}",
-            claims_summary={
-                "caller_kind": "agent",
-                "grant_id": "20000000-0000-4000-8000-000000000003",
-                "subject": "dify-app:app-1",
-            },
+            claims_summary=claims_summary(
+                tenant_id="tenant-1",
+                control_space_id=space.id,
+                caller_kind="agent",
+                grant_id="20000000-0000-4000-8000-000000000003",
+                subject="dify-app:app-1",
+            ),
         )
     )
     sqlite_session.commit()
@@ -126,7 +129,7 @@ def test_agent_admission_requires_explicit_join_and_enabled_channel(sqlite_sessi
     assert join is not None
     assert join.status is KnowledgeFSAppSpaceJoinStatus.REVOKED
     assert command is not None
-    assert command.command_payload["principal"] == "dify-app:app-1"
+    assert revoke_payload(command)["principal"] == "dify-app:app-1"
     assert revision is not None
     assert revision.external_access_epoch == 5
     assert revision.revoke_sequence == 1

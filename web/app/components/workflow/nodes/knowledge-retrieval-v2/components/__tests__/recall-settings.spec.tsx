@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import RecallSettings from '../recall-settings'
 
 const mockModelSelector = vi.hoisted(() => vi.fn())
@@ -28,21 +28,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
       </button>
     )
   },
-}))
-
-vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
-}))
-
-vi.mock('@langgenius/dify-ui/select', () => ({
-  Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItemIndicator: () => null,
-  SelectItemText: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/base/param-item/top-k-item', () => ({
@@ -78,7 +63,8 @@ vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
 }))
 
 describe('RecallSettings', () => {
-  it('uses the workspace default reranker until the user selects an override', () => {
+  it('uses the workspace default reranker until the user selects an override', async () => {
+    const user = userEvent.setup()
     const onRerankingModelChange = vi.fn()
     const onScoreThresholdChange = vi.fn()
     const onTopKChange = vi.fn()
@@ -93,6 +79,7 @@ describe('RecallSettings', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
     expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
     expect(mockTopKItem).toHaveBeenLastCalledWith(expect.objectContaining({ max: 100 }))
     expect(mockModelSelector).toHaveBeenLastCalledWith(
@@ -114,7 +101,8 @@ describe('RecallSettings', () => {
     expect(onScoreThresholdChange).toHaveBeenCalledWith(0.73)
   })
 
-  it('can reset an explicit reranker back to the workspace default', () => {
+  it('can reset an explicit reranker back to the workspace default', async () => {
+    const user = userEvent.setup()
     const onRerankingModelChange = vi.fn()
     render(
       <RecallSettings
@@ -127,7 +115,8 @@ describe('RecallSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.reset' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.reset' }))
     expect(onRerankingModelChange).toHaveBeenCalledWith(undefined)
   })
 })

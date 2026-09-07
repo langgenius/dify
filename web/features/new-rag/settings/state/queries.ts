@@ -19,7 +19,7 @@ const settingsQueryAtom = atomWithQuery((get) =>
 export const knowledgeSettingsSpaceAtom = selectAtom(spaceQueryAtom, (query) => query.data)
 export const knowledgeSettingsSettingsAtom = selectAtom(settingsQueryAtom, (query) => query.data)
 
-export const knowledgeSettingsCanManageAccessAtom = atom(
+const knowledgeSettingsCanManageAccessAtom = atom(
   (get) =>
     get(knowledgeSettingsSpaceAtom)?.permission_keys.includes('knowledge_space_access_config') ??
     false,

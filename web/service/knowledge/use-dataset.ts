@@ -2,7 +2,6 @@ import type { MutationOptions } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type {
   DataSet,
-  DatasetListRequest,
   DataSetListResponse,
   ErrorDocsResponse,
   FetchDatasetsParams,
@@ -65,29 +64,6 @@ export const useInfiniteDatasets = (
     staleTime: 0,
     refetchOnMount: 'always',
     ...options,
-  })
-}
-
-export const useDatasetList = (params: DatasetListRequest) => {
-  const { initialPage, tag_ids, limit, include_all, keyword } = params
-  return useInfiniteQuery({
-    queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
-    queryFn: ({ pageParam = 1 }) => {
-      const urlParams = qs.stringify(
-        {
-          tag_ids,
-          limit,
-          include_all,
-          keyword,
-          page: pageParam,
-        },
-        { indices: false },
-      )
-      return get<DataSetListResponse>(`/datasets?${urlParams}`)
-    },
-    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : null),
-    initialPageParam: initialPage,
-    placeholderData: keepPreviousData,
   })
 }
 
