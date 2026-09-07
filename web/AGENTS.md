@@ -6,9 +6,12 @@
 
 ## Package Contracts
 
+Web owns application-specific requirements and consumes shared architecture guidance from skills and primitive contracts from Dify UI. Link to those owners instead of redefining their rules here.
+
+- For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
 - User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
 - For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/client`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
-- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Start from the [Dify UI package index] when choosing a primitive or shared contract. Preserve a visible focus indicator on the final focusable element.
+- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Use the [Dify UI package index] to find a primitive; read the relevant contract directly when it is already known. Preserve a visible focus indicator on the final focusable element.
 - Reuse the Web `SearchInput` composite when its search, clear, and IME contract matches the feature; otherwise follow the canonical [Input Group contract].
 - Give save and submit flows a real form boundary with visible labels and accessible errors. Use Dify UI `Form` when its structured submission and validation contract is the owner; otherwise use a native form. Follow the canonical [form contract].
 - Follow the canonical [Button contract] and [IconButton contract] for action semantics, loading, accessible names, and primitive composition. Do not add a Web wrapper that hides those contracts.
@@ -33,4 +36,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 [Dify UI package index]: ../packages/dify-ui/README.md
 [IconButton contract]: ../packages/dify-ui/src/icon-button/README.md
 [Input Group contract]: ../packages/dify-ui/src/input-group/README.md
+[Truncated Text Disclosure]: docs/truncated-text-disclosure.md
 [form contract]: ../packages/dify-ui/docs/forms.md
