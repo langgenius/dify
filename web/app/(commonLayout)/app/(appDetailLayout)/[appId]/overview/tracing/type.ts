@@ -84,4 +84,6 @@ export type OTelConfig = {
   headers: string
   service_name: string
   resource_attributes: string
+  /** Optional address of the backend's own UI; a generic OTLP collector exposes no discoverable console. */
+  project_url: string
 }

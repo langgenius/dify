@@ -146,6 +146,7 @@ const otelConfigTemplate = {
   headers: '{}',
   service_name: '',
   resource_attributes: '{}',
+  project_url: '',
 }
 
 // Secrets the backend echoes back unchanged are masked with a run of asterisks
@@ -822,9 +823,11 @@ const ProviderConfigModal: FC<Props> = ({
                         <Field
                           label={t(($) => $['tracing.otel.headers'], { ns: 'app' })!}
                           labelClassName="text-sm!"
+                          multiline
                           value={(config as OTelConfig).headers}
                           onChange={handleConfigChange('headers')}
                           placeholder='{"authorization": "Bearer <token>"}'
+                          description={t(($) => $['tracing.otel.headersHint'], { ns: 'app' })!}
                         />
                         <Field
                           label={t(($) => $['tracing.otel.serviceName'], { ns: 'app' })!}
@@ -836,9 +839,18 @@ const ProviderConfigModal: FC<Props> = ({
                         <Field
                           label={t(($) => $['tracing.otel.resourceAttributes'], { ns: 'app' })!}
                           labelClassName="text-sm!"
+                          multiline
                           value={(config as OTelConfig).resource_attributes}
                           onChange={handleConfigChange('resource_attributes')}
                           placeholder='{"deployment.environment": "prod"}'
+                        />
+                        <Field
+                          label={t(($) => $['tracing.otel.projectUrl'], { ns: 'app' })!}
+                          labelClassName="text-sm!"
+                          value={(config as OTelConfig).project_url}
+                          onChange={handleConfigChange('project_url')}
+                          placeholder="http://localhost:16686"
+                          description={t(($) => $['tracing.otel.projectUrlHint'], { ns: 'app' })!}
                         />
                       </>
                     )}

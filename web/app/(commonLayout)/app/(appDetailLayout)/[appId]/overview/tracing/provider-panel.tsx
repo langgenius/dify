@@ -110,7 +110,7 @@ const ProviderPanel: FC<Props> = ({
         </div>
         {!readOnly && (
           <div className="flex items-center justify-between space-x-1">
-            {hasConfigured && (
+            {hasConfigured && !!config?.project_url && (
               <div
                 className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
                 onClick={viewBtnClick}
