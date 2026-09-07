@@ -1391,7 +1391,7 @@ describe('useAgentConfigureSync', () => {
     )
   })
 
-  it('should toast metadata filtering model error when publishing with automatic metadata filtering and no model', async () => {
+  it('requires legacy knowledge migration before validating its old retrieval settings', async () => {
     const { result, store } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
@@ -1416,9 +1416,7 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith(
-      'agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired',
-    )
+    expect(toastMock.error).toHaveBeenCalledWith('agentV2.agentDetail.configure.knowledgeFs.legacy')
   })
 
   it('should expose publishing status from the publish mutation while publish is pending', async () => {

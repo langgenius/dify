@@ -83,7 +83,11 @@ const isCliToolItem = (
 const isKnowledgeRetrievalItem = (
   item: AgentOrchestrateAddedItem,
 ): item is AgentKnowledgeRetrievalItem =>
-  'queryMode' in item || 'customQuery' in item || 'selectedDatasets' in item || 'nameKey' in item
+  'controlSpaceId' in item ||
+  'queryMode' in item ||
+  'customQuery' in item ||
+  'selectedDatasets' in item ||
+  'nameKey' in item
 
 export function AgentPromptSlashMenu({
   view,
