@@ -43,5 +43,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra server --dev
 
+      - name: Install Redis for integration tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server
+          redis-server --version
+
       - name: Run unit tests
         run: uv run pytest

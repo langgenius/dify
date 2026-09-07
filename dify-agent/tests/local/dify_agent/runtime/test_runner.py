@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from decimal import Decimal
 from typing import Any, ClassVar, cast
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -11,6 +12,7 @@ from pydantic import JsonValue
 from pydantic_ai import Tool
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import (
+    FinalResultEvent,
     ToolReturnPart,
     ModelMessage,
     ModelRequest,
@@ -69,7 +71,7 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
-from dify_agent.runtime.event_sink import InMemoryRunEventSink
+from dify_agent.runtime.event_sink import InMemoryRunEventSink, emit_pydantic_ai_event, emit_run_failed
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
     AgentRunRunner,
@@ -254,6 +256,71 @@ def test_cancelled_runner_does_not_emit_late_failure(
         assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
 
     asyncio.run(scenario())
+
+
+def test_runner_returns_when_terminal_wins_before_run_started(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def scenario() -> InMemoryRunEventSink:
+        sink = InMemoryRunEventSink()
+        _ = await emit_run_failed(sink, run_id="run-terminal", error="remote terminal")
+        finalize_run = AsyncMock(wraps=sink.finalize_run)
+        monkeypatch.setattr(sink, "finalize_run", finalize_run)
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-terminal",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+
+            run_agent = AsyncMock()
+            monkeypatch.setattr(runner, "_run_agent", run_agent)
+            await runner.run()
+            run_agent.assert_not_awaited()
+            finalize_run.assert_not_awaited()
+        return sink
+
+    sink = asyncio.run(scenario())
+
+    assert sink.statuses["run-terminal"] == "failed"
+    assert [event.type for event in sink.events["run-terminal"]] == ["run_failed"]
+
+
+def test_runner_stops_when_terminal_wins_before_stream_event(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def scenario() -> InMemoryRunEventSink:
+        sink = InMemoryRunEventSink()
+        finalize_run = AsyncMock(wraps=sink.finalize_run)
+        monkeypatch.setattr(sink, "finalize_run", finalize_run)
+        model_progress: list[str] = []
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-terminal",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+
+            async def emit_after_terminal() -> None:
+                model_progress.append("started")
+                _ = await emit_run_failed(sink, run_id="run-terminal", error="remote terminal")
+                _ = await emit_pydantic_ai_event(
+                    sink,
+                    run_id="run-terminal",
+                    data=FinalResultEvent(tool_name=None, tool_call_id=None),
+                )
+                model_progress.append("continued after sealed event")
+
+            monkeypatch.setattr(runner, "_run_agent", emit_after_terminal)
+            await runner.run()
+            assert model_progress == ["started"]
+            finalize_run.assert_awaited_once()
+        return sink
+
+    sink = asyncio.run(scenario())
+
+    assert sink.statuses["run-terminal"] == "failed"
+    assert [event.type for event in sink.events["run-terminal"]] == ["run_started", "run_failed"]
 
 
 def _request(

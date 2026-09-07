@@ -75,6 +75,7 @@ from dify_agent.runtime.event_coalescer import (
 )
 from dify_agent.runtime.event_sink import (
     RunEventSink,
+    RunEventStreamSealedError,
     emit_pydantic_ai_event,
     emit_run_failed,
     emit_run_started,
@@ -248,10 +249,18 @@ class AgentRunRunner:
         self._terminal_usage = None
         if self.is_cancelled():
             return
-        _ = await emit_run_started(self.sink, run_id=self.run_id)
+
+        try:
+            _ = await emit_run_started(self.sink, run_id=self.run_id)
+        except RunEventStreamSealedError:
+            return
 
         try:
             outcome = await self._run_agent()
+        except RunEventStreamSealedError:
+            # Another writer finalized the run before this in-flight event
+            # reached storage. Do not attempt another terminal transition.
+            return
         except Exception as exc:
             if self.is_cancelled():
                 return
