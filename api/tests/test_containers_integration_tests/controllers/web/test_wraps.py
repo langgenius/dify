@@ -91,8 +91,8 @@ class TestValidateUserAccessibility:
 
     def test_missing_auth_type_raises(self) -> None:
         decoded = {"user_id": "u1", "granted_at": 1}
-        settings = SimpleNamespace(access_mode="public")
-        with pytest.raises(WebAppAuthAccessDeniedError, match="auth_type"):
+        settings = SimpleNamespace(access_mode="private")
+        with pytest.raises(WebAppAuthRequiredError, match="auth_type"):
             _validate_user_accessibility(
                 decoded=decoded,
                 app_code="code",
@@ -103,7 +103,7 @@ class TestValidateUserAccessibility:
 
     def test_missing_granted_at_raises(self) -> None:
         decoded = {"user_id": "u1", "auth_type": "external"}
-        settings = SimpleNamespace(access_mode="public")
+        settings = SimpleNamespace(access_mode="sso_verified")
         with pytest.raises(WebAppAuthAccessDeniedError, match="granted_at"):
             _validate_user_accessibility(
                 decoded=decoded,
@@ -121,7 +121,7 @@ class TestValidateUserAccessibility:
         mock_sso_time.return_value = datetime.now(UTC)
         old_granted = int((datetime.now(UTC) - timedelta(hours=1)).timestamp())
         decoded = {"user_id": "u1", "auth_type": "external", "granted_at": old_granted}
-        settings = SimpleNamespace(access_mode="public")
+        settings = SimpleNamespace(access_mode="sso_verified")
         with pytest.raises(WebAppAuthAccessDeniedError, match="SSO settings"):
             _validate_user_accessibility(
                 decoded=decoded,
@@ -139,7 +139,7 @@ class TestValidateUserAccessibility:
         mock_workspace_sso.return_value = datetime.now(UTC)
         old_granted = int((datetime.now(UTC) - timedelta(hours=1)).timestamp())
         decoded = {"user_id": "u1", "auth_type": "internal", "granted_at": old_granted}
-        settings = SimpleNamespace(access_mode="public")
+        settings = SimpleNamespace(access_mode="private")
         with pytest.raises(WebAppAuthAccessDeniedError, match="SSO settings"):
             _validate_user_accessibility(
                 decoded=decoded,
@@ -157,7 +157,7 @@ class TestValidateUserAccessibility:
         mock_sso_time.return_value = datetime.now(UTC) - timedelta(hours=2)
         recent_granted = int(datetime.now(UTC).timestamp())
         decoded = {"user_id": "u1", "auth_type": "external", "granted_at": recent_granted}
-        settings = SimpleNamespace(access_mode="public")
+        settings = SimpleNamespace(access_mode="sso_verified")
         _validate_user_accessibility(
             decoded=decoded,
             app_code="code",
@@ -172,8 +172,8 @@ class TestValidateUserAccessibility:
     def test_permission_check_denies_unauthorized_user(
         self, mock_perm: MagicMock, mock_app_id: MagicMock, mock_allowed: MagicMock
     ) -> None:
-        decoded = {"user_id": "u1", "auth_type": "external", "granted_at": int(datetime.now(UTC).timestamp())}
-        settings = SimpleNamespace(access_mode="internal")
+        decoded = {"user_id": "u1", "auth_type": "internal", "granted_at": int(datetime.now(UTC).timestamp())}
+        settings = SimpleNamespace(access_mode="private")
         with pytest.raises(WebAppAuthAccessDeniedError):
             _validate_user_accessibility(
                 decoded=decoded,
@@ -182,6 +182,37 @@ class TestValidateUserAccessibility:
                 system_webapp_auth_enabled=True,
                 webapp_settings=settings,
             )
+
+    @pytest.mark.parametrize(
+        ("access_mode", "auth_type"),
+        [
+            pytest.param("private", "external", id="private-rejects-external"),
+            pytest.param("private_all", "external", id="private-all-rejects-external"),
+            pytest.param("sso_verified", "internal", id="sso-verified-rejects-internal"),
+        ],
+    )
+    @patch("controllers.web.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp")
+    @patch("controllers.web.wraps.WebAppAuthService.is_app_require_permission_check")
+    def test_auth_type_must_match_current_access_mode(
+        self,
+        mock_permission_check: MagicMock,
+        mock_allowed: MagicMock,
+        access_mode: str,
+        auth_type: str,
+    ) -> None:
+        decoded = {"user_id": "u1", "auth_type": auth_type, "granted_at": int(datetime.now(UTC).timestamp())}
+
+        with pytest.raises(WebAppAuthRequiredError):
+            _validate_user_accessibility(
+                decoded=decoded,
+                app_code="code",
+                app_web_auth_enabled=True,
+                system_webapp_auth_enabled=True,
+                webapp_settings=SimpleNamespace(access_mode=access_mode),
+            )
+
+        mock_permission_check.assert_not_called()
+        mock_allowed.assert_not_called()
 
 
 class TestDecodeJwtToken:

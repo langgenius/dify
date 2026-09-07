@@ -72,7 +72,7 @@ function MenuBar({
         <SelectTrigger className="mr-2 w-25 shrink-0 shadow-none">
           {selectedStatus?.name ?? ''}
         </SelectTrigger>
-        <SelectContent className="w-[160px]">
+        <SelectContent className="w-40">
           {statusList.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               <SelectItemText>{item.name}</SelectItemText>

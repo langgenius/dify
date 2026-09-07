@@ -43,7 +43,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/',
+    active: (path: string) => path === '/' || path === '/explore/apps',
     icon: 'i-custom-vender-main-nav-home-v2',
     activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
@@ -103,7 +103,9 @@ export const MAIN_NAV_ROUTES = [
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
-      isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
+      isPathUnderRoute(path, '/marketplace') ||
+      isPathUnderRoute(path, '/plugins') ||
+      isPathUnderRoute(path, '/templates'),
     icon: 'i-custom-vender-main-nav-marketplace-v2',
     activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,

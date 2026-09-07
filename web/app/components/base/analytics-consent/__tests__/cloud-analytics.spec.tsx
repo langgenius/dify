@@ -21,7 +21,7 @@ const { configState, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(() =>
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  getCachedSystemFeatures: () => queryClient.getQueryData(systemFeaturesQueryKey),
+  getOptionalSystemFeatures: async () => queryClient.getQueryData(systemFeaturesQueryKey),
 }))
 
 vi.mock('@/config', () => ({

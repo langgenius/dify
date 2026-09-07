@@ -1,24 +1,12 @@
-import { QueryClient } from '@tanstack/react-query'
-
-let queryClient: QueryClient
-
 const mocks = vi.hoisted(() => ({
-  getSystemFeatures: vi.fn(),
+  dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
+  getOptionalSystemFeatures: vi.fn(),
   headers: vi.fn(async () => new Headers()),
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  getSystemFeaturesQueryClient: () => queryClient,
-  prefetchSystemFeatures: async () => {
-    const queryOptions = {
-      queryKey: ['console', 'system-features'],
-      queryFn: mocks.getSystemFeatures,
-      retry: false,
-    }
-    if (!queryClient.getQueryState(queryOptions.queryKey))
-      await queryClient.prefetchQuery(queryOptions)
-    return queryClient.getQueryData(queryOptions.queryKey)
-  },
+  dehydrateSystemFeatures: mocks.dehydrateSystemFeatures,
+  getOptionalSystemFeatures: mocks.getOptionalSystemFeatures,
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -42,11 +30,10 @@ describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.headers.mockResolvedValue(new Headers())
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
-  it('caches the resolved System Features for dehydration', async () => {
-    mocks.getSystemFeatures.mockResolvedValue({
+  it('uses optional System Features for branded metadata', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: {
         application_title: 'Acme AI',
         enabled: true,
@@ -62,19 +49,10 @@ describe('Root layout System Features bootstrap', () => {
         template: '%s - Acme AI',
       },
     })
-
-    expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(queryClient.getQueryData(['console', 'system-features'])).toEqual({
-      branding: {
-        application_title: 'Acme AI',
-        enabled: true,
-      },
-      deployment_edition: 'CLOUD',
-    })
   })
 
   it('points the icons at the branding favicon when one is configured', async () => {
-    mocks.getSystemFeatures.mockResolvedValue({
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: {
         application_title: 'Acme AI',
         enabled: true,
@@ -93,7 +71,7 @@ describe('Root layout System Features bootstrap', () => {
   })
 
   it('falls back to the static favicon without branding', async () => {
-    mocks.getSystemFeatures.mockResolvedValue({
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: { enabled: false },
       deployment_edition: 'CLOUD',
     })
@@ -105,7 +83,7 @@ describe('Root layout System Features bootstrap', () => {
   })
 
   it('falls back to the static favicon when branding is enabled without one', async () => {
-    mocks.getSystemFeatures.mockResolvedValue({
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: { application_title: 'Acme AI', enabled: true, favicon: '' },
       deployment_edition: 'CLOUD',
     })
@@ -116,8 +94,8 @@ describe('Root layout System Features bootstrap', () => {
     })
   })
 
-  it('renders the client recovery path when the server prefetch fails', async () => {
-    mocks.getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
+  it('renders the client recovery path when optional System Features are unavailable', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
     const { default: RootLayout, generateMetadata } = await import('../layout')
 
     await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
@@ -127,7 +105,5 @@ describe('Root layout System Features bootstrap', () => {
         template: '%s - Dify',
       },
     })
-
-    expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
   })
 })

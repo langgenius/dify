@@ -180,6 +180,29 @@ describe('CommonLayoutHydrationBoundary', () => {
     )
   })
 
+  it.each(['workspace', 'permissions'] as const)(
+    'should keep the Common shell recoverable when the %s query fails',
+    async (target) => {
+      const failedQueryFn =
+        target === 'workspace' ? mocks.workspaceQueryFn : mocks.permissionQueryFn
+      failedQueryFn.mockRejectedValue(new Error(`${target} unavailable`))
+      const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+      const element = await CommonLayoutHydrationBoundary({ children: <div>Common shell</div> })
+      const state = (element as ReactElement<{ state: DehydratedState }>).props.state
+
+      expect(mocks.redirect).not.toHaveBeenCalled()
+      expect(state.queries.map((query) => query.queryKey)).not.toContainEqual(
+        target === 'workspace'
+          ? ['console', 'workspaces', 'current', 'summary', 'get']
+          : [
+              ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+              { type: 'query' },
+            ],
+      )
+    },
+  )
+
   it('should redirect unauthorized users to the refresh route with the current path', async () => {
     mocks.basePath = '/workflow'
     mocks.profileQueryFn.mockRejectedValue(

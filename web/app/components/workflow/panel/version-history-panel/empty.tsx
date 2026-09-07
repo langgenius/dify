@@ -20,7 +20,7 @@ const Empty: FC<EmptyProps> = ({ onResetFilter }) => {
         {t(($) => $['versionHistory.filter.empty'], { ns: 'workflow' })}
       </div>
       <div className="flex justify-center">
-        <Button nativeButton={false} size="small" onClick={onResetFilter}>
+        <Button size="small" onClick={onResetFilter}>
           {t(($) => $['versionHistory.filter.reset'], { ns: 'workflow' })}
         </Button>
       </div>

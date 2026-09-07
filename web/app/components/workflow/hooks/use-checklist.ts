@@ -691,7 +691,7 @@ export const useChecklistBeforePublish = () => {
       await Promise.all(
         knowledgeBaseEmbeddingProviders.map(async (provider) => {
           try {
-            const modelList = await queryClient.fetchQuery(
+            const modelList = await queryClient.query(
               consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
                 input: { params: { provider } },
               }),

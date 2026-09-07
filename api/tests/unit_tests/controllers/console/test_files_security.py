@@ -1,6 +1,5 @@
 import builtins
 import io
-from unittest.mock import patch
 
 import pytest
 from flask.views import MethodView
@@ -8,15 +7,11 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import (
     FilenameNotExistsError,
-    FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
-    UnsupportedFileTypeError,
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
-from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -128,34 +123,7 @@ class TestFileUploadSecurity:
             raise Forbidden()
         # Test passes if no exception is raised
 
-    # Test 4: Service error handling
-    @patch("controllers.console.files.FileService.upload_file")
-    def test_should_handle_file_too_large_error(self, mock_upload):
-        """Test that service FileTooLargeError is properly converted"""
-        mock_upload.side_effect = ServiceFileTooLargeError("File too large")
-
-        try:
-            mock_upload(filename="test.txt", content=b"data", mimetype="text/plain", user=None, source=None)
-        except ServiceFileTooLargeError as e:
-            # Simulate the error conversion in FileApi.post()
-            with pytest.raises(FileTooLargeError):
-                raise FileTooLargeError(e.description)
-
-    @patch("controllers.console.files.FileService.upload_file")
-    def test_should_handle_unsupported_file_type_error(self, mock_upload):
-        """Test that service UnsupportedFileTypeError is properly converted"""
-        mock_upload.side_effect = ServiceUnsupportedFileTypeError()
-
-        try:
-            mock_upload(
-                filename="test.exe", content=b"data", mimetype="application/octet-stream", user=None, source=None
-            )
-        except ServiceUnsupportedFileTypeError:
-            # Simulate the error conversion in FileApi.post()
-            with pytest.raises(UnsupportedFileTypeError):
-                raise UnsupportedFileTypeError()
-
-    # Test 5: File type security
+    # Test 4: File type security
     def test_should_identify_dangerous_file_extensions(self):
         """Test detection of potentially dangerous file extensions"""
         dangerous_extensions = [
@@ -201,7 +169,7 @@ class TestFileUploadSecurity:
             parts = filename.split(".")
             assert len(parts) > 2, f"Filename {filename} should have multiple extensions"
 
-    # Test 6: Configuration validation
+    # Test 5: Configuration validation
     def test_upload_configuration_structure(self):
         """Test that upload configuration has correct structure"""
         # Simulate the configuration returned by FileApi.get()

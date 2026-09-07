@@ -1180,7 +1180,7 @@ export function FileTree({
               <span
                 aria-hidden
                 className={cn(
-                  'absolute right-[5px] h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
+                  'absolute right-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
                   sidebarResizing && 'h-full bg-state-accent-solid opacity-100',
                 )}
               />
@@ -1309,8 +1309,8 @@ export function FileTree({
               skillId={skillId}
             />
           </div>
-          <div className="flex h-[17px] shrink-0 items-center px-3">
-            <div className="h-px w-full bg-gradient-to-r from-divider-subtle to-transparent" />
+          <div className="flex h-4.25 shrink-0 items-center px-3">
+            <div className="h-px w-full bg-linear-to-r from-divider-subtle to-transparent" />
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
             <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">

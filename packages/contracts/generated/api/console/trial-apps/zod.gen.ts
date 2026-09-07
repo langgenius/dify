@@ -64,7 +64,7 @@ export const zSuggestedQuestionsResponse = z.object({
  * RemoteFileUploadPayload
  */
 export const zRemoteFileUploadPayload = z.object({
-  url: z.string(),
+  url: z.url(),
 })
 
 /**

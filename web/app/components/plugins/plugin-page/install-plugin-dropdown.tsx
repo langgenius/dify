@@ -166,7 +166,6 @@ const InstallPluginDropdown = ({
               variant={triggerVariant}
               disabled={disabled}
               title={buttonLabel}
-              aria-label={buttonLabel}
               className={cn(
                 'size-full p-2',
                 triggerClassName,

@@ -117,12 +117,18 @@ describe('SupportMenu', () => {
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
-    expect(screen.getByText('Discord')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.community')).not.toBeInTheDocument()
     expect(
       screen
         .getByText('common.userProfile.contactUs')
-        .compareDocumentPosition(screen.getByText('Discord')),
+        .compareDocumentPosition(screen.getByText('common.userProfile.discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(screen.getByRole('menuitem', { name: 'common.userProfile.discord' })).toHaveClass(
+      'mx-0',
+      'px-3',
+    )
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
@@ -177,7 +183,7 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('Discord')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
   })
 
   it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
@@ -229,7 +235,7 @@ describe('SupportMenu', () => {
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('Discord')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
   })
 
   it('renders email support when Zendesk is not configured for a dedicated support channel', () => {
@@ -245,12 +251,12 @@ describe('SupportMenu', () => {
     ).toHaveAttribute('href', 'mailto:support@example.com')
   })
 
-  it('has the correct Discord link', () => {
+  it('has the Discord link and no Forum entry', () => {
     renderSupportMenu()
 
-    expect(screen.getByRole('menuitem', { name: 'Discord' })).toHaveAttribute(
-      'href',
-      'https://discord.gg/5AEfbxcd9k',
-    )
+    const discordLink = screen.getByText('common.userProfile.discord').closest('a')
+    expect(discordLink).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+    expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.community')).not.toBeInTheDocument()
   })
 })

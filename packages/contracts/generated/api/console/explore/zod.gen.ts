@@ -137,7 +137,7 @@ export const zLearnDifyAppListResponseWritable = z.object({
 })
 
 export const zGetExploreAppsQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**
@@ -146,7 +146,7 @@ export const zGetExploreAppsQuery = z.object({
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
 export const zGetExploreAppsLearnDifyQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**

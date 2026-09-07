@@ -47,7 +47,7 @@ class CustomizedSnippet(Base):
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     # State flags
-    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("1"))
     use_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
 

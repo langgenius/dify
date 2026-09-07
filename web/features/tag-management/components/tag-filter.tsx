@@ -7,19 +7,20 @@ import {
   ComboboxPortal,
   ComboboxPositioner,
   ComboboxTrigger,
+  createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
-const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag, true>['filter']> = (tag, query) =>
-  tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
-const tagToString = (tag: Tag) => tag.name
-const isSameTag = (item: Tag, value: Tag) => item.id === value.id
+const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag['id'], true, Tag>['filter']> = (
+  tag,
+  query,
+) => tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
 
 type TagFilterProps = {
   iconOnly?: boolean
@@ -58,7 +59,15 @@ export const TagFilter = ({
   )
 
   const tagById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag])), [tagList])
-  const items = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
+  const tagOptions = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
+  const tagItems = useMemo(
+    () =>
+      createComboboxItems(tagOptions, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [tagOptions],
+  )
   const selectedTags = useMemo(() => {
     return value.flatMap((tagId) => {
       const tag = tagById.get(tagId)
@@ -69,30 +78,27 @@ export const TagFilter = ({
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
   const placeholderLabel = t(($) => $['tag.placeholder'], { ns: 'common' })
-  const triggerLabel = selectedTags.length
-    ? selectedTags.map((tag) => tag.name).join(', ')
+  const selectedCountLabel = t(($) => $['dynamicSelect.selected'], {
+    ns: 'common',
+    count: value.length,
+  })
+  const triggerLabel = value.length
+    ? selectedTags.length === value.length
+      ? selectedTags.map((tag) => tag.name).join(', ')
+      : selectedCountLabel
     : placeholderLabel
-  const handleValueChange = useCallback(
-    (nextTags: Tag[]) => {
-      const unknownTagIds = value.filter((tagId) => !tagById.has(tagId))
-      onChange([...unknownTagIds, ...nextTags.map((tag) => tag.id)])
-    },
-    [onChange, tagById, value],
-  )
 
   return (
-    <Combobox
+    <Combobox<Tag['id'], true, Tag>
       open={open}
       onOpenChange={setOpen}
-      items={items}
+      items={tagItems}
       multiple
-      value={selectedTags}
-      onValueChange={handleValueChange}
+      value={value}
+      onValueChange={(nextValue) => onChange(nextValue)}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
       filter={tagFilterComboboxFilter}
-      itemToStringLabel={tagToString}
-      isItemEqualToValue={isSameTag}
     >
       <div className="relative">
         <ComboboxTrigger
@@ -127,9 +133,9 @@ export const TagFilter = ({
               )}
               <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
                 {!value.length && placeholderLabel}
-                {!!value.length && currentTagName}
+                {!!value.length && (currentTagName ?? selectedCountLabel)}
               </span>
-              {value.length > 1 && (
+              {currentTagName && value.length > 1 && (
                 <span className="shrink-0 text-xs/4.5 font-medium text-text-tertiary">{`+${value.length - 1}`}</span>
               )}
               {!value.length && (

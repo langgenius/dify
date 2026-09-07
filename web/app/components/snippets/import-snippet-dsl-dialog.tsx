@@ -220,7 +220,6 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
   const isSubmitting = importSnippetMutation.isPending || confirmSnippetImportMutation.isPending
   const importDisabled =
-    isSubmitting ||
     !canCreateAndModifySnippet ||
     (currentTab === ImportSnippetDSLDialogTab.FromFile && !currentFile) ||
     (currentTab === ImportSnippetDSLDialogTab.FromUrl && !dslUrl.trim())

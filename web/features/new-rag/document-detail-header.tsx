@@ -13,7 +13,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
@@ -31,7 +31,6 @@ export function DocumentDetailHeader({
   reindexDisabledReasonId,
   reindexing,
   revisions,
-  taskIsActive,
   titleRef,
 }: {
   backPath: string
@@ -47,12 +46,12 @@ export function DocumentDetailHeader({
   reindexDisabledReasonId?: string
   reindexing: boolean
   revisions: Array<Exclude<LogicalDocumentRevision, null>>
-  taskIsActive: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const revisionTriggerRef = useRef<HTMLButtonElement>(null)
+  const loadMoreRevisionLabelId = useId()
   const loadMoreRequestedRef = useRef(false)
   const wasFetchingNextPageRef = useRef(false)
   useEffect(() => {
@@ -114,20 +113,21 @@ export function DocumentDetailHeader({
           )}
           {(hasNextRevisionPage || isFetchNextRevisionPageError) && (
             <Button
-              disabled={isFetchingNextRevisionPage}
               loading={isFetchingNextRevisionPage}
+              aria-labelledby={loadMoreRevisionLabelId}
               onClick={() => {
                 loadMoreRequestedRef.current = true
                 fetchNextRevisionPage()
               }}
             >
-              {isFetchNextRevisionPageError
-                ? tCommon(($) => $['operation.retry'])
-                : t(($) => $['newKnowledge.loadMoreRevisions'])}
+              <span id={loadMoreRevisionLabelId}>
+                {isFetchNextRevisionPageError
+                  ? tCommon(($) => $['operation.retry'])
+                  : t(($) => $['newKnowledge.loadMoreRevisions'])}
+              </span>
             </Button>
           )}
           <Button
-            aria-busy={reindexing || taskIsActive}
             aria-describedby={reindexDisabledReasonId}
             disabled={reindexDisabled}
             loading={reindexing}

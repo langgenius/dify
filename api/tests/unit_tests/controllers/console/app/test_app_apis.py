@@ -53,7 +53,11 @@ from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    TracingConfigNotFoundError,
+    TracingConfigVerificationFailedError,
+)
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
@@ -76,6 +80,10 @@ from services.app_site_service import (
     AppSiteChanges,
     AppSiteCommandResult,
     AppSiteNotFoundError,
+)
+from services.app_tracing_config_service import (
+    AppTracingConfigNotFoundError,
+    AppTracingConfigVerificationFailedError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -387,52 +395,71 @@ class TestOpsTraceEndpoints:
     def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.get)
-
+        tracing_configs = MagicMock()
+        tracing_configs.get.return_value = None
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "get_tracing_app_config",
-            lambda **_kwargs: None,
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+            result = method(
+                api,
+                TraceProviderQuery(tracing_provider="langfuse"),
+                _make_request_context(),
+                uuid.UUID(APP_ID),
+            )
 
         assert result == {"has_not_configured": True}
+        tracing_configs.get.assert_called_once_with(
+            context=_make_request_context(),
+            app_id=APP_ID,
+            tracing_provider="langfuse",
+        )
 
     def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.post)
-
+        tracing_configs = MagicMock()
+        tracing_configs.create.side_effect = AppTracingConfigVerificationFailedError()
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "create_tracing_app_config",
-            lambda **_kwargs: {"error": True},
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context(
             "/",
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
-            with pytest.raises(BadRequest):
+            with pytest.raises(TracingConfigVerificationFailedError):
                 method(
                     api,
                     TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                    _make_app(),
+                    _make_request_context(),
+                    uuid.UUID(APP_ID),
                 )
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = unwrap(api.delete)
-
+        tracing_configs = MagicMock()
+        tracing_configs.delete.side_effect = AppTracingConfigNotFoundError()
         monkeypatch.setattr(
-            ops_trace_module.OpsService,
-            "delete_tracing_app_config",
-            lambda **_kwargs: False,
+            ops_trace_module,
+            "application_services",
+            lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            with pytest.raises(BadRequest):
-                method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
+            with pytest.raises(TracingConfigNotFoundError):
+                method(
+                    api,
+                    TraceProviderQuery(tracing_provider="langfuse"),
+                    _make_request_context(),
+                    uuid.UUID(APP_ID),
+                )
 
 
 class TestSiteEndpoints:
@@ -573,21 +600,36 @@ class TestWorkflowAppLogEndpoints:
     def test_workflow_app_log_api_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = workflow_app_log_module.WorkflowAppLogApi()
         method = unwrap(api.get)
-
-        def fake_get_paginate(self, *, session: Session, **_kwargs):
-            assert session.get_bind() is db.engine
-            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
-
-        monkeypatch.setattr(
-            workflow_app_log_module.WorkflowAppService,
-            "get_paginate_workflow_app_logs",
-            fake_get_paginate,
-        )
+        workflow_app_logs = MagicMock()
+        workflow_app_logs.list_logs.return_value = {
+            "page": 1,
+            "limit": 20,
+            "total": 0,
+            "has_more": False,
+            "data": [],
+        }
+        services = MagicMock(workflow_app_logs=workflow_app_logs)
+        monkeypatch.setattr(workflow_app_log_module, "application_services", lambda: services)
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+        app_model = _make_app("app-1")
 
         with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(api, WorkflowAppLogQuery(page=1, limit=20), app_model=_make_app("app-1"))
+            result = method(api, WorkflowAppLogQuery(page=1, limit=20), context, app_model=app_model)
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        workflow_app_logs.list_logs.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=None,
+            status=None,
+            created_at_before=None,
+            created_at_after=None,
+            page=1,
+            limit=20,
+            detail=False,
+            created_by_end_user_session_id=None,
+            created_by_account=None,
+        )
 
 
 class TestWorkflowDraftVariableEndpoints:

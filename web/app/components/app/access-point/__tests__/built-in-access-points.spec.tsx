@@ -57,7 +57,6 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('../shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
-    handleAppStateChanged: vi.fn(),
     handleResult: vi.fn(),
     refreshAppDetail: vi.fn(),
     saveSiteConfig: vi.fn(),

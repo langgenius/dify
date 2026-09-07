@@ -108,10 +108,9 @@ const DebugModelParameterTrigger: FC<DebugModelParameterTriggerProps> = ({
               className={`i-ri-arrow-down-s-line size-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`}
             />
             {statusTooltipLabel && (
-              <span
-                aria-label={statusTooltipLabel}
-                className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
-              />
+              <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]">
+                <span className="sr-only">{statusTooltipLabel}</span>
+              </span>
             )}
           </button>
         }

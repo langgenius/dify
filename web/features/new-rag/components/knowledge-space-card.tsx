@@ -27,7 +27,6 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
       >
         <div className="flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
           <div
-            aria-label={iconName ?? t(($) => $['newKnowledge.cardType'])}
             title={iconName}
             className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft"
           >
@@ -51,10 +50,7 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
         <p className="line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
           {knowledgeSpace.description || t(($) => $['newKnowledge.noDescription'])}
         </p>
-        <div
-          aria-label={`${t(($) => $['newKnowledge.tags'])}. ${unavailable}`}
-          className="mt-1 flex min-w-0 items-center gap-1 px-4"
-        >
+        <div className="mt-1 flex min-w-0 items-center gap-1 px-4">
           <span className="rounded-md bg-background-section px-1.5 py-0.5 system-2xs-medium-uppercase text-text-disabled">
             {t(($) => $['newKnowledge.tags'])}
           </span>
