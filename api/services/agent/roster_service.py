@@ -44,7 +44,8 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentW
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
-from services.feature_service import FeatureService
+from services.rbac_agent_access_service import initialize_agent_rbac_access
+from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -314,10 +315,12 @@ class AgentRosterService:
                 source=source,
             )
             self._session.commit()
-            return agent
         except IntegrityError as exc:
             self._session.rollback()
             raise AgentNameConflictError() from exc
+
+        initialize_agent_rbac_access(tenant_id=tenant_id, agent_id=agent.id, creator_account_id=account_id)
+        return agent
 
     def _create_roster_agent_in_transaction(
         self,
@@ -1106,8 +1109,21 @@ class AgentRosterService:
             target_app_id=target_app.id,
             account_id=account.id,
         )
+        from services.skill_management_service import SkillManagementService
+
+        target_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=target_app.id)
+        if target_agent is None:
+            raise AgentNotFoundError()
+        SkillManagementService(session=self._session).copy_agent_bindings(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            source_snapshot_id=source_agent.active_config_snapshot_id or "",
+            target_agent_id=target_agent.id,
+            user_id=account.id,
+            source_include_draft=not source_agent.active_config_is_published,
+        )
         self._session.commit()
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             try:
                 original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app.id)
                 access_mode = original_settings.access_mode

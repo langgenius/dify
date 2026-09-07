@@ -66,10 +66,12 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
 
 function PreviewModeItem({
   previewEnabled,
+  label,
   disabledTip,
   children,
 }: {
   previewEnabled: boolean
+  label: string
   disabledTip: string
   children: ReactNode
 }) {
@@ -90,7 +92,7 @@ function PreviewModeItem({
       <PopoverTrigger
         openOnHover
         nativeButton={false}
-        aria-label={disabledTip}
+        aria-label={`${label}. ${disabledTip}`}
         render={<span className="inline-flex" />}
       >
         {item}
@@ -98,7 +100,7 @@ function PreviewModeItem({
       <PopoverContent
         placement="bottom"
         sideOffset={6}
-        className="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
+        className="max-w-65 rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
       >
         {disabledTip}
       </PopoverContent>
@@ -165,7 +167,11 @@ export function AgentPreviewHeader({
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>
-          <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
+          <PreviewModeItem
+            previewEnabled={previewEnabled}
+            label={previewLabel}
+            disabledTip={previewDisabledTip}
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.preview'])}
           </PreviewModeItem>
@@ -222,7 +228,6 @@ export function AgentPreviewHeader({
               type="button"
               onClick={onOpenWorkingDirectory}
               className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t(($) => $['agentDetail.configure.workingDirectory.open'])}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
               <span className="px-0.5 system-sm-medium">
@@ -242,7 +247,6 @@ export function AgentPreviewHeader({
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
               )}
-              aria-label={t(($) => $['agentDetail.configure.preview.chatFeatures'])}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
               <span className="px-0.5 system-sm-medium">

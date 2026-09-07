@@ -1,8 +1,8 @@
 'use client'
 
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
+import * as React from 'react'
 import { cn } from '../cn'
 import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
@@ -20,6 +20,7 @@ import { parsePlacement } from '../placement'
  *   accessible across input modes.
  */
 const PreviewCard = BasePreviewCard.Root
+const PreviewCardPortal = BasePreviewCard.Portal
 const PreviewCardTrigger = BasePreviewCard.Trigger
 const PreviewCardViewport = BasePreviewCard.Viewport
 const createPreviewCardHandle = BasePreviewCard.createHandle
@@ -27,21 +28,53 @@ const createPreviewCardHandle = BasePreviewCard.createHandle
 type PreviewCardProps<Payload = unknown> = BasePreviewCard.Root.Props<Payload>
 type PreviewCardHandle<Payload = unknown> = BasePreviewCard.Handle<Payload>
 type PreviewCardTriggerProps<Payload = unknown> = BasePreviewCard.Trigger.Props<Payload>
+type PreviewCardPortalProps = BasePreviewCard.Portal.Props
 type PreviewCardViewportProps = BasePreviewCard.Viewport.Props
 
-type PreviewCardContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+type PreviewCardPositionerProps = Omit<
+  BasePreviewCard.Positioner.Props,
+  'className' | 'side' | 'align'
+> & {
   className?: string
-  popupClassName?: string
-  positionerProps?: Omit<
-    BasePreviewCard.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<BasePreviewCard.Popup.Props, 'children' | 'className'>
+  placement?: Placement
 }
+
+function PreviewCardPositioner({
+  className,
+  placement = 'bottom',
+  sideOffset = 8,
+  alignOffset = 0,
+  ...props
+}: PreviewCardPositionerProps) {
+  const { side, align } = parsePlacement(placement)
+
+  return (
+    <BasePreviewCard.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      className={cn('z-50 outline-hidden', className)}
+      {...props}
+    />
+  )
+}
+
+type PreviewCardPopupProps = Omit<BasePreviewCard.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function PreviewCardPopup({ className, ...props }: PreviewCardPopupProps) {
+  return (
+    <BasePreviewCard.Popup className={cn(floatingPopupAnimationClassName, className)} {...props} />
+  )
+}
+
+type PreviewCardContentProps = Omit<PreviewCardPopupProps, 'children' | 'className'> &
+  Pick<PreviewCardPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+    children: React.ReactNode
+    className?: string
+  }
 
 function PreviewCardContent({
   children,
@@ -49,34 +82,26 @@ function PreviewCardContent({
   sideOffset = 8,
   alignOffset = 0,
   className,
-  popupClassName,
-  positionerProps,
-  popupProps,
+  ...props
 }: PreviewCardContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
-    <BasePreviewCard.Portal>
-      <BasePreviewCard.Positioner
-        side={side}
-        align={align}
+    <PreviewCardPortal>
+      <PreviewCardPositioner
+        placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
       >
-        <BasePreviewCard.Popup
+        <PreviewCardPopup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            floatingPopupAnimationClassName,
-            popupClassName,
+            className,
           )}
-          {...popupProps}
+          {...props}
         >
           {children}
-        </BasePreviewCard.Popup>
-      </BasePreviewCard.Positioner>
-    </BasePreviewCard.Portal>
+        </PreviewCardPopup>
+      </PreviewCardPositioner>
+    </PreviewCardPortal>
   )
 }
 
@@ -84,12 +109,18 @@ export {
   createPreviewCardHandle,
   PreviewCard,
   PreviewCardContent,
+  PreviewCardPopup,
+  PreviewCardPortal,
+  PreviewCardPositioner,
   PreviewCardTrigger,
   PreviewCardViewport,
 }
 export type {
   PreviewCardContentProps,
   PreviewCardHandle,
+  PreviewCardPopupProps,
+  PreviewCardPortalProps,
+  PreviewCardPositionerProps,
   PreviewCardProps,
   PreviewCardTriggerProps,
   PreviewCardViewportProps,

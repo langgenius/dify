@@ -11,6 +11,7 @@ from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class DummyAccount:
@@ -328,6 +329,7 @@ class TestAgentChatAppGeneratorWorker:
         self,
         generator,
         mocker: MockerFixture,
+        monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
         sqlite_session_factory: sessionmaker[Session],
     ):
@@ -343,7 +345,7 @@ class TestAgentChatAppGeneratorWorker:
             side_effect=sqlite_session_factory,
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_generator.dify_config", new=mocker.MagicMock(DEBUG=True))
+        apply_config_overrides(monkeypatch, DEBUG=True)
 
         with caplog.at_level(logging.ERROR, logger="core.app.apps.agent_chat.app_generator"):
             generator._generate_worker(

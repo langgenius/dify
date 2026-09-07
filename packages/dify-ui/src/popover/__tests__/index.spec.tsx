@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
@@ -16,6 +16,25 @@ const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 describe('PopoverContent', () => {
+  describe('Popup props', () => {
+    it('should move focus to the requested initial target', async () => {
+      const initialFocusRef = React.createRef<HTMLButtonElement>()
+      const screen = await renderWithSafeViewport(
+        <Popover open>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent initialFocus={initialFocusRef}>
+            <PopoverTitle>Popover content</PopoverTitle>
+            <button ref={initialFocusRef} type="button">
+              Focus target
+            </button>
+          </PopoverContent>
+        </Popover>,
+      )
+
+      await expect.element(screen.getByRole('button', { name: 'Focus target' })).toHaveFocus()
+    })
+  })
+
   describe('Animation', () => {
     it('should restore focus without waiting for an instant close transition', async () => {
       const animationSettings = globalThis as typeof globalThis & {

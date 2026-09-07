@@ -1,8 +1,8 @@
 'use client'
-import type { RadioItemProps } from '@langgenius/dify-ui/radio'
+import type { RadioItemProps } from '@langgenius/dify-ui/radio-group'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type BaseProps = {
   className?: string

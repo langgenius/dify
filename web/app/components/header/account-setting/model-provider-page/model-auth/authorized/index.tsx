@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
 import type {
   ConfigurationMethodEnum,
@@ -31,7 +31,7 @@ type PopoverOffsetOptions = {
   alignmentAxis?: number
 }
 
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
@@ -52,7 +52,6 @@ type AuthorizedProps = {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: number | PopoverOffsetOptions
-  placement?: Placement
   popupClassName?: string
   showItemSelectedIcon?: boolean
   onItemClick?: (credential: Credential, model?: CustomModel) => void

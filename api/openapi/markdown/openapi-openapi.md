@@ -154,10 +154,10 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad request — no file or filename missing |  |
+| 400 | Bad request — no file, multiple files, invalid filename, or blocked extension |  |
 | 401 | Unauthorized — invalid or expired bearer token |  |
 | 413 | File too large |  |
-| 415 | Unsupported file type or blocked extension |  |
+| 415 | Unsupported file type |  |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/human-input-forms/{form_token}
@@ -768,7 +768,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -1020,7 +1020,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### SupportedAppType
 

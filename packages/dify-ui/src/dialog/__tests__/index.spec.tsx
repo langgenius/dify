@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { IconButton } from '../../icon-button'
 import {
@@ -12,6 +13,22 @@ import {
 
 describe('Dialog wrapper', () => {
   describe('Rendering', () => {
+    it('should move focus to the requested initial target', async () => {
+      const initialFocusRef = React.createRef<HTMLButtonElement>()
+      const screen = await render(
+        <Dialog open>
+          <DialogContent initialFocus={initialFocusRef}>
+            <DialogTitle>Dialog Title</DialogTitle>
+            <button ref={initialFocusRef} type="button">
+              Focus target
+            </button>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      await expect.element(screen.getByRole('button', { name: 'Focus target' })).toHaveFocus()
+    })
+
     it('should render dialog content when dialog is open', async () => {
       const screen = await render(
         <Dialog open>
@@ -24,6 +41,34 @@ describe('Dialog wrapper', () => {
 
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
+    })
+
+    it('should apply backdrop props to a nested dialog backdrop', async () => {
+      const screen = await render(
+        <Dialog open>
+          <DialogContent>
+            <DialogTitle>Parent dialog</DialogTitle>
+            <Dialog open>
+              <DialogContent
+                backdropProps={{
+                  className: 'bg-transparent',
+                  forceRender: true,
+                  id: 'nested-dialog-backdrop',
+                }}
+              >
+                <DialogTitle>Nested dialog</DialogTitle>
+              </DialogContent>
+            </Dialog>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      const backdrop = document.querySelector('#nested-dialog-backdrop')
+      expect(backdrop).toBeInstanceOf(HTMLElement)
+      expect(getComputedStyle(backdrop as HTMLElement).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Nested dialog' }))
+        .not.toHaveAttribute('id', 'nested-dialog-backdrop')
     })
 
     it('should connect a detached trigger to the dialog', async () => {

@@ -2,9 +2,9 @@
 
 import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
 import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
-import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
+import * as React from 'react'
 import { cn } from '../cn'
 
 type SegmentedControlSelectionProps<Value> =
@@ -70,7 +70,6 @@ type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'classNam
 function SegmentedControlDivider({ className, ...props }: SegmentedControlDividerProps) {
   return (
     <span
-      role="presentation"
       aria-hidden="true"
       className={cn('h-3.5 w-px shrink-0 bg-divider-regular', className)}
       {...props}

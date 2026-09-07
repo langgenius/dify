@@ -1,11 +1,11 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -18,25 +18,16 @@ export default function CheckCode() {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [loading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
   const pageTitle = t(($) => $.resetPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
-  const handleGetEMailVerificationCode = async () => {
+  const handleGetEMailVerificationCode = async (email: string) => {
+    if (loading) return
     try {
-      if (!email) {
-        toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
-        return
-      }
-
-      if (!emailRegex.test(email)) {
-        toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
-        return
-      }
-      setIsLoading(true)
+      setLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
@@ -50,14 +41,17 @@ export default function CheckCode() {
     } catch (error) {
       console.error(error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiLockPasswordLine className="size-6 text-2xl text-text-accent-light-mode-only" />
+        <span
+          className="i-ri-lock-password-line size-6 text-text-accent-light-mode-only"
+          aria-hidden="true"
+        />
       </div>
       <div className="pt-2 pb-4">
         <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
@@ -66,35 +60,43 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <form onSubmit={noop}>
-        <input type="text" className="hidden" />
-        <div className="mb-2">
-          <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
-            {t(($) => $.email, { ns: 'login' })}
-          </label>
-          <div className="mt-1">
-            <Input
-              id="email"
-              type="email"
-              disabled={loading}
-              value={email}
-              placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="mt-3">
-            <Button
-              loading={loading}
-              disabled={loading}
-              variant="primary"
-              className="w-full"
-              onClick={handleGetEMailVerificationCode}
-            >
-              {t(($) => $.sendVerificationCode, { ns: 'login' })}
-            </Button>
-          </div>
-        </div>
-      </form>
+      <Form<{ email: string }>
+        onFormSubmit={({ email }) => {
+          void handleGetEMailVerificationCode(email)
+        }}
+      >
+        <Field
+          name="email"
+          validate={(value) => {
+            const emailValue = String(value)
+            return !emailValue || emailRegex.test(emailValue)
+              ? null
+              : t(($) => $['error.emailInValid'], { ns: 'login' })
+          }}
+          className="mb-3"
+        >
+          <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+          <Input
+            type="email"
+            required
+            autoComplete="email"
+            spellCheck={false}
+            placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
+          />
+          <FieldValidity>
+            {({ validity }) => (
+              <FieldError>
+                {t(($) => $[validity.valueMissing ? 'error.emailEmpty' : 'error.emailInValid'], {
+                  ns: 'login',
+                })}
+              </FieldError>
+            )}
+          </FieldValidity>
+        </Field>
+        <Button type="submit" loading={loading} variant="primary" className="w-full">
+          {t(($) => $.sendVerificationCode, { ns: 'login' })}
+        </Button>
+      </Form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
@@ -103,7 +105,7 @@ export default function CheckCode() {
         className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary"
       >
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
-          <RiArrowLeftLine size={12} />
+          <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </div>
         <span className="ml-2 system-xs-regular">{t(($) => $.backToLogin, { ns: 'login' })}</span>
       </Link>

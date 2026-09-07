@@ -270,7 +270,9 @@ class TestDatasetServiceRetrieval:
         assert DatasetService.get_dataset_for_tenant(owned.id, "tenant-1", session=sqlite_session) is owned
         assert DatasetService.get_dataset_for_tenant(foreign.id, "tenant-1", session=sqlite_session) is None
 
-    def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(self, sqlite_session: Session) -> None:
+    def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
         user = _account(role=TenantAccountRole.NORMAL)
         accessible = _dataset(dataset_id="accessible", name="Accessible", maintainer="other")
         owned = _dataset(dataset_id="owned", name="Owned", maintainer=user.id)
@@ -279,8 +281,9 @@ class TestDatasetServiceRetrieval:
         sqlite_session.add_all([accessible, owned, hidden, foreign])
         sqlite_session.commit()
 
+        config_overrides(RBAC_ENABLED=True)
+
         with (
-            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
@@ -299,24 +302,28 @@ class TestDatasetServiceRetrieval:
         assert total == 2
         assert {dataset.id for dataset in datasets} == {accessible.id, owned.id}
 
-    def test_get_datasets_without_user_keeps_only_team_visible_rows(self, sqlite_session: Session) -> None:
+    def test_get_datasets_without_user_keeps_only_team_visible_rows(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
         shared = _dataset(dataset_id="shared", name="Shared", permission=DatasetPermissionEnum.ALL_TEAM)
         private = _dataset(dataset_id="private", name="Private", permission=DatasetPermissionEnum.ONLY_ME)
         sqlite_session.add_all([shared, private])
         sqlite_session.commit()
 
-        with patch("services.dataset_service.dify_config.RBAC_ENABLED", False):
-            datasets, total = DatasetService.get_datasets(
-                page=1,
-                per_page=20,
-                session=sqlite_session,
-                tenant_id="tenant-1",
-            )
+        config_overrides(RBAC_ENABLED=False)
+        datasets, total = DatasetService.get_datasets(
+            page=1,
+            per_page=20,
+            session=sqlite_session,
+            tenant_id="tenant-1",
+        )
 
         assert total == 1
         assert [dataset.id for dataset in datasets] == [shared.id]
 
-    def test_get_datasets_by_ids_intersects_requested_and_accessible_ids(self, sqlite_session: Session) -> None:
+    def test_get_datasets_by_ids_intersects_requested_and_accessible_ids(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
         user = _account(role=TenantAccountRole.NORMAL)
         accessible = _dataset(dataset_id="accessible", name="Accessible", maintainer="other")
         owned = _dataset(dataset_id="owned", name="Owned", maintainer=user.id)
@@ -324,35 +331,39 @@ class TestDatasetServiceRetrieval:
         sqlite_session.add_all([accessible, owned, hidden])
         sqlite_session.commit()
 
-        with patch("services.dataset_service.dify_config.RBAC_ENABLED", True):
-            datasets, total = DatasetService.get_datasets_by_ids(
-                [accessible.id, owned.id, hidden.id],
-                "tenant-1",
-                user=user,
-                accessible_dataset_ids=[accessible.id, "not-requested"],
-                include_own_datasets=True,
-                session=sqlite_session,
-            )
+        config_overrides(RBAC_ENABLED=True)
+        datasets, total = DatasetService.get_datasets_by_ids(
+            [accessible.id, owned.id, hidden.id],
+            "tenant-1",
+            user=user,
+            accessible_dataset_ids=[accessible.id, "not-requested"],
+            include_own_datasets=True,
+            session=sqlite_session,
+        )
 
         assert total == 2
         assert {dataset.id for dataset in datasets} == {accessible.id, owned.id}
 
-    def test_get_datasets_rbac_without_user_returns_no_rows(self, sqlite_session: Session) -> None:
+    def test_get_datasets_rbac_without_user_returns_no_rows(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
         sqlite_session.add(_dataset())
         sqlite_session.commit()
 
-        with patch("services.dataset_service.dify_config.RBAC_ENABLED", True):
-            datasets, total = DatasetService.get_datasets(
-                page=1,
-                per_page=20,
-                session=sqlite_session,
-                tenant_id="tenant-1",
-            )
+        config_overrides(RBAC_ENABLED=True)
+        datasets, total = DatasetService.get_datasets(
+            page=1,
+            per_page=20,
+            session=sqlite_session,
+            tenant_id="tenant-1",
+        )
 
         assert datasets == []
         assert total == 0
 
-    def test_get_datasets_rbac_include_all_requires_workspace_permission(self, sqlite_session: Session) -> None:
+    def test_get_datasets_rbac_include_all_requires_workspace_permission(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
         user = _account(role=TenantAccountRole.NORMAL)
         sqlite_session.add_all(
             [
@@ -362,8 +373,8 @@ class TestDatasetServiceRetrieval:
         )
         sqlite_session.commit()
 
+        config_overrides(RBAC_ENABLED=True)
         with (
-            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(

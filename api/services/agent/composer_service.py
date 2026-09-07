@@ -64,6 +64,7 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+from services.skill_management_service import SkillManagementService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.new_agent_beta_task import register_new_agent_beta_publish_after_commit
 
@@ -353,6 +354,14 @@ class AgentComposerService:
             icon=source_agent.icon,
             icon_background=source_agent.icon_background,
         )
+        SkillManagementService(session=session).copy_agent_bindings(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            source_snapshot_id=source_version.id,
+            target_agent_id=inline_agent.id,
+            target_snapshot_id=inline_agent.active_config_snapshot_id,
+            user_id=account_id,
+        )
         binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
         binding.agent_id = inline_agent.id
         binding.current_snapshot_id = inline_agent.active_config_snapshot_id
@@ -640,6 +649,13 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
+
+        SkillManagementService(session=session).publish_agent_bindings(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+            user_id=account_id,
+        )
         if not access_was_ready:
             if not agent.app_id:
                 raise AgentNotFoundError()
@@ -1488,6 +1504,12 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        SkillManagementService(session=session).publish_agent_bindings(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+            user_id=account_id,
+        )
         binding.current_snapshot_id = version.id
         if payload.node_job is not None:
             binding.node_job_config = payload.node_job
@@ -1528,6 +1550,12 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        SkillManagementService(session=session).publish_agent_bindings(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+            user_id=account_id,
+        )
         binding.current_snapshot_id = version.id
         binding.updated_by = account_id
         if payload.node_job is not None:
@@ -1564,6 +1592,17 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             version_note=payload.version_note,
         )
+        source_agent_id = binding.agent_id if binding else None
+        source_snapshot_id = binding.current_snapshot_id if binding else None
+        if source_agent_id and source_snapshot_id and agent.active_config_snapshot_id:
+            SkillManagementService(session=session).copy_agent_bindings(
+                tenant_id=tenant_id,
+                source_agent_id=source_agent_id,
+                source_snapshot_id=source_snapshot_id,
+                target_agent_id=agent.id,
+                target_snapshot_id=agent.active_config_snapshot_id,
+                user_id=account_id,
+            )
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if not binding:
             binding = WorkflowAgentNodeBinding(
@@ -1619,6 +1658,15 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             version_note=payload.version_note,
         )
+        if source_agent.active_config_snapshot_id and roster_agent.active_config_snapshot_id:
+            SkillManagementService(session=session).copy_agent_bindings(
+                tenant_id=tenant_id,
+                source_agent_id=source_agent.id,
+                source_snapshot_id=source_version.id,
+                target_agent_id=roster_agent.id,
+                target_snapshot_id=roster_agent.active_config_snapshot_id,
+                user_id=account_id,
+            )
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = roster_agent.id
         binding.current_snapshot_id = roster_agent.active_config_snapshot_id

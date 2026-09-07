@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
@@ -19,6 +18,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from models.model import Conversation
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test__get_completion_model_prompt_messages():
@@ -128,9 +128,9 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
     )
 
 
-def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args):
+def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args, monkeypatch: pytest.MonkeyPatch):
     model_config_mock, _, messages, inputs, context = get_chat_model_args
-    dify_config.MULTIMODAL_SEND_FORMAT = "url"
+    apply_config_overrides(monkeypatch, MULTIMODAL_SEND_FORMAT="url")
 
     files = [
         File(

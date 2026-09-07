@@ -252,17 +252,23 @@ class TestTrialAppRemoteFileUploadApi:
         method = unwrap(api.post)
         app_model = _app(app_id="app-1", mode=AppMode.CHAT, tenant_id="app-tenant-id")
         remote_file = MagicMock()
-        remote_file.model_dump.return_value = {"id": "upload-file-id"}
+        payload = module.RemoteFileUploadPayload(url="https://example.com/file.txt")
 
         with (
             app.test_request_context("/", method="POST", json={"url": "https://example.com/file.txt"}),
-            patch.object(module, "upload_remote_file_from_request", return_value=remote_file) as upload,
+            patch.object(module, "upload_remote_file", return_value=remote_file) as upload,
+            patch.object(module, "dump_response", return_value={"id": "upload-file-id"}) as dump,
         ):
-            response, status = method(api, account, app_model)
+            response, status = method(api, payload, account, app_model)
 
         assert status == 201
         assert response == {"id": "upload-file-id"}
-        upload.assert_called_once_with(current_user=account, resource_tenant_id="app-tenant-id")
+        upload.assert_called_once_with(
+            url="https://example.com/file.txt",
+            current_user=account,
+            resource_tenant_id="app-tenant-id",
+        )
+        dump.assert_called_once_with(module.FileWithSignedUrl, remote_file)
 
 
 class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):

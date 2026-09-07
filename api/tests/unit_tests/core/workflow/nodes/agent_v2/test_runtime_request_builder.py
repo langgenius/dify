@@ -5,6 +5,7 @@ from typing import cast
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.config import DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
@@ -38,6 +39,22 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda **_kwargs: [],
+    )
+
+
+class FakeCredentialsProvider:
+    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
+        assert provider_name == "openai"
+        assert model_name == "gpt-test"
+        return {"api_key": "secret-key"}
 
 
 @pytest.fixture(autouse=True)
@@ -448,7 +465,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
 
 
 def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -657,7 +674,7 @@ def test_build_shell_layer_config_maps_cli_tool_inline_secret_value_to_env():
 
 
 def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -1407,6 +1424,30 @@ def test_build_config_layer_config_includes_soul_context_and_mentions():
     assert warnings == []
 
 
+def test_build_config_layer_config_includes_runtime_agent_skills():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
+
+    soul = AgentSoulConfig(
+        prompt={"system_prompt": "Use [§skill:workspace-skill:Workspace Skill§]."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+    )
+    config, warnings = build_config_layer_config(
+        soul,
+        runtime_config_skills=[
+            DifyConfigSkillConfig(
+                name="workspace-skill",
+                description="Bound workspace skill.",
+                size=123,
+                mime_type="application/zip",
+            )
+        ],
+    )
+
+    assert [skill.name for skill in config.skills] == ["workspace-skill"]
+    assert config.mentioned_skill_names == ["workspace-skill"]
+    assert warnings == []
+
+
 def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
@@ -1430,7 +1471,7 @@ def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
 
 
 def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
 
     result = WorkflowAgentRuntimeRequestBuilder().build(_context())
 
@@ -1487,6 +1528,33 @@ def test_workflow_run_request_contains_config_layer():
     }
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert warnings == []
+
+
+def test_workflow_run_request_includes_bound_workspace_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda **_kwargs: [
+            DifyConfigSkillConfig(
+                name="workspace-skill",
+                description="Bound workspace skill.",
+                size=123,
+                mime_type="application/zip",
+            )
+        ],
+    )
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={"system_prompt": "Use [§skill:workspace-skill:Workspace Skill§]."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+    assert [skill.name for skill in config.config.skills] == ["workspace-skill"]
+    assert config.config.mentioned_skill_names == ["workspace-skill"]
+    soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+    assert soul_prompt.config.prefix == "Use workspace-skill."
 
 
 def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():

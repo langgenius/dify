@@ -126,6 +126,11 @@ describe('WorkflowLogArchivesPage', () => {
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
       expect(screen.getByText('2025-03')).toBeInTheDocument()
       expect(screen.getAllByText('125').length).toBeGreaterThan(0)
+      expect(
+        screen.getByRole('button', {
+          name: 'appLog.archives.action.prepareDownload 2025-03',
+        }),
+      ).toBeInTheDocument()
     })
   })
 })

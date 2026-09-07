@@ -202,8 +202,6 @@ export function DocumentDetailPage({
         onRevisionChange={(revision) => void setSelectedRevision(revision)}
         reindexDisabled={
           !canEdit ||
-          reindexBusy ||
-          submissionPending ||
           taskIsActive ||
           tasksPending ||
           isFetchingNextTaskPage ||
@@ -215,7 +213,6 @@ export function DocumentDetailPage({
         reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
         reindexing={reindexBusy || submissionPending}
         revisions={availableRevisions}
-        taskIsActive={taskIsActive}
         titleRef={titleRef}
       />
       {!hasEditPermission && (

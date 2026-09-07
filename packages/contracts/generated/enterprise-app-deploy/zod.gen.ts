@@ -2,6 +2,11 @@
 
 import * as z from 'zod'
 
+/**
+ * Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+ */
+export const zGoogleProtobufValue = z.unknown()
+
 export const zEnvironmentStatus = z.enum([
   'ENVIRONMENT_STATUS_UNSPECIFIED',
   'ENVIRONMENT_STATUS_PENDING',
@@ -16,6 +21,19 @@ export const zApplicationInteractionStatus = z.enum([
   'APPLICATION_INTERACTION_STATUS_SUCCEEDED',
   'APPLICATION_INTERACTION_STATUS_FAILED',
   'APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED',
+  'APPLICATION_INTERACTION_STATUS_STOPPED',
+  'APPLICATION_INTERACTION_STATUS_PAUSED',
+])
+
+export const zApplicationInteractionSource = z.enum([
+  'APPLICATION_INTERACTION_SOURCE_UNSPECIFIED',
+  'APPLICATION_INTERACTION_SOURCE_WEB_APP',
+  'APPLICATION_INTERACTION_SOURCE_SERVICE_API',
+  'APPLICATION_INTERACTION_SOURCE_TRIGGER',
+  'APPLICATION_INTERACTION_SOURCE_EXPLORE',
+  'APPLICATION_INTERACTION_SOURCE_DEBUGGER',
+  'APPLICATION_INTERACTION_SOURCE_VALIDATION',
+  'APPLICATION_INTERACTION_SOURCE_OPENAPI',
 ])
 
 export const zEnvironmentMode = z.enum([
@@ -79,28 +97,14 @@ export const zEnvironmentBackend = z.enum([
   'ENVIRONMENT_BACKEND_EXTERNAL',
 ])
 
-export const zEnvironmentManagedBy = z.enum([
-  'ENVIRONMENT_MANAGED_BY_UNSPECIFIED',
-  'ENVIRONMENT_MANAGED_BY_SYSTEM',
-  'ENVIRONMENT_MANAGED_BY_USER',
-])
-
-export const zEnvironmentDeployedAppStatus = z.enum([
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED',
-])
-
-export const zDeploymentStatus = z.enum([
-  'DEPLOYMENT_STATUS_UNSPECIFIED',
-  'DEPLOYMENT_STATUS_UNDEPLOYED',
-  'DEPLOYMENT_STATUS_DEPLOYING',
-  'DEPLOYMENT_STATUS_RUNNING',
-  'DEPLOYMENT_STATUS_UNDEPLOYING',
-  'DEPLOYMENT_STATUS_INVALID',
-  'DEPLOYMENT_STATUS_FAILED',
+export const zRuntimeState = z.enum([
+  'RUNTIME_STATE_UNSPECIFIED',
+  'RUNTIME_STATE_UNDEPLOYED',
+  'RUNTIME_STATE_RUNNING',
+  'RUNTIME_STATE_STARTING',
+  'RUNTIME_STATE_STOPPING',
+  'RUNTIME_STATE_ERROR',
+  'RUNTIME_STATE_UNKNOWN',
 ])
 
 export const zEnvVarValueSource = z.enum([
@@ -115,6 +119,7 @@ export const zEnvVarValueType = z.enum([
   'ENV_VAR_VALUE_TYPE_STRING',
   'ENV_VAR_VALUE_TYPE_NUMBER',
   'ENV_VAR_VALUE_TYPE_SECRET',
+  'ENV_VAR_VALUE_TYPE_LLM',
 ])
 
 export const zOperatorType = z.enum([
@@ -173,7 +178,10 @@ export const zCreateEnvironmentRequest = z.object({
   displayName: z.string(),
   description: z.string().optional(),
   mode: zEnvironmentMode,
-  cpuPool: z.number(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   namespace: z.string().optional(),
   maxMemoryMib: z.string().optional(),
 })
@@ -192,24 +200,16 @@ export const zCredentialSelectionInput = z.object({
   credential_id: z.string(),
 })
 
-export const zCredentialSlot = z.object({
-  provider_id: z.string(),
-  category: zPluginCategory,
-  candidates: z.array(zCredentialCandidate),
-  last_deployed_credential_id: z.string().optional(),
-  icon: z.string().optional(),
-  icon_dark: z.string().optional(),
-})
-
-export const zDashboardApp = z.object({
-  id: z.string(),
-  workspaceId: z.string(),
-  displayName: z.string(),
-})
-
 export const zDeleteEnvironmentApiKeyResponse = z.record(z.string(), z.unknown())
 
 export const zDeleteEnvironmentResponse = z.record(z.string(), z.unknown())
+
+export const zDeleteServiceApiConversationRequest = z.object({
+  conversationId: z.string(),
+  user: z.string(),
+})
+
+export const zDeleteServiceApiConversationResponse = z.record(z.string(), z.unknown())
 
 export const zDeploymentEnvironment = z.object({
   id: z.string(),
@@ -257,6 +257,18 @@ export const zEnvironmentAccess = z.object({
   enable_api: z.boolean(),
 })
 
+/**
+ * EnvironmentActivity reports a numerator and a denominator rather than a rate,
+ * so a caller can tell a healthy environment from one nothing has called.
+ */
+export const zEnvironmentActivity = z.object({
+  environmentId: z.string(),
+  invocationCount: z.string(),
+  failedInvocationCount: z.string(),
+  failedDeploymentCount: z.string(),
+  deployedAppCount: z.string(),
+})
+
 export const zEnvironmentApiKey = z.object({
   id: z.string(),
   type: z.string(),
@@ -275,29 +287,13 @@ export const zEnvironmentDeployedAppAttempt = z.object({
   finalizedAt: z.iso.datetime().optional(),
 })
 
-export const zEnvironmentDeployedAppSummary = z.object({
-  total: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-  deployed: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-  deploying: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-  failed: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-})
-
 export const zEnvironmentMcpServer = z.record(z.string(), z.unknown())
 
 export const zEnvironmentPoolUsage = z.object({
-  occupiedCpu: z.number(),
+  occupiedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   appCount: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
@@ -320,7 +316,7 @@ export const zEnvironmentTrigger = z.record(z.string(), z.unknown())
 export const zEnvironmentVariableInput = z.object({
   key: z.string(),
   value_source: zEnvVarValueSource,
-  value: z.string().optional(),
+  value: zGoogleProtobufValue.optional(),
 })
 
 export const zEnvironmentVariableSlot = z.object({
@@ -329,8 +325,8 @@ export const zEnvironmentVariableSlot = z.object({
   description: z.string(),
   has_configured_value: z.boolean(),
   has_last_deployed_value: z.boolean(),
-  configured_value: z.string().optional(),
-  last_deployed_value: z.string().optional(),
+  configured_value: zGoogleProtobufValue.optional(),
+  last_deployed_value: zGoogleProtobufValue.optional(),
 })
 
 export const zEnvironmentWebAppSubjectAccountData = z.object({
@@ -384,7 +380,6 @@ export const zError = z.object({
       'APPDEPLOY_APP_LOG_INVALID_TIME_RANGE',
       'APPDEPLOY_APP_LOG_INVALID_CURSOR',
       'APPDEPLOY_APP_LOG_CURSOR_FILTER_MISMATCH',
-      'APPDEPLOY_APP_LOG_ID_INVALID',
       'APPDEPLOY_UNSUPPORTED_NODE_TYPE',
       'APPDEPLOY_UNSUPPORTED_TOOL_PROVIDER_TYPE',
       'APPDEPLOY_TOOL_PROVIDER_TYPE_INVALID',
@@ -396,15 +391,12 @@ export const zError = z.object({
       'APPDEPLOY_INVALID_WORKFLOW_ID',
       'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID',
       'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED',
-      'APPDEPLOY_INVALID_DEPLOYMENT_OPERATION_ID',
-      'APPDEPLOY_APP_LOG_EXPORT_RANGE_TOO_WIDE',
-      'APPDEPLOY_APP_LOG_EXPORT_TOO_MANY_ROWS',
-      'APPDEPLOY_APP_LOG_EXPORT_TOO_LARGE',
       'APPDEPLOY_UNAUTHORIZED',
       'APPDEPLOY_FORBIDDEN',
       'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED',
       'APPDEPLOY_APP_RUNNER_INVALID_JOIN_TOKEN',
       'APPDEPLOY_APP_RUNNER_INVALID_CONTROL_TOKEN',
+      'APPDEPLOY_WEB_APP_ACCESS_DENIED',
       'APPDEPLOY_ENVIRONMENT_NOT_FOUND',
       'APPDEPLOY_DEPLOYMENT_NOT_FOUND',
       'APPDEPLOY_REVISION_NOT_FOUND',
@@ -415,15 +407,15 @@ export const zError = z.object({
       'APPDEPLOY_ACCESS_SUBJECT_NOT_FOUND',
       'APPDEPLOY_API_KEY_NOT_FOUND',
       'APPDEPLOY_SOURCE_VERSION_NOT_FOUND',
-      'APPDEPLOY_APP_LOG_NOT_FOUND',
       'APPDEPLOY_WORKSPACE_NOT_FOUND',
       'APPDEPLOY_APP_RUNNER_NOT_FOUND',
       'APPDEPLOY_WORKFLOW_NOT_FOUND',
-      'APPDEPLOY_DEPLOYMENT_OPERATION_NOT_FOUND',
       'APPDEPLOY_RUN_FILE_NOT_FOUND',
       'APPDEPLOY_APPLICATION_UNAVAILABLE',
       'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED',
       'APPDEPLOY_VERSION_UNAVAILABLE',
+      'APPDEPLOY_CONVERSATION_NOT_FOUND',
+      'APPDEPLOY_CHAT_MESSAGE_NOT_FOUND',
       'APPDEPLOY_CONFLICT',
       'APPDEPLOY_DEPLOYMENT_IN_PROGRESS',
       'APPDEPLOY_ALREADY_UNDEPLOYED',
@@ -462,10 +454,13 @@ export const zError = z.object({
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED',
       'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE',
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED',
+      'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE',
+      'APPDEPLOY_FILE_GRANT_UNAVAILABLE',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
       'APPDEPLOY_INTERNAL_ERROR',
+      'APPDEPLOY_RECEIPT_RETRY',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC',
@@ -484,6 +479,16 @@ export const zError = z.object({
   phase: z.string().optional(),
   occurredAt: z.iso.datetime().optional(),
   detailCode: z.string().optional(),
+})
+
+export const zGetApplicationInteractionSummaryResponse = z.object({
+  totalCount: z.string(),
+  failedCount: z.string(),
+  lookbackStart: z.iso.datetime(),
+})
+
+export const zGetEnvironmentActivityResponse = z.object({
+  data: z.array(zEnvironmentActivity),
 })
 
 export const zGetEnvironmentCapabilitiesResponse = z.object({
@@ -506,13 +511,13 @@ export const zGetWebAppAccessModeResponse = z.object({
   accessMode: z.string().optional(),
 })
 
-export const zGetWebAppPermissionResponse = z.object({
-  result: z.boolean().optional(),
+export const zGetWebAppLoginStatusResponse = z.object({
+  logged_in: z.boolean().optional(),
+  app_logged_in: z.boolean().optional(),
 })
 
-export const zGetWorkflowDeploymentOptionsResponse = z.object({
-  environment_variable_slots: z.array(zEnvironmentVariableSlot),
-  credential_slots: z.array(zCredentialSlot),
+export const zGetWebAppPermissionResponse = z.object({
+  result: z.boolean().optional(),
 })
 
 export const zListAppEnvironmentsResponse = z.object({
@@ -527,6 +532,18 @@ export const zListEnvironmentTriggersResponse = z.object({
   data: z.array(zEnvironmentTrigger),
 })
 
+export const zMintServiceApiFileGrantRequest = z.object({
+  tenantId: z.string().optional(),
+  appId: z.string().optional(),
+  environmentId: z.string().optional(),
+  user: z.string().optional(),
+})
+
+export const zMintServiceApiFileGrantResponse = z.object({
+  grant: z.string().optional(),
+  expiresAt: z.string().optional(),
+})
+
 export const zNamedRef = z.object({
   id: z.string(),
   displayName: z.string(),
@@ -534,7 +551,10 @@ export const zNamedRef = z.object({
 
 export const zEnvironmentPoolShare = z.object({
   app: zNamedRef,
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
 })
 
 /**
@@ -544,12 +564,22 @@ export const zEnvironmentPoolShare = z.object({
  */
 export const zEnvironmentPoolComposition = z.object({
   topApps: z.array(zEnvironmentPoolShare).optional(),
-  otherCpu: z.number().optional(),
+  otherCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
   otherAppCount: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+})
+
+export const zOperationApp = z.object({
+  id: z.string().optional(),
+  workspaceId: z.string().optional(),
+  displayName: z.string().optional(),
 })
 
 export const zOperator = z.object({
@@ -558,34 +588,23 @@ export const zOperator = z.object({
   display_name: z.string(),
 })
 
-export const zApplicationInteraction = z.object({
-  id: z.string(),
-  timestamp: z.iso.datetime(),
-  workflowRunId: z.string(),
-  status: zApplicationInteractionStatus,
-  durationSeconds: z.number(),
-  totalTokens: z.string(),
-  workspace: zNamedRef,
-  environment: zNamedRef,
-  app: zNamedRef,
-  operator: zOperator.optional(),
-  invokeFrom: z.string(),
-  traceId: z.string(),
-  difyTraceId: z.string(),
-  deploymentVersionId: z.string(),
-  error: z.string().optional(),
-  body: z.string().optional(),
-  attributesJson: z.string().optional(),
-  resourceAttributesJson: z.string().optional(),
-})
-
-export const zGetApplicationInteractionResponse = z.object({
-  interaction: zApplicationInteraction,
-})
-
 export const zPrepareAppDeletionRequest = z.object({
   tenantId: z.string().optional(),
   appId: z.string().optional(),
+})
+
+export const zRenameServiceApiConversationRequest = z.object({
+  conversationId: z.string(),
+  user: z.string(),
+  name: z.string().optional(),
+  autoGenerate: z.boolean().optional(),
+})
+
+export const zRenameWebAppConversationRequest = z.object({
+  appCode: z.string(),
+  conversationId: z.string(),
+  name: z.string().optional(),
+  autoGenerate: z.boolean().optional(),
 })
 
 export const zResolveApiTokenRouteRequest = z.object({
@@ -601,17 +620,14 @@ export const zResolveApiTokenRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
-  deploymentStatus: zDeploymentStatus.optional(),
-  revoked: z.boolean().optional(),
-  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
-  deploymentGeneration: z.string().optional(),
+  assignmentGeneration: z.string().optional(),
+  decision: z.string().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
@@ -629,18 +645,18 @@ export const zResolveWebAppRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
-  deploymentStatus: zDeploymentStatus.optional(),
-  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
-  deploymentGeneration: z.string().optional(),
-  endUserId: z.string().optional(),
-  authType: z.string().optional(),
+  assignmentGeneration: z.string().optional(),
+  userId: z.string().optional(),
+  userFrom: z.string().optional(),
+  userAuthType: z.string().optional(),
+  fileGrant: z.string().optional(),
+  fileGrantExpiresAt: z.string().optional(),
 })
 
 export const zRetryEnvironmentBootstrapRequest = z.object({
@@ -667,8 +683,10 @@ export const zEnvironment = z.object({
   statusMessage: z.string(),
   lastError: zError.optional(),
   namespace: z.string().optional(),
-  managedBy: zEnvironmentManagedBy.optional(),
-  cpuPool: z.number(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   memory: zRunnerMemory.optional(),
@@ -693,7 +711,10 @@ export const zRetryEnvironmentBootstrapResponse = z.object({
  * in an isolated environment; elsewhere the runner belongs to the environment.
  */
 export const zRunnerSizing = z.object({
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemory,
 })
 
@@ -705,6 +726,20 @@ export const zSimpleAccount = z.object({
   id: z.string(),
   name: z.string().optional(),
   email: z.string().optional(),
+})
+
+export const zSourceVersionDeploymentEnvironment = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zSourceVersionDeployment = z.object({
+  sourceVersionId: z.string().optional(),
+  environments: z.array(zSourceVersionDeploymentEnvironment).optional(),
+})
+
+export const zBatchGetSourceVersionDeploymentsResponse = z.object({
+  items: z.array(zSourceVersionDeployment).optional(),
 })
 
 export const zTestConnectionRequest = z.object({
@@ -731,29 +766,30 @@ export const zUnsupportedNodeProvider = z.object({
   provider_name: z.string(),
 })
 
-export const zUnsupportedNode = z.object({
-  id: z.string(),
-  type: z.string(),
-  title: z.string(),
-  provider: zUnsupportedNodeProvider.optional(),
-})
-
-export const zPrecheckWorkflowDeploymentResponse = z.object({
-  unsupported_nodes: z.array(zUnsupportedNode),
-})
-
 export const zUpdateEnvironmentDeployedAppResourcesRequest = z.object({
   environmentId: z.string(),
   deploymentId: z.string(),
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   maxMemoryMib: z.string().optional(),
 })
 
 export const zUpdateEnvironmentDeployedAppResourcesResponse = z.object({
   deploymentId: z.string(),
-  isolatedCpu: z.number(),
-  allocatedCpuCount: z.number(),
-  poolCpuCount: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  allocatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  poolCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemory,
 })
 
@@ -761,7 +797,11 @@ export const zUpdateEnvironmentRequest = z.object({
   environmentId: z.string().optional(),
   displayName: z.string().optional(),
   description: z.string().optional(),
-  cpuPool: z.number().optional(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
   maxMemoryMib: z.string().optional(),
 })
 
@@ -769,23 +809,77 @@ export const zUpdateEnvironmentResponse = z.object({
   environment: zEnvironment,
 })
 
-export const zWorkflowDeploymentEnvironment = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
+export const zUpdateServiceApiConversationVariableRequest = z.object({
+  conversationId: z.string(),
+  variableId: z.string(),
+  user: z.string(),
+  value: zGoogleProtobufValue,
 })
 
-export const zSourceVersionDeployment = z.object({
-  sourceVersionId: z.string().optional(),
-  environments: z.array(zWorkflowDeploymentEnvironment).optional(),
-})
-
-export const zBatchGetSourceVersionDeploymentsResponse = z.object({
-  items: z.array(zSourceVersionDeployment).optional(),
+export const zWorkflowEnvironmentVariableInputGroup = z.object({
+  workflow_id: z.string(),
+  environment_variables: z.array(zEnvironmentVariableInput),
 })
 
 export const zWorkflowDeploymentInput = z.object({
-  environment_variables: z.array(zEnvironmentVariableInput).optional(),
+  environment_variable_groups: z.array(zWorkflowEnvironmentVariableInputGroup),
   credentials: z.array(zCredentialSelectionInput).optional(),
+})
+
+export const zWorkflowReference = z.object({
+  app_id: z.string(),
+  workflow_id: z.string(),
+  name: z.string(),
+  icon: z.string(),
+  icon_background: z.string(),
+  icon_type: z.string(),
+  icon_url: z.string().optional(),
+})
+
+export const zWorkflowPath = z.object({
+  workflows: z.array(zWorkflowReference),
+})
+
+export const zWorkflowAsToolDependency = z.object({
+  paths: z.array(zWorkflowPath),
+})
+
+export const zCredentialSlot = z.object({
+  provider_id: z.string(),
+  category: zPluginCategory,
+  candidates: z.array(zCredentialCandidate),
+  last_deployed_credential_id: z.string().optional(),
+  icon: z.string().optional(),
+  icon_dark: z.string().optional(),
+  workflow_as_tool_dependency: zWorkflowAsToolDependency.optional(),
+})
+
+export const zUnsupportedNode = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  provider: zUnsupportedNodeProvider.optional(),
+  workflow_as_tool_dependency: zWorkflowAsToolDependency.optional(),
+})
+
+export const zPrecheckWorkflowDeploymentResponse = z.object({
+  unsupported_nodes: z.array(zUnsupportedNode),
+})
+
+export const zWorkflowAsToolSource = z.object({
+  workflow: zWorkflowReference,
+  paths: z.array(zWorkflowPath),
+})
+
+export const zEnvironmentVariableGroup = z.object({
+  from_app: zWorkflowReference.optional(),
+  from_workflow_as_tool: zWorkflowAsToolSource.optional(),
+  environment_variable_slots: z.array(zEnvironmentVariableSlot),
+})
+
+export const zGetWorkflowDeploymentOptionsResponse = z.object({
+  environment_variable_groups: z.array(zEnvironmentVariableGroup),
+  credential_slots: z.array(zCredentialSlot),
 })
 
 export const zWorkflowVersion = z.object({
@@ -801,7 +895,22 @@ export const zWorkflowVersion = z.object({
   created_at: z.number().optional(),
   created_by: zSimpleAccount.optional(),
   dsl_hash: z.string().optional(),
-  deleted: z.boolean().optional(),
+})
+
+export const zApplicationInteraction = z.object({
+  id: z.string(),
+  timestamp: z.iso.datetime(),
+  status: zApplicationInteractionStatus,
+  durationSeconds: z.number(),
+  totalTokens: z.string(),
+  workspace: zNamedRef,
+  environment: zNamedRef,
+  app: zNamedRef,
+  operator: zNamedRef.optional(),
+  source: zApplicationInteractionSource,
+  version: zWorkflowVersion.optional(),
+  traceId: z.string().optional(),
+  error: z.string().optional(),
 })
 
 export const zDeploymentOperation = z.object({
@@ -824,13 +933,19 @@ export const zEnvironmentDeployedApp = z.object({
   deploymentId: z.string(),
   workspace: zNamedRef,
   app: zNamedRef,
-  status: zEnvironmentDeployedAppStatus,
+  runtimeState: zRuntimeState,
   currentVersion: zWorkflowVersion.optional(),
   deployedAt: z.iso.datetime().optional(),
   deployedBy: zOperator.optional(),
   latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
   sizing: zRunnerSizing.optional(),
   occupiesPool: z.boolean().optional(),
+  recentInvocationCount: z.string().optional(),
+  versionsBehind: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zEnvironmentDeploymentOperation = z.object({
@@ -843,7 +958,7 @@ export const zEnvironmentDeploymentOperation = z.object({
 })
 
 export const zEnvironmentDeploymentState = z.object({
-  status: zDeploymentStatus,
+  runtimeState: zRuntimeState,
   current_version: zWorkflowVersion.optional(),
   versions_behind: z
     .int()
@@ -861,12 +976,14 @@ export const zEnvironmentDeployment = z.object({
   access: zEnvironmentAccess,
 })
 
-export const zGetDeploymentOperationResponse = z.object({
-  operation: zDeploymentOperation,
-})
-
 export const zGetEnvironmentDeploymentResponse = z.object({
   environment_deployment: zEnvironmentDeployment,
+})
+
+export const zListApplicationInteractionsResponse = z.object({
+  data: z.array(zApplicationInteraction),
+  nextPageToken: z.string().optional(),
+  previousPageToken: z.string().optional(),
 })
 
 export const zListEnvironmentDeploymentsResponse = z.object({
@@ -899,13 +1016,8 @@ export const zPagination = z.object({
     .optional(),
 })
 
-export const zListApplicationInteractionsResponse = z.object({
-  data: z.array(zApplicationInteraction),
-  pagination: zPagination,
-})
-
-export const zListAppsResponse = z.object({
-  data: z.array(zDashboardApp),
+export const zListApplicationInteractionAppsResponse = z.object({
+  data: z.array(zNamedRef),
   pagination: zPagination,
 })
 
@@ -916,7 +1028,6 @@ export const zListDeploymentOperationsResponse = z.object({
 
 export const zListEnvironmentDeployedAppsResponse = z.object({
   data: z.array(zEnvironmentDeployedApp),
-  summary: zEnvironmentDeployedAppSummary,
   pagination: zPagination,
 })
 
@@ -925,9 +1036,16 @@ export const zListEnvironmentsResponse = z.object({
   pagination: zPagination,
 })
 
+export const zListOperationAppsResponse = z.object({
+  data: z.array(zOperationApp),
+  pagination: zPagination,
+})
+
 export const zDeleteEnvironmentApiKeyResponseWritable = z.record(z.string(), z.unknown())
 
 export const zDeleteEnvironmentResponseWritable = z.record(z.string(), z.unknown())
+
+export const zDeleteServiceApiConversationResponseWritable = z.record(z.string(), z.unknown())
 
 export const zEnvironmentMcpServerWritable = z.record(z.string(), z.unknown())
 
@@ -951,8 +1069,10 @@ export const zEnvironmentWritable = z.object({
   statusMessage: z.string(),
   lastError: zError.optional(),
   namespace: z.string().optional(),
-  managedBy: zEnvironmentManagedBy.optional(),
-  cpuPool: z.number(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   memory: zRunnerMemoryWritable.optional(),
@@ -982,7 +1102,10 @@ export const zRetryEnvironmentBootstrapResponseWritable = z.object({
  * in an isolated environment; elsewhere the runner belongs to the environment.
  */
 export const zRunnerSizingWritable = z.object({
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemoryWritable,
 })
 
@@ -990,26 +1113,40 @@ export const zEnvironmentDeployedAppWritable = z.object({
   deploymentId: z.string(),
   workspace: zNamedRef,
   app: zNamedRef,
-  status: zEnvironmentDeployedAppStatus,
+  runtimeState: zRuntimeState,
   currentVersion: zWorkflowVersion.optional(),
   deployedAt: z.iso.datetime().optional(),
   deployedBy: zOperator.optional(),
   latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
   sizing: zRunnerSizingWritable.optional(),
   occupiesPool: z.boolean().optional(),
+  recentInvocationCount: z.string().optional(),
+  versionsBehind: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zListEnvironmentDeployedAppsResponseWritable = z.object({
   data: z.array(zEnvironmentDeployedAppWritable),
-  summary: zEnvironmentDeployedAppSummary,
   pagination: zPagination,
 })
 
 export const zUpdateEnvironmentDeployedAppResourcesResponseWritable = z.object({
   deploymentId: z.string(),
-  isolatedCpu: z.number(),
-  allocatedCpuCount: z.number(),
-  poolCpuCount: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  allocatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  poolCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemoryWritable,
 })
 

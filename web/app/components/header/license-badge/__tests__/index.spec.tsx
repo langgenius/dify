@@ -1,4 +1,5 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
+import { noop } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
 import { consoleQuery } from '@/service/client'
@@ -13,10 +14,12 @@ const renderLicenseBadge = (license?: Parameters<typeof seedSystemFeaturesLicens
   const queryClient = createConsoleQueryClient()
   if (license) seedSystemFeaturesLicense(queryClient, license)
   else {
-    void queryClient.prefetchQuery({
-      queryKey: consoleQuery.systemFeatures.license.get.queryOptions().queryKey,
-      queryFn: () => new Promise(() => {}),
-    })
+    void queryClient
+      .query({
+        queryKey: consoleQuery.systemFeatures.license.get.queryOptions().queryKey,
+        queryFn: () => new Promise(() => {}),
+      })
+      .catch(noop)
   }
   return renderWithConsoleQuery(<LicenseBadge />, { queryClient })
 }

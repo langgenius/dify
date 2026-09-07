@@ -1,5 +1,6 @@
 import io
-from unittest.mock import MagicMock, patch
+from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -21,8 +22,12 @@ from controllers.console.files import (
     FileSupportTypeApi,
     upload_file_from_request,
 )
+from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
 def unwrap(func):
@@ -32,6 +37,33 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-123",
+        storage_type=StorageType.LOCAL,
+        key=f"upload/{file_id}/test.txt",
+        name="test.txt",
+        size=size,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-123",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+    )
+    upload_file.id = file_id
+    return upload_file
+
+
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
 
 
 @pytest.fixture
@@ -69,17 +101,9 @@ def mock_account_context(mock_current_user):
 
 
 @pytest.fixture
-def mock_db():
-    with patch("controllers.console.files.db") as db_mock:
-        db_mock.engine = MagicMock()
-        yield db_mock
-
-
-@pytest.fixture
-def mock_file_service(mock_db):
-    with patch("controllers.console.files.FileService") as fs:
-        instance = fs.return_value
-        yield instance
+def mock_file_service():
+    with patch("controllers.console.files.application_services") as services:
+        yield services.return_value.files
 
 
 class TestFileApiGet:
@@ -94,7 +118,7 @@ class TestFileApiGet:
                 return_value=50,
             ) as get_knowledge_file_size_limit,
         ):
-            data, status = get_method(api, "tenant-1")
+            data, status = get_method(api, _request_context())
 
         assert status == 200
         assert "file_size_limit" in data
@@ -161,25 +185,7 @@ class TestFileApiPost:
         api = FileApi()
         post_method = unwrap(api.post)
 
-        mock_file = MagicMock()
-        mock_file.id = "file-id-123"
-        mock_file.filename = "test.txt"
-        mock_file.name = "test.txt"
-        mock_file.size = 1024
-        mock_file.extension = "txt"
-        mock_file.mime_type = "text/plain"
-        mock_file.created_by = "user-123"
-        mock_file.created_at = 1234567890
-        mock_file.preview_url = "http://example.com/preview/file-id-123"
-        mock_file.source_url = "http://example.com/source/file-id-123"
-        mock_file.original_url = None
-        mock_file.reference = None
-        mock_file.user_id = "user-123"
-        mock_file.tenant_id = "tenant-123"
-        mock_file.conversation_id = None
-        mock_file.file_key = "file-key-123"
-
-        mock_file_service.upload_file.return_value = mock_file
+        mock_file_service.upload_file.return_value = _upload_file()
 
         data = {
             "file": (io.BytesIO(b"hello"), "test.txt"),
@@ -191,9 +197,18 @@ class TestFileApiPost:
         assert status == 201
         assert response["id"] == "file-id-123"
         assert response["name"] == "test.txt"
+        mock_file_service.upload_file.assert_called_once_with(
+            filename="test.txt",
+            content=b"hello",
+            mimetype="text/plain",
+            user=mock_account_context,
+            tenant_id=None,
+            source=None,
+            default_file_size_limit=None,
+        )
 
     def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_service):
-        upload_file = MagicMock()
+        upload_file = _upload_file()
         mock_file_service.upload_file.return_value = upload_file
 
         with app.test_request_context(
@@ -214,7 +229,7 @@ class TestFileApiPost:
         mock_account_context,
         mock_file_service,
     ):
-        upload_file = MagicMock()
+        upload_file = _upload_file()
         mock_file_service.upload_file.return_value = upload_file
 
         with (
@@ -240,26 +255,7 @@ class TestFileApiPost:
         api = FileApi()
         post_method = unwrap(api.post)
 
-        # Create a properly structured mock file object
-        mock_file = MagicMock()
-        mock_file.id = "file-id-456"
-        mock_file.filename = "test.txt"
-        mock_file.name = "test.txt"
-        mock_file.size = 512
-        mock_file.extension = "txt"
-        mock_file.mime_type = "text/plain"
-        mock_file.created_by = "user-456"
-        mock_file.created_at = 1234567890
-        mock_file.preview_url = None
-        mock_file.source_url = None
-        mock_file.original_url = None
-        mock_file.reference = None
-        mock_file.user_id = "user-456"
-        mock_file.tenant_id = "tenant-456"
-        mock_file.conversation_id = None
-        mock_file.file_key = "file-key-456"
-
-        mock_file_service.upload_file.return_value = mock_file
+        mock_file_service.upload_file.return_value = _upload_file(file_id="file-id-456", size=512)
 
         data = {
             "file": (io.BytesIO(b"content"), "test.txt"),
@@ -290,8 +286,10 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            with pytest.raises(FileTooLargeError):
+            with pytest.raises(FileTooLargeError) as error_info:
                 post_method(api, mock_account_context)
+
+        assert error_info.value.__cause__ is error
 
     def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -307,8 +305,10 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            with pytest.raises(UnsupportedFileTypeError):
+            with pytest.raises(UnsupportedFileTypeError) as error_info:
                 post_method(api, mock_account_context)
+
+        assert error_info.value.__cause__ is error
 
     def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -324,8 +324,11 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            with pytest.raises(BlockedFileExtensionError):
+            with pytest.raises(BlockedFileExtensionError) as error_info:
                 post_method(api, mock_account_context)
+
+        assert error_info.value.description == error.description
+        assert error_info.value.__cause__ is error
 
 
 class TestFilePreviewApi:
@@ -335,9 +338,10 @@ class TestFilePreviewApi:
         mock_file_service.get_file_preview.return_value = "preview text"
 
         with app.test_request_context():
-            result = get_method(api, "tenant-123", "1234")
+            result = get_method(api, _request_context(workspace_id="tenant-123"), "1234")
 
         assert result == {"content": "preview text"}
+        mock_file_service.get_file_preview.assert_called_once_with(file_id="1234", tenant_id="tenant-123")
 
 
 class TestFileSupportTypeApi:
@@ -346,6 +350,6 @@ class TestFileSupportTypeApi:
         get_method = unwrap(api.get)
 
         with app.test_request_context():
-            result = get_method(api)
+            result = get_method(api, _request_context())
 
         assert result == {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

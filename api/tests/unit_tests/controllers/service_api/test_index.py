@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
+from controllers.service_api import bp as service_api_bp
 from controllers.service_api import index as index_module
 from controllers.service_api.index import IndexApi
 
@@ -52,3 +53,21 @@ class TestIndexApi:
 
         # Assert
         assert response["server_version"] == version
+
+    def test_root_route_returns_public_api_info(self):
+        """Exercise the registered blueprint so Flask-RESTX cannot shadow the resource."""
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        app.register_blueprint(service_api_bp)
+
+        with patch.object(index_module.dify_config.project, "version", "1.0.0-route-test"):
+            response = app.test_client().get("/v1/")
+
+        assert response.status_code == 200
+        assert response.get_json() == {
+            "welcome": "Dify OpenAPI",
+            "api_version": "v1",
+            "server_version": "1.0.0-route-test",
+        }
+        root_rules = [rule for rule in app.url_map.iter_rules() if rule.rule == "/v1/"]
+        assert [rule.endpoint for rule in root_rules] == ["service_api.root"]

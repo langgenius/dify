@@ -172,13 +172,17 @@ describe('OAuthClientSettings', () => {
   it('should render backdrop when nested inside another dialog', () => {
     render(
       <Dialog open>
-        <DialogContent backdropClassName="bg-transparent">
+        <DialogContent>
           <OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />
         </DialogContent>
       </Dialog>,
     )
 
-    expect(document.querySelector('.bg-background-overlay')).toBeInTheDocument()
+    const openBackdrops = screen
+      .getAllByRole('presentation', { hidden: true })
+      .filter((element) => element.hasAttribute('data-open'))
+
+    expect(openBackdrops).toHaveLength(2)
   })
 
   it('should pass schema defaults to auth form', () => {

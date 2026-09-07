@@ -301,6 +301,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         self._clear_tracked_jobs()
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
+        """Start a shell job in the current workspace and return its output and status."""
+
         try:
             env = self._build_shell_command_env(include_agent_stub_env=True)
             agent_stub_token = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
@@ -337,6 +339,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             return _tool_unexpected_error("shell_run", exc)
 
     async def _tool_wait(self, job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
+        """Wait for more output or completion from an existing shell job."""
+
         try:
             offset = self._tracked_offset(job_id)
             result = await self._require_resource().commands.wait(job_id, offset=offset, timeout=timeout)
@@ -369,6 +373,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             return _tool_unexpected_error("shell_wait", exc, job_id=job_id)
 
     async def _tool_input(self, job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
+        """Send text to a running shell job and wait for its next output."""
+
         try:
             offset = self._tracked_offset(job_id)
             result = await self._require_resource().commands.input(job_id, text, offset=offset, timeout=timeout)
@@ -405,6 +411,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         job_id: str,
         grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS,
     ) -> ShellInterruptToolResult:
+        """Interrupt a running shell job and return its final status."""
+
         try:
             self._ensure_tracked_job(job_id)
             result = await self._require_resource().commands.interrupt(job_id, grace_seconds=grace_seconds)

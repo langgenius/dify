@@ -12,6 +12,7 @@ import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/p
 import type {
   AgentFileNode,
   AgentProviderTool,
+  AgentSkill,
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -37,6 +38,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
@@ -49,7 +51,11 @@ import {
 } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
+import {
+  useAgentConfigFiles,
+  useAgentConfigSkills,
+  useAgentWorkspaceSkillBindings,
+} from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
@@ -416,8 +422,23 @@ function AgentPromptSelectionBridge({
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const [value, setValue] = useAtom(agentComposerPromptAtom)
-  const { skills } = useAgentConfigSkills()
+  const { skills: embeddedSkills } = useAgentConfigSkills()
+  const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
+  const skills = useMemo<AgentSkill[]>(() => {
+    const workspaceSkills = workspaceSkillBindingsQuery.data?.data ?? []
+    const workspaceSkillNames = new Set(workspaceSkills.map((skill) => skill.name))
+
+    return [
+      ...workspaceSkills.map((skill) => ({
+        id: skill.name,
+        name: skill.display_name || skill.name,
+        description: skill.description,
+      })),
+      ...embeddedSkills.filter((skill) => !workspaceSkillNames.has(skill.name)),
+    ]
+  }, [embeddedSkills, workspaceSkillBindingsQuery.data?.data])
   const { files } = useAgentConfigFiles()
   const tools = useAtomValue(agentComposerToolsAtom)
   const addProviderTools = useSetAtom(addProviderToolsAtom)
@@ -1039,6 +1060,7 @@ export function AgentPromptEditor() {
           onAddFile={addActions.files}
           onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
+          canAddWorkspaceSkill={enableSkill}
           knowledgeRetrievals={retrievals}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
@@ -1111,7 +1133,7 @@ export function AgentPromptEditor() {
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
-              className="min-h-26 text-text-primary"
+              className={cn('min-h-26 text-text-primary', readOnly && 'cursor-not-allowed')}
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}

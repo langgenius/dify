@@ -36,7 +36,7 @@ class DataSourceOauthBinding(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"), default=False)
+    disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.false(), default=False)
 
 
 class DataSourceApiKeyAuthBindingDict(TypedDict):
@@ -75,7 +75,7 @@ class DataSourceApiKeyAuthBinding(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"), default=False)
+    disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.false(), default=False)
 
     def to_dict(self) -> DataSourceApiKeyAuthBindingDict:
         result: DataSourceApiKeyAuthBindingDict = {

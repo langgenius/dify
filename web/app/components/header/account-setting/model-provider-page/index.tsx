@@ -53,17 +53,20 @@ const ModelProviderPage = ({
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
   const { canSetPluginPreferences } = usePluginSettingsAccess()
+  const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.textGeneration)
+    useDefaultModel(ModelTypeEnum.textGeneration, defaultModelQueryOptions)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.textEmbedding)
+    useDefaultModel(ModelTypeEnum.textEmbedding, defaultModelQueryOptions)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(
     ModelTypeEnum.rerank,
+    defaultModelQueryOptions,
   )
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.speech2text)
+    useDefaultModel(ModelTypeEnum.speech2text, defaultModelQueryOptions)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(
     ModelTypeEnum.tts,
+    defaultModelQueryOptions,
   )
   const {
     modelProviders: providers,
@@ -154,21 +157,29 @@ const ModelProviderPage = ({
     systemModelConfigStatus === 'no-provider' || systemModelConfigStatus === 'none-configured'
       ? 'modelProvider.noneConfigured'
       : null
-  const showWarning = !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
-  const systemModelSelector = (className: string) => (
-    <SystemModelSelector
-      className={className}
-      notConfigured={showWarning}
-      textGenerationDefaultModel={textGenerationDefaultModel}
-      embeddingsDefaultModel={embeddingsDefaultModel}
-      rerankDefaultModel={rerankDefaultModel}
-      speech2textDefaultModel={speech2textDefaultModel}
-      ttsDefaultModel={ttsDefaultModel}
-      isLoading={isDefaultModelLoading}
-      hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
-      onOpenMarketplace={onOpenMarketplace}
-    />
-  )
+  const showWarning =
+    canSetPluginPreferences &&
+    !isLoadingModelProviders &&
+    !isDefaultModelLoading &&
+    !!warningTextKey
+  const systemModelSelector = (className: string) => {
+    if (!canSetPluginPreferences) return null
+
+    return (
+      <SystemModelSelector
+        className={className}
+        notConfigured={showWarning}
+        textGenerationDefaultModel={textGenerationDefaultModel}
+        embeddingsDefaultModel={embeddingsDefaultModel}
+        rerankDefaultModel={rerankDefaultModel}
+        speech2textDefaultModel={speech2textDefaultModel}
+        ttsDefaultModel={ttsDefaultModel}
+        isLoading={isDefaultModelLoading}
+        hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+        onOpenMarketplace={onOpenMarketplace}
+      />
+    )
+  }
 
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(

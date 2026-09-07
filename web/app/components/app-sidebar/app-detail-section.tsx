@@ -98,9 +98,9 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
     const appId = appDetail.id
     const isWorkflowApp =
       appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
-    const supportsAppDeploy = appDetail.mode === AppModeEnum.WORKFLOW
     const supportsAnnotations =
       appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
+    const supportsResourceAccess = appDetail.mode !== AppModeEnum.AGENT
     const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
       currentUserId,
       resourceMaintainer: appDetail.maintainer,
@@ -119,13 +119,17 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             },
           ]
         : []),
-      {
-        name: t(($) => $['appMenus.accessPoint'], { ns: 'common' }),
-        href: `/app/${appId}/access-point`,
-        icon: accessPointNavIcon,
-        selectedIcon: accessPointNavIcon,
-      },
-      ...(supportsAppDeploy && appACLCapabilities.canDeploy
+      ...(appACLCapabilities.canViewAccessPoint
+        ? [
+            {
+              name: t(($) => $['appMenus.accessPoint'], { ns: 'common' }),
+              href: `/app/${appId}/access-point`,
+              icon: accessPointNavIcon,
+              selectedIcon: accessPointNavIcon,
+            },
+          ]
+        : []),
+      ...(isWorkflowApp && appACLCapabilities.canDeploy
         ? [
             {
               name: t(($) => $['appMenus.deploy'], { ns: 'common' }),
@@ -165,7 +169,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             },
           ]
         : []),
-      ...(appACLCapabilities.canAccessConfig
+      ...(supportsResourceAccess && appACLCapabilities.canAccessConfig
         ? [
             {
               name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),

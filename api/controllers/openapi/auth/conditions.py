@@ -7,7 +7,7 @@ from controllers.openapi.auth.data import AuthData, RequestContext
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from services.enterprise.enterprise_service import WebAppAccessMode
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 CondFn = Callable[[RequestContext, AuthData | None], bool]
 
@@ -50,7 +50,7 @@ EDITION_COMMUNITY = config_cond(lambda: dify_config.DEPLOYMENT_EDITION == Deploy
 EDITION_ENTERPRISE = config_cond(lambda: dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE)
 EDITION_CLOUD = config_cond(lambda: dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
 
-WEBAPP_AUTH_ENABLED = config_cond(lambda: FeatureService.get_system_features().webapp_auth.enabled)
+WEBAPP_AUTH_ENABLED = config_cond(lambda: SystemFeatureService.is_webapp_auth_enabled())
 
 WEBAPP_RUN_SCOPED = request_cond(lambda ctx: ctx.scope == Scope.APPS_RUN)
 

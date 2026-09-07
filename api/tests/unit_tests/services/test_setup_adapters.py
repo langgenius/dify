@@ -14,7 +14,7 @@ from services.setup_service import SetupInput
 def test_provision_delegates_to_register_service_with_managed_session(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    provisioner = RegisterServiceAccountProvisioner(client=sqlite_session_factory)
+    provisioner = RegisterServiceAccountProvisioner(session_factory=sqlite_session_factory)
     setup = SetupInput(
         email="admin@example.com",
         name="Admin",

@@ -10,13 +10,6 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
-const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
-
 // Mock next/link
 vi.mock('@/next/link', () => ({
   default: function MockLink({
@@ -650,29 +643,15 @@ describe('EmbeddingProcess', () => {
   })
 
   describe('User Interactions', () => {
-    // Tests for button clicks and navigation
-    it('should navigate to document list when nav button is clicked', async () => {
+    it('should link to the document list and invalidate its cache on activation', () => {
       const props = createDefaultProps({ datasetId: 'my-dataset-123' })
 
       render(<EmbeddingProcess {...props} />)
-      const navButton = screen.getByText('datasetCreation.stepThree.navTo')
-      fireEvent.click(navButton)
+      const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
+      expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
+      fireEvent.click(link)
 
       expect(mockInvalidDocumentList).toHaveBeenCalled()
-      expect(mockPush).toHaveBeenCalledWith('/datasets/my-dataset-123/documents')
-    })
-
-    it('should call invalidDocumentList before navigation', () => {
-      const props = createDefaultProps()
-      const callOrder: string[] = []
-      mockInvalidDocumentList.mockImplementation(() => callOrder.push('invalidate'))
-      mockPush.mockImplementation(() => callOrder.push('push'))
-
-      render(<EmbeddingProcess {...props} />)
-      const navButton = screen.getByText('datasetCreation.stepThree.navTo')
-      fireEvent.click(navButton)
-
-      expect(callOrder).toEqual(['invalidate', 'push'])
     })
   })
 

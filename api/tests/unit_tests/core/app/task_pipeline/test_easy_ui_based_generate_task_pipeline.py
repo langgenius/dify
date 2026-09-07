@@ -361,10 +361,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         list(pipeline._process_stream_response(publisher=publisher, trace_manager=None))
 
         # Assert
-        # Called once with message and once with None at the end
-        assert publisher.publish.call_count == 2
-        publisher.publish.assert_any_call(mock_queue_message)
-        publisher.publish.assert_any_call(None)
+        publisher.publish.assert_called_once_with(mock_queue_message)
 
     def test_trace_manager_passed_to_save_message(self, pipeline, committed_sessions):
         """Test that trace manager is passed to _save_message."""

@@ -56,6 +56,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[True],
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -70,6 +71,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[False],
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -84,6 +86,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 def invoke_llm_with_structured_output(
     *,
@@ -97,6 +100,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
     Invoke large language model with structured output
@@ -139,6 +143,7 @@ def invoke_llm_with_structured_output(
         stop=stop,
         stream=stream,
         callbacks=callbacks,
+        request_metadata=request_metadata,
     )
 
     if isinstance(llm_result, LLMResult):

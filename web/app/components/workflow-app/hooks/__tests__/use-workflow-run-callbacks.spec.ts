@@ -136,9 +136,9 @@ describe('useWorkflowRun callbacks helpers', () => {
       workflowData,
     )
 
-    callbacks.onTTSChunk?.('message-1', 'audio-chunk')
+    callbacks.onTTSChunk?.('message-1', 'audio-chunk', 'audio/wav')
     expect(getOrCreatePlayer).toHaveBeenCalled()
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
+    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, 'audio/wav')
     expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
 
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
@@ -210,7 +210,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(handlers.handleWorkflowNodeStarted).not.toHaveBeenCalled()
 
     finalCallbacks.onTTSChunk?.('message-2', 'audio-chunk')
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
+    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, undefined)
     expect(mockResetMsgId).toHaveBeenCalledWith('message-2')
 
     finalCallbacks.onTTSChunk?.('message-3', '')
@@ -322,7 +322,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
     expect(userCallbacks.onCompleted).toHaveBeenCalledWith(false, '')
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
+    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, undefined)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-finished', false)
     expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
     expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
@@ -501,7 +501,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       finalCallbacks,
     )
     expect(mockSseGet).toHaveBeenCalledTimes(1)
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
+    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, undefined)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-finished', false)
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()

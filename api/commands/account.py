@@ -8,6 +8,7 @@ from constants.languages import languages
 from extensions.ext_database import db
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
+from services.account_email import normalize_email
 from services.account_service import AccountService, RegisterService, TenantService
 
 
@@ -82,6 +83,7 @@ def reset_email(email, new_email, email_confirm):
     with Session(db.engine) as session:
         account = session.merge(account)
         account.email = normalized_new_email
+        account.normalized_email = normalize_email(normalized_new_email)
         session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 

@@ -1,12 +1,11 @@
+from collections.abc import Iterator
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, inspect
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import Executable
 
-import core.workflow.nodes.agent_v2.binding_resolver as resolver_module
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from models.agent import (
     Agent,
@@ -104,24 +103,24 @@ def _binding(
     )
 
 
-def _bind_factory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> list[Executable]:
+@pytest.fixture
+def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[Executable]]:
+    """Record statements executed by the service-owned SQLite sessions."""
     scalar_statements: list[Executable] = []
-
-    class RecordingSession(Session):
-        pass
 
     def record_statement(execute_state: ORMExecuteState) -> None:
         scalar_statements.append(execute_state.statement)
 
-    event.listen(RecordingSession, "do_orm_execute", record_statement)
-    factory = sessionmaker(bind=sqlite_engine, class_=RecordingSession, expire_on_commit=False)
-    monkeypatch.setattr(resolver_module.session_factory, "create_session", factory)
-    return scalar_statements
+    event.listen(sqlite_session_factory.class_, "do_orm_execute", record_statement)
+    try:
+        yield scalar_statements
+    finally:
+        event.remove(sqlite_session_factory.class_, "do_orm_execute", record_statement)
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_returns_detached_binding_bundle(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
     agent = _agent(tenant_id=ids["tenant_id"])
@@ -138,8 +137,6 @@ def test_binding_resolver_returns_detached_binding_bundle(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     bundle = WorkflowAgentBindingResolver().resolve(**ids)
 
     assert bundle.binding.id == binding.id
@@ -152,7 +149,7 @@ def test_binding_resolver_returns_detached_binding_bundle(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_uses_active_snapshot_for_roster_agent(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
     agent = _agent(
@@ -174,8 +171,6 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     bundle = WorkflowAgentBindingResolver().resolve(**ids)
 
     assert bundle.snapshot.id == active_snapshot.id
@@ -190,9 +185,8 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(
 )
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     sqlite_session: Session,
+    orm_statements: list[Executable],
     binding_type: WorkflowAgentBindingType,
     scope: AgentScope,
     source: AgentSource,
@@ -217,8 +211,6 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    scalar_statements = _bind_factory(monkeypatch, sqlite_engine)
-
     bundle = WorkflowAgentBindingResolver().resolve(
         **ids,
         binding_id=binding.id,
@@ -226,13 +218,13 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
-    assert binding.id in scalar_statements[0].compile().params.values()
-    assert pinned_snapshot.id in scalar_statements[-1].compile().params.values()
+    assert binding.id in orm_statements[0].compile().params.values()
+    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_does_not_fallback_from_an_explicit_empty_snapshot(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
     agent = _agent(
@@ -254,8 +246,6 @@ def test_binding_resolver_does_not_fallback_from_an_explicit_empty_snapshot(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
         WorkflowAgentBindingResolver().resolve(**ids, binding_id=binding.id, snapshot_id="")
 
@@ -282,7 +272,7 @@ def test_binding_resolver_rejects_half_pinned_generation(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_rejects_unpublished_roster_agent(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
     snapshot_id = str(uuid4())
@@ -304,8 +294,6 @@ def test_binding_resolver_rejects_unpublished_roster_agent(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
         WorkflowAgentBindingResolver().resolve(**ids)
 
@@ -315,8 +303,6 @@ def test_binding_resolver_rejects_unpublished_roster_agent(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
@@ -352,8 +338,6 @@ def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot
         ]
     )
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
         WorkflowAgentBindingResolver().resolve(**ids)
     assert exc_info.value.error_code == "agent_not_available"
@@ -375,9 +359,7 @@ def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot
     assert bundle.snapshot.id == snapshot.id
 
 
-def test_binding_resolver_raises_when_binding_missing(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    _bind_factory(monkeypatch, sqlite_engine)
-
+def test_binding_resolver_raises_when_binding_missing() -> None:
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
         WorkflowAgentBindingResolver().resolve(**_resolve_ids())
 
@@ -386,7 +368,7 @@ def test_binding_resolver_raises_when_binding_missing(monkeypatch: pytest.Monkey
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_raises_when_agent_archived(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
     agent = _agent(tenant_id=ids["tenant_id"], status=AgentStatus.ARCHIVED)
@@ -400,8 +382,6 @@ def test_binding_resolver_raises_when_agent_archived(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
         WorkflowAgentBindingResolver().resolve(**ids)
 
@@ -410,7 +390,7 @@ def test_binding_resolver_raises_when_agent_archived(
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_raises_when_snapshot_missing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     ids = _resolve_ids()
     agent = _agent(tenant_id=ids["tenant_id"])
@@ -424,8 +404,6 @@ def test_binding_resolver_raises_when_snapshot_missing(
     )
     sqlite_session.add(binding)
     sqlite_session.commit()
-    _bind_factory(monkeypatch, sqlite_engine)
-
     with pytest.raises(WorkflowAgentBindingError) as exc_info:
         WorkflowAgentBindingResolver().resolve(**ids)
 

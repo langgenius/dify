@@ -1,4 +1,4 @@
-import type { Placement, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
+import type { PopoverPositionerProps, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { CSSProperties, KeyboardEvent, MouseEventHandler } from 'react'
 import type {
   CommonNodeType,
@@ -30,15 +30,15 @@ import { BlockEnum, isTriggerNode } from '../types'
 import { useTabs } from './hooks'
 import { BlockSelectorPanels } from './tabs'
 
-export type BlockSelectorProps = {
+export type BlockSelectorProps = Pick<
+  PopoverPositionerProps,
+  'alignOffset' | 'placement' | 'sideOffset'
+> & {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onSelect: OnSelectBlock
   trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
   triggerStyle?: CSSProperties
   triggerClassName?: string
   triggerAriaLabel?: string

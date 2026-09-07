@@ -8,6 +8,7 @@ import pytest
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
@@ -21,6 +22,7 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _build_typed_node_config(node_type: NodeType):
@@ -98,8 +100,7 @@ class TestWorkflowEntryInit:
         observability_layer = sentinel.observability_layer
 
         with (
-            patch.object(workflow_entry.dify_config, "DEBUG", True),
-            patch.object(workflow_entry.dify_config, "ENABLE_OTEL", False),
+            config_overrides_context(DEBUG=True, ENABLE_OTEL=False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
             patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
             patch.object(workflow_entry, "GraphEngine", return_value=graph_engine) as graph_engine_cls,
@@ -610,6 +611,7 @@ class TestWorkflowEntryHelpers:
             user_id="user-id",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context_cls.assert_called_once_with(
             workflow_id="",

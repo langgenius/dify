@@ -69,7 +69,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         }}
       >
         <DialogContent
-          backdropClassName="bg-transparent!"
+          backdropProps={{ className: 'bg-transparent!' }}
           className="top-16! bottom-4! left-[max(8px,calc(100vw-1136px))]! flex max-h-none! w-120! max-w-[calc(100vw-16px)]! translate-x-0! translate-y-0! flex-col overflow-hidden! rounded-xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! pt-3! shadow-xl!"
         >
           {modalContent}

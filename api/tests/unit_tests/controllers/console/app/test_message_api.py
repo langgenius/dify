@@ -81,10 +81,18 @@ def test_app_message_routes_pass_injected_session(
     monkeypatch.setattr(message_module, "_get_message_detail", get_message_detail)
 
     assert unwrap(message_module.ChatMessageListApi.get)(
-        message_module.ChatMessageListApi(), session, current_user, app_model
+        message_module.ChatMessageListApi(),
+        message_module.ChatMessagesQuery(conversation_id="550e8400-e29b-41d4-a716-446655440001"),
+        session,
+        current_user,
+        app_model,
     ) == {"data": []}
     assert unwrap(message_module.MessageFeedbackApi.post)(
-        message_module.MessageFeedbackApi(), session, current_user, app_model
+        message_module.MessageFeedbackApi(),
+        message_module.MessageFeedbackPayload(message_id=message_id, rating="like"),
+        session,
+        current_user,
+        app_model,
     ) == {"result": "success"}
     assert unwrap(message_module.MessageSuggestedQuestionApi.get)(
         message_module.MessageSuggestedQuestionApi(), session, current_user, app_model, message_id
@@ -111,6 +119,11 @@ def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_ses
 
     with app.test_request_context(json={"message_id": message_id, "rating": "like", "content": "helpful"}):
         result = message_module._update_message_feedback(
+            args=message_module.MessageFeedbackPayload(
+                message_id=message_id,
+                rating="like",
+                content="helpful",
+            ),
             session=session,
             current_user=SimpleNamespace(id="account-1"),
             app_model=SimpleNamespace(id="app-1"),

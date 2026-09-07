@@ -83,7 +83,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName={cn('w-35', popupClassName)}
+        className={cn('w-35', popupClassName)}
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel>

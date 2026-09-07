@@ -41,6 +41,7 @@
     # core/policy/publish_policy.py
     from controllers.console.app import request_context
 
+
     def can_publish() -> bool:
         return request_context.current_user.is_admin
     ```
@@ -49,6 +50,7 @@
     # core/policy/publish_policy.py
     def can_publish(role: str) -> bool:
         return role == "admin"
+
 
     # service layer adapts web/user context to domain input
     allowed = can_publish(role=current_user.role)
@@ -66,6 +68,7 @@
     # api/libs/conversation_filter.py
     from services.conversation_service import ConversationService
 
+
     def should_archive_conversation(conversation, tenant_id: str) -> bool:
         # Domain policy and service dependency are leaking into libs.
         service = ConversationService()
@@ -79,8 +82,10 @@
     def older_than_days(idle_days: int, threshold_days: int) -> bool:
         return idle_days > threshold_days
 
+
     # services/conversation_service.py (business logic stays in service/core)
     from libs.datetime_utils import older_than_days
+
 
     def should_archive_conversation(conversation, tenant_id: str) -> bool:
         threshold_days = 90 if has_paid_plan(tenant_id) else 30

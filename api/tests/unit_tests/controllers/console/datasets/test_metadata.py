@@ -22,6 +22,7 @@ from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.errors.account import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -150,7 +151,7 @@ class TestDatasetMetadataGetApi:
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.metadata.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(

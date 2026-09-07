@@ -54,7 +54,7 @@ describe('serverUserProfileQueryOptions', () => {
     const { serverUserProfileQueryOptions } = await import('../server')
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    const data = await queryClient.fetchQuery(serverUserProfileQueryOptions())
+    const data = await queryClient.query(serverUserProfileQueryOptions())
 
     expect(serverUserProfileQueryOptions().queryKey).toEqual(userProfileQueryOptions().queryKey)
     expect(data).toEqual({

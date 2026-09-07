@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session, validates
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -57,6 +57,7 @@ from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from .agent import Agent
+    from .dataset import DatasetCollectionBinding
     from .workflow import Workflow
 
 
@@ -434,9 +435,9 @@ class App(Base):
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
     api_rpm: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"))
     api_rph: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"))
-    is_demo: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
-    is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
-    is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
+    is_demo: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false())
+    is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false())
+    is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.false())
     tracing = mapped_column(LongText, nullable=True)
     max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
@@ -446,7 +447,7 @@ class App(Base):
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
     @property
     def desc_or_prompt(self) -> str:
@@ -508,7 +509,9 @@ class App(Base):
         agent = self.agent_app_binding_with_session(session=session)
         return agent.id if agent else None
 
-    def agent_app_binding_with_session(self, *, session: Session, include_archived: bool = False) -> Agent | None:
+    def agent_app_binding_with_session(
+        self, *, session: Session | scoped_session, include_archived: bool = False
+    ) -> Agent | None:
         """For an Agent App (mode=agent), the Agent bound to it.
 
         A roster Agent is bound through ``Agent.app_id``; a workflow-only Agent
@@ -988,12 +991,8 @@ class RecommendedApp(TypeBase):
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-    is_learn_dify: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
-    )
-    is_cloud_only: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
-    )
+    is_learn_dify: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_cloud_only: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),
@@ -1033,7 +1032,7 @@ class InstalledApp(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1238,7 +1237,7 @@ class Conversation(Base):
         lambda: MessageAnnotation, backref="conversation", lazy="select", passive_deletes="all"
     )
 
-    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
     @property
     def inputs(self) -> dict[str, Any]:
@@ -1337,10 +1336,6 @@ class Conversation(Base):
 
         return model_config
 
-    @property
-    def summary_or_query(self):
-        return self.summary_or_query_with_session(session=db.session())
-
     def summary_or_query_with_session(self, *, session: Session) -> str:
         if self.summary:
             return self.summary
@@ -1351,40 +1346,20 @@ class Conversation(Base):
             else:
                 return ""
 
-    @property
-    def annotated(self) -> bool:
-        return self.annotated_with_session(session=db.session())
-
     def annotated_with_session(self, *, session: Session) -> bool:
         return (
             session.scalar(select(func.count(MessageAnnotation.id)).where(MessageAnnotation.conversation_id == self.id))
             or 0
         ) > 0
 
-    @property
-    def annotation(self) -> MessageAnnotation | None:
-        return self.annotation_with_session(session=db.session())
-
     def annotation_with_session(self, *, session: Session) -> MessageAnnotation | None:
         return session.scalar(select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1))
-
-    @property
-    def message_count(self) -> int:
-        return self.message_count_with_session(session=db.session())
 
     def message_count_with_session(self, *, session: Session) -> int:
         return session.scalar(select(func.count(Message.id)).where(Message.conversation_id == self.id)) or 0
 
-    @property
-    def user_feedback_stats(self) -> dict[str, int]:
-        return self.user_feedback_stats_with_session(session=db.session())
-
     def user_feedback_stats_with_session(self, *, session: Session) -> dict[str, int]:
         return self._feedback_stats_with_session(session=session, from_source=FeedbackFromSource.USER)
-
-    @property
-    def admin_feedback_stats(self) -> dict[str, int]:
-        return self.admin_feedback_stats_with_session(session=db.session())
 
     def admin_feedback_stats_with_session(self, *, session: Session) -> dict[str, int]:
         return self._feedback_stats_with_session(session=session, from_source=FeedbackFromSource.ADMIN)
@@ -1413,10 +1388,6 @@ class Conversation(Base):
         )
 
         return {"like": like, "dislike": dislike}
-
-    @property
-    def status_count(self):
-        return self.status_count_with_session(session=db.session())
 
     def status_count_with_session(self, *, session: Session) -> dict[str, int] | None:
         from models.workflow import WorkflowRun
@@ -1472,10 +1443,6 @@ class Conversation(Base):
             "paused": status_counts[WorkflowExecutionStatus.PAUSED],
         }
 
-    @property
-    def first_message(self) -> Message | None:
-        return self.first_message_with_session(session=db.session())
-
     def first_message_with_session(self, *, session: Session) -> Message | None:
         return session.scalar(
             select(Message).where(Message.conversation_id == self.id).order_by(Message.created_at.asc())
@@ -1486,10 +1453,6 @@ class Conversation(Base):
         with Session(db.engine, expire_on_commit=False) as session:
             return session.scalar(select(App).where(App.id == self.app_id))
 
-    @property
-    def from_end_user_session_id(self) -> str | None:
-        return self.from_end_user_session_id_with_session(session=db.session())
-
     def from_end_user_session_id_with_session(self, *, session: Session) -> str | None:
         if self.from_end_user_id:
             end_user = session.scalar(select(EndUser).where(EndUser.id == self.from_end_user_id))
@@ -1497,10 +1460,6 @@ class Conversation(Base):
                 return end_user.session_id
 
         return None
-
-    @property
-    def from_account_name(self) -> str | None:
-        return self.from_account_name_with_session(session=db.session())
 
     def from_account_name_with_session(self, *, session: Session) -> str | None:
         if self.from_account_id:
@@ -1597,7 +1556,7 @@ class Message(Base):
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     app_mode: Mapped[AppMode | None] = mapped_column(EnumText(AppMode, length=255), nullable=True)
 
@@ -1662,16 +1621,28 @@ class Message(Base):
         if not self.answer:
             return self.answer
 
-        pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
-        matches = re.findall(pattern, self.answer)
-
-        if not matches:
-            return self.answer
-
-        urls = [match[0] for match in matches]
-
-        # remove duplicate urls
-        urls = list(set(urls))
+        # Match file URLs in three shapes the agent runtime may produce:
+        #   - Markdown link:        [text](https://.../files/tools/.../timestamp=&nonce=&sign=)
+        #   - Backticked link:      `https://.../files/tools/.../timestamp=&nonce=&sign=`
+        #   - Bare URL:             https://.../files/tools/.../timestamp=&nonce=&sign=
+        # The original implementation only matched the markdown form, so
+        # bare and backticked tool file URLs kept the long-lived
+        # INTERNAL_FILES_URL host and 5xx-ed at serve time. Refs #40788.
+        # The host prefix is optional so relative `/files/...` URLs that
+        # the agent returns without a host are also covered. The
+        # `(?=[)\s`]|$)` at the end of the bare-URL pattern (and the
+        # closing backtick / paren on the wrapped forms) stops the
+        # greedy `.*?=.*?` after `&sign=` from running off the end of
+        # the answer.
+        url_core = r"(?:https?:\/\/.+?)?\/files\/(tools\/)?[\w-]+.*?timestamp=[^)\s]*?&nonce=[^)\s]*?&sign=[^)\s]*?"
+        patterns = [
+            r"\[!?.*?\]\((" + url_core + r")\)",  # [text](url)
+            r"`(" + url_core + r")`",  # `url`
+            r"(?:^|\s|\()(" + url_core + r")(?:[\s)\].,;]|$)",  # bare url
+        ]
+        urls: set[str] = set()
+        for pattern in patterns:
+            urls.update(m.group(1) for m in re.finditer(pattern, self.answer))
 
         if not urls:
             return self.answer
@@ -1718,6 +1689,7 @@ class Message(Base):
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
+
                 upload_file_id = result.group(1)
                 if not upload_file_id:
                     continue
@@ -1984,10 +1956,6 @@ class MessageFeedback(TypeBase):
         init=False,
     )
 
-    @property
-    def from_account(self) -> Account | None:
-        return self.from_account_with_session(session=db.session())
-
     def from_account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.from_account_id))
 
@@ -2073,16 +2041,8 @@ class MessageAnnotation(TypeBase):
         """Return a non-null question string, falling back to the answer content."""
         return self.question or self.content
 
-    @property
-    def account(self) -> Account | None:
-        return self.account_with_session(session=db.session())
-
     def account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.account_id))
-
-    @property
-    def annotation_create_account(self) -> Account | None:
-        return self.annotation_create_account_with_session(session=db.session())
 
     def annotation_create_account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.account_id))
@@ -2114,17 +2074,15 @@ class AppAnnotationHitHistory(TypeBase):
     annotation_question: Mapped[str] = mapped_column(LongText, nullable=False)
     annotation_content: Mapped[str] = mapped_column(LongText, nullable=False)
 
-    @property
-    def account(self):
-        return db.session.scalar(
+    def account(self, session: Session) -> Account | None:
+        return session.scalar(
             select(Account)
             .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
             .where(MessageAnnotation.id == self.annotation_id)
         )
 
-    @property
-    def annotation_create_account(self):
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+    def annotation_create_account(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.account_id))
 
 
 class AppAnnotationSetting(TypeBase):
@@ -2153,11 +2111,10 @@ class AppAnnotationSetting(TypeBase):
         init=False,
     )
 
-    @property
-    def collection_binding_detail(self):
+    def collection_binding_detail(self, session: Session) -> DatasetCollectionBinding | None:
         from .dataset import DatasetCollectionBinding
 
-        return db.session.scalar(
+        return session.scalar(
             select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id)
         )
 
@@ -2235,9 +2192,7 @@ class EndUser(Base, UserMixin):
     type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
-    _is_anonymous: Mapped[bool] = mapped_column(
-        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
-    )
+    _is_anonymous: Mapped[bool] = mapped_column("is_anonymous", sa.Boolean, nullable=False, server_default=sa.true())
 
     @property
     @override
@@ -2303,7 +2258,15 @@ class AppMCPServer(TypeBase):
         return cast(dict[str, str], json.loads(self.parameters))
 
 
-class Site(Base):
+class Site(TypeBase):
+    """Public site configuration backed by the nullable legacy ``sites`` schema.
+
+    Only the app, title, language, and token strategy are required at
+    construction time. Nullable database columns keep ``None`` defaults so
+    converting this model to ``TypeBase`` does not make legacy call sites pass
+    values that the database has never required.
+    """
+
     __tablename__ = "sites"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="site_pkey"),
@@ -2311,47 +2274,60 @@ class Site(Base):
         sa.Index("site_code_idx", "code", "status"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
-    icon: Mapped[str | None] = mapped_column(String(255))
-    icon_background = mapped_column(String(255))
-    description = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
-    chat_color_theme = mapped_column(String(255))
-    chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    copyright = mapped_column(String(255))
-    privacy_policy = mapped_column(String(255))
-    input_placeholder = mapped_column(String(255))
-    show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
-    customize_domain = mapped_column(String(255))
     customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
-    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4())
+    )
+    icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True, default=None)
+    icon: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    icon_background: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    copyright: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    privacy_policy: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    input_placeholder: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    code: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+
+    customize_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    chat_color_theme: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    chat_color_theme_inverted: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.false(), default=False
+    )
+    show_workflow_steps: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.true(), default=True
+    )
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.false(), default=False
+    )
+    custom_disclaimer: Mapped[str] = mapped_column(LongText, nullable=False, default="")
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
     )
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
-    )
-    code = mapped_column(String(255))
 
-    @property
-    def custom_disclaimer(self):
-        return self._custom_disclaimer
-
-    @custom_disclaimer.setter
-    def custom_disclaimer(self, value: str):
+    @validates("custom_disclaimer")
+    def _validate_custom_disclaimer(self, _key: str, value: str) -> str:
+        """Reject disclaimers that exceed the public site API's 512-character limit."""
         if len(value) > 512:
             raise ValueError("Custom disclaimer cannot exceed 512 characters.")
-        self._custom_disclaimer = value
+        return value
 
     @staticmethod
     def generate_code(n: int, *, session: Session) -> str:
@@ -2367,7 +2343,22 @@ class Site(Base):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(Base):  # bug: this uses setattr so idk the field.
+class ApiToken(Base):
+    """API token for the service API.
+
+    Scoping rules:
+    - ``type`` = "app": ``app_id`` points at the app the key serves.
+    - ``type`` = "dataset": ``tenant_id`` is always set. Per-knowledge-base scoping is
+      expressed with ``DatasetApiTokenBinding`` rows (a key with no binding rows can
+      reach every dataset in the tenant — the default and the pre-scoping behavior; a
+      key with binding rows is limited to exactly those datasets). Enforcement lives in
+      ``validate_dataset_token`` (controllers/service_api/wraps.py).
+
+    Note: controllers/console/apikey.py assigns the ``*_id`` columns via ``setattr``
+    keyed on ``resource_id_field``, so renaming ``app_id`` requires updating those
+    controllers too.
+    """
+
     __tablename__ = "api_tokens"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_token_pkey"),
@@ -2391,6 +2382,35 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
             if session.scalar(select(exists().where(ApiToken.token == result))):
                 continue
             return result
+
+
+class DatasetApiTokenBinding(Base):
+    """Binds a dataset service-API key to a single knowledge base.
+
+    A dataset ``ApiToken`` may have zero or more of these rows:
+    - no rows  → the key can access every dataset in its tenant (default / back-compat).
+    - N rows   → the key is restricted to exactly those N datasets.
+
+    Both foreign keys cascade on delete, so removing a key or a dataset automatically
+    drops the corresponding bindings (no dangling scope).
+    """
+
+    __tablename__ = "dataset_api_token_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_api_token_binding_pkey"),
+        sa.UniqueConstraint("api_token_id", "dataset_id", name="dataset_api_token_binding_unique"),
+        sa.Index("dataset_api_token_binding_token_idx", "api_token_id"),
+        sa.Index("dataset_api_token_binding_dataset_idx", "dataset_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    api_token_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("api_tokens.id", ondelete="CASCADE"), nullable=False
+    )
+    dataset_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class UploadFile(TypeBase):
@@ -2430,7 +2450,7 @@ class UploadFile(TypeBase):
     # 3. Avoid relying on these fields for logic, as their values may not always be accurate.
     #
     # `used` may indicate whether the file has been utilized by another service.
-    used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
     # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
     # Its value is derived from the `CreatorUserRole` enumeration.
@@ -2684,7 +2704,7 @@ class Tag(TypeBase):
         sa.Index("tag_name_idx", "name"),
     )
 
-    TAG_TYPE_LIST = ["knowledge", "app", "snippet"]
+    TAG_TYPE_LIST = ["knowledge", "app", "snippet", "skill"]
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
@@ -2741,7 +2761,7 @@ class TraceAppConfig(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
 
     @property
     def tracing_config_dict(self) -> dict[str, Any]:

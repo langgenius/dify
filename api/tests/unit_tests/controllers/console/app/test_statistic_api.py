@@ -1,255 +1,198 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import UTC, datetime
 from decimal import Decimal
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
-from models.account import Account
+from machinery.context import RequestContext
 from models.model import App
+from services.app_statistic_query import (
+    AppStatisticQuery,
+    AverageResponseTimeStatisticRecord,
+    AverageSessionInteractionStatisticRecord,
+    DailyConversationStatisticRecord,
+    DailyMessageStatisticRecord,
+    DailyTerminalStatisticRecord,
+    DailyTokenCostStatisticRecord,
+    TokensPerSecondStatisticRecord,
+    UserSatisfactionRateStatisticRecord,
+)
 
 
-def _account() -> Account:
-    account = Account(name="Statistics Tester", email="statistics-tester@example.com", timezone="UTC")
-    account.id = "account-1"
-    return account
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="tenant-1",
+    )
 
 
 def _app_model() -> App:
     return App(id="app-1", tenant_id="tenant-1", name="Statistics App")
 
 
-class _ConnContext:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def execute(self, _query, _args):
-        return self._rows
-
-
-def _install_db(monkeypatch: pytest.MonkeyPatch, rows) -> None:
-    engine = SimpleNamespace(begin=lambda: _ConnContext(rows))
-    monkeypatch.setattr(statistic_module, "db", SimpleNamespace(engine=engine))
-
-
-def _install_common(monkeypatch: pytest.MonkeyPatch) -> None:
+def _install_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+    statistics: MagicMock,
+    *,
+    time_range: tuple[datetime | None, datetime | None] = (None, None),
+) -> None:
     monkeypatch.setattr(
         statistic_module,
-        "parse_time_range",
-        lambda *_args, **_kwargs: (None, None),
+        "application_services",
+        lambda: SimpleNamespace(app_statistics=statistics),
     )
-    monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
+    monkeypatch.setattr(
+        statistic_module,
+        "current_account_with_tenant",
+        lambda: SimpleNamespace(account=SimpleNamespace(timezone="UTC")),
+    )
+    monkeypatch.setattr(statistic_module, "parse_time_range", lambda *_args, **_kwargs: time_range)
 
 
-def _json_payload(response: Any) -> dict[str, Any]:
+def _invoke(
+    app: Flask,
+    resource_type: type,
+    *,
+    start: str | None = None,
+    end: str | None = None,
+) -> dict[str, Any]:
+    resource = resource_type()
+    method = unwrap(resource.get)
+    with app.test_request_context("/console/api/apps/app-1/statistics", method="GET"):
+        response = method(
+            resource,
+            statistic_module.StatisticTimeRangeQuery(start=start, end=end),
+            _request_context(),
+            app_model=_app_model(),
+        )
     return response if isinstance(response, dict) else response.get_json()
 
 
-def test_daily_message_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyMessageStatistic()
-    method = unwrap(api.get)
+@pytest.mark.parametrize(
+    ("resource_type", "query_call_getter", "record", "expected"),
+    [
+        pytest.param(
+            statistic_module.DailyMessageStatistic,
+            lambda query: query.get_daily_messages,
+            DailyMessageStatisticRecord(date="2024-01-01", message_count=3),
+            {"date": "2024-01-01", "message_count": 3},
+            id="daily-messages",
+        ),
+        pytest.param(
+            statistic_module.DailyConversationStatistic,
+            lambda query: query.get_daily_conversations,
+            DailyConversationStatisticRecord(date="2024-01-02", conversation_count=5),
+            {"date": "2024-01-02", "conversation_count": 5},
+            id="daily-conversations",
+        ),
+        pytest.param(
+            statistic_module.DailyTerminalsStatistic,
+            lambda query: query.get_daily_terminals,
+            DailyTerminalStatisticRecord(date="2024-01-03", terminal_count=7),
+            {"date": "2024-01-03", "terminal_count": 7},
+            id="daily-terminals",
+        ),
+        pytest.param(
+            statistic_module.DailyTokenCostStatistic,
+            lambda query: query.get_daily_token_costs,
+            DailyTokenCostStatisticRecord(
+                date="2024-01-04",
+                token_count=10,
+                total_price=Decimal("0.25"),
+                currency="USD",
+            ),
+            {"date": "2024-01-04", "token_count": 10, "total_price": "0.25", "currency": "USD"},
+            id="daily-token-costs",
+        ),
+        pytest.param(
+            statistic_module.AverageSessionInteractionStatistic,
+            lambda query: query.get_average_session_interactions,
+            AverageSessionInteractionStatisticRecord(date="2024-01-05", interactions=2.5),
+            {"date": "2024-01-05", "interactions": 2.5},
+            id="average-session-interactions",
+        ),
+        pytest.param(
+            statistic_module.UserSatisfactionRateStatistic,
+            lambda query: query.get_user_satisfaction_rates,
+            UserSatisfactionRateStatisticRecord(date="2024-01-06", rate=100.0),
+            {"date": "2024-01-06", "rate": 100.0},
+            id="user-satisfaction-rate",
+        ),
+        pytest.param(
+            statistic_module.AverageResponseTimeStatistic,
+            lambda query: query.get_average_response_times,
+            AverageResponseTimeStatisticRecord(date="2024-01-07", latency=1234.0),
+            {"date": "2024-01-07", "latency": 1234.0},
+            id="average-response-time",
+        ),
+        pytest.param(
+            statistic_module.TokensPerSecondStatistic,
+            lambda query: query.get_tokens_per_second,
+            TokensPerSecondStatisticRecord(date="2024-01-08", tps=15.5),
+            {"date": "2024-01-08", "tps": 15.5},
+            id="tokens-per-second",
+        ),
+    ],
+)
+def test_statistic_endpoint_delegates_to_statistic_query(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_type: type,
+    query_call_getter: Callable[[MagicMock], MagicMock],
+    record: tuple,
+    expected: dict[str, Any],
+) -> None:
+    statistics = MagicMock(spec=AppStatisticQuery)
+    query_call = query_call_getter(statistics)
+    query_call.return_value = [record]
+    _install_dependencies(monkeypatch, statistics)
 
-    rows = [SimpleNamespace(date="2024-01-01", message_count=3)]
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, rows)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    assert _json_payload(response) == {"data": [{"date": "2024-01-01", "message_count": 3}]}
-
-
-def test_daily_conversation_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyConversationStatistic()
-    method = unwrap(api.get)
-
-    rows = [SimpleNamespace(date="2024-01-02", conversation_count=5)]
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, rows)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-conversations", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    assert _json_payload(response) == {"data": [{"date": "2024-01-02", "conversation_count": 5}]}
-
-
-def test_daily_token_cost_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyTokenCostStatistic()
-    method = unwrap(api.get)
-
-    rows = [SimpleNamespace(date="2024-01-03", token_count=10, total_price=0.25, currency="USD")]
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, rows)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/token-costs", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    data = _json_payload(response)
-    assert len(data["data"]) == 1
-    assert data["data"][0]["date"] == "2024-01-03"
-    assert data["data"][0]["token_count"] == 10
-    assert Decimal(data["data"][0]["total_price"]) == Decimal("0.25")
-
-
-def test_daily_terminals_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyTerminalsStatistic()
-    method = unwrap(api.get)
-
-    rows = [SimpleNamespace(date="2024-01-04", terminal_count=7)]
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, rows)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-end-users", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    assert _json_payload(response) == {"data": [{"date": "2024-01-04", "terminal_count": 7}]}
-
-
-def test_average_session_interaction_statistic_requires_chat_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that AverageSessionInteractionStatistic is limited to chat/agent modes."""
-    # This just verifies the decorator is applied correctly
-    # Actual endpoint testing would require complex JOIN mocking
-    api = statistic_module.AverageSessionInteractionStatistic()
-    method = unwrap(api.get)
-    assert callable(method)
-
-
-def test_daily_message_statistic_with_invalid_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyMessageStatistic()
-    method = unwrap(api.get)
-
-    def mock_parse(*args, **kwargs):
-        raise ValueError("Invalid time range")
-
-    _install_db(monkeypatch, [])
-    monkeypatch.setattr(statistic_module, "parse_time_range", mock_parse)
-    monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        with pytest.raises(BadRequest):
-            method(
-                api,
-                SimpleNamespace(start=None, end=None),
-                _account(),
-                app_model=_app_model(),
-            )
+    assert _invoke(app, resource_type) == {"data": [expected]}
+    query_call.assert_called_once_with(
+        app_id="app-1",
+        start_date=None,
+        end_date=None,
+        timezone="UTC",
+    )
 
 
-def test_daily_message_statistic_multiple_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyMessageStatistic()
-    method = unwrap(api.get)
+def test_statistic_endpoint_passes_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    statistics = MagicMock(spec=AppStatisticQuery)
+    statistics.get_daily_messages.return_value = []
+    start_date = datetime(2024, 1, 1, tzinfo=UTC)
+    end_date = datetime(2024, 1, 2, tzinfo=UTC)
+    _install_dependencies(monkeypatch, statistics, time_range=(start_date, end_date))
 
-    rows = [
-        SimpleNamespace(date="2024-01-01", message_count=10),
-        SimpleNamespace(date="2024-01-02", message_count=15),
-        SimpleNamespace(date="2024-01-03", message_count=12),
-    ]
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, rows)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    data = _json_payload(response)
-    assert len(data["data"]) == 3
+    assert _invoke(app, statistic_module.DailyMessageStatistic, start="start", end="end") == {"data": []}
+    statistics.get_daily_messages.assert_called_once_with(
+        app_id="app-1",
+        start_date=start_date,
+        end_date=end_date,
+        timezone="UTC",
+    )
 
 
-def test_daily_message_statistic_empty_result(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyMessageStatistic()
-    method = unwrap(api.get)
-
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, [])
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    assert _json_payload(response) == {"data": []}
-
-
-def test_daily_conversation_statistic_with_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyConversationStatistic()
-    method = unwrap(api.get)
-
-    rows = [SimpleNamespace(date="2024-01-02", conversation_count=5)]
-    _install_db(monkeypatch, rows)
+def test_statistic_endpoint_rejects_invalid_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    statistics = MagicMock(spec=AppStatisticQuery)
+    _install_dependencies(monkeypatch, statistics)
     monkeypatch.setattr(
         statistic_module,
         "parse_time_range",
-        lambda *_args, **_kwargs: ("s", "e"),
+        MagicMock(side_effect=ValueError("Invalid time range")),
     )
-    monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-conversations", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
+    with pytest.raises(BadRequest, match="Invalid time range"):
+        _invoke(app, statistic_module.DailyMessageStatistic)
 
-    assert _json_payload(response) == {"data": [{"date": "2024-01-02", "conversation_count": 5}]}
-
-
-def test_daily_token_cost_with_multiple_currencies(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    api = statistic_module.DailyTokenCostStatistic()
-    method = unwrap(api.get)
-
-    rows = [
-        SimpleNamespace(date="2024-01-01", token_count=100, total_price=Decimal("0.50"), currency="USD"),
-        SimpleNamespace(date="2024-01-02", token_count=200, total_price=Decimal("1.00"), currency="USD"),
-    ]
-    _install_common(monkeypatch)
-    _install_db(monkeypatch, rows)
-
-    with app.test_request_context("/console/api/apps/app-1/statistics/token-costs", method="GET"):
-        response = method(
-            api,
-            SimpleNamespace(start=None, end=None),
-            _account(),
-            app_model=_app_model(),
-        )
-
-    data = _json_payload(response)
-    assert len(data["data"]) == 2
+    statistics.get_daily_messages.assert_not_called()

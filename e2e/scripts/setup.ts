@@ -569,7 +569,7 @@ export const startMiddleware = async () => {
 
 const printUsage = () => {
   console.log(
-    'Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web>',
+    'Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web|web-build>',
   )
 }
 
@@ -602,6 +602,9 @@ const main = async () => {
       return
     case 'web':
       await startWeb()
+      return
+    case 'web-build':
+      await ensureWebBuild()
       return
     default:
       printUsage()

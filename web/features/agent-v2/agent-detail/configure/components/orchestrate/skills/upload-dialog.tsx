@@ -327,7 +327,7 @@ export function AgentSkillUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
         <DialogClose
           render={
             <IconButton

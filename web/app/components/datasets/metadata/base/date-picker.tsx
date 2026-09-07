@@ -1,7 +1,4 @@
-import type {
-  DatePickerProps,
-  TriggerProps,
-} from '@/app/components/base/date-and-time-picker/types'
+import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
@@ -35,7 +32,7 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
   )
 
   const renderTrigger = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
-    (props, _state, { handleClickTrigger }: TriggerProps) => {
+    (props) => {
       const hasValue = Boolean(value)
       const triggerText = value
         ? formatTimestamp(
@@ -47,7 +44,6 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
 
       return (
         <div
-          {...props}
           className={cn(
             'group flex items-center rounded-md bg-components-input-bg-normal',
             className,
@@ -55,10 +51,10 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
           )}
         >
           <button
+            {...props}
             type="button"
             aria-label={label ? `${label}: ${triggerText}` : undefined}
             className="flex min-w-0 grow items-center border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={handleClickTrigger}
           >
             <span className={cn('grow', hasValue ? 'text-text-secondary' : 'text-text-tertiary')}>
               {triggerText}
@@ -67,7 +63,7 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
               aria-hidden="true"
               className={cn(
                 'block size-4 shrink-0',
-                hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
+                hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
               )}
             />
           </button>
@@ -76,7 +72,7 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
               type="button"
               aria-label={label ? `${label}: ${clearLabel}` : clearLabel}
               className={cn(
-                'hidden size-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                'size-4 shrink-0 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [@media(hover:none)]:opacity-100',
               )}
               onClick={(event) => {
                 event.stopPropagation()

@@ -88,10 +88,12 @@ def _tool_file(*, name: str = "test.txt", mimetype: str = "text/plain") -> ToolF
 class TestPluginUploadFileApi:
     @patch.object(module, "verify_plugin_file_signature", return_value=True)
     @patch.object(module, "get_user", return_value=_end_user())
+    @patch.object(module, "sign_tool_file", return_value="signed-url")
     @patch.object(module, "ToolFileManager")
     def test_success_upload(
         self,
         mock_tool_file_manager,
+        mock_sign_tool_file,
         mock_get_user,
         mock_verify_signature,
     ):
@@ -115,8 +117,6 @@ class TestPluginUploadFileApi:
             mimetype="application/octet-stream",
         )
 
-        mock_tool_file_manager.sign_file.return_value = "signed-url"
-
         api = module.PluginUploadFileApi()
         post_fn = unwrap(api.post)
 
@@ -131,7 +131,11 @@ class TestPluginUploadFileApi:
         assert mock_verify_signature.call_args.kwargs["conversation_id"] == "conversation-1"
         tool_file_manager_instance.create_file_by_raw.assert_called_once()
         assert tool_file_manager_instance.create_file_by_raw.call_args.kwargs["conversation_id"] == "conversation-1"
-        mock_tool_file_manager.sign_file.assert_called_once_with(tool_file_id="file-id", extension=".docx")
+        mock_sign_tool_file.assert_called_once_with(
+            tool_file_id="file-id",
+            extension=".docx",
+            for_external=True,
+        )
 
     @patch.object(module, "get_user")
     @patch.object(module, "ToolFileManager")

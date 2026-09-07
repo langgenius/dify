@@ -1,5 +1,6 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { EnvironmentDeploymentAction } from '../state'
+import type { EnvironmentDeploymentAction } from '../utils/environment-deployment'
+import type { DeploymentVersion } from '../utils/version'
 import type { UndeployHandler } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -11,10 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
-import { getEnvironmentDeploymentActions } from '../state'
+import { getEnvironmentDeploymentActions } from '../utils/environment-deployment'
 import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 
 function rowActionLabel(
@@ -52,17 +54,19 @@ const ROW_ACTION_ICON_CLASS_NAMES: Record<EnvironmentDeploymentAction['kind'], s
 }
 
 export function EnvironmentRowActions({
+  latestVersion,
   row,
   onChangeVersion,
   onDeployLatest,
   onRedeploy,
   onUndeploy,
 }: {
+  latestVersion?: DeploymentVersion
   row: EnvironmentDeployment
-  onChangeVersion?: (deployment: EnvironmentDeployment) => void
-  onDeployLatest?: (deployment: EnvironmentDeployment) => void
-  onRedeploy?: (deployment: EnvironmentDeployment) => void
-  onUndeploy?: UndeployHandler
+  onChangeVersion: (deployment: EnvironmentDeployment) => void
+  onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
+  onRedeploy: (deployment: EnvironmentDeployment) => void
+  onUndeploy: UndeployHandler
 }) {
   const { t } = useTranslation('deployments')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -73,7 +77,9 @@ export function EnvironmentRowActions({
   )
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
-  const actions = getEnvironmentDeploymentActions(row)
+  const actions = getEnvironmentDeploymentActions(row, {
+    deployLatestDisabled: !latestVersion,
+  })
   const primaryAction = actions[0]
   const moreActions = actions.slice(1)
 
@@ -83,21 +89,27 @@ export function EnvironmentRowActions({
 
       switch (action.kind) {
         case 'changeVersion':
-          onChangeVersion?.(row)
+          onChangeVersion(row)
           break
-        case 'deployLatest':
-          onDeployLatest?.(row)
+        case 'deployLatest': {
+          if (!latestVersion) {
+            toast.error(t(($) => $['studio.latestVersionLoadFailed']))
+            return
+          }
+
+          onDeployLatest(row, latestVersion)
           break
+        }
         case 'redeploy':
         case 'retry':
-          onRedeploy?.(row)
+          onRedeploy(row)
           break
         case 'undeploy':
           setShowUndeployConfirm(true)
           break
       }
     },
-    [onChangeVersion, onDeployLatest, onRedeploy, row],
+    [latestVersion, onChangeVersion, onDeployLatest, onRedeploy, row, t],
   )
 
   const handleUndeploy = useCallback(async () => {
@@ -105,7 +117,7 @@ export function EnvironmentRowActions({
 
     setIsUndeploying(true)
     try {
-      await onUndeploy?.(row)
+      await onUndeploy(row)
       setShowUndeployConfirm(false)
     } catch {
       // The request layer reports the error; keep the dialog open so the user can retry.
@@ -147,7 +159,7 @@ export function EnvironmentRowActions({
               </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-50">
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
             {moreActions.map((action, index) => (
               <Fragment key={action.kind}>
                 {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}

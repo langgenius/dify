@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.helper import encrypter
@@ -67,8 +67,8 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
         },
     )
     @inner_api_ns.expect(inner_api_ns.models[InnerRuntimeCredentialsResolvePayload.__name__])
-    def post(self):
-        args = InnerRuntimeCredentialsResolvePayload.model_validate(inner_api_ns.payload or {})
+    @model_validate(InnerRuntimeCredentialsResolvePayload)
+    def post(self, args: InnerRuntimeCredentialsResolvePayload):
         if not args.credentials:
             return {"credentials": []}, 200
 

@@ -4,7 +4,7 @@ import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/client'
@@ -14,7 +14,7 @@ import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
-import { useChecklist, useWorkflowRunValidation } from '../use-checklist'
+import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -113,7 +113,11 @@ vi.mock('../use-nodes-available-var-list', () => ({
     }
     return map
   },
-  useGetNodesAvailableVarList: () => ({ getNodesAvailableVarList: vi.fn(() => ({})) }),
+  useGetNodesAvailableVarList: () => ({
+    getNodesAvailableVarList: vi.fn((nodes: Node[]) =>
+      Object.fromEntries(nodes.map((node) => [node.id, { availableVars: [] }])),
+    ),
+  }),
 }))
 
 vi.mock('../../nodes/_base/components/variable/utils', () => ({
@@ -223,12 +227,32 @@ function buildConnectedGraph() {
   return { nodes, edges }
 }
 
+function buildLegacyAgentGraph() {
+  const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+  const agentNode = createNode({
+    id: 'legacy-agent',
+    data: {
+      type: BlockEnum.Agent,
+      title: 'Legacy Agent',
+      agent_strategy_provider_name: 'provider',
+      agent_strategy_name: 'strategy',
+    },
+  })
+
+  return {
+    nodes: [startNode, agentNode],
+    edges: [createEdge({ source: 'start', target: 'legacy-agent' })],
+  }
+}
+
 function buildInlineAgentGraph({
   difyTools = [],
+  hasModel = true,
   hasMissingFile = false,
   hasMissingSkill = false,
 }: {
   difyTools?: AgentSoulDifyToolConfig[]
+  hasModel?: boolean
   hasMissingFile?: boolean
   hasMissingSkill?: boolean
 }) {
@@ -250,6 +274,13 @@ function buildInlineAgentGraph({
     }),
     zWorkflowAgentComposerResponse.parse({
       agent_soul: {
+        model: hasModel
+          ? {
+              model_provider: 'langgenius/openai/openai',
+              model: 'gpt-4o-mini',
+              plugin_id: 'langgenius/openai',
+            }
+          : undefined,
         config_files: [
           { file_kind: 'upload_file', name: 'available.pdf' },
           ...(hasMissingFile
@@ -390,6 +421,19 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain('Model not configured')
   })
 
+  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', () => {
+    const { nodes, edges } = buildLegacyAgentGraph()
+
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
+
+    expect(result.current).toEqual([
+      expect.objectContaining({
+        id: 'legacy-agent',
+        errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
+      }),
+    ])
+  })
+
   it.each([
     {
       errorMessage: 'agentV2.agentDetail.configure.files.missing',
@@ -412,6 +456,21 @@ describe('useChecklist', () => {
         expect.objectContaining({
           id: nodeId,
           errorMessages: [scenario.errorMessage],
+          openInlineAgentPanel: true,
+        }),
+      ])
+    })
+  })
+
+  it('should report a missing model from inline agents and open their configuration panel', async () => {
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph({ hasModel: false })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: ['workflow.nodes.agent.modelNotSelected'],
           openInlineAgentPanel: true,
         }),
       ])
@@ -741,6 +800,27 @@ describe('useChecklist', () => {
     } finally {
       errorSpy.mockRestore()
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// useChecklistBeforePublish
+// ---------------------------------------------------------------------------
+
+describe('useChecklistBeforePublish', () => {
+  it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
+    const { nodes, edges } = buildLegacyAgentGraph()
+    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.edges = edges as unknown as typeof rfState.edges
+
+    const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
+    let isValid: boolean | undefined
+
+    await act(async () => {
+      isValid = await result.current.handleCheckBeforePublish()
+    })
+
+    expect(isValid).toBe(false)
   })
 })
 

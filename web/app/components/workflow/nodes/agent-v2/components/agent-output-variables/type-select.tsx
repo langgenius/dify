@@ -37,7 +37,7 @@ export function OutputTypeSelect({
       >
         {selected.label}
       </SelectTrigger>
-      <SelectContent popupClassName="w-40">
+      <SelectContent className="w-40">
         {OUTPUT_TYPE_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             <SelectItemText>{option.label}</SelectItemText>

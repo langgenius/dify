@@ -17,6 +17,7 @@ import type {
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 import { consoleQuery } from './client'
@@ -162,6 +163,7 @@ export const useLogout = () => {
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
     onSuccess: () => {
+      discardRegistrationSessionState()
       // Drop all cached queries so the post-logout /signin probe doesn't read
       // the previous user's profile (the userProfile queryKey is shared with
       // the (commonLayout) tree, which keeps observing it during React's

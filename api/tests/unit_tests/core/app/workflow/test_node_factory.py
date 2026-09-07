@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from types import SimpleNamespace
 
 import pytest
@@ -39,6 +40,22 @@ class DummyDocumentExtractorNode(DummyNode):
 
 
 class TestDifyNodeFactory:
+    @pytest.fixture(autouse=True)
+    def _node_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(
+            CODE_MAX_STRING_LENGTH=10,
+            CODE_MAX_NUMBER=10,
+            CODE_MIN_NUMBER=-10,
+            CODE_MAX_PRECISION=4,
+            CODE_MAX_DEPTH=2,
+            CODE_MAX_NUMBER_ARRAY_LENGTH=2,
+            CODE_MAX_STRING_ARRAY_LENGTH=2,
+            CODE_MAX_OBJECT_ARRAY_LENGTH=2,
+            TEMPLATE_TRANSFORM_MAX_LENGTH=100,
+            UNSTRUCTURED_API_URL="http://u",
+            UNSTRUCTURED_API_KEY="key",
+        )
+
     @staticmethod
     def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class):
         monkeypatch.setattr(
@@ -46,19 +63,7 @@ class TestDifyNodeFactory:
             lambda **_kwargs: node_class,
         )
 
-    def _factory(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_STRING_LENGTH", 10)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_NUMBER", 10)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MIN_NUMBER", -10)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_PRECISION", 4)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_DEPTH", 2)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH", 2)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_STRING_ARRAY_LENGTH", 2)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH", 2)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH", 100)
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.UNSTRUCTURED_API_URL", "http://u")
-        monkeypatch.setattr("core.workflow.node_factory.dify_config.UNSTRUCTURED_API_KEY", "key")
-
+    def _factory(self):
         run_context = build_dify_run_context(
             tenant_id="tenant",
             app_id="app",
@@ -72,21 +77,21 @@ class TestDifyNodeFactory:
             graph_runtime_state=SimpleNamespace(),
         )
 
-    def test_create_node_unknown_type(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+    def test_create_node_unknown_type(self):
+        factory = self._factory()
 
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
 
     def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
 
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         monkeypatch.setattr(
             "core.workflow.node_factory.get_node_type_classes_mapping",
             lambda: {BuiltinNodeTypes.START: {"1": None}},
@@ -97,7 +102,7 @@ class TestDifyNodeFactory:
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         selected_versions: list[tuple[str, str]] = []
 
         class DummyNodeV2(DummyNode):
@@ -116,7 +121,7 @@ class TestDifyNodeFactory:
         assert selected_versions == [("snapshot", "called")]
 
     def test_create_node_code_branch(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         self._stub_node_resolution(monkeypatch, DummyCodeNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.CODE}})
@@ -125,7 +130,7 @@ class TestDifyNodeFactory:
         assert node.id == "node-1"
 
     def test_create_node_template_transform_branch(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         self._stub_node_resolution(monkeypatch, DummyTemplateTransformNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.TEMPLATE_TRANSFORM}})
@@ -134,7 +139,7 @@ class TestDifyNodeFactory:
         assert "jinja2_template_renderer" in node.kwargs
 
     def test_create_node_http_request_branch(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         self._stub_node_resolution(monkeypatch, DummyHttpRequestNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.HTTP_REQUEST}})
@@ -143,7 +148,7 @@ class TestDifyNodeFactory:
         assert "http_request_config" in node.kwargs
 
     def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
@@ -152,7 +157,7 @@ class TestDifyNodeFactory:
         assert node.kwargs == {}
 
     def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
-        factory = self._factory(monkeypatch)
+        factory = self._factory()
         self._stub_node_resolution(monkeypatch, DummyDocumentExtractorNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.DOCUMENT_EXTRACTOR}})

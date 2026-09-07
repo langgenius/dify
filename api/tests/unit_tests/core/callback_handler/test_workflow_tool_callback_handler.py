@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -33,9 +34,9 @@ def mock_print_text(mocker: MockerFixture):
 
 
 @pytest.fixture
-def enable_debug(mocker: MockerFixture):
+def enable_debug(config_overrides: Callable[..., None]):
     """Force DEBUG on so the handler emits its verbose stdout traces."""
-    mocker.patch("core.callback_handler.workflow_tool_callback_handler.dify_config.DEBUG", True)
+    config_overrides(DEBUG=True)
 
 
 class TestDifyWorkflowCallbackHandler:
@@ -112,12 +113,15 @@ class TestDifyWorkflowCallbackHandler:
         mock_print_text.assert_not_called()
 
     def test_on_tool_execution_skips_print_when_debug_disabled(
-        self, handler: DifyWorkflowCallbackHandler, mock_print_text, mocker: MockerFixture
+        self,
+        handler: DifyWorkflowCallbackHandler,
+        mock_print_text,
+        config_overrides: Callable[..., None],
     ):
         """When DEBUG is off, outputs are still yielded but nothing is printed
         and model_dump_json() is never invoked."""
         # Arrange
-        mocker.patch("core.callback_handler.workflow_tool_callback_handler.dify_config.DEBUG", False)
+        config_overrides(DEBUG=False)
         message = MagicMock()
 
         # Act

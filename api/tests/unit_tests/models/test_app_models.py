@@ -12,14 +12,15 @@ import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import PropertyMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 
 from models import model as model_module
 from models.dataset import DatasetCollectionBinding
-from models.enums import CollectionBindingType, ConversationFromSource
+from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -540,8 +541,9 @@ class TestConversationModel:
         # Assert
         assert conversation._inputs == inputs
 
-    def test_conversation_summary_or_query_with_summary(self):
-        """Test summary_or_query property when summary exists."""
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
+    def test_conversation_summary_or_query_with_summary(self, sqlite_session: Session):
+        """Test summary_or_query_with_session when summary exists."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
@@ -554,14 +556,14 @@ class TestConversationModel:
         )
 
         # Act
-        result = conversation.summary_or_query
+        result = conversation.summary_or_query_with_session(session=sqlite_session)
 
         # Assert
         assert result == "Test summary"
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
     def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session):
-        """Test summary_or_query property when summary is empty."""
+        """Test summary_or_query_with_session when summary is empty."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
@@ -1123,6 +1125,28 @@ class TestAppAnnotationHitHistory:
 class TestSiteModel:
     """Test suite for Site model."""
 
+    def test_site_core_bulk_insert_generates_ids(self, sqlite_session: Session):
+        """Core bulk inserts generate an ID for every site row."""
+        app_ids = [str(uuid4()), str(uuid4())]
+
+        sqlite_session.execute(
+            Site.__table__.insert(),
+            [
+                {
+                    "app_id": app_id,
+                    "title": f"Site {index}",
+                    "default_language": "en-US",
+                    "customize_token_strategy": CustomizeTokenStrategy.UUID,
+                }
+                for index, app_id in enumerate(app_ids)
+            ],
+        )
+
+        site_ids = sqlite_session.scalars(select(Site.id).where(Site.app_id.in_(app_ids))).all()
+        assert len(site_ids) == len(app_ids)
+        assert len(set(site_ids)) == len(app_ids)
+        assert all(UUID(site_id).version == 4 for site_id in site_ids)
+
     def test_site_creation_with_required_fields(self):
         """Test creating a site with required fields."""
         # Arrange
@@ -1133,14 +1157,14 @@ class TestSiteModel:
             app_id=app_id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Assert
         assert site.app_id == app_id
         assert site.title == "Test Site"
         assert site.default_language == "en-US"
-        assert site.customize_token_strategy == "uuid"
+        assert site.customize_token_strategy == CustomizeTokenStrategy.UUID
 
     def test_site_creation_with_optional_fields(self):
         """Test creating a site with optional fields."""
@@ -1149,7 +1173,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
             icon_type=IconType.EMOJI,
             icon="🌐",
             icon_background="#0066CC",
@@ -1173,7 +1197,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Act
@@ -1189,7 +1213,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
         long_disclaimer = "x" * 513  # Exceeds 512 character limit
 
@@ -1380,7 +1404,7 @@ class TestModelIntegration:
             app_id=app_id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Assert

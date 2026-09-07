@@ -9,8 +9,13 @@ const canUseAmplitude = () => getAnalyticsConsent() === 'granted' && getIsAmplit
  * @param eventName Event name
  * @param eventProperties Event properties (optional)
  */
-export const trackEvent = (eventName: string, eventProperties?: Record<string, unknown>) => {
+export const trackEvent = (
+  eventName: string,
+  eventProperties?: Record<string, unknown>,
+  eventOptions?: amplitude.Types.EventOptions,
+) => {
   if (!canUseAmplitude()) return
+  if (eventOptions) return amplitude.track(eventName, eventProperties, eventOptions)
   return amplitude.track(eventName, eventProperties)
 }
 

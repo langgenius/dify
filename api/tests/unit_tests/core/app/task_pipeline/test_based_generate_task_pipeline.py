@@ -7,6 +7,7 @@ from dify_agent.protocol import RunFailureType
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendRunFailedError
+from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
@@ -166,6 +167,17 @@ class TestBasedGenerateTaskPipeline:
             "code": "agent_run_limit_exceeded",
             "status": 400,
             "message": "run limit reached (agent_run_id=run-1)",
+        }
+
+    def test_stream_converter_preserves_agent_session_configuration_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(AgentSessionSnapshotIncompatibleError())
+
+        assert data == {
+            "code": "agent_session_configuration_changed",
+            "status": 409,
+            "message": (
+                "The Agent configuration changed after this conversation started. Start a new conversation to continue."
+            ),
         }
 
     def test_handle_output_moderation_when_flagged(self, pipeline):

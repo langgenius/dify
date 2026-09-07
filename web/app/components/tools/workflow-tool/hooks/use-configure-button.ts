@@ -1,11 +1,12 @@
 import type {
   Emoji,
+  WorkflowToolOutputVariable,
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
@@ -67,16 +68,19 @@ function buildExistingParameters(
   })
 }
 
-function buildNewOutputParameters(outputs?: Variable[]): WorkflowToolProviderOutputParameter[] {
+function buildNewOutputParameters(
+  outputs?: WorkflowToolOutputVariable[],
+): WorkflowToolProviderOutputParameter[] {
   return (outputs || []).map((item) => ({
     name: item.variable,
     description: '',
     type: item.value_type,
+    source: item.source,
   }))
 }
 
 function buildExistingOutputParameters(
-  outputs: Variable[] | undefined,
+  outputs: WorkflowToolOutputVariable[] | undefined,
   detail: WorkflowToolProviderResponse,
 ): WorkflowToolProviderOutputParameter[] {
   return (outputs || []).map((item) => {
@@ -85,6 +89,7 @@ function buildExistingOutputParameters(
       name: item.variable,
       description: found ? found.description : '',
       type: item.value_type,
+      source: item.source,
     }
   })
 }
@@ -100,7 +105,7 @@ type UseConfigureButtonOptions = {
   name: string
   description: string
   inputs?: InputVar[]
-  outputs?: Variable[]
+  outputs?: WorkflowToolOutputVariable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
   onConfigured?: () => void
@@ -121,7 +126,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     onRefreshData,
     onConfigured,
   } = options
-
   const { t } = useTranslation()
 
   // Data fetching via React Query
@@ -180,6 +184,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   // Mutation handlers (not memoized — only used in conditionally-rendered modal)
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
+      await handlePublish()
       await createWorkflowToolProvider(data)
       invalidateAllWorkflowTools()
       onRefreshData?.()
@@ -204,6 +209,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail(workflowAppId)
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
     } catch (e) {
       toast.error((e as Error).message)

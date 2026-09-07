@@ -1,5 +1,5 @@
 import type { AppIconType } from '@/types/app'
-import { useAsyncEffect } from 'ahooks'
+import { useEffect } from 'react'
 import { appDefaultIconBackground } from '@/config'
 import { searchEmoji } from '@/utils/emoji'
 
@@ -14,25 +14,43 @@ type UseAppFaviconOptions = {
 export function useAppFavicon(options: UseAppFaviconOptions) {
   const { enable = true, icon_type = 'emoji', icon, icon_background, icon_url } = options
 
-  useAsyncEffect(async () => {
-    if (!enable || (icon_type === 'image' && !icon_url) || (icon_type === 'emoji' && !icon)) return
+  useEffect(() => {
+    let cancelled = false
+    let favicon: HTMLLinkElement | null = null
 
-    const isValidImageIcon = icon_type === 'image' && icon_url
+    const syncFavicon = async () => {
+      let href: string | null | undefined
+      let type: string | undefined
 
-    const link: HTMLLinkElement =
-      document.querySelector('link[rel*="icon"]') || document.createElement('link')
+      if (icon_type === 'image') {
+        href = icon_url
+      } else if (icon_type === 'link') {
+        href = icon
+      } else if (icon_type !== 'emoji' || icon) {
+        const emoji = icon ? await searchEmoji(icon) : '🤖'
+        href =
+          'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22>' +
+          `<rect width=%22100%25%22 height=%22100%25%22 fill=%22${encodeURIComponent(icon_background || appDefaultIconBackground)}%22 rx=%2230%22 ry=%2230%22 />` +
+          `<text x=%2212.5%22 y=%221em%22 font-size=%2275%22>${emoji}</text>` +
+          '</svg>'
+        type = 'image/svg+xml'
+      }
 
-    link.href = isValidImageIcon
-      ? icon_url
-      : 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22>' +
-        `<rect width=%22100%25%22 height=%22100%25%22 fill=%22${encodeURIComponent(icon_background || appDefaultIconBackground)}%22 rx=%2230%22 ry=%2230%22 />` +
-        `<text x=%2212.5%22 y=%221em%22 font-size=%2275%22>${
-          icon ? await searchEmoji(icon) : '🤖'
-        }</text>` +
-        '</svg>'
+      if (cancelled || !href) return
 
-    link.rel = 'shortcut icon'
-    link.type = 'image/svg'
-    document.getElementsByTagName('head')[0]!.appendChild(link)
-  }, [enable, icon, icon_background])
+      favicon = document.createElement('link')
+      favicon.dataset.difyAppFavicon = ''
+      favicon.rel = 'icon'
+      favicon.href = href
+      if (type) favicon.type = type
+      document.head.appendChild(favicon)
+    }
+
+    if (enable) void syncFavicon()
+
+    return () => {
+      cancelled = true
+      favicon?.remove()
+    }
+  }, [enable, icon, icon_background, icon_type, icon_url])
 }

@@ -17,7 +17,7 @@ class TestAPIBasedExtensionService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch("services.api_based_extension_service.APIBasedExtensionRequestor") as mock_requestor,
         ):
             # Setup default mock returns
@@ -47,9 +47,7 @@ class TestAPIBasedExtensionService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
         account = AccountService.create_account(

@@ -3,10 +3,18 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
+import pytest
+
 from machinery.context import RequestContext
-from services.account_education_service import AccountEducationGateway, AccountEducationService
+from services.account_education_service import (
+    AccountEducationGateway,
+    AccountEducationRateLimiter,
+    AccountEducationService,
+)
+from services.account_errors import EducationRateLimitExceededError
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
+    AccountEducationActivation,
     AccountEducationAutocomplete,
     AccountEducationStatus,
     AccountEducationVerification,
@@ -41,18 +49,40 @@ def _account() -> AccountSnapshot:
     )
 
 
+def _rate_limiter() -> Mock:
+    rate_limiter = Mock(spec=AccountEducationRateLimiter)
+    rate_limiter.is_rate_limited.return_value = False
+    return rate_limiter
+
+
 def test_verify_reads_account_before_billing_gateway_call() -> None:
     accounts = Mock(spec=AccountRepository)
     accounts.get.return_value = _account()
     education = Mock(spec=AccountEducationGateway)
-    education.verify.return_value = AccountEducationVerification(token="education-token")
-    service = AccountEducationService(accounts=accounts, education=education)
+    verification_rate_limiter = _rate_limiter()
+    activation_rate_limiter = _rate_limiter()
+    events: list[str] = []
+    verification_rate_limiter.is_rate_limited.side_effect = lambda _key: events.append("check") or False
+    verification_rate_limiter.increment_rate_limit.side_effect = lambda _key: events.append("increment")
+    education.verify.side_effect = lambda **_kwargs: (
+        events.append("verify") or AccountEducationVerification(token="education-token")
+    )
+    service = AccountEducationService(
+        accounts=accounts,
+        education=education,
+        verification_rate_limiter=verification_rate_limiter,
+        activation_rate_limiter=activation_rate_limiter,
+    )
 
     result = service.verify(_context())
 
     assert result == AccountEducationVerification(token="education-token")
+    assert events == ["check", "increment", "verify"]
     accounts.get.assert_called_once_with("account-1")
-    education.verify.assert_called_once_with(account_id="account-1", email="student@example.edu")
+    verification_rate_limiter.is_rate_limited.assert_called_once_with("student@example.edu")
+    verification_rate_limiter.increment_rate_limit.assert_called_once_with("student@example.edu")
+    education.verify.assert_called_once_with(account_id="account-1")
+    activation_rate_limiter.is_rate_limited.assert_not_called()
 
 
 def test_status_and_autocomplete_delegate_framework_neutral_contracts() -> None:
@@ -70,6 +100,8 @@ def test_status_and_autocomplete_delegate_framework_neutral_contracts() -> None:
     service = AccountEducationService(
         accounts=accounts,
         education=education,
+        verification_rate_limiter=_rate_limiter(),
+        activation_rate_limiter=_rate_limiter(),
     )
 
     assert service.status(_context()) == status
@@ -82,10 +114,18 @@ def test_activate_delegates_account_and_workspace_context() -> None:
     accounts = Mock(spec=AccountRepository)
     accounts.get.return_value = _account()
     education = Mock(spec=AccountEducationGateway)
-    education.activate.return_value = {"message": "success"}
+    activation = AccountEducationActivation(message="success")
+    verification_rate_limiter = _rate_limiter()
+    activation_rate_limiter = _rate_limiter()
+    events: list[str] = []
+    activation_rate_limiter.is_rate_limited.side_effect = lambda _key: events.append("check") or False
+    activation_rate_limiter.increment_rate_limit.side_effect = lambda _key: events.append("increment")
+    education.activate.side_effect = lambda **_kwargs: events.append("activate") or activation
     service = AccountEducationService(
         accounts=accounts,
         education=education,
+        verification_rate_limiter=verification_rate_limiter,
+        activation_rate_limiter=activation_rate_limiter,
     )
 
     result = service.activate(
@@ -95,12 +135,60 @@ def test_activate_delegates_account_and_workspace_context() -> None:
         role="Student",
     )
 
-    assert result == {"message": "success"}
+    assert result == activation
+    assert events == ["check", "increment", "activate"]
+    activation_rate_limiter.is_rate_limited.assert_called_once_with("student@example.edu")
+    activation_rate_limiter.increment_rate_limit.assert_called_once_with("student@example.edu")
+    verification_rate_limiter.is_rate_limited.assert_not_called()
     education.activate.assert_called_once_with(
         account_id="account-1",
-        email="student@example.edu",
         tenant_id="workspace-1",
         token="education-token",
         institution="Dify University",
         role="Student",
     )
+
+
+def test_verify_rejects_rate_limited_request() -> None:
+    accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = _account()
+    education = Mock(spec=AccountEducationGateway)
+    verification_rate_limiter = _rate_limiter()
+    verification_rate_limiter.is_rate_limited.return_value = True
+    service = AccountEducationService(
+        accounts=accounts,
+        education=education,
+        verification_rate_limiter=verification_rate_limiter,
+        activation_rate_limiter=_rate_limiter(),
+    )
+
+    with pytest.raises(EducationRateLimitExceededError):
+        service.verify(_context())
+
+    verification_rate_limiter.increment_rate_limit.assert_not_called()
+    education.verify.assert_not_called()
+
+
+def test_activate_rejects_rate_limited_request() -> None:
+    accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = _account()
+    education = Mock(spec=AccountEducationGateway)
+    activation_rate_limiter = _rate_limiter()
+    activation_rate_limiter.is_rate_limited.return_value = True
+    service = AccountEducationService(
+        accounts=accounts,
+        education=education,
+        verification_rate_limiter=_rate_limiter(),
+        activation_rate_limiter=activation_rate_limiter,
+    )
+
+    with pytest.raises(EducationRateLimitExceededError):
+        service.activate(
+            _context(),
+            token="education-token",
+            institution="Dify University",
+            role="Student",
+        )
+
+    activation_rate_limiter.increment_rate_limit.assert_not_called()
+    education.activate.assert_not_called()

@@ -1,7 +1,7 @@
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { dehydrate, HydrationBoundary, noop } from '@tanstack/react-query'
 import { Suspense } from 'react'
 import { getQueryClient } from '@/app/get-query-client'
-import { ensureSystemFeatures } from '@/features/system-features/server'
+import { getOptionalSystemFeatures } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
 import { HomeContent } from './home-content/home-content'
@@ -15,27 +15,33 @@ export async function HomePage() {
     getServerConsoleClientContext(),
   ])
 
-  void homeQueryClient.prefetchQuery(
-    serverConsoleQuery.explore.apps.get.queryOptions({
-      context,
-      input: { query: { language: locale } },
-    }),
-  )
-  void homeQueryClient.prefetchQuery(
-    serverConsoleQuery.apps.recent.get.queryOptions({
-      context,
-      input: { query: { limit: 8 } },
-    }),
-  )
-
-  const enableExploreBanner = (await ensureSystemFeatures()).enable_explore_banner
-  if (enableExploreBanner) {
-    void homeQueryClient.prefetchQuery(
-      serverConsoleQuery.explore.banners.get.queryOptions({
+  void homeQueryClient
+    .query(
+      serverConsoleQuery.explore.apps.get.queryOptions({
         context,
         input: { query: { language: locale } },
       }),
     )
+    .catch(noop)
+  void homeQueryClient
+    .query(
+      serverConsoleQuery.apps.recent.get.queryOptions({
+        context,
+        input: { query: { limit: 8 } },
+      }),
+    )
+    .catch(noop)
+
+  const enableExploreBanner = (await getOptionalSystemFeatures())?.enable_explore_banner ?? false
+  if (enableExploreBanner) {
+    void homeQueryClient
+      .query(
+        serverConsoleQuery.explore.banners.get.queryOptions({
+          context,
+          input: { query: { language: locale } },
+        }),
+      )
+      .catch(noop)
   }
 
   const dehydratedState = dehydrate(homeQueryClient)

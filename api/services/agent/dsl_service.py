@@ -38,6 +38,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import App, AppModelConfig
+from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.dsl_entities import (
@@ -45,6 +46,7 @@ from services.agent.dsl_entities import (
     AGENT_PACKAGE_REF_KEY,
     AgentPackage,
     AgentPackageMetadata,
+    AgentPackageWorkspaceSkill,
     make_portable_agent_package,
     portable_ref,
 )
@@ -108,7 +110,13 @@ class AgentDslService:
             soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
 
         package_ref = "agent_1"
-        return package_ref, {package_ref: make_portable_agent_package(agent, soul)}
+        workspace_skills = self._workspace_skills_for_export(
+            tenant_id=app.tenant_id,
+            agent_id=agent.id,
+            snapshot_id=agent.active_config_snapshot_id,
+            include_draft=draft is not None,
+        )
+        return package_ref, {package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)}
 
     def export_workflow_packages(
         self, *, workflow: Workflow, graph: Mapping[str, Any]
@@ -151,6 +159,12 @@ class AgentDslService:
                 packages[package_ref] = make_portable_agent_package(
                     agent,
                     AgentSoulConfig.model_validate(snapshot.config_snapshot_dict),
+                    workspace_skills=self._workspace_skills_for_export(
+                        tenant_id=workflow.tenant_id,
+                        agent_id=agent.id,
+                        snapshot_id=snapshot.id,
+                        include_draft=False,
+                    ),
                 )
             node_data["agent_binding"] = {
                 "binding_type": binding.binding_type.value,
@@ -214,6 +228,14 @@ class AgentDslService:
             tenant_id=app.tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
+        )
+        self._restore_workspace_skill_bindings(
+            tenant_id=app.tenant_id,
+            agent=agent,
+            snapshot=snapshot,
+            package=package,
+            warnings=warnings,
+            account_id=account.id,
         )
         self.session.add(
             AgentConfigDraft(
@@ -378,6 +400,102 @@ class AgentDslService:
                     )
         return dependencies
 
+    def _workspace_skills_for_export(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        snapshot_id: str | None,
+        include_draft: bool,
+    ) -> list[AgentPackageWorkspaceSkill]:
+        if include_draft:
+            rows = list(
+                self.session.execute(
+                    select(AgentSkillBinding, Skill)
+                    .join(Skill, Skill.id == AgentSkillBinding.skill_id)
+                    .where(AgentSkillBinding.tenant_id == tenant_id, AgentSkillBinding.agent_id == agent_id)
+                    .order_by(AgentSkillBinding.priority)
+                )
+            )
+            if rows or not snapshot_id:
+                return [
+                    AgentPackageWorkspaceSkill(
+                        name=skill.name,
+                        display_name=skill.display_name,
+                        description=skill.description,
+                        priority=binding.priority,
+                    )
+                    for binding, skill in rows
+                ]
+        if snapshot_id:
+            rows = list(
+                self.session.execute(
+                    select(AgentSkillBindingSnapshot, Skill)
+                    .join(Skill, Skill.id == AgentSkillBindingSnapshot.skill_id)
+                    .where(
+                        AgentSkillBindingSnapshot.tenant_id == tenant_id,
+                        AgentSkillBindingSnapshot.agent_id == agent_id,
+                        AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
+                    )
+                    .order_by(AgentSkillBindingSnapshot.priority)
+                )
+            )
+        else:
+            return []
+        return [
+            AgentPackageWorkspaceSkill(
+                name=skill.name,
+                display_name=skill.display_name,
+                description=skill.description,
+                priority=binding.priority,
+            )
+            for binding, skill in rows
+        ]
+
+    def _restore_workspace_skill_bindings(
+        self,
+        *,
+        tenant_id: str,
+        agent: Agent,
+        snapshot: AgentConfigSnapshot,
+        package: AgentPackage,
+        warnings: list[DslImportWarning],
+        account_id: str,
+    ) -> None:
+        for workspace_skill in sorted(package.workspace_skills, key=lambda item: item.priority):
+            skill = self.session.scalar(
+                select(Skill).where(Skill.tenant_id == tenant_id, Skill.name == workspace_skill.name).limit(1)
+            )
+            if skill is None:
+                warnings.append(
+                    DslImportWarning(
+                        code="agent_workspace_skill_unresolved",
+                        path="agent.workspace_skills",
+                        message=f"Workspace Skill {workspace_skill.name!r} is unavailable in the target workspace.",
+                        details={"name": workspace_skill.name},
+                    )
+                )
+                continue
+            self.session.add(
+                AgentSkillBinding(
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    skill_id=skill.id,
+                    priority=workspace_skill.priority,
+                    created_by=account_id,
+                )
+            )
+            self.session.add(
+                AgentSkillBindingSnapshot(
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    config_snapshot_id=snapshot.id,
+                    skill_id=skill.id,
+                    priority=workspace_skill.priority,
+                    created_by=account_id,
+                )
+            )
+
     def _create_imported_inline_agent(
         self,
         *,
@@ -400,6 +518,14 @@ class AgentDslService:
             soul=soul,
             source=AgentSource.IMPORTED,
             operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
+        )
+        self._restore_workspace_skill_bindings(
+            tenant_id=workflow.tenant_id,
+            agent=agent,
+            snapshot=snapshot,
+            package=package,
+            warnings=warnings,
+            account_id=account.id,
         )
         return AgentPackageImportResult(agent=agent, snapshot=snapshot, warnings=warnings)
 

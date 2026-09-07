@@ -355,7 +355,7 @@ describe('ProviderConfigModal', () => {
           screen.getByText(`app.tracing.configProvider.titleapp.tracing.${provider}.title`),
         ).toBeInTheDocument()
         expectedLabels.forEach((label) => {
-          expect(screen.getByText(label)).toBeInTheDocument()
+          expect(screen.getByRole('textbox', { name: label })).toBeInTheDocument()
         })
         expect(
           screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
@@ -368,11 +368,16 @@ describe('ProviderConfigModal', () => {
     it('should add and choose the provider when saving a new config', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({ type: TracingProvider.langfuse })
-      const textboxes = screen.getAllByRole('textbox')
 
-      await user.type(textboxes[0]!, 'secret-key')
-      await user.type(textboxes[1]!, 'public-key')
-      await user.type(textboxes[2]!, 'https://cloud.langfuse.com')
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+        'secret-key',
+      )
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
+        'public-key',
+      )
+      await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
       await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
 
       await waitFor(() => {

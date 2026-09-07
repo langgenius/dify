@@ -16,6 +16,7 @@ def test_model_provider_credentials_cache_get_returns_decoded_dict(mocker: Mocke
 
     redis_client_mock.get.return_value = json.dumps(payload).encode("utf-8")
 
+    assert cache.cache_key == "provider_credentials:v2:tenant_id:tenant:id:identity"
     assert cache.get() == payload
 
 

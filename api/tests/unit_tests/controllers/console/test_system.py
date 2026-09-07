@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import controllers.console.system as system_module
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class TestHasNewVersion:
@@ -37,11 +38,7 @@ class TestCheckVersionUpdate:
         query = system_module.VersionQuery(current_version="1.0.0")
 
         with (
-            patch.object(
-                system_module.dify_config,
-                "CHECK_UPDATE_URL",
-                "",
-            ),
+            config_overrides_context(CHECK_UPDATE_URL=""),
             patch.object(
                 system_module.dify_config.project,
                 "version",
@@ -56,11 +53,7 @@ class TestCheckVersionUpdate:
         query = system_module.VersionQuery(current_version="1.0.0")
 
         with (
-            patch.object(
-                system_module.dify_config,
-                "CHECK_UPDATE_URL",
-                "http://example.com",
-            ),
+            config_overrides_context(CHECK_UPDATE_URL="http://example.com"),
             patch.object(
                 system_module.httpx,
                 "get",
@@ -83,11 +76,7 @@ class TestCheckVersionUpdate:
         }
 
         with (
-            patch.object(
-                system_module.dify_config,
-                "CHECK_UPDATE_URL",
-                "http://example.com",
-            ),
+            config_overrides_context(CHECK_UPDATE_URL="http://example.com"),
             patch.object(
                 system_module.httpx,
                 "get",
@@ -113,11 +102,7 @@ class TestCheckVersionUpdate:
         }
 
         with (
-            patch.object(
-                system_module.dify_config,
-                "CHECK_UPDATE_URL",
-                "http://example.com",
-            ),
+            config_overrides_context(CHECK_UPDATE_URL="http://example.com"),
             patch.object(
                 system_module.httpx,
                 "get",

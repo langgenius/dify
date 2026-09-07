@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden
 
 import services
 from core.db.session_factory import session_factory
-from core.tools.signature import verify_plugin_file_signature
+from core.tools.signature import sign_tool_file, verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
@@ -136,7 +136,7 @@ class PluginUploadFileApi(Resource):
             )
 
             extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
-            preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
+            preview_url = sign_tool_file(tool_file_id=tool_file.id, extension=extension, for_external=True)
 
             # Create a dictionary with all the necessary attributes
             result = FileResponse(

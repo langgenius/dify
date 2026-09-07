@@ -4,11 +4,14 @@ import type { Role } from '@/models/access-control'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
   SelectLabel,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -153,44 +156,44 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
         <SelectTrigger>
           <SelectValue placeholder={t(($) => $['members.selectRole'], { ns: 'common' })} />
         </SelectTrigger>
-        <SelectContent
-          listClassName="max-h-70"
-          listProps={{
-            ref: setListElement,
-            'aria-label': t(($) => $['members.role'], { ns: 'common' }),
-          }}
-        >
-          {rolesLoading ? (
-            <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-              {t(($) => $.loading, { ns: 'common' })}
-            </div>
-          ) : rolesError && roles.length === 0 ? (
-            <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
-              {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
-            </div>
-          ) : roles.length === 0 ? (
-            <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-              {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
-            </div>
-          ) : (
-            <>
-              {roles.map((role) => (
-                <SelectItem key={role.id} value={role} className="h-auto items-start py-2">
-                  <SelectItemText className="grid gap-0.5">
-                    <span className="truncate text-sm leading-5 text-text-secondary">
-                      {role.name}
-                    </span>
-                    <span className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
-                      {getRoleDescription(role)}
-                    </span>
-                  </SelectItemText>
-                  <SelectItemIndicator className="mt-0.5" />
-                </SelectItem>
-              ))}
-              <div ref={setAnchorElement} className="h-0" />
-            </>
-          )}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList className="max-h-70" ref={setListElement}>
+                {rolesLoading ? (
+                  <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                    {t(($) => $.loading, { ns: 'common' })}
+                  </div>
+                ) : rolesError && roles.length === 0 ? (
+                  <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
+                    {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+                  </div>
+                ) : roles.length === 0 ? (
+                  <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                    {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
+                  </div>
+                ) : (
+                  <>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role} className="h-auto items-start py-2">
+                        <SelectItemText className="grid gap-0.5">
+                          <span className="truncate text-sm leading-5 text-text-secondary">
+                            {role.name}
+                          </span>
+                          <span className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
+                            {getRoleDescription(role)}
+                          </span>
+                        </SelectItemText>
+                        <SelectItemIndicator className="mt-0.5" />
+                      </SelectItem>
+                    ))}
+                    <div ref={setAnchorElement} className="h-0" />
+                  </>
+                )}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </Select>
       {hasServerError ? (
         <FieldError />

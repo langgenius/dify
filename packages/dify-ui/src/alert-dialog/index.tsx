@@ -1,8 +1,8 @@
 'use client'
 
-import type * as React from 'react'
 import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
+import * as React from 'react'
 import { Button } from '../button'
 import { cn } from '../cn'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
@@ -17,31 +17,36 @@ type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
 
-type AlertDialogContentProps = {
+type AlertDialogBackdropProps = Omit<BaseAlertDialog.Backdrop.Props, 'className'> & {
+  className?: string
+}
+
+function AlertDialogBackdrop({ className, ...props }: AlertDialogBackdropProps) {
+  return <BaseAlertDialog.Backdrop {...props} className={cn(modalBackdropClassName, className)} />
+}
+
+type AlertDialogContentProps = Omit<BaseAlertDialog.Popup.Props, 'children' | 'className'> & {
   children: React.ReactNode
   className?: string
-  backdropClassName?: string
-  backdropProps?: Omit<BaseAlertDialog.Backdrop.Props, 'className'>
+  backdropProps?: AlertDialogBackdropProps
 }
 
 function AlertDialogContent({
   children,
   className,
-  backdropClassName,
   backdropProps,
+  ...props
 }: AlertDialogContentProps) {
   return (
     <BaseAlertDialog.Portal>
-      <BaseAlertDialog.Backdrop
-        {...backdropProps}
-        className={cn(modalBackdropClassName, backdropClassName)}
-      />
+      <AlertDialogBackdrop {...backdropProps} />
       <BaseAlertDialog.Popup
         className={cn(
           'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
           modalPopupAnimationClassName,
           className,
         )}
+        {...props}
       >
         {children}
       </BaseAlertDialog.Popup>

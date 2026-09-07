@@ -34,28 +34,28 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 
 ## Primitives
 
-| Category         | Public subpaths                                                                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                        |
-| Controls         | `./segmented-control`                                                                                                                                                          |
-| Display          | `./collapsible`, `./kbd`                                                                                                                                                       |
-| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                                             |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./number-field`, `./select`, `./slider`, `./switch` |
-| Layout           | `./scroll-area`                                                                                                                                                                |
-| Media            | `./avatar`                                                                                                                                                                     |
-| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                        |
-| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      |
-| Search and pick  | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     |
+| Category         | Public subpaths                                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                              |
+| Controls         | `./segmented-control`                                                                                                                                                                |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                                             |
+| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                                                   |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
+| Layout           | `./scroll-area`                                                                                                                                                                      |
+| Media            | `./avatar`                                                                                                                                                                           |
+| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                              |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                            |
+| Search and pick  | `./autocomplete`, `./combobox`, `./select`                                                                                                                                           |
 
 Utilities:
 
-- `./cn` composes conditional classes with `clsx` and `tailwind-merge`.
+- `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
 - `./styles.css` provides design tokens, theme variables, and shared utilities.
 
 ## Guides
 
-Start here, then open only the guide for the contract being changed. Component-specific Dify
-behavior lives beside the component. Contracts shared by several primitives live in `docs/`.
+Open only the guide for the contract being changed. Component-specific Dify behavior lives beside
+the component. Contracts shared by several primitives live in `docs/`.
 Upstream behavior remains owned by the [Base UI documentation].
 
 ### Component guides
@@ -68,20 +68,22 @@ Upstream behavior remains owned by the [Base UI documentation].
 
 ### Cross-component guides
 
-| Guide                     | Scope                                                                    |
-| ------------------------- | ------------------------------------------------------------------------ |
-| [Forms]                   | Native submit boundaries, fields, labels, grouped controls, and errors.  |
-| [Selection]               | Typed values and choosing among segmented controls, pickers, and radios. |
-| [Overlays]                | Portals, root isolation, layering, trigger composition, and semantics.   |
-| [Styling]                 | Tailwind CSS integration and the Figma radius mapping.                   |
-| [Public API authoring]    | Subpath exports, naming, public types, generics, and private helpers.    |
-| [Testing and development] | Package commands, test ownership, accessibility, and animation setup.    |
+| Guide                               | Scope                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| [Accessible names and descriptions] | Naming sources, descriptions, overrides, and safe label removal.               |
+| [Forms]                             | Native submit boundaries, value ownership, fields, labels, and errors.         |
+| [Selection]                         | Typed values and choosing among segmented controls, pickers, and radio groups. |
+| [Overlays]                          | Portals, presence lifecycles, layering, trigger composition, and semantics.    |
+| [Styling]                           | Tailwind CSS integration and the Figma radius mapping.                         |
+| [Public API authoring]              | Subpath exports, naming, public types, generics, and private helpers.          |
+| [Testing and development]           | Package commands, test ownership, accessibility, and animation setup.          |
 
 ## Contributing
 
-Read [component authoring rules] before modifying the package, then open only the matching owner
-guide. This index intentionally does not duplicate those contracts.
+[Package rules][component authoring rules] own the package boundary and contributor guidance.
+For a known contract, go directly to its guide above.
 
+[Accessible names and descriptions]: ./docs/accessible-names-and-descriptions.md
 [Base UI documentation]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
 [Button]: ./src/button/README.md

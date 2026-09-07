@@ -1,4 +1,4 @@
-import type { Placement, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
+import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
 export enum ViewType {
@@ -20,13 +20,13 @@ export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
   handleClear: (e: React.MouseEvent) => void
-  handleClickTrigger: (e: React.MouseEvent) => void
 }
 
 export type DatePickerProps = {
   value: Dayjs | undefined
   timezone?: string
   placeholder?: string
+  disabled?: boolean
   needTimePicker?: boolean
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
@@ -77,7 +77,6 @@ export type TimePickerProps = {
   notClearable?: boolean
   triggerFullWidth?: boolean
   showTimezone?: boolean
-  placement?: Placement
 }
 
 export type TimePickerFooterProps = {

@@ -6,7 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dif
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'

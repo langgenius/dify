@@ -8,13 +8,16 @@ function PermissionProbe() {
 
 describe('useCanManageAgents', () => {
   it.each([
-    [['agent.manage'], 'true'],
+    [['agent.acl.preview'], 'true'],
     [['dataset.create_and_management'], 'false'],
-  ])('resolves agent.manage from the current permission snapshot', (permissionKeys, expected) => {
-    const { wrapper } = createConsoleQueryWrapper({ workspacePermissionKeys: permissionKeys })
+  ])(
+    'resolves agent.acl.preview from the current permission snapshot',
+    (permissionKeys, expected) => {
+      const { wrapper } = createConsoleQueryWrapper({ workspacePermissionKeys: permissionKeys })
 
-    render(<PermissionProbe />, { wrapper })
+      render(<PermissionProbe />, { wrapper })
 
-    expect(screen.getByText(expected)).toBeInTheDocument()
-  })
+      expect(screen.getByText(expected)).toBeInTheDocument()
+    },
+  )
 })

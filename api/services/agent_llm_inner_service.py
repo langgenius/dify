@@ -8,6 +8,8 @@ from typing import cast
 
 from sqlalchemy.orm import Session
 
+from core.app.entities.app_invoke_entities import get_credit_usage_app_type
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.db.session_factory import session_factory as default_session_factory
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
@@ -31,6 +33,15 @@ class AgentLLMInnerServiceError(RuntimeError):
 class PreparedAgentLLMInvocation:
     request: AgentLLMInvokeRequest
     model_instance: ModelInstance
+    app_type: CreditUsageAppType = CreditUsageAppType.UNKNOWN
+
+    @property
+    def created_by(self) -> CreditUsageCreatedBy:
+        if self.request.caller.agent_config_version_kind == "build_draft":
+            return CreditUsageCreatedBy.BUILD_DRAFT
+        if self.app_type is CreditUsageAppType.AGENT_V2:
+            return CreditUsageCreatedBy.APP
+        return CreditUsageCreatedBy.AGENT_NODE
 
 
 class AgentLLMInnerService:
@@ -42,7 +53,7 @@ class AgentLLMInnerService:
     def prepare(self, request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
         caller = request.caller
         target = request.target
-        self._validate_app_tenant(app_id=caller.app_id, tenant_id=caller.tenant_id)
+        app = self._validate_app_tenant(app_id=caller.app_id, tenant_id=caller.tenant_id)
         provider_manager = create_plugin_provider_manager(tenant_id=caller.tenant_id, user_id=caller.user_id)
         model_manager = ModelManager(provider_manager=provider_manager)
         model_instance = model_manager.get_model_instance(
@@ -65,7 +76,11 @@ class AgentLLMInnerService:
         if provider_model.status != ModelStatus.QUOTA_EXCEEDED:
             provider_model.raise_for_status()
 
-        return PreparedAgentLLMInvocation(request=request, model_instance=model_instance)
+        return PreparedAgentLLMInvocation(
+            request=request,
+            model_instance=model_instance,
+            app_type=get_credit_usage_app_type(app.mode),
+        )
 
     def invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk, None, None]:
         request = prepared.request
@@ -84,16 +99,19 @@ class AgentLLMInnerService:
                 "invocation_id": caller.invocation_id,
                 "agent_run_id": caller.agent_run_id,
                 "agent_mode": caller.agent_mode,
+                "agent_config_version_kind": caller.agent_config_version_kind,
                 "call_index": caller.call_index,
                 "app_id": caller.app_id,
                 "workflow_run_id": caller.workflow_run_id,
                 "node_execution_id": caller.node_execution_id,
                 "trace_id": caller.trace_id,
+                "app_type": prepared.app_type,
+                "created_by": prepared.created_by,
             },
         )
         yield from cast(Generator[LLMResultChunk, None, None], result)
 
-    def _validate_app_tenant(self, *, app_id: str, tenant_id: str) -> None:
+    def _validate_app_tenant(self, *, app_id: str, tenant_id: str) -> App:
         with self._session_factory() as session:
             app = session.get(App, app_id)
             if app is None:
@@ -108,6 +126,7 @@ class AgentLLMInnerService:
                     "App does not belong to the caller tenant.",
                     status_code=403,
                 )
+            return app
 
 
 __all__ = ["AgentLLMInnerService", "AgentLLMInnerServiceError", "PreparedAgentLLMInvocation"]

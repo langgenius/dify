@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 import core.rag.extractor.pdf_extractor as pe
 from models.model import UploadFile
+from tests.unit_tests.config_override import apply_config_overrides
 
 TENANT_ID = str(uuid4())
 USER_ID = str(uuid4())
@@ -41,9 +42,12 @@ def mock_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) 
     storage = _Storage()
     monkeypatch.setattr(pe, "storage", storage)
     monkeypatch.setattr(pe, "db", _DatabaseBinding(sqlite_session))
-    monkeypatch.setattr(pe.dify_config, "FILES_URL", "http://files.local")
-    monkeypatch.setattr(pe.dify_config, "INTERNAL_FILES_URL", None)
-    monkeypatch.setattr(pe.dify_config, "STORAGE_TYPE", "local")
+    apply_config_overrides(
+        monkeypatch,
+        FILES_URL="http://files.local",
+        INTERNAL_FILES_URL=None,
+        STORAGE_TYPE="local",
+    )
     return _Dependencies(storage=storage, session=sqlite_session)
 
 

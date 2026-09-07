@@ -35,10 +35,6 @@ def inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def billing_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    return inner_api_only(view)
-
-
 def enterprise_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return inner_api_only(view)
 

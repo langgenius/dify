@@ -8,13 +8,28 @@ import useTimestamp from '@/hooks/use-timestamp'
 type ApiKeyTableProps = {
   apiKeys: Array<ApiKeyItem | EnvironmentApiKey>
   canManage: boolean
+  // Dataset keys carry a knowledge-base scope; enable the SCOPE column to surface it.
+  showScope?: boolean
   onDeleteRequest: (apiKeyId: string) => void
 }
 
-export function ApiKeyTable({ apiKeys, canManage, onDeleteRequest }: ApiKeyTableProps) {
+export function ApiKeyTable({
+  apiKeys,
+  canManage,
+  showScope = false,
+  onDeleteRequest,
+}: ApiKeyTableProps) {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const maskToken = (token: string) => `${token.slice(0, 3)}...${token.slice(-20)}`
+
+  // Only dataset keys expose dataset_ids; an empty/absent list means the key can access
+  // every knowledge base in the workspace.
+  const scopeLabel = (apiKey: ApiKeyItem | EnvironmentApiKey) => {
+    const datasetIds = (apiKey as { dataset_ids?: string[] }).dataset_ids
+    if (!datasetIds?.length) return t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })
+    return t(($) => $['apiKeyModal.scopeCount'], { ns: 'appApi', count: datasetIds.length })
+  }
 
   return (
     <div className="min-h-0 overflow-auto border-y border-divider-subtle">
@@ -24,6 +39,11 @@ export function ApiKeyTable({ apiKeys, canManage, onDeleteRequest }: ApiKeyTable
             <th className="w-64 px-6 py-2" scope="col">
               {t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
             </th>
+            {showScope && (
+              <th className="w-40 px-3 py-2" scope="col">
+                {t(($) => $['apiKeyModal.scope'], { ns: 'appApi' })}
+              </th>
+            )}
             <th className="w-48 px-3 py-2" scope="col">
               {t(($) => $['apiKeyModal.created'], { ns: 'appApi' })}
             </th>
@@ -39,6 +59,7 @@ export function ApiKeyTable({ apiKeys, canManage, onDeleteRequest }: ApiKeyTable
           {apiKeys.map((apiKey) => (
             <tr className="border-b border-divider-regular last:border-b-0" key={apiKey.id}>
               <td className="truncate px-6 py-2 font-mono">{maskToken(apiKey.token)}</td>
+              {showScope && <td className="truncate px-3 py-2">{scopeLabel(apiKey)}</td>}
               <td className="truncate px-3 py-2">
                 {formatTime(
                   Number(apiKey.created_at),

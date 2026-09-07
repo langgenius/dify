@@ -224,7 +224,7 @@ function AgentRosterDrawer({
                           <DropdownMenuContent
                             placement="bottom-end"
                             sideOffset={4}
-                            popupClassName="min-w-44 w-max"
+                            className="w-max min-w-44"
                           >
                             <DropdownMenuItem
                               className="gap-2 whitespace-nowrap"
