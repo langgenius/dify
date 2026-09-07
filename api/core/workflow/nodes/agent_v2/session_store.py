@@ -182,13 +182,10 @@ class WorkflowAgentWorkspaceStore:
 
             binding_id = execution.agent_workspace_binding_id
             if binding_id is None:
-                binding = AgentWorkspaceService.create_binding(
+                binding = self._resolve_or_create_binding(
                     session=session,
-                    scope=scope.workspace_owner,
-                    agent_id=scope.agent_id,
-                    base_home_snapshot_id=home_snapshot_id,
-                    agent_config_version_id=scope.agent_config_snapshot_id,
-                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                    scope=scope,
+                    home_snapshot_id=home_snapshot_id,
                 )
                 execution.agent_workspace_binding_id = binding.id
                 execution.process_data = json.dumps(
@@ -309,16 +306,48 @@ class WorkflowAgentWorkspaceStore:
         raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
 
     @staticmethod
+    def _resolve_or_create_binding(
+        *,
+        session: Session,
+        scope: WorkflowAgentSessionScope,
+        home_snapshot_id: str | None,
+    ) -> AgentWorkspaceBinding:
+        """Reuse a conversation-scoped participant or allocate a new one."""
+
+        if scope.conversation_id is not None:
+            existing_binding = AgentWorkspaceService.resolve_active_binding_for_scope(
+                session=session,
+                scope=scope.workspace_owner,
+                agent_id=scope.agent_id,
+            )
+            if existing_binding is not None:
+                AgentWorkspaceService.validate_binding_generation(
+                    existing_binding,
+                    base_home_snapshot_id=home_snapshot_id,
+                    agent_config_version_id=scope.agent_config_snapshot_id,
+                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                )
+                return existing_binding
+
+        return AgentWorkspaceService.create_binding(
+            session=session,
+            scope=scope.workspace_owner,
+            agent_id=scope.agent_id,
+            base_home_snapshot_id=home_snapshot_id,
+            agent_config_version_id=scope.agent_config_snapshot_id,
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+
+    @staticmethod
     def _stored(
         session: Session,
         scope: WorkflowAgentSessionScope,
         binding: AgentWorkspaceBinding,
     ) -> StoredWorkflowAgentSession:
-        snapshot = WorkflowAgentWorkspaceStore._resolve_session_snapshot(
-            session,
-            tenant_id=scope.tenant_id,
-            binding=binding,
-            conversation_scoped=scope.conversation_id is not None,
+        snapshot = (
+            CompositorSessionSnapshot.model_validate_json(binding.session_snapshot)
+            if binding.session_snapshot
+            else None
         )
         return StoredWorkflowAgentSession(
             scope=scope,
@@ -329,33 +358,6 @@ class WorkflowAgentWorkspaceStore:
             pending_form_id=binding.pending_form_id,
             pending_tool_call_id=binding.pending_tool_call_id,
         )
-
-    @staticmethod
-    def _resolve_session_snapshot(
-        session: Session,
-        *,
-        tenant_id: str,
-        binding: AgentWorkspaceBinding,
-        conversation_scoped: bool,
-    ) -> CompositorSessionSnapshot | None:
-        if binding.session_snapshot:
-            return CompositorSessionSnapshot.model_validate_json(binding.session_snapshot)
-        if not conversation_scoped:
-            return None
-        inherited_snapshot = session.scalar(
-            select(AgentWorkspaceBinding.session_snapshot)
-            .where(
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.workspace_id == binding.workspace_id,
-                AgentWorkspaceBinding.session_snapshot.isnot(None),
-                AgentWorkspaceBinding.id != binding.id,
-            )
-            .order_by(AgentWorkspaceBinding.created_at.desc())
-            .limit(1)
-        )
-        if inherited_snapshot is None:
-            return None
-        return CompositorSessionSnapshot.model_validate_json(inherited_snapshot)
 
 
 __all__ = [

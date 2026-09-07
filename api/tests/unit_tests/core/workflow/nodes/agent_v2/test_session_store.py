@@ -194,7 +194,7 @@ def test_resolve_workspace_owner_scope_keeps_workflow_run_for_pure_workflow() ->
     assert owner.owner_id == "run-1"
 
 
-def test_conversation_scope_inherits_session_snapshot_from_prior_binding(
+def test_conversation_scope_reuses_existing_binding_on_later_turn(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -238,7 +238,7 @@ def test_conversation_scope_inherits_session_snapshot_from_prior_binding(
     )
     sqlite_session.add_all([_home_snapshot(), workspace, prior_binding, execution])
     sqlite_session.commit()
-    _install_backend_client(monkeypatch)
+    client = _install_backend_client(monkeypatch)
 
     scope = WorkflowAgentSessionScope(
         tenant_id="tenant-1",
@@ -255,8 +255,10 @@ def test_conversation_scope_inherits_session_snapshot_from_prior_binding(
     stored = WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id="home-1")
 
     assert stored.workspace_id == workspace.id
-    assert stored.binding_id != prior_binding.id
+    assert stored.binding_id == prior_binding.id
     assert stored.session_snapshot == prior_snapshot
+    client.create_execution_binding_sync.assert_not_called()
+    assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspaceBinding)) == 1
 
 
 def test_load_existing_scope_reads_the_generation_from_the_persisted_binding(sqlite_session: Session) -> None:
@@ -518,3 +520,95 @@ def test_retire_workflow_run_returns_existing_retired_workspace(sqlite_session: 
     sqlite_session.expire(workspace)
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert workspace_ids == [workspace.id]
+
+
+def test_workflow_scope_creates_binding_without_existing_workspace_ref(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    execution = _execution_row(process_data={"workflow_agent_binding_id": "workflow-binding-1"})
+    sqlite_session.add_all([_home_snapshot(), execution])
+    sqlite_session.commit()
+    client = _install_backend_client(monkeypatch)
+
+    WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
+
+    request = client.create_execution_binding_sync.call_args.args[0]
+    assert request.existing_workspace_ref is None
+
+
+def test_conversation_scope_first_turn_creates_binding_without_existing_workspace_ref(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    execution = _execution_row(
+        execution_id="execution-2",
+        workflow_run_id="run-2",
+        process_data={"workflow_agent_binding_id": "workflow-binding-1"},
+    )
+    sqlite_session.add_all([_home_snapshot(), execution])
+    sqlite_session.commit()
+    client = _install_backend_client(monkeypatch)
+
+    scope = WorkflowAgentSessionScope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_run_id="run-2",
+        node_id="node-1",
+        node_execution_id="execution-2",
+        workflow_agent_binding_id="workflow-binding-1",
+        agent_id="agent-1",
+        agent_config_snapshot_id="config-1",
+        conversation_id="conversation-1",
+    )
+    WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id="home-1")
+
+    request = client.create_execution_binding_sync.call_args.args[0]
+    assert request.existing_workspace_ref is None
+
+
+def test_workflow_scope_creates_binding_without_existing_workspace_ref(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    execution = _execution_row(process_data={"workflow_agent_binding_id": "workflow-binding-1"})
+    sqlite_session.add_all([_home_snapshot(), execution])
+    sqlite_session.commit()
+    client = _install_backend_client(monkeypatch)
+
+    WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
+
+    request = client.create_execution_binding_sync.call_args.args[0]
+    assert request.existing_workspace_ref is None
+
+
+def test_conversation_scope_first_turn_creates_binding_without_existing_workspace_ref(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    execution = _execution_row(
+        execution_id="execution-2",
+        workflow_run_id="run-2",
+        process_data={"workflow_agent_binding_id": "workflow-binding-1"},
+    )
+    sqlite_session.add_all([_home_snapshot(), execution])
+    sqlite_session.commit()
+    client = _install_backend_client(monkeypatch)
+
+    scope = WorkflowAgentSessionScope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_run_id="run-2",
+        node_id="node-1",
+        node_execution_id="execution-2",
+        workflow_agent_binding_id="workflow-binding-1",
+        agent_id="agent-1",
+        agent_config_snapshot_id="config-1",
+        conversation_id="conversation-1",
+    )
+    WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id="home-1")
+
+    request = client.create_execution_binding_sync.call_args.args[0]
+    assert request.existing_workspace_ref is None
