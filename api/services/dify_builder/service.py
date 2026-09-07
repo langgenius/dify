@@ -150,7 +150,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         UiAction(id="publish_fix", label="Publish fix", kind=ActionKind.PRIMARY),
         UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY),
         UiAction(id="continue_adjusting", label="Fix again", kind=ActionKind.SECONDARY),
-        UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
         UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.CHECKLIST_AWAIT_RECHECK: [
@@ -252,7 +251,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             next_state="build.initial_plan",
             canvas_event="cancel_publish",
         ),
-        UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
         UiAction(
             id="revert",
             label="Revert",
@@ -340,7 +338,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             next_state="edit.impact_analysis",
             canvas_event="cancel_publish",
         ),
-        UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
         UiAction(
             id="revert",
             label="Revert",
@@ -403,8 +400,6 @@ _ACTION_ID_TO_KIND: dict[str, str] = {
     # provide_testdata / recheck / keep_draft already match handler kinds → passthrough
 }
 
-
-_CLIENT_ONLY_ACTIONS = frozenset({"view_changes"})
 
 _ACTIVE_INTERACTION_CARD_FOR_ACTION: dict[str, tuple[str, str | None]] = {
     "submit_requirements": ("form", "build_requirements"),
@@ -521,12 +516,6 @@ def resolve_action_kind(raw: str) -> str:
     """Map a frontend action_id to the engine handler kind.
 
     Action IDs that already match their handler kind pass through unchanged.
-
-    ``view_changes`` is intentionally NOT in the map and must never reach the
-    backend -- it is a client-side card toggle (forces
-    ``change_set.full_diff_open``). If it were posted at ``fix.await_decision``,
-    the handler's default branch (``keep_draft``) would terminate the
-    session. The FE handles ``view_changes`` locally.
     """
     return _ACTION_ID_TO_KIND.get(raw, raw)
 
@@ -1071,15 +1060,11 @@ class DifyBuilderService:
                 return self._build_session_view(s, fc), False
             if "user" in turn_kinds:
                 action.base_version = s.version
-        surfaced_client_actions = {ui_action.id for ui_action in _ACTIONS_FOR.get(s.current_state, [])}
         lifecycle_limited = bool(
             fc.paused or fc.recovery_class or is_working(s.current_state) or is_terminal(s.current_state)
         )
         internal_allowed = _internal_action_allowed(s.current_state, fc, action.kind)
-        if action.kind in _CLIENT_ONLY_ACTIONS:
-            if action.kind not in surfaced_client_actions:
-                raise BadRequestError(f"action {action.kind} is not allowed in state {s.current_state}")
-        elif not internal_allowed and (
+        if not internal_allowed and (
             lifecycle_limited or action.kind not in _BACKEND_ACTIONS_FOR.get(s.current_state, frozenset())
         ):
             raise BadRequestError(f"action {action.kind} is not allowed in state {s.current_state}")
@@ -1104,11 +1089,6 @@ class DifyBuilderService:
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
-        if action.kind in _CLIENT_ONLY_ACTIONS:
-            # Client-side-only actions (e.g. view_changes toggles a card locally) never
-            # reach the engine — dispatching would hit handle_await_decision's keep_draft
-            # default and silently terminate the session. Return the current view unchanged.
-            return self._build_session_view(s, fc), False
         if action.kind == "update_model":
             if is_working(s.current_state) or self._session_lock.exists(session_id):
                 raise BusyError(f"session {session_id} is busy")
