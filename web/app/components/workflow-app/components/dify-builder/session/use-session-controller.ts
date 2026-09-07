@@ -746,7 +746,7 @@ export function useDifyBuilderSessionController(): DifyBuilderSessionController 
       if (!view || store.get(difyBuilderSessionBusyAtom)) return Promise.resolve(false)
       return runCommand({
         knownSessionId: view.session_id,
-        expectTerminalEvent: actionId !== 'update_model' && actionId !== 'view_changes',
+        expectTerminalEvent: actionId !== 'update_model',
         openStream: (signal) =>
           runSessionAction(
             view.session_id,

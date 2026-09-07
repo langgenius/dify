@@ -111,7 +111,6 @@ const renderForm = (
         card,
         valid_at_version: 1,
       }}
-      changesExpanded={false}
       interrupted={false}
       items={[card]}
       onActionPayloadChange={onActionPayloadChange}
@@ -372,7 +371,6 @@ describe('DifyBuilderConversation test data form', () => {
             card,
             valid_at_version: 1,
           }}
-          changesExpanded={false}
           interrupted={false}
           items={[card]}
           onActionPayloadChange={vi.fn()}
@@ -435,7 +433,6 @@ describe('DifyBuilderConversation test data form', () => {
         viewVersion={1}
         busy={false}
         activeInteraction={null}
-        changesExpanded={false}
         interrupted={false}
         items={[
           {
@@ -467,7 +464,6 @@ describe('DifyBuilderConversation test data form', () => {
         viewVersion={1}
         busy={false}
         activeInteraction={null}
-        changesExpanded={false}
         interrupted={false}
         items={[
           {
@@ -536,7 +532,6 @@ describe('DifyBuilderConversation test data form', () => {
           viewVersion={1}
           busy
           activeInteraction={null}
-          changesExpanded={false}
           interrupted={false}
           items={[
             {
@@ -592,7 +587,6 @@ describe('DifyBuilderConversation test data form', () => {
           viewVersion={1}
           busy
           activeInteraction={null}
-          changesExpanded={false}
           interrupted={false}
           items={[]}
           onActionPayloadChange={vi.fn()}
@@ -632,7 +626,6 @@ describe('DifyBuilderConversation test data form', () => {
           card: resourceCard,
           valid_at_version: 1,
         }}
-        changesExpanded={false}
         interrupted={false}
         items={[resourceCard]}
         onActionPayloadChange={onActionPayloadChange}
@@ -685,7 +678,6 @@ describe('DifyBuilderConversation test data form', () => {
           card: activeCard,
           valid_at_version: 5,
         }}
-        changesExpanded={false}
         interrupted={false}
         items={[oldCard]}
         onActionPayloadChange={onActionPayloadChange}
@@ -714,7 +706,6 @@ describe('DifyBuilderConversation test data form', () => {
         viewVersion={1}
         busy={false}
         activeInteraction={null}
-        changesExpanded={false}
         interrupted={false}
         items={[
           {
@@ -750,13 +741,12 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getByText('The plan is ready.')).toBeInTheDocument()
   })
 
-  it('hides challenge, change set, and checkpoint cards from the committed conversation', () => {
+  it('shows change set text while hiding challenge and checkpoint cards in a committed turn', () => {
     render(
       <DifyBuilderConversation
         viewVersion={1}
         busy={false}
         activeInteraction={null}
-        changesExpanded
         interrupted={false}
         items={[
           {
@@ -777,7 +767,6 @@ describe('DifyBuilderConversation test data form', () => {
               count: 1,
               changes: ['Update answer configuration'],
               scope: 'configuration',
-              full_diff_open: true,
             },
           },
           {
@@ -811,8 +800,102 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.queryByText('High-impact rules')).not.toBeInTheDocument()
     expect(screen.queryByText('Review these rules before applying.')).not.toBeInTheDocument()
     expect(screen.queryByText('configuration')).not.toBeInTheDocument()
-    expect(screen.queryByText('Update answer configuration')).not.toBeInTheDocument()
+    const changes = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
+    expect(within(changes).getByRole('listitem')).toHaveTextContent('Update answer configuration')
+    expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
     expect(screen.queryByText('Pre-edit checkpoint')).not.toBeInTheDocument()
+  })
+
+  it('shows an empty change set without requiring an interaction', () => {
+    render(
+      <DifyBuilderConversation
+        viewVersion={2}
+        busy={false}
+        activeInteraction={null}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'change_set',
+            payload: { count: 0, changes: [], scope: 'configuration' },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    const changes = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
+    expect(within(changes).getByText('workflow.difyBuilder.noChanges')).toBeInTheDocument()
+    expect(within(changes).queryByRole('list')).not.toBeInTheDocument()
+    expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('labels target nodes by name and ID without requiring change descriptions', () => {
+    render(
+      <DifyBuilderConversation
+        viewVersion={2}
+        busy={false}
+        activeInteraction={null}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'change_set',
+            payload: {
+              count: 2,
+              changes: [],
+              scope: 'configuration',
+              nodes: [
+                { node_id: 'node3', title: 'Answer' },
+                { node_id: 'node4', title: '' },
+              ],
+            },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    const card = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
+    const nodes = within(card).getByRole('list', { name: 'workflow.difyBuilder.affectedNodes' })
+    expect(within(nodes).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(nodes).getByText('Answer')).toBeInTheDocument()
+    expect(within(nodes).getByText('node3')).toBeInTheDocument()
+    expect(within(nodes).getByText('node4')).toBeInTheDocument()
+    expect(within(card).queryByText('workflow.difyBuilder.noChanges')).not.toBeInTheDocument()
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('preserves full multiline change text and duplicate entries as plain text', () => {
+    const change = `**Update configuration**\n<link>${'long_configuration_value_'.repeat(30)}</link>`
+    render(
+      <DifyBuilderConversation
+        viewVersion={2}
+        busy={false}
+        activeInteraction={null}
+        interrupted={false}
+        items={[
+          {
+            seq: 0,
+            at_version: 2,
+            kind: 'change_set',
+            payload: { count: 2, changes: [change, change], scope: 'configuration' },
+          },
+        ]}
+        onActionPayloadChange={vi.fn()}
+      />,
+    )
+
+    const changes = screen.getByRole('article', { name: 'workflow.difyBuilder.changes' })
+    const entries = within(changes).getAllByRole('listitem')
+    expect(entries).toHaveLength(2)
+    for (const entry of entries) {
+      expect(within(entry).getByText(change, { normalizer: (value) => value })).toBeInTheDocument()
+    }
+    expect(mocks.markdown).not.toHaveBeenCalled()
+    expect(within(changes).queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('does not render a Thinking section for execution progress alone', () => {
@@ -841,7 +924,6 @@ describe('DifyBuilderConversation test data form', () => {
           viewVersion={1}
           busy
           activeInteraction={null}
-          changesExpanded={false}
           interrupted={false}
           items={[]}
           onActionPayloadChange={vi.fn()}
@@ -880,7 +962,6 @@ describe('DifyBuilderConversation test data form', () => {
           viewVersion={1}
           busy
           activeInteraction={null}
-          changesExpanded={false}
           interrupted={false}
           items={[]}
           onActionPayloadChange={vi.fn()}
@@ -933,7 +1014,6 @@ describe('DifyBuilderConversation test data form', () => {
         viewVersion={1}
         busy={false}
         activeInteraction={null}
-        changesExpanded={false}
         interrupted={false}
         items={[
           {
@@ -967,7 +1047,6 @@ describe('DifyBuilderConversation test data form', () => {
         viewVersion={1}
         busy={false}
         activeInteraction={null}
-        changesExpanded={false}
         interrupted={false}
         items={[
           {

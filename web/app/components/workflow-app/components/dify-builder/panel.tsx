@@ -8,7 +8,7 @@ import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configur
 import DifyBuilderComposer from './composer'
 import { DifyBuilderConversation } from './conversation'
 import DebugLogExport from './debug-log-export'
-import { getDefaultActionPayload, isClientOnlyAction } from './interactions/action-payload'
+import { getDefaultActionPayload } from './interactions/action-payload'
 import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
@@ -57,7 +57,6 @@ const DifyBuilderActionBar = ({
   actionValidity,
   actions,
   busy,
-  changesExpanded,
   formActionId,
   formId,
   pendingActionId,
@@ -67,7 +66,6 @@ const DifyBuilderActionBar = ({
   actionValidity: Record<string, boolean>
   actions: Action[]
   busy: boolean
-  changesExpanded: boolean
   formActionId?: string
   formId?: string
   pendingActionId: string | null
@@ -78,7 +76,7 @@ const DifyBuilderActionBar = ({
   if (visibleActions.length === 0) return null
 
   return (
-    <div className="flex flex-col items-end gap-1 px-4 pb-2">
+    <div className="flex flex-col items-end gap-1 px-4 py-2">
       {visibleActions.map((action) => {
         const loading = pendingActionId === action.id
         const awaitingChecklist = action.id === 'recheck' && !recheckReady
@@ -100,7 +98,6 @@ const DifyBuilderActionBar = ({
                 ? false
                 : busy || pendingActionId !== null || awaitingChecklist || (!submitsForm && invalid)
             }
-            aria-expanded={action.id === 'view_changes' ? changesExpanded : undefined}
             onClick={submitsForm ? undefined : () => onAction(action)}
           >
             {action.label}
@@ -139,7 +136,6 @@ const DifyBuilderPanel = () => {
   const interactionFormId = useId()
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const [retryingTurnId, setRetryingTurnId] = useState<string | null>(null)
-  const [changesExpanded, setChangesExpanded] = useState(false)
   const [actionInteractionState, setActionInteractionState] = useState(
     EMPTY_ACTION_INTERACTION_STATE,
   )
@@ -225,10 +221,6 @@ const DifyBuilderPanel = () => {
   const handleAction = useCallback(
     async (action: Action) => {
       if (interactionBusy || pendingActionId !== null || actionValidity[action.id] === false) return
-      if (isClientOnlyAction(action.id)) {
-        setChangesExpanded((expanded) => !expanded)
-        return
-      }
 
       setPendingActionId(action.id)
       try {
@@ -284,7 +276,6 @@ const DifyBuilderPanel = () => {
     pinnedToBottomRef.current = true
     setPendingActionId(null)
     setRetryingTurnId(null)
-    setChangesExpanded(false)
     setActionInteractionState(EMPTY_ACTION_INTERACTION_STATE)
   }
 
@@ -353,7 +344,6 @@ const DifyBuilderPanel = () => {
                 viewVersion={viewVersion}
                 items={conversation}
                 busy={interactionBusy}
-                changesExpanded={changesExpanded}
                 interrupted={interrupted}
                 activeFormId={activeFormId}
                 onActionPayloadChange={handleActionPayloadChange}
@@ -412,7 +402,6 @@ const DifyBuilderPanel = () => {
             actionValidity={actionValidity}
             actions={actions}
             busy={interactionBusy}
-            changesExpanded={changesExpanded}
             formActionId={activeFormActionId}
             formId={activeFormId}
             pendingActionId={pendingActionId}
