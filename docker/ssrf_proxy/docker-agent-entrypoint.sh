@@ -16,6 +16,10 @@ expand_env() {
     }' "$1"
 }
 
+export SSRF_PROXY_CONNECT_TIMEOUT="${SSRF_PROXY_CONNECT_TIMEOUT:-${HTTP_REQUEST_MAX_CONNECT_TIMEOUT:-30}}"
+export SSRF_PROXY_REQUEST_TIMEOUT="${SSRF_PROXY_REQUEST_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}"
+export SSRF_PROXY_READ_TIMEOUT="${SSRF_PROXY_READ_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}"
+
 echo "[ENTRYPOINT] replacing environment variables in the templates"
 expand_env /etc/squid/squid.conf.template > /etc/squid/squid.conf
 expand_env /etc/squid/dify_common.conf.template > /etc/squid/dify_common.conf
