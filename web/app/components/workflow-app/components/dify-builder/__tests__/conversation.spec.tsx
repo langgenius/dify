@@ -89,18 +89,25 @@ const renderForm = (
   values: Record<string, unknown> = {},
   onActionPayloadChange = vi.fn(),
   onActionValidityChange = vi.fn(),
+  variant: 'testdata' | 'build_requirements' | 'edit_rules' = 'testdata',
 ) => {
   const card: Extract<ConversationItem, { kind: 'form' }> = {
     seq: 0,
     at_version: 1,
     kind: 'form',
-    payload: { variant: 'testdata', fields, values },
+    payload: { variant, fields, values },
   }
   render(
     <DifyBuilderConversation
+      viewVersion={1}
       busy={false}
       activeInteraction={{
-        action_id: 'provide_testdata',
+        action_id:
+          variant === 'build_requirements'
+            ? 'submit_requirements'
+            : variant === 'edit_rules'
+              ? 'submit_edit_rules'
+              : 'provide_testdata',
         card,
         valid_at_version: 1,
       }}
@@ -119,6 +126,61 @@ describe('DifyBuilderConversation test data form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
+
+  it.each([
+    { variant: 'build_requirements', actionId: 'submit_requirements' },
+    { variant: 'edit_rules', actionId: 'submit_edit_rules' },
+    { variant: 'testdata', actionId: 'provide_testdata' },
+  ] as const)(
+    'submits cleared fields with the $variant payload semantics',
+    async ({ variant, actionId }) => {
+      const user = userEvent.setup()
+      const { onActionPayloadChange, onActionValidityChange } = renderForm(
+        [
+          { key: 'audience', label: 'Audience', type: 'text' },
+          { key: 'locale', label: 'Locale', type: 'select', options: ['en', 'zh'] },
+          { key: 'budget', label: 'Budget', type: 'number' },
+          { key: 'settings', label: 'Settings', type: 'json_object' },
+          { key: 'retries', label: 'Retries', type: 'number' },
+          { key: 'enabled', label: 'Enabled', type: 'checkbox' },
+        ],
+        {
+          audience: 'Managers',
+          locale: 'en',
+          budget: 100,
+          settings: { format: 'report' },
+          retries: 0,
+          enabled: false,
+        },
+        vi.fn(),
+        vi.fn(),
+        variant,
+      )
+
+      await user.clear(screen.getByRole('textbox', { name: 'Audience' }))
+      await user.click(screen.getByRole('combobox', { name: 'Locale' }))
+      await user.click(screen.getByRole('option', { name: 'common.operation.clear' }))
+      await user.clear(screen.getByRole('spinbutton', { name: 'Budget' }))
+      await user.clear(screen.getByRole('textbox', { name: 'Settings' }))
+
+      await waitFor(() => {
+        expect(onActionPayloadChange).toHaveBeenLastCalledWith(
+          actionId,
+          variant === 'testdata'
+            ? { mode: 'provide', inputs: { retries: 0, enabled: false } }
+            : {
+                audience: null,
+                locale: null,
+                budget: null,
+                settings: null,
+                retries: 0,
+                enabled: false,
+              },
+        )
+      })
+      expect(onActionValidityChange).toHaveBeenLastCalledWith(actionId, true)
+    },
+  )
 
   it('submits parsed JSON while preserving number and checkbox value types', async () => {
     const user = userEvent.setup()
@@ -303,6 +365,7 @@ describe('DifyBuilderConversation test data form', () => {
     render(
       <Provider store={store}>
         <DifyBuilderConversation
+          viewVersion={1}
           busy={false}
           activeInteraction={{
             action_id: 'provide_testdata',
@@ -369,6 +432,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={null}
         changesExpanded={false}
@@ -400,6 +464,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={null}
         changesExpanded={false}
@@ -468,6 +533,7 @@ describe('DifyBuilderConversation test data form', () => {
     render(
       <Provider store={store}>
         <DifyBuilderConversation
+          viewVersion={1}
           busy
           activeInteraction={null}
           changesExpanded={false}
@@ -523,6 +589,7 @@ describe('DifyBuilderConversation test data form', () => {
     render(
       <Provider store={store}>
         <DifyBuilderConversation
+          viewVersion={1}
           busy
           activeInteraction={null}
           changesExpanded={false}
@@ -558,6 +625,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={{
           action_id: 'confirm_resources',
@@ -610,6 +678,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     render(
       <DifyBuilderConversation
+        viewVersion={5}
         busy={false}
         activeInteraction={{
           action_id: 'provide_testdata',
@@ -642,6 +711,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('keeps completed execution and reasoning available with the committed reply', () => {
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={null}
         changesExpanded={false}
@@ -683,6 +753,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('hides challenge, change set, and checkpoint cards from the committed conversation', () => {
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={null}
         changesExpanded
@@ -767,6 +838,7 @@ describe('DifyBuilderConversation test data form', () => {
     render(
       <Provider store={store}>
         <DifyBuilderConversation
+          viewVersion={1}
           busy
           activeInteraction={null}
           changesExpanded={false}
@@ -805,6 +877,7 @@ describe('DifyBuilderConversation test data form', () => {
     render(
       <Provider store={store}>
         <DifyBuilderConversation
+          viewVersion={1}
           busy
           activeInteraction={null}
           changesExpanded={false}
@@ -857,6 +930,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders known plan metadata without inferring a status', () => {
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={null}
         changesExpanded={false}
@@ -890,6 +964,7 @@ describe('DifyBuilderConversation test data form', () => {
   it('renders failed test result content in the card framework', () => {
     render(
       <DifyBuilderConversation
+        viewVersion={1}
         busy={false}
         activeInteraction={null}
         changesExpanded={false}

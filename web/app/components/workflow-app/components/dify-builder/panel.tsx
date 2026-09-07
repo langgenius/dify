@@ -1,7 +1,7 @@
 import type { Action } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
@@ -22,6 +22,7 @@ import {
   difyBuilderCanvasRefreshingAtom,
   difyBuilderErrorAtom,
   difyBuilderHasSessionAtom,
+  difyBuilderInteractionAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLoadOlderConversationAtom,
@@ -30,6 +31,7 @@ import {
   difyBuilderResetAtom,
   difyBuilderRetryCanvasRefreshAtom,
   difyBuilderRetryMessageAtom,
+  difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
 } from './store'
@@ -121,11 +123,13 @@ const DifyBuilderPanel = () => {
   const conversationLoading = useAtomValue(difyBuilderConversationLoadingAtom)
   const error = useAtomValue(difyBuilderErrorAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
+  const interaction = useAtomValue(difyBuilderInteractionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
   const retryableMessage = useAtomValue(difyBuilderRetryableMessageAtom)
+  const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
@@ -141,8 +145,8 @@ const DifyBuilderPanel = () => {
   )
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedToBottomRef = useRef(true)
-  const activeInteractionKey = activeInteraction
-    ? `${activeInteraction.action_id}:${activeInteraction.card.seq}`
+  const activeInteractionKey = interaction
+    ? `${sessionId}:${interaction.action_id}:${interaction.card.seq}`
     : ''
   const activeFormActionId =
     activeInteraction?.card.kind === 'form' && FORM_ACTION_IDS.has(activeInteraction.action_id)
@@ -154,7 +158,13 @@ const DifyBuilderPanel = () => {
       ? actionInteractionState
       : EMPTY_ACTION_INTERACTION_STATE
   const actionPayloads = currentActionInteractionState.payloads
-  const actionValidity = currentActionInteractionState.validity
+  const actionValidity = useMemo(
+    () =>
+      interaction && !activeInteraction
+        ? { ...currentActionInteractionState.validity, [interaction.action_id]: false }
+        : currentActionInteractionState.validity,
+    [activeInteraction, currentActionInteractionState.validity, interaction],
+  )
 
   const scrollToBottomIfPinned = useCallback(() => {
     const scrollContainer = scrollRef.current
@@ -338,7 +348,9 @@ const DifyBuilderPanel = () => {
                 </div>
               )}
               <DifyBuilderConversation
-                activeInteraction={activeInteraction}
+                key={sessionId}
+                activeInteraction={interaction}
+                viewVersion={viewVersion}
                 items={conversation}
                 busy={interactionBusy}
                 changesExpanded={changesExpanded}

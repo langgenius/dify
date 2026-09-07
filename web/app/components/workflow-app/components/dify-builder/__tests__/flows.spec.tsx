@@ -177,6 +177,140 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     window.sessionStorage.clear()
   })
 
+  it.each([
+    {
+      variant: 'build_requirements',
+      state: 'build.goal_analysis',
+      actionId: 'submit_requirements',
+      edgeCount: 0,
+    },
+    {
+      variant: 'edit_rules',
+      state: 'edit.impact_analysis',
+      actionId: 'submit_edit_rules',
+      edgeCount: 1,
+    },
+    {
+      variant: 'testdata',
+      state: 'build.await_testdata',
+      actionId: 'provide_testdata',
+      edgeCount: 0,
+    },
+  ])(
+    'preserves $variant drafts through a chat commit and submits the edited values',
+    async ({ variant, state, actionId, edgeCount }) => {
+      const form: ConversationItem = {
+        seq: 0,
+        at_version: 2,
+        kind: 'form',
+        payload: {
+          variant,
+          fields: [{ key: 'audience', label: 'Audience', type: 'text' }],
+          values: { audience: 'Managers' },
+        },
+      }
+      const waiting = createSessionView({
+        state,
+        version: 2,
+        conversation_last_seq: 0,
+        active_interaction: { action_id: actionId, card: form, valid_at_version: 2 },
+        actions: [{ id: actionId, kind: 'primary', label: 'Submit form' }],
+      })
+      const reply: ConversationItem = {
+        seq: 2,
+        at_version: 4,
+        kind: 'assistant_turn',
+        payload: {
+          turn_id: 'reply-1',
+          stage_id: state,
+          execution: { status: 'completed' },
+          reply_text: 'The audience determines how to explain the results.',
+        },
+      }
+      const answered = {
+        ...waiting,
+        version: 4,
+        conversation_last_seq: 2,
+        active_interaction: { action_id: actionId, card: form, valid_at_version: 4 },
+      }
+      const messageStream = createControlledEventStream()
+      mocks.create.mockResolvedValue(
+        streamOf(commandStartedEvent(createSessionView()), stateEvent(waiting)),
+      )
+      mocks.conversation
+        .mockResolvedValueOnce(conversationPage())
+        .mockResolvedValueOnce(conversationPage([form]))
+        .mockResolvedValueOnce(conversationPage([reply]))
+      mocks.message.mockResolvedValue(messageStream.iterable)
+      mocks.action.mockResolvedValue(
+        streamOf(
+          commandStartedEvent(answered),
+          stateEvent({
+            ...answered,
+            version: 5,
+            active_interaction: null,
+            actions: [],
+          }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderFlow(edgeCount)
+
+      await user.type(getComposer(), 'Prepare the workflow')
+      await user.click(getSendButton())
+      const audience = await screen.findByRole('textbox', { name: 'Audience' })
+      await waitFor(() => expect(audience).toBeEnabled())
+      await user.clear(audience)
+      await user.type(audience, 'Support agents')
+      await user.type(getComposer(), 'How is the audience used?')
+      await user.click(getSendButton())
+      await waitFor(() => expect(mocks.message).toHaveBeenCalledOnce())
+      await act(async () => {
+        messageStream.push(commandStartedEvent(waiting))
+        messageStream.push({
+          event: 'commit',
+          data: {
+            kind: 'commit',
+            session_id: waiting.session_id,
+            operation_id: 'message-1',
+            stage_id: state,
+            at_version: 3,
+            version: 3,
+            state,
+            settled: false,
+            items: [
+              {
+                seq: 1,
+                at_version: 3,
+                kind: 'user',
+                payload: { turn_id: 'user-1', text: 'How is the audience used?' },
+              },
+            ],
+          },
+        })
+      })
+      await screen.findByText('How is the audience used?')
+      expect(screen.getByRole('textbox', { name: 'Audience' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Submit form' })).toBeDisabled()
+
+      await act(async () => messageStream.push(stateEvent(answered)))
+      await screen.findByText('The audience determines how to explain the results.')
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Audience' })).toBeEnabled())
+      expect(screen.getByRole('textbox', { name: 'Audience' })).toHaveValue('Support agents')
+
+      await user.click(screen.getByRole('button', { name: 'Submit form' }))
+      await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
+      expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
+        action_id: actionId,
+        base_version: 4,
+        payload:
+          actionId === 'provide_testdata'
+            ? { mode: 'provide', inputs: { audience: 'Support agents' } }
+            : { audience: 'Support agents' },
+      })
+    },
+  )
+
   it('streams a Build command and next action without a session-state GET', async () => {
     const createStarted = createSessionView({
       canvas_read_only: true,
