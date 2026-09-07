@@ -305,6 +305,8 @@ def _message_data(**overrides):
         agent_thoughts_with_session=lambda *, session: data["agent_thoughts"],
         to_dict=lambda: data,
     )
+
+
 def test_encrypt_decrypt_obfuscate_and_cache(
     trace_environment: None,
     encryption_functions: tuple[EncryptTokenRecorder, BatchDecryptTokenRecorder, ObfuscatedTokenRecorder],
