@@ -157,8 +157,8 @@ from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
-from services.installed_app_completion_adapters import AppGenerateServiceCompletionRuntime
-from services.installed_app_completion_service import InstalledAppCompletionService
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime
+from services.installed_app_generation_service import InstalledAppGenerationService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -265,7 +265,7 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
-    installed_app_completion: InstalledAppCompletionService
+    installed_app_generation: InstalledAppGenerationService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -634,10 +634,10 @@ def build_application_services(
             installed_apps=installed_apps,
             is_user_allowed=webapp_access.is_user_allowed,
         ),
-        installed_app_completion=InstalledAppCompletionService(
+        installed_app_generation=InstalledAppGenerationService(
             app_definitions=app_definitions,
             usage=installed_apps,
-            runtime=AppGenerateServiceCompletionRuntime(session_factory=database_client),
+            runtime=AppGenerateServiceRuntime(session_factory=database_client),
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,

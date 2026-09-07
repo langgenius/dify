@@ -213,11 +213,11 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
-[importlinter:contract:installed-app-completion-boundary]
-name = Installed app completion service is framework and persistence neutral
+[importlinter:contract:installed-app-generation-boundary]
+name = Installed app generation service is framework and persistence neutral
 type = forbidden
 source_modules =
-    services.installed_app_completion_service
+    services.installed_app_generation_service
 forbidden_modules =
     controllers
     extensions

@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.console.explore.completion as completion_module
-import services.installed_app_completion_service as completion_service_module
+import services.installed_app_generation_service as completion_service_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
@@ -17,7 +17,7 @@ from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
-from services.installed_app_completion_service import CompletionResponse, InstalledAppCompletionService
+from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -42,13 +42,13 @@ class _RuntimeCall:
 class _Runtime:
     session_factory: sessionmaker[Session]
     installed_app_id: str
-    response: CompletionResponse = field(default_factory=lambda: dict(_BLOCKING_RESPONSE))
+    response: GenerationResponse = field(default_factory=lambda: dict(_BLOCKING_RESPONSE))
     error: Exception | None = None
     calls: list[_RuntimeCall] = field(default_factory=list)
 
     def generate(
         self, *, app_id: str, account_id: str, args: Mapping[str, object], streaming: bool
-    ) -> CompletionResponse:
+    ) -> GenerationResponse:
         # The runtime sees a committed usage update through an independent
         # connection, including when generation immediately fails.
         with self.session_factory() as session:
@@ -63,7 +63,7 @@ class _Runtime:
 
 @dataclass(frozen=True)
 class _Services:
-    installed_app_completion: InstalledAppCompletionService
+    installed_app_generation: InstalledAppGenerationService
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ def runtime(
     sqlite_session_factory: sessionmaker[Session],
 ) -> _Runtime:
     runtime = _Runtime(sqlite_session_factory, harness.installed_app.id)
-    service = InstalledAppCompletionService(
+    service = InstalledAppGenerationService(
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
             builtin_icon_url_prefix="/tools/icons",
@@ -81,7 +81,7 @@ def runtime(
         usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
         runtime=runtime,
     )
-    services = _Services(installed_app_completion=service)
+    services = _Services(installed_app_generation=service)
     monkeypatch.setattr(completion_module, "application_services", lambda: services)
     monkeypatch.setattr(completion_service_module, "naive_utc_now", lambda: _USED_AT)
     harness.api.add_resource(
