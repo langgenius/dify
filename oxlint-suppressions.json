@@ -3260,14 +3260,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/error-handle/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
