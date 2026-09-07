@@ -32,13 +32,14 @@ class AuthRouter:
     def _execute(self, spec: EndpointSpec, call: Callable[..., Any]) -> Any:
         """The order is the contract. An endpoint the edition does not expose
         answers 404 before anything reveals whether the bearer was valid, and
-        its licence check answers 403 before the missing-bearer 401.
+        an enterprise deployment's licence answers 403 before the missing-bearer
+        401. The licence is a fact about the deployment, not the route or the
+        caller, so this is the one place it is checked.
         """
-        if spec.edition is not None:
-            if dify_config.DEPLOYMENT_EDITION not in spec.edition:
-                raise NotFound()
-            if DeploymentEdition.ENTERPRISE in spec.edition:
-                assert_license_valid()
+        if spec.edition is not None and dify_config.DEPLOYMENT_EDITION not in spec.edition:
+            raise NotFound()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+            assert_license_valid()
 
         token = extract_bearer(request)
         if not token:

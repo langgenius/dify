@@ -19,11 +19,7 @@ from controllers.openapi._models import (
     WorkspacePayload,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import (
-    CheckEnterpriseLicense,
-    CheckScope,
-    CheckSubject,
-)
+from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.subjects import AccountSubject
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
@@ -38,7 +34,7 @@ from services.entities.account_entities import AccountSnapshot
 @openapi_ns.route("/account")
 class AccountApi(Resource):
     @endpoint(
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckEnterpriseLicense(), CheckScope(Scope.FULL)),
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, AccountResponse, "Account info"),
         write=False,
     )
@@ -62,7 +58,7 @@ class AccountApi(Resource):
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
     @endpoint(
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckEnterpriseLicense(), CheckScope(Scope.FULL)),
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, RevokeResponse, "Session revoked"),
     )
     def delete(self, ctx: Context):
@@ -73,7 +69,7 @@ class AccountSessionsSelfApi(Resource):
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
     @endpoint(
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckEnterpriseLicense(), CheckScope(Scope.FULL)),
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         query=SessionListQuery,
         returns=(200, SessionListResponse, "Session list"),
         write=False,
@@ -96,7 +92,7 @@ class AccountSessionsApi(Resource):
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
     @endpoint(
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckEnterpriseLicense(), CheckScope(Scope.FULL)),
+        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, RevokeResponse, "Session revoked"),
     )
     def delete(self, ctx: Context, session_id: str):

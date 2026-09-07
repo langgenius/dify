@@ -19,7 +19,6 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.requirements import CheckEnterpriseLicense
 from machinery.context import AccountRequestContext
 from services.account_errors import AccountSessionNotFoundError
 from services.entities.account_access_entities import AccountSessionPage
@@ -109,14 +108,6 @@ def test_session_by_id_rejects_malformed_uuid(app: Flask) -> None:
     with app.test_request_context("/openapi/v1/account/sessions/not-a-uuid", method="DELETE"):
         with pytest.raises(NotFound, match="session not found"):
             api.delete.__handler__(api, _ctx(), session_id="not-a-uuid")
-
-
-def test_every_account_route_declares_the_enterprise_licence_gate():
-    """What an enterprise deployment with a dead licence refuses: the identity
-    routes and nothing else on this surface, which the allow/deny matrix pins.
-    """
-    for view in (AccountApi.get, AccountSessionsSelfApi.delete, AccountSessionsApi.get, AccountSessionByIdApi.delete):
-        assert any(isinstance(requirement, CheckEnterpriseLicense) for requirement in view.__spec__.requirements)
 
 
 # --- GET /account/sessions query validation. The application service is replaced
