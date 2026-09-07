@@ -532,11 +532,11 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(
-        "services.agent.dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         model_dependency,
     )
     monkeypatch.setattr(
-        "services.agent.dsl_service.DependenciesAnalysisService.analyze_tool_dependency",
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_tool_dependency",
         tool_dependency,
     )
     soul = AgentSoulConfig.model_validate(
