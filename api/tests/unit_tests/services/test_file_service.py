@@ -549,3 +549,64 @@ class TestFileService:
                 assert os.path.exists(tmp_path)
 
             mock_remove.assert_called_once()
+
+    @patch("services.file_service.naive_utc_now")
+    @patch("services.file_service.storage")
+    @patch("services.file_service.file_helpers.get_signed_file_url")
+    def test_upload_text_uses_caller_session_without_autocommit(
+        self, mock_get_url, mock_storage, mock_now, file_service: FileService, db_session: Session
+    ):
+        """Regression for langgenius/dify#41735: when a caller session is
+        provided, the row must be added to that session (not committed
+        independently) so the follow-up query in the same request can
+        see it under MySQL REPEATABLE-READ.
+        """
+        mock_now.return_value = datetime(2024, 1, 1, tzinfo=UTC)
+        mock_get_url.return_value = ""
+
+        user = Account(name="u", email="u@example.com")
+        user.id = "user_id"
+
+        result = file_service.upload_text(
+            text="hello world",
+            text_name="test.txt",
+            user_id="user_id",
+            tenant_id="tenant_id",
+            session=db_session,
+        )
+
+        assert isinstance(result, UploadFile)
+        assert result.tenant_id == "tenant_id"
+        # Caller session must see the just-added row, no separate commit
+        assert db_session.get(UploadFile, result.id) is result
+        mock_storage.save.assert_called_once()
+
+    @patch("services.file_service.extract_tenant_id")
+    @patch("services.file_service.storage")
+    @patch("services.file_service.file_helpers.get_signed_file_url")
+    def test_upload_file_uses_caller_session_without_autocommit(
+        self, mock_get_url, mock_storage, mock_tenant_id, file_service: FileService, db_session: Session
+    ):
+        """Regression for langgenius/dify#41735: when a caller session is
+        provided, the row must be added to that session (not committed
+        independently) so the follow-up query in the same request can
+        see it under MySQL REPEATABLE-READ.
+        """
+        mock_tenant_id.return_value = "tenant_id"
+        mock_get_url.return_value = ""
+
+        user = Account(name="u", email="u@example.com")
+        user.id = "user_id"
+
+        result = file_service.upload_file(
+            filename="test.jpg",
+            content=b"content",
+            mimetype="image/jpeg",
+            user=user,
+            session=db_session,
+        )
+
+        assert isinstance(result, UploadFile)
+        # Caller session must see the just-added row
+        assert db_session.get(UploadFile, result.id) is result
+        mock_storage.save.assert_called_once()
