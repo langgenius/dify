@@ -18,14 +18,18 @@ import { useTranslation } from 'react-i18next'
 import CustomizeModal from '@/app/components/app/overview/customize'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
-import { AccessPointCard } from '../shared/access-point-card'
-import { AccessPointUrl } from '../shared/access-point-url'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
-import { WebAppAccessControlEntry } from '../shared/web-app-access-control'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
+import {
+  WebAppAccessControlEntry,
+  WebAppAccessControlEntrySkeleton,
+} from '../shared/web-app-access-control'
 import { EnvironmentAccessControl } from './environment-access-control'
 import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
 
@@ -94,9 +98,8 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
-      onSuccess: (updatedSite) => {
-        queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      scope: {
+        id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
@@ -117,8 +120,12 @@ export function EnvironmentWebAppCard({
       },
     ),
   )
-  const webAppUrl = getEnvironmentWebAppUrl(site)
-  const running = Boolean(siteQuery.isSuccess && site?.enabled)
+  const webAppUrl = getEnvironmentWebAppUrl(site, appInfo?.mode)
+  const pendingEnabled = siteMutation.variables?.body.enabled
+  const optimisticEnabled =
+    siteMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(site?.enabled)
+  const running = siteQuery.isSuccess && optimisticEnabled
+  const actionsAvailable = running && !siteMutation.isPending
   const status = siteQuery.isPending
     ? 'loading'
     : siteQuery.isError
@@ -126,6 +133,7 @@ export function EnvironmentWebAppCard({
       : running
         ? 'inService'
         : 'disabled'
+  const statusLabel = useAccessPointStatusLabel(status)
   const accessLabel =
     accessMode === AccessMode.ORGANIZATION
       ? t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })
@@ -170,17 +178,17 @@ export function EnvironmentWebAppCard({
           )
         }
         status={status}
+        statusLabel={statusLabel}
         highlighted={highlighted}
         switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
-        switchLoading={siteMutation.isPending}
         actions={
           <>
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!running || !apiQuery.isSuccess || !canManageAccessPoint}
+              disabled={!actionsAvailable || !apiQuery.isSuccess || !canManageAccessPoint}
               onClick={() => setShowCustomize(true)}
             >
               <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
@@ -213,7 +221,7 @@ export function EnvironmentWebAppCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
-          openUrl={webAppUrl}
+          openUrl={site?.enabled && !siteMutation.isPending ? webAppUrl : undefined}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
@@ -221,16 +229,18 @@ export function EnvironmentWebAppCard({
           regenerating={resetAccessTokenMutation.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
-        {systemFeatures.webapp_auth.enabled && (
-          <WebAppAccessControlEntry
-            accessConfigured={accessConfigured}
-            accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
-            accessLabel={accessLabel}
-            available={siteQuery.isSuccess}
-            disabled={!canReleaseAndVersion}
-            onClick={() => setShowAccess(true)}
-          />
-        )}
+        {systemFeatures.webapp_auth.enabled &&
+          (siteQuery.isSuccess ? (
+            <WebAppAccessControlEntry
+              accessConfigured={accessConfigured}
+              accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
+              accessLabel={accessLabel}
+              disabled={!canReleaseAndVersion}
+              onClick={() => setShowAccess(true)}
+            />
+          ) : (
+            <WebAppAccessControlEntrySkeleton loading={siteQuery.isPending} />
+          ))}
       </AccessPointCard>
 
       {appInfo && (

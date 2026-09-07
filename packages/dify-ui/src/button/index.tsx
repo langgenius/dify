@@ -105,6 +105,11 @@ const buttonVariants = cva(
 
 type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
   VariantProps<typeof buttonVariants> & {
+    /**
+     * Marks an action as pending, blocks activation, and keeps the button focusable by default.
+     * Keep a non-empty visible label. If that label changes while loading, give it a stable ID and
+     * reference it with `aria-labelledby` so it remains the explicit accessible name.
+     */
     loading?: boolean
     className?: string
   }

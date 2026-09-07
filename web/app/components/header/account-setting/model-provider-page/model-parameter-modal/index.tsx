@@ -27,6 +27,7 @@ import { getSupportedPresetConfig } from './presets-parameter-utils'
 
 export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
+  triggerContainerClassName?: string
   popupClassName?: string
   modelSelectorPopupClassName?: string
   isAdvancedMode: boolean
@@ -58,6 +59,7 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   trigger,
+  triggerContainerClassName,
   popupClassName,
   modelSelectorPopupClassName,
   placement,
@@ -156,7 +158,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       {trigger ? (
         <PopoverTrigger render={trigger} />
       ) : (
-        <div className="isolate flex h-8 min-w-74 items-center gap-px rounded-lg">
+        <div
+          className={cn(
+            'isolate flex h-8 min-w-74 items-center gap-px rounded-lg',
+            triggerContainerClassName,
+          )}
+        >
           <SplitModelSelector
             value={hasSelectedModel ? { provider, model: modelId } : undefined}
             models={selectableModelList}

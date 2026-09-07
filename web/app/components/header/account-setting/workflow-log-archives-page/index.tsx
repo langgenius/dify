@@ -10,7 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { API_PREFIX } from '@/config'
@@ -285,6 +285,8 @@ function ArchivedLogsUpgradeBanner() {
 
 function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
   const { t } = useTranslation()
+  const archiveMonthLabelId = useId()
+  const downloadActionLabelId = useId()
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
     null,
   )
@@ -367,9 +369,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     return t(($) => $['archives.action.prepareDownload'], { ns: 'appLog' })
   })()
 
-  const buttonAriaLabel = isReady
-    ? t(($) => $['archives.action.downloadMonth'], { ns: 'appLog', month: archiveMonth })
-    : t(($) => $['archives.action.prepareMonth'], { ns: 'appLog', month: archiveMonth })
   const buttonIconClassName = isReady ? 'i-ri-download-2-line' : 'i-ri-inbox-archive-line'
   const onAction = isReady ? downloadArchive : prepareDownload
 
@@ -381,7 +380,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       )}
     >
       <div className="min-w-0 text-center">
-        <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
+        <span id={archiveMonthLabelId} className="truncate system-sm-semibold text-text-primary">
+          {archiveMonth}
+        </span>
       </div>
       <div className="text-center system-sm-medium text-text-secondary tabular-nums">
         {formatNumber(archive.workflow_run_count)}
@@ -397,15 +398,14 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 size="small"
                 variant="secondary"
                 loading={isPreparing}
-                disabled={isPreparing}
                 className="px-2"
-                aria-label={buttonAriaLabel}
+                aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
                 onClick={onAction}
               >
                 {!isPreparing && (
                   <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
                 )}
-                {buttonContent}
+                <span id={downloadActionLabelId}>{buttonContent}</span>
               </Button>
             }
           />

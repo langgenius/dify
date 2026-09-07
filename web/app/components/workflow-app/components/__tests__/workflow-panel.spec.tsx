@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import * as React from 'react'
+import { AppModeEnum } from '@/types/app'
 import { difyBuilderSessionBusyAtom } from '../dify-builder/session/state'
 import { difyBuilderRuntimeAtom } from '../dify-builder/store'
 import WorkflowPanel from '../workflow-panel'
@@ -11,6 +12,7 @@ import WorkflowPanel from '../workflow-panel'
 type AppStoreState = {
   appDetail?: {
     id?: string
+    mode?: AppModeEnum
     workflow?: {
       id?: string
     }
@@ -62,6 +64,7 @@ vi.mock('@/app/components/workflow/panel', () => ({
       restoreVersionUrl: (versionId: string) => string
       updateVersionUrl: (versionId: string) => string
       latestVersionId?: string
+      appMode?: AppModeEnum
     }
   }) => (
     <div
@@ -71,6 +74,7 @@ vi.mock('@/app/components/workflow/panel', () => ({
       data-restore-version-url={versionHistoryPanelProps?.restoreVersionUrl('version-1') ?? ''}
       data-update-version-url={versionHistoryPanelProps?.updateVersionUrl('version-1') ?? ''}
       data-latest-version-id={versionHistoryPanelProps?.latestVersionId ?? ''}
+      data-app-mode={versionHistoryPanelProps?.appMode ?? ''}
     >
       <div data-testid="panel-left">{components?.left}</div>
       <div data-testid="panel-right">{components?.right}</div>
@@ -167,6 +171,7 @@ const createDifyBuilderRuntime = (enabled: boolean, canEdit: boolean): DifyBuild
   getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
   onSyncDraft: mockSyncDraft,
   session: {
+    getTrace: vi.fn(() => ({ entries: [], truncated: false })),
     loadOlderConversation: vi.fn(async () => true),
     refresh: vi.fn(async () => true),
     restore: vi.fn(async () => true),
@@ -208,6 +213,7 @@ describe('WorkflowPanel', () => {
     appStoreState = {
       appDetail: {
         id: 'app-123',
+        mode: AppModeEnum.WORKFLOW,
         workflow: {
           id: 'workflow-version-id',
         },
@@ -239,6 +245,7 @@ describe('WorkflowPanel', () => {
     )
     expect(panel).toHaveAttribute('data-update-version-url', '/apps/app-123/workflows/version-1')
     expect(panel).toHaveAttribute('data-latest-version-id', 'workflow-version-id')
+    expect(panel).toHaveAttribute('data-app-mode', AppModeEnum.WORKFLOW)
   })
 
   it('should render and close the message log modal from the left panel slot', async () => {

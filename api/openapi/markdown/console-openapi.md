@@ -3228,8 +3228,10 @@ Delete an existing tracing configuration for an application
 | Code | Description |
 | ---- | ----------- |
 | 204 | Tracing configuration deleted successfully |
-| 400 | Invalid request parameters or configuration not found |
+| 400 | Invalid request parameters or unsupported tracing provider |
 | 403 | Insufficient permissions |
+| 404 | Application or tracing configuration not found |
+| 500 | Tracing configuration processing failed |
 
 ### [GET] /apps/{app_id}/trace-config
 Get tracing configuration for an application
@@ -3246,7 +3248,9 @@ Get tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration retrieved successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters |  |
+| 400 | Invalid request parameters or unsupported tracing provider |  |
+| 404 | Application not found |  |
+| 500 | Tracing configuration processing failed |  |
 
 ### [PATCH] /apps/{app_id}/trace-config
 **Update an existing trace app configuration**
@@ -3270,8 +3274,10 @@ Update an existing tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration updated successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or configuration not found |  |
+| 400 | Invalid request parameters or tracing configuration |  |
 | 403 | Insufficient permissions |  |
+| 404 | Application or tracing configuration not found |  |
+| 500 | Tracing configuration processing failed |  |
 
 ### [POST] /apps/{app_id}/trace-config
 **Create a new trace app configuration**
@@ -3295,8 +3301,11 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or configuration already exists |  |
+| 400 | Invalid request parameters or tracing configuration |  |
 | 403 | Insufficient permissions |  |
+| 404 | Application not found |  |
+| 409 | Tracing configuration already exists |  |
+| 500 | Tracing configuration processing failed |  |
 
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
@@ -6507,7 +6516,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Language code for recommended app localization | No | string |
+| language | query | Language code for recommended app localization | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -6520,7 +6529,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Language code for recommended app localization | No | string |
+| language | query | Language code for recommended app localization | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -7196,7 +7205,13 @@ Get instruction generation template
 | 302 | Redirect to OAuth callback page |
 
 ### [GET] /notification
-Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+Return the active in-product notification for the current user in the requested language (defaults to English when omitted). Unavailable translations fall back to English, then the first available content. The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Notification language | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -19670,6 +19685,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
 
+#### NotificationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string, <br>**Default:** en-US | Notification language | No |
+
 #### NotificationResponse
 
 | Name | Type | Description | Required |
@@ -21319,7 +21340,7 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Language code for recommended app localization | No |
+| language | string, <br>**Default:** en-US | Language code for recommended app localization | No |
 
 #### RedirectResponse
 

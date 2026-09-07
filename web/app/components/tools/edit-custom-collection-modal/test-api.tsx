@@ -170,7 +170,6 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                     variant="primary"
                     className="mt-4 h-10 w-full"
                     loading={testing}
-                    disabled={testing}
                     onClick={handleTest}
                   >
                     {t(($) => $['test.title'], { ns: 'tools' })}

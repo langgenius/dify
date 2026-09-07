@@ -26,6 +26,7 @@ from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from services.web_passport_service import WebAppAuthType
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
@@ -184,12 +185,16 @@ class AppWebAuthPermission(Resource):
             if not tk:
                 raise Unauthorized("Access token is missing.")
             decoded = PassportService().verify(tk)
-            user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
             raise WebAppAuthRequiredError() from None
         except Exception:
             logger.exception("Unexpected error during auth verification")
             raise
+        if decoded.get("auth_type") != WebAppAuthType.INTERNAL:
+            raise WebAppAuthRequiredError()
+        user_id = decoded.get("user_id")
+        if not user_id:
+            raise WebAppAuthRequiredError()
 
         try:
             is_allowed = webapp_access.is_user_allowed(user_id=str(user_id), app_id=app_id)

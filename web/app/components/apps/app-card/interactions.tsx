@@ -357,7 +357,8 @@ export function AppCardInteractions({
     [isDeleting],
   )
 
-  const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
+  const deleteNameMismatch = confirmDeleteInput !== app.name
+  const isDeleteConfirmDisabled = isDeleting || deleteNameMismatch
 
   const onDeleteDialogSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (e) => {
@@ -737,7 +738,7 @@ export function AppCardInteractions({
               <AlertDialogConfirmButton
                 type="submit"
                 loading={isDeleting}
-                disabled={isDeleteConfirmDisabled}
+                disabled={deleteNameMismatch}
               >
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>

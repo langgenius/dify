@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
+from constants.languages import languages
 from machinery.context import RequestContext
-from services.account_ports import AccountRepository
 from services.entities.notification_entities import (
     AccountNotification,
     AccountNotificationBatch,
@@ -22,20 +22,15 @@ class NotificationGateway(Protocol):
 
 
 class NotificationService:
-    def __init__(self, *, accounts: AccountRepository, notifications: NotificationGateway) -> None:
-        self._accounts = accounts
+    def __init__(self, *, notifications: NotificationGateway) -> None:
         self._notifications = notifications
 
-    def get_active(self, context: RequestContext) -> NotificationResult:
+    def get_active(self, context: RequestContext, language: str) -> NotificationResult:
         batch = self._notifications.get_active(context.account_id)
         if not batch.should_show:
             return NotificationResult(should_show=False, notifications=())
 
-        account = self._accounts.get(context.account_id)
-        if account is None:
-            raise RuntimeError("Console account admission resolved an unknown account")
-        language = account.interface_language or _FALLBACK_LANGUAGE
-
+        language = language if language in languages else _FALLBACK_LANGUAGE
         notifications = tuple(self._localize(notification, language) for notification in batch.notifications)
         return NotificationResult(should_show=bool(notifications), notifications=notifications)
 

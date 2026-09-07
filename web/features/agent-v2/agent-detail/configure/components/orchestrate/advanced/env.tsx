@@ -131,22 +131,21 @@ function EnvEditorScope({
 function EnvEditorCell({
   children,
   className,
-  role,
+  header = false,
 }: {
   children?: React.ReactNode
   className?: string
-  role?: React.AriaRole
+  header?: boolean
 }) {
+  const Cell = header ? 'th' : 'td'
+
   return (
-    <div
-      role={role}
-      className={cn(
-        'flex min-h-7 min-w-0 items-center border-r border-divider-subtle last:border-r-0',
-        className,
-      )}
+    <Cell
+      scope={header ? 'col' : undefined}
+      className="h-7 min-w-0 border-r border-divider-subtle p-0 text-left align-middle font-normal last:border-r-0"
     >
-      {children}
-    </div>
+      <div className={cn('flex h-full min-h-7 min-w-0 items-center', className)}>{children}</div>
+    </Cell>
   )
 }
 
@@ -204,21 +203,16 @@ function EnvEditorRow({
 }) {
   const { t } = useTranslation('agentV2')
   const [isValueRevealed, setIsValueRevealed] = useState(false)
-  const gridClassName = showScope
-    ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
-    : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
   const shouldMaskValue = variable.masked && !isValueRevealed
   const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
   return (
-    <div
-      role="row"
+    <tr
       className={cn(
-        'grid min-h-7 border-t border-divider-subtle',
-        gridClassName,
+        'border-t border-divider-subtle',
         isHighlighted && 'bg-background-default-hover',
       )}
     >
-      <EnvEditorCell role="cell">
+      <EnvEditorCell>
         {editable ? (
           <EnvEditorInput
             aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])}
@@ -240,7 +234,7 @@ function EnvEditorRow({
           </span>
         )}
       </EnvEditorCell>
-      <EnvEditorCell role="cell">
+      <EnvEditorCell>
         {editable && !shouldMaskValue ? (
           <EnvEditorInput
             aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.valueColumn'])}
@@ -279,11 +273,11 @@ function EnvEditorRow({
         )}
       </EnvEditorCell>
       {showScope && (
-        <EnvEditorCell role="cell">
+        <EnvEditorCell>
           <EnvEditorScope editable={editable} scope={variable.scope} onChange={onScopeChange} />
         </EnvEditorCell>
       )}
-      <EnvEditorCell role="cell" className="justify-center">
+      <EnvEditorCell className="justify-center">
         {editable && (
           <button
             type="button"
@@ -302,7 +296,7 @@ function EnvEditorRow({
           </button>
         )}
       </EnvEditorCell>
-    </div>
+    </tr>
   )
 }
 
@@ -314,9 +308,6 @@ function EnvEditorDraftRow({
   showScope?: boolean
 }) {
   const { t } = useTranslation('agentV2')
-  const gridClassName = showScope
-    ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
-    : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
   const keyPlaceholder = t(
     ($) => $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder'],
   )
@@ -345,16 +336,16 @@ function EnvEditorDraftRow({
   }
 
   return (
-    <div role="row" className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName)}>
-      <EnvEditorCell role="cell">{renderDraftPlaceholder(keyPlaceholder)}</EnvEditorCell>
-      <EnvEditorCell role="cell">{renderDraftValueCell()}</EnvEditorCell>
+    <tr className="border-t border-divider-subtle">
+      <EnvEditorCell>{renderDraftPlaceholder(keyPlaceholder)}</EnvEditorCell>
+      <EnvEditorCell>{renderDraftValueCell()}</EnvEditorCell>
       {showScope && (
-        <EnvEditorCell role="cell">
+        <EnvEditorCell>
           <EnvEditorScope scope="plain" />
         </EnvEditorCell>
       )}
-      <EnvEditorCell role="cell" />
-    </div>
+      <EnvEditorCell />
+    </tr>
   )
 }
 
@@ -385,9 +376,6 @@ export function EnvVariablesTable({
 }) {
   const { t } = useTranslation('agentV2')
   const tableLabel = t(($) => $['agentDetail.configure.advancedSettings.envEditor.label'])
-  const gridClassName = showScope
-    ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
-    : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
   const checkEnvVariableKey = (key: string) => {
     const { isValid, errorMessageKey } = checkKeys([key], false)
     if (!isValid) {
@@ -410,57 +398,74 @@ export function EnvVariablesTable({
   }
 
   return (
-    <div
-      role="table"
-      aria-label={tableLabel}
-      className="overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"
-    >
-      <div role="row" className={cn('grid min-h-7 text-text-tertiary', gridClassName)}>
-        <EnvEditorCell role="columnheader">
-          <span className="px-3 system-xs-medium-uppercase">
-            {t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])}
-          </span>
-        </EnvEditorCell>
-        <EnvEditorCell role="columnheader">
-          <span className="px-3 system-xs-medium-uppercase">
-            {t(($) => $['agentDetail.configure.advancedSettings.envEditor.valueColumn'])}
-          </span>
-        </EnvEditorCell>
-        {showScope && (
-          <EnvEditorCell role="columnheader">
-            <span className="px-3 system-xs-medium-uppercase">
-              {t(($) => $['agentDetail.configure.advancedSettings.envEditor.scopeColumn'])}
-            </span>
-          </EnvEditorCell>
-        )}
-        <EnvEditorCell role="columnheader" className="justify-center">
-          {onAdd && (
-            <button
-              type="button"
-              aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
-              onClick={() => onAdd()}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="i-ri-add-line size-4" />
-            </button>
-          )}
-        </EnvEditorCell>
-      </div>
-      {envVariables.map((variable, index) => (
-        <EnvEditorRow
-          key={variable.id}
-          autoFocusField={focusedVariable?.id === variable.id ? focusedVariable.field : undefined}
-          variable={variable}
-          editable={editable}
-          isHighlighted={index === highlightedIndex}
-          onDelete={() => onDelete(variable.id)}
-          onKeyChange={(key) => handleKeyChange(variable.id, key)}
-          onScopeChange={(scope) => onScopeChange(variable.id, scope)}
-          onValueChange={(value) => onValueChange?.(variable.id, value)}
-          showScope={showScope}
-        />
-      ))}
-      {showDraftRow && <EnvEditorDraftRow onAdd={onAdd} showScope={showScope} />}
+    <div className="@container overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3">
+      <table className="w-full table-fixed border-collapse">
+        <caption className="sr-only">{tableLabel}</caption>
+        <colgroup>
+          <col
+            style={{
+              width: showScope
+                ? 'calc((100cqw - 100px) * 4 / 9)'
+                : 'min(180px, calc(100cqw - 188px))',
+            }}
+          />
+          <col />
+          {showScope && <col className="w-18" />}
+          <col className="w-7" />
+        </colgroup>
+        <thead>
+          <tr className="text-text-tertiary">
+            <EnvEditorCell header>
+              <span className="px-3 system-xs-medium-uppercase">
+                {t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyColumn'])}
+              </span>
+            </EnvEditorCell>
+            <EnvEditorCell header>
+              <span className="px-3 system-xs-medium-uppercase">
+                {t(($) => $['agentDetail.configure.advancedSettings.envEditor.valueColumn'])}
+              </span>
+            </EnvEditorCell>
+            {showScope && (
+              <EnvEditorCell header>
+                <span className="px-3 system-xs-medium-uppercase">
+                  {t(($) => $['agentDetail.configure.advancedSettings.envEditor.scopeColumn'])}
+                </span>
+              </EnvEditorCell>
+            )}
+            <EnvEditorCell header className="justify-center">
+              {onAdd && (
+                <button
+                  type="button"
+                  aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
+                  onClick={() => onAdd()}
+                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                >
+                  <span aria-hidden className="i-ri-add-line size-4" />
+                </button>
+              )}
+            </EnvEditorCell>
+          </tr>
+        </thead>
+        <tbody>
+          {envVariables.map((variable, index) => (
+            <EnvEditorRow
+              key={variable.id}
+              autoFocusField={
+                focusedVariable?.id === variable.id ? focusedVariable.field : undefined
+              }
+              variable={variable}
+              editable={editable}
+              isHighlighted={index === highlightedIndex}
+              onDelete={() => onDelete(variable.id)}
+              onKeyChange={(key) => handleKeyChange(variable.id, key)}
+              onScopeChange={(scope) => onScopeChange(variable.id, scope)}
+              onValueChange={(value) => onValueChange?.(variable.id, value)}
+              showScope={showScope}
+            />
+          ))}
+          {showDraftRow && <EnvEditorDraftRow onAdd={onAdd} showScope={showScope} />}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
@@ -105,9 +105,9 @@ export function KnowledgeSpaceShell({
             )}
           </p>
           <div className="mt-5 flex gap-2">
-            <Button render={<Link href={newKnowledgeListPath} />}>
+            <Link href={newKnowledgeListPath} className={buttonVariants()}>
               {t(($) => $['newKnowledge.backToList'])}
-            </Button>
+            </Link>
             {!notFound && (
               <Button variant="primary" onClick={() => void knowledgeSpaceQuery.refetch()}>
                 {tCommon(($) => $['operation.retry'])}

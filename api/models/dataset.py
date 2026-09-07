@@ -202,15 +202,15 @@ class Dataset(Base):
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(AdjustedJSON, nullable=True)
     summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
-    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     icon_info = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode = mapped_column(
         EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'")
     )
     pipeline_id = mapped_column(StringUUID, nullable=True)
     chunk_structure = mapped_column(sa.String(255), nullable=True)
-    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.text("false"))
+    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
+    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.false())
 
     def get_total_documents(self, *, session: Session) -> int:
         return self.get_document_count(session=session)
@@ -560,7 +560,7 @@ class Document(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # pause
-    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.false())
     paused_by = mapped_column(StringUUID, nullable=True)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -572,10 +572,10 @@ class Document(Base):
     indexing_status = mapped_column(
         EnumText(IndexingStatus, length=255), nullable=False, server_default=sa.text("'waiting'")
     )
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
-    archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -588,7 +588,7 @@ class Document(Base):
         EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
     )
     doc_language = mapped_column(String(255), nullable=True)
-    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -901,7 +901,7 @@ class DocumentSegment(TypeBase):
     # indexing fields
     index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
@@ -1362,7 +1362,7 @@ class TidbAuthBinding(TypeBase):
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     status: Mapped[TidbAuthBindingStatus] = mapped_column(
         EnumText(TidbAuthBindingStatus, length=255), nullable=False, server_default=sa.text("'CREATING'")
     )
@@ -1413,9 +1413,7 @@ class DatasetPermission(TypeBase):
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    has_permission: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("true"), default=True
-    )
+    has_permission: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1531,7 +1529,7 @@ class DatasetAutoDisableLog(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
@@ -1687,10 +1685,8 @@ class Pipeline(TypeBase):
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False, default=sa.text("''"))
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
-    is_published: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
-    )
+    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1814,7 +1810,7 @@ class DocumentSegmentSummary(TypeBase):
         default=SummaryStatus.GENERATING,
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(

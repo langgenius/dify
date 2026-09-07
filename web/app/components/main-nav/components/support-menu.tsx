@@ -107,7 +107,7 @@ export default function SupportMenu() {
       >
         <MenuItemContent
           iconClassName="i-ri-discord-line"
-          label="Discord"
+          label={t(($) => $['userProfile.discord'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
       </DropdownMenuLinkItem>

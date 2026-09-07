@@ -8,9 +8,10 @@ Read this document when a component consumes generated contracts, nullable API v
 - Backend Pydantic and OpenAPI schemas own API shape. Follow the generated `{ params, query?, body? }` input shape; when it is wrong, fix the backend schema and regenerate `packages/contracts/generated/*`.
 - Do not hand-write DTO mirrors, widen generated fields or enums, edit generated output, or add a parallel frontend status layer unless it models product state absent from the API.
 - Check deprecated markers, schema shape, and the actual consumer before assuming that a generated operation is ready to use.
+- When a ready generated operation exists for the changed call, migrate deprecated operations and remove the replaced layer instead of adding compatibility wrappers.
 - Normalize only at real boundaries such as user input, search, URL params, filenames, DOM IDs, or a required legacy adapter.
 - Preserve `null`, `undefined`, and intentional empty strings until the final boundary. Do not use `value || undefined` when an empty string means clearing a field.
-- Build required values in the branch that proves them. Avoid `filter(Boolean)`, truthiness filters, non-null assertions after filters, and placeholder values used only to satisfy types.
+- Build required values in the branch that proves them. Do not use truthiness filters, non-null assertions, or placeholders to conceal missing required input or discard valid `0`, `false`, or empty-string values.
 
 ## Queries
 
@@ -26,6 +27,7 @@ Read this document when a component consumes generated contracts, nullable API v
 ## Mutations And Cache
 
 - Use generated `mutationOptions()` directly for owner-local mutations.
+- Do not introduce deprecated `useInvalid` or `useReset` APIs.
 - Put shared invalidation, retries, and cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. Local callbacks may own toast, close, and navigation effects but must not replace shared cache policy.
 - Prefer `mutate(...)`. Use `mutateAsync(...)` only when Promise composition is required, and catch awaited failures.
 - Preserve intentional empty values and current list/detail ownership when updating data. Do not add optimistic updates without a verified owner contract.
@@ -36,6 +38,7 @@ Read this document when a component consumes generated contracts, nullable API v
 - Use `query` or `infiniteQuery` for imperative access. `staleTime` defines cache acceptance; `select` projects the return
   value without replacing cached query-function data. Imperative queries default to no retries when `retry` is not
   configured, and observer-only `enabled` does not prevent an imperative call.
+- Migrate deprecated `fetchQuery`, `prefetchQuery`, `ensureQueryData`, and their infinite variants when the current `query` or `infiniteQuery` contract applies. A `staleTime` of `0` treats data as stale; a finite value accepts that freshness window; `Infinity` accepts data until invalidation; `'static'` accepts available data even after invalidation.
 - `await` blocks, `return` transfers the Promise, and `void` discards its value without handling rejection. Handle
   rejection before discarding a potentially rejecting Promise; use `.catch(noop)` only for intentional silence or
   feedback owned elsewhere. Hard server gates await the query and preserve rejection.
@@ -49,5 +52,7 @@ Read this document when a component consumes generated contracts, nullable API v
 - Non-blocking RSC streaming requires pending-query dehydration without redacting Next.js server errors, a
   `HydrationBoundary` around the same-key client consumer, and Suspense when that content must be server-rendered.
 - Never reuse tenant-scoped state after switching workspaces. Discard it at the switch boundary or isolate it by workspace identity.
+- Trace the current switch flow before choosing cache handling: server switch plus full reload is a tenant boundary, not ordinary CRUD invalidation. Include workspace identity in varying query keys when no full-reload boundary applies, and trace the backend contract before interchanging `workspace_id` and `tenant_id`.
 - Do not make product or authorization decisions from bootstrap defaults. Wait for authoritative data, or render an explicit loading or error state.
+- Preserve an existing client fallback until server API-unavailable behavior has an explicit owner.
 - Keep loading and Suspense behavior inside the feature that owns the request. Do not add fake global data merely to bypass that boundary.
