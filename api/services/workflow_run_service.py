@@ -7,6 +7,7 @@ import contexts
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+    WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
@@ -233,7 +234,12 @@ class WorkflowRunService:
                 trace.process_data = {
                     key: value
                     for key, value in trace.process_data.items()
-                    if key not in (WORKFLOW_TOOL_INVOCATION_ID_KEY, WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY)
+                    if key
+                    not in (
+                        WORKFLOW_TOOL_INVOCATION_ID_KEY,
+                        WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+                        WORKFLOW_TOOL_ROOT_APP_ID_KEY,
+                    )
                 }
         return traces
 

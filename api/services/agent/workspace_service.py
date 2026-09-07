@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from dify_agent.client import Client
 from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
-from sqlalchemy import delete, select
+from sqlalchemy import ColumnElement, delete, or_, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.factory import create_agent_backend_client
@@ -29,6 +29,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
+from models.workflow import WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
 
@@ -310,12 +311,12 @@ class AgentWorkspaceService:
 
     @classmethod
     def retire_all_for_app(cls, *, session: Session, tenant_id: str, app_id: str) -> list[str]:
-        """Retire all ACTIVE Workspaces owned by an App in the caller's transaction."""
+        """Retire active app Workspaces, including source-app participants in its Workflow runs."""
 
         workspaces = session.scalars(
             select(AgentWorkspace).where(
                 AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.app_id == app_id,
+                or_(AgentWorkspace.app_id == app_id, cls._workflow_tool_owned_by_app(tenant_id, app_id)),
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()
@@ -327,6 +328,47 @@ class AgentWorkspaceService:
                 workspace_id=workspace.id,
             )
             if workspace_id is not None:
+                retired.append(workspace_id)
+        return retired
+
+    @staticmethod
+    def _workflow_tool_owned_by_app(tenant_id: str, app_id: str) -> ColumnElement[bool]:
+        """Follow the persisted caller and Binding, independently of optional run-log storage."""
+        return (
+            select(WorkflowNodeExecutionModel.id)
+            .join(
+                AgentWorkspaceBinding,
+                AgentWorkspaceBinding.id == WorkflowNodeExecutionModel.agent_workspace_binding_id,
+            )
+            .where(
+                WorkflowNodeExecutionModel.workflow_tool_owned_by_app(tenant_id=tenant_id, app_id=app_id),
+                WorkflowNodeExecutionModel.workflow_run_id == AgentWorkspace.owner_id,
+                WorkflowNodeExecutionModel.app_id == AgentWorkspace.app_id,
+                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.app_id == AgentWorkspace.app_id,
+                AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
+            )
+            .exists()
+        )
+
+    @classmethod
+    def retire_workflow_run(cls, *, session: Session, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
+        """Retire run participants and include already-retired Workspaces for collection retries."""
+        workspaces = session.scalars(
+            select(AgentWorkspace).where(
+                AgentWorkspace.tenant_id == tenant_id,
+                or_(AgentWorkspace.app_id == app_id, cls._workflow_tool_owned_by_app(tenant_id, app_id)),
+                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                AgentWorkspace.owner_id == workflow_run_id,
+                AgentWorkspace.status.in_((AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)),
+            )
+        ).all()
+        retired: list[str] = []
+        for workspace in workspaces:
+            if workspace.status == AgentWorkingResourceStatus.RETIRED:
+                retired.append(workspace.id)
+            elif workspace_id := cls.retire_workspace(session=session, tenant_id=tenant_id, workspace_id=workspace.id):
                 retired.append(workspace_id)
         return retired
 

@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from contextlib import nullcontext
 from dataclasses import replace
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
@@ -14,6 +14,7 @@ from dify_agent.runtime_backend.errors import SharedWorkspaceUnsupportedError
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
     WorkflowAgentWorkspaceStore,
@@ -29,9 +30,15 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.agent_app_sandbox_service import WorkflowAgentSandboxService
+from services.app_service import AppService
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -705,7 +712,11 @@ def test_conversation_scope_first_turn_creates_binding_without_existing_workspac
 
 
 @pytest.mark.parametrize("caller_app", ["app-1", "unrelated-app"])
-def test_retire_workflow_tool_workspace_follows_persisted_run_owner(sqlite_session: Session, caller_app: str) -> None:
+@pytest.mark.parametrize("root_marker", [None, "app-1", "mismatched-app"])
+@pytest.mark.parametrize("persist_run", [False, True])
+def test_retire_workflow_tool_workspace_follows_persisted_run_owner(
+    sqlite_session: Session, caller_app: str, root_marker: str | None, persist_run: bool
+) -> None:
     run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
@@ -723,14 +734,19 @@ def test_retire_workflow_tool_workspace_follows_persisted_run_owner(sqlite_sessi
     workspace = _workspace_row(app_id="source-app")
     binding = _binding_row()
     binding.app_id = "source-app"
-    execution = _execution_row(binding_id=binding.id)
+    execution = _execution_row(
+        binding_id=binding.id,
+        process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: root_marker} if root_marker is not None else None,
+    )
     execution.app_id = "source-app"
     execution.workflow_id = "source-workflow"
     execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
     unlinked_workspace = _workspace_row(
         workspace_id="unlinked-workspace", app_id="source-app", owner_scope_key="unlinked"
     )
-    sqlite_session.add_all([run, workspace, binding, execution, unlinked_workspace])
+    sqlite_session.add_all([workspace, binding, execution, unlinked_workspace])
+    if persist_run:
+        sqlite_session.add(run)
     sqlite_session.commit()
 
     result = WorkflowAgentWorkspaceStore().retire_workflow_run(
@@ -739,7 +755,7 @@ def test_retire_workflow_tool_workspace_follows_persisted_run_owner(sqlite_sessi
 
     sqlite_session.expire_all()
     assert unlinked_workspace.status is AgentWorkingResourceStatus.ACTIVE
-    if caller_app == "app-1":
+    if caller_app == "app-1" and (root_marker == "app-1" or (root_marker is None and persist_run)):
         assert result == [workspace.id]
         assert workspace.status is AgentWorkingResourceStatus.RETIRED
         assert binding.status is AgentWorkingResourceStatus.RETIRED
@@ -747,3 +763,109 @@ def test_retire_workflow_tool_workspace_follows_persisted_run_owner(sqlite_sessi
         assert result == []
         assert workspace.status is AgentWorkingResourceStatus.ACTIVE
         assert binding.status is AgentWorkingResourceStatus.ACTIVE
+
+
+@pytest.mark.parametrize(
+    "mismatch", ["caller-tenant", "caller-run", "caller-app", "binding-tenant", "binding-app", "origin"]
+)
+def test_retire_workflow_tool_workspace_checks_complete_caller_chain(sqlite_session: Session, mismatch: str) -> None:
+    workspace = _workspace_row(app_id="source-app")
+    binding = _binding_row()
+    binding.app_id = "source-app"
+    execution = _execution_row(binding_id=binding.id, process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "app-1"})
+    execution.app_id = "source-app"
+    execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    if mismatch == "caller-tenant":
+        execution.tenant_id = "other-tenant"
+    elif mismatch == "caller-run":
+        execution.workflow_run_id = "other-run"
+    elif mismatch == "caller-app":
+        execution.app_id = "other-app"
+    elif mismatch == "binding-tenant":
+        binding.tenant_id = "other-tenant"
+    elif mismatch == "binding-app":
+        binding.app_id = "other-app"
+    else:
+        execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    sqlite_session.add_all([workspace, binding, execution])
+    sqlite_session.commit()
+
+    assert (
+        WorkflowAgentWorkspaceStore().retire_workflow_run(tenant_id="tenant-1", app_id="app-1", workflow_run_id="run-1")
+        == []
+    )
+    sqlite_session.expire_all()
+    assert workspace.status == AgentWorkingResourceStatus.ACTIVE
+    assert binding.status == AgentWorkingResourceStatus.ACTIVE
+
+
+@pytest.mark.parametrize("captured_owner", [False, True])
+def test_deleting_paused_root_app_retires_and_deletes_nested_participants(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], captured_owner: bool
+) -> None:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Root",
+        mode=AppMode.WORKFLOW,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#fff",
+        enable_site=False,
+        enable_api=False,
+    )
+    workspace = _workspace_row(app_id="source-app")
+    binding = _binding_row()
+    binding.app_id = "source-app"
+    execution = _execution_row(
+        binding_id=binding.id,
+        process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "app-1"} if captured_owner else None,
+    )
+    execution.app_id = "source-app"
+    execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+    execution.status = WorkflowNodeExecutionStatus.PAUSED
+    unlinked = _workspace_row(workspace_id="unlinked", app_id="source-app", owner_scope_key="unlinked")
+    sqlite_session.add_all([app, workspace, binding, execution, unlinked])
+    if not captured_owner:
+        sqlite_session.add(
+            WorkflowRun(
+                id="run-1",
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workflow_id="workflow-1",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+                version="1",
+                graph="{}",
+                inputs="{}",
+                status=WorkflowExecutionStatus.PAUSED,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="user-1",
+            )
+        )
+    sqlite_session.commit()
+
+    with (
+        patch("services.app_service.current_user", None),
+        patch("services.app_service.app_was_deleted.send"),
+        patch("services.app_service.remove_app_and_related_data_task.delay"),
+        patch("services.app_service.WorkflowAgentRetirementService.retire_unowned"),
+        patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        patch("services.app_service.enqueue_agent_resource_collection") as collect,
+    ):
+        AppService().delete_app(app, session=sqlite_session)
+
+    sqlite_session.expire_all()
+    assert workspace.status == AgentWorkingResourceStatus.RETIRED
+    assert binding.status == AgentWorkingResourceStatus.RETIRED
+    assert unlinked.status == AgentWorkingResourceStatus.ACTIVE
+    assert collect.call_args.kwargs["workspace_ids"] == [workspace.id]
+    assert (
+        DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory).delete_executions_by_app(
+            "tenant-1", "app-1"
+        )
+        == 1
+    )
+    DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory).delete_runs_by_app("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(WorkflowNodeExecutionModel, "execution-1") is None

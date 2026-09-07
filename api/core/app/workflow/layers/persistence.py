@@ -21,7 +21,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.workflow.node_execution_process_data import preserve_workflow_agent_identity
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY, preserve_workflow_agent_identity
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -130,6 +130,11 @@ class WorkflowPersistenceLayer(Layer):
 
         def on_node_event(event: NodeEvent) -> None:
             self._initialize_workflow_tool_layer(child)
+            # Lifecycle ownership must survive independently of the configured run-log store.
+            event.node_run_result.process_data = {
+                **event.node_run_result.process_data,
+                WORKFLOW_TOOL_ROOT_APP_ID_KEY: self._application_generate_entity.app_config.app_id,
+            }
             child.on_event(event)
 
         return on_node_event
