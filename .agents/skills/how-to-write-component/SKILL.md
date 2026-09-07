@@ -37,7 +37,7 @@ Choose the mode from the user's requested outcome:
 | Is a wrapper needed? | Use the primitive or direct code. | The wrapper owns behavior, validation, state, semantics, or necessary integration. |
 | Is an Effect needed? | Derive during render or handle the user action. | A named external system must be synchronized. |
 
-## Reference Routing
+## Topic Routing
 
 After selecting the operating mode, read only the topic references required by the change:
 

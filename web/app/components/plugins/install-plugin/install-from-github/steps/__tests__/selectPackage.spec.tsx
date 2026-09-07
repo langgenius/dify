@@ -262,16 +262,28 @@ describe('SelectPackage', () => {
       expect(onSelectVersion).toHaveBeenCalledWith({ value: 'v0.9.0', name: 'v0.9.0' })
     })
 
-    it('should select a valid package option', async () => {
+    it('should only allow package selection after a version is selected', async () => {
       const user = userEvent.setup()
       const onSelectPackage = vi.fn()
-      renderSelectPackage({
-        selectedVersion: 'v1.0.0',
+      const props = {
+        ...createDefaultProps(),
+        updatePayload: createUpdatePayload(),
         onSelectPackage,
-      })
+      }
+      const { rerender } = render(<SelectPackage {...props} packages={[]} />)
 
-      const section = getSection('plugin.installFromGitHub.selectPackage')
-      await user.click(within(section).getByRole('combobox'))
+      const packageTrigger = screen.getByRole('combobox', {
+        name: 'plugin.installFromGitHub.selectPackage',
+      })
+      expect(packageTrigger).toBeDisabled()
+      await user.click(packageTrigger)
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(onSelectPackage).not.toHaveBeenCalled()
+
+      rerender(<SelectPackage {...props} selectedVersion="v1.0.0" />)
+
+      expect(packageTrigger).toBeEnabled()
+      await user.click(packageTrigger)
       await user.click(await screen.findByRole('option', { name: 'plugin.tar.gz' }))
 
       expect(onSelectPackage).toHaveBeenCalledWith({
@@ -469,27 +481,6 @@ describe('SelectPackage', () => {
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'plugin.installModal.back' })).not.toBeDisabled()
       })
-    })
-  })
-
-  // ================================
-  // PortalSelect Readonly State Tests
-  // ================================
-  describe('PortalSelect Readonly State', () => {
-    it('should make package select readonly when no version selected', () => {
-      renderSelectPackage({ selectedVersion: '' })
-
-      // When no version is selected, package select should be readonly
-      const trigger = screen.getAllByRole('combobox')[1]
-      expect(trigger).toHaveAttribute('aria-readonly', 'true')
-    })
-
-    it('should make package select active when version is selected', () => {
-      renderSelectPackage({ selectedVersion: 'v1.0.0' })
-
-      // When version is selected, package select should be active
-      const trigger = screen.getAllByRole('combobox')[1]
-      expect(trigger).not.toHaveAttribute('aria-readonly', 'true')
     })
   })
 
