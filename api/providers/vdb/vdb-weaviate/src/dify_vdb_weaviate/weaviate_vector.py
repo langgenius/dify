@@ -280,14 +280,24 @@ class WeaviateVector(BaseVector):
     @override
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
-        Generates deterministic UUIDs for documents based on their content.
+        Resolves the object UUID for each document.
 
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
+        When a document's metadata carries a caller-supplied ``doc_id`` (the same
+        identifier persisted on ``DocumentSegment.index_node_id`` and passed back
+        to ``delete_by_ids`` by the cleanup path), that value is used as the
+        Weaviate object UUID. Otherwise the UUID falls back to UUID5 of the
+        page content, which keeps re-indexing identical content idempotent
+        (overwriting the same object).
         """
         URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
 
         uuids = []
         for doc in documents:
+            meta = doc.metadata or {}
+            caller_uuid = meta.get("doc_id")
+            if isinstance(caller_uuid, str) and caller_uuid:
+                uuids.append(caller_uuid)
+                continue
             uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
             uuids.append(str(uuid_val))
 
