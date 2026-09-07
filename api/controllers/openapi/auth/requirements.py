@@ -14,9 +14,8 @@ from enum import IntEnum
 from typing import ClassVar, override
 
 from flask import request
-from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
@@ -29,7 +28,6 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
-from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.system_feature_service import SystemFeatureService
@@ -184,27 +182,6 @@ class CheckWorkspaceRole(Requirement):
             return
         if load_workspace_role(ctx) not in self.allowed_roles:
             raise Forbidden("insufficient workspace role")
-
-
-class CheckSessionOwnership(Requirement):
-    """Authorises a named session against the caller's own tokens.
-
-    A token id belonging to another subject answers 404, not 403, exactly like a
-    token id that does not exist — a 403 would confirm the id, letting a caller
-    enumerate session ids across subjects.
-    """
-
-    @override
-    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        session_id = ctx.view_args["session_id"]
-        owned = session.scalar(
-            select(OAuthAccessToken.id).where(
-                OAuthAccessToken.id == session_id,
-                OAuthAccessToken.account_id == str(subject.account_id),
-            )
-        )
-        if owned is None:
-            raise NotFound("session not found")
 
 
 class CheckAppAccess(Requirement):

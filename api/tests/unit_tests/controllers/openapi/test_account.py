@@ -19,8 +19,9 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.requirements import CheckEnterpriseLicense, CheckScope, CheckSessionOwnership
+from controllers.openapi.auth.requirements import CheckEnterpriseLicense
 from machinery.context import AccountRequestContext
+from services.account_errors import AccountSessionNotFoundError
 from services.entities.account_access_entities import AccountSessionPage
 
 if not hasattr(builtins, "MethodView"):
@@ -91,33 +92,23 @@ def test_session_by_id_dispatches_to_correct_class(openapi_app: Flask):
     assert "DELETE" in rule.methods
 
 
+def test_revoke_by_id_hides_a_session_the_caller_does_not_own(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The access service refuses a token id owned by another account; the route
+    answers 404, not 403, so session ids cannot be probed across accounts.
+    """
+    api = AccountSessionByIdApi()
+    _stub_account_service(monkeypatch)
+    foreign_id = str(uuid.uuid4())
+    with app.test_request_context(f"/openapi/v1/account/sessions/{foreign_id}", method="DELETE"):
+        with pytest.raises(NotFound, match="session not found"):
+            api.delete.__handler__(api, _ctx(), session_id=foreign_id)
+
+
 def test_session_by_id_rejects_malformed_uuid(app: Flask) -> None:
     api = AccountSessionByIdApi()
     with app.test_request_context("/openapi/v1/account/sessions/not-a-uuid", method="DELETE"):
         with pytest.raises(NotFound, match="session not found"):
             api.delete.__handler__(api, _ctx(), session_id="not-a-uuid")
-
-
-def test_revoke_by_id_declares_session_ownership():
-    """The route wiring, not the requirement's own logic: `CheckSessionOwnership`
-    is what stops a caller revoking a session id belonging to another subject, and
-    it is only reachable if this route declares it. Nothing else pins that — the
-    allow/deny matrix addresses the caller's own session, so removing the
-    declaration changes no row there.
-    """
-    requirements = AccountSessionByIdApi.delete.__spec__.requirements
-    assert any(isinstance(requirement, CheckSessionOwnership) for requirement in requirements)
-
-
-def test_session_ownership_runs_after_token_scope():
-    """`CheckSessionOwnership` takes the default rank, so it is tied with
-    `CheckScope` — declaration order is what keeps a caller failing scope alone
-    from reaching the ownership check first.
-    """
-    requirements = AccountSessionByIdApi.delete.__spec__.requirements
-    token_scope_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckScope))
-    ownership_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckSessionOwnership))
-    assert token_scope_index < ownership_index
 
 
 def test_every_account_route_declares_the_enterprise_licence_gate():
@@ -126,14 +117,6 @@ def test_every_account_route_declares_the_enterprise_licence_gate():
     """
     for view in (AccountApi.get, AccountSessionsSelfApi.delete, AccountSessionsApi.get, AccountSessionByIdApi.delete):
         assert any(isinstance(requirement, CheckEnterpriseLicense) for requirement in view.__spec__.requirements)
-
-
-def test_the_other_session_routes_do_not_declare_it():
-    """`revoke_self` and the listing scope themselves by subject, so a per-session
-    ownership check would have nothing to name.
-    """
-    for view in (AccountSessionsSelfApi.delete, AccountSessionsApi.get):
-        assert not any(isinstance(requirement, CheckSessionOwnership) for requirement in view.__spec__.requirements)
 
 
 # --- GET /account/sessions query validation. The application service is replaced
@@ -150,6 +133,9 @@ def _ctx() -> SimpleNamespace:
 class _SessionListService:
     def list_sessions(self, _context: AccountRequestContext, *, page: int, limit: int) -> AccountSessionPage:
         return AccountSessionPage(page=page, limit=limit, total=0, items=())
+
+    def revoke_session(self, _context: AccountRequestContext, *, token_id: str) -> None:
+        raise AccountSessionNotFoundError(token_id)
 
 
 def _stub_account_service(monkeypatch: pytest.MonkeyPatch) -> None:
