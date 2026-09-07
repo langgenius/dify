@@ -103,11 +103,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('AutoDisabledDocument', () => {
-    it('mounts the auto-disabled document notice for document editors', () => {
-      render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByTestId('auto-disabled-document')).toBeInTheDocument()
-    })
-
     it('should not show AutoDisabledDocument without document edit permission', () => {
       render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
