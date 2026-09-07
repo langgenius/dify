@@ -20,7 +20,11 @@ from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYP
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellEnvVarConfig, DifyShellLayerConfig
-from dify_agent.layers.user_prompt import DIFY_USER_PROMPT_LAYER_TYPE_ID, DifyUserPromptFileConfig
+from dify_agent.layers.user_prompt import (
+    DIFY_USER_PROMPT_LAYER_TYPE_ID,
+    DifyUserPromptDownloadConfig,
+    DifyUserPromptImageConfig,
+)
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -371,13 +375,16 @@ def test_agent_app_request_builder_omits_shell_layer_by_default():
 def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
     run_input = _agent_app_input()
     run_input.user_files = [
-        DifyUserPromptFileConfig(
+        DifyUserPromptDownloadConfig(
+            type="document", transfer_method="remote_url", url="https://example.com/brief.pdf"
+        ),
+        DifyUserPromptImageConfig(
             filename="earth.png",
             mime_type="image/png",
             format="png",
             url="https://files.example.com/earth.png?sign=secret",
             detail="high",
-        )
+        ),
     ]
 
     request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
@@ -386,19 +393,25 @@ def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
     assert layer.type == DIFY_USER_PROMPT_LAYER_TYPE_ID
     assert layer.config.text == "List files."
     assert layer.config.files == run_input.user_files
+    restored_request = CreateRunRequest.model_validate_json(request.model_dump_json())
+    restored_layer = next(
+        layer for layer in restored_request.composition.layers if layer.name == "agent_app_user_prompt"
+    )
+    assert restored_layer.config == layer.config.model_dump(mode="json")
+    assert "locators" not in restored_layer.config
 
 
 def test_agent_backend_log_redacts_multimodal_file_transport():
     run_input = _agent_app_input()
     run_input.metadata = {"source_url": "https://example.com/docs"}
     run_input.user_files = [
-        DifyUserPromptFileConfig(
+        DifyUserPromptImageConfig(
             filename="earth.png",
             mime_type="image/png",
             format="png",
             url="https://files.example.com/earth.png?sign=secret",
         ),
-        DifyUserPromptFileConfig(
+        DifyUserPromptImageConfig(
             filename="inline.png",
             mime_type="image/png",
             format="png",

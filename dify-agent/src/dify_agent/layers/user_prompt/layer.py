@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from dataclasses import dataclass
 from typing import ClassVar, assert_never
 
@@ -12,7 +13,8 @@ from typing_extensions import Self, override
 from agenton.layers import EmptyRuntimeState, NoLayerDeps, PydanticAILayer
 from dify_agent.layers.user_prompt.configs import (
     DIFY_USER_PROMPT_LAYER_TYPE_ID,
-    DifyUserPromptFileConfig,
+    DifyUserPromptDownloadConfig,
+    DifyUserPromptImageConfig,
     DifyUserPromptLayerConfig,
 )
 
@@ -32,18 +34,33 @@ class DifyUserPromptLayer(PydanticAILayer[NoLayerDeps, object, DifyUserPromptLay
     @property
     @override
     def user_prompts(self) -> list[UserContent]:
-        return [self.config.text, *(_to_user_content(file) for file in self.config.files)]
+        images: list[UserContent] = []
+        downloads: list[DifyUserPromptDownloadConfig] = []
+        for file in self.config.files:
+            match file.delivery:
+                case "multimodal":
+                    images.append(_to_image_content(file))
+                case "download":
+                    downloads.append(file)
+                case _:
+                    assert_never(file)
+        return [_append_file_downloads(self.config.text, downloads), *images]
 
 
-def _to_user_content(file: DifyUserPromptFileConfig) -> ImageUrl | BinaryContent:
-    match file.type:
-        case "image":
-            return _to_image_content(file)
-        case unexpected:
-            assert_never(unexpected)
+def _append_file_downloads(text: str, files: list[DifyUserPromptDownloadConfig]) -> str:
+    if not files:
+        return text
+    locators = [file.model_dump(mode="json", exclude={"delivery", "type"}, exclude_none=True) for file in files]
+    payload = json.dumps(locators, ensure_ascii=False, separators=(",", ":"))
+    return (
+        f"{text}\n"
+        "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
+        "to get the files and investigate them\n"
+        f"{payload}"
+    )
 
 
-def _to_image_content(file: DifyUserPromptFileConfig) -> ImageUrl | BinaryContent:
+def _to_image_content(file: DifyUserPromptImageConfig) -> ImageUrl | BinaryContent:
     vendor_metadata: dict[str, str] = {"filename": file.filename}
     if file.detail is not None:
         vendor_metadata["detail"] = file.detail

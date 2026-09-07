@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 
 import pytest
@@ -325,9 +324,12 @@ class TestAgentAppRuntimeRequestBuilder:
         config = DifyUserPromptLayerConfig.model_validate(layer.config)
 
         assert config.text == "Describe this image."
-        assert config.files[0].url == "https://files.example.com/earth.png?sign=secret"
-        assert config.files[0].detail == "high"
-        assert "dify-agent file download" not in config.text
+        assert len(config.files) == 1
+        image = config.files[0]
+        assert image.delivery == "multimodal"
+        assert image.type == "image"
+        assert image.url == "https://files.example.com/earth.png?sign=secret"
+        assert image.detail == "high"
         assert prompt_content_calls == [(_image_file(), ImagePromptMessageContent.DETAIL.HIGH)]
 
     def test_build_keeps_image_locator_for_non_vision_model(self, monkeypatch: pytest.MonkeyPatch):
@@ -341,21 +343,15 @@ class TestAgentAppRuntimeRequestBuilder:
         layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
         config = DifyUserPromptLayerConfig.model_validate(layer.config)
 
-        assert config.files == []
-        assert config.text == (
-            "Inspect the attachment.\n"
-            "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
-            "to get the files and investigate them\n"
-            + json.dumps(
-                [
-                    {
-                        "transfer_method": "local_file",
-                        "reference": build_file_reference(record_id="upload-file-1"),
-                    }
-                ],
-                separators=(",", ":"),
-            )
-        )
+        assert config.text == "Inspect the attachment."
+        assert [file.model_dump(exclude_none=True) for file in config.files] == [
+            {
+                "delivery": "download",
+                "type": "image",
+                "transfer_method": "local_file",
+                "reference": build_file_reference(record_id="upload-file-1"),
+            }
+        ]
 
     def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -378,8 +374,10 @@ class TestAgentAppRuntimeRequestBuilder:
         layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
         config = DifyUserPromptLayerConfig.model_validate(layer.config)
 
-        assert config.files[0].url is None
-        assert config.files[0].base64_data == "aW1hZ2UtYnl0ZXM="
+        image = config.files[0]
+        assert image.delivery == "multimodal"
+        assert image.url is None
+        assert image.base64_data == "aW1hZ2UtYnl0ZXM="
 
     def test_build_keeps_non_image_locator_when_vision_image_is_direct(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -404,18 +402,17 @@ class TestAgentAppRuntimeRequestBuilder:
         layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
         config = DifyUserPromptLayerConfig.model_validate(layer.config)
 
-        assert [file.filename for file in config.files] == ["earth.png"]
-        assert config.text.endswith(
-            json.dumps(
-                [
-                    {
-                        "transfer_method": "local_file",
-                        "reference": build_file_reference(record_id="upload-document-1"),
-                    }
-                ],
-                separators=(",", ":"),
-            )
-        )
+        assert config.text == "Compare the attachments."
+        assert len(config.files) == 2
+        image, download = config.files
+        assert image.delivery == "multimodal"
+        assert image.filename == "earth.png"
+        assert download.model_dump(exclude_none=True) == {
+            "delivery": "download",
+            "type": "document",
+            "transfer_method": "local_file",
+            "reference": build_file_reference(record_id="upload-document-1"),
+        }
 
     @pytest.mark.parametrize(
         ("previous_prompt", "current_prompt"),

@@ -372,6 +372,7 @@ structured multimodal content; it is not interpolated into `config.text`.
     "text": "Describe this image.",
     "files": [
       {
+        "delivery": "multimodal",
         "type": "image",
         "filename": "earth.png",
         "mime_type": "image/png",
@@ -385,10 +386,21 @@ structured multimodal content; it is not interpolated into `config.text`.
 }
 ```
 
-The `dify.user_prompt` layer currently accepts images only. Dify API chooses
-URL or Base64 delivery according to `MULTIMODAL_SEND_FORMAT`. For Agent App
-models without the Vision feature, and for non-image files, Dify API keeps the
-sandbox file-download locator flow instead of populating `config.files`.
+All attachments use `config.files`. The `delivery` field selects how an attachment
+is presented, independently of its file `type` (`image`, `document`, `audio`,
+`video`, or `custom`):
+
+- `delivery: "multimodal"` currently supports `type: "image"` only. Dify API
+  chooses URL or Base64 transport according to `MULTIMODAL_SEND_FORMAT`.
+- `delivery: "download"` preserves the original file `type`, including `image`
+  when the selected model has no Vision feature. It contains either
+  `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
+  `datasource_file` transfer method with a canonical `reference`.
+
+The layer appends sandbox file-download instructions for download attachments
+and adds multimodal attachments as structured model content. Callers keep
+`config.text` as the original user text. Omitting `config.files` is equivalent
+to an empty list.
 
 The optional Pydantic AI history layer uses the reserved name `history` and
 persists captured messages in session snapshots for later resume. Resume from a

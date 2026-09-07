@@ -11,6 +11,103 @@ from dify_agent.layers.user_prompt.layer import DifyUserPromptLayer
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
 
+@pytest.mark.parametrize("include_image", [False, True])
+@pytest.mark.parametrize("download_type", ["image", "document"])
+def test_user_prompt_layer_injects_file_locators(include_image: bool, download_type: str) -> None:
+    config = DifyUserPromptLayerConfig.model_validate(
+        {
+            "text": "Inspect these files.",
+            "files": [
+                {
+                    "delivery": "download",
+                    "type": download_type,
+                    "transfer_method": "local_file",
+                    "reference": "dify-file-ref:upload-file-1",
+                },
+                {
+                    "delivery": "download",
+                    "type": "document",
+                    "transfer_method": "remote_url",
+                    "url": "https://example.com/说明.pdf",
+                },
+                {
+                    "delivery": "download",
+                    "type": "document",
+                    "transfer_method": "tool_file",
+                    "reference": "dify-file-ref:tool-file-1",
+                },
+                {
+                    "delivery": "download",
+                    "type": "document",
+                    "transfer_method": "datasource_file",
+                    "reference": "dify-file-ref:datasource-file-1",
+                },
+                *(
+                    [
+                        {
+                            "delivery": "multimodal",
+                            "type": "image",
+                            "filename": "earth.png",
+                            "mime_type": "image/png",
+                            "format": "png",
+                            "url": "https://files.example.com/earth.png",
+                        }
+                    ]
+                    if include_image
+                    else []
+                ),
+            ],
+        }
+    )
+    layer = DifyUserPromptLayer.from_config(DifyUserPromptLayerConfig.model_validate_json(config.model_dump_json()))
+
+    prompts = layer.user_prompts
+
+    assert prompts[0] == (
+        "Inspect these files.\n"
+        "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
+        "to get the files and investigate them\n"
+        '[{"transfer_method":"local_file","reference":"dify-file-ref:upload-file-1"},'
+        '{"transfer_method":"remote_url","url":"https://example.com/说明.pdf"},'
+        '{"transfer_method":"tool_file","reference":"dify-file-ref:tool-file-1"},'
+        '{"transfer_method":"datasource_file","reference":"dify-file-ref:datasource-file-1"}]'
+    )
+    assert layer.config.text == "Inspect these files."
+    assert "locators" not in layer.config.model_dump()
+    assert layer.user_prompts == prompts
+    assert len(prompts) == (2 if include_image else 1)
+    if include_image:
+        assert isinstance(prompts[1], ImageUrl)
+        assert prompts[1].url == "https://files.example.com/earth.png"
+
+
+@pytest.mark.parametrize(
+    "locator",
+    [
+        {"transfer_method": "remote_url", "reference": "file-1"},
+        {"transfer_method": "local_file", "url": "https://example.com/file.pdf"},
+        {"transfer_method": "unsupported", "reference": "file-1"},
+        {"transfer_method": "local_file"},
+        {"transfer_method": "remote_url"},
+        {"transfer_method": "local_file", "reference": ""},
+        {"transfer_method": "remote_url", "url": ""},
+        {"transfer_method": "remote_url", "url": "https://example.com/file.pdf", "reference": "file-1"},
+        {"transfer_method": "tool_file", "url": "https://example.com/file.pdf", "reference": "file-1"},
+    ],
+)
+def test_user_prompt_layer_rejects_invalid_locators(locator: dict[str, str]) -> None:
+    with pytest.raises(ValidationError):
+        DifyUserPromptLayerConfig.model_validate(
+            {"text": "Inspect it.", "files": [{"delivery": "download", "type": "document", **locator}]}
+        )
+
+
+def test_user_prompt_layer_preserves_text_without_locators() -> None:
+    layer = DifyUserPromptLayer.from_config(DifyUserPromptLayerConfig(text="  Original prompt.\n"))
+
+    assert layer.user_prompts == ["  Original prompt.\n"]
+
+
 def test_user_prompt_layer_restores_image_url_content() -> None:
     layer = DifyUserPromptLayer.from_config(
         DifyUserPromptLayerConfig.model_validate(
@@ -18,6 +115,7 @@ def test_user_prompt_layer_restores_image_url_content() -> None:
                 "text": "What is in this image?",
                 "files": [
                     {
+                        "delivery": "multimodal",
                         "type": "image",
                         "filename": "earth.png",
                         "mime_type": "image/png",
@@ -47,6 +145,7 @@ def test_user_prompt_layer_restores_inline_binary_content() -> None:
                 "text": "Describe it.",
                 "files": [
                     {
+                        "delivery": "multimodal",
                         "type": "image",
                         "filename": "inline.png",
                         "mime_type": "image/png",
@@ -69,12 +168,14 @@ def test_user_prompt_layer_restores_inline_binary_content() -> None:
     "file_payload",
     [
         {
+            "delivery": "multimodal",
             "type": "image",
             "filename": "missing.png",
             "mime_type": "image/png",
             "format": "png",
         },
         {
+            "delivery": "multimodal",
             "type": "image",
             "filename": "ambiguous.png",
             "mime_type": "image/png",

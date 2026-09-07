@@ -95,6 +95,16 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert ask_human_module.DifyAskHumanLayerConfig is not None
         assert output_module.DifyOutputLayerConfig is not None
         assert user_prompt_module.DifyUserPromptLayerConfig is not None
+        assert user_prompt_module.DifyUserPromptFileConfig is not None
+        download = user_prompt_module.DifyUserPromptDownloadConfig(
+            type="image", transfer_method="local_file", reference="file-1"
+        )
+        image = user_prompt_module.DifyUserPromptImageConfig(
+            filename="image.png", mime_type="image/png", format="png", url="https://example.com/image.png"
+        )
+        config = user_prompt_module.DifyUserPromptLayerConfig(text="Inspect it.", files=[download, image])
+        assert user_prompt_module.DifyUserPromptLayerConfig.model_validate_json(config.model_dump_json()) == config
+        assert [file.delivery for file in config.files] == ["download", "multimodal"]
 
         unexpectedly_installed = []
         for dependency_name in sorted(server_only_dependency_names):
