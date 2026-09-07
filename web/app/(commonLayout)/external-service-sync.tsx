@@ -20,7 +20,7 @@ import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type AmplitudeProperties = Record<string, string | number | boolean>
 

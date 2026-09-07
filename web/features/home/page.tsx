@@ -3,30 +3,25 @@ import { Suspense } from 'react'
 import { getQueryClient } from '@/app/get-query-client'
 import { getOptionalSystemFeatures } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
+import { consoleQuery } from '@/service/console'
 import { HomeContent } from './home-content/home-content'
 import { HomeShell } from './home-shell'
 import { HomeSkeleton } from './home-skeleton'
 
 export async function HomePage() {
   const homeQueryClient = getQueryClient()
-  const [locale, context] = await Promise.all([
-    getLocaleOnServer(),
-    getServerConsoleClientContext(),
-  ])
+  const locale = await getLocaleOnServer()
 
   void homeQueryClient
     .query(
-      serverConsoleQuery.explore.apps.get.queryOptions({
-        context,
+      consoleQuery.explore.apps.get.queryOptions({
         input: { query: { language: locale } },
       }),
     )
     .catch(noop)
   void homeQueryClient
     .query(
-      serverConsoleQuery.apps.recent.get.queryOptions({
-        context,
+      consoleQuery.apps.recent.get.queryOptions({
         input: { query: { limit: 8 } },
       }),
     )
@@ -36,8 +31,7 @@ export async function HomePage() {
   if (enableExploreBanner) {
     void homeQueryClient
       .query(
-        serverConsoleQuery.explore.banners.get.queryOptions({
-          context,
+        consoleQuery.explore.banners.get.queryOptions({
           input: { query: { language: locale } },
         }),
       )

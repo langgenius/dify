@@ -20,7 +20,7 @@ import PriorityLabel from '@/app/components/billing/priority-label'
 import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-limit-modal'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,

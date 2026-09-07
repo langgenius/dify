@@ -8,7 +8,7 @@ import type { DeepPartial } from '@/test/console/system-features'
 import { cleanup, screen } from '@testing-library/react'
 import * as React from 'react'
 import PlanComp from '@/app/components/billing/plan'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,

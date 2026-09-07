@@ -2,7 +2,7 @@
 
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { initialWorkspaceSummary } from './app-context-defaults'
 import { getWorkspaceRoleFlags, normalizeCurrentWorkspaceSummary } from './app-context-normalizers'
 

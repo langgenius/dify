@@ -17,9 +17,9 @@ import type {
 } from '@/models/common'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { consoleQuery } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
-import { consoleQuery } from './client'
 
 const NAME_SPACE = 'common'
 

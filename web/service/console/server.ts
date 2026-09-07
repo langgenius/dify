@@ -11,26 +11,17 @@ import { createConsoleContractLink } from './contract-loader'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 import 'server-only'
 
-export type ServerConsoleClientContext = {
-  cookie?: string
-  csrfToken?: string
-}
-
-const withTrailingSlash = (value: string) => (value.endsWith('/') ? value : `${value}/`)
-const withoutLeadingSlash = (value: string) => (value.startsWith('/') ? value.slice(1) : value)
-
-const resolveAbsoluteUrlPrefix = (value: string) => {
+export const resolveServerConsoleApiPrefix = (
+  serverConsoleApiPrefix = SERVER_CONSOLE_API_PREFIX,
+  publicApiPrefix = API_PREFIX,
+) => {
+  if (serverConsoleApiPrefix) return serverConsoleApiPrefix
   try {
-    return new URL(value).toString()
+    return new URL(publicApiPrefix).href
   } catch {
     return null
   }
 }
-
-export const resolveServerConsoleApiPrefix = (
-  serverConsoleApiPrefix = SERVER_CONSOLE_API_PREFIX,
-  publicApiPrefix = API_PREFIX,
-) => serverConsoleApiPrefix || resolveAbsoluteUrlPrefix(publicApiPrefix)
 
 export const resolveServerConsoleApiUrl = (
   pathname: string,
@@ -40,7 +31,7 @@ export const resolveServerConsoleApiUrl = (
   const apiPrefix = resolveServerConsoleApiPrefix(serverConsoleApiPrefix, publicApiPrefix)
   if (!apiPrefix) return null
 
-  return new URL(withoutLeadingSlash(pathname), withTrailingSlash(apiPrefix)).toString()
+  return new URL(pathname.replace(/^\//, ''), `${apiPrefix.replace(/\/$/, '')}/`).href
 }
 
 const getServerConsoleApiPrefix = () => {
@@ -50,35 +41,27 @@ const getServerConsoleApiPrefix = () => {
   return apiPrefix
 }
 
-const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext | undefined) => {
-  const requestHeaders = new Headers({
-    Accept: 'application/json',
-  })
+const getConsoleRequestIdentity = cache(async () => {
+  const requestHeaders = await headers()
+  const cookieStore = await cookies()
 
-  if (context?.cookie) requestHeaders.set('cookie', context.cookie)
-  if (context?.csrfToken) requestHeaders.set(CSRF_HEADER_NAME, context.csrfToken)
+  return {
+    cookie: requestHeaders.get('cookie') || undefined,
+    csrfToken: cookieStore.get(CSRF_COOKIE_NAME())?.value,
+  }
+})
 
+export const getServerConsoleRequestHeaders = async () => {
+  const { cookie, csrfToken } = await getConsoleRequestIdentity()
+  const requestHeaders = new Headers({ Accept: 'application/json' })
+  if (cookie) requestHeaders.set('cookie', cookie)
+  if (csrfToken) requestHeaders.set(CSRF_HEADER_NAME, csrfToken)
   return requestHeaders
 }
 
-export const getServerConsoleClientContext = cache(
-  async (): Promise<ServerConsoleClientContext> => {
-    const requestHeaders = await headers()
-    const cookieStore = await cookies()
-
-    return {
-      cookie: requestHeaders.get('cookie') || undefined,
-      csrfToken: cookieStore.get(CSRF_COOKIE_NAME())?.value,
-    }
-  },
-)
-
-export const getServerConsoleRequestHeaders = async () =>
-  createServerConsoleRequestHeaders(await getServerConsoleClientContext())
-
-type ServerConsoleClientLink = ClientLink<ConsoleClientContext>
-
-function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerConsoleClientLink {
+function createServerConsoleOpenAPILink(
+  contract: AnyContractRouter,
+): ClientLink<ConsoleClientContext> {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getServerConsoleApiPrefix,
     headers: getServerConsoleRequestHeaders,
@@ -102,7 +85,7 @@ function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerCons
   })
 }
 
-export const consoleServerLink = createConsoleContractLink<ConsoleClientContext>(
+const consoleServerLink = createConsoleContractLink<ConsoleClientContext>(
   createServerConsoleOpenAPILink,
 )
 

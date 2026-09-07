@@ -17,7 +17,7 @@ import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavai
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DataSourceType } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import FileUploader from '../file-uploader'
 import Website from '../website'

@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   apiKeyButtonProps: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     enterprise: {
       appDeploy: {

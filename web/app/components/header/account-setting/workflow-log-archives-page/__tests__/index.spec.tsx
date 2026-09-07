@@ -3,7 +3,7 @@ import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import WorkflowLogArchivesPage from '../index'
 

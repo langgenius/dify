@@ -6,7 +6,7 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys, useModelListByType } from '@/service/use-common'
 import { ProviderContext } from './provider-context'
 

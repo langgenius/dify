@@ -19,8 +19,8 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
 import { getDocDownloadUrl } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'

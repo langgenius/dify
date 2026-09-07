@@ -52,7 +52,7 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: vi.fn(),
   },

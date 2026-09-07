@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { getResetInDaysFromDate } from '@/app/components/billing/utils'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type TriggerEventsLimitModalContent = {
   usage: number

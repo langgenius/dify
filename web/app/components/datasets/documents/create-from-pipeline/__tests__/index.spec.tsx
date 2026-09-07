@@ -1,5 +1,5 @@
 import { waitFor } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CreateFromPipeline from '../index'
 

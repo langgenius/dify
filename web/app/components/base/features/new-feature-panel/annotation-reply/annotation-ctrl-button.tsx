@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { addAnnotation } from '@/service/annotation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   appId: string

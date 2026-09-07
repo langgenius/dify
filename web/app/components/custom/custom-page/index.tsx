@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { contactSalesUrl } from '@/app/components/billing/config'
 import { useModalContext } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import CustomWebAppBrand from '../custom-web-app-brand'
 
 const CustomPage = () => {

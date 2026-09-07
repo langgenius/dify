@@ -25,7 +25,7 @@ const apiMocks = vi.hoisted(() => ({
   deleteEnvironment: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byResourceId: {

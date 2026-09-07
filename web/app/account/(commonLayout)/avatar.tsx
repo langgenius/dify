@@ -14,7 +14,7 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 
 export default function AppSelector() {

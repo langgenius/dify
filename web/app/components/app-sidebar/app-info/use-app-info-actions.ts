@@ -20,7 +20,7 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
