@@ -13,15 +13,21 @@ write_optional_private_allowlist() {
     local acl_name="$2"
     local acl_type="$3"
     local raw_values="${!env_name:-}"
+    local -a tokens=()
 
     raw_values="${raw_values//,/ }"
+    raw_values="${raw_values//$'\n'/ }"
+    raw_values="${raw_values//$'\r'/ }"
 
     if [ -z "${raw_values//[[:space:]]/}" ]; then
         return
     fi
 
+    read -r -a tokens <<< "$raw_values"
+
     printf 'acl %s %s' "$acl_name" "$acl_type" >> "$ALLOW_PRIVATE_CONF"
-    for value in $raw_values; do
+    for value in "${tokens[@]}"; do
+        [ -z "${value//[[:space:]]/}" ] && continue
         printf ' %s' "$value" >> "$ALLOW_PRIVATE_CONF"
     done
     printf '\nhttp_access allow client_localnet %s\n' "$acl_name" >> "$ALLOW_PRIVATE_CONF"
@@ -70,6 +76,13 @@ assert_contains "$ALLOW_PRIVATE_CONF" "acl dify_allowed_private_networks dst 172
 assert_contains "$ALLOW_PRIVATE_CONF" "http_access allow client_localnet dify_allowed_private_networks"
 assert_contains "$ALLOW_PRIVATE_CONF" "acl dify_allowed_private_domains dstdomain internal_api .corp.local"
 assert_contains "$ALLOW_PRIVATE_CONF" "http_access allow client_localnet dify_allowed_private_domains"
+
+# Glob-like tokens and newline separators must not be expanded or split by the shell.
+export SSRF_PROXY_ALLOW_PRIVATE_IPS=$'172.21.0.0/16\n10.0.0.1'
+export SSRF_PROXY_ALLOW_PRIVATE_DOMAINS='*.corp.local,?internal.example'
+generate_allowlist_config
+assert_contains "$ALLOW_PRIVATE_CONF" "acl dify_allowed_private_networks dst 172.21.0.0/16 10.0.0.1"
+assert_contains "$ALLOW_PRIVATE_CONF" "acl dify_allowed_private_domains dstdomain *.corp.local ?internal.example"
 
 if ! grep -Fq "include /etc/squid/dify_allow_private.conf" "$ROOT_DIR/squid-agent.conf.template"; then
     echo "squid-agent.conf.template must include dify_allow_private.conf before the private-network deny rule."

@@ -12,15 +12,21 @@ write_optional_private_allowlist() {
     local acl_name="$2"
     local acl_type="$3"
     local raw_values="${!env_name:-}"
+    local -a tokens=()
 
     raw_values="${raw_values//,/ }"
+    raw_values="${raw_values//$'\n'/ }"
+    raw_values="${raw_values//$'\r'/ }"
 
     if [ -z "${raw_values//[[:space:]]/}" ]; then
         return
     fi
 
+    read -r -a tokens <<< "$raw_values"
+
     printf 'acl %s %s' "$acl_name" "$acl_type" >> "$ALLOW_PRIVATE_CONF"
-    for value in $raw_values; do
+    for value in "${tokens[@]}"; do
+        [ -z "${value//[[:space:]]/}" ] && continue
         printf ' %s' "$value" >> "$ALLOW_PRIVATE_CONF"
     done
     printf '\nhttp_access allow client_localnet %s\n' "$acl_name" >> "$ALLOW_PRIVATE_CONF"
