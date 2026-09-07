@@ -91,14 +91,19 @@ export const FormCard = memo(
     useEffect(() => {
       if (!interactive || invalidated || item.payload.frozen === true) return
 
+      const payload = { ...prepared.preparedValues }
+      if (actionId !== 'provide_testdata') {
+        // Requirements and edit rules merge into existing values; null clears a field.
+        fields.forEach(({ key }) => {
+          if (!(key in payload)) payload[key] = null
+        })
+      }
       actionPayloadChangeRef.current(
         actionId,
-        actionId === 'provide_testdata'
-          ? { mode: 'provide', inputs: prepared.preparedValues }
-          : prepared.preparedValues,
+        actionId === 'provide_testdata' ? { mode: 'provide', inputs: payload } : payload,
       )
       actionValidityChangeRef.current?.(actionId, prepared.valid)
-    }, [actionId, interactive, invalidated, item.payload.frozen, prepared])
+    }, [actionId, fields, interactive, invalidated, item.payload.frozen, prepared])
 
     const updateValues = (key: string, value: unknown) => {
       setValues((current) => ({ ...current, [key]: value }))
