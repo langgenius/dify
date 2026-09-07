@@ -168,6 +168,7 @@ def is_core_coverage_path(path: str) -> bool:
             "api/controllers/console/knowledge_fs/",
             "api/controllers/inner_api/knowledge_fs/",
             "api/controllers/service_api/knowledge_fs/",
+            "api/core/knowledge_fs/",
             "api/core/tools/builtin_tool/providers/knowledge_fs/",
             "api/services/knowledge_fs/",
         )

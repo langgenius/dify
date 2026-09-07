@@ -28,6 +28,10 @@ from dev.check_knowledge_fs_coverage import (
         "api/controllers/inner_api/knowledge_fs/storage.py",
         "api/controllers/openapi/knowledge_fs.py",
         "api/controllers/service_api/knowledge_fs/resources.py",
+        "api/core/knowledge_fs/__init__.py",
+        "api/core/knowledge_fs/errors.py",
+        "api/core/knowledge_fs/resource.py",
+        "api/core/knowledge_fs/retrieval_contracts.py",
         "api/core/tools/builtin_tool/providers/knowledge_fs/knowledge_fs.py",
         "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
@@ -57,8 +61,9 @@ def test_core_coverage_scope_excludes_glue_migrations_and_tests(path: str) -> No
     assert not is_core_coverage_path(path)
 
 
-def test_core_coverage_aggregates_lines_and_branches_and_fails_closed(tmp_path: Path) -> None:
-    service_path = tmp_path / "api/services/knowledge_fs/runtime.py"
+@pytest.mark.parametrize("owned_path", ["api/services/knowledge_fs/runtime.py", "api/core/knowledge_fs/resource.py"])
+def test_core_coverage_aggregates_lines_and_branches_and_fails_closed(tmp_path: Path, owned_path: str) -> None:
+    service_path = tmp_path / owned_path
     model_path = tmp_path / "api/models/knowledge_fs.py"
     service_path.parent.mkdir(parents=True)
     model_path.parent.mkdir(parents=True)
@@ -66,7 +71,7 @@ def test_core_coverage_aggregates_lines_and_branches_and_fails_closed(tmp_path: 
     model_path.touch()
     report = coverage_report(
         {
-            "api/services/knowledge_fs/runtime.py": coverage_file(
+            owned_path: coverage_file(
                 covered_lines=8,
                 num_statements=10,
                 covered_branches=1,
