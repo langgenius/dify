@@ -87,40 +87,15 @@ def _strip_sensitive_values(value: Any) -> Any:
     return result
 
 
-def make_portable_agent_package(
-    agent: Agent,
-    agent_soul: AgentSoulConfig,
-    workspace_skills: list[AgentPackageWorkspaceSkill] | None = None,
-) -> AgentPackage:
-    """Return a package safe to place in YAML or the system clipboard."""
+def make_portable_agent_soul(agent_soul: AgentSoulConfig) -> AgentSoulConfig:
+    """Return an Agent Soul without workspace-local credentials or identities.
+
+    Resource references are intentionally preserved. Container formats decide
+    whether to omit their payloads, as YAML DSL does, or remap them to
+    package-local identifiers, as Roster packages do.
+    """
 
     soul_data = agent_soul.model_dump(mode="json")
-    omitted_assets = [
-        AgentPackageOmittedAsset(
-            kind="skill",
-            name=item.name,
-            size=item.size,
-            hash=item.hash,
-            mime_type=item.mime_type,
-        )
-        for item in agent_soul.config_skills
-    ]
-    omitted_assets.extend(
-        AgentPackageOmittedAsset(
-            kind="file",
-            name=item.name,
-            size=item.size,
-            hash=item.hash,
-            mime_type=item.mime_type,
-        )
-        for item in agent_soul.config_files
-    )
-    for item in soul_data.get("config_skills", []):
-        item["file_id"] = ""
-        item["is_missing"] = True
-    for item in soul_data.get("config_files", []):
-        item["file_id"] = ""
-        item["is_missing"] = True
 
     if soul_data.get("model"):
         soul_data["model"]["credential_ref"] = None
@@ -154,6 +129,44 @@ def make_portable_agent_package(
     for contact in soul_data.get("human", {}).get("contacts", []):
         for key in ("id", "contact_id", "human_id", "tenant_id"):
             contact[key] = None
+
+    return AgentSoulConfig.model_validate(soul_data)
+
+
+def make_portable_agent_package(
+    agent: Agent,
+    agent_soul: AgentSoulConfig,
+    workspace_skills: list[AgentPackageWorkspaceSkill] | None = None,
+) -> AgentPackage:
+    """Return a package safe to place in YAML or the system clipboard."""
+
+    soul_data = make_portable_agent_soul(agent_soul).model_dump(mode="json")
+    omitted_assets = [
+        AgentPackageOmittedAsset(
+            kind="skill",
+            name=item.name,
+            size=item.size,
+            hash=item.hash,
+            mime_type=item.mime_type,
+        )
+        for item in agent_soul.config_skills
+    ]
+    omitted_assets.extend(
+        AgentPackageOmittedAsset(
+            kind="file",
+            name=item.name,
+            size=item.size,
+            hash=item.hash,
+            mime_type=item.mime_type,
+        )
+        for item in agent_soul.config_files
+    )
+    for item in soul_data.get("config_skills", []):
+        item["file_id"] = ""
+        item["is_missing"] = True
+    for item in soul_data.get("config_files", []):
+        item["file_id"] = ""
+        item["is_missing"] = True
 
     portable_soul = AgentSoulConfig.model_validate(soul_data)
     icon_type = agent.icon_type.value if agent.icon_type is not None else None
