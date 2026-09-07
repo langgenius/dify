@@ -51,13 +51,32 @@ def _make_vector() -> WeaviateVector:
     production code paths exercised here (``_get_uuids`` and
     ``delete_by_ids``), so the rest of the instance dict is left bare.
     """
-    client = MagicMock()
+    # pyrefly cannot resolve chained ``.return_value`` access through
+    # dynamically-attached attributes (it infers ``v._client`` as the
+    # missing-on-class attribute and falls through to the stdlib
+    # ``collections`` module), so keep the mocked client in a local
+    # variable whose type pyrefly can see.
+    client: MagicMock = MagicMock()
     client.collections.exists.return_value = True
+    client.collections.use.return_value = client.data
 
     v = WeaviateVector.__new__(WeaviateVector)
     v._collection_name = "Test_Collection"
     v._client = client
     return v
+
+
+def _collection(v: WeaviateVector) -> MagicMock:
+    """Resolve ``v._client.collections.use().data`` as a typed MagicMock.
+
+    Centralised so the same ``client.data`` instance is reused -- the
+    production code reaches the Weaviate collection's ``data`` object
+    via ``v._client.collections.use(name).data``; we mirror that path
+    so ``delete_by_id`` / ``delete_many`` side effects wired on the
+    returned mock are observed by the production calls.
+    """
+    col: MagicMock = v._client.collections.use.return_value
+    return col.data
 
 
 class TestGetUuidsUsesDocId:
@@ -118,17 +137,17 @@ class TestDeleteByIdsBackwardCompatible:
         no longer matches.
         """
         v = _make_vector()
-        col = v._client.collections.use.return_value
-        col.data.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
+        col = _collection(v)
+        col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
 
         with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError):
             v.delete_by_ids(["doc-aaa-1"])
 
         # Best-effort direct delete ran for each id.
-        assert col.data.delete_by_id.call_count == 1
+        assert col.delete_by_id.call_count == 1
         # And the metadata catch-up filter ran with the same ids.
-        col.data.delete_many.assert_called_once()
-        kwargs = col.data.delete_many.call_args.kwargs
+        col.delete_many.assert_called_once()
+        kwargs = col.delete_many.call_args.kwargs
         where = kwargs["where"]
         # Filter.by_property("doc_id").contains_any(["doc-aaa-1"])
         assert "doc_id" in str(where)
@@ -140,16 +159,16 @@ class TestDeleteByIdsBackwardCompatible:
         metadata-filter pass is a redundant no-op (no rows match).
         """
         v = _make_vector()
-        col = v._client.collections.use.return_value
+        col = _collection(v)
 
         v.delete_by_ids(["doc-aaa-1"])
 
-        col.data.delete_by_id.assert_called_once_with("doc-aaa-1")
+        col.delete_by_id.assert_called_once_with("doc-aaa-1")
         # The metadata filter always runs, but it's a no-op when the row
         # is already gone (Weaviate's ``delete_many`` returns an empty
         # result set against the cleared UUID).
-        col.data.delete_many.assert_called_once()
-        where = col.data.delete_many.call_args.kwargs["where"]
+        col.delete_many.assert_called_once()
+        where = col.delete_many.call_args.kwargs["where"]
         assert "doc_id" in str(where)
         assert "doc-aaa-1" in str(where)
 
@@ -160,8 +179,8 @@ class TestDeleteByIdsBackwardCompatible:
         import pytest
 
         v = _make_vector()
-        col = v._client.collections.use.return_value
-        col.data.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(500)
+        col = _collection(v)
+        col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(500)
 
         with (
             patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError),
@@ -174,9 +193,9 @@ class TestDeleteByIdsBackwardCompatible:
         swallowed -- the schema may not have been migrated yet.
         """
         v = _make_vector()
-        col = v._client.collections.use.return_value
-        col.data.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
-        col.data.delete_many.side_effect = _FakeUnexpectedStatusCodeError(404)
+        col = _collection(v)
+        col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
+        col.delete_many.side_effect = _FakeUnexpectedStatusCodeError(404)
 
         # Neither path raises.
         with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError):
