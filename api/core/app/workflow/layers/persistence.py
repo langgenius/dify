@@ -306,10 +306,15 @@ class WorkflowPersistenceLayer(Layer):
         execution = self._get_workflow_execution()
         iteration_id, loop_id = self._resolve_container_ids(event.container_id)
 
-        metadata = {
+        metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
             WorkflowNodeExecutionMetadataKey.ITERATION_ID: iteration_id,
             WorkflowNodeExecutionMetadataKey.LOOP_ID: loop_id,
         }
+        if event.node_type == BuiltinNodeTypes.TOOL and event.provider_type:
+            metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] = {
+                "provider_type": event.provider_type,
+                "provider_id": event.provider_id,
+            }
 
         domain_execution = WorkflowNodeExecution(
             id=event.id,
@@ -322,6 +327,7 @@ class WorkflowPersistenceLayer(Layer):
             node_type=event.node_type,
             title=event.node_title,
             status=WorkflowNodeExecutionStatus.RUNNING,
+            process_data=event.node_run_result.process_data or None,
             metadata=metadata,
             created_at=event.start_at,
         )
@@ -532,7 +538,7 @@ class WorkflowPersistenceLayer(Layer):
                 inputs=node_result.inputs,
                 process_data=process_data,
                 outputs=projected_outputs,
-                metadata=node_result.metadata,
+                metadata={**(domain_execution.metadata or {}), **node_result.metadata},
             )
         else:
             domain_execution.process_data = preserve_workflow_agent_identity(

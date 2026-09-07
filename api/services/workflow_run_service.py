@@ -4,6 +4,10 @@ from datetime import datetime
 from typing import TypedDict
 
 import contexts
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
@@ -204,6 +208,34 @@ class WorkflowRunService:
             workflow_run_id=run_id,
         )
         return assemble_workflow_node_execution_traces(node_executions, self._node_executions, session=db.session())
+
+    def get_workflow_tool_node_executions(
+        self,
+        context: RequestContext,
+        *,
+        app_id: str,
+        run_id: str,
+        node_execution_id: str,
+    ) -> list[WorkflowNodeExecutionTrace] | None:
+        """Read nested Tool traces through the admitted root app and workflow run."""
+        if self.get_workflow_run(context, app_id=app_id, run_id=run_id) is None:
+            return None
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+        executions = self._node_executions.get_workflow_tool_executions(
+            tenant_id=context.active_workspace_id,
+            workflow_run_id=run_id,
+            parent_node_execution_id=node_execution_id,
+        )
+        traces = assemble_workflow_node_execution_traces(executions, self._node_executions)
+        for trace in traces:
+            if trace.process_data is not None:
+                trace.process_data = {
+                    key: value
+                    for key, value in trace.process_data.items()
+                    if key not in (WORKFLOW_TOOL_INVOCATION_ID_KEY, WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY)
+                }
+        return traces
 
     def get_pause_details(
         self,

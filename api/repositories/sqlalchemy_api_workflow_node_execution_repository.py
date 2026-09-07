@@ -20,6 +20,7 @@ from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOff
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionSnapshot,
+    workflow_tool_child_executions,
 )
 
 
@@ -146,6 +147,21 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
+
+    @override
+    def get_workflow_tool_executions(
+        self,
+        tenant_id: str,
+        workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
+            WorkflowNodeExecutionModel.tenant_id == tenant_id,
+            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+        )
+        with self._session_maker() as session:
+            executions = session.scalars(stmt).all()
+        return workflow_tool_child_executions(executions, parent_node_execution_id)
 
     @override
     def get_execution_snapshots_by_workflow_run(

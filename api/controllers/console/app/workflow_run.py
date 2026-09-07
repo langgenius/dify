@@ -24,6 +24,7 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
+    WorkflowToolNodeExecutionListResponse,
 )
 from libs.custom_inputs import time_duration
 from libs.helper import dump_response, uuid_value
@@ -123,6 +124,7 @@ register_response_schema_models(
     WorkflowRunPaginationResponse,
     WorkflowRunCountResponse,
     WorkflowRunDetailResponse,
+    WorkflowToolNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunNodeExecutionListResponse,
     HumanInputPauseTypeResponse,
@@ -309,6 +311,36 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return dump_response(WorkflowRunNodeExecutionListResponse, {"data": node_executions})
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions/<string:node_execution_id>/children")
+class WorkflowToolNodeExecutionListApi(Resource):
+    @console_ns.doc("get_workflow_tool_node_executions")
+    @console_ns.doc(description="Get the internal node executions of one workflow tool invocation")
+    @console_ns.doc(
+        params={"app_id": "Root application ID", "run_id": "Workflow run ID", "node_execution_id": "Tool execution ID"}
+    )
+    @console_ns.response(
+        200,
+        "Internal node executions retrieved successfully",
+        console_ns.models[WorkflowToolNodeExecutionListResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
+    @console_account_admission(
+        rbac_resource_scope=RBACResourceScope.APP,
+        rbac_permission=RBACPermission.APP_CREATE_AND_MANAGEMENT,
+    )
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, request_context: RequestContext, app_model: App, run_id: UUID, node_execution_id: str):
+        executions = application_services().workflow_runs.get_workflow_tool_node_executions(
+            request_context,
+            app_id=app_model.id,
+            run_id=str(run_id),
+            node_execution_id=node_execution_id,
+        )
+        if executions is None:
+            raise NotFoundError("Workflow run not found")
+        return dump_response(WorkflowToolNodeExecutionListResponse, {"data": executions})
 
 
 @console_ns.route("/workflow/<string:workflow_run_id>/pause-details")

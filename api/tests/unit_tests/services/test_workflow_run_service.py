@@ -5,6 +5,10 @@ from unittest.mock import ANY, MagicMock
 
 import pytest
 
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from models import WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
@@ -67,6 +71,42 @@ def test_init_keeps_injected_dependencies(
 
 
 class TestWorkflowRunServiceQueries:
+    def test_workflow_tool_details_require_the_root_app_run_and_hide_internal_correlation(
+        self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        node_executions, workflow_runs = service_dependencies
+        service = _service(service_dependencies)
+        workflow_runs.get_workflow_run_by_id.return_value = None
+        admitted_run = MagicMock(return_value=None)
+        monkeypatch.setattr(service, "get_workflow_run", admitted_run)
+        context = _request_context()
+        assert (
+            service.get_workflow_tool_node_executions(
+                context, app_id="app-1", run_id="run-1", node_execution_id="parent-1"
+            )
+            is None
+        )
+        node_executions.get_workflow_tool_executions.assert_not_called()
+
+        admitted_run.return_value = _workflow_run()
+        trace = SimpleNamespace(
+            process_data={
+                "answer": "approved",
+                WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: "parent-1",
+                WORKFLOW_TOOL_INVOCATION_ID_KEY: "invocation-1",
+            }
+        )
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", MagicMock(return_value=[trace]))
+        result = service.get_workflow_tool_node_executions(
+            context, app_id="app-1", run_id="run-1", node_execution_id="parent-1"
+        )
+        admitted_run.assert_called_with(context, app_id="app-1", run_id="run-1")
+        node_executions.get_workflow_tool_executions.assert_called_once_with(
+            tenant_id="tenant-1", workflow_run_id="run-1", parent_node_execution_id="parent-1"
+        )
+        assert result == [trace]
+        assert trace.process_data == {"answer": "approved"}
+
     def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
         self,
         service_dependencies: tuple[MagicMock, MagicMock],

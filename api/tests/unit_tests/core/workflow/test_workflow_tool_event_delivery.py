@@ -12,6 +12,10 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
 from core.workflow.nodes.agent_v2.session_store import StoredWorkflowAgentSession
 from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
 from graphon.engine import Engine
@@ -82,6 +86,11 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
         "source-end",
     ]
     assert all(not event.container_id for event in persisted)
+    parent = next(event for event in events if isinstance(event, NodeRunStartedEvent) and event.node_id == node.id)
+    assert {event.node_run_result.process_data[WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY] for event in persisted} == {
+        parent.id
+    }
+    assert len({event.node_run_result.process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] for event in persisted}) == 1
     assert all(event.node_id not in {"source-start", "source-end"} for event in events if isinstance(event, NodeEvent))
 
 

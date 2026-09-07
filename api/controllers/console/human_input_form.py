@@ -7,7 +7,7 @@ import logging
 from collections.abc import Generator, Sequence
 from typing import Any
 
-from flask import Response, jsonify, request
+from flask import Response, jsonify, request, stream_with_context
 from flask_restx import Resource
 from pydantic import RootModel
 from sqlalchemy import select
@@ -230,6 +230,7 @@ class ConsoleWorkflowEventsApi(Resource):
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.CONSOLE,
+                            include_node_details=True,
                             close_on_pause=not continue_on_pause,
                         )
                     )
@@ -240,7 +241,7 @@ class ConsoleWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            event_generator(),
+            stream_with_context(event_generator()),  # pyrefly: ignore[no-matching-overload]
             mimetype="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

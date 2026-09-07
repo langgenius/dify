@@ -39,7 +39,7 @@ from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
 from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -47,7 +47,7 @@ from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
-from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
@@ -83,6 +83,7 @@ def build_workflow_event_stream(
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
+    include_node_details: bool = False,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -143,6 +144,18 @@ def build_workflow_event_stream(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         workflow_run_id=workflow_run.id,
     )
+    # Console replay includes the same inline previews as run history. Other surfaces
+    # retain the detail-free snapshot and avoid loading internal node data.
+    node_executions = (
+        {
+            execution.node_execution_id or execution.id: execution
+            for execution in node_execution_repo.get_executions_by_workflow_run(
+                tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run.id
+            )
+        }
+        if include_node_details
+        else {}
+    )
 
     def _generate() -> Generator[Mapping[str, Any] | str, None, None]:
         # send a PING event immediately to prevent the connection staying in pending state for a long time.
@@ -168,6 +181,7 @@ def build_workflow_event_stream(
                     resumption_context=resumption_context,
                     session_maker=session_maker,
                     human_input_surface=human_input_surface,
+                    node_executions=node_executions,
                 )
 
                 for event in snapshot_events:
@@ -311,6 +325,7 @@ def _build_snapshot_events(
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session] | None = None,
     human_input_surface: HumanInputSurface | None = None,
+    node_executions: Mapping[str, WorkflowNodeExecutionModel] | None = None,
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
     variable_pool = _load_variable_pool_from_resumption_context(resumption_context)
@@ -328,10 +343,12 @@ def _build_snapshot_events(
         events.append(message_replace)
 
     for snapshot in node_snapshots:
+        execution = node_executions.get(snapshot.execution_id) if node_executions else None
         node_started = _build_node_started_event(
             workflow_run_id=workflow_run.id,
             task_id=task_id,
             snapshot=snapshot,
+            execution=execution,
         )
         _apply_message_context(node_started, message_context)
         events.append(node_started)
@@ -341,6 +358,7 @@ def _build_snapshot_events(
                 workflow_run_id=workflow_run.id,
                 task_id=task_id,
                 snapshot=snapshot,
+                execution=execution,
             )
             _apply_message_context(node_finished, message_context)
             events.append(node_finished)
@@ -410,6 +428,7 @@ def _build_node_started_event(
     workflow_run_id: str,
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
+    execution: WorkflowNodeExecutionModel | None = None,
 ) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     response = NodeStartStreamResponse(
@@ -421,15 +440,16 @@ def _build_node_started_event(
             node_type=snapshot.node_type,
             title=snapshot.title,
             index=snapshot.index,
-            predecessor_node_id=None,
-            inputs=None,
+            predecessor_node_id=execution.predecessor_node_id if execution else None,
+            inputs=execution.inputs_dict if execution else None,
+            inputs_truncated=execution.inputs_truncated if execution else False,
             created_at=created_at,
-            extras={},
+            extras=execution.extras if execution else {},
             iteration_id=snapshot.iteration_id,
             loop_id=snapshot.loop_id,
         ),
     )
-    return response.to_ignore_detail_dict()
+    return response.model_dump(mode="json") if execution else response.to_ignore_detail_dict()
 
 
 def _build_human_input_required_events(
@@ -518,6 +538,7 @@ def _build_node_finished_event(
     workflow_run_id: str,
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
+    execution: WorkflowNodeExecutionModel | None = None,
 ) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     finished_at = int(snapshot.finished_at.timestamp()) if snapshot.finished_at else created_at
@@ -530,14 +551,24 @@ def _build_node_finished_event(
             node_type=snapshot.node_type,
             title=snapshot.title,
             index=snapshot.index,
-            predecessor_node_id=None,
-            inputs=None,
-            process_data=None,
-            outputs=None,
+            predecessor_node_id=execution.predecessor_node_id if execution else None,
+            inputs=execution.inputs_dict if execution else None,
+            inputs_truncated=execution.inputs_truncated if execution else False,
+            process_data=execution.process_data_dict if execution else None,
+            process_data_truncated=execution.process_data_truncated if execution else False,
+            outputs=execution.outputs_dict if execution else None,
+            outputs_truncated=execution.outputs_truncated if execution else False,
             status=WorkflowNodeExecutionStatus(snapshot.status),
-            error=None,
+            error=execution.error if execution else None,
             elapsed_time=snapshot.elapsed_time,
-            execution_metadata=None,
+            execution_metadata=(
+                {
+                    WorkflowNodeExecutionMetadataKey(key): value
+                    for key, value in execution.execution_metadata_dict.items()
+                }
+                if execution
+                else None
+            ),
             created_at=created_at,
             finished_at=finished_at,
             files=[],
@@ -545,7 +576,7 @@ def _build_node_finished_event(
             loop_id=snapshot.loop_id,
         ),
     )
-    return response.to_ignore_detail_dict()
+    return response.model_dump(mode="json") if execution else response.to_ignore_detail_dict()
 
 
 def _build_pause_event(

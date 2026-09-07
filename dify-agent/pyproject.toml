@@ -32,7 +32,7 @@ server = [
 ]
 
 [tool.uv.sources]
-graphon = { git = "https://github.com/langgenius/graphon", rev = "df9e3f093c24c243303636eaf351a47efa8e0cbc" }
+graphon = { git = "https://github.com/langgenius/graphon", rev = "2795c7030dae5b42dc389465deee203635a63ae4" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

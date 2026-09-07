@@ -1,21 +1,25 @@
 'use client'
 import type { FC } from 'react'
+import type { WorkflowRunScope } from './workflow-tool-tracing-context'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { use, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
 import { getHoveredParallelId } from './get-hovered-parallel-id'
 import { useLogs } from './hooks'
 import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
+import WorkflowToolTracing from './workflow-tool-tracing'
+import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
 type TracingPanelProps = {
   list: NodeTracing[]
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  workflowRun?: WorkflowRunScope
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -23,7 +27,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  workflowRun,
 }) => {
+  const inheritedTracing = use(WorkflowToolTracingContext)
+  const runScope = workflowRun ?? inheritedTracing?.workflowRun
+  const [workflowTool, setWorkflowTool] = useState<NodeTracing | null>(null)
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
@@ -159,8 +167,15 @@ const TracingPanel: FC<TracingPanelProps> = ({
     }
   }
 
-  if (showSpecialResultPanel) {
-    return (
+  const content =
+    workflowTool && runScope ? (
+      <WorkflowToolTracing
+        key={workflowTool.id}
+        node={workflowTool}
+        workflowRun={runScope}
+        onBack={() => setWorkflowTool(null)}
+      />
+    ) : showSpecialResultPanel ? (
       <SpecialResultPanel
         showRetryDetail={showRetryDetail}
         setShowRetryDetailFalse={setShowRetryDetailFalse}
@@ -178,19 +193,24 @@ const TracingPanel: FC<TracingPanelProps> = ({
         agentOrToolLogListMap={agentOrToolLogListMap}
         handleShowAgentOrToolLog={handleShowAgentOrToolLog}
       />
+    ) : (
+      <div
+        className={cn('py-2', className)}
+        onClick={(e) => {
+          e.stopPropagation()
+          e.nativeEvent.stopImmediatePropagation()
+        }}
+      >
+        {treeNodes.map(renderNode)}
+      </div>
     )
-  }
 
   return (
-    <div
-      className={cn('py-2', className)}
-      onClick={(e) => {
-        e.stopPropagation()
-        e.nativeEvent.stopImmediatePropagation()
-      }}
+    <WorkflowToolTracingContext
+      value={runScope ? { workflowRun: runScope, onShowWorkflowTool: setWorkflowTool } : null}
     >
-      {treeNodes.map(renderNode)}
-    </div>
+      {content}
+    </WorkflowToolTracingContext>
   )
 }
 

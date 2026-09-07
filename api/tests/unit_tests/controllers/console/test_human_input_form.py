@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import ANY, Mock
 
 import pytest
-from flask import Flask, Response
+from flask import Flask, Response, has_request_context
 from sqlalchemy import Engine
 
 from controllers.common.errors import NotFoundError
@@ -389,8 +389,12 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
             return workflow_run
 
+    def snapshot_stream():
+        assert has_request_context()
+        yield "data: snapshot\n\n"
+
     workflow_generator = Mock()
-    workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
+    workflow_generator.convert_to_event_stream.return_value = snapshot_stream()
     snapshot_builder = Mock(return_value=["snapshot-events"])
 
     monkeypatch.setattr(
@@ -428,5 +432,6 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         app_id="app-1",
         session_maker=ANY,
         human_input_surface=HumanInputSurface.CONSOLE,
+        include_node_details=True,
         close_on_pause=False,
     )

@@ -397,3 +397,32 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
         app_id="app-1",
         run_id="run-1",
     )
+
+
+def test_workflow_tool_children_preserve_source_identity(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _account(sqlite_session)
+    execution = _workflow_run_node_execution(sqlite_session)
+    execution.app_id = "source-app"
+    execution.workflow_id = "source-workflow"
+    execution.node_execution_id = "source-execution"
+    workflow_runs = Mock()
+    workflow_runs.get_workflow_tool_node_executions.return_value = [execution]
+    _mock_application_services(monkeypatch, workflow_runs)
+    monkeypatch.setattr(db, "session", sqlite_session)
+    context = _request_context()
+    api = workflow_run_module.WorkflowToolNodeExecutionListApi()
+    handler = unwrap(api.get)
+    with app.test_request_context("/apps/app-1/workflow-runs/run-1/node-executions/parent/children"):
+        response = handler(api, context, app_model=_app(), run_id="run-1", node_execution_id="parent")
+        workflow_runs.get_workflow_tool_node_executions.return_value = None
+        with pytest.raises(NotFoundError, match="Workflow run not found"):
+            handler(api, context, app_model=_app(), run_id="run-1", node_execution_id="parent")
+    assert response["data"][0]["app_id"] == "source-app"
+    assert response["data"][0]["workflow_id"] == "source-workflow"
+    assert response["data"][0]["node_execution_id"] == "source-execution"
+    assert response["data"][0]["outputs"] == {"answer": "world"}
+    workflow_runs.get_workflow_tool_node_executions.assert_called_with(
+        context, app_id="app-1", run_id="run-1", node_execution_id="parent"
+    )

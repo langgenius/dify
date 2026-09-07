@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, NewType, TypedDict, Union
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -79,7 +79,8 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, EndUser
 from models.human_input import HumanInputForm
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 # Maps the entry surface a workflow was invoked from to the HITL surface that
@@ -143,6 +144,7 @@ class WorkflowResponseConverter:
             self._truncator = VariableTruncator.default()
 
         self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
+        self._node_sequence = 0
         self._workflow_execution_id: str | None = None
         self._workflow_started_at: datetime | None = None
 
@@ -174,9 +176,15 @@ class WorkflowResponseConverter:
     # Node snapshot helpers
     # ------------------------------------------------------------------
     def _store_snapshot(self, event: QueueNodeStartedEvent) -> _NodeSnapshot:
+        # The engine may have persisted this start before resumption metadata was loaded.
+        snapshot = self._get_snapshot(event.node_execution_id)
+        if snapshot is not None:
+            return snapshot
+
+        self._node_sequence = max(self._node_sequence + 1, event.node_run_index)
         snapshot = _NodeSnapshot(
             title=event.node_title,
-            index=event.node_run_index,
+            index=self._node_sequence,
             start_at=event.start_at,
             iteration_id=event.in_iteration_id or "",
             loop_id=event.in_loop_id or "",
@@ -184,6 +192,29 @@ class WorkflowResponseConverter:
         node_execution_id = NodeExecutionId(event.node_execution_id)
         self._node_snapshots[node_execution_id] = snapshot
         return snapshot
+
+    def _restore_node_snapshots(self, workflow_id: str, workflow_run_id: str) -> None:
+        """Restore ordering and pending node metadata before consuming resumed events."""
+        app_config = self._application_generate_entity.app_config
+        repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            sessionmaker(bind=db.engine, expire_on_commit=False)
+        )
+        executions = repository.get_execution_snapshots_by_workflow_run(
+            tenant_id=app_config.tenant_id,
+            app_id=app_config.app_id,
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        for execution in executions:
+            self._node_snapshots[NodeExecutionId(execution.execution_id)] = _NodeSnapshot(
+                title=execution.title,
+                index=execution.index,
+                start_at=execution.created_at,
+                iteration_id=execution.iteration_id or "",
+                loop_id=execution.loop_id or "",
+            )
+            self._node_sequence = max(self._node_sequence, execution.index)
 
     def _get_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
         return self._node_snapshots.get(NodeExecutionId(node_execution_id))
@@ -245,6 +276,8 @@ class WorkflowResponseConverter:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
+        if reason == WorkflowStartReason.RESUMPTION:
+            self._restore_node_snapshots(workflow_id, run_id)
 
         return WorkflowStartStreamResponse(
             task_id=task_id,
@@ -514,10 +547,10 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
     ) -> NodeStartStreamResponse | None:
+        snapshot = self._store_snapshot(event)
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
-        snapshot = self._store_snapshot(event)
 
         response = NodeStartStreamResponse(
             task_id=task_id,
@@ -537,6 +570,8 @@ class WorkflowResponseConverter:
 
         try:
             if event.node_type == BuiltinNodeTypes.TOOL:
+                if event.provider_type == ToolProviderType.WORKFLOW:
+                    response.data.extras["workflow_tool"] = True
                 response.data.extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self._application_generate_entity.app_config.tenant_id,
                     provider_type=ToolProviderType(event.provider_type),

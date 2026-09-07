@@ -33,7 +33,7 @@ from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode, Message
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services import workflow_event_snapshot_service as service_module
@@ -728,6 +728,71 @@ def test_start_buffering_should_treat_closed_subscription_as_done(caplog: pytest
 
     assert buffer_state.done_event.wait(timeout=1) is True
     assert "Failed while buffering workflow events" not in caplog.text
+
+
+@pytest.mark.parametrize("include_node_details", [False, True])
+def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+    include_node_details: bool,
+) -> None:
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.SUCCEEDED)
+    execution = WorkflowNodeExecutionModel(
+        id="row-1",
+        node_execution_id=snapshot.execution_id,
+        node_type=snapshot.node_type,
+        predecessor_node_id="start",
+        inputs=json.dumps({"request": "review"}),
+        process_data=json.dumps({"action": "approve"}),
+        outputs=json.dumps({"approved_text": "approved"}),
+        execution_metadata=json.dumps({"total_tokens": 7}),
+        offload_data=[],
+    )
+    node_repo = SimpleNamespace(
+        get_execution_snapshots_by_workflow_run=MagicMock(return_value=[snapshot]),
+        get_executions_by_workflow_run=MagicMock(return_value=[execution]),
+    )
+    factory = SimpleNamespace(
+        create_api_workflow_run_repository=MagicMock(),
+        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+    )
+    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(
+        service_module.MessageGenerator, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
+    buffer_state = BufferState(queue.Queue(), Event(), Event(), Event(), task_id_hint="task-1")
+    buffer_state.done_event.set()
+    monkeypatch.setattr(service_module, "_start_buffering", lambda _sub: buffer_state)
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=_build_workflow_run(WorkflowExecutionStatus.RUNNING),
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=unbound_session_factory,
+            **({"include_node_details": True} if include_node_details else {}),
+        )
+    )
+    started, finished = [
+        event["data"]
+        for event in events
+        if isinstance(event, Mapping) and event["event"] in (StreamEvent.NODE_STARTED, StreamEvent.NODE_FINISHED)
+    ]
+    assert started["id"] == finished["id"] == snapshot.execution_id
+    assert started["index"] == finished["index"] == 1
+    if include_node_details:
+        node_repo.get_executions_by_workflow_run.assert_called_once_with(
+            tenant_id="tenant-1", app_id="app-1", workflow_run_id="run-1"
+        )
+        assert started["inputs"] == finished["inputs"] == {"request": "review"}
+        assert finished["process_data"] == {"action": "approve"}
+        assert finished["outputs"] == {"approved_text": "approved"}
+        assert finished["execution_metadata"] == {"total_tokens": 7}
+    else:
+        node_repo.get_executions_by_workflow_run.assert_not_called()
+        assert started["inputs"] is None
+        assert all(finished[key] is None for key in ("inputs", "process_data", "outputs", "execution_metadata"))
 
 
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(

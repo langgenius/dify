@@ -1138,6 +1138,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     @property
     def extras(self) -> dict[str, Any]:
+        from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
         from core.trigger.trigger_manager import TriggerManager
 
@@ -1146,9 +1147,12 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         if execution_metadata:
             if self.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
                 tool_info: dict[str, Any] = execution_metadata["tool_info"]
+                provider_type = ToolProviderType(tool_info["provider_type"])
+                if provider_type == ToolProviderType.WORKFLOW:
+                    extras["workflow_tool"] = True
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
-                    provider_type=tool_info["provider_type"],
+                    provider_type=provider_type,
                     provider_id=tool_info["provider_id"],
                 )
             elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:
