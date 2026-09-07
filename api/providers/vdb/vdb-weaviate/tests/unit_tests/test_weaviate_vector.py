@@ -805,6 +805,44 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv.text_exists("segment-1") is False
         assert wv.text_exists("segment-1") is True
 
+    def test_get_uuids_uses_doc_id_to_match_cleanup_path(self):
+        """#41714: ``_get_uuids`` must return the same identifier the cleanup
+        path passes through ``delete_by_ids`` (the segment's
+        ``index_node_id`` stored in ``metadata['doc_id']``). The pre-fix
+        code generated ``uuid5(URL_NAMESPACE, page_content)`` instead;
+        because ``uuid5(content)`` never equals the v4 ``index_node_id``,
+        ``delete_by_id`` silently no-op'd on every Weaviate vector store
+        and the cleanup task reported success while leaving the objects
+        as searchable orphans.
+
+        Pin the contract so the fix can't regress: any document with a
+        ``doc_id`` in its metadata must round-trip through ``_get_uuids``
+        as that exact ``doc_id``. ``add_texts`` then writes the object
+        under that id, and ``delete_by_ids`` targets the same id.
+        """
+        wv = WeaviateVector.__new__(WeaviateVector)
+
+        docs = [
+            Document(page_content="alpha content", metadata={"doc_id": "doc-aaa-1"}),
+            Document(page_content="beta content", metadata={"doc_id": "doc-bbb-2"}),
+        ]
+
+        assert wv._get_uuids(docs) == ["doc-aaa-1", "doc-bbb-2"]
+
+    def test_get_uuids_skips_documents_without_doc_id(self):
+        """Documents without a ``doc_id`` in their metadata should be
+        skipped (the rest of the VDB stack does the same), so
+        ``add_texts`` falls back to a fresh uuid4 for them. The fix
+        inherits this behavior from the base ``VectorBase._get_uuids``."""
+        wv = WeaviateVector.__new__(WeaviateVector)
+
+        docs = [
+            Document(page_content="no doc id", metadata={}),
+            Document(page_content="with doc id", metadata={"doc_id": "doc-1"}),
+        ]
+
+        assert wv._get_uuids(docs) == ["doc-1"]
+
     def test_delete_by_ids_handles_missing_collections_and_404s(self):
         class FakeUnexpectedStatusCodeError(Exception):
             def __init__(self, status_code):

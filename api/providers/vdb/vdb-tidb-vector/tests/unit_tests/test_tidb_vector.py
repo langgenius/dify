@@ -324,7 +324,7 @@ def test_search_by_full_text_queries_tidb_fts_and_scores(tidb_vector_with_sessio
     assert docs[1].metadata["score"] == pytest.approx(0.6)
     sql = str(session.execute.call_args.args[0])
     params = session.execute.call_args.kwargs["params"]
-    assert "FTS_MATCH_WORD(text, :query)" in sql
+    assert "FTS_MATCH_WORD(:query, text)" in sql
     assert "document_id IN (:document_id_0, :document_id_1)" in sql
     assert "d'2" not in sql
     assert params == {
@@ -334,6 +334,29 @@ def test_search_by_full_text_queries_tidb_fts_and_scores(tidb_vector_with_sessio
         "score_threshold": 0.5,
         "top_k": 2,
     }
+
+
+def test_search_by_full_text_uses_query_first_argument_order(tidb_vector_with_session):
+    """#41822: TiDB's ``FTS_MATCH_WORD`` signature is ``FTS_MATCH_WORD(query, column)``,
+    not ``FTS_MATCH_WORD(column, query)``. The pre-fix code generated
+    ``FTS_MATCH_WORD(text, :query)`` which TiDB rejects with
+    ``This version of TiDB doesn't yet support 'match against a
+    non-constant string'`` (the bound parameter is treated as a
+    non-constant expression). Pin the contract: the SQL must always
+    pass the query as the first argument and the column as the second.
+    """
+    vector, session, tidb_module = tidb_vector_with_session
+    vector._client_config = _config(tidb_module).model_copy(update={"enable_fulltext_search": True})
+    session.execute.return_value = []
+
+    vector.search_by_full_text("search query")
+
+    sql = str(session.execute.call_args.args[0])
+
+    # Both occurrences (the WHERE clause and the score projection) must
+    # use ``FTS_MATCH_WORD(:query, text)``, never ``FTS_MATCH_WORD(text, :query)``.
+    assert sql.count("FTS_MATCH_WORD(:query, text)") == 2
+    assert "FTS_MATCH_WORD(text, :query)" not in sql
 
 
 # 2. text_exists returns True when ids found
