@@ -1,12 +1,23 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
 
+from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
 from enums import CloudPlan, DeploymentEdition
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
+
+
+@pytest.fixture(autouse=True)
+def _legacy_model_billing_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "services.workspace_service.ModelBillingProfileService",
+        SimpleNamespace(
+            resolve=Mock(return_value=TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS))
+        ),
+    )
 
 
 @pytest.mark.parametrize(

@@ -47,6 +47,15 @@ export const zBillingSubscriptionResponse = z.object({
 })
 
 /**
+ * TokenerEducationCheckoutUnsupportedErrorResponse
+ */
+export const zTokenerEducationCheckoutUnsupportedErrorResponse = z.object({
+  code: z.literal('tokener_education_checkout_unsupported'),
+  message: z.string(),
+  status: z.literal(409),
+})
+
+/**
  * BillingUnprocessableEntityErrorResponse
  */
 export const zBillingUnprocessableEntityErrorResponse = z.object({

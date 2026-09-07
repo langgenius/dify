@@ -162,6 +162,8 @@ class TestCelerySSLConfiguration:
 
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = False
+        mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -212,6 +214,9 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_TASK_ANNOTATIONS = {}
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = True
+        mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = True
+        mock_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL = 7
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -245,7 +250,13 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
+        assert "tasks.bootstrap_tokener_tenant_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+        recovery_schedule = celery_app.conf["beat_schedule"]["tokener_bootstrap_recovery_sweeper"]
+        assert recovery_schedule["task"] == (
+            "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task"
+        )
+        assert recovery_schedule["schedule"].total_seconds() == 7 * 60
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )

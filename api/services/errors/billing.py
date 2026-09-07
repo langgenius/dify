@@ -12,3 +12,7 @@ class BillingUpstreamInvalidResponseError(BillingError):
 
 class BillingUpstreamUnavailableError(BillingError):
     pass
+
+
+class TokenerEducationCheckoutUnsupportedError(BillingError):
+    pass

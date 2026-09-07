@@ -7,6 +7,7 @@ from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
     ComplianceRateLimitExceededError,
+    TokenerEducationCheckoutUnsupportedError,
 )
 
 
@@ -34,6 +35,12 @@ class BillingUnavailableErrorResponse(ResponseModel):
     status: Literal[503]
 
 
+class TokenerEducationCheckoutUnsupportedErrorResponse(ResponseModel):
+    code: Literal["tokener_education_checkout_unsupported"]
+    message: str
+    status: Literal[409]
+
+
 class ComplianceRateLimitError(BaseHTTPException):
     error_code = "compliance_rate_limit"
     description = "Rate limit exceeded for downloading compliance report."
@@ -52,6 +59,12 @@ class BillingUnavailableError(BaseHTTPException):
     code = 503
 
 
+class TokenerEducationCheckoutUnsupportedHTTPError(BaseHTTPException):
+    error_code = "tokener_education_checkout_unsupported"
+    description = "Education subscriptions are not supported with Tokener billing."
+    code = 409
+
+
 def to_billing_request_error(error: BillingError) -> BaseHTTPException:
     if isinstance(error, ComplianceRateLimitExceededError):
         return ComplianceRateLimitError()
@@ -59,4 +72,6 @@ def to_billing_request_error(error: BillingError) -> BaseHTTPException:
         return BillingOperationFailedError()
     if isinstance(error, BillingUpstreamUnavailableError):
         return BillingUnavailableError()
+    if isinstance(error, TokenerEducationCheckoutUnsupportedError):
+        return TokenerEducationCheckoutUnsupportedHTTPError()
     raise TypeError(f"Unsupported billing error: {type(error).__name__}")

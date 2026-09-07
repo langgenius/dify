@@ -37,6 +37,8 @@ const defaultCurrentWorkspace = {
   plan: null,
   credits: null,
   role: 'owner',
+  model_billing_source: 'legacy_message_credits',
+  tokener_bootstrap_status: null,
 } satisfies GetWorkspacesCurrentSummaryResponse
 
 const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
@@ -77,6 +79,11 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   store.set(currentWorkspaceAtom, {
     ...defaultCurrentWorkspace,
     ...state.currentWorkspace,
+    model_billing_source:
+      state.currentWorkspace?.model_billing_source ?? defaultCurrentWorkspace.model_billing_source,
+    tokener_bootstrap_status:
+      state.currentWorkspace?.tokener_bootstrap_status ??
+      defaultCurrentWorkspace.tokener_bootstrap_status,
   })
   store.set(isCurrentWorkspaceManagerAtom, state.isCurrentWorkspaceManager ?? false)
   store.set(isCurrentWorkspaceOwnerAtom, state.isCurrentWorkspaceOwner ?? false)

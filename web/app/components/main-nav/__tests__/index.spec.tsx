@@ -558,10 +558,13 @@ const renderMainNav = (
   const queryClient = createConsoleQueryClient()
   const currentConsoleState = mockConsoleState.current ?? consoleState
   mockConsoleState.current = currentConsoleState
-  queryClient.setQueryData(
-    consoleQuery.workspaces.current.summary.get.queryKey(),
-    currentConsoleState.currentWorkspace as GetWorkspacesCurrentSummaryResponse,
-  )
+  const currentWorkspace =
+    currentConsoleState.currentWorkspace as GetWorkspacesCurrentSummaryResponse
+  queryClient.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
+    ...currentWorkspace,
+    model_billing_source: currentWorkspace.model_billing_source ?? 'legacy_message_credits',
+    tokener_bootstrap_status: currentWorkspace.tokener_bootstrap_status ?? null,
+  })
   queryClient.setQueryData(userProfileQueryOptions().queryKey, {
     profile: {
       ...mainNavUserProfile,
