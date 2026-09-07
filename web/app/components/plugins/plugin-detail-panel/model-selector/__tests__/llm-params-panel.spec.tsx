@@ -3,7 +3,7 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import component after mocks
 import LLMParamsPanel from '../llm-params-panel'
 

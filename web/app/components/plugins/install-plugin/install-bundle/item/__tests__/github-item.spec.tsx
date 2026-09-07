@@ -1,7 +1,7 @@
 import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../../types'
 import type { VersionProps } from '@/app/components/plugins/types'
 import { render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import GithubItem from '../github-item'
 
 const mockUseUploadGitHub = vi.fn()

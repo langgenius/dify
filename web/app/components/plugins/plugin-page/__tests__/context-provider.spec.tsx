@@ -1,7 +1,8 @@
 import type { ReactElement, ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { usePluginPageContext } from '../context'
 import { PluginPageContextProvider } from '../context-provider'
@@ -33,15 +34,22 @@ const renderWithProviders = (
 }
 
 const Consumer = () => {
-  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
+  const selectedItem = usePluginPageContext((v) => v.selectedItem)
+  const setSelectedItem = usePluginPageContext((v) => v.setSelectedItem)
   const options = usePluginPageContext((v) => v.options)
 
   return (
     <div>
-      <output aria-label="Current plugin">{currentPluginID ?? 'none'}</output>
+      <output aria-label="Selected item">
+        {selectedItem ? `${selectedItem.type}:${selectedItem.id}` : 'none'}
+      </output>
       <output aria-label="Available tabs">{options.length}</output>
-      <button onClick={() => setCurrentPluginID('plugin-1')}>select plugin</button>
+      <button onClick={() => setSelectedItem({ type: 'builtinTool', id: 'builtin-1' })}>
+        select builtin tool
+      </button>
+      <button onClick={() => setSelectedItem({ type: 'plugin', id: 'plugin-1' })}>
+        select plugin
+      </button>
     </div>
   )
 }
@@ -62,7 +70,9 @@ describe('PluginPageContextProvider', () => {
     expect(screen.getByRole('status', { name: 'Available tabs' })).toHaveTextContent('1')
   })
 
-  it('keeps the query-state tab and updates the current plugin id', () => {
+  it('keeps the query-state tab and replaces the selected item', async () => {
+    const user = userEvent.setup()
+
     renderWithProviders(
       <PluginPageContextProvider>
         <Consumer />
@@ -70,9 +80,17 @@ describe('PluginPageContextProvider', () => {
       { enableMarketplace: true, searchParams: '?tab=discover' },
     )
 
-    fireEvent.click(screen.getByText('select plugin'))
+    await user.click(screen.getByRole('button', { name: 'select builtin tool' }))
 
-    expect(screen.getByRole('status', { name: 'Current plugin' })).toHaveTextContent('plugin-1')
+    expect(screen.getByRole('status', { name: 'Selected item' })).toHaveTextContent(
+      'builtinTool:builtin-1',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select plugin' }))
+
+    expect(screen.getByRole('status', { name: 'Selected item' })).toHaveTextContent(
+      'plugin:plugin-1',
+    )
     expect(screen.getByRole('status', { name: 'Available tabs' })).toHaveTextContent('2')
   })
 })

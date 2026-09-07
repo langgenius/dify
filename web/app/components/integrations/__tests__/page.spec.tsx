@@ -4,7 +4,7 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import IntegrationsPage from '../page'
+import IntegrationsPage from '../index'
 
 const renderWithNuqs = (
   ui: React.ReactElement,
@@ -338,6 +338,7 @@ const renderIntegrationsPage = (
 describe('IntegrationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     vi.stubGlobal('open', mockWindowOpen)
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
@@ -366,6 +367,20 @@ describe('IntegrationsPage', () => {
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
     expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
     expect(container.querySelector('aside')).toHaveClass('bg-components-panel-bg')
+  })
+
+  it('does not replace the document title when embedded in a modal', () => {
+    document.title = 'Workspace settings - Dify'
+
+    renderIntegrationsPage(undefined, 'provider')
+
+    expect(document.title).toBe('Workspace settings - Dify')
+  })
+
+  it('reconciles the route title with client branding', () => {
+    renderIntegrationsPage(undefined, { section: 'provider', syncDocumentTitle: true })
+
+    expect(document.title).toBe('common.settings.provider · common.mainNav.integrations - Dify')
   })
 
   it('renders the model provider section from the section query', () => {

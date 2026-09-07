@@ -42,7 +42,6 @@ from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
-from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
 
 
 class ExternalKnowledgeApiPayload(BaseModel):
@@ -54,12 +53,6 @@ class ExternalHitTestingPayload(BaseModel):
     query: str
     external_retrieval_model: dict[str, Any] | None = None
     metadata_filtering_conditions: dict[str, Any] | None = None
-
-
-class BedrockRetrievalPayload(BaseModel):
-    retrieval_setting: BedrockRetrievalSetting
-    query: str
-    knowledge_id: str
 
 
 class ExternalApiTemplateListQuery(BaseModel):
@@ -137,23 +130,11 @@ class ExternalHitTestingResponse(ResponseModel):
     records: list[ExternalHitTestingRecordResponse]
 
 
-class BedrockRetrievalRecordResponse(ResponseModel):
-    metadata: dict[str, Any] | None = None
-    score: float
-    title: str | None = None
-    content: str | None = None
-
-
-class BedrockRetrievalResponse(ResponseModel):
-    records: list[BedrockRetrievalRecordResponse]
-
-
 register_schema_models(
     console_ns,
     ExternalKnowledgeApiPayload,
     ExternalDatasetCreatePayload,
     ExternalHitTestingPayload,
-    BedrockRetrievalPayload,
     ExternalApiTemplateListQuery,
 )
 register_response_schema_models(
@@ -166,8 +147,6 @@ register_response_schema_models(
     ExternalHitTestingQueryResponse,
     ExternalHitTestingRecordResponse,
     ExternalHitTestingResponse,
-    BedrockRetrievalRecordResponse,
-    BedrockRetrievalResponse,
 )
 
 
@@ -239,6 +218,16 @@ class ExternalApiTemplateListApi(Resource):
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
+
+        # if dify_config.RBAC_ENABLED:
+        #     enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+        #         current_tenant_id,
+        #         current_user.id,
+        #         external_knowledge_api.id,
+        #         enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        #     )
+        #     initialize_created_app_rbac_access_task.delay(
+        #         current_tenant_id, current_user.id, dataset_id=external_knowledge_api.id)
 
         return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 201
 
@@ -451,20 +440,3 @@ class ExternalKnowledgeHitTestingApi(Resource):
             return dump_response(ExternalHitTestingResponse, response)
         except Exception as e:
             raise InternalServerError(str(e))
-
-
-@console_ns.route("/test/retrieval")
-class BedrockRetrievalApi(Resource):
-    # this api is only for internal testing
-    @console_ns.doc("bedrock_retrieval_test")
-    @console_ns.doc(description="Bedrock retrieval test (internal use only)")
-    @console_ns.expect(console_ns.models[BedrockRetrievalPayload.__name__])
-    @console_ns.response(200, "Bedrock retrieval test completed", console_ns.models[BedrockRetrievalResponse.__name__])
-    @model_validate(BedrockRetrievalPayload)
-    def post(self, req_data: BedrockRetrievalPayload):
-
-        # Call the knowledge retrieval service
-        result = ExternalDatasetTestService.knowledge_retrieval(
-            req_data.retrieval_setting, req_data.query, req_data.knowledge_id
-        )
-        return dump_response(BedrockRetrievalResponse, result), 200

@@ -1,8 +1,10 @@
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { DropdownMenuPositionerProps } from '@langgenius/dify-ui/dropdown-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useCallback, useMemo, useState } from 'react'
@@ -15,7 +17,7 @@ import { usePluginTaskStatus } from './hooks'
 type PluginTasksProps = {
   animatedSlot?: boolean
   dropdownAnchor?: () => Element | null
-  dropdownPlacement?: Placement
+  dropdownPlacement?: DropdownMenuPositionerProps['placement']
 }
 
 const PluginTasks = ({
@@ -124,45 +126,41 @@ const PluginTasks = ({
     <div className={rootClassName}>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          nativeButton={false}
-          render={(props, state) => (
-            <div
-              {...props}
-              className={cn('cursor-pointer data-disabled:cursor-default', props.className)}
-            >
-              <TaskStatusIndicator
-                tip={tip}
-                isInstalling={isInstalling}
-                isInstallingWithSuccess={isInstallingWithSuccess}
-                isInstallingWithError={isInstallingWithError}
-                isSuccess={isSuccess}
-                isFailed={isFailed}
-                isOpen={state.open}
-                successPluginsLength={successPluginsLength}
-                runningPluginsLength={runningPluginsLength}
-                totalPluginsLength={totalPluginsLength}
-                onClick={() => {}}
-              />
-            </div>
-          )}
+          render={
+            <TaskStatusIndicator
+              id="plugin-task-trigger"
+              tip={tip}
+              isInstalling={isInstalling}
+              isInstallingWithSuccess={isInstallingWithSuccess}
+              isInstallingWithError={isInstallingWithError}
+              isSuccess={isSuccess}
+              isFailed={isFailed}
+              successPluginsLength={successPluginsLength}
+              runningPluginsLength={runningPluginsLength}
+              data-menu-open={open ? '' : undefined}
+            />
+          }
           disabled={!canOpenMenu}
         />
-        <DropdownMenuContent
-          placement={dropdownPlacement}
-          sideOffset={4}
-          positionerProps={dropdownAnchor ? { anchor: dropdownAnchor } : undefined}
-          popupClassName="overflow-visible border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-        >
-          <PluginTaskList
-            runningPlugins={runningPlugins}
-            successPlugins={successPlugins}
-            errorPlugins={errorPlugins}
-            getIconUrl={getIconUrl}
-            onClearAll={handleClearAll}
-            onClearErrors={handleClearErrors}
-            onClearSingle={handleClearSingle}
-          />
-        </DropdownMenuContent>
+        <DropdownMenuPortal>
+          <DropdownMenuPositioner
+            placement={dropdownPlacement}
+            sideOffset={4}
+            anchor={dropdownAnchor}
+          >
+            <DropdownMenuPopup>
+              <PluginTaskList
+                runningPlugins={runningPlugins}
+                successPlugins={successPlugins}
+                errorPlugins={errorPlugins}
+                getIconUrl={getIconUrl}
+                onClearAll={handleClearAll}
+                onClearErrors={handleClearErrors}
+                onClearSingle={handleClearSingle}
+              />
+            </DropdownMenuPopup>
+          </DropdownMenuPositioner>
+        </DropdownMenuPortal>
       </DropdownMenu>
     </div>
   )

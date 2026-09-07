@@ -41,7 +41,7 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
         placement="left-start"
         sideOffset={8}
         alignOffset={-104}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <VariableModal
           env={env}

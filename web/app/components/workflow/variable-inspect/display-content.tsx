@@ -36,7 +36,7 @@ export function DisplayContent(props: DisplayContentProps) {
     handleEditorChange,
     className,
   } = props
-  const [selectedViewModes, setSelectedViewModes] = useState<readonly ViewMode[]>([ViewMode.Code])
+  const [selectedViewMode, setSelectedViewMode] = useState<ViewMode>(ViewMode.Code)
   const [isFocused, setIsFocused] = useState(false)
   const { t } = useTranslation()
   const viewOptions = [
@@ -51,14 +51,6 @@ export function DisplayContent(props: DisplayContentProps) {
       iconClassName: 'i-ri-eye-line',
     },
   ]
-  const selectedViewMode = selectedViewModes[0] ?? ViewMode.Code
-
-  function handleViewModeChange(nextViewModes: ViewMode[]) {
-    const nextViewMode = nextViewModes[0]
-
-    if (nextViewMode) setSelectedViewModes([nextViewMode])
-  }
-
   const chunkType = useMemo(() => {
     if (previewType !== PreviewType.Chunks || !schemaType) return undefined
     if (schemaType === 'general_structure') return ChunkingMode.text
@@ -96,15 +88,15 @@ export function DisplayContent(props: DisplayContentProps) {
         )}
         <SegmentedControl<ViewMode>
           aria-label={t(($) => $['common.preview'], { ns: 'workflow' })}
-          value={selectedViewModes}
-          onValueChange={handleViewModeChange}
+          value={selectedViewMode}
+          onValueChange={setSelectedViewMode}
           className="shrink-0 rounded-md p-px"
         >
           {viewOptions.map(({ value, label, iconClassName }) => (
             <SegmentedControlItem
               key={value}
               value={value}
-              className="h-5.5 gap-0.75 rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-pressed:text-text-accent-light-mode-only"
+              className="h-5.5 gap-0.75 rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-checked:text-text-accent-light-mode-only"
             >
               <i className={cn('size-4 shrink-0', iconClassName)} aria-hidden="true" />
               <span className="p-0.5 pr-1">{label}</span>

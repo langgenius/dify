@@ -3,7 +3,7 @@ import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolSelectorTrigger from '../tool-selector'
 
 const tagsMap: Record<string, Tag> = {

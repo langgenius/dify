@@ -6,6 +6,7 @@ from opentelemetry.sdk.trace import TracerProvider
 
 from core.logging.context import clear_request_context
 from models import Account
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _user() -> Account:
@@ -29,7 +30,7 @@ def test_on_user_loaded_does_not_write_to_non_recording_span() -> None:
     user = _user()
 
     with (
-        mock.patch.object(runtime.dify_config, "ENABLE_OTEL", True),
+        config_overrides_context(ENABLE_OTEL=True),
         mock.patch("opentelemetry.trace.get_current_span", return_value=span),
         mock.patch.object(runtime, "extract_tenant_id", return_value="tenant-id"),
     ):
@@ -49,7 +50,7 @@ def test_on_user_loaded_sets_attributes_on_recording_span() -> None:
     user = _user()
 
     with (
-        mock.patch.object(runtime.dify_config, "ENABLE_OTEL", True),
+        config_overrides_context(ENABLE_OTEL=True),
         mock.patch("opentelemetry.trace.get_current_span", return_value=span),
         mock.patch.object(runtime, "extract_tenant_id", return_value="tenant-id"),
     ):
@@ -73,7 +74,7 @@ def test_on_user_loaded_ignores_ended_sdk_span(caplog) -> None:
 
     with (
         trace.use_span(span, end_on_exit=False),
-        mock.patch.object(runtime.dify_config, "ENABLE_OTEL", True),
+        config_overrides_context(ENABLE_OTEL=True),
         mock.patch.object(runtime, "extract_tenant_id", return_value="tenant-id"),
         caplog.at_level("WARNING", logger="opentelemetry.sdk.trace"),
     ):

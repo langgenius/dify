@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { checkForUpdates, fetchReleases, handleUpload } from '../hooks'
 
 const { mockToastError, mockUploadGitHub } = vi.hoisted(() => ({

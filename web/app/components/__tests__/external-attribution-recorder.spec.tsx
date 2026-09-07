@@ -1,7 +1,7 @@
 import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { act, render, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import ExternalAttributionRecorder from '../external-attribution-recorder'

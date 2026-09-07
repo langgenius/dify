@@ -55,6 +55,15 @@ def plugin_db() -> Iterator[Session]:
             yield session
 
 
+@pytest.fixture(autouse=True)
+def _plugin_config(config_overrides) -> None:
+    config_overrides(
+        CONSOLE_API_URL="https://console.example.com",
+        MARKETPLACE_ENABLED=True,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+    )
+
+
 class TestFetchLatestPluginVersion:
     @patch("core.plugin.plugin_service.marketplace")
     @patch("core.plugin.plugin_service.redis_client")
@@ -114,20 +123,20 @@ class TestFetchLatestPluginVersion:
 
 
 class TestCheckMarketplaceOnlyPermission:
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_raises_when_restricted(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(restrict_to_marketplace=True)
 
         with pytest.raises(PluginInstallationForbiddenError):
             PluginService._check_marketplace_only_permission()
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_passes_when_not_restricted(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(restrict_to_marketplace=False)
 
         PluginService._check_marketplace_only_permission()  # should not raise
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_raises_when_scope_denies_all(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=PluginInstallationScope.NONE)
 
@@ -136,7 +145,7 @@ class TestCheckMarketplaceOnlyPermission:
 
 
 class TestCheckPluginInstallationScope:
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_official_only_allows_langgenius(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(
             scope=PluginInstallationScope.OFFICIAL_ONLY
@@ -146,7 +155,7 @@ class TestCheckPluginInstallationScope:
 
         PluginService._check_plugin_installation_scope(verification)  # should not raise
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_official_only_rejects_third_party(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(
             scope=PluginInstallationScope.OFFICIAL_ONLY
@@ -155,7 +164,7 @@ class TestCheckPluginInstallationScope:
         with pytest.raises(PluginInstallationForbiddenError):
             PluginService._check_plugin_installation_scope(None)
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_official_and_partners_allows_partner(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(
             scope=PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS
@@ -165,7 +174,7 @@ class TestCheckPluginInstallationScope:
 
         PluginService._check_plugin_installation_scope(verification)  # should not raise
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_official_and_partners_rejects_none(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(
             scope=PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS
@@ -174,7 +183,7 @@ class TestCheckPluginInstallationScope:
         with pytest.raises(PluginInstallationForbiddenError):
             PluginService._check_plugin_installation_scope(None)
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_none_scope_always_raises(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=PluginInstallationScope.NONE)
         verification = MagicMock()
@@ -183,13 +192,13 @@ class TestCheckPluginInstallationScope:
         with pytest.raises(PluginInstallationForbiddenError):
             PluginService._check_plugin_installation_scope(verification)
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_all_scope_passes_any(self, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=PluginInstallationScope.ALL)
 
         PluginService._check_plugin_installation_scope(None)  # should not raise
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     def test_unknown_scope_always_raises(self, mock_fs):
         permission = _make_permission()
         permission.plugin_installation_scope = cast(PluginInstallationScope, "unknown-scope")
@@ -200,10 +209,7 @@ class TestCheckPluginInstallationScope:
 
 
 class TestGetPluginIconUrl:
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_constructs_url_with_params(self, mock_config):
-        mock_config.CONSOLE_API_URL = "https://console.example.com"
-
+    def test_constructs_url_with_params(self):
         url = PluginService.get_plugin_icon_url("tenant-1", "icon.svg")
 
         assert "tenant_id=tenant-1" in url
@@ -245,26 +251,20 @@ class TestIsPluginVerified:
 
 
 class TestUpgradePluginWithMarketplace:
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_raises_when_marketplace_disabled(self, mock_config):
-        mock_config.MARKETPLACE_ENABLED = False
+    def test_raises_when_marketplace_disabled(self, config_overrides):
+        config_overrides(MARKETPLACE_ENABLED=False)
 
         with pytest.raises(ValueError, match="marketplace is not enabled"):
             PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
 
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_raises_when_same_identifier(self, mock_config):
-        mock_config.MARKETPLACE_ENABLED = True
-
+    def test_raises_when_same_identifier(self):
         with pytest.raises(ValueError, match="same plugin"):
             PluginService.upgrade_plugin_with_marketplace("t1", "same-uid", "same-uid")
 
     @patch("core.plugin.plugin_service.marketplace")
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_skips_download_when_already_installed(self, mock_config, mock_installer_cls, mock_fs, mock_marketplace):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_skips_download_when_already_installed(self, mock_installer_cls, mock_fs, mock_marketplace):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
@@ -276,11 +276,9 @@ class TestUpgradePluginWithMarketplace:
         installer.upgrade_plugin.assert_called_once()
 
     @patch("core.plugin.plugin_service.download_plugin_pkg")
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_downloads_when_not_installed(self, mock_config, mock_installer_cls, mock_fs, mock_download):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_downloads_when_not_installed(self, mock_installer_cls, mock_fs, mock_download):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.side_effect = RuntimeError("not found")
@@ -301,13 +299,11 @@ class TestUpgradePluginWithMarketplace:
     )
     @patch("core.plugin.plugin_service.download_plugin_pkg")
     @patch("core.plugin.plugin_service.marketplace")
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
     def test_rejects_cached_pkg_outside_scope(
-        self, mock_config, mock_installer_cls, mock_fs, mock_marketplace, mock_download, scope
+        self, mock_installer_cls, mock_fs, mock_marketplace, mock_download, scope
     ):
-        mock_config.MARKETPLACE_ENABLED = True
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=scope)
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
@@ -324,11 +320,9 @@ class TestUpgradePluginWithMarketplace:
         mock_download.assert_not_called()
         installer.upload_pkg.assert_not_called()
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_rejects_before_touching_daemon_when_scope_is_none(self, mock_config, mock_installer_cls, mock_fs):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_rejects_before_touching_daemon_when_scope_is_none(self, mock_installer_cls, mock_fs):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(scope=PluginInstallationScope.NONE)
         installer = mock_installer_cls.return_value
 
@@ -339,13 +333,9 @@ class TestUpgradePluginWithMarketplace:
         installer.upgrade_plugin.assert_not_called()
 
     @patch("core.plugin.plugin_service.marketplace")
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_allows_cached_official_pkg_under_official_only(
-        self, mock_config, mock_installer_cls, mock_fs, mock_marketplace
-    ):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_allows_cached_official_pkg_under_official_only(self, mock_installer_cls, mock_fs, mock_marketplace):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(
             scope=PluginInstallationScope.OFFICIAL_ONLY
         )
@@ -362,7 +352,7 @@ class TestUpgradePluginWithMarketplace:
 
 
 class TestUpgradePluginWithGithub:
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
     def test_checks_marketplace_permission_and_delegates(self, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
@@ -377,7 +367,7 @@ class TestUpgradePluginWithGithub:
 
 
 class TestUploadPkg:
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
     def test_runs_permission_and_scope_checks(self, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
@@ -391,19 +381,16 @@ class TestUploadPkg:
 
 
 class TestInstallFromMarketplacePkg:
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_raises_when_marketplace_disabled(self, mock_config):
-        mock_config.MARKETPLACE_ENABLED = False
+    def test_raises_when_marketplace_disabled(self, config_overrides):
+        config_overrides(MARKETPLACE_ENABLED=False)
 
         with pytest.raises(ValueError, match="marketplace is not enabled"):
             PluginService.install_from_marketplace_pkg("t1", ["uid-1"])
 
     @patch("core.plugin.plugin_service.download_plugin_pkg")
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_downloads_when_not_cached(self, mock_config, mock_installer_cls, mock_fs, mock_download):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_downloads_when_not_cached(self, mock_installer_cls, mock_fs, mock_download):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.side_effect = RuntimeError("not found")
@@ -421,11 +408,9 @@ class TestInstallFromMarketplacePkg:
         call_args = installer.install_from_identifiers.call_args[0]
         assert call_args[1] == ["resolved-uid"]
 
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_uses_cached_when_already_downloaded(self, mock_config, mock_installer_cls: MagicMock, mock_fs: MagicMock):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_uses_cached_when_already_downloaded(self, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
@@ -441,11 +426,9 @@ class TestInstallFromMarketplacePkg:
         assert call_args[1] == ["uid-1"]
 
     @patch("core.plugin.plugin_service.download_plugin_pkg")
-    @patch("core.plugin.plugin_service.FeatureService")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @patch("core.plugin.plugin_service.dify_config")
-    def test_rejects_cached_pkg_outside_scope(self, mock_config, mock_installer_cls, mock_fs, mock_download):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_rejects_cached_pkg_outside_scope(self, mock_installer_cls, mock_fs, mock_download):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission(
             scope=PluginInstallationScope.OFFICIAL_ONLY
         )
@@ -516,9 +499,7 @@ class TestUninstall:
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = True
 
-        with patch("core.plugin.plugin_service.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            result = PluginService.uninstall(tenant_id, "install-1")
+        result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is True
         installer.uninstall.assert_called_once()
@@ -579,9 +560,7 @@ class TestUninstall:
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = True
 
-        with patch("core.plugin.plugin_service.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
+        result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
 
         assert result is True
         plugin_db.expire_all()
@@ -609,9 +588,7 @@ class TestUninstall:
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = False
 
-        with patch("core.plugin.plugin_service.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            result = PluginService.uninstall(tenant_id, "install-1")
+        result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is False
         plugin_db.expire_all()

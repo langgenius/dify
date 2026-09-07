@@ -21,7 +21,7 @@ import {
   toDayjs,
 } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
-import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS } from '@/config'
+import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS, MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH } from '@/config'
 import { getMarkdownButtonAppearance } from './button-appearance'
 
 const DATA_FORMAT = {
@@ -66,7 +66,12 @@ const EXTRA_SAFE_NAME_CHARS = new Set(MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS)
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
-  if (typeof name !== 'string' || name.length === 0 || name.length > 128) return false
+  if (
+    typeof name !== 'string' ||
+    name.length === 0 ||
+    name.length > MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
+  )
+    return false
 
   const [firstChar, ...remainingChars] = Array.from(name)
   return (

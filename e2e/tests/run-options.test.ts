@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { parseRunOptions, shouldStartManagedAgentBackend } from '../scripts/run-options'
 
 describe('E2E run options', () => {

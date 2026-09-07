@@ -139,6 +139,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                       <>
                         <ModelParameterModal
                           isAdvancedMode={isAdvancedMode}
+                          modelSelectorPopupClassName="w-108"
                           provider={modelConfig.provider}
                           completionParams={contextValue.completionParams}
                           modelId={modelConfig.model_id}

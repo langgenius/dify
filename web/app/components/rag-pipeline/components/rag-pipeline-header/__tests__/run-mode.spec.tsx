@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { RunMode } from '../run-mode'
 
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()

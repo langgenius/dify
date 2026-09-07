@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import GenerationActionGroups from '../action-groups'
 
@@ -173,7 +174,9 @@ describe('GenerationActionGroups', () => {
     expect(mockOnRetry).toHaveBeenCalledTimes(1)
   })
 
-  it('should support disagree and cancel feedback actions', () => {
+  it('should support disagree and cancel feedback actions', async () => {
+    const user = userEvent.setup()
+
     const { rerender } = render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -191,7 +194,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.disagree(?=$|:)/ }))
+    const disagreeButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.disagree(?=$|:)/,
+    })
+    expect(disagreeButton).toHaveAttribute('aria-pressed', 'false')
+    await user.click(disagreeButton)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'dislike' })
 
     rerender(
@@ -211,7 +218,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancelAgree(?=$|:)/ }))
+    const agreeButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.agree(?=$|:)/,
+    })
+    expect(agreeButton).toHaveAttribute('aria-pressed', 'true')
+    await user.click(agreeButton)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
 
     rerender(
@@ -231,9 +242,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /(?:^|\.)operation\.cancelDisagree(?=$|:)/ }),
-    )
+    const selectedDisagreeButton = screen.getByRole('button', {
+      name: /(?:^|\.)operation\.disagree(?=$|:)/,
+    })
+    expect(selectedDisagreeButton).toHaveAttribute('aria-pressed', 'true')
+    await user.click(selectedDisagreeButton)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
   })
 })

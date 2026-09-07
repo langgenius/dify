@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -22,6 +23,11 @@ from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantAccountRole
 from models.model import App
 from services.enterprise.enterprise_service import WebAppAccessMode
+
+
+@pytest.fixture(autouse=True)
+def _rbac_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(RBAC_ENABLED=True)
 
 
 def _data(**kwargs) -> AuthData:
@@ -88,18 +94,15 @@ def test_check_rbac_noop_when_no_requirement():
     mock_enforce.assert_not_called()
 
 
-def test_check_rbac_noop_when_rbac_disabled():
-    with (
-        patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", False),
-        patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
-    ):
+def test_check_rbac_noop_when_rbac_disabled(config_overrides: Callable[..., None]):
+    config_overrides(RBAC_ENABLED=False)
+    with patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce:
         check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="account"))
     mock_enforce.assert_not_called()
 
 
 def test_check_rbac_skips_end_user_caller():
     with (
-        patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", True),
         patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
     ):
         check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="end_user"))
@@ -107,9 +110,8 @@ def test_check_rbac_skips_end_user_caller():
 
 
 def test_check_rbac_raises_when_context_missing():
-    with patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", True):
-        with pytest.raises(Forbidden, match="rbac context missing"):
-            check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="account", account_id=None, tenant=None))
+    with pytest.raises(Forbidden, match="rbac context missing"):
+        check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="account", account_id=None, tenant=None))
 
 
 def test_check_rbac_enforces_for_account_caller():
@@ -124,7 +126,6 @@ def test_check_rbac_enforces_for_account_caller():
         path_params={"app_id": "app-1"},
     )
     with (
-        patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", True),
         patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
     ):
         check_rbac_permission(data)

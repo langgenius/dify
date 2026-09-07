@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.tools.signature import bind_file_uri
@@ -472,7 +473,11 @@ def _default_client_factory() -> Client:
             "the Binding file inspector is not available (Agent backend not configured)",
             status_code=503,
         )
-    return Client(base_url=base_url)
+    return create_agent_backend_client(
+        base_url=base_url,
+        api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        binding_file_download_timeout=dify_config.AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+    )
 
 
 __all__ = [

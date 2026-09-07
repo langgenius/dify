@@ -1,6 +1,6 @@
 import type { PreProcessingRule } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { GeneralChunkingOptions } from '../general-chunking-options'

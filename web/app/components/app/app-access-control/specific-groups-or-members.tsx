@@ -2,6 +2,7 @@
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { Infotip } from '../../base/infotip'
@@ -201,9 +202,9 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         </div>
       </div>
       {children}
-      <button
-        type="button"
-        className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      <IconButton
+        size="xs"
+        className="shrink-0"
         aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         onClick={onRemove}
       >
@@ -211,7 +212,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
           aria-hidden="true"
           className="i-ri-close-circle-fill h-3.5 w-3.5 text-text-quaternary"
         />
-      </button>
+      </IconButton>
     </div>
   )
 }

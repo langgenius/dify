@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -9,9 +10,13 @@ from tasks.refresh_billing_vector_space_task import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _cloud_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+
 def test_refresh_invalidates_vector_space_cache():
     with (
-        patch("tasks.refresh_billing_vector_space_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch(
             "tasks.refresh_billing_vector_space_task.BillingService.invalidate_vector_space_cache"
         ) as invalidate_cache,
@@ -25,7 +30,6 @@ def test_refresh_failure_schedules_retry():
     error = RuntimeError("billing unavailable")
 
     with (
-        patch("tasks.refresh_billing_vector_space_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch(
             "tasks.refresh_billing_vector_space_task.BillingService.invalidate_vector_space_cache",
             side_effect=error,
@@ -40,7 +44,6 @@ def test_refresh_failure_schedules_retry():
 
 def test_dispatch_failure_does_not_propagate():
     with (
-        patch("tasks.refresh_billing_vector_space_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch.object(refresh_billing_vector_space_task, "delay", side_effect=RuntimeError("broker unavailable")),
     ):
         schedule_billing_vector_space_refresh("tenant-1")

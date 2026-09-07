@@ -1,10 +1,10 @@
 from inspect import unwrap
-from unittest.mock import create_autospec
+from types import SimpleNamespace
+from unittest.mock import MagicMock, create_autospec
 
 from pytest_mock import MockerFixture
 
 from enums import DeploymentEdition
-from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
 from services.entities.feature_entities import (
     FeatureModel,
@@ -15,13 +15,7 @@ from services.entities.feature_entities import (
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
-from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
-from services.init_validation_service import InitValidationService
-from services.schema_definition_service import SchemaDefinitionService
-from services.setup_service import SetupService
-from services.workspace_member_query_service import WorkspaceMemberQueryService
-from services.workspace_query_service import WorkspaceQueryService
 
 
 def _request_context() -> RequestContext:
@@ -33,23 +27,15 @@ def _request_context() -> RequestContext:
     )
 
 
-def _install_application_services(mocker: MockerFixture):
+def _install_application_services(mocker: MockerFixture) -> MagicMock:
     feature_queries = create_autospec(FeatureQueryService, instance=True, spec_set=True)
-    services = ApplicationServices(
-        explore_banner_queries=create_autospec(ExploreBannerQueryService, instance=True, spec_set=True),
-        schema_definitions=create_autospec(SchemaDefinitionService, instance=True, spec_set=True),
-        setup=create_autospec(SetupService, instance=True, spec_set=True),
-        feature_queries=feature_queries,
-        init_validation=create_autospec(InitValidationService, instance=True, spec_set=True),
-        workspace_queries=create_autospec(WorkspaceQueryService, instance=True, spec_set=True),
-        workspace_member_queries=create_autospec(WorkspaceMemberQueryService, instance=True, spec_set=True),
-    )
+    services = SimpleNamespace(feature_queries=feature_queries)
     mocker.patch("controllers.console.feature.application_services", return_value=services)
     return feature_queries
 
 
 class TestFeatureApi:
-    def test_get_tenant_features_success(self, mocker: MockerFixture):
+    def test_get_tenant_features_success(self, mocker: MockerFixture) -> None:
         from controllers.console.feature import FeatureApi
 
         features = FeatureModel(
@@ -73,7 +59,7 @@ class TestFeatureApi:
 
 
 class TestFeatureVectorSpaceApi:
-    def test_get_vector_space_success(self, mocker: MockerFixture):
+    def test_get_vector_space_success(self, mocker: MockerFixture) -> None:
         from controllers.console.feature import FeatureVectorSpaceApi
 
         feature_queries = _install_application_services(mocker)
@@ -89,7 +75,7 @@ class TestFeatureVectorSpaceApi:
         assert result == {"size": 5120, "limit": 20480}
         get_vector_space.assert_called_once_with(request_context)
 
-    def test_get_vector_space_preserves_unknown_usage(self, mocker: MockerFixture):
+    def test_get_vector_space_preserves_unknown_usage(self, mocker: MockerFixture) -> None:
         from controllers.console.feature import FeatureVectorSpaceApi
 
         feature_queries = _install_application_services(mocker)
@@ -102,7 +88,7 @@ class TestFeatureVectorSpaceApi:
         assert result == {"size": 0, "limit": 50, "usage_unknown": True}
         get_vector_space.assert_called_once_with(request_context)
 
-    def test_vector_space_response_schema_marks_usage_unknown_optional(self):
+    def test_vector_space_response_schema_marks_usage_unknown_optional(self) -> None:
         schema = VectorSpaceLimitationModel.model_json_schema(mode="serialization")
 
         assert schema["required"] == ["size", "limit"]
@@ -111,7 +97,7 @@ class TestFeatureVectorSpaceApi:
 
 
 class TestTrialModelsApi:
-    def test_get_trial_models_success(self, mocker: MockerFixture):
+    def test_get_trial_models_success(self, mocker: MockerFixture) -> None:
         from controllers.console.feature import TrialModelsApi
 
         feature_queries = _install_application_services(mocker)
@@ -121,14 +107,15 @@ class TestTrialModelsApi:
         api = TrialModelsApi()
 
         raw_get = unwrap(TrialModelsApi.get)
-        result = raw_get(api, _request_context())
+        request_context = _request_context()
+        result = raw_get(api, request_context)
 
         assert result == {"trial_models": ["langgenius/openai/openai"]}
-        get_trial_models.assert_called_once_with()
+        get_trial_models.assert_called_once_with(request_context)
 
 
 class TestAppDslVersionApi:
-    def test_get_app_dsl_version_success(self, mocker: MockerFixture):
+    def test_get_app_dsl_version_success(self, mocker: MockerFixture) -> None:
         from controllers.console.feature import AppDslVersionApi
 
         feature_queries = _install_application_services(mocker)
@@ -144,7 +131,7 @@ class TestAppDslVersionApi:
 
 
 class TestSystemFeatureApi:
-    def test_get_system_features_public(self, mocker: MockerFixture):
+    def test_get_system_features_public(self, mocker: MockerFixture) -> None:
         """The public endpoint returns system features without any authentication input."""
 
         from controllers.console.feature import SystemFeatureApi
@@ -155,7 +142,7 @@ class TestSystemFeatureApi:
             enable_learn_app=True,
         )
         feature_queries = _install_application_services(mocker)
-        get_system_features = feature_queries.get_system_features
+        get_system_features = feature_queries.get_public_system_features
         get_system_features.return_value = system_features
 
         api = SystemFeatureApi()
@@ -171,7 +158,7 @@ class TestSystemFeatureApi:
 
 
 class TestSystemFeatureLicenseApi:
-    def test_get_license_success(self, mocker: MockerFixture):
+    def test_get_license_success(self, mocker: MockerFixture) -> None:
         from controllers.console.feature import SystemFeatureLicenseApi
 
         license_model = LicenseModel(

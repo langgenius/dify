@@ -31,6 +31,14 @@ const documentQuery = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
+const knowledgeSpaceQuery = vi.hoisted(() => ({
+  data: { id: 'space-1', name: 'Support knowledge' } as { id: string; name: string } | undefined,
+  error: null as unknown,
+  isPending: false,
+}))
+
+const useDocumentTitleMock = vi.hoisted(() => vi.fn())
+
 const taskSnapshotQuery = vi.hoisted(() => ({
   data: undefined as DocumentProcessingTask | undefined,
   error: null as unknown,
@@ -102,6 +110,9 @@ const documentOptions = vi.hoisted(() =>
     queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
     queryKind: 'document',
   })),
+)
+const knowledgeSpaceOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({ ...options, queryKind: 'knowledge-space' })),
 )
 const taskSnapshotOptions = vi.hoisted(() =>
   vi.fn((options: object) => ({ ...options, queryKind: 'task-snapshot' })),
@@ -209,6 +220,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     },
     useMutation: () => reindexMutation,
     useQuery: (options: { queryKind?: string }) => {
+      if (options.queryKind === 'knowledge-space') return knowledgeSpaceQuery
       if (options.queryKind === 'task-snapshot') return taskSnapshotQuery
       if (options.queryKind === 'submission-tasks') return submissionTasksQuery
       return documentQuery
@@ -220,6 +232,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
+      getKnowledgeSpacesById: {
+        queryOptions: knowledgeSpaceOptions,
+      },
       getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions: {
         infiniteOptions: revisionsOptions,
         key: () => ['knowledge-fs', 'revisions'],
@@ -250,6 +265,10 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: useDocumentTitleMock,
 }))
 
 const activeRevision = (overrides: Partial<Exclude<LogicalDocumentRevision, null>> = {}) => ({
@@ -345,6 +364,9 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument()
     documentQuery.error = null
     documentQuery.isPending = false
+    knowledgeSpaceQuery.data = { id: 'space-1', name: 'Support knowledge' }
+    knowledgeSpaceQuery.error = null
+    knowledgeSpaceQuery.isPending = false
     revisionsQuery.data = { pages: [{ items: [activeRevision()] }] }
     revisionsQuery.error = null
     revisionsQuery.hasNextPage = false
@@ -373,6 +395,12 @@ describe('DocumentDetailPage', () => {
     })
     reindexMutation.mutateAsync.mockResolvedValue(queuedReindexResult())
     queryClient.invalidateQueries.mockResolvedValue(undefined)
+  })
+
+  it('uses the document and knowledge names in the document title', () => {
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(useDocumentTitleMock).toHaveBeenLastCalledWith('sso-enterprise.pdf · Support knowledge')
   })
 
   it('loads the document, revisions, chunks, and task status through generated contracts', () => {
@@ -649,10 +677,13 @@ describe('DocumentDetailPage', () => {
     )
     expect(screen.getByRole('button', { name: 'common.operation.retry' })).toHaveFocus()
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    await user.click(retryButton)
     revisionsQuery.isFetchingNextPage = true
     revisionsQuery.isFetchNextPageError = false
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    expect(retryButton).toHaveAccessibleName('dataset.newKnowledge.loadMoreRevisions')
+    expect(retryButton).toHaveAttribute('aria-disabled', 'true')
     revisionsQuery.isFetchingNextPage = false
     revisionsQuery.hasNextPage = false
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
@@ -735,13 +766,21 @@ describe('DocumentDetailPage', () => {
     chunksQuery.hasNextPage = true
     chunksQuery.isFetchNextPageError = true
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentChunksLoadMoreError',
     )
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    await user.click(retryButton)
     expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    chunksQuery.isFetchingNextPage = true
+    chunksQuery.isFetchNextPageError = false
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    expect(retryButton).toHaveAccessibleName('dataset.newKnowledge.loadMore')
+    expect(retryButton).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps remaining chunk pages user-controlled and marks partial document statistics', async () => {
@@ -960,7 +999,7 @@ describe('DocumentDetailPage', () => {
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus())
   })
 
-  it('keeps re-index visibly busy through invalidation and stale task-list reconciliation', async () => {
+  it('keeps re-index unavailable through invalidation and stale task-list reconciliation', async () => {
     const user = userEvent.setup()
     let finishInvalidation: (() => void) | undefined
     const invalidation = new Promise<void>((resolve) => {
@@ -972,11 +1011,11 @@ describe('DocumentDetailPage', () => {
     const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
     await user.click(button)
 
-    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     finishInvalidation?.()
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
-    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     await user.click(button)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
   })
@@ -1039,6 +1078,8 @@ describe('DocumentDetailPage', () => {
         await Promise.resolve()
         await Promise.resolve()
       })
+      expect(reindexButton).toHaveAttribute('aria-disabled', 'true')
+      expect(reindexButton).not.toBeDisabled()
       submissionTasksQuery.error = new Error('submission discovery failed')
       rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
       await act(() => vi.advanceTimersByTimeAsync(30000))
@@ -1054,11 +1095,16 @@ describe('DocumentDetailPage', () => {
       expect(timedOutDiscoveryOptions.refetchInterval({ state: { data: { items: [] } } })).toBe(
         false,
       )
-      fireEvent.click(
-        within(alert).getByRole('button', {
-          name: 'dataset.newKnowledge.checkReindexStatus',
-        }),
-      )
+      const checkButton = within(alert).getByRole('button', {
+        name: 'dataset.newKnowledge.checkReindexStatus',
+      })
+      const retryButton = within(alert).getByRole('button', {
+        name: 'dataset.newKnowledge.retryReindexDocument',
+      })
+      fireEvent.click(checkButton)
+      expect(checkButton).toHaveAttribute('aria-disabled', 'true')
+      expect(checkButton).not.toBeDisabled()
+      expect(retryButton).toBeDisabled()
       expect(reindexButton).toHaveAttribute('data-disabled')
       expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
       expect(submissionTasksQuery.refetch).toHaveBeenCalledOnce()
@@ -1070,12 +1116,19 @@ describe('DocumentDetailPage', () => {
       expect(reindexButton).toHaveAttribute('data-disabled')
       expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
 
-      await act(async () => {
-        fireEvent.click(
-          within(alert).getByRole('button', {
-            name: 'dataset.newKnowledge.retryReindexDocument',
+      let finishRetry: ((value: BulkDocumentReindexResult) => void) | undefined
+      reindexMutation.mutateAsync.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishRetry = resolve
           }),
-        )
+      )
+      fireEvent.click(retryButton)
+      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
+      expect(retryButton).not.toBeDisabled()
+      expect(checkButton).toBeDisabled()
+      await act(async () => {
+        finishRetry?.(queuedReindexResult())
         await Promise.resolve()
         await Promise.resolve()
       })

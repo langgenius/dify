@@ -36,6 +36,17 @@ class AgentPackageOmittedAsset(BaseModel):
     mime_type: str | None = None
 
 
+class AgentPackageWorkspaceSkill(BaseModel):
+    """Workspace Skill binding represented without source-workspace identifiers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=64)
+    display_name: str = ""
+    description: str = ""
+    priority: int = Field(ge=0)
+
+
 class AgentPackage(BaseModel):
     """One portable Agent Soul with display metadata and omitted asset hints."""
 
@@ -45,6 +56,7 @@ class AgentPackage(BaseModel):
     metadata: AgentPackageMetadata
     soul: AgentSoulConfig
     omitted_assets: list[AgentPackageOmittedAsset] = Field(default_factory=list)
+    workspace_skills: list[AgentPackageWorkspaceSkill] = Field(default_factory=list)
 
 
 def portable_ref(prefix: str, value: str) -> str:
@@ -75,7 +87,11 @@ def _strip_sensitive_values(value: Any) -> Any:
     return result
 
 
-def make_portable_agent_package(agent: Agent, agent_soul: AgentSoulConfig) -> AgentPackage:
+def make_portable_agent_package(
+    agent: Agent,
+    agent_soul: AgentSoulConfig,
+    workspace_skills: list[AgentPackageWorkspaceSkill] | None = None,
+) -> AgentPackage:
     """Return a package safe to place in YAML or the system clipboard."""
 
     soul_data = agent_soul.model_dump(mode="json")
@@ -152,4 +168,5 @@ def make_portable_agent_package(agent: Agent, agent_soul: AgentSoulConfig) -> Ag
         ),
         soul=portable_soul,
         omitted_assets=omitted_assets,
+        workspace_skills=workspace_skills or [],
     )

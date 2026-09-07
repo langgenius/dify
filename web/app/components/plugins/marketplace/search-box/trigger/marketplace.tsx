@@ -1,6 +1,7 @@
 import type { Tag } from '../../../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
@@ -87,21 +88,21 @@ function MarketplaceTrigger({
         }
       />
       {!!selectedTagsLength && (
-        <Button
+        <IconButton
           variant="ghost"
-          size="small"
+          size="md"
           aria-label={t(($) => $.clearSelectedTags, {
             ns: 'pluginTags',
             tags: triggerLabel,
           })}
-          className="absolute right-1 size-6 min-h-0 p-0 focus-visible:ring-inset"
+          className="absolute right-1 focus-visible:ring-inset"
           onClick={() => {
             shouldRestoreFocusRef.current = true
             onTagsChange([])
           }}
         >
           <span aria-hidden className="i-ri-close-circle-fill size-4 text-text-quaternary" />
-        </Button>
+        </IconButton>
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-import type { CSSProperties, UIEvent } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ScrollArea,
@@ -34,9 +34,9 @@ const stubElementMetric = (
 const renderScrollArea = (
   options: {
     rootClassName?: string
-    contentStyle?: CSSProperties
+    contentStyle?: React.CSSProperties
     viewportClassName?: string
-    viewportStyle?: CSSProperties
+    viewportStyle?: React.CSSProperties
     verticalScrollbarClassName?: string
     horizontalScrollbarClassName?: string
     verticalThumbClassName?: string
@@ -87,6 +87,12 @@ describe('scroll area', () => {
       await expect.element(screen.getByTestId('scroll-area-root')).toBeInTheDocument()
       await expect.element(screen.getByTestId('scroll-area-viewport')).toBeInTheDocument()
       await expect
+        .element(screen.getByTestId('scroll-area-root'))
+        .toHaveAttribute('data-dify-scroll-area')
+      await expect
+        .element(screen.getByTestId('scroll-area-viewport'))
+        .toHaveAttribute('data-dify-scroll-area-viewport')
+      await expect
         .element(screen.getByTestId('scroll-area-content'))
         .toHaveTextContent('Scrollable content')
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toBeInTheDocument()
@@ -134,7 +140,7 @@ describe('scroll area', () => {
       let rootElement: HTMLDivElement | null = null
       let viewportElement: HTMLDivElement | null = null
       let scrollOwner: HTMLDivElement | null = null
-      const onScroll = vi.fn((event: UIEvent<HTMLDivElement>) => {
+      const onScroll = vi.fn((event: React.UIEvent<HTMLDivElement>) => {
         scrollOwner = event.currentTarget
       })
 
@@ -192,7 +198,7 @@ describe('scroll area', () => {
         .toHaveAttribute('data-orientation', 'vertical')
       await expect
         .element(screen.getByTestId('scroll-area-vertical-scrollbar'))
-        .toHaveAttribute('data-dify-scrollbar')
+        .toHaveAttribute('data-dify-scroll-area-scrollbar')
       await expect
         .element(screen.getByTestId('scroll-area-vertical-thumb'))
         .toHaveAttribute('data-orientation', 'vertical')
@@ -206,7 +212,7 @@ describe('scroll area', () => {
         .toHaveAttribute('data-orientation', 'horizontal')
       await expect
         .element(screen.getByTestId('scroll-area-horizontal-scrollbar'))
-        .toHaveAttribute('data-dify-scrollbar')
+        .toHaveAttribute('data-dify-scroll-area-scrollbar')
       await expect
         .element(screen.getByTestId('scroll-area-horizontal-thumb'))
         .toHaveAttribute('data-orientation', 'horizontal')

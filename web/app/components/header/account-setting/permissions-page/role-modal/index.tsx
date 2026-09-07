@@ -1,19 +1,19 @@
 'use client'
-
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
 import { getDocLanguage } from '@/i18n-config/language'
 import PermissionField from './permission-field'
 
@@ -68,7 +68,17 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         backdropProps={{ forceRender: true }}
       >
         <div className="relative shrink-0 px-6 pt-6 pb-4">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="pr-8">
             <DialogTitle className="system-xl-semibold text-text-primary">
               {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
@@ -113,7 +123,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         </div>
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
           <a
-            href={`https://enterprise-docs.dify.ai/${docLanguage}/3.11.x/use/workspace/permission-reference`}
+            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"

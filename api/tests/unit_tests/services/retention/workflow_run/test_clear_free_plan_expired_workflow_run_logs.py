@@ -26,12 +26,17 @@ def mock_repo():
     return MagicMock()
 
 
+@pytest.fixture(autouse=True)
+def _cleanup_config(config_overrides):
+    config_overrides(
+        SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=0,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+    )
+
+
 @pytest.fixture
 def cleanup(mock_repo):
-    with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-        cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-        cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-        yield WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+    return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
 
 
 # ---------------------------------------------------------------------------
@@ -41,91 +46,68 @@ def cleanup(mock_repo):
 
 class TestWorkflowRunCleanupInit:
     def test_only_start_from_raises(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(ValueError, match="both set or both omitted"):
-                WorkflowRunCleanup(
-                    days=30,
-                    batch_size=10,
-                    start_from=datetime.datetime(2024, 1, 1),
-                    workflow_run_repo=mock_repo,
-                )
+        with pytest.raises(ValueError, match="both set or both omitted"):
+            WorkflowRunCleanup(
+                days=30,
+                batch_size=10,
+                start_from=datetime.datetime(2024, 1, 1),
+                workflow_run_repo=mock_repo,
+            )
 
     def test_only_end_before_raises(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(ValueError, match="both set or both omitted"):
-                WorkflowRunCleanup(
-                    days=30,
-                    batch_size=10,
-                    end_before=datetime.datetime(2024, 1, 1),
-                    workflow_run_repo=mock_repo,
-                )
+        with pytest.raises(ValueError, match="both set or both omitted"):
+            WorkflowRunCleanup(
+                days=30,
+                batch_size=10,
+                end_before=datetime.datetime(2024, 1, 1),
+                workflow_run_repo=mock_repo,
+            )
 
     def test_end_before_not_greater_than_start_raises(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(ValueError, match="end_before must be greater than start_from"):
-                WorkflowRunCleanup(
-                    days=30,
-                    batch_size=10,
-                    start_from=datetime.datetime(2024, 6, 1),
-                    end_before=datetime.datetime(2024, 1, 1),
-                    workflow_run_repo=mock_repo,
-                )
+        with pytest.raises(ValueError, match="end_before must be greater than start_from"):
+            WorkflowRunCleanup(
+                days=30,
+                batch_size=10,
+                start_from=datetime.datetime(2024, 6, 1),
+                end_before=datetime.datetime(2024, 1, 1),
+                workflow_run_repo=mock_repo,
+            )
 
     def test_equal_start_end_raises(self, mock_repo):
         dt = datetime.datetime(2024, 1, 1)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(ValueError):
-                WorkflowRunCleanup(
-                    days=30,
-                    batch_size=10,
-                    start_from=dt,
-                    end_before=dt,
-                    workflow_run_repo=mock_repo,
-                )
-
-    def test_zero_batch_size_raises(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(ValueError, match="batch_size must be greater than 0"):
-                WorkflowRunCleanup(days=30, batch_size=0, workflow_run_repo=mock_repo)
-
-    def test_negative_batch_size_raises(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(ValueError):
-                WorkflowRunCleanup(days=30, batch_size=-1, workflow_run_repo=mock_repo)
-
-    def test_valid_window_init(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 7
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            start = datetime.datetime(2024, 1, 1)
-            end = datetime.datetime(2024, 6, 1)
-            c = WorkflowRunCleanup(
+        with pytest.raises(ValueError):
+            WorkflowRunCleanup(
                 days=30,
-                batch_size=5,
-                start_from=start,
-                end_before=end,
+                batch_size=10,
+                start_from=dt,
+                end_before=dt,
                 workflow_run_repo=mock_repo,
             )
-            assert c.window_start == start
-            assert c.window_end == end
+
+    def test_zero_batch_size_raises(self, mock_repo):
+        with pytest.raises(ValueError, match="batch_size must be greater than 0"):
+            WorkflowRunCleanup(days=30, batch_size=0, workflow_run_repo=mock_repo)
+
+    def test_negative_batch_size_raises(self, mock_repo):
+        with pytest.raises(ValueError):
+            WorkflowRunCleanup(days=30, batch_size=-1, workflow_run_repo=mock_repo)
+
+    def test_valid_window_init(self, mock_repo, config_overrides):
+        config_overrides(SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=7)
+        start = datetime.datetime(2024, 1, 1)
+        end = datetime.datetime(2024, 6, 1)
+        c = WorkflowRunCleanup(
+            days=30,
+            batch_size=5,
+            start_from=start,
+            end_before=end,
+            workflow_run_repo=mock_repo,
+        )
+        assert c.window_start == start
+        assert c.window_end == end
 
     def test_default_task_label_is_custom(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
 
         assert c._metrics._base_attributes["task_label"] == "custom"
 
@@ -219,21 +201,15 @@ class TestIsWithinGracePeriod:
 class TestGetCleanupWhitelist:
     def test_non_cloud_edition_returns_empty(self, cleanup):
         cleanup._cleanup_whitelist = None
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            result = cleanup._get_cleanup_whitelist()
+        result = cleanup._get_cleanup_whitelist()
         assert result == set()
 
-    def test_cloud_edition_fetches_whitelist(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-            with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
-            ) as bs:
-                bs.get_expired_subscription_cleanup_whitelist.return_value = ["t1", "t2"]
-                result = c._get_cleanup_whitelist()
+    def test_cloud_edition_fetches_whitelist(self, mock_repo, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
+            bs.get_expired_subscription_cleanup_whitelist.return_value = ["t1", "t2"]
+            result = c._get_cleanup_whitelist()
         assert result == {"t1", "t2"}
 
     def test_cached_whitelist_returned(self, cleanup):
@@ -241,16 +217,12 @@ class TestGetCleanupWhitelist:
         result = cleanup._get_cleanup_whitelist()
         assert result == {"cached"}
 
-    def test_billing_service_error_returns_empty(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-            with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
-            ) as bs:
-                bs.get_expired_subscription_cleanup_whitelist.side_effect = Exception("error")
-                result = c._get_cleanup_whitelist()
+    def test_billing_service_error_returns_empty(self, mock_repo, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
+            bs.get_expired_subscription_cleanup_whitelist.side_effect = Exception("error")
+            result = c._get_cleanup_whitelist()
         assert result == set()
 
 
@@ -264,68 +236,51 @@ class TestFilterFreeTenants:
         result = cleanup._filter_free_tenants(["t1", "t2"])
         assert result == {"t1", "t2"}
 
-    def test_empty_tenants_returns_empty(self, cleanup):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            result = cleanup._filter_free_tenants([])
+    def test_empty_tenants_returns_empty(self, cleanup, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        result = cleanup._filter_free_tenants([])
         assert result == set()
 
-    def test_whitelisted_tenant_excluded(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-            c._cleanup_whitelist = {"t1"}
-            with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
-            ) as bs:
-                bs.get_plan_bulk_with_cache.return_value = {
-                    "t1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                    "t2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                }
-                result = c._filter_free_tenants(["t1", "t2"])
+    def test_whitelisted_tenant_excluded(self, mock_repo, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        c._cleanup_whitelist = {"t1"}
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
+            bs.get_plan_bulk_with_cache.return_value = {
+                "t1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "t2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+            }
+            result = c._filter_free_tenants(["t1", "t2"])
         assert "t1" not in result
         assert "t2" in result
 
-    def test_paid_tenant_excluded(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-            c._cleanup_whitelist = set()
-            with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
-            ) as bs:
-                bs.get_plan_bulk_with_cache.return_value = {
-                    "t1": {"plan": "professional", "expiration_date": -1},
-                }
-                result = c._filter_free_tenants(["t1"])
+    def test_paid_tenant_excluded(self, mock_repo, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        c._cleanup_whitelist = set()
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
+            bs.get_plan_bulk_with_cache.return_value = {
+                "t1": {"plan": "professional", "expiration_date": -1},
+            }
+            result = c._filter_free_tenants(["t1"])
         assert result == set()
 
-    def test_missing_billing_info_treats_as_non_free(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-            c._cleanup_whitelist = set()
-            with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
-            ) as bs:
-                bs.get_plan_bulk_with_cache.return_value = {}
-                result = c._filter_free_tenants(["t1"])
+    def test_missing_billing_info_treats_as_non_free(self, mock_repo, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        c._cleanup_whitelist = set()
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
+            bs.get_plan_bulk_with_cache.return_value = {}
+            result = c._filter_free_tenants(["t1"])
         assert result == set()
 
-    def test_billing_bulk_error_treats_as_non_free(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-            c._cleanup_whitelist = set()
-            with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
-            ) as bs:
-                bs.get_plan_bulk_with_cache.side_effect = Exception("fail")
-                result = c._filter_free_tenants(["t1"])
+    def test_billing_bulk_error_treats_as_non_free(self, mock_repo, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        c._cleanup_whitelist = set()
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
+            bs.get_plan_bulk_with_cache.side_effect = Exception("fail")
+            result = c._filter_free_tenants(["t1"])
         assert result == set()
 
 
@@ -336,17 +291,12 @@ class TestFilterFreeTenants:
 
 class TestRunDeleteMode:
     def _make_cleanup(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+        return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
 
     def test_no_rows_stops_immediately(self, mock_repo):
         mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
         c = self._make_cleanup(mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c.run()
+        c.run()
         mock_repo.delete_runs_with_related_by_ids.assert_not_called()
 
     def test_all_paid_skips_delete(self, mock_repo):
@@ -355,9 +305,7 @@ class TestRunDeleteMode:
         c = self._make_cleanup(mock_repo)
         # Override the non-Cloud default to exercise the no-deletion path.
         c._filter_free_tenants = MagicMock(return_value=set())
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c.run()
+        c.run()
         mock_repo.delete_runs_with_related_by_ids.assert_not_called()
 
     def test_runs_deleted_successfully(self, mock_repo):
@@ -373,10 +321,8 @@ class TestRunDeleteMode:
             "pause_reasons": 0,
         }
         c = self._make_cleanup(mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.time.sleep"):
-                c.run()
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.time.sleep"):
+            c.run()
         mock_repo.delete_runs_with_related_by_ids.assert_called_once()
 
     def test_delete_exception_reraises(self, mock_repo):
@@ -384,24 +330,19 @@ class TestRunDeleteMode:
         mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref]]
         mock_repo.delete_runs_with_related_by_ids.side_effect = RuntimeError("db error")
         c = self._make_cleanup(mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            with pytest.raises(RuntimeError):
-                c.run()
+        with pytest.raises(RuntimeError):
+            c.run()
 
     def test_summary_with_window_start(self, mock_repo):
         mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c = WorkflowRunCleanup(
-                days=30,
-                batch_size=10,
-                start_from=datetime.datetime(2024, 1, 1),
-                end_before=datetime.datetime(2024, 6, 1),
-                workflow_run_repo=mock_repo,
-            )
-            c.run()
+        c = WorkflowRunCleanup(
+            days=30,
+            batch_size=10,
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 6, 1),
+            workflow_run_repo=mock_repo,
+        )
+        c.run()
 
 
 # ---------------------------------------------------------------------------
@@ -411,15 +352,12 @@ class TestRunDeleteMode:
 
 class TestRunDryRunMode:
     def _make_dry_cleanup(self, mock_repo):
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            return WorkflowRunCleanup(
-                days=30,
-                batch_size=10,
-                workflow_run_repo=mock_repo,
-                dry_run=True,
-            )
+        return WorkflowRunCleanup(
+            days=30,
+            batch_size=10,
+            workflow_run_repo=mock_repo,
+            dry_run=True,
+        )
 
     def test_dry_run_no_delete_called(self, mock_repo):
         ref = make_ref("t1")
@@ -434,35 +372,28 @@ class TestRunDryRunMode:
             "pause_reasons": 0,
         }
         c = self._make_dry_cleanup(mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c.run()
+        c.run()
         mock_repo.delete_runs_with_related_by_ids.assert_not_called()
         mock_repo.count_runs_with_related_by_ids.assert_called_once()
 
     def test_dry_run_summary_with_window_start(self, mock_repo):
         mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c = WorkflowRunCleanup(
-                days=30,
-                batch_size=10,
-                start_from=datetime.datetime(2024, 1, 1),
-                end_before=datetime.datetime(2024, 6, 1),
-                workflow_run_repo=mock_repo,
-                dry_run=True,
-            )
-            c.run()
+        c = WorkflowRunCleanup(
+            days=30,
+            batch_size=10,
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 6, 1),
+            workflow_run_repo=mock_repo,
+            dry_run=True,
+        )
+        c.run()
 
     def test_dry_run_all_paid_skips_count(self, mock_repo):
         ref = make_ref("t1")
         mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
         c = self._make_dry_cleanup(mock_repo)
         c._filter_free_tenants = MagicMock(return_value=set())
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
-            cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-            c.run()
+        c.run()
         mock_repo.count_runs_with_related_by_ids.assert_not_called()
 
 

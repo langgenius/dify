@@ -9,8 +9,10 @@ from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceTask
+from graphon.enums import WorkflowExecutionStatus
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message, MessageFile
-from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel
+from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 
 TABLES = (App, Conversation, Message, MessageFile, WorkflowAppLog, WorkflowNodeExecutionModel)
 
@@ -28,23 +30,28 @@ def _bind_trace_database(
     )
 
 
-def _make_workflow_run():
-    return SimpleNamespace(
+def _make_workflow_run() -> WorkflowRun:
+    return WorkflowRun(
         workflow_id="wf-1",
         tenant_id="tenant-1",
         id="run-1",
-        elapsed_time=1,
-        status="succeeded",
-        inputs_dict={},
-        outputs_dict={},
+        elapsed_time=1.0,
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        inputs="{}",
+        outputs="{}",
+        graph="{}",
+        type=WorkflowType.WORKFLOW,
         version="1",
         error=None,
         total_tokens=0,
+        total_steps=0,
         created_at=datetime(2026, 1, 1, 0, 0, 0),
         finished_at=datetime(2026, 1, 1, 0, 0, 1),
-        triggered_from="user",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         app_id="app-1",
-        to_dict=lambda self=None: {"id": "run-1"},
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="user-1",
+        exceptions_count=0,
     )
 
 

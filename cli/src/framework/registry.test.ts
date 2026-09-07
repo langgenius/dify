@@ -1,5 +1,5 @@
 import type { CommandTree } from './registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Command } from './command'
 import { findSuggestions, resolveCommand } from './registry'
 

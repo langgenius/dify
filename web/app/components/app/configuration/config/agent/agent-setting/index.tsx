@@ -1,9 +1,17 @@
 'use client'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -27,9 +35,15 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
   const maximumIterationsLabel = t(($) => $['agent.setting.maximumIterations.name'], {
     ns: 'appDebug',
   })
+  const sliderValue = Number.isFinite(tempPayload.max_iteration)
+    ? tempPayload.max_iteration
+    : maxIterationsMin
 
   const handleSave = () => {
-    onSave(tempPayload)
+    onSave({
+      ...tempPayload,
+      max_iteration: sliderValue,
+    })
   }
 
   return (
@@ -44,9 +58,16 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
           <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
             {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
           </DialogTitle>
-          <DialogCloseButton
-            className="static z-auto size-6 shrink-0"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="sm"
+                className="static z-auto size-6 shrink-0 rounded-2xl"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </div>
         {/* Body */}
@@ -84,15 +105,22 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
                 className="mr-3 w-39"
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
-                value={tempPayload.max_iteration}
+                value={sliderValue}
                 onValueChange={(value) => {
                   setTempPayload({
                     ...tempPayload,
                     max_iteration: value,
                   })
                 }}
-                aria-label={maximumIterationsLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{maximumIterationsLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
 
               <input
                 aria-label={maximumIterationsLabel}

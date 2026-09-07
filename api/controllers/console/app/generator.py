@@ -364,6 +364,7 @@ class InstructionGenerateApi(Resource):
                     case "llm":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
+                            app_id=req_data.flow_id,
                             args=RuleGeneratePayload(
                                 instruction=req_data.instruction,
                                 model_config=req_data.model_config_data,
@@ -373,6 +374,7 @@ class InstructionGenerateApi(Resource):
                     case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
+                            app_id=req_data.flow_id,
                             args=RuleGeneratePayload(
                                 instruction=req_data.instruction,
                                 model_config=req_data.model_config_data,
@@ -382,6 +384,7 @@ class InstructionGenerateApi(Resource):
                     case "code":
                         return LLMGenerator.generate_code(
                             tenant_id=current_tenant_id,
+                            app_id=req_data.flow_id,
                             args=RuleCodeGeneratePayload(
                                 instruction=req_data.instruction,
                                 model_config=req_data.model_config_data,
@@ -409,6 +412,7 @@ class InstructionGenerateApi(Resource):
                     model_config=req_data.model_config_data,
                     ideal_output=req_data.ideal_output,
                     workflow_service=WorkflowService(),
+                    session=session,
                 )
             return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:

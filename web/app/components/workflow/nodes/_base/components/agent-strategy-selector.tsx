@@ -242,7 +242,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       <PopoverContent
         placement="bottom"
         sideOffset={0}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-97 overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">

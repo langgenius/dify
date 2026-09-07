@@ -4,6 +4,7 @@ import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -21,7 +22,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import Input from '@/app/components/base/input'
 import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import { ParamType } from '../../types'
@@ -55,6 +55,9 @@ const TYPES = [
 
 const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => {
   const { t } = useTranslation()
+  const nameLabel = t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
+    ns: 'workflow',
+  })
   const isAdd = type === 'add'
   const [param, setParam] = useState<Param>(isAdd ? DEFAULT_PARAM : (payload as Param))
   const [renameInfo, setRenameInfo] = useState<MoreInfo | undefined>(undefined)
@@ -169,14 +172,11 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
 
             <div>
               <div className="space-y-2">
-                <Field
-                  title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
-                    ns: 'workflow',
-                  })}
-                >
+                <Field title={nameLabel}>
                   <Input
+                    aria-label={nameLabel}
                     value={param.name}
-                    onChange={(e) => handleParamChange('name')(e.target.value)}
+                    onValueChange={(value) => handleParamChange('name')(value)}
                     placeholder={t(
                       ($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`],
                       {

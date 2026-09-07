@@ -1,7 +1,10 @@
-from types import SimpleNamespace
-from unittest.mock import Mock
+import pytest
+from sqlalchemy.orm import Session
 
 from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from models.account import Account
+from models.dataset import AppDatasetJoin, Dataset
+from models.model import App, AppMode, IconType
 
 
 def _dataset_detail_payload(**overrides):
@@ -184,45 +187,59 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
     }
 
 
-def test_dataset_detail_response_source_uses_caller_session_for_database_fields():
-    session = Mock()
-    getter_mocks = {
-        "get_app_count": Mock(return_value=3),
-        "get_document_count": Mock(return_value=4),
-        "get_word_count": Mock(return_value=500),
-        "get_author_name": Mock(return_value="Ada"),
-        "get_tags": Mock(return_value=[{"id": "tag-1", "name": "Tag", "type": "knowledge"}]),
-        "get_doc_form": Mock(return_value="paragraph"),
-        "get_external_knowledge_info": Mock(
-            return_value={
-                "external_knowledge_id": "knowledge-id",
-                "external_knowledge_api_id": "api-id",
-                "external_knowledge_api_name": "api",
-                "external_knowledge_api_endpoint": "https://example.com",
-            }
-        ),
-        "get_doc_metadata": Mock(return_value=[{"id": "metadata-1", "name": "Metadata", "type": "string"}]),
-        "get_is_published": Mock(return_value=True),
-        "get_total_documents": Mock(return_value=4),
-        "get_total_available_documents": Mock(return_value=2),
-    }
-    dataset = SimpleNamespace(**_dataset_detail_payload(), **getter_mocks)
+@pytest.mark.parametrize("sqlite_session", [(Dataset, Account, App, AppDatasetJoin)], indirect=True)
+def test_dataset_detail_response_source_uses_caller_session_for_database_fields(sqlite_session: Session):
+    account = Account(name="Ada", email="ada@example.com")
+    account.id = "account-1"
+    dataset = Dataset(
+        id="ds-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        description="desc",
+        provider="vendor",
+        permission="only_me",
+        data_source_type=None,
+        indexing_technique="economy",
+        created_by=account.id,
+        retrieval_model=_dataset_detail_payload()["retrieval_model_dict"],
+        summary_index_setting=_dataset_detail_payload()["summary_index_setting"],
+        built_in_field_enabled=False,
+        icon_info=_dataset_detail_payload()["icon_info"],
+        runtime_mode="general",
+        enable_api=False,
+        is_multimodal=False,
+    )
+    dataset.embedding_available = True
+    decoy_app = App(
+        id="decoy-app",
+        tenant_id="tenant-1",
+        name="Decoy app",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="app",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=0,
+    )
+    decoy_join = AppDatasetJoin(app_id=decoy_app.id, dataset_id="other-dataset")
+    sqlite_session.add_all([account, dataset, decoy_app, decoy_join])
+    sqlite_session.flush()
 
     response = DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session),
+        dataset_detail_response_source(dataset, session=sqlite_session),
         from_attributes=True,
     )
 
-    assert response.app_count == 3
-    assert response.document_count == 4
-    assert response.word_count == 500
+    assert response.app_count == 0
+    assert response.document_count == 0
+    assert response.word_count == 0
     assert response.author_name == "Ada"
-    assert response.tags[0].id == "tag-1"
-    assert response.doc_form == "paragraph"
-    assert response.external_knowledge_info.external_knowledge_api_id == "api-id"
-    assert response.doc_metadata[0].id == "metadata-1"
-    assert response.is_published is True
-    assert response.total_documents == 4
-    assert response.total_available_documents == 2
-    for getter in getter_mocks.values():
-        getter.assert_called_once_with(session=session)
+    assert response.tags == []
+    assert response.doc_form is None
+    assert response.external_knowledge_info.external_knowledge_api_id is None
+    assert response.doc_metadata == []
+    assert response.is_published is False
+    assert response.total_documents == 0
+    assert response.total_available_documents == 0

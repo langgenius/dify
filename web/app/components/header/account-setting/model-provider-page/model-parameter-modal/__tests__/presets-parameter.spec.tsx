@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import PresetsParameter from '../presets-parameter'
 import { getSupportedPresetConfig } from '../presets-parameter-utils'
 

@@ -8,7 +8,7 @@ in-memory SQLite sessions with persisted ORM rows.
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import asc, desc, event
@@ -188,13 +188,16 @@ def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPa
         "enqueue_agent_resource_collection",
         MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
     )
-    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", MagicMock())
+    delete_related = MagicMock()
+    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", delete_related)
 
     ConversationService.delete(app, conversation.id, None, session=sqlite_session)
 
     assert events == ["retire", "commit", "enqueue"]
+    assert conversation.is_deleted is True
     assert get_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
     assert retire_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
+    delete_related.assert_called_once_with(conversation.id)
 
 
 def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -202,7 +205,7 @@ def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch,
     conversation = ConversationServiceTestDataFactory.create_conversation()
     conversation.agent_workspace_binding_id = "binding-1"
     sqlite_session.add(conversation)
-    sqlite_session.flush()
+    sqlite_session.commit()
     rollback_events: list[str] = []
     event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
 
@@ -226,8 +229,30 @@ def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch,
         ConversationService.delete(app, conversation.id, None, session=sqlite_session)
 
     assert rollback_events == ["rollback"]
+    assert conversation.is_deleted is False
     enqueue_collection.assert_not_called()
     delete_related.assert_not_called()
+
+
+def test_delete_keeps_soft_deleted_marker_when_dispatch_fails(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    app = ConversationServiceTestDataFactory.create_app()
+    conversation = ConversationServiceTestDataFactory.create_conversation()
+    sqlite_session.add(conversation)
+    sqlite_session.flush()
+    monkeypatch.setattr(ConversationService, "get_conversation", MagicMock(return_value=conversation))
+    monkeypatch.setattr(
+        conversation_service.delete_conversation_related_data,
+        "delay",
+        MagicMock(side_effect=RuntimeError("broker unavailable")),
+    )
+
+    ConversationService.delete(app, conversation.id, None, session=sqlite_session)
+
+    persisted = sqlite_session.get(Conversation, conversation.id)
+    assert persisted is not None
+    assert persisted.is_deleted is True
 
 
 class TestConversationServicePagination:
@@ -364,11 +389,10 @@ class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, ConversationVariable)], indirect=True)
-    @patch("services.conversation_service.dify_config")
     def test_get_conversational_variable_with_name_filter_mysql(
         self,
-        mock_config,
         sqlite_session: Session,
+        config_overrides,
     ):
         """
         Test variable filtering by name for MySQL databases.
@@ -411,7 +435,7 @@ class TestConversationServiceConversationalVariable:
             ]
         )
         sqlite_session.commit()
-        mock_config.DB_TYPE = "mysql"
+        config_overrides(DB_TYPE="mysql")
 
         # Act
         result = ConversationService.get_conversational_variable(

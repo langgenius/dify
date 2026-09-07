@@ -1,5 +1,5 @@
 import type { ActiveContext } from '@/auth/hosts'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { resolveWorkspaceId } from './resolver'
 
 function active(workspaceId?: string): ActiveContext {

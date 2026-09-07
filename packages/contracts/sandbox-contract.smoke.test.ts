@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { sandbox as agentSandbox } from './generated/api/console/agent/orpc.gen'
 import { sandbox as appSandbox } from './generated/api/console/apps/orpc.gen'
 

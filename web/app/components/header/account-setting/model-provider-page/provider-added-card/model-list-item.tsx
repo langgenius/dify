@@ -154,7 +154,7 @@ const ModelListItem = ({
                 </span>
               }
             />
-            <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+            <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
               {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
             </PopoverContent>
           </Popover>

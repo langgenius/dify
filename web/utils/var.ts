@@ -171,7 +171,7 @@ export function getMarketplaceUrl(
   if (params) {
     Object.keys(params).forEach((key) => {
       const value = params[key]
-      if (value !== undefined && value !== null) searchParams.append(key, value)
+      if (value !== undefined && value !== null) searchParams.set(key, value)
     })
   }
 

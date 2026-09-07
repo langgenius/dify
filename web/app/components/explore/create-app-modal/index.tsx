@@ -2,7 +2,8 @@
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -64,6 +65,9 @@ const CreateAppModal = ({
   confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
+  const nameInputId = React.useId()
+  const descriptionInputId = React.useId()
+  const maxActiveRequestsInputId = React.useId()
   const { t } = useTranslation()
 
   const [name, setName] = React.useState(appName)
@@ -135,7 +139,17 @@ const CreateAppModal = ({
     <>
       <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
         <DialogContent backdropProps={{ forceRender: true }} className="px-8">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           {isEditModal && (
             <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
               {t(($) => $.editAppTitle, { ns: 'app' })}
@@ -149,9 +163,12 @@ const CreateAppModal = ({
           <div className="mb-9">
             {/* icon & name */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+              <label
+                htmlFor={nameInputId}
+                className="block py-2 text-sm leading-5 font-medium text-text-primary"
+              >
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
-              </div>
+              </label>
               <div className="flex items-center justify-between space-x-2">
                 <AppIcon
                   size="large"
@@ -165,6 +182,7 @@ const CreateAppModal = ({
                   imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
                 />
                 <Input
+                  id={nameInputId}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
@@ -174,11 +192,14 @@ const CreateAppModal = ({
             </div>
             {/* description */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+              <label
+                htmlFor={descriptionInputId}
+                className="block py-2 text-sm leading-5 font-medium text-text-primary"
+              >
                 {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
-              </div>
+              </label>
               <Textarea
-                aria-label={t(($) => $['newApp.captionDescription'], { ns: 'app' })}
+                id={descriptionInputId}
                 className="resize-none"
                 placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                 value={description}
@@ -207,10 +228,14 @@ const CreateAppModal = ({
               )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">
+                <label
+                  htmlFor={maxActiveRequestsInputId}
+                  className="mt-2 mb-2 block text-sm leading-5 font-medium text-text-primary"
+                >
                   {t(($) => $.maxActiveRequests, { ns: 'app' })}
-                </div>
+                </label>
                 <Input
+                  id={maxActiveRequestsInputId}
                   type="number"
                   min={1}
                   placeholder={t(($) => $.maxActiveRequestsPlaceholder, { ns: 'app' })}

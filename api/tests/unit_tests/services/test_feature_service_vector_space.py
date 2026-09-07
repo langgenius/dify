@@ -7,7 +7,7 @@ from services.entities.feature_entities import LimitationModel
 from services.feature_service import FeatureService
 
 
-def test_get_features_exclude_vector_space_sets_vector_space_to_none():
+def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides):
     tenant_id = "tenant-id"
     billing_info = {
         "enabled": True,
@@ -23,17 +23,17 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none():
         "knowledge_pipeline_publish_enabled": True,
     }
 
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        CAN_REPLACE_LOGO=False,
+        MODEL_LB_ENABLED=False,
+        DATASET_OPERATOR_ENABLED=False,
+        EDUCATION_ENABLED=False,
+    )
     with (
-        patch("services.feature_service.dify_config") as mock_config,
         patch("services.feature_service.BillingService.get_info", return_value=billing_info) as get_info,
         patch("services.feature_service.BillingService.get_quota_info", return_value={}),
     ):
-        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-        mock_config.CAN_REPLACE_LOGO = False
-        mock_config.MODEL_LB_ENABLED = False
-        mock_config.DATASET_OPERATOR_ENABLED = False
-        mock_config.EDUCATION_ENABLED = False
-
         features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
 
     assert features.vector_space is None

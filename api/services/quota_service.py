@@ -20,7 +20,7 @@ class QuotaCharge:
         try:
             do_work()
             charge.commit()   # Confirm consumption
-        except:
+        except Exception:
             charge.refund()   # Release frozen quota
 
     If neither commit() nor refund() is called, the billing system's

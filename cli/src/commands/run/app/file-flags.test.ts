@@ -1,5 +1,5 @@
 import type { ParsedFileFlag } from './file-flags'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { difyFileType, parseFileFlag, resolveFileInputs } from './file-flags'
 
 describe('parseFileFlag', () => {

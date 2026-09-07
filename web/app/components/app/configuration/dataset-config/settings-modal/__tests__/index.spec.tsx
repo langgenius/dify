@@ -1,4 +1,4 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -107,9 +107,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))
@@ -284,7 +284,7 @@ describe('SettingsModal', () => {
       await renderSettingsModal(dataset)
 
       // Assert
-      expect(screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')).toHaveValue(
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toHaveValue(
         'Test Dataset',
       )
       expect(screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')).toHaveValue(
@@ -333,7 +333,7 @@ describe('SettingsModal', () => {
       const user = userEvent.setup()
       await renderSettingsModal(createDataset())
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
 
       // Act
       await user.clear(nameInput)
@@ -417,7 +417,7 @@ describe('SettingsModal', () => {
       const user = userEvent.setup()
       await renderSettingsModal(createDataset())
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
 
       // Act
       await user.clear(nameInput)
@@ -483,7 +483,7 @@ describe('SettingsModal', () => {
       // Act
       await renderSettingsModal(dataset)
 
-      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
       await user.clear(nameInput)
       await user.type(nameInput, 'Updated Internal Dataset')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))

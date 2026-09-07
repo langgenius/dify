@@ -219,8 +219,11 @@ class TestGetUser:
 
         event.listen(sqlite_plugin_engine, "before_cursor_execute", _raise_database_error)
         try:
-            with app.app_context(), pytest.raises(ValueError, match="user not found"):
+            with app.app_context(), pytest.raises(ValueError, match="user not found") as exc_info:
                 get_user("tenant123", "user123")
+            # PEP 3134: the re-raised ValueError must chain the underlying database error.
+            assert isinstance(exc_info.value.__cause__, RuntimeError)
+            assert str(exc_info.value.__cause__) == "Database error"
         finally:
             event.remove(sqlite_plugin_engine, "before_cursor_execute", _raise_database_error)
 
@@ -351,8 +354,11 @@ class TestPluginData:
 
         # Act & Assert - Malformed JSON triggers ValueError
         with app.test_request_context(data="not valid json", content_type="application/json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError) as exc_info:
                 protected_view()
+            # PEP 3134: the re-raised ValueError must chain the underlying JSON parse failure.
+            assert exc_info.value.__cause__ is not None
+            assert isinstance(exc_info.value.__cause__, Exception)
 
     def test_should_raise_error_on_invalid_payload(self, app: Flask):
         """Test that ValueError is raised when payload validation fails"""
@@ -369,8 +375,11 @@ class TestPluginData:
 
         # Act & Assert
         with app.test_request_context(json={"data": "test"}):
-            with pytest.raises(ValueError, match="invalid payload"):
+            with pytest.raises(ValueError, match="invalid payload") as exc_info:
                 protected_view()
+            # PEP 3134: the re-raised ValueError must chain the original Exception from model_validate.
+            assert exc_info.value.__cause__ is not None
+            assert str(exc_info.value.__cause__) == "Validation failed"
 
     def test_should_work_as_parameterized_decorator(self, app: Flask):
         """Test that decorator works when used with parentheses"""

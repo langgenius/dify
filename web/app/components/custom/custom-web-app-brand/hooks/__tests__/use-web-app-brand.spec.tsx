@@ -3,7 +3,7 @@ import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/syst
 import type { ChangeEvent } from 'react'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { defaultPlan } from '@/app/components/billing/config'

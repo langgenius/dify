@@ -1,5 +1,5 @@
 import type { FetchContext, HttpMethod, ResolvedOptions } from './types.js'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { backoffDelay, isIdempotentRetryMethod, shouldRetry } from './retry.js'
 
 function ctxFor(method: HttpMethod): FetchContext {

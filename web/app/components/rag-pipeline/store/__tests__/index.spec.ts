@@ -2,7 +2,7 @@ import type { InputFieldEditorProps } from '../../components/panel/input-field/e
 import type { RagPipelineSliceShape } from '../index'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { createRagPipelineSliceSlice } from '../index'
 

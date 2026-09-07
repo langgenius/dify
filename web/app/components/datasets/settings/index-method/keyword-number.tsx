@@ -7,7 +7,14 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -47,8 +54,15 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         onValueChange={onKeywordNumberChange}
-        aria-label={label}
-      />
+      >
+        <SliderLabel className="sr-only">{label}</SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+            <SliderThumb />
+          </SliderTrack>
+        </SliderControl>
+      </Slider>
       <NumberField
         className="w-18.5 shrink-0"
         min={MIN_KEYWORD_NUMBER}

@@ -1,6 +1,6 @@
 import type { FileEntity } from '../types'
 import { act, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import {
   createFileStore,
   FileContextProvider,
@@ -210,16 +210,11 @@ describe('image-uploader store', () => {
   describe('useFileStoreWithSelector', () => {
     it('should throw error when used outside provider', () => {
       const TestComponent = () => {
-        try {
-          useFileStoreWithSelector((state) => state.files)
-          return <div>No Error</div>
-        } catch {
-          return <div>Error</div>
-        }
+        useFileStoreWithSelector((state) => state.files)
+        return null
       }
 
-      render(<TestComponent />)
-      expect(screen.getByText('Error')).toBeInTheDocument()
+      expect(() => render(<TestComponent />)).toThrow('Missing FileContext.Provider in the tree')
     })
 
     it('should select files from store', () => {

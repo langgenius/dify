@@ -29,14 +29,14 @@ class ToolFileRebacker(Protocol):
 class WorkflowAgentOutputAdapter:
     """Convert terminal Agent backend events into workflow node run results.
 
-    ``DifyAgentNode`` relies on this after the earlier per-output type-check pass:
-    once the backend payload has been validated against declared ``FILE`` or
-    ``ARRAY[FILE]`` outputs, this adapter can safely convert canonical file
-    mappings into ``FileSegment`` values without reintroducing false positives
-    for normal object outputs. Older Agent backend builds may still return bare
-    ToolFile ids (``{"id": "..."}``); when a ``ToolFileRebacker`` is provided,
-    those ids are treated as a backwards-compatible fallback and hydrated from
-    the server-side ToolFile row instead of trusted from the sandbox payload.
+    Structured runs provide custom declarations so their declared ``FILE`` and
+    ``ARRAY[FILE]`` fields can be converted into workflow file values without
+    treating normal object fields as files. Plain runs provide a free-form
+    string, which is mapped directly to the system ``text`` output. Older Agent
+    backend builds may still return bare ToolFile ids (``{"id": "..."}``); when
+    a ``ToolFileRebacker`` is provided, those ids are treated as a
+    backwards-compatible fallback and hydrated from the server-side ToolFile
+    row instead of trusted from the sandbox payload.
     """
 
     _tool_file_rebacker: ToolFileRebacker | None
@@ -56,9 +56,10 @@ class WorkflowAgentOutputAdapter:
     ) -> NodeRunResult:
         """Build the successful node result from one backend terminal event.
 
-        ``declared_outputs`` is optional for generic normalization, but callers
-        should pass it from the earlier type-checking stage so canonical file
-        mappings are normalized on the correct declared fields only.
+        For structured runs, ``declared_outputs`` contains the custom-only
+        declarations used to scope field and file normalization. Plain runs
+        omit custom declarations, and a free-form string is mapped to the
+        system ``text`` output.
 
         Canonical persisted-file mappings (``local_file`` / ``tool_file`` /
         ``datasource_file``) also require ``metadata["tenant_id"]`` so the
@@ -331,7 +332,13 @@ class WorkflowAgentOutputAdapter:
             }
         )
         session_snapshot = None
-        if isinstance(event, AgentBackendRunSucceededInternalEvent | AgentBackendDeferredToolCallInternalEvent):
+        if isinstance(
+            event,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendDeferredToolCallInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        ):
             session_snapshot = event.session_snapshot
             if event.usage is not None:
                 agent_backend["usage"] = dict(event.usage)

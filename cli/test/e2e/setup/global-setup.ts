@@ -24,7 +24,7 @@
  *     into the secondary workspace. Publish & set access_mode → public.
  */
 
-import type { TestProject } from 'vitest/node'
+import type { TestProject } from 'vite-plus/test/node'
 import type { E2ECapabilities } from './env.js'
 import { Buffer } from 'node:buffer'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'

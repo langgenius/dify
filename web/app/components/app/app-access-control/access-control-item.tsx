@@ -2,7 +2,7 @@
 import type { PropsWithChildren } from 'react'
 import type { AccessMode } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type AccessControlItemProps = PropsWithChildren<{
   type: AccessMode

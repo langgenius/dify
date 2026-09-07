@@ -25,6 +25,27 @@ type HTTPClient struct {
 
 var errUploadRequestAborted = errors.New("upload request aborted")
 
+const (
+	agentStubAuthorizationExpiredCode = "agent_stub_authorization_expired"
+	defaultUploadRequestTimeout       = 180 * time.Second
+)
+
+type agentStubHTTPError struct {
+	statusCode int
+	code       string
+	message    string
+}
+
+func (e *agentStubHTTPError) Error() string {
+	if e.code == agentStubAuthorizationExpiredCode {
+		return fmt.Sprintf(
+			"HTTP %d: Agent Stub authorization expired after 5 minutes; the authorization in this process will not refresh automatically; start a new shell tool call and retry the command",
+			e.statusCode,
+		)
+	}
+	return fmt.Sprintf("HTTP %d: %s", e.statusCode, e.message)
+}
+
 // NewHTTPClient creates a new HTTP client for the Agent Stub API.
 func NewHTTPClient(env *Environment) *HTTPClient {
 	return &HTTPClient{
@@ -52,7 +73,7 @@ func openUploadSource(path string) (io.ReadCloser, error) {
 }
 
 func doUploadRequest(req *http.Request) (*http.Response, error) {
-	return (&http.Client{Timeout: 120 * time.Second}).Do(req)
+	return (&http.Client{Timeout: defaultUploadRequestTimeout}).Do(req)
 }
 
 // postJSON sends a POST request with JSON body and returns the response body.
@@ -296,4 +317,38 @@ func checkHTTPError(body []byte, statusCode int, operation string) error {
 		return fmt.Errorf("agent stub %s failed (HTTP %d): %v", operation, statusCode, detail.Detail)
 	}
 	return fmt.Errorf("agent stub %s failed (HTTP %d): %s", operation, statusCode, string(body))
+}
+
+// checkAgentStubHTTPError decodes structured errors for Agent-visible
+// connect, file, and config commands. Drive retains its legacy error contract.
+func checkAgentStubHTTPError(body []byte, statusCode int) error {
+	if statusCode < 400 {
+		return nil
+	}
+
+	message := string(body)
+	code := ""
+	var response struct {
+		Detail json.RawMessage `json:"detail"`
+	}
+	if json.Unmarshal(body, &response) == nil && len(response.Detail) > 0 {
+		var detailMessage string
+		if json.Unmarshal(response.Detail, &detailMessage) == nil {
+			message = detailMessage
+		} else {
+			var detail struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			}
+			if json.Unmarshal(response.Detail, &detail) == nil {
+				code = detail.Code
+				if detail.Message != "" {
+					message = detail.Message
+				} else {
+					message = string(response.Detail)
+				}
+			}
+		}
+	}
+	return &agentStubHTTPError{statusCode: statusCode, code: code, message: message}
 }

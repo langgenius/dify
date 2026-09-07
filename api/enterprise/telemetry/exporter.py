@@ -34,7 +34,7 @@ from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import SpanContext, TraceFlags
 from opentelemetry.util.types import Attributes, AttributeValue
 
-from configs import dify_config
+from configs import DifyConfig, dify_config
 from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryHistogram
 from enterprise.telemetry.id_generator import (
     CorrelationIdGenerator,
@@ -106,14 +106,14 @@ class EnterpriseExporter:
     ``increment_counter`` / ``record_histogram`` emit OTEL metrics at 100% accuracy.
     """
 
-    def __init__(self, config: object) -> None:
-        endpoint: str = getattr(config, "ENTERPRISE_OTLP_ENDPOINT", "")
-        headers_raw: str = getattr(config, "ENTERPRISE_OTLP_HEADERS", "")
-        protocol: str = (getattr(config, "ENTERPRISE_OTLP_PROTOCOL", "http") or "http").lower()
-        service_name: str = getattr(config, "ENTERPRISE_SERVICE_NAME", "dify")
-        sampling_rate: float = getattr(config, "ENTERPRISE_OTEL_SAMPLING_RATE", 1.0)
-        self.include_content: bool = getattr(config, "ENTERPRISE_INCLUDE_CONTENT", True)
-        api_key: str = getattr(config, "ENTERPRISE_OTLP_API_KEY", "")
+    def __init__(self, config: DifyConfig) -> None:
+        endpoint: str = config.ENTERPRISE_OTLP_ENDPOINT
+        headers_raw: str = config.ENTERPRISE_OTLP_HEADERS
+        protocol: str = config.ENTERPRISE_OTLP_PROTOCOL
+        service_name: str = config.APPLICATION_NAME
+        sampling_rate: float = config.ENTERPRISE_OTEL_SAMPLING_RATE
+        self.include_content: bool = config.ENTERPRISE_INCLUDE_CONTENT
+        api_key: str = config.ENTERPRISE_OTLP_API_KEY
 
         # Auto-detect TLS: https:// uses secure, everything else is insecure
         insecure = not endpoint.startswith("https://")
@@ -206,7 +206,12 @@ class EnterpriseExporter:
         set_span_id_source(span_id_source)
 
         try:
-            parent_context: Context | None = None
+            # Use an explicit empty Context (not None) as the default so root spans
+            # never implicitly inherit an ambient active span (e.g. Celery/HTTP
+            # auto-instrumentation or an external trace context). Otherwise the root
+            # span would join the ambient trace while child spans use our deterministic
+            # trace_id, splitting a single logical trace into two.
+            parent_context: Context = Context()
             # A span is the "root" of its correlation group when span_id_source == correlation_id
             # (i.e. a workflow root span).  All other spans are children.
             if parent_span_id_source:

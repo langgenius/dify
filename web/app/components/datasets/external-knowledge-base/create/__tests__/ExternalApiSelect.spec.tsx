@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 // Explicit react-i18next mock so the test stays portable
 // even if the global vitest.setup changes.
@@ -64,6 +64,21 @@ describe('ExternalApiSelect', () => {
   })
 
   describe('rendering', () => {
+    it('uses the referenced visible label to name the trigger', () => {
+      render(
+        <>
+          <span id="external-api-label">External API</span>
+          <ExternalApiSelect
+            aria-labelledby="external-api-label"
+            items={items}
+            onSelect={onSelect}
+          />
+        </>,
+      )
+
+      expect(screen.getByRole('button', { name: 'External API' })).toBeInTheDocument()
+    })
+
     it('should show placeholder when no value selected', () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
       expect(screen.getByText('dataset.selectExternalKnowledgeAPI.placeholder')).toBeInTheDocument()

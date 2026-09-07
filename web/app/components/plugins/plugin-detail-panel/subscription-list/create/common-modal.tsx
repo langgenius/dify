@@ -2,7 +2,8 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
@@ -79,9 +80,16 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
-        <DialogCloseButton
-          className="top-5 right-5 size-8 rounded-lg [&>span]:size-5"
-          onClick={onClose}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-5 right-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
       </div>
 

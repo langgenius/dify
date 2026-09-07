@@ -4,7 +4,19 @@ from unittest.mock import patch
 import pytest
 import pytz
 
-from libs.datetime_utils import naive_utc_now, parse_time_range, to_utc_timestamp
+from libs.datetime_utils import naive_utc_now, parse_time_range, to_utc_timestamp, utc_now
+
+
+def test_utc_now(monkeypatch: pytest.MonkeyPatch):
+    expected = datetime.datetime(2026, 8, 26, 12, tzinfo=datetime.UTC)
+
+    def _now_func(tz: datetime.timezone | None) -> datetime.datetime:
+        return expected.astimezone(tz)
+
+    monkeypatch.setattr("libs.datetime_utils._now_func", _now_func)
+
+    assert utc_now() == expected
+    assert utc_now().tzinfo is datetime.UTC
 
 
 def test_naive_utc_now(monkeypatch: pytest.MonkeyPatch):

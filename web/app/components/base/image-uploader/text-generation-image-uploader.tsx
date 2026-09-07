@@ -45,7 +45,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disable
       <PopoverContent
         placement="top-start"
         sideOffset={0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} />

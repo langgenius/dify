@@ -17,6 +17,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.base import TypeBase
 from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -74,7 +75,7 @@ class TestNotionExtractorInitAndPublicMethods:
             "_get_access_token",
             classmethod(lambda cls, tenant_id, credential_id: (_ for _ in ()).throw(Exception("credential error"))),
         )
-        monkeypatch.setattr(notion_extractor.dify_config, "NOTION_INTEGRATION_TOKEN", "env-token", raising=False)
+        apply_config_overrides(monkeypatch, NOTION_INTEGRATION_TOKEN="env-token")
 
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
@@ -92,7 +93,7 @@ class TestNotionExtractorInitAndPublicMethods:
             "_get_access_token",
             classmethod(lambda cls, tenant_id, credential_id: (_ for _ in ()).throw(Exception("credential error"))),
         )
-        monkeypatch.setattr(notion_extractor.dify_config, "NOTION_INTEGRATION_TOKEN", None, raising=False)
+        apply_config_overrides(monkeypatch, NOTION_INTEGRATION_TOKEN=None)
 
         with pytest.raises(ValueError, match="Must specify `integration_token`"):
             notion_extractor.NotionExtractor(

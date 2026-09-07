@@ -194,6 +194,13 @@ def _create_service(
     )
 
 
+def _get_workflow_run(session_maker) -> WorkflowRun:
+    with session_maker() as session:
+        workflow_run = session.get(WorkflowRun, "00000000-0000-0000-0000-000000000012")
+    assert workflow_run is not None
+    return workflow_run
+
+
 def test_issue_upload_token_persists_token_without_technical_end_user(
     monkeypatch: pytest.MonkeyPatch,
     session_maker,
@@ -217,12 +224,7 @@ def test_validate_upload_token_returns_account_owner_and_record_file_link(sessio
     form_id, recipient_id, created_by = _create_waiting_form(session_maker, created_by_role=CreatorUserRole.ACCOUNT)
     token = _create_service(session_maker).issue_upload_token("form-token-1")
     workflow_run_repository = MagicMock()
-    workflow_run_repository.get_workflow_run_by_id.return_value = SimpleNamespace(
-        tenant_id="00000000-0000-0000-0000-000000000010",
-        app_id="00000000-0000-0000-0000-000000000011",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by=created_by,
-    )
+    workflow_run_repository.get_workflow_run_by_id.return_value = _get_workflow_run(session_maker)
 
     context = HumanInputFileUploadService(
         session_maker,
@@ -257,12 +259,7 @@ def test_validate_upload_token_returns_end_user_owner(session_maker) -> None:
     form_id, recipient_id, created_by = _create_waiting_form(session_maker, created_by_role=CreatorUserRole.END_USER)
     token = _create_service(session_maker).issue_upload_token("form-token-1")
     workflow_run_repository = MagicMock()
-    workflow_run_repository.get_workflow_run_by_id.return_value = SimpleNamespace(
-        tenant_id="00000000-0000-0000-0000-000000000010",
-        app_id="00000000-0000-0000-0000-000000000011",
-        created_by_role=CreatorUserRole.END_USER,
-        created_by=created_by,
-    )
+    workflow_run_repository.get_workflow_run_by_id.return_value = _get_workflow_run(session_maker)
 
     context = HumanInputFileUploadService(
         session_maker,

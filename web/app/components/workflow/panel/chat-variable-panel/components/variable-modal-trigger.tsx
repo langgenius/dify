@@ -42,7 +42,7 @@ const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave
         placement="left-start"
         sideOffset={8}
         alignOffset={showTip ? -278 : -48}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <VariableModal
           chatVar={chatVar}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { resolveE2EBrowser } from '../test-env'
 
 describe('resolveE2EBrowser', () => {

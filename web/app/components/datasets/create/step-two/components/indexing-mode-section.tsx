@@ -25,7 +25,7 @@ import {
   MultimodalRetrievalGuidanceLearnMore,
 } from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
 import Link from '@/next/link'
@@ -207,11 +207,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             className="mb-2"
           />
           <ModelSelector
-            readonly={isModelAndRetrievalConfigDisabled}
-            triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
-            defaultModel={embeddingModel}
-            modelList={embeddingModelList ?? []}
-            onSelect={onEmbeddingModelChange}
+            disabled={isModelAndRetrievalConfigDisabled}
+            value={embeddingModel}
+            models={embeddingModelList ?? []}
+            onValueChange={onEmbeddingModelChange}
           />
           {isModelAndRetrievalConfigDisabled && (
             <div className="mt-2 system-xs-medium text-text-tertiary">

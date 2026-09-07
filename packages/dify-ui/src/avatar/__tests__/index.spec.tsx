@@ -1,12 +1,24 @@
 import { render } from 'vitest-browser-react'
 import { Avatar } from '..'
 
+const avatarDataUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+
 function stubImageLoader() {
   const originalImage = window.Image
   const images: HTMLImageElement[] = []
 
   function TestImage(_width?: number, _height?: number): HTMLImageElement {
-    const image = document.createElement('img')
+    const image = {
+      complete: false,
+      crossOrigin: null,
+      naturalWidth: 0,
+      onerror: null,
+      onload: null,
+      referrerPolicy: '',
+      sizes: '',
+      src: '',
+      srcset: '',
+    } as unknown as HTMLImageElement
     images.push(image)
     return image
   }
@@ -51,11 +63,7 @@ describe('Avatar', () => {
 
       try {
         const screen = await render(
-          <Avatar
-            name="John"
-            avatar="https://example.com/avatar.jpg"
-            onLoadingStatusChange={onStatusChange}
-          />,
+          <Avatar name="John" avatar={avatarDataUrl} onLoadingStatusChange={onStatusChange} />,
         )
 
         await expect.element(screen.getByText('J')).toBeVisible()
@@ -63,7 +71,7 @@ describe('Avatar', () => {
           expect(onStatusChange).toHaveBeenCalledWith('loading')
         })
 
-        images[0]?.onload?.(new Event('load'))
+        images.at(-1)?.onload?.(new Event('load'))
 
         await vi.waitFor(() => {
           expect(onStatusChange).toHaveBeenCalledWith('loaded')

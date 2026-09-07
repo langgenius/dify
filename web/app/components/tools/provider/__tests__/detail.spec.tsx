@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
@@ -11,6 +11,11 @@ const render = (ui: ReactElement) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
     data: [{ provider: 'model-collection-id' }],
+  })
+  void queryClient.invalidateQueries({
+    queryKey: commonQueryKeys.modelProviderDetails,
+    exact: true,
+    refetchType: 'none',
   })
   return renderWithConsoleQuery(ui, { queryClient })
 }
@@ -584,6 +589,7 @@ describe('ProviderDetail', () => {
       await waitFor(() => {
         expect(mockSetShowModelModal).toHaveBeenCalled()
       })
+      expect(globalThis.fetch).not.toHaveBeenCalled()
     })
   })
 

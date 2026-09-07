@@ -27,6 +27,7 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
+from .think_tags import ThinkStreamState
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -54,7 +55,7 @@ class AgentMessageTransformer:
             conversation_id=conversation_id,
         )
 
-        text = ""
+        think_state = ThinkStreamState()
         files: list[File] = []
         json_list: list[dict | list] = []
 
@@ -125,10 +126,10 @@ class AgentMessageTransformer:
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                text += message.message.text
+                chunk = think_state.feed_text(message.message.text)
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
-                    chunk=message.message.text,
+                    chunk=chunk,
                     is_final=False,
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
@@ -149,8 +150,12 @@ class AgentMessageTransformer:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
-                text += stream_text
+                linked_file = self._file_from_link_message(message=message, tenant_id=tenant_id)
+                if linked_file is not None:
+                    files.append(linked_file)
+                yield from self._close_open_think(think_state=think_state, node_id=node_id)
+                stream_text = f"{'File' if linked_file is not None else 'Link'}: {message.message.text}\n"
+                think_state.feed_text(stream_text)
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
                     chunk=stream_text,
@@ -246,6 +251,8 @@ class AgentMessageTransformer:
                 else:
                     agent_logs.append(agent_log)
 
+                yield from self._close_open_think(think_state=think_state, node_id=node_id)
+
                 yield agent_log
 
         json_output: list[dict[str, Any] | list[Any]] = []
@@ -268,6 +275,8 @@ class AgentMessageTransformer:
         else:
             json_output.append({"data": []})
 
+        yield from self._close_open_think(think_state=think_state, node_id=node_id)
+
         yield StreamChunkEvent(
             selector=[node_id, "text"],
             chunk="",
@@ -285,7 +294,7 @@ class AgentMessageTransformer:
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
-                    "text": text,
+                    "text": think_state.text,
                     "usage": jsonable_encoder(llm_usage),
                     "files": ArrayFileSegment(value=files),
                     "json": json_output,
@@ -300,3 +309,54 @@ class AgentMessageTransformer:
                 llm_usage=llm_usage,
             )
         )
+
+    @staticmethod
+    def _close_open_think(*, think_state: ThinkStreamState, node_id: str) -> Generator[StreamChunkEvent, None, None]:
+        closed = think_state.close_if_open()
+        if closed is None:
+            return
+        yield StreamChunkEvent(
+            selector=[node_id, "text"],
+            chunk=closed,
+            is_final=False,
+        )
+
+    @staticmethod
+    def _file_from_link_message(*, message: ToolInvokeMessage, tenant_id: str) -> File | None:
+        if not isinstance(message.message, ToolInvokeMessage.TextMessage):
+            return None
+        meta = message.meta
+        if not isinstance(meta, Mapping):
+            return None
+
+        file_value = meta.get("file")
+        if isinstance(file_value, File):
+            return file_value
+
+        tool_file_id = meta.get("tool_file_id")
+        if isinstance(tool_file_id, str) and tool_file_id:
+            with Session(db.engine) as session:
+                tool_file = session.scalar(
+                    select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id)
+                )
+                if tool_file is None:
+                    raise ToolFileNotFoundError(tool_file_id)
+
+            return file_factory.build_from_mapping(
+                mapping={
+                    "tool_file_id": tool_file_id,
+                    "type": get_file_type_by_mime_type(tool_file.mimetype),
+                    "transfer_method": meta.get("transfer_method", FileTransferMethod.TOOL_FILE),
+                    "url": message.message.text,
+                },
+                tenant_id=tenant_id,
+                access_controller=_file_access_controller,
+            )
+
+        if isinstance(file_value, Mapping):
+            return file_factory.build_from_mapping(
+                mapping=dict(file_value),
+                tenant_id=tenant_id,
+                access_controller=_file_access_controller,
+            )
+        return None

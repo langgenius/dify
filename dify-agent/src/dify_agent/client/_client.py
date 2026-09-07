@@ -43,6 +43,7 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
     HomeSnapshotResponse,
     RUN_EVENT_ADAPTER,
+    RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
@@ -51,7 +52,6 @@ from dify_agent.protocol import (
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
-_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS = 90.0
 _function_tool_result_payload_key_cache: str | None = None
 
 
@@ -270,6 +270,7 @@ class Client:
     _base_url: str
     _timeout: float | httpx.Timeout
     _stream_timeout: float | httpx.Timeout | None
+    _binding_file_download_timeout: float | httpx.Timeout
     _headers: dict[str, str]
     _sync_http_client: httpx.Client | None
     _async_http_client: httpx.AsyncClient | None
@@ -284,6 +285,7 @@ class Client:
         base_url: str,
         timeout: float | httpx.Timeout = 30.0,
         stream_timeout: float | httpx.Timeout | None = 30.0,
+        binding_file_download_timeout: float | httpx.Timeout = 240.0,
         headers: dict[str, str] | None = None,
         sync_http_client: httpx.Client | None = None,
         async_http_client: httpx.AsyncClient | None = None,
@@ -291,6 +293,7 @@ class Client:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._stream_timeout = stream_timeout
+        self._binding_file_download_timeout = binding_file_download_timeout
         self._headers = dict(headers or {})
         self._sync_http_client = sync_http_client
         self._async_http_client = async_http_client
@@ -384,8 +387,8 @@ class Client:
     async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for ``run_id``.
 
-        Acceptance atomically persists the cancelled state. The process executing
-        the run observes that state and performs runner cleanup asynchronously.
+        Acceptance atomically persists cancellation intent. The process executing
+        the run publishes ``run_cancelled`` after runner cleanup completes.
         """
         request_model = request or CancelRunRequest()
         try:
@@ -416,6 +419,44 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"cancel_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, CancelRunResponse)
+
+    async def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Request cancellation and wait for its public terminal event."""
+        _ = await self.cancel_run(run_id, request)
+        resume_after = after
+        if after is not None and (await self.get_run(run_id)).status == "cancelled":
+            resume_after = None
+        async for event in self.stream_events(run_id, after=resume_after):
+            if isinstance(event, RunCancelledEvent):
+                return event
+            if event.type in _TERMINAL_EVENT_TYPES:
+                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
+
+    def cancel_run_and_wait_sync(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Synchronous variant of ``cancel_run_and_wait``."""
+        _ = self.cancel_run_sync(run_id, request)
+        resume_after = after
+        if after is not None and self.get_run_sync(run_id).status == "cancelled":
+            resume_after = None
+        for event in self.stream_events_sync(run_id, after=resume_after):
+            if isinstance(event, RunCancelledEvent):
+                return event
+            if event.type in _TERMINAL_EVENT_TYPES:
+                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
 
     async def get_run(self, run_id: str) -> RunStatusResponse:
         """Return the current status for ``run_id`` or raise a mapped client error."""
@@ -510,7 +551,7 @@ class Client:
             "download_binding_file",
             "/execution-bindings/files/download",
             request,
-            timeout=_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+            timeout=self._binding_file_download_timeout,
         )
         return _parse_model_response(response, BindingFileDownloadResponse)
 
@@ -519,7 +560,7 @@ class Client:
             "download_binding_file_sync",
             "/execution-bindings/files/download",
             request,
-            timeout=_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+            timeout=self._binding_file_download_timeout,
         )
         return _parse_model_response(response, BindingFileDownloadResponse)
 

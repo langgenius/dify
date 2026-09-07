@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { AgentDetailLayout } from '../layout'
 
 const mockReplace = vi.hoisted(() => vi.fn())
+const mockPathname = vi.hoisted(() => ({ value: '/agents/agent-1/configure' }))
 const mockAgentQuery = vi.hoisted(() => ({
   data: {
     name: 'Agent',
@@ -18,6 +20,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => mockPathname.value,
   useRouter: () => ({
     back: vi.fn(),
     forward: vi.fn(),
@@ -31,6 +34,8 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
+
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -51,6 +56,24 @@ describe('AgentDetailLayout', () => {
       name: 'Agent',
     }
     mockAgentQuery.error = null
+    mockPathname.value = '/agents/agent-1/configure'
+  })
+
+  it.each([
+    ['configure', 'agentV2.agentDetail.sections.configure'],
+    ['access', 'agentV2.agentDetail.sections.access'],
+    ['logs', 'agentV2.agentDetail.sections.logs'],
+    ['monitoring', 'agentV2.agentDetail.sections.monitoring'],
+  ])('identifies the %s section in the document title', (section, sectionTitle) => {
+    mockPathname.value = `/agents/agent-1/${section}`
+
+    render(
+      <AgentDetailLayout agentId="agent-1">
+        <div>Agent detail content</div>
+      </AgentDetailLayout>,
+    )
+
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith(`${sectionTitle} · Agent`)
   })
 
   it('should render detail content without owning navigation landmarks', () => {

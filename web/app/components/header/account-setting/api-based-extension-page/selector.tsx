@@ -1,5 +1,11 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
@@ -81,63 +87,66 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
             </button>
           )}
         />
-        <PopoverContent
-          placement="bottom-start"
-          sideOffset={4}
-          className="w-[calc(100%-32px)] max-w-xl"
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-        >
-          <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
-            <div className="p-1">
-              <div className="flex items-center justify-between px-3 pt-2 pb-1">
-                <div className="text-xs font-medium text-text-tertiary">
-                  {t(($) => $['apiBasedExtension.selector.title'], { ns: 'common' })}
+        <PopoverPortal>
+          <PopoverPositioner
+            placement="bottom-start"
+            sideOffset={4}
+            className="w-[calc(100%-32px)] max-w-xl"
+          >
+            <PopoverPopup className="rounded-xl border-0 bg-transparent p-0 shadow-none backdrop-blur-none">
+              <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
+                <div className="p-1">
+                  <div className="flex items-center justify-between px-3 pt-2 pb-1">
+                    <div className="text-xs font-medium text-text-tertiary">
+                      {t(($) => $['apiBasedExtension.selector.title'], { ns: 'common' })}
+                    </div>
+                    <button
+                      type="button"
+                      className="flex cursor-pointer items-center border-none bg-transparent p-0 text-xs text-text-accent"
+                      onClick={() => {
+                        setOpen(false)
+                        setSettingsDestination('custom-endpoint')
+                      }}
+                    >
+                      {t(($) => $['apiBasedExtension.selector.manage'], { ns: 'common' })}
+                      <span
+                        className="ml-0.5 i-custom-vender-line-arrows-arrow-up-right size-3"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </div>
+                  <div className="max-h-62.5 overflow-y-auto">
+                    {apiBasedExtensions.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        className="w-full cursor-pointer rounded-md border-none bg-transparent px-3 py-1.5 text-left hover:bg-state-base-hover"
+                        onClick={() => handleSelect(item.id)}
+                      >
+                        <div className="text-sm text-text-primary">{item.name}</div>
+                        <div className="text-xs text-text-tertiary">{item.api_endpoint}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="flex cursor-pointer items-center border-none bg-transparent p-0 text-xs text-text-accent"
-                  onClick={() => {
-                    setOpen(false)
-                    setSettingsDestination('custom-endpoint')
-                  }}
-                >
-                  {t(($) => $['apiBasedExtension.selector.manage'], { ns: 'common' })}
-                  <span
-                    className="ml-0.5 i-custom-vender-line-arrows-arrow-up-right size-3"
-                    aria-hidden="true"
-                  />
-                </button>
-              </div>
-              <div className="max-h-62.5 overflow-y-auto">
-                {apiBasedExtensions.map((item) => (
+                <div className="h-px bg-divider-regular" />
+                <div className="p-1">
                   <button
                     type="button"
-                    key={item.id}
-                    className="w-full cursor-pointer rounded-md border-none bg-transparent px-3 py-1.5 text-left hover:bg-state-base-hover"
-                    onClick={() => handleSelect(item.id)}
+                    className="flex h-8 w-full cursor-pointer items-center border-none bg-transparent px-3 text-left text-sm text-text-accent"
+                    onClick={() => {
+                      setOpen(false)
+                      setAddModalOpen(true)
+                    }}
                   >
-                    <div className="text-sm text-text-primary">{item.name}</div>
-                    <div className="text-xs text-text-tertiary">{item.api_endpoint}</div>
+                    <span className="mr-2 i-ri-add-line size-4" aria-hidden="true" />
+                    {t(($) => $['operation.add'], { ns: 'common' })}
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
-            <div className="h-px bg-divider-regular" />
-            <div className="p-1">
-              <button
-                type="button"
-                className="flex h-8 w-full cursor-pointer items-center border-none bg-transparent px-3 text-left text-sm text-text-accent"
-                onClick={() => {
-                  setOpen(false)
-                  setAddModalOpen(true)
-                }}
-              >
-                <span className="mr-2 i-ri-add-line size-4" aria-hidden="true" />
-                {t(($) => $['operation.add'], { ns: 'common' })}
-              </button>
-            </div>
-          </div>
-        </PopoverContent>
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
       </Popover>
       {addModalOpen && (
         <ApiBasedExtensionModal

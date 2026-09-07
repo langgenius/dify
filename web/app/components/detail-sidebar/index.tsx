@@ -31,10 +31,8 @@ function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: str
   return (
     <HelpMenu
       triggerIcon={secondarySidebarHelpTriggerIcon}
-      triggerClassName={cn(
-        'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
-        triggerClassName,
-      )}
+      triggerSize="lg"
+      triggerClassName={triggerClassName}
     />
   )
 }
@@ -137,10 +135,12 @@ export function DetailSidebarFrame({
             : 'overflow-hidden rounded-lg bg-components-panel-bg',
           detailNavigationVisibleExpanded ? 'w-60' : 'w-14',
         )}
-        onMouseEnter={!detailNavigationExpanded ? openDetailNavigationHoverPreview : undefined}
         onMouseLeave={!detailNavigationExpanded ? closeDetailNavigationHoverPreview : undefined}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          onMouseEnter={!detailNavigationExpanded ? openDetailNavigationHoverPreview : undefined}
+        >
           {renderTop({
             expand: detailNavigationVisibleExpanded,
             onToggle: handleToggleDetailNavigation,

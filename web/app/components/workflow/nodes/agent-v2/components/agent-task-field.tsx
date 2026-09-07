@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
+import { useDocLink } from '@/context/i18n'
 import { useWorkflowVariableType } from '../../../hooks/use-workflow-variables'
 import { BlockEnum } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -36,6 +37,7 @@ function AgentTaskToolbar({ taskLength, onInsert }: { taskLength: number; onInse
         <button
           type="button"
           className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          onMouseDown={(event) => event.preventDefault()}
           onClick={handleInsert}
         >
           <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
@@ -67,6 +69,7 @@ export function AgentTaskField({
   onEditOutput?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const getVarType = useWorkflowVariableType()
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean(false)
@@ -94,11 +97,17 @@ export function AgentTaskField({
         <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
         </FieldLabel>
-        <Infotip
-          aria-label={t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
-          popupClassName="whitespace-pre-line"
-        >
-          {t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
+        <Infotip aria-label={t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}>
+          <span>{t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}</span>{' '}
+          <a
+            href={docLink('/use-dify/nodes/agent#give-it-a-task')}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            {t(($) => $[`${i18nPrefix}.task.learnMore`], { ns: 'workflow' })}
+            <span aria-hidden className="i-ri-external-link-line size-3" />
+          </a>
         </Infotip>
       </div>
       <div

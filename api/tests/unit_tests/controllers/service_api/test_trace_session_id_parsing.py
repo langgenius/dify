@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +7,8 @@ from werkzeug.exceptions import BadRequest
 from controllers.service_api.app import completion as completion_module
 from controllers.service_api.app import workflow as workflow_module
 from core.helper.trace_id_helper import get_trace_session_id
-from models.model import AppMode
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
 
 
 class _Request:
@@ -40,12 +40,17 @@ def test_trace_session_id_invalid_highest_priority_raises_bad_request():
         get_trace_session_id(req)
 
 
-def _app(mode: AppMode) -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode=mode, tenant_id="tenant-1")
+def _app(mode: AppMode) -> App:
+    return App(id="app-1", mode=mode, tenant_id="tenant-1")
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="user-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="user-1",
+        tenant_id="tenant-1",
+        type=EndUserType.SERVICE_API,
+        session_id="session-1",
+    )
 
 
 def _assert_generate_trace_session_id(mock_generate_service: MagicMock, expected: str) -> None:

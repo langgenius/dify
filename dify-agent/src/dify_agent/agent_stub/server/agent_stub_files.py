@@ -103,7 +103,8 @@ class DifyApiAgentStubFileRequestHandler:
 
     The upload path calls ``/inner/api/agent/files/upload-request`` and injects the
     authenticated execution context's ``tenant_id``, ``user_id``, ``user_from``, and optional
-    ``conversation_id`` along with the requested filename and mimetype. The download path calls
+    ``conversation_id`` along with the requested filename, mimetype, and configured upload-size
+    limit. The download path calls
     ``/inner/api/agent/files/download-request`` and injects ``tenant_id``,
     ``user_id``, ``user_from``, and ``invoke_from`` plus the validated public
     file mapping.
@@ -119,6 +120,7 @@ class DifyApiAgentStubFileRequestHandler:
     inner_api_url: str
     inner_api_key: str
     sandbox_files_base_url: str
+    max_upload_size_bytes: int
     timeout: httpx.Timeout | float = 30.0
 
     async def create_upload_request(
@@ -147,6 +149,7 @@ class DifyApiAgentStubFileRequestHandler:
             "filename": request.filename,
             "mimetype": request.mimetype,
             "conversation_id": execution_context.conversation_id,
+            "max_size": self.max_upload_size_bytes,
         }
         data = await self._post_inner_api("/inner/api/agent/files/upload-request", payload)
         upload_uri = data.get("upload_uri")

@@ -1,6 +1,6 @@
-import type { SuiteAPI, TestAPI } from 'vitest'
+import type { SuiteAPI, TestAPI } from 'vite-plus/test'
 import type { DifyEdition, E2ECapabilities } from '../setup/env.js'
-import { describe, it } from 'vitest'
+import { describe, it } from 'vite-plus/test'
 
 // Explicit casts bridge the ChainableFunction vs SuiteAPI/TestAPI
 // incompatibility introduced in vite-plus-test@0.1.22 (TS2322 / TS4058).

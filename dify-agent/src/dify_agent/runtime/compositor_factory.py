@@ -29,7 +29,7 @@ snapshots.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai.messages import UserContent
 
@@ -43,10 +43,9 @@ from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.configs import DifyPluginToolsLayerConfig
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
-from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
@@ -79,7 +78,6 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
         LayerProvider.from_layer_type(DifyConfigLayer),
-        LayerProvider.from_layer_type(DifyDriveLayer),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,
             create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
@@ -97,7 +95,14 @@ def create_default_layer_providers(
                 agent_stub_token_factory=agent_stub_token_factory,
             ),
         ),
-        LayerProvider.from_layer_type(DifyPluginLLMLayer),
+        LayerProvider.from_factory(
+            layer_type=DifyPluginLLMLayer,
+            create=lambda config: DifyPluginLLMLayer.from_config_with_settings(
+                DifyPluginLLMLayerConfig.model_validate(config),
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
+            ),
+        ),
         LayerProvider.from_factory(
             layer_type=DifyPluginToolsLayer,
             create=lambda config: DifyPluginToolsLayer.from_config_with_settings(
@@ -159,21 +164,18 @@ def build_pydantic_ai_compositor(
     selected provider set explicitly so provider defaulting stays at outer runtime
     boundaries rather than being duplicated here.
     """
-    return cast(
-        Compositor[
-            PydanticAIPrompt[object],
-            PydanticAITool[object],
-            AllPromptTypes,
-            AllToolTypes,
-            UserContent,
-            AllUserPromptTypes,
-        ],
-        Compositor.from_config(
-            config,
-            providers=providers,
-            node_providers=node_providers,
-            **PYDANTIC_AI_TRANSFORMERS,  # pyright: ignore[reportArgumentType]
-        ),
+    return Compositor[
+        PydanticAIPrompt[object],
+        PydanticAITool[object],
+        AllPromptTypes,
+        AllToolTypes,
+        UserContent,
+        AllUserPromptTypes,
+    ].from_config(
+        config,
+        providers=providers,
+        node_providers=node_providers,
+        **PYDANTIC_AI_TRANSFORMERS,
     )
 
 

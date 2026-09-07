@@ -1,14 +1,14 @@
 from flask_restx import Resource
-from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
-from extensions.ext_database import db
-from models.account import TenantStatus
-from models.model import App, Site
+from extensions.ext_application_services import application_services
+from libs.helper import dump_response
+from models.model import App
+from services.app_definition_query_service import AppDefinitionUnavailableError
 
 register_response_schema_models(service_api_ns, SiteResponse)
 
@@ -49,13 +49,9 @@ class AppSiteApi(Resource):
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
+        try:
+            configuration = application_services().app_definitions.get_site_configuration(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise Forbidden() from None
 
-        if not site:
-            raise Forbidden()
-
-        assert app_model.tenant
-        if app_model.tenant.status == TenantStatus.ARCHIVE:
-            raise Forbidden()
-
-        return SiteResponse.model_validate(site).model_dump(mode="json")
+        return dump_response(SiteResponse, configuration)

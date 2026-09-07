@@ -1,6 +1,6 @@
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CommentPreview from './comment-preview'
 
 type UserProfile = NonNullable<WorkflowCommentList['created_by_account']>

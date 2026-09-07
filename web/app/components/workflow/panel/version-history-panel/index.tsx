@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppModeEnum } from '@/types/app'
 import type { VersionHistory } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -44,6 +45,7 @@ const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
+  appMode?: AppModeEnum
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
   restoreVersionUrl: (versionId: string) => string
@@ -52,6 +54,7 @@ export type VersionHistoryPanelProps = {
 }
 
 export const VersionHistoryPanel = ({
+  appMode,
   getVersionListUrl,
   deleteVersionUrl,
   restoreVersionUrl,
@@ -323,6 +326,9 @@ export const VersionHistoryPanel = ({
       const { id, ...rest } = params
       await updateWorkflow(
         {
+          ...(configsMap?.flowType === FlowType.appFlow && configsMap.flowId
+            ? { appId: configsMap.flowId, appMode }
+            : {}),
           url: updateVersionUrl?.(id || '') || '',
           ...rest,
         },
@@ -347,6 +353,7 @@ export const VersionHistoryPanel = ({
       )
     },
     [
+      appMode,
       configsMap?.flowId,
       configsMap?.flowType,
       invalidateAppWorkflow,

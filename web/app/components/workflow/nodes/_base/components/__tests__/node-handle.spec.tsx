@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
@@ -64,7 +65,12 @@ vi.mock('reactflow', () => ({
       data-testid={`handle-${id ?? 'unknown'}`}
       data-handleid={id}
       className={className}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onClick?.()
+      }}
     >
       {children}
     </div>
@@ -205,6 +211,16 @@ describe('node-handle', () => {
 
   // Target-side tests cover selector visibility, connection locking, and status rendering.
   describe('NodeTargetHandle', () => {
+    it('should show the start tab when adding a node before the target node', async () => {
+      const user = userEvent.setup()
+
+      renderTargetHandle()
+
+      await user.click(screen.getByTestId('handle-target-handle'))
+
+      expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
+    })
+
     it('should toggle the target add trigger', () => {
       renderTargetHandle()
 
@@ -255,6 +271,16 @@ describe('node-handle', () => {
 
   // Source-side tests cover selector opening paths, previous-node selection, and status styling.
   describe('NodeSourceHandle', () => {
+    it('should show the start tab when adding a node after the source node', async () => {
+      const user = userEvent.setup()
+
+      renderSourceHandle()
+
+      await user.click(screen.getByTestId('handle-source-handle'))
+
+      expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
+    })
+
     it('should toggle the source add trigger', () => {
       renderSourceHandle()
 

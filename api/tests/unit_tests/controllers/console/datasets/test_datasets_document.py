@@ -28,10 +28,13 @@ from controllers.console.datasets.datasets_document import (
     DocumentProcessingApi,
     DocumentRecoverApi,
     DocumentRenameApi,
+    DocumentRenamePayload,
     DocumentResource,
     DocumentRetryApi,
+    DocumentRetryPayload,
     DocumentStatusApi,
     DocumentSummaryStatusApi,
+    GenerateSummaryPayload,
     GetProcessRuleApi,
     WebsiteDocumentSyncApi,
 )
@@ -48,11 +51,11 @@ from models.dataset import Dataset, DatasetPermissionEnum
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_ref_service import DatasetRef, DocumentRef
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def make_serializable_document(**overrides):
@@ -502,7 +505,7 @@ class TestDatasetInitApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
                 return_value=None,
@@ -513,10 +516,8 @@ class TestDatasetInitApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
-            ) as replace_whitelist,
-            patch(
-                "controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task"
-            ) as initialize_rbac_task,
+            ),
+            patch("controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task.delay"),
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"
@@ -525,13 +526,6 @@ class TestDatasetInitApi:
         assert response["documents"][0]["doc_metadata"] == []
         assert response["batch"] == "batch-init"
         assert created_dataset.permission == DatasetPermissionEnum.ALL_TEAM
-        replace_whitelist.assert_called_once_with(
-            tenant_id,
-            user.id,
-            created_dataset.id,
-            ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-        )
-        initialize_rbac_task.delay.assert_called_once_with(tenant_id, user.id, dataset_id=created_dataset.id)
 
 
 class TestDocumentResource:
@@ -567,7 +561,7 @@ class TestDocumentResource:
         api = DocumentResource()
         session = MagicMock()
         with (
-            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
                 return_value=dataset,
@@ -829,16 +823,16 @@ class TestDocumentRetryApi:
         method = unwrap(api.post)
         user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1"]}
+        req_data = DocumentRetryPayload.model_validate(payload)
         doc = MagicMock(id="doc-1", indexing_status="indexing")
         session = MagicMock()
         session.scalars.return_value.all.return_value = [doc]
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=True),
             patch("controllers.console.datasets.datasets_document.DocumentService.retry_document") as retry_mock,
         ):
-            resp, status = method(api, session, tenant_id, user, "ds-1")
+            resp, status = method(api, req_data, session, tenant_id, user, "ds-1")
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [], session)
 
@@ -847,18 +841,18 @@ class TestDocumentRetryApi:
         method = unwrap(api.post)
         user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1"]}
+        req_data = DocumentRetryPayload.model_validate(payload)
         document = MagicMock(id="doc-1", indexing_status=IndexingStatus.INDEXING, archived=False)
         session = MagicMock()
         session.scalars.return_value.all.return_value = [document]
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
         ):
-            response, status = method(api, session, tenant_id, user, "ds-1")
+            response, status = method(api, req_data, session, tenant_id, user, "ds-1")
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [document], session)
 
@@ -869,20 +863,20 @@ class TestDocumentRetryApi:
         method = unwrap(api.post)
         user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1", "doc-2"]}
+        req_data = DocumentRetryPayload.model_validate(payload)
         first_document = MagicMock(id="doc-1", indexing_status=IndexingStatus.ERROR, archived=False)
         second_document = MagicMock(id="doc-2", indexing_status=IndexingStatus.ERROR, archived=False)
         session = MagicMock()
         session.scalars.return_value.all.return_value = [first_document, second_document]
 
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
         ):
-            response, status = method(api, session, tenant_id, user, "ds-1")
+            response, status = method(api, req_data, session, tenant_id, user, "ds-1")
 
         assert status == 204
         statement = session.scalars.call_args.args[0]
@@ -900,17 +894,17 @@ class TestDocumentRetryApi:
         method = unwrap(api.post)
         user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1"]}
+        req_data = DocumentRetryPayload.model_validate(payload)
         document = MagicMock(id="doc-1", indexing_status=IndexingStatus.COMPLETED, archived=False)
         session = MagicMock()
         session.scalars.return_value.all.return_value = [document]
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
         ):
-            response, status = method(api, session, tenant_id, user, "ds-1")
+            response, status = method(api, req_data, session, tenant_id, user, "ds-1")
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [], session)
 
@@ -920,10 +914,10 @@ class TestDocumentRetryApi:
         user, tenant_id = patch_tenant
         session = MagicMock()
         payload = {"document_ids": ["doc-1"]}
+        req_data = DocumentRetryPayload.model_validate(payload)
 
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
                 return_value=None,
@@ -931,7 +925,7 @@ class TestDocumentRetryApi:
             patch("controllers.console.datasets.datasets_document.DocumentService.retry_document") as retry_document,
         ):
             with pytest.raises(NotFound):
-                method(api, session, tenant_id, user, "foreign-dataset")
+                method(api, req_data, session, tenant_id, user, "foreign-dataset")
 
         session.scalars.assert_not_called()
         bypass_knowledge_rate_limit.assert_not_called()
@@ -1046,9 +1040,9 @@ class TestDocumentGenerateSummaryApi:
         user, _ = patch_tenant
         dataset = MagicMock(indexing_technique="high_quality", summary_index_setting={"enable": True})
         payload = {"document_list": ["doc-1", "doc-2"]}
+        req_data = GenerateSummaryPayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
@@ -1056,7 +1050,7 @@ class TestDocumentGenerateSummaryApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), user, "ds-1")
+                method(api, req_data, MagicMock(), user, "ds-1")
 
     def test_generate_not_enabled(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
@@ -1064,13 +1058,13 @@ class TestDocumentGenerateSummaryApi:
         user, _ = patch_tenant
         dataset = MagicMock(indexing_technique="high_quality", summary_index_setting={"enable": False})
         payload = {"document_list": ["doc-1"]}
+        req_data = GenerateSummaryPayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
         ):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), user, "ds-1")
+                method(api, req_data, MagicMock(), user, "ds-1")
 
     def test_generate_summary_success_with_qa_skip(self, app: Flask, patch_tenant, patch_permission):
         api = DocumentGenerateSummaryApi()
@@ -1080,9 +1074,9 @@ class TestDocumentGenerateSummaryApi:
         doc1 = MagicMock(id="doc-1", doc_form=IndexStructureType.QA_INDEX)
         doc2 = MagicMock(id="doc-2", doc_form=IndexStructureType.PARAGRAPH_INDEX)
         payload = {"document_list": ["doc-1", "doc-2"]}
+        req_data = GenerateSummaryPayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
@@ -1092,7 +1086,7 @@ class TestDocumentGenerateSummaryApi:
                 "controllers.console.datasets.datasets_document.generate_summary_index_task.delay", return_value=None
             ),
         ):
-            response, status = method(api, MagicMock(), user, "ds-1")
+            response, status = method(api, req_data, MagicMock(), user, "ds-1")
         assert status == 200
 
 
@@ -1420,12 +1414,12 @@ class TestDocumentRenameApi:
         method = unwrap(api.post)
         user, _ = patch_tenant
         payload = {"name": "Renamed Document"}
+        req_data = DocumentRenamePayload.model_validate(payload)
         renamed_document = make_document(id="doc-renamed", name="Renamed Document")
         session = MagicMock()
         session.scalar.return_value = 0
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=make_dataset()
             ),
@@ -1438,7 +1432,7 @@ class TestDocumentRenameApi:
                 return_value=renamed_document,
             ),
         ):
-            response = method(api, session, user, "ds-1", "doc-1")
+            response = method(api, req_data, session, user, "ds-1", "doc-1")
         assert response["id"] == "doc-renamed"
         assert response["name"] == "Renamed Document"
         assert response["data_source_info"] == {}
@@ -1484,13 +1478,13 @@ class TestDocumentGenerateSummaryApiSuccess:
         user, _ = patch_tenant
         dataset = MagicMock(indexing_technique="economy", summary_index_setting={"enable": True})
         payload = {"document_list": ["doc-1"]}
+        req_data = GenerateSummaryPayload.model_validate(payload)
         with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+            app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
         ):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), user, "ds-1")
+                method(api, req_data, MagicMock(), user, "ds-1")
 
 
 class TestDocumentProcessingApiResume:

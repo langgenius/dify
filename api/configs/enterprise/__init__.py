@@ -83,11 +83,6 @@ class EnterpriseTelemetryConfig(BaseSettings):
         default=False,
     )
 
-    ENTERPRISE_SERVICE_NAME: str = Field(
-        description="Service name for OTEL resource.",
-        default="dify",
-    )
-
     ENTERPRISE_OTEL_SAMPLING_RATE: float = Field(
         description="Sampling rate for enterprise traces (0.0 to 1.0, default 1.0 = 100%).",
         default=1.0,

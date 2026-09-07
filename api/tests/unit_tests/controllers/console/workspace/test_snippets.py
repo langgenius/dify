@@ -354,14 +354,40 @@ def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.
     api = snippets_module.CustomizedSnippetExportApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?include_secret=true"):
+    with app.test_request_context(
+        "/workspaces/current/customized-snippets/snippet-1/export?include_secret=true&workflow_id=workflow-1"
+    ):
         response = handler(api, "tenant-1", snippet_id="snippet-1")
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == "version: 0.1.0\nkind: snippet\n"
     assert response.headers["Content-Type"] == "application/x-yaml"
     assert "Snippet%20One.snippet" in response.headers["Content-Disposition"]
-    export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True)
+    export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True, workflow_id="workflow-1")
+
+
+def test_export_snippet_raises_not_found_for_missing_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    snippet = _snippet(name="Snippet One")
+
+    monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+    monkeypatch.setattr(
+        snippets_module,
+        "SnippetDslService",
+        Mock(
+            return_value=SimpleNamespace(
+                export_snippet_dsl=Mock(side_effect=ValueError("Missing published workflow workflow-1"))
+            )
+        ),
+    )
+    monkeypatch.setattr(snippets_module, "Session", _SessionContext)
+    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
+
+    api = snippets_module.CustomizedSnippetExportApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
+        with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
+            handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeypatch: pytest.MonkeyPatch):

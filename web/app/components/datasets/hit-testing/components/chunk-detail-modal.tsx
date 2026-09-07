@@ -2,7 +2,8 @@
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,11 +65,19 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
           isParentChildRetrieval ? 'w-300 max-w-none! min-w-300!' : 'w-200 max-w-none! min-w-200!',
         )}
       >
-        <DialogCloseButton
-          onClick={(e) => {
-            e.stopPropagation()
-            onHide()
-          }}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}

@@ -10,6 +10,7 @@ from shellctl.client import sdk as shellctl_sdk
 from shellctl.shared import (
     DEFAULT_TERMINATE_GRACE_SECONDS,
     HealthResponse,
+    JobMode,
     JobStatusName,
 )
 
@@ -29,12 +30,14 @@ class ForcedDeleteKwargs(TypedDict, total=False):
                 cwd="/tmp",
                 env={"HELLO": "world"},
                 timeout=12,
+                mode=JobMode.STDIO,
             ),
             "/v1/jobs/run",
             {
                 "script": "printf ready\\n",
                 "cwd": "/tmp",
                 "env": {"HELLO": "world"},
+                "mode": "stdio",
                 "timeout": 12.0,
                 "output_limit": 4096,
                 "idle_flush_seconds": 0.25,

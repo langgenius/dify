@@ -40,6 +40,7 @@ from models import (
     TraceAppConfig,
     WorkflowSchedulePlan,
 )
+from models.agent import WorkflowAgentNodeBinding
 from models.tools import WorkflowToolProvider
 from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.web import PinnedConversation, SavedMessage
@@ -70,6 +71,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_recommended_apps(tenant_id, app_id)
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
+        _delete_workflow_agent_node_bindings(tenant_id, app_id)
         _delete_app_workflows(tenant_id, app_id)
         _delete_app_workflow_runs(tenant_id, app_id)
         _delete_app_workflow_node_executions(tenant_id, app_id)
@@ -260,6 +262,17 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
         del_workflow,
         "workflow",
     )
+
+
+def _delete_workflow_agent_node_bindings(tenant_id: str, app_id: str) -> None:
+    with session_factory.create_session() as session:
+        session.execute(
+            delete(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                WorkflowAgentNodeBinding.app_id == app_id,
+            )
+        )
+        session.commit()
 
 
 def _delete_app_workflow_runs(tenant_id: str, app_id: str):

@@ -61,7 +61,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-98 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
           {files?.length > 1 && (

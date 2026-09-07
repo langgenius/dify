@@ -301,7 +301,11 @@ class RagPipelineService:
         return workflow
 
     def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
-        """Fetch a published workflow snapshot by ID for restore operations."""
+        """Fetch and lock a published Workflow snapshot for restoration.
+
+        The source lock is held until the service transaction ends, preventing
+        concurrent deletion while restore copies its Workflow snapshot fields.
+        """
         workflow = self._session.scalar(
             select(Workflow)
             .where(
@@ -310,6 +314,7 @@ class RagPipelineService:
                 Workflow.id == workflow_id,
             )
             .limit(1)
+            .with_for_update()
         )
         if workflow and workflow.version == Workflow.VERSION_DRAFT:
             raise IsDraftWorkflowError("source workflow must be published")
@@ -419,7 +424,8 @@ class RagPipelineService:
 
         Pipelines reuse the shared draft-restore field copy helper, but still own
         the pipeline-specific flush/link step that wires a newly created draft
-        back onto ``pipeline.workflow_id``.
+        back onto ``pipeline.workflow_id``. The source version remains locked
+        through snapshot-field copy and commit.
         """
         source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
         if not source_workflow:

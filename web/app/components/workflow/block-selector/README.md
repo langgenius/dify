@@ -2,7 +2,7 @@
 
 ## Public contract
 
-`index.tsx` is the only public component entry. It exports `BlockSelectorProps` and defaults to `BlockSelector`. There is no forwarding entry file or compatibility alias.
+`index.tsx` is the canonical entry for the main `BlockSelector` component and its `BlockSelectorProps`. Specialized selectors and shared contracts remain owned by their existing colocated modules; do not add forwarding entry files or compatibility aliases.
 
 The component owns controlled or uncontrolled open state, disabled behavior, the modal popover, initial focus, Escape dismissal, focus return, and selection-driven close. Canvas subscriptions and available-item resolution live in the mounted popup content so a closed selector does not subscribe to workflow state.
 
@@ -11,25 +11,6 @@ The component owns controlled or uncontrolled open state, disabled behavior, the
 Positioning uses the Dify UI popover API directly. Prefer `placement` alone. `sideOffset` and `alignOffset` are escape hatches for a call site with a verified geometric constraint; the selector does not translate custom offset shapes.
 
 Standalone selectors must declare `standalonePanel`. Availability props such as `noBlocks` only determine which tabs exist and must not change the layout mode implicitly.
-
-## Internal Modules
-
-- `index`: Public `BlockSelector` entry, popover lifecycle, trigger contract, focus management, and workflow-state adaptation.
-- `tabs`: Tab order, one-session filter state, and panel routing.
-- `tool-panel` and `tool-browser`: Installed-tool query adaptation and the complete tool browsing surface.
-- `blocks`, `data-sources`, and `all-start-blocks`: Domain panels for workflow nodes, data sources, and entry nodes.
-- `snippets`: Snippet filtering, insertion, list rows, and preview content.
-- `tool`, `trigger-plugin`, and `marketplace-plugin`: Row and list modules for installed and Marketplace integrations.
-- `featured-tools`, `featured-triggers`, and `rag-tool-recommendations`: Recommendation sections owned by this selector.
-- `hooks`, `storage`, `tool-list-data`, and `types`: Selector-specific state and data contracts; these are not public compatibility entrypoints.
-
-## External Modules
-
-- `app/components/plugins/marketplace`: Marketplace queries, search controls, categories, and URL construction.
-- `app/components/tools`: Installed tool contracts, permissions, and custom-tool creation.
-- `app/components/workflow`: Workflow node contracts, stores, node metadata, and insertion callbacks.
-- `features/system-features`: Marketplace feature availability.
-- `service/use-plugins`, `service/use-tools`, and `service/use-triggers`: Remote recommendation and installed-provider queries.
 
 ## Ownership
 

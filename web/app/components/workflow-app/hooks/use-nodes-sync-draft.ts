@@ -23,9 +23,13 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
+
+const shouldSkipDraftSync = (appId: string | undefined, isWorkflowDataLoaded: boolean) =>
+  !appId || !isWorkflowDataLoaded || isAppDeletingOrDeleted(appId)
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
@@ -62,7 +66,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
       workflowStore.getState()
 
-    if (!appId || !isWorkflowDataLoaded) return null
+    if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
     const features = featuresStore!.getState().features
     const producedNodes = produce(nodes, (draft) => {
@@ -142,6 +146,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
+      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+        callback?.onSettled?.()
+        return null
+      }
 
       if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
@@ -176,6 +185,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
       } catch (error: unknown) {
+        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+        if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+
         const responseError = error as {
           bodyUsed?: boolean
           json?: () => Promise<{ code?: string }>
@@ -206,6 +218,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
+      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+        callback?.onSettled?.()
+        return null
+      }
 
       const shouldRequestLeader =
         isCollaborationEnabled &&
@@ -232,7 +249,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSuccess?.()
         return result
       } catch {
-        callback?.onError?.()
+        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+        if (!shouldSkipDraftSync(appId, isWorkflowDataLoaded)) callback?.onError?.()
         return null
       } finally {
         callback?.onSettled?.()

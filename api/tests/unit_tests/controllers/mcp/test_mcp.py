@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import types
 from collections.abc import Iterator
 from inspect import unwrap
@@ -14,7 +15,9 @@ from pydantic import ValidationError
 
 import controllers.mcp.mcp as module
 from models.engine import db
-from models.model import EndUser
+from models.enums import EndUserType
+from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
+from models.workflow import Workflow, WorkflowType
 
 
 @pytest.fixture
@@ -24,7 +27,15 @@ def app() -> Iterator[Flask]:
     db.init_app(app)
 
     with app.app_context():
-        EndUser.__table__.create(db.engine)
+        for table in (
+            App.__table__,
+            AppAnnotationSetting.__table__,
+            AppMCPServer.__table__,
+            AppModelConfig.__table__,
+            EndUser.__table__,
+            Workflow.__table__,
+        ):
+            table.create(db.engine)
         yield app
 
 
@@ -51,34 +62,79 @@ _APP_ID = str(uuid4())
 _SERVER_ID = str(uuid4())
 
 
-class DummyServer:
-    def __init__(self, status, app_id=_APP_ID, tenant_id=_TENANT_ID, server_id=_SERVER_ID):
-        self.status = status
-        self.app_id = app_id
-        self.tenant_id = tenant_id
-        self.id = server_id
-        self.description = "Test server"
-        self.parameters_dict = {}
+def _server(status: module.AppMCPServerStatus | str) -> AppMCPServer:
+    server = AppMCPServer(
+        tenant_id=_TENANT_ID,
+        app_id=_APP_ID,
+        name="Test server",
+        description="Test server",
+        server_code="server-1",
+        status=status,
+        parameters="{}",
+    )
+    server.id = _SERVER_ID
+    return server
 
 
-class DummyApp:
-    def __init__(self, mode, workflow=None, app_model_config=None):
-        self.id = _APP_ID
-        self.tenant_id = _TENANT_ID
-        self.name = "test_app"
-        self.mode = mode
-        self.workflow = workflow
-        self.app_model_config = app_model_config
+def _app(
+    mode: module.AppMode,
+    *,
+    workflow_variables: list[dict[str, object]] | None = None,
+    with_model_config: bool = False,
+) -> App:
+    app = App(
+        id=_APP_ID,
+        tenant_id=_TENANT_ID,
+        name="test_app",
+        description="",
+        mode=mode,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+        is_demo=False,
+        is_public=False,
+        is_universal=False,
+        max_active_requests=None,
+        use_icon_as_answer_icon=False,
+    )
+    if workflow_variables is not None:
+        workflow = Workflow.new(
+            tenant_id=_TENANT_ID,
+            app_id=_APP_ID,
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": workflow_variables}}]}),
+            features="{}",
+            created_by="user-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        db.session.add(workflow)
+        db.session.flush()
+        app.workflow_id = workflow.id
+    if with_model_config:
+        config = AppModelConfig(app_id=_APP_ID)
+        config.user_input_form = "[]"
+        db.session.add(config)
+        db.session.flush()
+        app.app_model_config_id = config.id
+    return app
 
 
-class DummyWorkflow:
-    def user_input_form(self, to_old_structure=False):
-        return []
-
-
-class DummyConfig:
-    def to_dict(self):
-        return {"user_input_form": []}
+def _end_user() -> EndUser:
+    end_user = EndUser(
+        tenant_id=_TENANT_ID,
+        app_id=_APP_ID,
+        type=EndUserType.MCP,
+        session_id=_SERVER_ID,
+    )
+    end_user.id = str(uuid4())
+    return end_user
 
 
 class DummyResult:
@@ -103,11 +159,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -127,11 +180,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -150,11 +200,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -174,11 +221,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status="inactive")
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server("inactive")
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -206,11 +250,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.WORKFLOW,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.WORKFLOW, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -287,11 +328,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=None,  # No workflow
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT)
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -317,11 +355,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.CHAT,
-            app_model_config=None,  # No model config
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT)
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -348,11 +383,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -378,14 +410,10 @@ class TestMCPAppApi:
             }
         )
 
-        class WorkflowWithForm:
-            def user_input_form(self, to_old_structure=False):
-                return [{"text-input": {"variable": "test_var", "label": "Test"}}]
-
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.WORKFLOW,
-            workflow=WorkflowWithForm(),
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(
+            module.AppMode.WORKFLOW,
+            workflow_variables=[{"type": "text-input", "variable": "test_var", "label": "Test", "required": False}],
         )
 
         api = module.MCPAppApi()
@@ -411,11 +439,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.CHAT,
-            app_model_config=DummyConfig(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT, with_model_config=True)
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -436,11 +461,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -454,7 +476,7 @@ class TestMCPAppApi:
     def test_validate_server_status_active(self):
         """Test successful server status validation"""
         api = module.MCPAppApi()
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
+        server = _server(module.AppMCPServerStatus.ACTIVE)
 
         # Should not raise an exception
         api._validate_server_status(server)
@@ -480,15 +502,10 @@ class TestMCPAppApi:
             }
         )
 
-        class WorkflowWithBadForm:
-            def user_input_form(self, to_old_structure=False):
-                # Invalid type that will fail validation
-                return [{"invalid-type": {"variable": "test_var"}}]
-
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.WORKFLOW,
-            workflow=WorkflowWithBadForm(),
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(
+            module.AppMode.WORKFLOW,
+            workflow_variables=[{"type": "invalid-type", "variable": "test_var"}],
         )
 
         api = module.MCPAppApi()
@@ -543,11 +560,11 @@ class TestMCPProtocolVersionNegotiationApi:
     """
 
     def _make_api(self) -> module.MCPAppApi:
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(mode=module.AppMode.CHAT, app_model_config=DummyConfig())
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT, with_model_config=True)
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-        api._retrieve_end_user = MagicMock(return_value=MagicMock())
+        api._retrieve_end_user = MagicMock(return_value=_end_user())
         return api
 
     def _post(

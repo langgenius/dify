@@ -167,3 +167,9 @@ class IncludeSecretQuery(BaseModel):
     """Query parameter for including secret variables in export."""
 
     include_secret: str = Field(default="false", description="Whether to include secret variables")
+
+
+class SnippetExportQuery(IncludeSecretQuery):
+    """Query parameters for exporting a snippet workflow as DSL."""
+
+    workflow_id: str | None = Field(default=None, description="Specific published workflow version to export")

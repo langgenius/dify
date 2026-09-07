@@ -14,7 +14,7 @@
 import type { AuthFixture } from '../../helpers/cli.js'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import {
   assertErrorEnvelope,
   assertExitCode,

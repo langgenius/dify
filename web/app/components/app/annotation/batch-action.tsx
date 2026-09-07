@@ -73,11 +73,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={isDeleting}
-              disabled={isDeleting}
-              onClick={handleBatchDelete}
-            >
+            <AlertDialogConfirmButton loading={isDeleting} onClick={handleBatchDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentIcon } from './comment-icon'

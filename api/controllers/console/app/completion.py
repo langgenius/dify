@@ -16,6 +16,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
+    AgentSessionConfigurationChangedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -23,7 +24,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -262,7 +263,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -291,7 +292,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -620,6 +621,10 @@ def _raise_agent_stream_error_before_response(response):
             if isinstance(response, _ClosableStream):
                 response.close()
             message = error_payload.get("message")
+            if error_payload.get("code") == AgentSessionConfigurationChangedError.error_code:
+                raise AgentSessionConfigurationChangedError(
+                    str(message or AgentSessionConfigurationChangedError.description)
+                )
             raise CompletionRequestError(str(message or "Agent App chat failed."))
 
         return _prepend_stream_chunks(buffered, chunk, iterator)

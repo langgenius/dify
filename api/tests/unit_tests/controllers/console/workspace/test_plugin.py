@@ -77,10 +77,12 @@ from models.account import (
     TenantAccountRole,
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategy,
     TenantPluginAutoUpgradeStrategySetting,
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -652,7 +654,7 @@ class TestPluginUploadFromPkgApi:
 
         with (
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 0),
+            config_overrides_context(PLUGIN_MAX_PACKAGE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
             with pytest.raises(ValueError) as exc_info:
@@ -936,7 +938,7 @@ class TestPluginUploadFromBundleApi:
                 data={"bundle": file},
                 content_type="multipart/form-data",
             ),
-            patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_BUNDLE_SIZE", 0),
+            config_overrides_context(PLUGIN_MAX_BUNDLE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
             with pytest.raises(ValueError) as exc_info:
@@ -1428,7 +1430,7 @@ class TestPluginChangeAutoUpgradeApi:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
             "category": TenantPluginAutoUpgradeCategory.TOOL.value,
@@ -1455,7 +1457,8 @@ class TestPluginFetchAutoUpgradeApi:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
-        auto_upgrade = MagicMock(
+        auto_upgrade = TenantPluginAutoUpgradeStrategy(
+            tenant_id="t1",
             category=TenantPluginAutoUpgradeCategory.TOOL,
             strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
             upgrade_time_of_day=1,

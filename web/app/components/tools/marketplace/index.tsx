@@ -1,8 +1,8 @@
 import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { ToolsContentInset } from '../content-inset'
 import type { useMarketplace } from './hooks'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -53,15 +53,15 @@ const Marketplace = ({
     <>
       <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-3.5">
         {isMarketplaceArrowVisible && (
-          <Button
+          <IconButton
             aria-label={t(($) => $['marketplace.moreFrom'], { ns: 'plugin' })}
-            className="absolute top-2 left-1/2 z-10 size-6 -translate-x-1/2 p-0 text-text-quaternary"
+            className="absolute top-2 left-1/2 z-10 -translate-x-1/2 text-text-quaternary"
             onClick={showMarketplacePanel}
-            size="small"
+            size="md"
             variant="ghost"
           >
             <span aria-hidden="true" className="i-ri-arrow-up-double-line size-4" />
-          </Button>
+          </IconButton>
         )}
         <div className={cn('pt-4 pb-3', marketplaceFrameClassName)}>
           <div className="bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text title-2xl-semi-bold text-transparent">

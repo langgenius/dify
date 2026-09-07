@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { DataSourceAuth } from './types'
 import type {
   AddApiKeyButtonProps,
@@ -6,7 +7,6 @@ import type {
 } from '@/app/components/plugins/plugin-auth/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiAddLine } from '@remixicon/react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddApiKeyButton, AddOAuthButton } from '@/app/components/plugins/plugin-auth'
@@ -42,13 +42,13 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
     onUpdate?.()
   }, [onUpdate])
 
-  return (
-    <>
+  const renderConfigurePopover = (oAuthTrigger?: ReactNode) => {
+    return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button className="h-8" variant="secondary-accent">
-              <RiAddLine className="size-4" />
+              <span className="i-ri-add-line size-4" aria-hidden="true" />
               {t(($) => $['dataSource.configure'], { ns: 'common' })}
             </Button>
           }
@@ -57,23 +57,10 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
           placement="bottom-end"
           sideOffset={4}
           alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <div className="w-60 space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
-            {!!canOAuth && (
-              <AddOAuthButton
-                {...oAuthButtonProps}
-                onUpdate={handleUpdate}
-                oAuthData={{
-                  schema: oAuthData.client_schema || [],
-                  is_oauth_custom_client_enabled: oAuthData.is_oauth_custom_client_enabled,
-                  is_system_oauth_params_exists: oAuthData.is_system_oauth_params_exists,
-                  client_params: oAuthData.oauth_custom_client_params,
-                  redirect_uri: oAuthData.redirect_uri,
-                }}
-                disabled={disabled}
-              />
-            )}
+            {!!canOAuth && oAuthTrigger}
             {!!canApiKey && !!canOAuth && (
               <div className="flex h-4 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
                 <div className="mr-2 h-px grow bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
@@ -92,7 +79,25 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
           </div>
         </PopoverContent>
       </Popover>
-    </>
+    )
+  }
+
+  if (!canOAuth) return renderConfigurePopover()
+
+  return (
+    <AddOAuthButton
+      {...oAuthButtonProps}
+      onUpdate={handleUpdate}
+      oAuthData={{
+        schema: oAuthData.client_schema || [],
+        is_oauth_custom_client_enabled: oAuthData.is_oauth_custom_client_enabled,
+        is_system_oauth_params_exists: oAuthData.is_system_oauth_params_exists,
+        client_params: oAuthData.oauth_custom_client_params,
+        redirect_uri: oAuthData.redirect_uri,
+      }}
+      disabled={disabled}
+      renderTrigger={({ trigger }) => renderConfigurePopover(trigger)}
+    />
   )
 }
 

@@ -3,7 +3,7 @@ import type { FileEntity } from '../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FileContextProvider } from '../../store'
 import { useUpload } from '../use-upload'
 

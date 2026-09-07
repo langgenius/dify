@@ -34,6 +34,7 @@ async def _run(lease, script: str, *, cwd: str) -> str:
         env={"HOME": lease.layout.home_dir},
         timeout=30.0,
         max_output_bytes=4096,
+        mode="stdio",
     )
     assert result.exit_code == 0
     assert result.output_complete

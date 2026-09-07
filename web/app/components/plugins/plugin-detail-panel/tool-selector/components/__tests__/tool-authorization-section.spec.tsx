@@ -1,7 +1,7 @@
 import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { CollectionType } from '@/app/components/tools/types'
 import { ToolAuthorizationSection } from '../tool-authorization-section'
 

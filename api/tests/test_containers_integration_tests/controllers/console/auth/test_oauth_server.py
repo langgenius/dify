@@ -1,12 +1,24 @@
 """Controller integration tests for console OAuth server routes."""
 
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
+import pytest
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
-from models.model import OAuthProviderApp
-from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN
+from services.entities.oauth_server_entities import (
+    OAuthAuthorizationCode,
+    OAuthProviderAccount,
+    OAuthProviderAppPresentation,
+    OAuthTokenSet,
+)
+from services.oauth_server_service import (
+    OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    OAuthServerClientNotFoundError,
+    OAuthServerRequestError,
+    OAuthServerUnauthorizedError,
+)
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -14,15 +26,8 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 )
 
 
-def _build_oauth_provider_app() -> OAuthProviderApp:
-    return OAuthProviderApp(
-        app_icon="icon_url",
-        client_id="test_client_id",
-        client_secret="test_secret",
-        app_label={"en-US": "Test App"},
-        redirect_uris=["http://localhost/callback"],
-        scope="read,write",
-    )
+def _application_services(service: MagicMock) -> SimpleNamespace:
+    return SimpleNamespace(oauth_server=service)
 
 
 def test_oauth_provider_successful_post(
@@ -30,10 +35,17 @@ def test_oauth_provider_successful_post(
     test_client_with_containers: FlaskClient,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
+    service = MagicMock()
+    service.get_provider.return_value = OAuthProviderAppPresentation(
+        app_icon="icon_url",
+        app_label={"en-US": "Test App"},
+        scope="read,write",
+        auto_authorize=True,
+    )
 
     with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider",
@@ -41,49 +53,43 @@ def test_oauth_provider_successful_post(
         )
 
     assert response.status_code == 200
-    payload = response.get_json()
-    assert payload is not None
-    assert payload["app_icon"] == "icon_url"
-    assert payload["app_label"] == {"en-US": "Test App"}
-    assert payload["scope"] == "read,write"
+    assert response.get_json() == {
+        "app_icon": "icon_url",
+        "app_label": {"en-US": "Test App"},
+        "scope": "read,write",
+        "auto_authorize": True,
+    }
 
 
-def test_oauth_provider_invalid_redirect_uri(
+@pytest.mark.parametrize(
+    ("error", "status", "message"),
+    [
+        (OAuthServerRequestError("redirect_uri is invalid"), 400, "redirect_uri is invalid"),
+        (OAuthServerClientNotFoundError("client_id is invalid"), 404, "client_id is invalid"),
+    ],
+)
+def test_oauth_provider_maps_application_errors(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
+    error: Exception,
+    status: int,
+    message: str,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
+    service = MagicMock()
+    service.get_provider.side_effect = error
 
     with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider",
             json={"client_id": "test_client_id", "redirect_uri": "http://invalid/callback"},
         )
 
-    assert response.status_code == 400
-    payload = response.get_json()
-    assert payload is not None
-    assert "redirect_uri is invalid" in payload["message"]
-
-
-def test_oauth_provider_invalid_client_id(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    ensure_dify_setup(db_session_with_containers)
-
-    response = test_client_with_containers.post(
-        "/console/api/oauth/provider",
-        json={"client_id": "test_invalid_client_id", "redirect_uri": "http://localhost/callback"},
-    )
-
-    assert response.status_code == 404
-    payload = response.get_json()
-    assert payload is not None
-    assert "client_id is invalid" in payload["message"]
+    assert response.status_code == status
+    assert message in response.get_json()["message"]
 
 
 def test_oauth_authorize_successful(
@@ -91,16 +97,12 @@ def test_oauth_authorize_successful(
     test_client_with_containers: FlaskClient,
 ) -> None:
     account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+    service = MagicMock()
+    service.authorize.return_value = OAuthAuthorizationCode(code="auth_code_123")
 
-    with (
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-            return_value=_build_oauth_provider_app(),
-        ),
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.sign_oauth_authorization_code",
-            return_value="auth_code_123",
-        ) as mock_sign,
+    with patch(
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider/authorize",
@@ -110,7 +112,8 @@ def test_oauth_authorize_successful(
 
     assert response.status_code == 200
     assert response.get_json() == {"code": "auth_code_123"}
-    mock_sign.assert_called_once_with("test_client_id", account.id)
+    context = service.authorize.call_args.args[0]
+    assert context.account_id == account.id
 
 
 def test_oauth_token_authorization_code_grant(
@@ -118,16 +121,17 @@ def test_oauth_token_authorization_code_grant(
     test_client_with_containers: FlaskClient,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
+    service = MagicMock()
+    service.exchange_token.return_value = OAuthTokenSet(
+        access_token="access_123",
+        token_type="Bearer",
+        expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+        refresh_token="refresh_123",
+    )
 
-    with (
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-            return_value=_build_oauth_provider_app(),
-        ),
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.sign_oauth_access_token",
-            return_value=("access_123", "refresh_123"),
-        ),
+    with patch(
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider/token",
@@ -149,78 +153,66 @@ def test_oauth_token_authorization_code_grant(
     }
 
 
-def test_oauth_token_authorization_code_grant_missing_code(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    ensure_dify_setup(db_session_with_containers)
-
-    with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
-    ):
-        response = test_client_with_containers.post(
-            "/console/api/oauth/provider/token",
-            json={
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (
+            {
                 "client_id": "test_client_id",
                 "grant_type": "authorization_code",
                 "client_secret": "test_secret",
                 "redirect_uri": "http://localhost/callback",
             },
-        )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "code is required"
-
-
-def test_oauth_token_authorization_code_grant_invalid_secret(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    ensure_dify_setup(db_session_with_containers)
-
-    with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
-    ):
-        response = test_client_with_containers.post(
-            "/console/api/oauth/provider/token",
-            json={
+            "code is required",
+        ),
+        (
+            {
                 "client_id": "test_client_id",
                 "grant_type": "authorization_code",
                 "code": "auth_code",
                 "client_secret": "invalid_secret",
                 "redirect_uri": "http://localhost/callback",
             },
-        )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "client_secret is invalid"
-
-
-def test_oauth_token_authorization_code_grant_invalid_redirect_uri(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    ensure_dify_setup(db_session_with_containers)
-
-    with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
-    ):
-        response = test_client_with_containers.post(
-            "/console/api/oauth/provider/token",
-            json={
+            "client_secret is invalid",
+        ),
+        (
+            {
                 "client_id": "test_client_id",
                 "grant_type": "authorization_code",
                 "code": "auth_code",
                 "client_secret": "test_secret",
                 "redirect_uri": "http://invalid/callback",
             },
-        )
+            "redirect_uri is invalid",
+        ),
+        (
+            {"client_id": "test_client_id", "grant_type": "refresh_token"},
+            "refresh_token is required",
+        ),
+        (
+            {"client_id": "test_client_id", "grant_type": "invalid_grant"},
+            "invalid grant_type",
+        ),
+    ],
+)
+def test_oauth_token_maps_invalid_grant_requests(
+    db_session_with_containers: Session,
+    test_client_with_containers: FlaskClient,
+    payload: dict[str, str],
+    message: str,
+) -> None:
+    ensure_dify_setup(db_session_with_containers)
+    service = MagicMock()
+    service.exchange_token.side_effect = OAuthServerRequestError(message)
+
+    with patch(
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
+    ):
+        response = test_client_with_containers.post("/console/api/oauth/provider/token", json=payload)
 
     assert response.status_code == 400
-    assert response.get_json()["message"] == "redirect_uri is invalid"
+    assert response.get_json()["message"] == message
 
 
 def test_oauth_token_refresh_token_grant(
@@ -228,16 +220,17 @@ def test_oauth_token_refresh_token_grant(
     test_client_with_containers: FlaskClient,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
+    service = MagicMock()
+    service.exchange_token.return_value = OAuthTokenSet(
+        access_token="new_access",
+        token_type="Bearer",
+        expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+        refresh_token="new_refresh",
+    )
 
-    with (
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-            return_value=_build_oauth_provider_app(),
-        ),
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.sign_oauth_access_token",
-            return_value=("new_access", "new_refresh"),
-        ),
+    with patch(
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider/token",
@@ -253,62 +246,24 @@ def test_oauth_token_refresh_token_grant(
     }
 
 
-def test_oauth_token_refresh_token_grant_missing_token(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    ensure_dify_setup(db_session_with_containers)
-
-    with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
-    ):
-        response = test_client_with_containers.post(
-            "/console/api/oauth/provider/token",
-            json={"client_id": "test_client_id", "grant_type": "refresh_token"},
-        )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "refresh_token is required"
-
-
-def test_oauth_token_invalid_grant_type(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    ensure_dify_setup(db_session_with_containers)
-
-    with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
-    ):
-        response = test_client_with_containers.post(
-            "/console/api/oauth/provider/token",
-            json={"client_id": "test_client_id", "grant_type": "invalid_grant"},
-        )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "invalid grant_type"
-
-
 def test_oauth_account_successful_retrieval(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
-    account.avatar = "avatar_url"
-    db_session_with_containers.commit()
+    service = MagicMock()
+    service.get_account.return_value = OAuthProviderAccount(
+        id="account-1",
+        name="Test User",
+        email="test@example.com",
+        avatar=None,
+        interface_language=None,
+        timezone=None,
+    )
 
-    with (
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-            return_value=_build_oauth_provider_app(),
-        ),
-        patch(
-            "controllers.console.auth.oauth_server.OAuthServerService.validate_oauth_access_token",
-            return_value=account,
-        ),
+    with patch(
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider/account",
@@ -318,49 +273,63 @@ def test_oauth_account_successful_retrieval(
 
     assert response.status_code == 200
     assert response.get_json() == {
-        "id": account.id,
+        "id": "account-1",
         "name": "Test User",
-        "email": account.email,
-        "avatar": "avatar_url",
-        "interface_language": "en-US",
-        "timezone": "UTC",
+        "email": "test@example.com",
+        "avatar": None,
+        "interface_language": None,
+        "timezone": None,
     }
 
 
-def test_oauth_account_missing_authorization_header(
+@pytest.mark.parametrize(
+    ("headers", "message"),
+    [
+        ({}, "Authorization header is required"),
+        ({"Authorization": "InvalidFormat"}, "Invalid Authorization header format"),
+        ({"Authorization": "Basic token"}, "token_type is invalid"),
+        ({"Authorization": "Bearer "}, "Invalid Authorization header format"),
+    ],
+)
+def test_oauth_account_rejects_invalid_authorization_header(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
+    headers: dict[str, str],
+    message: str,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
-
+    service = MagicMock()
+    service.get_account.side_effect = OAuthServerUnauthorizedError("access_token is required")
     with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider/account",
             json={"client_id": "test_client_id"},
+            headers=headers,
         )
 
     assert response.status_code == 401
-    assert response.get_json() == {"error": "Authorization header is required"}
+    assert response.get_json() == {"error": message}
+    assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
-def test_oauth_account_invalid_authorization_header_format(
+def test_oauth_account_validates_client_before_authorization_header(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
     ensure_dify_setup(db_session_with_containers)
-
+    service = MagicMock()
+    service.get_account.side_effect = OAuthServerClientNotFoundError("client_id is invalid")
     with patch(
-        "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
-        return_value=_build_oauth_provider_app(),
+        "controllers.console.auth.oauth_server.application_services",
+        return_value=_application_services(service),
     ):
         response = test_client_with_containers.post(
             "/console/api/oauth/provider/account",
-            json={"client_id": "test_client_id"},
-            headers={"Authorization": "InvalidFormat"},
+            json={"client_id": "invalid"},
         )
 
-    assert response.status_code == 401
-    assert response.get_json() == {"error": "Invalid Authorization header format"}
+    assert response.status_code == 404
+    assert "client_id is invalid" in response.get_json()["message"]

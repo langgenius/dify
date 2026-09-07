@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from sqlalchemy.orm import Session
 
 from controllers.openapi._input_schema import _form_to_jsonschema
+from models.model import App, AppMode, AppModelConfig
+from models.workflow import Workflow, WorkflowType
 
 
 def _wrap(component: dict) -> list[dict]:
@@ -88,39 +92,56 @@ def test_max_length_omitted_when_zero() -> None:
     assert "maxLength" not in props["x"]
 
 
-from unittest.mock import MagicMock
-
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema
 from controllers.service_api.app.error import AppUnavailableError
-from models.model import AppMode
 
 
-def _stub_app(mode: AppMode, *, form: list[dict] | None = None, has_workflow: bool | None = None):
-    """Returns a MagicMock whose explicit config getters are wired up."""
-    app = MagicMock()
-    app.id = "00000000-0000-0000-0000-000000000001"
-    app.mode = mode
+def _persist_app(
+    session: Session,
+    mode: AppMode,
+    *,
+    form: list[dict] | None = None,
+    has_config: bool = True,
+) -> App:
+    app = App(
+        id="00000000-0000-0000-0000-000000000001",
+        tenant_id="00000000-0000-0000-0000-000000000002",
+        name="Input schema app",
+        mode=mode,
+        enable_site=False,
+        enable_api=True,
+    )
     if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-        if has_workflow is False:
-            app.workflow_with_session.return_value = None
-        else:
-            workflow = MagicMock()
-            workflow.user_input_form.return_value = form or []
-            workflow.features_dict = {}
-            app.workflow_with_session.return_value = workflow
+        if has_config:
+            variables = [body | {"type": row_type} for row in form or [] for row_type, body in row.items()]
+            workflow = Workflow(
+                id="00000000-0000-0000-0000-000000000004",
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                type=WorkflowType.CHAT,
+                version=Workflow.VERSION_DRAFT,
+                graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": variables}}]}),
+                features="{}",
+                created_by="00000000-0000-0000-0000-000000000003",
+            )
+            app.workflow_id = workflow.id
+            session.add(workflow)
     else:
-        if has_workflow is False:
-            app.app_model_config_with_session.return_value = None
-        else:
-            app_model_config = MagicMock()
-            app_model_config.app_id = app.id
-            app_model_config.to_dict.return_value = {"user_input_form": form or []}
-            app.app_model_config_with_session.return_value = app_model_config
+        if has_config:
+            app_model_config = AppModelConfig(app_id=app.id, user_input_form=json.dumps(form or []))
+            app.app_model_config_id = app_model_config.id
+            session.add(app_model_config)
+    session.add(app)
+    session.flush()
     return app
 
 
 def test_chat_mode_includes_query(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.CHAT, form=[{"text-input": {"variable": "x", "label": "X", "required": True}}])
+    app = _persist_app(
+        sqlite_session,
+        AppMode.CHAT,
+        form=[{"text-input": {"variable": "x", "label": "X", "required": True}}],
+    )
     session = sqlite_session
     schema = build_input_schema(app, session=session)
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
@@ -130,38 +151,38 @@ def test_chat_mode_includes_query(sqlite_session: Session) -> None:
     assert "query" in schema["required"]
     assert "inputs" in schema["required"]
     assert schema["properties"]["inputs"]["additionalProperties"] is False
-    app.app_model_config_with_session.assert_called_once_with(session=session)
-    app.app_model_config_with_session.return_value.to_dict.assert_called_once_with(annotation_reply={"enabled": False})
+    assert session.get(AppModelConfig, app.app_model_config_id) is not None
 
 
 def test_agent_chat_mode_includes_query(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.AGENT_CHAT, form=[])
+    app = _persist_app(sqlite_session, AppMode.AGENT_CHAT, form=[])
     schema = build_input_schema(app, session=sqlite_session)
     assert "query" in schema["properties"]
 
 
 def test_advanced_chat_mode_includes_query(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.ADVANCED_CHAT, form=[])
+    app = _persist_app(sqlite_session, AppMode.ADVANCED_CHAT, form=[])
     schema = build_input_schema(app, session=sqlite_session)
     assert "query" in schema["properties"]
 
 
 def test_workflow_mode_omits_query(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.WORKFLOW, form=[])
+    app = _persist_app(sqlite_session, AppMode.WORKFLOW, form=[])
     schema = build_input_schema(app, session=sqlite_session)
     assert "query" not in schema["properties"]
     assert schema["required"] == ["inputs"]
 
 
 def test_completion_mode_omits_query(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.COMPLETION, form=[])
+    app = _persist_app(sqlite_session, AppMode.COMPLETION, form=[])
     schema = build_input_schema(app, session=sqlite_session)
     assert "query" not in schema["properties"]
     assert schema["required"] == ["inputs"]
 
 
 def test_inputs_required_driven_by_form(sqlite_session: Session) -> None:
-    app = _stub_app(
+    app = _persist_app(
+        sqlite_session,
         AppMode.CHAT,
         form=[
             {"text-input": {"variable": "industry", "label": "Industry", "required": True}},
@@ -173,13 +194,13 @@ def test_inputs_required_driven_by_form(sqlite_session: Session) -> None:
 
 
 def test_misconfigured_chat_raises_app_unavailable(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.CHAT, has_workflow=False)
+    app = _persist_app(sqlite_session, AppMode.CHAT, has_config=False)
     with pytest.raises(AppUnavailableError):
         build_input_schema(app, session=sqlite_session)
 
 
 def test_misconfigured_workflow_raises_app_unavailable(sqlite_session: Session) -> None:
-    app = _stub_app(AppMode.WORKFLOW, has_workflow=False)
+    app = _persist_app(sqlite_session, AppMode.WORKFLOW, has_config=False)
     with pytest.raises(AppUnavailableError):
         build_input_schema(app, session=sqlite_session)
 

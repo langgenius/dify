@@ -1,6 +1,7 @@
 'use client'
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -76,7 +77,17 @@ export const TagManagementModal = ({
         <div className="relative pb-2 text-xl/7.5 font-semibold text-text-primary">
           {t(($) => $['tag.manageTags'], { ns: 'common' })}
         </div>
-        <DialogCloseButton className="top-4 right-4" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-4 right-4"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mt-3 flex flex-wrap gap-2">
           <input
             aria-label={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}

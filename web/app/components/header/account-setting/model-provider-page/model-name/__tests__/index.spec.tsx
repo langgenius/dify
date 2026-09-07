@@ -40,6 +40,12 @@ describe('ModelName', () => {
   })
 
   describe('rendering', () => {
+    it('should render nothing while the model is unavailable', () => {
+      const { container } = render(<ModelName modelItem={undefined} />)
+
+      expect(container).toBeEmptyDOMElement()
+    })
+
     it('should render the localized model label when translation exists', () => {
       mockLocale = 'zh-Hans'
       const modelItem = createModelItem()

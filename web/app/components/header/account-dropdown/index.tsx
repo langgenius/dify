@@ -57,7 +57,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
           placement="top-start"
           sideOffset={6}
           alignOffset={4}
-          popupClassName={mainNavMenuPopupClassName}
+          className={mainNavMenuPopupClassName}
         >
           <MainNavMenuContent onLogout={handleLogout} />
         </DropdownMenuContent>

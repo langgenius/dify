@@ -480,7 +480,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
-          <RiCloseLine className="size-4 text-text-tertiary" />
+          <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
         </IconButton>
       </div>
       {/* Panel Body */}

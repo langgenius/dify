@@ -3,13 +3,8 @@
 import type { KeyboardEvent } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { hasEmailDelimiter, mergeEmailRecipients } from './email-recipients'
@@ -249,7 +244,7 @@ export function EmailRecipientsField({
             })}
           </ul>
         )}
-        <FieldControl
+        <Input
           ref={internalInputRef}
           type="text"
           disabled={disabled}

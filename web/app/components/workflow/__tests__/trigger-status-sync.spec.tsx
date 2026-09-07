@@ -1,4 +1,4 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import type { EntryNodeStatus } from '../store/trigger-status'
 import type { BlockEnum } from '../types'
 import { act, render } from '@testing-library/react'

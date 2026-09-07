@@ -1,6 +1,6 @@
 import type { ChildChunkDetail } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChildSegmentList from '../child-segment-list'
 
 // Mock document context
@@ -173,7 +173,7 @@ describe('ChildSegmentList', () => {
     it('should render input field in full-doc mode', () => {
       render(<ChildSegmentList {...defaultProps} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input).toBeInTheDocument()
     })
 
@@ -187,7 +187,7 @@ describe('ChildSegmentList', () => {
       const mockHandleInputChange = vi.fn()
       render(<ChildSegmentList {...defaultProps} handleInputChange={mockHandleInputChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'search term' } })
 
       expect(mockHandleInputChange).toHaveBeenCalledWith('search term')

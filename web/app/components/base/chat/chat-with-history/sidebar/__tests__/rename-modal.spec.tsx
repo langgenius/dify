@@ -22,8 +22,7 @@ describe('RenameModal', () => {
     render(<RenameModal {...defaultProps} />)
 
     expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
-    expect(screen.getByText('common.chat.conversationName')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('common.chat.conversationNamePlaceholder')).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'common.chat.conversationName' })).toHaveValue(
       'Original Name',
     )
     expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
@@ -50,9 +49,19 @@ describe('RenameModal', () => {
     const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'Updated Name')
-    await user.click(screen.getByText('common.operation.save'))
+    await user.keyboard('{Enter}')
 
     expect(defaultProps.onSave).toHaveBeenCalledWith('Updated Name')
+  })
+
+  it('does not resubmit while save is pending', async () => {
+    const user = userEvent.setup()
+    render(<RenameModal {...defaultProps} saveLoading />)
+
+    await user.click(screen.getByRole('textbox', { name: 'common.chat.conversationName' }))
+    await user.keyboard('{Enter}')
+
+    expect(defaultProps.onSave).not.toHaveBeenCalled()
   })
 
   it('calls onSave with initial name when unchanged', async () => {

@@ -5,7 +5,8 @@ import type {
   MemberInviteSuccessResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -51,7 +52,17 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
-        <DialogCloseButton className="top-8 right-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-8 right-8"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mb-3 flex justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
             <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />

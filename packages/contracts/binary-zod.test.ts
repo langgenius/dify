@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { zPostFilesUploadBody } from './generated/api/console/files/zod.gen'
 import { zPostWorkspacesCurrentPluginUploadPkgBody } from './generated/api/console/workspaces/zod.gen'
 

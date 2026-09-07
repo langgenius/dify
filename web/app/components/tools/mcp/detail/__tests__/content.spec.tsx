@@ -3,7 +3,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import MCPDetailContent from '../content'
 
@@ -501,8 +501,9 @@ describe('MCPDetailContent', () => {
       const { default: copy } = await import('copy-to-clipboard')
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Find the server identifier element
-      const serverIdentifier = screen.getByText('test-mcp')
+      const serverIdentifier = screen.getByRole('button', {
+        name: /test-mcp.*tools\.mcp\.identifier/,
+      })
       fireEvent.click(serverIdentifier)
 
       expect(copy).toHaveBeenCalledWith('test-mcp')

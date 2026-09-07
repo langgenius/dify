@@ -2,10 +2,11 @@
 import type { UpdateFromMarketPlacePayload } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
@@ -54,6 +55,7 @@ const UpdatePluginModal = ({
 }: Props) => {
   const { originalPackageInfo, targetPackageInfo } = payload
   const { t } = useTranslation()
+  const upgradeButtonLabelId = React.useId()
   const { getIconUrl } = useGetIcon()
   const [icon, setIcon] = useState<string>(originalPackageInfo.payload.icon)
   useEffect(() => {
@@ -71,13 +73,11 @@ const UpdatePluginModal = ({
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
 
-  const configBtnText = useMemo(() => {
-    return {
-      [UploadStep.notStarted]: t(($) => $[`${i18nPrefix}.upgrade`], { ns: 'plugin' }),
-      [UploadStep.upgrading]: t(($) => $[`${i18nPrefix}.upgrading`], { ns: 'plugin' }),
-      [UploadStep.installed]: t(($) => $[`${i18nPrefix}.close`], { ns: 'plugin' }),
-    }[uploadStep]
-  }, [t, uploadStep])
+  const configBtnText = {
+    [UploadStep.notStarted]: t(($) => $[`${i18nPrefix}.upgrade`], { ns: 'plugin' }),
+    [UploadStep.upgrading]: t(($) => $[`${i18nPrefix}.upgrading`], { ns: 'plugin' }),
+    [UploadStep.installed]: t(($) => $[`${i18nPrefix}.close`], { ns: 'plugin' }),
+  }[uploadStep]
 
   const handleConfirm = useCallback(async () => {
     if (uploadStep === UploadStep.notStarted) {
@@ -150,7 +150,17 @@ const UpdatePluginModal = ({
         backdropProps={{ forceRender: true }}
         className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160')}
       >
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         {doShowDowngradeWarningModal && (
           <DowngradeWarningModal
             onCancel={onCancel}
@@ -199,9 +209,9 @@ const UpdatePluginModal = ({
                 variant="primary"
                 loading={uploadStep === UploadStep.upgrading}
                 onClick={handleConfirm}
-                disabled={uploadStep === UploadStep.upgrading}
+                aria-labelledby={upgradeButtonLabelId}
               >
-                {configBtnText}
+                <span id={upgradeButtonLabelId}>{configBtnText}</span>
               </Button>
             </div>
           </>

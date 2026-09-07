@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import { PROGRESS_ERROR } from '../../constants'
 

@@ -66,7 +66,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
             placement="bottom-end"
             sideOffset={3}
             alignOffset={-147}
-            popupClassName="border-none bg-transparent shadow-none"
+            className="border-none bg-transparent shadow-none"
           >
             <div className="w-90 rounded-xl bg-white shadow-lg">
               <div className="p-4">

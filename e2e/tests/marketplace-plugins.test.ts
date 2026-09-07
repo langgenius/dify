@@ -1,6 +1,6 @@
 import type { ConsoleClient } from '../support/api/console-client'
 import { ORPCError } from '@orpc/client'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { bootstrapMarketplacePlugins } from '../support/marketplace-plugins'
 
 const createMarketplaceConsoleClient = (installError: unknown) => {

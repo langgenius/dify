@@ -85,18 +85,20 @@ describe('Control', () => {
     }
   })
 
-  // Rendering and visual states for control buttons.
+  // Rendering and semantic states for control buttons.
   describe('Rendering', () => {
     it('should render the child action groups and highlight the active pointer mode', () => {
       render(<Control />)
 
       expect(screen.getByTestId('add-block')).toBeInTheDocument()
       expect(screen.getByTestId('more-actions')).toBeInTheDocument()
-      expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass(
-        'bg-state-accent-active',
+      expect(screen.getByRole('button', { name: 'workflow.common.pointerMode' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass(
-        'bg-state-accent-active',
+      expect(screen.getByRole('button', { name: 'workflow.common.handMode' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
       )
     })
 
@@ -107,8 +109,9 @@ describe('Control', () => {
 
       render(<Control />)
 
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass(
-        'bg-state-accent-active',
+      expect(screen.getByRole('button', { name: 'workflow.common.handMode' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
     })
   })

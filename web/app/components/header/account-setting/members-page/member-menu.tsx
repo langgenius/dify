@@ -114,7 +114,7 @@ const MemberMenu = ({
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
-    <div role="presentation">
+    <div>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
@@ -130,11 +130,7 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={4}
-          popupClassName="min-w-[180px] rounded-xl"
-        >
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-45 rounded-xl">
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"

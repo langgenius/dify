@@ -3,10 +3,11 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -58,18 +59,13 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
+  const handleClearSearch = () => {
+    setKeywords('')
+    searchInputRef.current?.focus()
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
@@ -193,27 +189,32 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
           <div className="h-3.5">
             <Divider type="vertical" />
           </div>
-          <div className="relative w-full flex-1">
-            <Input
-              className="w-full border-transparent bg-transparent pr-7 hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
+          <InputGroup className="flex-1 bg-transparent hover:border-transparent hover:bg-transparent">
+            <InputGroupInput
+              ref={searchInputRef}
+              type="search"
+              name="query"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+              className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               placeholder={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
               value={keywords}
-              onChange={(e) => handleKeywordsChange(e.target.value)}
+              onValueChange={setKeywords}
             />
             {keywords && (
-              <button
-                type="button"
-                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className="group absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
-                onClick={() => handleKeywordsChange('')}
-              >
-                <span
-                  aria-hidden
-                  className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover:text-text-tertiary"
-                />
-              </button>
+              <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
+                <IconButton
+                  size="sm"
+                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                  className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+                  onClick={handleClearSearch}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-3.5" />
+                </IconButton>
+              </InputGroupAddon>
             )}
-          </div>
+          </InputGroup>
         </div>
         <div className="h-8 w-45"></div>
       </div>

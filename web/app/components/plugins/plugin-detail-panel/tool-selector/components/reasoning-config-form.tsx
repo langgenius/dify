@@ -243,6 +243,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isNumber && isConstant && (
               <Input
+                aria-label={fieldTitle}
                 className="h-8 grow"
                 type="number"
                 value={(varInput?.value as string | number) || ''}

@@ -9,7 +9,14 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Infotip } from '@/app/components/base/infotip'
 
@@ -97,8 +104,21 @@ const ParamItem: FC<Props> = ({
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
             onValueChange={(value) => onChange(id, value / (max < 5 ? 100 : 1))}
-            aria-label={name}
-          />
+          >
+            <SliderLabel className="sr-only">{name}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb
+                  getAriaValueText={
+                    max < 5
+                      ? (_formattedValue, sliderValue) => (sliderValue / 100).toString()
+                      : undefined
+                  }
+                />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
         </div>
       </div>
     </Fieldset>

@@ -16,16 +16,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    defaultModel,
-    modelList,
+  ModelSelector: ({
+    value,
+    models,
   }: {
-    defaultModel?: { provider: string; model: string }
-    modelList: ModelProviderItem[]
+    value?: { provider: string; model: string }
+    models: ModelProviderItem[]
   }) => (
     <div>
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}:
-      {modelList.length}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}:{models.length}
     </div>
   ),
 }))
@@ -48,14 +47,14 @@ describe('agent/model-bar', () => {
     mockModelLists.set('tts' as ModelTypeEnum, [])
   })
 
-  it('should render an empty readonly selector with a warning when no model is selected', () => {
+  it('should render an empty disabled selector with a warning when no model is selected', () => {
     render(<ModelBar />)
 
     const emptySelector = screen.getByText((_, element) => element?.textContent === 'no-model:0')
 
     expect(emptySelector).toBeInTheDocument()
     expect(screen.getByText('indicator:error')).toBeInTheDocument()
-    expect(screen.getByLabelText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
   })
 
   it('should render the selected model without warning when it is installed', () => {
@@ -70,6 +69,6 @@ describe('agent/model-bar', () => {
 
     expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
     expect(screen.getByText('indicator:error')).toBeInTheDocument()
-    expect(screen.getByLabelText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
 })

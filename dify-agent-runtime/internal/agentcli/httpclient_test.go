@@ -2,6 +2,7 @@ package agentcli
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,12 @@ import (
 )
 
 const fifoTestDeadline = 3 * time.Second
+
+func TestDefaultUploadRequestTimeout(t *testing.T) {
+	if defaultUploadRequestTimeout != 180*time.Second {
+		t.Fatalf("defaultUploadRequestTimeout = %s, want 180s", defaultUploadRequestTimeout)
+	}
+}
 
 func receiveWithin[T any](ch <-chan T, timeout time.Duration) (T, bool) {
 	timer := time.NewTimer(timeout)
@@ -415,6 +422,88 @@ func TestUploadFileRejectsOversizedResponse(t *testing.T) {
 	_, err := client.uploadFile(server.URL, filePath, "payload.txt", "text/plain")
 	if err == nil || !strings.Contains(err.Error(), "upload response exceeds") {
 		t.Fatalf("error = %v, want bounded-response failure", err)
+	}
+}
+
+func TestCheckAgentStubHTTPErrorParsesSupportedResponseShapes(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		wantMessage string
+	}{
+		{
+			name:        "string detail",
+			body:        `{"detail":"invalid request"}`,
+			wantMessage: "invalid request",
+		},
+		{
+			name:        "non JSON body",
+			body:        "gateway unavailable",
+			wantMessage: "gateway unavailable",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkAgentStubHTTPError([]byte(test.body), http.StatusUnauthorized)
+			var httpErr *agentStubHTTPError
+			if !errors.As(err, &httpErr) {
+				t.Fatalf("error = %v, want *agentStubHTTPError", err)
+			}
+			if httpErr.statusCode != http.StatusUnauthorized || httpErr.code != "" {
+				t.Fatalf("parsed error = %#v", httpErr)
+			}
+			if !strings.Contains(err.Error(), test.wantMessage) {
+				t.Fatalf("error = %q, want substring %q", err, test.wantMessage)
+			}
+		})
+	}
+}
+
+func TestAgentStubAuthorizationExpiryErrorExplainsHowToRefresh(t *testing.T) {
+	err := checkAgentStubHTTPError(
+		[]byte(`{"detail":{"code":"agent_stub_authorization_expired","message":"expired"}}`),
+		http.StatusUnauthorized,
+	)
+	var httpErr *agentStubHTTPError
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("error = %v, want *agentStubHTTPError", err)
+	}
+	if httpErr.statusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", httpErr.statusCode, http.StatusUnauthorized)
+	}
+	if httpErr.code != agentStubAuthorizationExpiredCode || httpErr.message != "expired" {
+		t.Fatalf("parsed error = %#v", httpErr)
+	}
+
+	for _, want := range []string{
+		"expired after 5 minutes",
+		"will not refresh automatically",
+		"start a new shell tool call",
+		"retry the command",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %q, want substring %q", err, want)
+		}
+	}
+}
+
+func TestToolFileUploadURLAloneOptsIntoStructuredExpiration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("expose_expiration") != "true" {
+			t.Errorf("expose_expiration = %q, want true", r.URL.Query().Get("expose_expiration"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"detail":{"code":"agent_stub_authorization_expired","message":"expired"}}`))
+	}))
+	defer server.Close()
+
+	client := newHTTPStubClient(&Environment{URL: server.URL, AuthJWE: "token"})
+	_, toolFileErr := client.CreateToolFileUploadURL(context.Background(), "report.pdf", "application/pdf")
+
+	if toolFileErr == nil || !strings.Contains(toolFileErr.Error(), "start a new shell tool call") {
+		t.Fatalf("ToolFile error = %v, want structured expiry guidance", toolFileErr)
 	}
 }
 

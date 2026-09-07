@@ -2,7 +2,7 @@ import type { IndexingType } from '../use-indexing-config'
 import type { NotionPage } from '@/models/common'
 import type { ChunkingMode, CrawlResultItem, CustomFile, ProcessRule } from '@/models/datasets'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 
 // Hoisted mocks

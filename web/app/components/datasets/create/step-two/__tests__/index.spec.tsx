@@ -227,15 +227,17 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
 
 // Mock complex child components to avoid deep dependency chains when rendering StepTwo
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    onSelect,
-    readonly,
+  ModelSelector: ({
+    onValueChange,
+    disabled,
   }: {
-    onSelect?: (val: Record<string, string>) => void
-    readonly?: boolean
+    onValueChange?: (val: Record<string, string>) => void
+    disabled?: boolean
   }) => (
-    <div data-testid="model-selector" data-readonly={readonly}>
-      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>
+    <div data-testid="model-selector" data-disabled={disabled}>
+      <button
+        onClick={() => onValueChange?.({ provider: 'openai', model: 'text-embedding-3-small' })}
+      >
         Select Model
       </button>
     </div>
@@ -2526,7 +2528,7 @@ describe('StepTwo Component', () => {
       render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // isModelAndRetrievalConfigDisabled should be true
       const modelSelector = screen.getByTestId('model-selector')
-      expect(modelSelector)!.toHaveAttribute('data-readonly', 'true')
+      expect(modelSelector)!.toHaveAttribute('data-disabled', 'true')
     })
   })
 

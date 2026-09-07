@@ -9,7 +9,6 @@ import {
   getAgentConfigurePath,
   saveAgentComposerDraft,
 } from '../../agent-v2/support/agent'
-import { getAgentDriveSkills, uploadAgentDriveSkill } from '../../agent-v2/support/agent-drive'
 import {
   concurrentFirstAgentPrompt,
   concurrentSecondAgentPrompt,
@@ -19,10 +18,6 @@ import {
   normalAgentSoulConfig,
   updatedAgentPrompt,
 } from '../../agent-v2/support/agent-soul'
-import {
-  agentBuilderTestMaterials,
-  getAgentBuilderTestMaterialPath,
-} from '../../agent-v2/support/test-materials'
 import {
   expectNormalAgentPromptDraft,
   getCurrentAgentId,
@@ -42,10 +37,10 @@ async function fillAgentPromptEditor(page: Page, prompt: string) {
 }
 
 async function selectAgentModel(page: Page, modelName: string) {
-  await page.getByRole('combobox').first().click()
+  await page.getByRole('button', { name: 'Configure model' }).click()
   await page.getByPlaceholder('Search model').fill(modelName)
   const escapedModelName = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  await page.getByRole('option', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
+  await page.getByRole('button', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
 }
 
 async function expectAgentComposerPrompt(world: DifyWorld, agentId: string, prompt: string) {
@@ -136,30 +131,6 @@ Given('the Agent v2 composer draft is publishable', async function (this: DifyWo
     createPublishableAgentSoulConfig(normalAgentSoulConfig),
   )
 })
-
-Given(
-  'the e2e-summary-skill Skill is available to the Agent v2 test agent',
-  async function (this: DifyWorld) {
-    const agentId = getCurrentAgentId(this)
-    const upload = await uploadAgentDriveSkill(this.getConsoleClient(), {
-      agentId,
-      fileName: agentBuilderTestMaterials.summarySkill,
-      filePath: getAgentBuilderTestMaterialPath('summarySkill'),
-    })
-    this.createdAgentDriveFiles.push({ agentId, key: upload.skill.skill_md_key })
-    if (upload.skill.archive_key)
-      this.createdAgentDriveFiles.push({ agentId, key: upload.skill.archive_key })
-  },
-)
-
-Then(
-  'the Agent v2 test agent should include drive skill {string}',
-  async function (this: DifyWorld, skillName: string) {
-    const skills = await getAgentDriveSkills(this.getConsoleClient(), getCurrentAgentId(this))
-
-    expect(skills.map((skill) => skill.name)).toContain(skillName)
-  },
-)
 
 When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))

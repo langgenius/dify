@@ -3,7 +3,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SavedItems from '../index'
 
 vi.mock('copy-to-clipboard', () => ({

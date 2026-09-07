@@ -1,5 +1,5 @@
 import { waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'

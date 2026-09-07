@@ -47,7 +47,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('@/app/components/datasets/extra-info/service-api', () => ({
-  default: () => <button type="button">dataset.serviceApi.title</button>,
+  ServiceApi: () => <button type="button">dataset.serviceApi.title</button>,
 }))
 
 vi.mock('@/app/components/datasets/external-api/external-api-panel', () => ({
@@ -83,6 +83,11 @@ vi.mock('jotai', async (importOriginal) => {
 
 vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysAtom: permissionStateMock.workspacePermissionKeysAtom,
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
+  useLocale: () => 'en-US',
 }))
 
 vi.mock('@/service/client', () => ({
@@ -141,6 +146,17 @@ describe('NewKnowledgeList', () => {
     expect(options?.getNextPageParam({ items: [] })).toBeUndefined()
   })
 
+  it('links the guide through the shared documentation URL', () => {
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use-dify/knowledge/readme',
+    )
+  })
+
   it('links real knowledge spaces to the new detail shell', () => {
     setResolvedPage([
       {
@@ -179,7 +195,7 @@ describe('NewKnowledgeList', () => {
     ).toHaveAttribute('href', '/datasets/new/space-2/sources')
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
-    expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
+    expect(within(supportCard).getByTitle('camera')).toBeInTheDocument()
     expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)

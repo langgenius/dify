@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -19,7 +19,7 @@ import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
@@ -139,14 +139,14 @@ const RetrievalParamConfig: FC<Props> = ({
           {value.reranking_enable && (
             <>
               <ModelSelector
-                defaultModel={
+                value={
                   rerankModel && {
                     provider: rerankModel.provider_name,
                     model: rerankModel.model_name,
                   }
                 }
-                modelList={rerankModelList}
-                onSelect={(v) => {
+                models={rerankModelList}
+                onValueChange={(v) => {
                   if (disabled) return
                   onChange({
                     ...value,
@@ -156,7 +156,7 @@ const RetrievalParamConfig: FC<Props> = ({
                     },
                   })
                 }}
-                readonly={disabled}
+                disabled={disabled}
               />
               {showMultiModalTip && (
                 <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
@@ -272,14 +272,14 @@ const RetrievalParamConfig: FC<Props> = ({
           {value.reranking_mode !== RerankingModeEnum.WeightedScore && (
             <>
               <ModelSelector
-                defaultModel={
+                value={
                   rerankModel && {
                     provider: rerankModel.provider_name,
                     model: rerankModel.model_name,
                   }
                 }
-                modelList={rerankModelList}
-                onSelect={(v) => {
+                models={rerankModelList}
+                onValueChange={(v) => {
                   if (disabled) return
                   onChange({
                     ...value,
@@ -289,7 +289,7 @@ const RetrievalParamConfig: FC<Props> = ({
                     },
                   })
                 }}
-                readonly={disabled}
+                disabled={disabled}
               />
               {showMultiModalTip && (
                 <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">

@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+from datetime import datetime
 from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session
@@ -6,25 +6,20 @@ from sqlalchemy.orm import Session
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA
 from controllers.openapi.apps import _EMPTY_PARAMETERS, build_app_describe_response
 from controllers.service_api.app.error import AppUnavailableError
+from models.model import App, AppMode
 
 
-class _FakeApp(SimpleNamespace):
-    pass
-
-
-def _app() -> _FakeApp:
-    from datetime import datetime
-
-    return _FakeApp(
+def _app() -> App:
+    app = App(
         id="11111111-1111-1111-1111-111111111111",
+        tenant_id="tenant-1",
         name="Demo",
-        mode="chat",
+        mode=AppMode.CHAT,
         description="d",
-        tags=[],
-        author_name="me",
-        updated_at=datetime(2026, 1, 1),
         enable_api=True,
     )
+    app.updated_at = datetime(2026, 1, 1)
+    return app
 
 
 def test_fields_none_returns_all_blocks(monkeypatch, unbound_session: Session):

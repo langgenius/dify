@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
@@ -389,8 +390,8 @@ class WorkflowAgentDifyToolsBuilder:
                 f"Dify Tool {tool_config.tool_name!r} has no runtime.",
             )
 
-        provider_id = self._provider_id(tool_config)
-        plugin_id, provider = self._plugin_provider(tool_config, provider_id)
+        provider_id = ToolProviderID(self._provider_id(tool_config))
+        plugin_id, provider = normalize_plugin_daemon_provider_identity(provider_id, tool_config.plugin_id)
         parameters = self._prepared_parameters(tool_runtime)
         runtime_parameters = self._runtime_parameters(tool_runtime, parameters)
         description = self._description(tool_config, tool_runtime)
@@ -426,13 +427,6 @@ class WorkflowAgentDifyToolsBuilder:
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
         )
-
-    @staticmethod
-    def _plugin_provider(tool_config: AgentSoulDifyToolConfig, provider_id: str) -> tuple[str, str]:
-        if tool_config.plugin_id and tool_config.provider:
-            return tool_config.plugin_id, tool_config.provider
-        provider_id_entity = ToolProviderID(provider_id)
-        return provider_id_entity.plugin_id, provider_id_entity.provider_name
 
     @staticmethod
     def _credential_type(

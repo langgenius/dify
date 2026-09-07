@@ -64,9 +64,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: any) => (
+  ModelSelector: ({ value }: any) => (
     <div>
-      {defaultModel.provider}:{defaultModel.model}
+      {value.provider}:{value.model}
     </div>
   ),
 }))

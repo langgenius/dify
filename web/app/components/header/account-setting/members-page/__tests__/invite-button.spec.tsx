@@ -1,6 +1,6 @@
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InviteButton from '../invite-button'

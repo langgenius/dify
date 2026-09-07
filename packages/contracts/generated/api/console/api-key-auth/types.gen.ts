@@ -10,9 +10,7 @@ export type ApiKeyAuthDataSourceListResponse = {
 
 export type ApiKeyAuthBindingPayload = {
   category: string
-  credentials: {
-    [key: string]: unknown
-  }
+  credentials: ApiKeyAuthCredentialsPayload
   provider: string
 }
 
@@ -27,6 +25,16 @@ export type ApiKeyAuthDataSourceItem = {
   id: string
   provider: string
   updated_at: number
+}
+
+export type ApiKeyAuthCredentialsPayload = {
+  auth_type: string
+  config: ApiKeyAuthConfigPayload
+}
+
+export type ApiKeyAuthConfigPayload = {
+  api_key: string
+  [key: string]: unknown
 }
 
 export type GetApiKeyAuthDataSourceData = {

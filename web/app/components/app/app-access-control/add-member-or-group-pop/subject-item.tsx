@@ -11,7 +11,7 @@ import type {
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ComboboxItem, ComboboxItemText } from '@langgenius/dify-ui/combobox'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -19,62 +19,65 @@ import { SubjectType } from '@/models/access-control'
 
 type SubjectItemProps = {
   subject: Subject
-  selectedGroups: AccessControlGroup[]
+  selected: boolean
+  onToggle: () => void
   onExpandGroup: (group: AccessControlGroup) => void
 }
 
-export function SubjectItem({ subject, selectedGroups, onExpandGroup }: SubjectItemProps) {
+export function SubjectItem({ subject, selected, onToggle, onExpandGroup }: SubjectItemProps) {
   if (subject.subjectType === SubjectType.GROUP)
     return (
       <GroupItem
         group={(subject as SubjectGroup).groupData}
-        subject={subject}
-        selectedGroups={selectedGroups}
+        selected={selected}
+        onToggle={onToggle}
         onExpand={onExpandGroup}
       />
     )
 
-  return <MemberItem member={(subject as SubjectAccount).accountData} subject={subject} />
+  return (
+    <MemberItem
+      member={(subject as SubjectAccount).accountData}
+      selected={selected}
+      onToggle={onToggle}
+    />
+  )
 }
 
-type GroupItemProps = {
+function GroupItem({
+  group,
+  selected,
+  onToggle,
+  onExpand,
+}: {
   group: AccessControlGroup
-  subject: Subject
-  selectedGroups: AccessControlGroup[]
+  selected: boolean
+  onToggle: () => void
   onExpand: (group: AccessControlGroup) => void
-}
-
-function GroupItem({ group, subject, selectedGroups, onExpand }: GroupItemProps) {
+}) {
   const { t } = useTranslation()
-  const isChecked = selectedGroups.some((selectedGroup) => selectedGroup.id === group.id)
 
   return (
-    <div className="flex items-center gap-2 rounded-lg hover:bg-state-base-hover">
-      <BaseItem subject={subject}>
-        {(selected) => (
-          <>
-            <SelectionBox checked={selected} />
-            <ComboboxItemText className="flex grow items-center px-0">
-              <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-                <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-                  <span
-                    aria-hidden="true"
-                    className="i-ri-organization-chart h-3.5 w-3.5 text-components-avatar-shape-fill-stop-0"
-                  />
-                </div>
-              </div>
-              <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
-              <span className="system-xs-regular text-text-tertiary">{group.groupSize}</span>
-            </ComboboxItemText>
-          </>
-        )}
-      </BaseItem>
+    <li className="flex min-w-0 items-center gap-2 rounded-lg hover:bg-state-base-hover">
+      <SubjectToggleButton selected={selected} onToggle={onToggle}>
+        <div className="mr-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+          <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
+            <span
+              aria-hidden="true"
+              className="i-ri-organization-chart size-3.5 text-components-avatar-shape-fill-stop-0"
+            />
+          </div>
+        </div>
+        <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">
+          {group.name}
+        </span>
+        <span className="shrink-0 system-xs-regular text-text-tertiary">{group.groupSize}</span>
+      </SubjectToggleButton>
       <Button
         size="small"
-        disabled={isChecked}
+        disabled={selected}
         variant="ghost-accent"
         className="mr-1 flex shrink-0 items-center justify-between py-1"
-        onPointerDown={(event) => event.preventDefault()}
         onClick={() => onExpand(group)}
       >
         <span>
@@ -82,11 +85,19 @@ function GroupItem({ group, subject, selectedGroups, onExpand }: GroupItemProps)
         </span>
         <span aria-hidden="true" className="i-ri-arrow-right-s-line size-4" />
       </Button>
-    </div>
+    </li>
   )
 }
 
-function MemberItem({ member, subject }: { member: AccessControlAccount; subject: Subject }) {
+function MemberItem({
+  member,
+  selected,
+  onToggle,
+}: {
+  member: AccessControlAccount
+  selected: boolean
+  onToggle: () => void
+}) {
   const { data: currentUser } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -94,52 +105,58 @@ function MemberItem({ member, subject }: { member: AccessControlAccount; subject
   const { t } = useTranslation()
 
   return (
-    <BaseItem subject={subject} className="pr-3">
-      {(selected) => (
-        <>
-          <SelectionBox checked={selected} />
-          <ComboboxItemText className="flex grow items-center px-0">
-            <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-              <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-                <Avatar size="xxs" avatar={null} name={member.name} />
-              </div>
-            </div>
-            <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
-            {currentUser.email === member.email && (
-              <span className="system-xs-regular text-text-tertiary">
-                ({t(($) => $.you, { ns: 'common' })})
-              </span>
-            )}
-          </ComboboxItemText>
-          <span className="system-xs-regular text-text-quaternary">{member.email}</span>
-        </>
-      )}
-    </BaseItem>
+    <li>
+      <SubjectToggleButton selected={selected} onToggle={onToggle} className="pr-3">
+        <div className="mr-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+          <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
+            <Avatar size="xxs" avatar={null} name={member.name} />
+          </div>
+        </div>
+        <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">
+          {member.name}
+        </span>
+        {currentUser.email === member.email && (
+          <span className="shrink-0 system-xs-regular text-text-tertiary">
+            ({t(($) => $.you, { ns: 'common' })})
+          </span>
+        )}
+        <span className="ml-auto min-w-0 truncate system-xs-regular text-text-quaternary">
+          {member.email}
+        </span>
+      </SubjectToggleButton>
+    </li>
   )
 }
 
-function BaseItem({
+function SubjectToggleButton({
   children,
+  selected,
+  onToggle,
   className,
-  subject,
 }: {
+  children: ReactNode
+  selected: boolean
+  onToggle: () => void
   className?: string
-  subject: Subject
-  children: (selected: boolean) => ReactNode
 }) {
   return (
-    <ComboboxItem
-      value={subject}
-      className={cn(
-        'mx-0 flex min-h-8 grow grid-cols-none items-center gap-2 rounded-lg p-1 pl-2',
-        className,
-      )}
-      render={(props, state) => (
-        <div {...props} className={props.className}>
-          {children(state.selected)}
-        </div>
-      )}
-    />
+    <Toggle
+      pressed={selected}
+      onPressedChange={onToggle}
+      render={
+        <Button
+          variant="ghost"
+          size="medium"
+          className={cn(
+            'min-h-8 min-w-0 grow justify-start gap-2 p-1 pl-2 text-left whitespace-normal',
+            className,
+          )}
+        />
+      }
+    >
+      <SelectionBox checked={selected} />
+      {children}
+    </Toggle>
   )
 }
 

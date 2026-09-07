@@ -37,7 +37,7 @@ export function AgentPromptOptionMenu({
           </button>
         }
       />
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-60 p-1">
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-60 p-1">
         {options.map((option) => (
           <DropdownMenuItem
             key={option.key}

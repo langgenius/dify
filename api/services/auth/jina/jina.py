@@ -1,10 +1,16 @@
 import json
-from typing import override
+from http import HTTPStatus
+from typing import Never
 
 import httpx
 
 from core.helper.http_client_pooling import get_pooled_http_client
-from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
+from services.auth.errors import (
+    DataSourceApiKeyAuthCredentialValidationError,
+    DataSourceApiKeyAuthProviderUnavailableError,
+    InvalidDataSourceApiKeyAuthCredentialsError,
+)
+from services.entities.data_source_api_key_auth_entities import DataSourceApiKeyAuthCredentials
 
 _http_client: httpx.Client = get_pooled_http_client(
     "auth:jina",
@@ -15,19 +21,16 @@ _http_client: httpx.Client = get_pooled_http_client(
 )
 
 
-class JinaAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: AuthCredentials):
-        super().__init__(credentials)
-        auth_type = credentials.get("auth_type")
-        if auth_type != "bearer":
-            raise ValueError("Invalid auth type, Jina Reader auth type must be Bearer")
-        self.api_key = credentials.get("config", {}).get("api_key", None)
+class JinaAuth:
+    def __init__(self, credentials: DataSourceApiKeyAuthCredentials):
+        if credentials.auth_type != "bearer":
+            raise InvalidDataSourceApiKeyAuthCredentialsError("Invalid auth type, Jina Reader auth type must be Bearer")
+        self.api_key = credentials.api_key
 
         if not self.api_key:
-            raise ValueError("No API key provided")
+            raise InvalidDataSourceApiKeyAuthCredentialsError("No API key provided")
 
-    @override
-    def validate_credentials(self):
+    def validate_credentials(self) -> bool:
         headers = self._prepare_headers()
         options = {
             "url": "https://example.com",
@@ -44,18 +47,30 @@ class JinaAuth(ApiKeyAuthBase):
     def _post_request(self, url, data, headers):
         return _http_client.post(url, headers=headers, json=data)
 
-    def _handle_error(self, response):
-        if response.status_code in {402, 409, 500}:
+    def _handle_error(self, response) -> Never:
+        if (
+            response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+            or response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+        ):
+            raise DataSourceApiKeyAuthProviderUnavailableError("jinareader", response.status_code)
+
+        if response.status_code in {402, 409}:
             try:
                 error_message = response.json().get("error", "Unknown error occurred")
-            except ValueError:
+            except json.JSONDecodeError:
                 error_message = response.text or "Unknown error occurred"
-            raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+            raise DataSourceApiKeyAuthCredentialValidationError(
+                f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"
+            )
         else:
             if response.text:
                 try:
                     error_message = json.loads(response.text).get("error", "Unknown error occurred")
-                except ValueError:
+                except json.JSONDecodeError:
                     error_message = response.text
-                raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
-            raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")
+                raise DataSourceApiKeyAuthCredentialValidationError(
+                    f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"
+                )
+            raise DataSourceApiKeyAuthCredentialValidationError(
+                f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}"
+            )

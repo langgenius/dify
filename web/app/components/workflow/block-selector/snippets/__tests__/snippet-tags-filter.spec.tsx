@@ -53,7 +53,7 @@ describe('SnippetTagsFilter', () => {
     const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
     trigger.focus()
     await user.keyboard('{Enter}')
-    const search = screen.getByRole('textbox', { name: 'pluginTags.searchTags' })
+    const search = screen.getByRole('searchbox', { name: 'pluginTags.searchTags' })
     await user.type(search, 'sup')
 
     expect(screen.getByText('Support')).toBeInTheDocument()
@@ -73,7 +73,7 @@ describe('SnippetTagsFilter', () => {
     const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
     await user.click(trigger)
     expect(screen.getByRole('dialog', { name: 'common.tag.placeholder' })).toBeInTheDocument()
-    await user.type(screen.getByRole('textbox', { name: 'pluginTags.searchTags' }), 'sup')
+    await user.type(screen.getByRole('searchbox', { name: 'pluginTags.searchTags' }), 'sup')
     expect(screen.queryByText('Sales')).not.toBeInTheDocument()
 
     await user.keyboard('{Escape}')

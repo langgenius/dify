@@ -189,6 +189,7 @@ describe('isAgentSuggestedModel', () => {
     )
     expect(isAgentSuggestedModel(provider, createModelItem('grok-4.3'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-pro'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-flash'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('kimi-k2.6'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('minimax-m3'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('qwen3.7-max'))).toBe(true)

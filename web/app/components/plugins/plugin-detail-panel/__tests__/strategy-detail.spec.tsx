@@ -1,7 +1,7 @@
 import type { StrategyDetail as StrategyDetailType } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import StrategyDetail from '../strategy-detail'
 
 vi.mock('@/hooks/use-i18n', () => ({

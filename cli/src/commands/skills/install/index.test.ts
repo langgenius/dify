@@ -1,5 +1,5 @@
 import type { CommandTree } from '@/framework/registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { ExitCode } from '@/errors/codes'
 import { run } from '@/framework/run'
 import { renderSkill } from '@/help/skill'

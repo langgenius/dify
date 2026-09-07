@@ -5,7 +5,7 @@ import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { CopyFeedbackNew } from '../copy-feedback'
+import { CopyFeedback } from '../copy-feedback'
 
 const inputVariants = cva('', {
   variants: {
@@ -150,10 +150,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         {showCopyIcon && (
           <div className={cn('group absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer')}>
-            <CopyFeedbackNew
-              content={String(value ?? '')}
-              className="size-7! hover:bg-transparent"
-            />
+            <CopyFeedback content={String(value ?? '')} className="size-7! hover:bg-transparent" />
           </div>
         )}
         {unit && (

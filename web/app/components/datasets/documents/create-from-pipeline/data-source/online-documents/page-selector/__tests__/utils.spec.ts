@@ -3,7 +3,7 @@ import type {
   NotionPageTreeMap,
 } from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPageMap } from '@/models/common'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { recursivePushInParentDescendants } from '@/app/components/base/notion-page-selector/page-selector/utils'
 
 const makePageEntry = (overrides: Partial<NotionPageTreeItem>): NotionPageTreeItem => ({

@@ -31,7 +31,7 @@ from services.app_dsl_service import (
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 from .. import console_ns
 from .permission_keys import get_app_permission_keys
@@ -127,7 +127,7 @@ class AppImportApi(Resource):
                     result.app_id,
                 )
 
-        if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result

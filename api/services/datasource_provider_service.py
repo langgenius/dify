@@ -22,6 +22,7 @@ from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.provider_entities import FormType
+from models.enums import PermissionEnum
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 
@@ -642,10 +643,23 @@ class DatasourceProviderService:
         avatar_url: str | None,
         expire_at: int,
         credentials: dict[str, Any],
+        user_id: str | None = None,
+        visibility: PermissionEnum | None = None,
     ) -> None:
         """
-        add datasource oauth provider
+        add datasource oauth provider.
+
+        ``user_id`` is the creator whose visibility choice this credential is
+        scoped to. When ``visibility`` is only_me the row is visible only to
+        this creator; ``all_team_members`` shares it workspace-wide.
+        Callers that omit ``user_id``/``visibility`` fall back to the previous
+        team-wide default (matches how the DB column defaults).
         """
+        # partial_members isn't supported for plugin credentials (matches the
+        # tool + api-key paths); collapse it to ALL_TEAM so we never persist
+        # an unreachable value here.
+        if visibility == PermissionEnum.PARTIAL_TEAM:
+            visibility = PermissionEnum.ALL_TEAM
         credential_type = CredentialType.OAUTH2
         with sessionmaker(bind=db.engine).begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{credential_type.value}"
@@ -692,16 +706,21 @@ class DatasourceProviderService:
                     if key in provider_credential_secret_variables:
                         credentials[key] = encrypter.encrypt_token(tenant_id, value)
 
-                datasource_provider = DatasourceProvider(
-                    tenant_id=tenant_id,
-                    name=db_provider_name,
-                    provider=provider_id.provider_name,
-                    plugin_id=provider_id.plugin_id,
-                    auth_type=credential_type.value,
-                    encrypted_credentials=credentials,
-                    avatar_url=avatar_url or "default",
-                    expires_at=expire_at,
-                )
+                datasource_provider_kwargs: dict[str, Any] = {
+                    "tenant_id": tenant_id,
+                    "name": db_provider_name,
+                    "provider": provider_id.provider_name,
+                    "plugin_id": provider_id.plugin_id,
+                    "auth_type": credential_type.value,
+                    "encrypted_credentials": credentials,
+                    "avatar_url": avatar_url or "default",
+                    "expires_at": expire_at,
+                }
+                if user_id is not None:
+                    datasource_provider_kwargs["user_id"] = user_id
+                if visibility is not None:
+                    datasource_provider_kwargs["visibility"] = visibility
+                datasource_provider = DatasourceProvider(**datasource_provider_kwargs)
                 session.add(datasource_provider)
 
     def add_datasource_api_key_provider(
@@ -879,11 +898,17 @@ class DatasourceProviderService:
 
         return copy_credentials_list
 
-    def get_all_datasource_credentials(self, tenant_id: str, *, session: Session) -> list[dict]:
+    def get_all_datasource_credentials(
+        self, tenant_id: str, *, session: Session, user: "Account | None" = None
+    ) -> list[dict]:
         """
         get datasource credentials.
 
-        :return:
+        ``user`` is threaded through to ``list_datasource_credentials`` so the
+        embedded ``credentials_list`` per datasource is filtered by
+        per-credential visibility. Callers that omit it (background /
+        maintenance jobs) get the pre-visibility behavior of returning every
+        credential in the workspace.
         """
         # get all plugin providers
         manager = PluginDatasourceManager()
@@ -895,6 +920,7 @@ class DatasourceProviderService:
                 tenant_id=tenant_id,
                 provider=datasource.provider,
                 plugin_id=datasource.plugin_id,
+                user=user,
                 session=session,
             )
             redirect_uri = (
@@ -938,11 +964,14 @@ class DatasourceProviderService:
             )
         return datasource_credentials
 
-    def get_hard_code_datasource_credentials(self, tenant_id: str, *, session: Session) -> list[dict]:
+    def get_hard_code_datasource_credentials(
+        self, tenant_id: str, *, session: Session, user: "Account | None" = None
+    ) -> list[dict]:
         """
         get hard code datasource credentials.
 
-        :return:
+        ``user`` is threaded through to ``list_datasource_credentials`` so
+        credentials in the returned envelope are visibility-filtered.
         """
         # get all plugin providers
         manager = PluginDatasourceManager()
@@ -960,6 +989,7 @@ class DatasourceProviderService:
                     tenant_id=tenant_id,
                     provider=datasource.provider,
                     plugin_id=datasource.plugin_id,
+                    user=user,
                     session=session,
                 )
                 redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(

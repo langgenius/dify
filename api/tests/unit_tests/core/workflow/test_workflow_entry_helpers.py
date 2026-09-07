@@ -1,3 +1,4 @@
+import json
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
@@ -7,6 +8,7 @@ import pytest
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
@@ -19,10 +21,26 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
+from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _build_typed_node_config(node_type: NodeType):
     return {"id": "node-id", "data": BaseNodeData(type=node_type)}
+
+
+def _workflow() -> Workflow:
+    """Build a real transient workflow for single-step orchestration tests."""
+    return Workflow(
+        id="workflow-id",
+        tenant_id="tenant-id",
+        app_id="app-id",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": [], "edges": []}),
+        _features="{}",
+        created_by="user-id",
+    )
 
 
 def _build_minimal_workflow_entry(
@@ -82,8 +100,7 @@ class TestWorkflowEntryInit:
         observability_layer = sentinel.observability_layer
 
         with (
-            patch.object(workflow_entry.dify_config, "DEBUG", True),
-            patch.object(workflow_entry.dify_config, "ENABLE_OTEL", False),
+            config_overrides_context(DEBUG=True, ENABLE_OTEL=False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
             patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
             patch.object(workflow_entry, "GraphEngine", return_value=graph_engine) as graph_engine_cls,
@@ -222,11 +239,12 @@ class TestWorkflowEntryRun:
 class TestWorkflowEntrySingleStepRun:
     @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION])
     def test_rejects_container_nodes(self, node_type):
-        workflow = SimpleNamespace(
-            get_node_config_by_id=lambda _node_id: _build_typed_node_config(node_type),
-        )
+        workflow = _workflow()
 
-        with pytest.raises(ValueError, match="engine-backed debug endpoints"):
+        with (
+            patch.object(workflow, "get_node_config_by_id", return_value=_build_typed_node_config(node_type)),
+            pytest.raises(ValueError, match="engine-backed debug endpoints"),
+        ):
             workflow_entry.WorkflowEntry.single_step_run(
                 workflow=workflow,
                 node_id="node-id",
@@ -258,8 +276,14 @@ class TestWorkflowEntrySingleStepRun:
                 selector=["sys", "conversation_id"],
             )
         ]
+        workflow = _workflow()
+        node_config = {
+            "id": "node-id",
+            "data": BaseNodeData(type=BuiltinNodeTypes.LLM, version="1", memory=object()),
+        }
 
         with (
+            patch.object(workflow, "get_node_config_by_id", return_value=node_config),
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(
                 workflow_entry,
@@ -284,17 +308,6 @@ class TestWorkflowEntrySingleStepRun:
                 return FakeLLMNode()
 
             dify_node_factory.return_value.create_node.side_effect = _create_node
-            workflow = SimpleNamespace(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                id="workflow-id",
-                graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: {
-                    "id": "node-id",
-                    "data": SimpleNamespace(type=BuiltinNodeTypes.LLM, version="1", memory=object()),
-                },
-            )
-
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
                 workflow=workflow,
                 node_id="node-id",
@@ -322,7 +335,13 @@ class TestWorkflowEntrySingleStepRun:
             def extract_variable_selector_to_variable_mapping(**_kwargs):
                 raise NotImplementedError
 
+        workflow = _workflow()
         with (
+            patch.object(
+                workflow,
+                "get_node_config_by_id",
+                return_value=_build_typed_node_config(BuiltinNodeTypes.START),
+            ),
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
@@ -342,14 +361,6 @@ class TestWorkflowEntrySingleStepRun:
             ),
         ):
             dify_node_factory.return_value.create_node.return_value = FakeNode()
-            workflow = SimpleNamespace(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                id="workflow-id",
-                graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: _build_typed_node_config(BuiltinNodeTypes.START),
-            )
-
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
                 workflow=workflow,
                 node_id="node-id",
@@ -391,7 +402,13 @@ class TestWorkflowEntrySingleStepRun:
             def extract_variable_selector_to_variable_mapping(**_kwargs):
                 return {"question": ["node", "question"]}
 
+        workflow = _workflow()
         with (
+            patch.object(
+                workflow,
+                "get_node_config_by_id",
+                return_value=_build_typed_node_config(BuiltinNodeTypes.DATASOURCE),
+            ),
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
@@ -411,14 +428,6 @@ class TestWorkflowEntrySingleStepRun:
             ),
         ):
             dify_node_factory.return_value.create_node.return_value = FakeDatasourceNode()
-            workflow = SimpleNamespace(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                id="workflow-id",
-                graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: _build_typed_node_config(BuiltinNodeTypes.DATASOURCE),
-            )
-
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
                 workflow=workflow,
                 node_id="node-id",
@@ -451,7 +460,13 @@ class TestWorkflowEntrySingleStepRun:
             def version():
                 return "1"
 
+        workflow = _workflow()
         with (
+            patch.object(
+                workflow,
+                "get_node_config_by_id",
+                return_value=_build_typed_node_config(BuiltinNodeTypes.START),
+            ),
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
@@ -468,14 +483,6 @@ class TestWorkflowEntrySingleStepRun:
             ),
         ):
             dify_node_factory.return_value.create_node.return_value = FakeNode()
-            workflow = SimpleNamespace(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                id="workflow-id",
-                graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: _build_typed_node_config(BuiltinNodeTypes.START),
-            )
-
             with pytest.raises(WorkflowNodeRunFailedError):
                 workflow_entry.WorkflowEntry.single_step_run(
                     workflow=workflow,
@@ -604,6 +611,7 @@ class TestWorkflowEntryHelpers:
             user_id="user-id",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context_cls.assert_called_once_with(
             workflow_id="",

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderHook } from '@/test/console/render'
 import useGetIcon from '../use-get-icon'
 

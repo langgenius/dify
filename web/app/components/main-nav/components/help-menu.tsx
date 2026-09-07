@@ -1,6 +1,7 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
+import type { ReactElement, Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -27,6 +29,7 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
@@ -36,6 +39,7 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -52,8 +56,10 @@ import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
-  triggerIcon?: ReactNode
+  triggerIcon?: ReactElement
   triggerClassName?: string
+  triggerRef?: Ref<HTMLButtonElement>
+  triggerSize?: IconButtonProps['size']
 }
 
 const defaultTriggerIcon = (
@@ -84,9 +90,10 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
   />
 )
 
-const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMenuProps) => {
+const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: profileMeta } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -114,6 +121,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutOpen, setAboutOpen] = useState(false)
+  const usesDefaultTrigger = !triggerIcon
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
   const canToggleStepByStepTour =
@@ -148,21 +156,33 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
     <>
       <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
-          aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
+          ref={triggerRef}
           data-learn-dify-help-target
-          className={cn(
-            'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-            triggerClassName,
-            'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
-            skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
-          )}
-        >
-          {triggerIcon}
-        </DropdownMenuTrigger>
+          render={
+            <IconButton
+              size={triggerSize ?? 'lg'}
+              aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
+              className={cn(
+                'focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
+                usesDefaultTrigger && [
+                  'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
+                  !triggerSize && 'size-7 p-0',
+                  'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
+                ],
+                !usesDefaultTrigger &&
+                  'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
+                triggerClassName,
+                skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
+              )}
+            >
+              {triggerIcon ?? defaultTriggerIcon}
+            </IconButton>
+          }
+        />
         <DropdownMenuContent
           placement="top-end"
           sideOffset={8}
-          popupClassName="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <>
             <DropdownMenuGroup className="p-1">
@@ -235,6 +255,18 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
+              <DropdownMenuLinkItem
+                href={creatorCenterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-0 h-8 gap-1 px-3 py-1.5"
+              >
+                <MenuItemContent
+                  iconClassName="i-ri-user-star-line"
+                  label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+              </DropdownMenuLinkItem>
               <DropdownMenuLinkItem
                 href="https://github.com/langgenius/dify"
                 target="_blank"

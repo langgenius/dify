@@ -1,6 +1,6 @@
+import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 
 type KnowledgeBaseInfoProps = {
   name: string
@@ -10,40 +10,36 @@ type KnowledgeBaseInfoProps = {
 
 const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description, onChange }) => {
   const { t } = useTranslation()
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({ name: e.target.value })
-  }
-
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange({ description: e.target.value })
-  }
+  const nameInputId = React.useId()
+  const descriptionInputId = React.useId()
 
   return (
-    <form className="flex flex-col gap-4 self-stretch">
+    <div className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-col gap-4 self-stretch">
         <div className="flex flex-col gap-1 self-stretch">
           <div className="flex flex-col justify-center self-stretch">
-            <label className="system-sm-semibold text-text-secondary">
+            <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
               {t(($) => $.externalKnowledgeName, { ns: 'dataset' })}
             </label>
           </div>
           <Input
+            id={nameInputId}
             value={name}
-            onChange={handleNameChange}
+            onValueChange={(nextValue) => onChange({ name: nextValue })}
             placeholder={t(($) => $.externalKnowledgeNamePlaceholder, { ns: 'dataset' }) ?? ''}
           />
         </div>
         <div className="flex flex-col gap-1 self-stretch">
           <div className="flex flex-col justify-center self-stretch">
-            <label className="system-sm-semibold text-text-secondary">
+            <label htmlFor={descriptionInputId} className="system-sm-semibold text-text-secondary">
               {t(($) => $.externalKnowledgeDescription, { ns: 'dataset' })}
             </label>
           </div>
           <div className="flex flex-col gap-1 self-stretch">
             <textarea
+              id={descriptionInputId}
               value={description}
-              onChange={(e) => handleDescriptionChange(e)}
+              onChange={(e) => onChange({ description: e.target.value })}
               placeholder={
                 t(($) => $.externalKnowledgeDescriptionPlaceholder, { ns: 'dataset' }) ?? ''
               }
@@ -52,7 +48,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
           </div>
         </div>
       </div>
-    </form>
+    </div>
   )
 }
 

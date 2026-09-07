@@ -48,7 +48,7 @@ const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
           />
         )}
         <div className="p-1">
-          <div className="flex action-btn-l justify-center border border-components-panel-border-subtle bg-background-default-dodge shadow-md">
+          <div className="flex size-8 items-center justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md">
             {icon}
           </div>
         </div>

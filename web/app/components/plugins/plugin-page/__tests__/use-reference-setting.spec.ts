@@ -3,7 +3,7 @@ import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import type { ConsoleStateFixture as BaseConsoleStateFixture } from '@/test/console/state-fixture'
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   useInvalidateReferenceSettings,
   useMutationPluginPermissionSettings,

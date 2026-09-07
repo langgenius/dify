@@ -7,7 +7,10 @@ describe('LargeDataAlert', () => {
       <LargeDataAlert downloadUrl="https://example.com/export.json" className="extra-alert" />,
     )
 
-    expect(screen.getByText('workflow.debug.variableInspect.largeData')).toBeInTheDocument()
+    expect(screen.getByText('workflow.debug.variableInspect.largeData')).toHaveAttribute(
+      'title',
+      'workflow.debug.variableInspect.largeData',
+    )
     expect(screen.getByText('workflow.debug.variableInspect.export')).toBeInTheDocument()
     expect(container.firstChild).toHaveClass('extra-alert')
   })
@@ -15,7 +18,10 @@ describe('LargeDataAlert', () => {
   it('should render the no-export message and omit the export action when the URL is missing', () => {
     render(<LargeDataAlert textHasNoExport />)
 
-    expect(screen.getByText('workflow.debug.variableInspect.largeDataNoExport')).toBeInTheDocument()
+    expect(screen.getByText('workflow.debug.variableInspect.largeDataNoExport')).toHaveAttribute(
+      'title',
+      'workflow.debug.variableInspect.largeDataNoExport',
+    )
     expect(screen.queryByText('workflow.debug.variableInspect.export')).not.toBeInTheDocument()
   })
 })

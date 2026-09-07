@@ -3,7 +3,14 @@ import type { FC } from 'react'
 import type { Memory } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -175,8 +182,15 @@ const MemoryConfig: FC<Props> = ({
                   step={1}
                   onValueChange={handleWindowSizeChange}
                   disabled={readonly || !payload.window?.enabled}
-                  aria-label={windowSizeLabel}
-                />
+                >
+                  <SliderLabel className="sr-only">{windowSizeLabel}</SliderLabel>
+                  <SliderControl>
+                    <SliderTrack>
+                      <SliderIndicator />
+                      <SliderThumb />
+                    </SliderTrack>
+                  </SliderControl>
+                </Slider>
                 <Input
                   aria-label={windowSizeLabel}
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}

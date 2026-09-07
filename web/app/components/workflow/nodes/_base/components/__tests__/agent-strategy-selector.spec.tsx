@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { AgentStrategySelector } from '../agent-strategy-selector'
 

@@ -19,11 +19,8 @@ const TabSliderNew: FC<TabSliderProps> = ({ ariaLabel, className, value, onChang
     <SegmentedControl
       aria-label={ariaLabel}
       data-testid="tab-slider-new"
-      value={[value]}
-      onValueChange={(nextValues) => {
-        const nextValue = nextValues[0]
-        if (nextValue && nextValue !== value) onChange(nextValue)
-      }}
+      value={value}
+      onValueChange={(value) => onChange(value)}
       className={cn(className, 'relative flex gap-0 rounded-none bg-transparent p-0')}
     >
       {options.map((option) => (
@@ -31,7 +28,7 @@ const TabSliderNew: FC<TabSliderProps> = ({ ariaLabel, className, value, onChang
           key={option.value}
           value={option.value}
           data-testid={`tab-item-${option.value}`}
-          className="mr-1 h-8 justify-start gap-0 overflow-visible px-3 py-1.75 text-start text-[13px] leading-4.5 font-medium whitespace-normal text-text-tertiary transition-none hover:bg-state-base-hover hover:text-text-tertiary data-pressed:border-components-main-nav-nav-button-border data-pressed:bg-state-base-hover data-pressed:text-components-main-nav-nav-button-text-active data-pressed:shadow-xs"
+          className="mr-1 h-8 justify-start gap-0 overflow-visible px-3 py-1.75 text-start text-[13px] leading-4.5 font-medium whitespace-normal text-text-tertiary transition-none hover:bg-state-base-hover hover:text-text-tertiary data-checked:border-components-main-nav-nav-button-border data-checked:bg-state-base-hover data-checked:text-components-main-nav-nav-button-text-active data-checked:shadow-xs"
         >
           {option.icon}
           {option.text}

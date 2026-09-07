@@ -93,7 +93,7 @@ describe('AccessRuleSection', () => {
 
     expect(screen.queryByText('Full Control')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { expanded: false }))
+    await userEvent.click(screen.getByRole('button', { name: /^App Access Rules/ }))
 
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })

@@ -5,6 +5,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useRef } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { AppModeEnum } from '@/types/app'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -508,6 +509,7 @@ describe('VersionHistoryPanel', () => {
 
     render(
       <VersionHistoryPanel
+        appMode={AppModeEnum.WORKFLOW}
         latestVersionId="published-version-id"
         restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
@@ -518,6 +520,16 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
+        {
+          appId: 'app-1',
+          appMode: AppModeEnum.WORKFLOW,
+          releaseNotes: 'Updated notes',
+          title: 'Updated release',
+          url: '/apps/app-1/workflows/published-version-id',
+        },
+        expect.any(Object),
+      )
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
   })

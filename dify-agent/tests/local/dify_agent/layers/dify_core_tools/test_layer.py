@@ -18,8 +18,8 @@ def _install_graphon_stubs() -> None:
     llm_entities_module = types.ModuleType("graphon.model_runtime.entities.llm_entities")
     message_entities_module = types.ModuleType("graphon.model_runtime.entities.message_entities")
 
-    llm_entities_module.LLMResultChunk = type("LLMResultChunk", (), {})
-    llm_entities_module.LLMUsage = type("LLMUsage", (), {})
+    setattr(llm_entities_module, "LLMResultChunk", type("LLMResultChunk", (), {}))
+    setattr(llm_entities_module, "LLMUsage", type("LLMUsage", (), {}))
 
     for name in (
         "AssistantPromptMessage",
@@ -43,10 +43,10 @@ def _install_graphon_stubs() -> None:
     sys.modules["graphon.model_runtime.entities.llm_entities"] = llm_entities_module
     sys.modules["graphon.model_runtime.entities.message_entities"] = message_entities_module
 
-    graphon_module.model_runtime = model_runtime_module
-    model_runtime_module.entities = entities_module
-    entities_module.llm_entities = llm_entities_module
-    entities_module.message_entities = message_entities_module
+    setattr(graphon_module, "model_runtime", model_runtime_module)
+    setattr(model_runtime_module, "entities", entities_module)
+    setattr(entities_module, "llm_entities", llm_entities_module)
+    setattr(entities_module, "message_entities", message_entities_module)
 
 
 _install_graphon_stubs()

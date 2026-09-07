@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 type TranslationMap = Record<string, string | string[]>
 type TranslationNamespace = string | readonly string[]

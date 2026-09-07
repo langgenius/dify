@@ -1,6 +1,6 @@
 import os
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -41,6 +41,7 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -99,17 +100,24 @@ def reset_redis_mock() -> None:
 
 
 @pytest.fixture(autouse=True)
-def reset_secret_key() -> Iterator[None]:
+def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
 
-    from configs import dify_config
 
-    original = dify_config.SECRET_KEY
-    dify_config.SECRET_KEY = ""
-    try:
-        yield
-    finally:
-        dify_config.SECRET_KEY = original
+@pytest.fixture
+def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+    """Temporarily override fields on the shared typed application config.
+
+    Application modules import the same config instance, so mutating known
+    field names keeps tests scoped without replacing that instance with an
+    unconstrained mock. ``monkeypatch`` restores every value after the test.
+    """
+
+    def apply(**values: object) -> None:
+        apply_config_overrides(monkeypatch, **values)
+
+    return apply
 
 
 @pytest.fixture

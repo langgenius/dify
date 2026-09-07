@@ -302,8 +302,8 @@ class SwitchWorkspaceApi(Resource):
         # Check whether the tenant_id belongs to the current account.
         try:
             TenantService.switch_tenant(current_user, args.tenant_id, session=session)
-        except Exception:
-            raise AccountNotLinkTenantError("Account not link tenant")
+        except Exception as e:
+            raise AccountNotLinkTenantError("Account not link tenant") from e
 
         new_tenant = TenantService.get_tenant_by_id(args.tenant_id, session=session)
         if new_tenant is None:

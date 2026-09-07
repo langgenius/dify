@@ -256,7 +256,7 @@ describe('LLM Panel', () => {
     renderPanel()
 
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.common.typeSwitch.variable' }),
+      screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
     )
     expect(handleModelSourceChange).toHaveBeenCalledWith(true)
   })
@@ -265,10 +265,10 @@ describe('LLM Panel', () => {
     renderPanel(undefined, FlowType.snippet)
 
     expect(
-      screen.queryByRole('button', { name: 'workflow.nodes.common.typeSwitch.variable' }),
+      screen.queryByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'workflow.nodes.common.typeSwitch.input' }),
+      screen.queryByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }),
     ).not.toBeInTheDocument()
   })
 
@@ -284,7 +284,7 @@ describe('LLM Panel', () => {
     )
 
     renderPanel({ model_selector: ['env', 'shared_model'] }, FlowType.snippet)
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.typeSwitch.input' }))
+    await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
 
     expect(handleModelSourceChange).toHaveBeenCalledWith(false)
   })
@@ -378,7 +378,7 @@ describe('LLM Panel', () => {
     await user.click(screen.getByText('for_summarize'))
     expect(handleModelSelectorChange).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.typeSwitch.input' }))
+    await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
     resolveParameters({ params: {}, removedDetails: {} })
 
     await waitFor(() => {

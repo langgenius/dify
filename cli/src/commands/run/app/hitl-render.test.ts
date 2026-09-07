@@ -1,5 +1,5 @@
 import type { HitlPauseData, HitlPausePayload } from './sse-collector'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { buildHitlExitObject, renderHitlHint } from './hitl-render'
 
 function payload(overrides: Partial<HitlPauseData> = {}): HitlPausePayload {

@@ -2,8 +2,6 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from configs import dify_config
-from constants.languages import get_valid_language, languages
 from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -11,23 +9,35 @@ from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailCodeError,
     EmailRegisterLimitError,
+    EmailRegisterRateLimitExceededError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
-from enums import DeploymentEdition
-from extensions.ext_database import db
+from controllers.console.flask_admission import console_email_registration_admission
+from controllers.console.wraps import model_validate
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import EmailStr, extract_remote_ip
+from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
-from models import Account
-from services.account_service import AccountService
-from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError, SeatsLimitExceededError
+from services.account_errors import (
+    AccountEmailAlreadyInUseError,
+    AccountEmailDomainSuspendedError,
+    AccountEmailFrozenError,
+    AccountNormalizedEmailAlreadyInUseError,
+    EmailRegistrationPasswordMismatchError,
+    EmailRegistrationSeatsLimitError,
+    EmailRegistrationSendIPLimitedError,
+    EmailRegistrationSendRateLimitError,
+    EmailRegistrationVerificationLimitError,
+    InvalidEmailRegistrationAddressError,
+    InvalidEmailRegistrationCodeError,
+    InvalidEmailRegistrationTokenError,
+)
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
-from ..wraps import email_password_login_enabled, email_register_enabled, model_validate, setup_required
+from ..error import AccountInFreezeError, EmailDomainSuspendedError, EmailSendIpLimitError, SeatsLimitExceeded
 
 
 class EmailRegisterSendPayload(BaseModel):
@@ -83,135 +93,91 @@ register_response_schema_models(
 
 @console_ns.route("/email-register/send-email")
 class EmailRegisterSendEmailApi(Resource):
-    @setup_required
-    @email_password_login_enabled
-    @email_register_enabled
     @console_ns.expect(console_ns.models[EmailRegisterSendPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_email_registration_admission
     @model_validate(EmailRegisterSendPayload)
-    def post(self, req_data: EmailRegisterSendPayload):
-        normalized_email = req_data.email.lower()
-
-        ip_address = extract_remote_ip(request)
-        if AccountService.is_email_send_ip_limit(ip_address):
-            raise EmailSendIpLimitError()
-        language = "en-US"
-        if req_data.language is not None and req_data.language in languages:
-            language = req_data.language
-
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            normalized_email
-        ):
-            raise AccountInFreezeError()
-
-        account = AccountService.get_account_by_email_with_case_fallback(req_data.email, session=db.session())
-        token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
-        return {"result": "success", "data": token}
+    def post(self, args: EmailRegisterSendPayload):
+        try:
+            token = application_services().accounts.email_registration.send_code(
+                remote_ip=extract_remote_ip(request),
+                requested_email=args.email,
+                requested_language=args.language,
+            )
+        except EmailRegistrationSendIPLimitedError:
+            raise EmailSendIpLimitError() from None
+        except EmailRegistrationSendRateLimitError as error:
+            raise EmailRegisterRateLimitExceededError(error.retry_after_minutes) from None
+        except AccountEmailDomainSuspendedError:
+            raise EmailDomainSuspendedError() from None
+        except AccountEmailFrozenError:
+            raise AccountInFreezeError() from None
+        return dump_response(SimpleResultDataResponse, {"result": "success", "data": token})
 
 
 @console_ns.route("/email-register/validity")
 class EmailRegisterCheckApi(Resource):
-    @setup_required
-    @email_password_login_enabled
-    @email_register_enabled
     @console_ns.expect(console_ns.models[EmailRegisterValidityPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
+    @console_email_registration_admission
     @model_validate(EmailRegisterValidityPayload)
-    def post(self, req_data: EmailRegisterValidityPayload):
-
-        user_email = req_data.email.lower()
-
-        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(user_email)
-        if is_email_register_error_rate_limit:
-            raise EmailRegisterLimitError()
-
-        token_data = AccountService.get_email_register_data(req_data.token)
-        if token_data is None:
-            raise InvalidTokenError()
-
-        token_email = token_data.get("email")
-        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
-
-        if user_email != normalized_token_email:
-            raise InvalidEmailError()
-
-        if req_data.code != token_data.get("code"):
-            AccountService.add_email_register_error_rate_limit(user_email)
-            raise EmailCodeError()
-
-        # Verified, revoke the first token
-        AccountService.revoke_email_register_token(req_data.token)
-
-        # Refresh token data by generating a new token
-        _, new_token = AccountService.generate_email_register_token(
-            user_email, code=req_data.code, additional_data={"phase": "register"}
+    def post(self, args: EmailRegisterValidityPayload):
+        try:
+            verification = application_services().accounts.email_registration.verify_code(
+                email=args.email,
+                code=args.code,
+                token=args.token,
+            )
+        except EmailRegistrationVerificationLimitError:
+            raise EmailRegisterLimitError() from None
+        except InvalidEmailRegistrationTokenError:
+            raise InvalidTokenError() from None
+        except InvalidEmailRegistrationAddressError:
+            raise InvalidEmailError() from None
+        except InvalidEmailRegistrationCodeError:
+            raise EmailCodeError() from None
+        return dump_response(
+            VerificationTokenResponse,
+            {
+                "is_valid": True,
+                "email": verification.email,
+                "token": verification.token,
+            },
         )
-
-        AccountService.reset_email_register_error_rate_limit(user_email)
-        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
 
 
 @console_ns.route("/email-register")
 class EmailRegisterResetApi(Resource):
-    @setup_required
-    @email_password_login_enabled
-    @email_register_enabled
     @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
+    @console_email_registration_admission
     @model_validate(EmailRegisterResetPayload)
-    def post(self, req_data: EmailRegisterResetPayload):
-
-        # Validate passwords match
-        if req_data.new_password != req_data.password_confirm:
-            raise PasswordMismatchError()
-
-        # Validate token and get register data
-        register_data = AccountService.get_email_register_data(req_data.token)
-        if not register_data:
-            raise InvalidTokenError()
-        # Must use token in reset phase
-        if register_data.get("phase", "") != "register":
-            raise InvalidTokenError()
-
-        # Revoke token to prevent reuse
-        AccountService.revoke_email_register_token(req_data.token)
-
-        email = register_data.get("email", "")
-        normalized_email = email.lower()
-
-        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
-
-        if account:
-            raise EmailAlreadyInUseError()
-
-        account = self._create_new_account(
-            email=normalized_email,
-            password=req_data.password_confirm,
-            timezone=req_data.timezone,
-            language=req_data.language,
-        )
-        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(normalized_email)
-
-        return {"result": "success", "data": token_pair.model_dump()}
-
-    def _create_new_account(
-        self,
-        email: str,
-        password: str,
-        timezone: str | None = None,
-        language: str | None = None,
-    ) -> Account:
+    def post(self, args: EmailRegisterResetPayload):
         try:
-            return AccountService.create_account_and_tenant(
-                email=email,
-                name=email,
-                password=password,
-                interface_language=get_valid_language(language),
-                timezone=timezone,
-                session=db.session(),
+            token_pair = application_services().accounts.email_registration.register(
+                remote_ip=extract_remote_ip(request),
+                token=args.token,
+                new_password=args.new_password,
+                password_confirm=args.password_confirm,
+                language=args.language,
+                timezone=args.timezone,
             )
-        except SeatsLimitExceededError:
-            raise SeatsLimitExceeded()
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailRegistrationPasswordMismatchError:
+            raise PasswordMismatchError() from None
+        except InvalidEmailRegistrationTokenError:
+            raise InvalidTokenError() from None
+        except AccountNormalizedEmailAlreadyInUseError:
+            raise NormalizedEmailAlreadyInUseError() from None
+        except AccountEmailAlreadyInUseError:
+            raise EmailAlreadyInUseError() from None
+        except EmailRegistrationSeatsLimitError:
+            raise SeatsLimitExceeded() from None
+        except AccountEmailDomainSuspendedError:
+            raise EmailDomainSuspendedError() from None
+        except AccountEmailFrozenError:
+            raise AccountInFreezeError() from None
+
+        return dump_response(
+            EmailRegisterResetResponse,
+            {"result": "success", "data": token_pair},
+        )

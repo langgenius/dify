@@ -87,11 +87,11 @@ describe('DebugAndPreview', () => {
     })
     const toggle = screen.getByRole('button', { name: /panel\.userInputField/ })
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
     await user.click(toggle)
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('closes the panel through a named keyboard action', async () => {

@@ -27,7 +27,7 @@ export function CreateAppDialogShell({
       }}
     >
       <DialogContent
-        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
         className="top-0 left-0 h-screen max-h-none w-screen max-w-none translate-0 overflow-hidden rounded-none border-none bg-transparent p-4 shadow-none"
       >
         <div className="size-full rounded-2xl border border-effects-highlight bg-background-default-subtle">

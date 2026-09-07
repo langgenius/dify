@@ -18,7 +18,7 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
@@ -43,6 +43,7 @@ type SwitchAppModalProps = {
 
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
+  const nameInputId = useId()
   const { t } = useTranslation()
   const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -149,9 +150,12 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
             <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
           </div>
           <div className="pb-4">
-            <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+            <label
+              htmlFor={nameInputId}
+              className="block py-2 text-sm leading-5 font-medium text-text-primary"
+            >
               {t(($) => $.switchLabel, { ns: 'app' })}
-            </div>
+            </label>
             <div className="flex items-center justify-between space-x-2">
               <AppIcon
                 size="large"
@@ -165,6 +169,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
               />
               <Input
+                id={nameInputId}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}

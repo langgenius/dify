@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { ChunkingMode, FileItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,9 +35,16 @@ const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onCo
       <DialogTitle className="relative pb-1 text-xl leading-7.5 font-medium text-text-primary">
         {t(($) => $['list.batchModal.title'], { ns: 'datasetDocuments' })}
       </DialogTitle>
-      <DialogCloseButton
-        className="top-4 right-4"
-        aria-label={t(($) => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
+            size="lg"
+            className="absolute top-4 right-4"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
       />
       <CSVUploader file={currentCSV} updateFile={handleFile} />
       <CSVDownloader docForm={docForm} />

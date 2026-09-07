@@ -87,9 +87,11 @@ APP vs STUDIO-APP
   noun supports.
 
 DISCOVERY
-  difyctl help -o json        full command tree + this contract, machine-readable
-  difyctl get app -o json     list apps (ids + modes)
-  difyctl describe app <id>   one app's mode and input schema
+  difyctl help -o json --compact      complete command map for discovery
+  difyctl help <path> -o json         inspect the selected command; the only source of flags
+  difyctl help -o json                full command tree + contract for troubleshooting
+  difyctl get app -o json             list apps (ids + modes)
+  difyctl describe app <id>           one app's mode and input schema
 
 AUTH
   Interactive:     difyctl auth login         (browser device flow)

@@ -3,8 +3,8 @@
 Covers success and error branches for ModelInvocationUtils, including
 InvokeModelError and invoke error mappings for InvokeAuthorizationError,
 InvokeBadRequestError, InvokeConnectionError, InvokeRateLimitError, and
-InvokeServerUnavailableError. Assumes mocked model instances and managers.
-Invocation logging uses a real SQLite-backed SQLAlchemy session.
+InvokeServerUnavailableError. Model-provider collaborators remain mocked, while
+invocation logging uses real SQLite-backed SQLAlchemy sessions.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
@@ -89,7 +89,7 @@ def test_calculate_tokens_handles_missing_model():
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
-def test_invoke_success_and_error_mappings(sqlite_session: Session):
+def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]):
     model_instance = _mock_model_instance(schema={ModelPropertyKey.CONTEXT_SIZE: 2048})
     model_instance.invoke_llm.return_value = SimpleNamespace(
         message=SimpleNamespace(content="ok"),
@@ -106,12 +106,23 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session):
     manager.get_default_model_instance.return_value = model_instance
 
     database = SimpleNamespace(session=sqlite_session)
+    attached_invocations: list[ToolModelInvoke] = []
+    commit_count = 0
+
+    def _record_attach(_session: Session, instance: object) -> None:
+        if isinstance(instance, ToolModelInvoke):
+            attached_invocations.append(instance)
+
+    def _record_commit(_session: Session) -> None:
+        nonlocal commit_count
+        commit_count += 1
+
+    event.listen(sqlite_session, "after_attach", _record_attach)
+    event.listen(sqlite_session, "after_commit", _record_commit)
 
     with (
         patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
         patch("core.tools.utils.model_invocation_utils.db", database),
-        patch.object(sqlite_session, "add", wraps=sqlite_session.add) as mock_session_add,
-        patch.object(sqlite_session, "commit", wraps=sqlite_session.commit) as mock_session_commit,
     ):
         response = ModelInvocationUtils.invoke(
             user_id=USER_ID,
@@ -123,18 +134,19 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session):
         )
 
     assert response.message.content == "ok"
-    assert mock_session_add.call_count == 1
-    assert mock_session_commit.call_count == 2
+    assert len(attached_invocations) == 1
+    assert commit_count == 2
     assert not sqlite_session.in_transaction()
-    persisted = sqlite_session.scalar(select(ToolModelInvoke))
-    assert persisted is not None
-    assert persisted.user_id == USER_ID
-    assert persisted.tenant_id == TENANT_ID
-    assert persisted.tool_type == ToolProviderType.BUILT_IN
-    assert persisted.model_response == "ok"
-    assert persisted.prompt_tokens == 5
-    assert persisted.answer_tokens == 7
-    assert persisted.total_price == Decimal("0.7000000")
+    with sqlite_session_factory() as observer_session:
+        persisted = observer_session.scalar(select(ToolModelInvoke))
+        assert persisted is not None
+        assert persisted.user_id == USER_ID
+        assert persisted.tenant_id == TENANT_ID
+        assert persisted.tool_type == ToolProviderType.BUILT_IN
+        assert persisted.model_response == "ok"
+        assert persisted.prompt_tokens == 5
+        assert persisted.answer_tokens == 7
+        assert persisted.total_price == Decimal("0.7000000")
     mock_factory.assert_called_once_with(tenant_id=TENANT_ID, user_id=CALLER_ID)
 
 

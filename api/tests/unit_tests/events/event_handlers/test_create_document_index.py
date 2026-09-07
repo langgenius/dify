@@ -2,10 +2,8 @@ import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-import core.db.session_factory as session_factory_module
 from core.indexing_runner import DocumentIsPausedError
 from events.event_handlers import create_document_index as handler_module
 from models.dataset import Document
@@ -14,13 +12,8 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 
 @pytest.fixture
 def persisted_document(
-    sqlite_engine: Engine,
     sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> Document:
-    real_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(session_factory_module, "_session_maker", real_session_maker)
-
     document = Document(
         id="doc-1",
         tenant_id="tenant-1",

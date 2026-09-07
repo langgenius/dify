@@ -2,10 +2,11 @@ import type { SuggestedQuestionsAfterAnswer } from '@/app/components/base/featur
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
@@ -115,7 +116,17 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
       }}
     >
       <DialogContent className="w-160! max-w-none! p-8! pb-6!">
-        <DialogCloseButton className="top-8 right-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-8 right-8"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="pr-8 text-xl font-semibold text-text-primary">
           {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
         </DialogTitle>

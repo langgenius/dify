@@ -2,18 +2,21 @@
 import type { FC, ReactNode } from 'react'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import Input from '@/app/components/base/input'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
@@ -107,6 +110,7 @@ const renderInputCell = (
 ) => {
   return (
     <Input
+      aria-label={column.title}
       value={(value as string) || ''}
       onChange={(e) => {
         if (column.key === 'key' || column.key === 'name')
@@ -121,9 +125,8 @@ const renderInputCell = (
       }}
       placeholder={column.placeholder}
       disabled={readonly}
-      wrapperClassName="w-full min-w-0"
       className={cn(
-        'h-6 rounded-none border-0 bg-transparent p-0 shadow-none',
+        'h-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none',
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
@@ -155,14 +158,20 @@ const renderSelectCell = (
       >
         {selectedOption?.name ?? column.placeholder}
       </SelectTrigger>
-      <SelectContent className="-translate-x-3" popupClassName="w-26 min-w-26">
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            <SelectItemText>{option.name}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        ))}
-      </SelectContent>
+      <SelectPortal>
+        <SelectPositioner className="-translate-x-3">
+          <SelectPopup className="w-26 min-w-26">
+            <SelectList>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectList>
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
     </Select>
   )
 }
@@ -325,7 +334,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       className="p-1"
                       aria-label="Delete row"
                     >
-                      {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons */}
+                      {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
                       <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>

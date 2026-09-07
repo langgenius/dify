@@ -61,7 +61,9 @@ export const startWebServer = async ({
     if (startupError) {
       await stopManagedProcess(activeProcess)
       activeProcess = undefined
-      throw startupError
+      throw startupError instanceof Error
+        ? startupError
+        : new Error('Web server startup failed with a non-Error value.', { cause: startupError })
     }
 
     try {

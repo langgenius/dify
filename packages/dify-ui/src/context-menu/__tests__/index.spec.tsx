@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ContextMenu,
@@ -21,20 +21,14 @@ describe('context-menu wrapper', () => {
       const screen = await renderWithSafeViewport(
         <ContextMenu open>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
-          <ContextMenuContent
-            positionerProps={{ role: 'group', 'aria-label': 'content positioner' }}
-          >
+          <ContextMenuContent>
             <ContextMenuItem>Content action</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
       )
 
-      await expect
-        .element(screen.getByRole('group', { name: 'content positioner' }))
-        .toHaveAttribute('data-side', 'bottom')
-      await expect
-        .element(screen.getByRole('group', { name: 'content positioner' }))
-        .toHaveAttribute('data-align', 'start')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
         .toBeInTheDocument()
@@ -44,61 +38,34 @@ describe('context-menu wrapper', () => {
       const screen = await renderWithSafeViewport(
         <ContextMenu open>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
-          <ContextMenuContent
-            placement="top-end"
-            sideOffset={12}
-            alignOffset={-3}
-            positionerProps={{ role: 'group', 'aria-label': 'custom content positioner' }}
-          >
+          <ContextMenuContent placement="top-end" sideOffset={12} alignOffset={-3}>
             <ContextMenuItem>Custom content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
       )
 
-      await expect
-        .element(screen.getByRole('group', { name: 'custom content positioner' }))
-        .toHaveAttribute('data-side', 'top')
-      await expect
-        .element(screen.getByRole('group', { name: 'custom content positioner' }))
-        .toHaveAttribute('data-align', 'start')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
       await expect
         .element(screen.getByRole('menuitem', { name: 'Custom content' }))
         .toBeInTheDocument()
     })
 
-    it('should forward passthrough attributes and handlers when positionerProps and popupProps are provided', async () => {
-      const handlePositionerMouseEnter = vi.fn()
+    it('should forward popup attributes and handlers directly', async () => {
       const handlePopupClick = vi.fn()
 
       const screen = await render(
         <ContextMenu open>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
-          <ContextMenuContent
-            positionerProps={{
-              role: 'group',
-              'aria-label': 'context content positioner',
-              id: 'context-content-positioner',
-              onMouseEnter: handlePositionerMouseEnter,
-            }}
-            popupProps={{
-              role: 'menu',
-              id: 'context-content-popup',
-              onClick: handlePopupClick,
-            }}
-          >
+          <ContextMenuContent id="context-content-popup" onClick={handlePopupClick}>
             <ContextMenuItem>Passthrough content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
       )
 
-      await screen.getByRole('group', { name: 'context content positioner' }).hover()
       await screen.getByRole('menu').click()
 
-      await expect
-        .element(screen.getByRole('group', { name: 'context content positioner' }))
-        .toHaveAttribute('id', 'context-content-positioner')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'context-content-popup')
-      expect(handlePositionerMouseEnter).toHaveBeenCalledTimes(1)
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
   })
@@ -111,9 +78,7 @@ describe('context-menu wrapper', () => {
           <ContextMenuContent>
             <ContextMenuSub open>
               <ContextMenuSubTrigger>More actions</ContextMenuSubTrigger>
-              <ContextMenuSubContent
-                positionerProps={{ role: 'group', 'aria-label': 'sub positioner' }}
-              >
+              <ContextMenuSubContent>
                 <ContextMenuItem>Sub action</ContextMenuItem>
               </ContextMenuSubContent>
             </ContextMenuSub>
@@ -122,10 +87,10 @@ describe('context-menu wrapper', () => {
       )
 
       await expect
-        .element(screen.getByRole('group', { name: 'sub positioner' }))
+        .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('data-side', 'right')
       await expect
-        .element(screen.getByRole('group', { name: 'sub positioner' }))
+        .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('data-align', 'start')
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })

@@ -1,6 +1,6 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,

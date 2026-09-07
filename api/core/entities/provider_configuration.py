@@ -486,8 +486,8 @@ class ProviderConfiguration(BaseModel):
             next_number = max(numbers, default=0) + 1
             return f"API KEY {next_number}"
 
-        except Exception as e:
-            logger.warning("Error generating next credential name: %s", str(e))
+        except Exception:
+            logger.warning("Error generating next credential name", exc_info=True)
             return "API KEY 1"
 
     def _get_provider_names(self):

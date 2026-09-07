@@ -1,7 +1,12 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -144,24 +149,30 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
               onChange={handleValueChange}
               onKeyDown={handleKeyDown}
             />
-            <PopoverContent
-              placement="bottom-start"
-              sideOffset={4}
-              alignOffset={-40}
-              popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-              popupProps={{ initialFocus: false, finalFocus: false }}
-              positionerProps={{ anchor: inputRef }}
-            >
-              <MemberList
-                searchValue={searchKey}
-                list={list}
-                value={value}
-                onSearchChange={setSearchKey}
-                onSelect={handleSelect}
-                email={email}
-                hideSearch
-              />
-            </PopoverContent>
+            <PopoverPortal>
+              <PopoverPositioner
+                placement="bottom-start"
+                sideOffset={4}
+                alignOffset={-40}
+                anchor={inputRef}
+              >
+                <PopoverPopup
+                  className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+                  initialFocus={false}
+                  finalFocus={false}
+                >
+                  <MemberList
+                    searchValue={searchKey}
+                    list={list}
+                    value={value}
+                    onSearchChange={setSearchKey}
+                    onSelect={handleSelect}
+                    email={email}
+                    hideSearch
+                  />
+                </PopoverPopup>
+              </PopoverPositioner>
+            </PopoverPortal>
           </Popover>
         )}
       </div>

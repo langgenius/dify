@@ -1,13 +1,14 @@
 import type { FC, PropsWithChildren } from 'react'
-import type { ModelItem } from '../declarations'
+import type { ModelSelectorModel } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { renderI18nObject } from '@/i18n-config'
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
 import { modelTypeFormat, sizeFormat } from '../utils'
 
 type ModelNameProps = PropsWithChildren<{
-  modelItem: ModelItem
+  modelItem?: ModelSelectorModel
   className?: string
   nameClassName?: string
   showModelType?: boolean
@@ -36,20 +37,20 @@ const ModelName: FC<ModelNameProps> = ({
   const language = useLanguage()
 
   if (!modelItem) return null
+
+  const label = renderI18nObject(modelItem.label, language)
+
   return (
-    <div
+    <span
       className={cn(
         'flex items-center gap-0.5 truncate overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled',
         className,
       )}
     >
-      <div
-        className={cn('truncate', nameClassName)}
-        title={modelItem.label[language] || modelItem.label.en_US}
-      >
-        {modelItem.label[language] || modelItem.label.en_US}
-      </div>
-      <div className="flex items-center gap-0.5">
+      <span className={cn('truncate', nameClassName)} title={label}>
+        {label}
+      </span>
+      <span className="flex items-center gap-0.5">
         {!!(showModelType && modelItem.model_type) && (
           <ModelBadge className={modelTypeClassName}>
             {modelTypeFormat(modelItem.model_type)}
@@ -72,9 +73,9 @@ const ModelName: FC<ModelNameProps> = ({
               showFeaturesLabel={showFeaturesLabel}
             />
           ))}
-      </div>
+      </span>
       {children}
-    </div>
+    </span>
   )
 }
 

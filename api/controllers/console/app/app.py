@@ -13,7 +13,6 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from configs import dify_config
 from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
-from controllers.common.helpers import FileInfo
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -39,11 +38,12 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from core.file.remote_file_metadata import FileInfo
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.rbac import RBACResourceWhitelistScope
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
@@ -77,7 +77,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -516,7 +516,7 @@ class AppImportResponse(ResponseModel):
 
 
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
-    if FeatureService.get_system_features().webapp_auth.enabled:
+    if SystemFeatureService.is_webapp_auth_enabled():
         app_ids = [str(app.id) for app in apps]
         res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
         if len(res) != len(app_ids):
@@ -642,13 +642,13 @@ class AppListApi(Resource):
         )
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user_id,
             session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user_id,
                 session=session,
                 permissions=permissions,
@@ -675,7 +675,7 @@ class AppListApi(Resource):
             pagination_model = pagination_model.model_copy(
                 update={
                     "data": [
-                        item.model_copy(update={"permission_keys": permission_keys_map.get(str(item.id), [])})
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(item.id, [])})
                         for item in pagination_model.data
                     ]
                 }
@@ -711,16 +711,8 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user, session=session)
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                tenant_id=str(current_tenant_id),
-                account_id=current_user.id,
-                app_id=str(app.id),
-                payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [str(app.id)],
             session=session,
@@ -730,6 +722,17 @@ class AppListApi(Resource):
             from_attributes=True,
             context={"session": session},
         ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                str(app.id),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
+
         return app_detail.model_dump(mode="json"), 201
 
 
@@ -874,12 +877,12 @@ class AppApi(Resource):
 
         app_model = app_service.get_app(app_model, session=session)
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             app_id=str(app_model.id),
             session=session,
@@ -999,7 +1002,7 @@ class AppCopyApi(Resource):
             session.commit()
 
             # Inherit web app permission from original app
-            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+            if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
                 try:
                     # Get the original app's access mode
                     original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
@@ -1017,7 +1020,7 @@ class AppCopyApi(Resource):
                 raise NotFound("App not found")
 
             permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 [str(app.id)],
                 session=session,
@@ -1082,7 +1085,17 @@ class AppPublishToCreatorsPlatformApi(Resource):
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
-        redirect_url = get_redirect_url(current_user_id, claim_code)
+        # TODO: Move this configuration and OAuth orchestration into the Creators Platform application service
+        # when that domain is refactored. This controller-level integration is a temporary compatibility bridge.
+        oauth_code = None
+        client_id = dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or ""
+        if client_id:
+            authorization = application_services().oauth_server.issue_authorization_code(
+                client_id=client_id,
+                account_id=current_user_id,
+            )
+            oauth_code = authorization.code
+        redirect_url = get_redirect_url(claim_code, oauth_code=oauth_code)
 
         return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
 
@@ -1160,8 +1173,7 @@ class AppSiteStatus(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppSiteStatusPayload)

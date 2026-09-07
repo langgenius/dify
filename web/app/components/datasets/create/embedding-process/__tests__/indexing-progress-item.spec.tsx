@@ -1,6 +1,6 @@
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
 
@@ -93,7 +93,18 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.getByText('Parse failed')).toBeInTheDocument()
+  })
+
+  it('should use the localized fallback when an error has no message', () => {
+    render(
+      <IndexingProgressItem
+        detail={makeDetail({ indexing_status: 'error', error: null })}
+        name="broken.pdf"
+      />,
+    )
+
+    expect(screen.getByText('common.error')).toBeInTheDocument()
   })
 
   it('should show priority label when billing is enabled', () => {

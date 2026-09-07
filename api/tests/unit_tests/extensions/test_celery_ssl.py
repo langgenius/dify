@@ -162,6 +162,8 @@ class TestCelerySSLConfiguration:
 
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
+        mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
         mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
         mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
@@ -195,7 +197,7 @@ class TestCelerySSLConfiguration:
             assert "redis_backend_use_ssl" in celery_app.conf
             assert celery_app.conf["redis_backend_use_ssl"] is not None
 
-    def test_celery_init_applies_global_keyprefix_and_registers_agent_resource_collector(self):
+    def test_celery_init_registers_required_agent_and_conversation_tasks(self):
         mock_config = MagicMock()
         mock_config.BROKER_USE_SSL = False
         mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -210,6 +212,8 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_TASK_ANNOTATIONS = {}
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
+        mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
         mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
         mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
@@ -241,3 +245,7 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
+        assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+        assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
+            "tasks.delete_conversation_task.sweep_deleted_conversations"
+        )

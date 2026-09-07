@@ -1,7 +1,7 @@
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { useDatasourceUIState } from '../use-datasource-ui-state'
 

@@ -283,7 +283,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [edges, nodes, setEdges, setNodes, store])
 
     useEffect(() => {
-      return collaborationManager.onHistoryAction((_) => {
+      return collaborationManager.onHistoryAction(() => {
         toast.info(t(($) => $['collaboration.historyAction.generic'], { ns: 'workflow' }))
       })
     }, [t])

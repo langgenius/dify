@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { getFormDataHeaders, isFormData } from './form-data'
 
 describe('form-data helpers', () => {

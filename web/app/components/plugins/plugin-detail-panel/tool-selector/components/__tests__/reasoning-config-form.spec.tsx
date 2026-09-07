@@ -3,7 +3,7 @@ import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-pa
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'

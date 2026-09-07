@@ -150,18 +150,16 @@ class TestGenerateDependencies:
 
 
 class TestGenerateLatestDependencies:
-    @patch("services.plugin.dependencies_analysis.dify_config")
-    def test_returns_empty_when_marketplace_disabled(self, mock_config):
-        mock_config.MARKETPLACE_ENABLED = False
+    def test_returns_empty_when_marketplace_disabled(self, config_overrides):
+        config_overrides(MARKETPLACE_ENABLED=False)
 
         result = DependenciesAnalysisService.generate_latest_dependencies(["p1"])
 
         assert result == []
 
     @patch("services.plugin.dependencies_analysis.marketplace")
-    @patch("services.plugin.dependencies_analysis.dify_config")
-    def test_returns_marketplace_deps_when_enabled(self, mock_config, mock_marketplace):
-        mock_config.MARKETPLACE_ENABLED = True
+    def test_returns_marketplace_deps_when_enabled(self, mock_marketplace, config_overrides):
+        config_overrides(MARKETPLACE_ENABLED=True)
         manifest = MagicMock()
         manifest.latest_package_identifier = "org/plugin:2.0.0@newhash"
         mock_marketplace.batch_fetch_plugin_manifests.return_value = [manifest]

@@ -12,17 +12,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -190,9 +190,12 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
             </div>
           </div>
           <div className="hidden items-center pr-3 group-hover:flex">
-            <ActionButton onClick={() => onChange(undefined)}>
+            <IconButton
+              aria-label={tCommon(($) => $['operation.remove'])}
+              onClick={() => onChange(undefined)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
       )}
@@ -320,8 +323,18 @@ export function AgentFileUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
-        <DialogCloseButton />
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['agentDetail.configure.files.upload.title'])}
         </DialogTitle>

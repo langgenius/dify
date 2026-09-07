@@ -20,6 +20,10 @@ const getLatestCreatedAppId = (world: DifyWorld) => {
   return appId
 }
 
+const expectAppEditorContent = async (world: DifyWorld) => {
+  await expect(world.getPage().getByRole('link', { name: 'Orchestrate' })).toBeVisible()
+}
+
 When('I start creating a blank app', async function (this: DifyWorld) {
   await openBlankAppCreation(this.getPage())
 })
@@ -78,14 +82,17 @@ Then('I should land on the app editor', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(
     new RegExp(`/app/${appId}/(workflow|configuration)(?:\\?.*)?$`),
   )
+  await expectAppEditorContent(this)
 })
 
 Then('I should land on the workflow editor', async function (this: DifyWorld) {
   const appId = getLatestCreatedAppId(this)
   await expect(this.getPage()).toHaveURL(new RegExp(`/app/${appId}/workflow(?:\\?.*)?$`))
+  await expectAppEditorContent(this)
 })
 
 Then('I should land on the app configuration page', async function (this: DifyWorld) {
   const appId = getLatestCreatedAppId(this)
   await expect(this.getPage()).toHaveURL(new RegExp(`/app/${appId}/configuration(?:\\?.*)?$`))
+  await expectAppEditorContent(this)
 })

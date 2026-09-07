@@ -1,6 +1,6 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useAutoDisabledDocuments } from '@/service/knowledge/use-document'
 import AutoDisabledDocument from '../auto-disabled-document'
 

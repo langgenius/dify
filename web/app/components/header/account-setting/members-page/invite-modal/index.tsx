@@ -1,18 +1,18 @@
 'use client'
-
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -167,13 +167,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           {submissionError.message}
         </div>
       )}
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        loading={isPending}
-        disabled={isPending}
-      >
+      <Button type="submit" variant="primary" className="w-full" loading={isPending}>
         {validRecipientCount > 0
           ? t(($) => $['members.sendInviteCount'], {
               ns: 'common',
@@ -207,7 +201,17 @@ export function InviteModal({
           </DialogDescription>
         </div>
         <InviteForm isEmailSetup={isEmailSetup} onOpenChange={onOpenChange} onSend={onSend} />
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   )

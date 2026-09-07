@@ -511,7 +511,12 @@ class TestPluginModelClient:
         mocker.patch.object(
             client,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(result="68656c6c6f"), SimpleNamespace(result="21")]),
+            return_value=iter(
+                [
+                    SimpleNamespace(result="68656c6c6f", mime_type="audio/wav"),
+                    SimpleNamespace(result="21", mime_type="audio/wav"),
+                ]
+            ),
         )
 
         result = list(
@@ -528,6 +533,7 @@ class TestPluginModelClient:
         )
 
         assert result == [b"hello", b"!"]
+        assert [chunk.mime_type for chunk in result] == ["audio/wav", "audio/wav"]
 
     def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()

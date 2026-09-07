@@ -6,7 +6,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from flask import Flask
 
-from controllers.console import init_validate, wraps
+from controllers.console import init_validate
 from controllers.console.error import AlreadySetupError, InitValidateFailedError
 from enums import DeploymentEdition
 from services.init_validation_service import (
@@ -14,6 +14,7 @@ from services.init_validation_service import (
     InitValidationService,
     InvalidInitializationPasswordError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -49,7 +50,7 @@ def test_validate_init_password_already_setup(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     init_validation.validate_password.side_effect = AlreadyInitializedError
     app.secret_key = "test-secret"
 
@@ -63,7 +64,7 @@ def test_validate_init_password_wrong_password(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     init_validation.validate_password.side_effect = InvalidInitializationPasswordError
     app.secret_key = "test-secret"
 
@@ -78,7 +79,7 @@ def test_validate_init_password_success(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     app.secret_key = "test-secret"
 
     with app.test_request_context("/console/api/init", method="POST"):

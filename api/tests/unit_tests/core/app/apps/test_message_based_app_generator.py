@@ -15,7 +15,8 @@ from core.app.app_config.entities import (
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from models.model import AppMode
+from models.account import Account
+from models.model import App, AppMode, Conversation, Message
 from services.errors.app_model_config import AppModelConfigBrokenError
 
 
@@ -43,6 +44,22 @@ class DummyCompletionGenerateEntity:
         self.inputs = {}
         self.files = []
         self.model_conf = DummyModelConf()
+
+
+def _app(*, app_id: str = "app") -> App:
+    return App(
+        id=app_id,
+        tenant_id="tenant-id",
+        name="Message App",
+        mode=AppMode.CHAT,
+        app_model_config_id=None,
+    )
+
+
+def _account() -> Account:
+    account = Account(name="Message User", email="message-user@example.com")
+    account.id = "user-id"
+    return account
 
 
 def _make_app_config(app_mode: AppMode) -> EasyUIBasedAppConfig:
@@ -138,24 +155,24 @@ class TestMessageBasedAppGeneratorExtras:
             generator._handle_response(
                 application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
                 queue_manager=SimpleNamespace(),
-                conversation=SimpleNamespace(id="conv"),
-                message=SimpleNamespace(id="msg"),
-                user=SimpleNamespace(),
+                conversation=Conversation(id="conv", app_id="app"),
+                message=Message(id="msg", app_id="app", conversation_id="conv"),
+                user=_account(),
                 stream=False,
             )
 
     def test_get_app_model_config_requires_valid_config(self, sqlite_session: Session):
         generator = MessageBasedAppGenerator()
-        app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
+        app_model = _app()
         session = sqlite_session
 
         with pytest.raises(AppModelConfigBrokenError):
             generator._get_app_model_config(app_model, conversation=None, session=session)
 
-        conversation = SimpleNamespace(app_model_config_id="missing-id")
+        conversation = Conversation(id="conversation-id", app_id="app", app_model_config_id="missing-id")
         with pytest.raises(AppModelConfigBrokenError):
             generator._get_app_model_config(
-                app_model=SimpleNamespace(id="app"),
+                app_model=_app(),
                 conversation=conversation,
                 session=session,
             )

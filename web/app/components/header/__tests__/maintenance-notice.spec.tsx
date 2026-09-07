@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { NOTICE_I18N } from '@/i18n-config/language'
 import MaintenanceNotice from '../maintenance-notice'

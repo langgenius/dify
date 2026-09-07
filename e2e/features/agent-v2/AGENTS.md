@@ -36,7 +36,7 @@ Agent v2 state belongs under `world.agentBuilder`:
 - `fixtures` stores resolved models and seeded resources.
 - `accessPoint`, `configure`, `speechToText`, and `workflow` store per-scenario state.
 
-Do not add Agent v2 fields to the top level of `DifyWorld`. Store created Agent IDs, drive files, and tool credentials in the existing typed cleanup fields.
+Do not add Agent v2 fields to the top level of `DifyWorld`. Store created Agent IDs, config assets, and tool credentials in the existing typed cleanup fields.
 
 ## Setup boundary
 

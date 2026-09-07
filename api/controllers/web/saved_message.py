@@ -1,11 +1,11 @@
 from uuid import UUID
 
-from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
@@ -36,12 +36,10 @@ class SavedMessageListApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[SavedMessageInfiniteScrollPagination.__name__])
-    def get(self, app_model: App, end_user: EndUser):
+    @model_validate(SavedMessageListQuery)
+    def get(self, query: SavedMessageListQuery, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
-
-        raw_args = request.args.to_dict()
-        query = SavedMessageListQuery.model_validate(raw_args)
 
         session = db.session()
         pagination = SavedMessageService.pagination_by_last_id(
@@ -75,11 +73,10 @@ class SavedMessageListApi(WebApiResource):
     )
     @web_ns.response(200, "Message saved successfully", web_ns.models[ResultResponse.__name__])
     @web_ns.expect(web_ns.models[SavedMessageCreatePayload.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @model_validate(SavedMessageCreatePayload)
+    def post(self, payload: SavedMessageCreatePayload, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
-
-        payload = SavedMessageCreatePayload.model_validate(web_ns.payload or {})
 
         try:
             SavedMessageService.save(app_model, end_user, payload.message_id, session=db.session())

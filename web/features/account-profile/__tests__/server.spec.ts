@@ -1,6 +1,6 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { resolveServerConsoleApiUrl } from '@/service/server'
 import { userProfileQueryOptions } from '../client'
 
@@ -54,7 +54,7 @@ describe('serverUserProfileQueryOptions', () => {
     const { serverUserProfileQueryOptions } = await import('../server')
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    const data = await queryClient.fetchQuery(serverUserProfileQueryOptions())
+    const data = await queryClient.query(serverUserProfileQueryOptions())
 
     expect(serverUserProfileQueryOptions().queryKey).toEqual(userProfileQueryOptions().queryKey)
     expect(data).toEqual({

@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { ApiKeyModal } from '@/app/components/api-key/api-key-modal'
 import { consoleQuery } from '@/service/client'
 
 type ApiSecretKeyButtonProps = {
@@ -44,7 +44,7 @@ export function ApiSecretKeyButton({
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         disabled={buttonDisabled}
         onClick={() => setModalOpen(true)}
       >
@@ -60,13 +60,13 @@ export function ApiSecretKeyButton({
         </span>
       </Button>
 
-      <SecretKeyModal
+      <ApiKeyModal
         canManage={canManage}
-        isShow={modalOpen}
+        open={modalOpen}
         scope={
           environmentId ? { type: 'environment', appId, environmentId } : { type: 'app', appId }
         }
-        onClose={() => setModalOpen(false)}
+        onOpenChange={setModalOpen}
       />
     </>
   )

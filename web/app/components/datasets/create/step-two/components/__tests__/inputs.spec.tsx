@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
 // i18n mock returns namespaced keys like "datasetCreation.stepTwo.separator"
@@ -10,9 +10,9 @@ describe('DelimiterInput', () => {
     vi.clearAllMocks()
   })
 
-  it('should render separator label', () => {
+  it('should associate the separator label with its input', () => {
     render(<DelimiterInput />)
-    expect(screen.getByText(`${ns}.stepTwo.separator`))!.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: `${ns}.stepTwo.separator` })).toBeInTheDocument()
   })
 
   it('should render text input with placeholder', () => {
