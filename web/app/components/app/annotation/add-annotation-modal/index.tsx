@@ -41,6 +41,7 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
   )
   const isAnnotationQuotaUnavailable =
     deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
     deploymentEdition === 'CLOUD' &&
     annotationQuota !== undefined &&

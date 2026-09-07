@@ -56,6 +56,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const [draft, setDraft] = useState('')
   const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
   const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
+  // A limit of 0 means unlimited.
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
     : deploymentEdition === 'CLOUD' && features && features.members.limit > 0

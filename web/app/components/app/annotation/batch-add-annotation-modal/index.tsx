@@ -41,6 +41,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   )
   const isAnnotationQuotaUnavailable =
     deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
     deploymentEdition === 'CLOUD' &&
     annotationQuota !== undefined &&

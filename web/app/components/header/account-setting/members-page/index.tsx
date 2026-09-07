@@ -59,6 +59,7 @@ const MembersPage = () => {
 
   const isNotUnlimitedMemberPlan =
     deploymentEdition === 'CLOUD' && billing !== undefined && billing.plan !== 'team'
+  // A limit of 0 means unlimited.
   const isMemberFull =
     isNotUnlimitedMemberPlan &&
     billing.members.limit > 0 &&

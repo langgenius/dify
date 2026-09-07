@@ -62,6 +62,7 @@ const DuplicateAppModal = ({
     }),
   )
   const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
   const isAppsFull =
     deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&

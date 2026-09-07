@@ -27,6 +27,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   )
   const isAnnotationQuotaUnavailable =
     deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
     deploymentEdition === 'CLOUD' &&
     annotationQuota !== undefined &&
