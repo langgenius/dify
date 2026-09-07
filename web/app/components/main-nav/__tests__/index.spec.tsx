@@ -657,7 +657,6 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: false,
-      isFetchedPlan: true,
       plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
@@ -837,7 +836,6 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: true,
-      isFetchedPlan: true,
       plan: { type: 'sandbox' },
     } as ProviderContextState)
 

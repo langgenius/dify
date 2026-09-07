@@ -187,7 +187,6 @@ const renderPanelElement = (data?: Partial<LLMNodeType>) => (
           plugin_id: 'langgenius/openai',
         } as unknown as ModelProviderSummaryResponse,
       ],
-      isFetchedPlan: true,
     })}
   >
     <Panel id="llm-node" data={{ ...baseNodeData, ...data }} panelProps={panelProps} />

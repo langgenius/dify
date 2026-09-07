@@ -94,7 +94,6 @@ const setupContexts = (
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
-    isFetchedPlan: true,
     enableEducationPlan: false,
     ...providerOverrides,
   }

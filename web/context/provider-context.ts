@@ -26,8 +26,6 @@ export type ProviderContextState = {
     total: UsagePlanInfo
     reset: UsageResetInfo
   }
-  isFetchedPlan: boolean
-  isFetchedPlanInfo: boolean
   enableBilling: boolean
   enableSkill: boolean
   enableReplaceWebAppLogo: boolean
@@ -49,8 +47,6 @@ export const baseProviderContextValue: ProviderContextState = {
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
-  isFetchedPlan: false,
-  isFetchedPlanInfo: false,
   enableBilling: false,
   enableSkill: false,
   enableReplaceWebAppLogo: false,

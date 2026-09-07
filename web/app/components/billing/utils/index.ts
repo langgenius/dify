@@ -54,7 +54,7 @@ const normalizeResetDate = (resetDate: number) => {
   return null
 }
 
-const getResetInDaysFromDate = (resetDate: number) => {
+export const getResetInDaysFromDate = (resetDate: number) => {
   const resetDay = normalizeResetDate(resetDate)
   if (!resetDay) return null
 

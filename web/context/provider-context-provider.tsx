@@ -40,8 +40,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const features = featuresQuery.data
   const enableBilling = features?.billing.enabled ?? false
   const plan = enableBilling && features ? parseCurrentPlan(features) : defaultPlan
-  const isFetchedPlan = featuresQuery.isSuccess && enableBilling
-  const isFetchedPlanInfo = featuresQuery.isFetched
   const enableEducationPlan = features?.education.enabled ?? false
   const enableSkill = features?.enable_skill ?? false
   const enableReplaceWebAppLogo = features?.can_replace_logo ?? false
@@ -90,8 +88,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         ),
         supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
         plan,
-        isFetchedPlan,
-        isFetchedPlanInfo,
         enableBilling,
         enableSkill,
         enableReplaceWebAppLogo,
