@@ -2,12 +2,18 @@ import json
 from datetime import datetime, timedelta
 from uuid import uuid4
 
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import (
+    ExecutionOffLoadType,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
@@ -94,13 +100,34 @@ def test_workflow_tool_children_are_scoped_to_exact_parent_and_run(
             )
             for index, (execution_id, tenant, run, app, node_type, owner, engine_id) in enumerate(records)
         )
+        session.add(
+            WorkflowNodeExecutionOffload(
+                tenant_id="tenant",
+                app_id="source-app",
+                node_execution_id="direct-child",
+                type_=ExecutionOffLoadType.PROCESS_DATA,
+                file_id=str(uuid4()),
+            )
+        )
     repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    loaded_execution_ids: list[str] = []
+
+    def record_loaded_execution(execution: WorkflowNodeExecutionModel, _context: object) -> None:
+        loaded_execution_ids.append(execution.id)
+
     for requested_id in (parent_id, "parent-engine"):
-        children = repository.get_workflow_tool_executions("tenant", "run", requested_id)
+        loaded_execution_ids.clear()
+        event.listen(WorkflowNodeExecutionModel, "load", record_loaded_execution)
+        try:
+            children = repository.get_workflow_tool_executions("tenant", "run", requested_id)
+        finally:
+            event.remove(WorkflowNodeExecutionModel, "load", record_loaded_execution)
         assert [child.id for child in children] == ["direct-child"]
+        assert loaded_execution_ids == ["direct-child"]
         assert children[0].app_id == "source-app"
         assert children[0].outputs_dict == {"answer": "approved"}
         assert children[0].status == WorkflowNodeExecutionStatus.PAUSED
+        assert children[0].process_data_truncated
     assert [child.id for child in repository.get_workflow_tool_executions("tenant", "run", "direct-child")] == [
         "nested-child"
     ]

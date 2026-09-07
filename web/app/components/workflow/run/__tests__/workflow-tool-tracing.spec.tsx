@@ -50,6 +50,41 @@ describe('Workflow tool tracing', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps workflow-tool tracing on the execution instead of individual retry attempts', async () => {
+    const user = userEvent.setup()
+    const root = trace('root-execution', { node_id: 'approval-tool', expand: true })
+    const retry = trace('root-execution:retry:1', {
+      node_id: root.node_id,
+      status: 'retry',
+      retry_index: 1,
+      error: 'Approval service unavailable',
+      expand: true,
+    })
+    mockRequest.mockImplementation(() => Promise.resolve(jsonResponse({ data: [] })))
+
+    renderWithConsoleQuery(
+      <TracingPanel
+        list={[retry, root]}
+        workflowRun={{ appId: 'root-app', runId: 'run', status: 'succeeded' }}
+      />,
+    )
+
+    expect(await screen.findByRole('button', { name: 'runLog.tracing' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /workflow.nodes.common.retry.retries/ }))
+    expect(await screen.findByText('Approval service unavailable')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'runLog.tracing' })).not.toBeInTheDocument()
+    expect(mockRequest).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.back' }))
+    await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+    await screen.findByText('common.noData')
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.stringContaining('/node-executions/root-execution/children'),
+      expect.anything(),
+      expect.anything(),
+    )
+  })
+
   it('loads the selected invocation lazily and drills through a child iteration to nested execution details', async () => {
     const user = userEvent.setup()
     const root = trace('root-execution', { title: 'Approval tool', expand: true })

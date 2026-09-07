@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
@@ -16,6 +18,10 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from graphon.engine.event.processor import NodeEventProcessor
+from graphon.engine.event.stream import EventStream
+from graphon.engine.frame import ExecutionFrame, FrameRegistry
+from graphon.engine.worker import NodeEventTask
 from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -23,6 +29,7 @@ from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -34,6 +41,7 @@ from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
+    NodeExecutionType,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
@@ -42,6 +50,7 @@ from graphon.enums import (
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime.execution import ROOT_FRAME_ID
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -349,10 +358,32 @@ def test_root_resume_isolates_same_app_workflow_tool_origin(sqlite_session_facto
         assert rows["older-exec"].workflow_id == source_workflow_id
 
 
-def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_history(sqlite_session_factory):
+def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_history(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     layer = _make_sql_layer(sqlite_session_factory)
     listen = layer.create_workflow_tool_event_listener(_tool_source())
     layer.on_event(GraphRunStartedEvent())
+    state = RuntimeState(workflow_id="source-workflow", variable_pool=VariablePool(), start_at=0)
+    frames = FrameRegistry()
+    scheduler = MagicMock()
+    scheduler.process_node_success.return_value = ([], [])
+    frames.register(
+        ExecutionFrame(
+            frame_id=ROOT_FRAME_ID,
+            graph=MagicMock(nodes={"child": MagicMock(execution_type=NodeExecutionType.EXECUTABLE)}),
+            state=state,
+            scheduler=scheduler,
+            failure_handler=MagicMock(),
+        )
+    )
+    event_stream = MagicMock(spec=EventStream)
+    event_stream.collect.side_effect = listen
+    processor = NodeEventProcessor(state.graph_execution, event_stream, frames, {})
+
+    def dispatch(event: NodeEvent) -> None:
+        processor.dispatch(NodeEventTask(frame_id=ROOT_FRAME_ID, event=event))
+
     started_at = _naive_utc_now()
     started = NodeRunStartedEvent(
         id="retry-exec",
@@ -361,9 +392,9 @@ def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_hist
         node_title="Child",
         start_at=started_at,
     )
-    listen(started)
+    dispatch(started)
     for attempt in (1, 2):
-        listen(
+        dispatch(
             NodeRunRetryEvent(
                 id="retry-exec",
                 node_id="child",
@@ -375,8 +406,8 @@ def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_hist
                 node_run_result=NodeRunResult(outputs={"attempt": attempt}),
             )
         )
-        listen(started)
-    listen(
+        dispatch(started)
+    dispatch(
         NodeRunSucceededEvent(
             id="retry-exec",
             node_id="child",

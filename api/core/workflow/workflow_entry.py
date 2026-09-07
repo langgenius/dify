@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import ExitStack
 from functools import partial
 from typing import Any, TypedDict
@@ -166,6 +166,7 @@ class WorkflowEntry:
         limits_layer = ExecutionLimitsLayer(
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
+        workflow_tool_event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
         self.graph_engine = Engine(
             graph=graph,
             runtime_state=graph_runtime_state,
@@ -176,17 +177,20 @@ class WorkflowEntry:
                     WorkflowToolNestedContainerHandler,
                     handler_factory=LoopContainerHandler,
                     hidden_event_listener=limits_layer.on_event,
+                    event_listeners=workflow_tool_event_listeners,
                 ),
                 partial(
                     WorkflowToolNestedContainerHandler,
                     handler_factory=IterationContainerHandler,
                     hidden_event_listener=limits_layer.on_event,
+                    event_listeners=workflow_tool_event_listeners,
                 ),
                 partial(
                     WorkflowToolContainerHandler,
                     source_repository=workflow_tool_source_repository,
                     hidden_event_listener=limits_layer.on_event,
                     event_listener_factory=workflow_tool_event_listener_factory,
+                    event_listeners=workflow_tool_event_listeners,
                 ),
             ),
         )

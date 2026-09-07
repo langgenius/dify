@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from types import SimpleNamespace
@@ -750,23 +751,34 @@ def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails() ->
     assert resume_task.result.node_run_result.error_type == "ValueError"
 
 
-def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
-    workflow_tool_handler, frame_registry, _, request, _ = _container_handler()
+@pytest.mark.parametrize("container_type", [BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION])
+def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events(container_type: str) -> None:
+    _, frame_registry, _, request, repository = _container_handler()
+    persisted: list[NodeEvent] = []
+    event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
+    workflow_tool_handler = WorkflowToolContainerHandler(
+        frame_registry,
+        source_repository=repository,
+        event_listener_factory=lambda _: persisted.append,
+        event_listeners=event_listeners,
+    )
     workflow_tool_handler.handle_request(invocation_id="invocation", request=request)
     delegate = MagicMock()
-    delegate.node_type = BuiltinNodeTypes.LOOP
+    delegate.node_type = container_type
     delegate.should_emit.return_value = True
     hidden_event_listener = MagicMock()
     nested_handler = WorkflowToolNestedContainerHandler(
         frame_registry,
         handler_factory=lambda _: delegate,
         hidden_event_listener=hidden_event_listener,
+        event_listeners=event_listeners,
     )
     event = NodeRunSucceededEvent(
         id="source-execution",
         node_id="source-start",
         node_type=BuiltinNodeTypes.START,
         start_at=datetime.now(UTC).replace(tzinfo=None),
+        container_id="nested-container",
     )
 
     workflow_tool_handler.prepare_frame_event(
@@ -776,9 +788,64 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
 
     assert nested_handler.should_emit(event=event) is False
     hidden_event_listener.assert_called_once_with(event)
+    assert len(persisted) == 1
+    assert persisted[0].container_id == "nested-container"
+    assert persisted[0].node_run_result.process_data["workflow_tool_invocation_id"] == "invocation"
+    assert "__dify_workflow_tool_child__" not in persisted[0].node_run_result.process_data
+
+    # Another Workflow Tool inside this container owns its own source events.
+    inner_events: list[NodeEvent] = []
+    event_listeners["inner-tool-frame"] = inner_events.append
+    inner_event = event.model_copy(deep=True)
+    inner_event.node_run_result.process_data = {}
+    workflow_tool_handler.prepare_frame_event(
+        frame=replace(frame_registry["invocation:workflow-tool"], frame_id="inner-tool-frame"), event=inner_event
+    )
+    workflow_tool_handler.prepare_frame_event(frame=frame_registry["invocation:workflow-tool"], event=inner_event)
+    assert nested_handler.should_emit(event=inner_event) is False
+    assert inner_events == [inner_event]
+    assert len(persisted) == 1
+
     unmarked_event = event.model_copy(deep=True)
     unmarked_event.node_run_result.process_data = {}
     assert nested_handler.should_emit(event=unmarked_event) is True
+    assert len(persisted) == 1
+
+
+@pytest.mark.parametrize(
+    "source_metadata",
+    [{}, {WorkflowNodeExecutionMetadataKey.LOOP_ID: "source-loop", WorkflowNodeExecutionMetadataKey.LOOP_INDEX: 1}],
+)
+def test_workflow_tool_persistence_keeps_source_container_metadata(
+    source_metadata: dict[WorkflowNodeExecutionMetadataKey, str | int],
+) -> None:
+    _, frames, _, request, repository = _container_handler()
+    persisted: list[NodeEvent] = []
+    handler = WorkflowToolContainerHandler(
+        frames, source_repository=repository, event_listener_factory=lambda _: persisted.append
+    )
+    handler.handle_request(invocation_id="invocation", request=request)
+    event = NodeRunSucceededEvent(
+        id="source-execution",
+        node_id="source-start",
+        node_type=BuiltinNodeTypes.START,
+        start_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    event.node_run_result.metadata = source_metadata.copy()
+    handler.prepare_frame_event(frame=frames["invocation:workflow-tool"], event=event)
+    # Ancestors outside the Tool source add their own ownership before collection.
+    event.node_run_result.metadata.update(
+        {
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: "outer-iteration",
+            WorkflowNodeExecutionMetadataKey.ITERATION_INDEX: 2,
+        }
+    )
+    event.node_run_result.outputs = {"normalized": True}
+
+    assert handler.should_emit(event=event) is False
+
+    assert persisted[0].node_run_result.metadata == source_metadata
+    assert persisted[0].node_run_result.outputs == {"normalized": True}
 
 
 @pytest.mark.parametrize(
