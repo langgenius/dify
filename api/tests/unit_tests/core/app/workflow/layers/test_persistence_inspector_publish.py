@@ -24,6 +24,7 @@ import pytest
 
 from core.app.workflow.layers import persistence as persistence_mod
 from core.app.workflow.layers.persistence import WorkflowPersistenceLayer
+from graphon.engine_events import NodeRunStartedEvent
 
 
 @pytest.fixture
@@ -115,8 +116,8 @@ def test_graph_run_paused_does_not_publish_completion(layer, capture_publishes):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> MagicMock:
-    return MagicMock(
+def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> NodeRunStartedEvent:
+    return NodeRunStartedEvent(
         id=exec_id,
         node_id=node_id,
         node_type="agent",
