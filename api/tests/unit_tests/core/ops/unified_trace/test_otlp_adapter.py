@@ -10,7 +10,11 @@ from opentelemetry.sdk.trace.export import SpanExportResult
 from core.ops.exceptions import RetryableTraceDispatchError, TraceDispatchRejectedError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.otel import OTelTracingConfig, UnifiedOTelAdapter, UnifiedOTelTrace
-from core.ops.unified_trace.otlp_adapter import StatusRecordingOTLPSpanExporter, is_terminal_http_status
+from core.ops.unified_trace.otlp_adapter import (
+    INSTRUMENTATION_SCOPE_NAME,
+    StatusRecordingOTLPSpanExporter,
+    is_terminal_http_status,
+)
 
 ENDPOINT = "http://collector:4318/v1/traces"
 
@@ -77,6 +81,19 @@ def test_emit_exports_all_spans_in_order(monkeypatch: pytest.MonkeyPatch) -> Non
     assert first_span.name == "chatflow_run-1"
     assert first_span.attributes["dify.span.id"] == "root-1"
     assert first_span.attributes["openinference.span.kind"] == "CHAIN"
+
+
+def test_instrumentation_scope_identifies_the_emitting_library(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The scope names the library that produced the spans; it must not vary with the
+    # provider or the traced service, which the resource already describes.
+    adapter, exporter = make_adapter(monkeypatch, OTelTracingConfig(endpoint=ENDPOINT, service_name="my-service"))
+
+    adapter.emit(make_trace(), None, MagicMock())
+
+    scope = exporter.export.call_args_list[0].args[0][0].instrumentation_scope
+    assert INSTRUMENTATION_SCOPE_NAME == "dify.ops.unified_trace"
+    assert scope.name == INSTRUMENTATION_SCOPE_NAME
+    assert "my-service" not in scope.name
 
 
 def test_emit_adds_gen_ai_attributes_from_metadata(monkeypatch: pytest.MonkeyPatch) -> None:

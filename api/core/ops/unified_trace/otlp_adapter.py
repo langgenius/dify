@@ -53,6 +53,11 @@ JSON_MIME_TYPE = "application/json"
 
 EXPORT_TIMEOUT_SECONDS = 30
 
+# OpenTelemetry instrumentation scope: identifies the library that emitted the spans, not the
+# traced service. It must stay constant across providers and tenants; the destination is already
+# described by the resource (service.name) and the provider-specific span attributes.
+INSTRUMENTATION_SCOPE_NAME = "dify.ops.unified_trace"
+
 _KIND_MAP: dict[CanonicalSpanKind, str] = {
     CanonicalSpanKind.CHAIN: "CHAIN",
     CanonicalSpanKind.LLM: "LLM",
@@ -109,7 +114,7 @@ class OTLPUnifiedAdapter[ConfigT: BaseTracingConfig]:
         self._endpoint = endpoint
         self._exporter = self.build_exporter(config)
         provider = trace_sdk.TracerProvider(resource=self.build_resource(config))
-        self._tracer = cast(trace_sdk.Tracer, provider.get_tracer(f"unified_{self.provider_name}_{scope_key}"))
+        self._tracer = cast(trace_sdk.Tracer, provider.get_tracer(INSTRUMENTATION_SCOPE_NAME))
         self._propagator = TraceContextTextMapPropagator()
         self._scope = destination_scope(self.provider_name, endpoint, scope_key)
 
