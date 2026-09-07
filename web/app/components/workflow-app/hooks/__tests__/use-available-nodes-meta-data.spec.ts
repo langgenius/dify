@@ -40,8 +40,21 @@ describe('useAvailableNodesMetaData', () => {
     )
   })
 
-  it('should expose only legacy Agent in chat mode while retaining Agent v2 metadata', () => {
+  it('should expose Agent v2 in chat mode when Agent v2 is enabled', () => {
     mockUseIsChatMode.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.AgentV2)
+    expect(nodeTypes).not.toContain(BlockEnum.Agent)
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+  })
+
+  it('should expose only legacy Agent in chat mode when Agent v2 is disabled', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+    mockIsAgentV2Enabled.mockReturnValue(false)
 
     const { result } = renderHook(() => useAvailableNodesMetaData())
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
