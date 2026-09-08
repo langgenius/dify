@@ -367,7 +367,7 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     """
 
     bucket: str | None = Field(None, description="The file bucket")
-    prefix: str = Field(..., description="The parent folder ID")
+    prefix: str = Field(default="", description="The prefix to browse. An empty string means the root folder.")
     max_keys: int = Field(20, description="Page size for pagination")
     next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
