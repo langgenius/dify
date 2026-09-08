@@ -34,17 +34,6 @@ class OpsTraceDelivery(DefaultFieldsMixin, Base):
             name="ops_trace_delivery_destination",
         ),
         sa.CheckConstraint("trace_size_bytes > 0 AND trace_size_bytes <= 8388608", name="ops_trace_delivery_size"),
-        sa.CheckConstraint(
-            "(source_type = 'app' AND app_id IS NOT NULL AND pipeline_id IS NULL) OR "
-            "(source_type = 'pipeline' AND pipeline_id IS NOT NULL AND app_id IS NULL) OR "
-            "(source_type = 'workspace' AND app_id IS NULL AND pipeline_id IS NULL)",
-            name="ops_trace_delivery_source",
-        ),
-        sa.CheckConstraint(
-            "destination_type = 'enterprise' OR "
-            "(destination_type = 'app_provider' AND app_id IS NOT NULL AND config_id IS NOT NULL)",
-            name="ops_trace_delivery_destination",
-        ),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
