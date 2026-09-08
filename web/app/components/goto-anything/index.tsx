@@ -379,8 +379,8 @@ function GotoAnythingDialog() {
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
-  function resetSearch() {
-    setSearchQuery('')
+  function handleDialogOpenChangeComplete(open: boolean) {
+    if (!open) setSearchQuery('')
   }
 
   useHotkey(
@@ -500,7 +500,10 @@ function GotoAnythingDialog() {
   return (
     <>
       <SlashCommandProvider />
-      <Dialog handle={gotoAnythingDialogHandle} onOpenChange={resetSearch}>
+      <Dialog
+        handle={gotoAnythingDialogHandle}
+        onOpenChangeComplete={handleDialogOpenChangeComplete}
+      >
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
