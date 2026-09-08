@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -81,13 +82,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      open-icon-picker
-    </button>
-  ),
-}))
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
@@ -111,6 +105,7 @@ const mockGetRedirection = vi.mocked(getRedirection)
 const { mockToastSuccess, mockToastError } = toastMocks
 
 let appQuota = { size: 0, limit: 1 }
+let appBuilderEnabled = false
 
 const renderModal = () => {
   const onClose = vi.fn()
@@ -129,7 +124,7 @@ const renderModal = () => {
 function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: 'CLOUD' },
-    features: { apps: appQuota },
+    features: { apps: appQuota, dify_builder_enabled: appBuilderEnabled },
   })
 }
 
@@ -139,6 +134,7 @@ describe('CreateAppModal', () => {
     ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
+    appBuilderEnabled = false
     mockConsoleStateReader.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
@@ -185,6 +181,131 @@ describe('CreateAppModal', () => {
         isRbacEnabled: false,
       }),
     )
+  })
+
+  it('defaults to App Builder and preserves both drafts and app types when switching creation methods', async () => {
+    appBuilderEnabled = true
+    const user = userEvent.setup()
+    renderModal()
+
+    expect(screen.getByRole('radio', { name: 'workflow.difyBuilder.panelTitle' })).toBeChecked()
+    expect(
+      screen.queryByRole('textbox', { name: 'app.newApp.captionName' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'app.newApp.forBeginners' }),
+    ).not.toBeInTheDocument()
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      'Build an expense workflow',
+    )
+    await user.click(screen.getByRole('button', { name: /app\.types\.workflow/ }))
+    await user.click(screen.getByRole('radio', { name: 'app.newApp.blank' }))
+    await user.type(screen.getByRole('textbox', { name: 'app.newApp.captionName' }), 'Manual app')
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.newApp.captionDescription' }),
+      'Manual description',
+    )
+    await user.click(screen.getByRole('button', { name: 'app.newApp.forBeginners' }))
+    await user.click(screen.getByRole('button', { name: /app\.types\.chatbot/ }))
+
+    await user.click(screen.getByRole('radio', { name: 'workflow.difyBuilder.panelTitle' }))
+    expect(screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' })).toHaveValue(
+      'Build an expense workflow',
+    )
+    expect(screen.getByRole('button', { name: /app\.types\.workflow/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await user.click(screen.getByRole('radio', { name: 'app.newApp.blank' }))
+    expect(screen.getByRole('textbox', { name: 'app.newApp.captionName' })).toHaveValue(
+      'Manual app',
+    )
+    expect(screen.getByRole('textbox', { name: 'app.newApp.captionDescription' })).toHaveValue(
+      'Manual description',
+    )
+    expect(screen.getByRole('button', { name: /app\.types\.chatbot/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it.each([AppModeEnum.ADVANCED_CHAT, AppModeEnum.WORKFLOW])(
+    'creates a %s app with a default name and redirects from a Builder prompt',
+    async (mode) => {
+      appBuilderEnabled = true
+      mockTrackCreateApp.mockReturnValue(undefined)
+      const app = { id: 'builder-app', mode, maintainer: 'user-1' }
+      mockCreateApp.mockResolvedValue(app)
+      const user = userEvent.setup()
+      const { onClose } = renderModal()
+      if (mode === AppModeEnum.WORKFLOW)
+        await user.click(screen.getByRole('button', { name: /app\.types\.workflow/ }))
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+        '  Build an expense workflow  ',
+      )
+      await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+
+      await waitFor(() =>
+        expect(mockCreateApp).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'app.newApp.defaultName', description: '', mode }),
+        ),
+      )
+      await waitFor(() =>
+        expect(mockGetRedirection).toHaveBeenCalledWith(
+          app,
+          mockPush,
+          expect.objectContaining({ currentUserId: 'user-1' }),
+        ),
+      )
+      expect(onClose).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('retains the Builder prompt after creation fails and allows retry', async () => {
+    appBuilderEnabled = true
+    mockTrackCreateApp.mockReturnValue(undefined)
+    mockCreateApp
+      .mockRejectedValueOnce(new Error('Creation failed'))
+      .mockResolvedValueOnce({ id: 'retried-app', mode: AppModeEnum.ADVANCED_CHAT })
+    const user = userEvent.setup()
+    const { onClose } = renderModal()
+    const input = screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' })
+    const send = screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })
+    await user.type(input, 'Build a support chatflow')
+    await user.click(send)
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Creation failed'))
+    expect(input).toHaveValue('Build a support chatflow')
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(send)
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(mockCreateApp).toHaveBeenCalledTimes(2)
+  })
+
+  it('blocks empty Builder submissions, including the create shortcut', async () => {
+    appBuilderEnabled = true
+    const user = userEvent.setup()
+    renderModal()
+    await user.type(screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }), '   ')
+    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
+    expect(mockCreateApp).not.toHaveBeenCalled()
+  })
+
+  it('applies app quota limits to Builder creation', async () => {
+    appBuilderEnabled = true
+    appQuota = { size: 1, limit: 1 }
+    const user = userEvent.setup()
+    renderModal()
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.newApp.startFromAppBuilder' }),
+      'Build a support chatflow',
+    )
+    expect(screen.getByText('apps-full')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
+    expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
@@ -263,7 +384,7 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
-    fireEvent.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
@@ -307,7 +428,7 @@ describe('CreateAppModal', () => {
 
     renderModal()
 
-    fireEvent.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.captionName' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })

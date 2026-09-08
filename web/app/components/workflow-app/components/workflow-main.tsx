@@ -62,6 +62,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
+  const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const appDetail = useAppStore((s) => s.appDetail)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
@@ -554,6 +555,13 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     <DifyBuilderProvider
       appId={appId}
       canEdit={appACLCapabilities.canEdit}
+      canStartCreation={
+        isWorkflowDataLoaded &&
+        (!isCollaborationEnabled ||
+          (collaborationGraphState.appId === appId &&
+            collaborationGraphState.isReady &&
+            collaborationManager.canPersistLocalGraph()))
+      }
       getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
       onFocusCanvas={handleDifyBuilderFocusCanvas}
       onSyncDraft={handleDifyBuilderSyncDraft}

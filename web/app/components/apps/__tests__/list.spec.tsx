@@ -110,6 +110,14 @@ vi.mock('@/service/console', () => ({
         queryOptions: (options: unknown) => options,
       },
     },
+    features: {
+      get: {
+        queryOptions: (options: Record<string, unknown>) => ({
+          queryKey: ['console', 'features', 'get'],
+          ...options,
+        }),
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures', 'get'],
@@ -171,6 +179,7 @@ vi.mock('../hooks/use-workflow-online-users', () => ({
 
 const mockFetchNextPage = vi.fn()
 let mockSystemFeatures: GetSystemFeaturesResponse | null = null
+let mockAppBuilderEnabled = false
 
 const mockServiceState = {
   error: null as Error | null,
@@ -241,16 +250,18 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    useQuery: (options: { input?: unknown }) =>
-      options.input
-        ? {
-            data: mockStarredIsLoading ? undefined : mockStarredAppData,
-            error: mockStarredError,
-          }
-        : {
-            data: mockSystemFeatures,
-            error: null,
-          },
+    useQuery: (options: { input?: unknown; queryKey?: readonly unknown[] }) =>
+      options.queryKey?.includes('features')
+        ? { data: mockAppBuilderEnabled }
+        : options.input
+          ? {
+              data: mockStarredIsLoading ? undefined : mockStarredAppData,
+              error: mockStarredError,
+            }
+          : {
+              data: mockSystemFeatures,
+              error: null,
+            },
     useSuspenseQuery: () => ({ data: mockSystemFeatures }),
     useInfiniteQuery: () => ({
       data: mockServiceState.isLoading ? undefined : mockAppData,
@@ -316,7 +327,7 @@ vi.mock('@/next/dynamic', () => ({
         if (!show) return null
         return React.createElement(
           'div',
-          { 'data-testid': 'create-app-modal' },
+          { 'data-testid': 'create-app-modal', role: 'dialog', 'aria-label': 'Create app' },
           React.createElement(
             'button',
             { onClick: onClose, 'data-testid': 'close-create-modal' },
@@ -571,6 +582,7 @@ describe('List', () => {
     vi.clearAllMocks()
     stepByStepTourSessionState = {}
     mockWorkspacePermissionKeys = ['app.create_and_management']
+    mockAppBuilderEnabled = false
     mockServiceState.error = null
     mockServiceState.hasNextPage = false
     mockServiceState.isFetchNextPageError = false
@@ -1192,6 +1204,17 @@ describe('List', () => {
   })
 
   describe('Create Menu', () => {
+    it('opens creation from the Builder entry when the workspace enables App Builder', async () => {
+      mockAppBuilderEnabled = true
+      const user = userEvent.setup()
+      renderList()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByRole('menuitem', { name: /app\.newApp\.buildFromBlank/ }))
+
+      expect(screen.getByRole('dialog', { name: 'Create app' })).toBeInTheDocument()
+    })
+
     it('should open blank app modal from create menu', async () => {
       renderList()
 

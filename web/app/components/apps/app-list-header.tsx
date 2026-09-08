@@ -2,6 +2,7 @@
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListUrlQuery } from './query-params'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
@@ -17,6 +18,7 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
@@ -64,6 +66,11 @@ export function AppListHeader({
   showCreateButton,
 }: AppListHeaderProps) {
   const { t } = useTranslation()
+  const { data: appBuilderEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.dify_builder_enabled,
+    }),
+  )
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
   const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
@@ -115,6 +122,7 @@ export function AppListHeader({
           </Link>
           {showCreateButton && (
             <CreateAppDropdown
+              appBuilderEnabled={appBuilderEnabled}
               onCreateBlank={onCreateBlank}
               onCreateTemplate={onCreateTemplate}
               onImportDSL={onImportDSL}

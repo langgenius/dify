@@ -12,12 +12,14 @@ import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
 import { DifyBuilderCanvasLockSync, DifyBuilderCanvasRefreshSync } from './canvas-sync'
+import { DifyBuilderCreationStart } from './creation-start'
 import { DifyBuilderSessionPersistence } from './session-persistence'
 import { getSessionStorageKey } from './session-storage'
 
 type DifyBuilderProviderProps = {
   appId?: string
   canEdit: boolean
+  canStartCreation?: boolean
   children: ReactNode
   getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
   onFocusCanvas: () => void
@@ -30,6 +32,7 @@ type DifyBuilderProviderProps = {
 const DifyBuilderProviderContent = ({
   appId,
   canEdit,
+  canStartCreation = false,
   children,
   getCanvasSnapshot,
   onFocusCanvas,
@@ -70,6 +73,12 @@ const DifyBuilderProviderContent = ({
         restore={session.restore}
         tenantId={tenantId}
         userId={userId}
+      />
+      <DifyBuilderCreationStart
+        appId={appId}
+        canEdit={canEdit}
+        canStartCreation={canStartCreation}
+        enabled={enabled}
       />
       <DifyBuilderCanvasLockSync />
       <DifyBuilderCanvasRefreshSync
