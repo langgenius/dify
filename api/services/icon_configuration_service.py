@@ -10,11 +10,11 @@ DEFAULT_ICON = "🤖"
 DEFAULT_ICON_BACKGROUND = "#FFEAD5"
 
 
-class SiteConfigurationError(ValueError):
-    """Raised when an app's public site configuration cannot be served safely."""
+class IconConfigurationError(ValueError):
+    """Raised when an image icon does not resolve within its owning workspace."""
 
 
-class SiteConfigurationService:
+class IconConfigurationService:
     @staticmethod
     def validate_icon_reference(
         *,
@@ -43,6 +43,6 @@ class SiteConfigurationService:
                     .limit(1)
                 )
         if upload_file_id is None:
-            raise SiteConfigurationError(
+            raise IconConfigurationError(
                 "The site icon is missing or does not belong to this workspace. Please upload it again."
             )

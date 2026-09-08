@@ -86,7 +86,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigNotFoundError,
     AppTracingConfigVerificationFailedError,
 )
-from services.site_configuration_service import SiteConfigurationError
+from services.icon_configuration_service import IconConfigurationError
 from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -536,7 +536,7 @@ class TestSiteEndpoints:
         api = site_module.AppSite()
         method = unwrap(api.post)
         services = MagicMock()
-        services.app_sites.update.side_effect = SiteConfigurationError("The site icon is invalid.")
+        services.app_sites.update.side_effect = IconConfigurationError("The site icon is invalid.")
         context = RequestContext("request-1", None, USER_ID, TENANT_ID)
 
         with (

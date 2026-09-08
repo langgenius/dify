@@ -9,7 +9,7 @@ from models.enums import CreatorUserRole, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site, UploadFile
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
-from services.site_configuration_service import SiteConfigurationError
+from services.icon_configuration_service import IconConfigurationError
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -156,7 +156,7 @@ def test_update_rejects_cross_workspace_icon_reference(
     sqlite_session.add(upload_file)
     sqlite_session.commit()
 
-    with pytest.raises(SiteConfigurationError, match="missing or does not belong"):
+    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
         _repository(sqlite_session_factory).update_site(
             workspace_id=_WORKSPACE_ID,
             app_id=_APP_ID,

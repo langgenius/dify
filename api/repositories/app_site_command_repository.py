@@ -16,7 +16,7 @@ from services.app_site_service import (
     AppSiteNotFoundError,
     AppSiteStore,
 )
-from services.site_configuration_service import SiteConfigurationService
+from services.icon_configuration_service import IconConfigurationService
 
 
 class AppSiteCommandRepository(AppSiteStore):
@@ -34,7 +34,7 @@ class AppSiteCommandRepository(AppSiteStore):
     ) -> AppSiteCommandResult:
         with self._session_factory.begin() as session:
             site = self._get_site(session, workspace_id, app_id)
-            SiteConfigurationService.validate_icon_reference(
+            IconConfigurationService.validate_icon_reference(
                 session=session,
                 tenant_id=workspace_id,
                 icon_type=changes.icon_type if changes.icon_type is not None else site.icon_type,

@@ -10,7 +10,7 @@ from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
 from services.errors.file import FileNotExistsError
 from services.file_service import FileService
-from services.site_configuration_service import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE
+from services.icon_configuration_service import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE
 
 logger = logging.getLogger(__name__)
 

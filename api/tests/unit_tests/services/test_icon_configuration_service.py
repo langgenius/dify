@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import IconType, UploadFile
-from services.site_configuration_service import SiteConfigurationError, SiteConfigurationService
+from services.icon_configuration_service import IconConfigurationError, IconConfigurationService
 
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
 OTHER_TENANT_ID = "33333333-3333-3333-3333-333333333333"
@@ -36,7 +36,7 @@ def test_validate_icon_reference_accepts_tenant_owned_file(sqlite_session: Sessi
     sqlite_session.add(_upload_file(tenant_id=TENANT_ID))
     sqlite_session.commit()
 
-    SiteConfigurationService.validate_icon_reference(
+    IconConfigurationService.validate_icon_reference(
         session=sqlite_session,
         tenant_id=TENANT_ID,
         icon_type=IconType.IMAGE,
@@ -53,8 +53,8 @@ def test_validate_icon_reference_rejects_unavailable_file(
         sqlite_session.add(_upload_file(tenant_id=persisted_tenant_id))
         sqlite_session.commit()
 
-    with pytest.raises(SiteConfigurationError, match="missing or does not belong"):
-        SiteConfigurationService.validate_icon_reference(
+    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
+        IconConfigurationService.validate_icon_reference(
             session=sqlite_session,
             tenant_id=TENANT_ID,
             icon_type=IconType.IMAGE,
@@ -63,8 +63,8 @@ def test_validate_icon_reference_rejects_unavailable_file(
 
 
 def test_validate_icon_reference_rejects_empty_image_icon(sqlite_session: Session) -> None:
-    with pytest.raises(SiteConfigurationError, match="missing or does not belong"):
-        SiteConfigurationService.validate_icon_reference(
+    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
+        IconConfigurationService.validate_icon_reference(
             session=sqlite_session,
             tenant_id=TENANT_ID,
             icon_type=IconType.IMAGE,
@@ -73,8 +73,8 @@ def test_validate_icon_reference_rejects_empty_image_icon(sqlite_session: Sessio
 
 
 def test_validate_icon_reference_rejects_non_uuid_without_querying_database(sqlite_session: Session) -> None:
-    with pytest.raises(SiteConfigurationError, match="missing or does not belong"):
-        SiteConfigurationService.validate_icon_reference(
+    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
+        IconConfigurationService.validate_icon_reference(
             session=sqlite_session,
             tenant_id=TENANT_ID,
             icon_type=IconType.IMAGE,

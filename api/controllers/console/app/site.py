@@ -25,7 +25,7 @@ from services.app_site_service import (
     AppSiteNotFoundError,
     AppSiteTokenStrategy,
 )
-from services.site_configuration_service import SiteConfigurationError
+from services.icon_configuration_service import IconConfigurationError
 
 _APP_SITE_EDIT_ROLES = frozenset(
     {
@@ -125,7 +125,7 @@ class AppSite(Resource):
             raise AppNotFoundError() from error
         except AppSiteNotFoundError as error:
             raise NotFound from error
-        except SiteConfigurationError as exc:
+        except IconConfigurationError as exc:
             raise SiteConfigurationInvalidError(description=str(exc)) from None
 
         return dump_response(AppSiteResponse, site)
