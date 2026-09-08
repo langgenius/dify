@@ -17,11 +17,10 @@ from pydantic import ValidationError
 from configs import dify_config
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
-    ROSTER_AGENT_PACKAGE_MAX_ARCHIVE_BYTES,
+    ROSTER_AGENT_PACKAGE_MAX_BYTES,
     ROSTER_AGENT_PACKAGE_MAX_COMPRESSION_RATIO,
     ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
-    ROSTER_AGENT_PACKAGE_MAX_UNCOMPRESSED_BYTES,
     PreparedRosterAgentPackage,
     RosterAgentPackageManifest,
     RosterAgentPackageMember,
@@ -76,7 +75,7 @@ class RosterAgentPackageReader:
                     info_by_path[path] = info
                     casefold_paths.add(path.casefold())
                     total_uncompressed += info.file_size
-                if total_uncompressed > ROSTER_AGENT_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+                if total_uncompressed > ROSTER_AGENT_PACKAGE_MAX_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
 
                 manifest_info = info_by_path.get("manifest.json")
@@ -158,7 +157,7 @@ class RosterAgentPackageReader:
             if not isinstance(chunk, bytes):
                 raise InvalidRosterAgentPackageError("Roster Agent package must be binary")
             size += len(chunk)
-            if size > ROSTER_AGENT_PACKAGE_MAX_ARCHIVE_BYTES:
+            if size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
                 raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the archive size limit")
             target.write(chunk)
 
