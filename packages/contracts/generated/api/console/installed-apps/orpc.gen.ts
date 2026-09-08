@@ -38,7 +38,6 @@ import {
   zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse,
   zPatchInstalledAppsByInstalledAppIdPath,
   zPatchInstalledAppsByInstalledAppIdResponse,
-  zPostInstalledAppsBody,
   zPostInstalledAppsByInstalledAppIdAudioToTextPath,
   zPostInstalledAppsByInstalledAppIdAudioToTextResponse,
   zPostInstalledAppsByInstalledAppIdChatMessagesBody,
@@ -68,7 +67,6 @@ import {
   zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
-  zPostInstalledAppsResponse,
 } from './zod.gen'
 
 export const post = oc
@@ -576,20 +574,8 @@ export const get9 = oc
   .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
   .output(zGetInstalledAppsResponse)
 
-export const post12 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postInstalledApps',
-    path: '/installed-apps',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostInstalledAppsBody }))
-  .output(zPostInstalledAppsResponse)
-
 export const installedApps = {
   get: get9,
-  post: post12,
   byInstalledAppId,
 }
 

@@ -6712,19 +6712,6 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
 
-### [POST] /installed-apps
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [InstalledAppCreatePayload](#installedappcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleMessageResponse](#simplemessageresponse)<br> |
-
 ### [DELETE] /installed-apps/{installed_app_id}
 #### Parameters
 
@@ -18797,12 +18784,6 @@ Input field definition for snippet parameters.
 | required | boolean |  | No |
 | type | string |  | No |
 
-#### InstalledAppCreatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-
 #### InstalledAppInfoResponse
 
 | Name | Type | Description | Required |
@@ -21818,12 +21799,6 @@ Model class for provider quota configuration.
 | inputs | object |  | Yes |
 | message | string |  | Yes |
 | query | string |  | Yes |
-
-#### SimpleMessageResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| message | string |  | Yes |
 
 #### SimpleModelConfig
 

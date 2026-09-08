@@ -10,14 +10,6 @@ export type InstalledAppListResponse = {
   next_cursor: string | null
 }
 
-export type InstalledAppCreatePayload = {
-  app_id: string
-}
-
-export type SimpleMessageResponse = {
-  message: string
-}
-
 export type InstalledAppResponse = {
   app: InstalledAppInfoResponse
   app_owner_tenant_id: string
@@ -830,19 +822,6 @@ export type GetInstalledAppsResponses = {
 }
 
 export type GetInstalledAppsResponse = GetInstalledAppsResponses[keyof GetInstalledAppsResponses]
-
-export type PostInstalledAppsData = {
-  body: InstalledAppCreatePayload
-  path?: never
-  query?: never
-  url: '/installed-apps'
-}
-
-export type PostInstalledAppsResponses = {
-  200: SimpleMessageResponse
-}
-
-export type PostInstalledAppsResponse = PostInstalledAppsResponses[keyof PostInstalledAppsResponses]
 
 export type DeleteInstalledAppsByInstalledAppIdData = {
   body?: never

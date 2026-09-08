@@ -1,8 +1,9 @@
 """Composition root for application services used by transport adapters."""
 
 import json
+import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
@@ -160,6 +161,7 @@ from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.installed_app_service import InstalledAppService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
@@ -205,9 +207,14 @@ from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
 
+logger = logging.getLogger(__name__)
+
 _EXTENSION_KEY = "application_services"
 
 
+# TODO: Move response normalization and error translation into EnterpriseService.WebAppAuth
+# after migrating its callers to typed result/error contracts, then inject its methods
+# directly and remove these adapters.
 def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
     try:
         settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
@@ -219,11 +226,31 @@ def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
         raise WebAppAccessUnavailableError from e
 
 
-def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
+def _is_enterprise_webapp_user_allowed(user_id: str, app_id: str) -> bool:
     try:
         return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
     except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
         raise WebAppAccessUnavailableError from e
+
+
+def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
+    settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
+    access_modes: dict[str, WebAppAccessMode] = {}
+    for app_id, setting in settings.items():
+        try:
+            access_mode = WebAppAccessMode(setting.access_mode)
+        except ValueError:
+            logger.warning("Skipping invalid web app access mode %r for app %s", setting.access_mode, app_id)
+            continue
+        access_modes[app_id] = access_mode
+    return access_modes
+
+
+def _batch_get_enterprise_webapp_user_permissions(*, user_id: str, app_ids: Sequence[str]) -> Mapping[str, bool]:
+    permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
+        user_id=user_id, app_ids=list(app_ids)
+    )
+    return {app_id: bool(allowed) for app_id, allowed in permissions.items()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +295,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
     installed_app_generation: InstalledAppGenerationService
+    installed_apps: InstalledAppService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -423,11 +451,20 @@ def build_application_services(
             dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         ),
     )
+    webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition)
     webapp_access = WebAppAccessQueryService(
         access=WebAppAccessQueryRepository(session_factory=database_client),
-        webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+        webapp_auth_enabled=webapp_auth_enabled,
         access_mode_for_app=_get_enterprise_webapp_access_mode,
-        is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+        is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
+        get_access_modes=_batch_get_enterprise_webapp_access_modes,
+        get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
+    )
+    installed_app_access = InstalledAppAccessService(
+        installed_apps=installed_apps,
+        is_user_allowed=webapp_access.is_user_allowed,
+        get_access_modes=webapp_access.batch_get_access_modes,
+        get_user_permissions=webapp_access.batch_get_user_permissions,
     )
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
@@ -633,14 +670,16 @@ def build_application_services(
         ),
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=webapp_access,
-        installed_app_access=InstalledAppAccessService(
-            installed_apps=installed_apps,
-            is_user_allowed=webapp_access.is_user_allowed,
-        ),
+        installed_app_access=installed_app_access,
         installed_app_generation=InstalledAppGenerationService(
             app_definitions=app_definitions,
             usage=installed_apps,
             runtime=AppGenerateServiceRuntime(session_factory=database_client),
+        ),
+        installed_apps=InstalledAppService(
+            installed_apps=installed_apps,
+            get_workspace_role=workspace_query_repository.get_account_role,
+            get_visible_app_ids=installed_app_access.get_visible_app_ids if webapp_auth_enabled else None,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,

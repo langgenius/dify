@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, field
 from operator import itemgetter
 from uuid import UUID, uuid4
@@ -25,7 +25,7 @@ import libs.login as login_module
 import services.app_task_service as app_task_module
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
@@ -124,10 +124,18 @@ def harness(
             state.permission_action()
         return state.allowed
 
+    def unexpected_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
+        pytest.fail(f"Single-app admission should not query batch access modes: {app_ids=}")
+
+    def unexpected_user_permissions(*, user_id: str, app_ids: Sequence[str]) -> Mapping[str, bool]:
+        pytest.fail(f"Single-app admission should not query batch permissions: {user_id=}, {app_ids=}")
+
     services = _ApplicationServices(
         installed_app_access=InstalledAppAccessService(
             installed_apps=SQLAlchemyInstalledAppRepository(session_factory=repository_factory),
             is_user_allowed=permission_check,
+            get_access_modes=unexpected_access_modes,
+            get_user_permissions=unexpected_user_permissions,
         )
     )
 

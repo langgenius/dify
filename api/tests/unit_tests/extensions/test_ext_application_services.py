@@ -1,6 +1,7 @@
 """Tests for application-service dependency wiring."""
 
 import json
+import logging
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -10,15 +11,15 @@ import httpx
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
-from models.account import Account
-from models.model import AccountTrialAppRecord, App, AppMode, DifySetup, InstalledApp
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -881,7 +882,7 @@ def test_webapp_permission_adapter_maps_connection_failure() -> None:
         ),
         pytest.raises(WebAppAccessUnavailableError) as raised,
     ):
-        ext_application_services._is_user_allowed_to_access_webapp("user-1", "app-1")
+        ext_application_services._is_enterprise_webapp_user_allowed("user-1", "app-1")
 
     assert raised.value.__cause__ is failure
 
@@ -919,3 +920,278 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
         services.recommended_app_queries.list_recommended(
             language="en-US",
         )
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "permission_result"),
+    [
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community-skips-enterprise"),
+        pytest.param(DeploymentEdition.CLOUD, False, id="cloud-skips-enterprise"),
+        pytest.param(DeploymentEdition.ENTERPRISE, True, id="enterprise-allowed"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise-denied"),
+    ],
+)
+def test_installed_app_management_composition_reads_real_installations_and_current_workspace_role(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    deployment_edition: DeploymentEdition,
+    permission_result: bool,
+) -> None:
+    account_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Viewer", email="management@example.com")
+        account.id = account_id
+        tenant = Tenant(name="Viewer workspace")
+        tenant.id = installed_app_ref.tenant_id
+        session.add_all([account, tenant])
+        membership = TenantAccountJoin(
+            tenant_id=installed_app_ref.tenant_id, account_id=account_id, role=TenantAccountRole.OWNER
+        )
+        configuration = AppModelConfig(app_id=installed_app_ref.app_id)
+        session.add_all([membership, configuration])
+        session.flush()
+        app = session.get(App, installed_app_ref.app_id)
+        assert app is not None
+        app.app_model_config_id = configuration.id
+        membership_id = membership.id
+
+    active_connections = 0
+    engine = sqlite_session_factory.kw["bind"]
+
+    @event.listens_for(engine, "checkout")
+    def connection_checked_out(_connection: object, _record: object, _proxy: object) -> None:
+        nonlocal active_connections
+        active_connections += 1
+
+    @event.listens_for(engine, "checkin")
+    def connection_checked_in(_connection: object, _record: object) -> None:
+        nonlocal active_connections
+        active_connections -= 1
+
+    def enterprise_response(method: str, path: str, *, json: dict[str, object]) -> dict[str, object]:
+        assert deployment_edition == DeploymentEdition.ENTERPRISE
+        # The candidate read must release its DB connection before either network call.
+        assert active_connections == 0
+        assert method == "POST"
+        if path == "/webapp/access-mode/batch/id":
+            assert json == {"appIds": [installed_app_ref.app_id]}
+            return {"accessModes": {installed_app_ref.app_id: "private"}}
+        assert path == "/webapp/permission/batch"
+        assert json == {"userId": account_id, "appIds": [installed_app_ref.app_id]}
+        return {"permissions": {installed_app_ref.app_id: permission_result}}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=enterprise_response
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=deployment_edition,
+            initialization_password="",
+            redis=_StopRedis(),
+        )
+        if deployment_edition != DeploymentEdition.ENTERPRISE:
+            assert services.webapp_access.batch_get_access_modes(app_ids=(installed_app_ref.app_id,)) == {
+                installed_app_ref.app_id: WebAppAccessMode.PUBLIC
+            }
+            assert services.webapp_access.batch_get_user_permissions(
+                user_id=account_id, app_ids=(installed_app_ref.app_id,)
+            ) == {installed_app_ref.app_id: True}
+            assert services.installed_app_access.get_visible_app_ids(
+                user_id=account_id, app_ids=(installed_app_ref.app_id,)
+            ) == frozenset({installed_app_ref.app_id})
+        page = services.installed_apps.get_visible_page(
+            tenant_id=installed_app_ref.tenant_id,
+            user_id=account_id,
+            cursor=None,
+            limit=1,
+            app_id=None,
+            name=None,
+        )
+        assert page.editable is True
+        assert page.has_more is False
+        assert page.next_cursor is None
+        expected_ids: list[str] = (
+            [installed_app_ref.id] if deployment_edition != DeploymentEdition.ENTERPRISE or permission_result else []
+        )
+        assert [installation.id for installation in page.data] == expected_ids
+
+        with sqlite_session_factory.begin() as session:
+            stored_membership = session.get(TenantAccountJoin, membership_id)
+            assert stored_membership is not None
+            stored_membership.role = TenantAccountRole.NORMAL
+        services.installed_apps.set_pinned(installed_app=installed_app_ref, is_pinned=True)
+        detail = services.installed_apps.get_detail(installed_app=installed_app_ref, account_id=account_id)
+        assert detail.editable is False
+        assert detail.installation.is_pinned is True
+        assert detail.installation.id == installed_app_ref.id
+        assert detail.installation.app.id == installed_app_ref.app_id
+        assert active_connections == 0
+
+    if deployment_edition == DeploymentEdition.ENTERPRISE:
+        assert enterprise_request.call_args_list == [
+            call("POST", "/webapp/access-mode/batch/id", json={"appIds": [installed_app_ref.app_id]}),
+            call(
+                "POST",
+                "/webapp/permission/batch",
+                json={"userId": account_id, "appIds": [installed_app_ref.app_id]},
+            ),
+        ]
+    else:
+        enterprise_request.assert_not_called()
+
+
+def test_installed_app_visibility_batches_settings_before_permissions_and_preserves_truthiness_filter(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app_ids = (
+        "allowed",
+        "truthy-permission",
+        "missing-setting",
+        "sso",
+        "denied",
+        "zero",
+        "empty",
+        "null",
+        "missing-permission",
+    )
+    permission_candidates = ["allowed", "truthy-permission", "denied", "zero", "empty", "null", "missing-permission"]
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        side_effect=[
+            {
+                "accessModes": {
+                    "allowed": "private",
+                    "truthy-permission": "private_all",
+                    "sso": "sso_verified",
+                    "denied": "public",
+                    "zero": "private_all",
+                    "empty": "public",
+                    "null": "private",
+                    "missing-permission": "private",
+                }
+            },
+            {
+                "permissions": {
+                    "allowed": True,
+                    "truthy-permission": 1,
+                    "missing-setting": True,
+                    "sso": True,
+                    "denied": False,
+                    "zero": 0,
+                    "empty": "",
+                    "null": None,
+                }
+            },
+        ],
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=_StopRedis(),
+        )
+        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+
+    assert visible == frozenset({"allowed", "truthy-permission"})
+    assert enterprise_request.call_args_list == [
+        call("POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)}),
+        call("POST", "/webapp/permission/batch", json={"userId": "viewer", "appIds": permission_candidates}),
+    ]
+
+
+@pytest.mark.parametrize("include_valid_apps", [True, False], ids=["mixed-modes", "all-invalid"])
+def test_installed_app_visibility_skips_and_logs_each_invalid_access_mode(
+    sqlite_session_factory: sessionmaker[Session], caplog: pytest.LogCaptureFixture, include_valid_apps: bool
+) -> None:
+    modes = {"invalid-empty": "", "invalid-unknown": "future-mode"}
+    valid_ids: list[str] = ["valid-before", "valid-after"] if include_valid_apps else []
+    if include_valid_apps:
+        modes = {"valid-before": "private", **modes, "valid-after": "public"}
+    app_ids = tuple(modes)
+    responses: list[object] = [{"accessModes": modes}]
+    if include_valid_apps:
+        # Even an over-inclusive permission response must not restore invalid apps.
+        responses.append({"permissions": dict.fromkeys(app_ids, True)})
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=responses
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=_StopRedis(),
+        )
+        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+
+    assert visible == frozenset(valid_ids)
+    expected_calls = [call("POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)})]
+    if include_valid_apps:
+        expected_calls.append(call("POST", "/webapp/permission/batch", json={"userId": "viewer", "appIds": valid_ids}))
+    assert enterprise_request.call_args_list == expected_calls
+    warnings = [
+        message
+        for logger_name, level, message in caplog.record_tuples
+        if logger_name == ext_application_services.__name__ and level == logging.WARNING
+    ]
+    assert len(warnings) == 2
+    assert any("invalid-empty" in message and repr("") in message for message in warnings)
+    assert any("invalid-unknown" in message and repr("future-mode") in message for message in warnings)
+
+
+@pytest.mark.parametrize("app_ids", [(), ("sso", "missing")])
+def test_installed_app_visibility_skips_unnecessary_enterprise_requests(
+    sqlite_session_factory: sessionmaker[Session], app_ids: tuple[str, ...]
+) -> None:
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
+        return_value={"accessModes": {"sso": "sso_verified"}},
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=_StopRedis(),
+        )
+        visible = services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=app_ids)
+
+    assert visible == frozenset()
+    if app_ids:
+        enterprise_request.assert_called_once_with(
+            "POST", "/webapp/access-mode/batch/id", json={"appIds": list(app_ids)}
+        )
+    else:
+        enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize("failure_stage", ["settings", "permissions"])
+@pytest.mark.parametrize(
+    "enterprise_error",
+    [
+        pytest.param(EnterpriseAPINotFoundError(), id="not-found"),
+        pytest.param(EnterpriseAPIError("batch unavailable"), id="api-error"),
+        pytest.param(httpx.ConnectError("connection failed"), id="transport"),
+        pytest.param(json.JSONDecodeError("invalid", "", 0), id="invalid-json"),
+        pytest.param(ValueError("No data found."), id="invalid-response"),
+    ],
+)
+def test_installed_app_visibility_preserves_original_enterprise_error(
+    sqlite_session_factory: sessionmaker[Session], failure_stage: str, enterprise_error: Exception
+) -> None:
+    responses: list[object] = []
+    if failure_stage == "permissions":
+        responses.append({"accessModes": {"app-1": "private"}})
+    responses.append(enterprise_error)
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=responses
+    ) as enterprise_request:
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=_StopRedis(),
+        )
+        with pytest.raises(type(enterprise_error)) as caught:
+            services.installed_app_access.get_visible_app_ids(user_id="viewer", app_ids=("app-1",))
+
+    assert caught.value is enterprise_error
+    assert enterprise_request.call_count == (2 if failure_stage == "permissions" else 1)
