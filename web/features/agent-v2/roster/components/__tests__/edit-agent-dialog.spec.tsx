@@ -69,6 +69,7 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
+  permission_keys: [],
   role: 'Research Assistant',
   ...overrides,
 })

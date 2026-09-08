@@ -85,7 +85,7 @@ def resolve_agent_access_filter(
             if has_agent_list_permission(override.permission_keys)
         }
 
-    if getattr(whitelist_scope, "unrestricted", False):
+    if whitelist_scope.unrestricted:
         accessible_agent_ids = permission_agent_ids
     else:
         accessible_agent_ids = set(whitelist_scope.resource_ids)
