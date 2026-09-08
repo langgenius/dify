@@ -657,7 +657,7 @@ class AgentDslService:
                     DslImportWarning(
                         code="agent_knowledge_unresolved",
                         path=(f"{package_path}.soul.knowledge.sets.{set_index}.datasets.{dataset_index}"),
-                        message=f"Knowledge dataset {dataset_name!r} is unavailable in the target workspace.",
+                        message=f"Knowledge Base {dataset_name!r} is unavailable in the target workspace.",
                         details={"name": dataset_name},
                     )
                 )
@@ -670,7 +670,7 @@ class AgentDslService:
                 DslImportWarning(
                     code="agent_knowledge_fs_rebind_required",
                     path=f"{package_path}.soul.knowledge.spaces.{index}",
-                    message=f"KnowledgeFS space {space['name']!r} must be reselected in the target workspace.",
+                    message=f"Agent Knowledge Base {space['name']!r} must be reselected in the target workspace.",
                     details={"name": space["name"]},
                 )
             )

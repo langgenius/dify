@@ -254,7 +254,7 @@ class ComposerConfigValidator:
         """
         if any(space.is_missing for space in agent_soul.knowledge.spaces):
             raise InvalidComposerConfigError(
-                "knowledge_fs_rebind_required: reselect unavailable or imported KnowledgeFS spaces before publishing"
+                "knowledge_fs_rebind_required: reselect unavailable or imported Agent Knowledge Bases before publishing"
             )
         for knowledge_set in agent_soul.knowledge.sets:
             if (
@@ -278,8 +278,8 @@ class ComposerConfigValidator:
                 raise InvalidComposerConfigError("metadata_filtering.conditions is required for manual mode")
         if agent_soul.knowledge.sets:
             raise InvalidComposerConfigError(
-                "knowledge_fs_rebind_required: replace legacy datasets with KnowledgeFS spaces "
-                "before publishing or running"
+                "knowledge_fs_rebind_required: replace Classic Knowledge Base bindings "
+                "with Agent Knowledge Base bindings before publishing or running"
             )
 
     @classmethod

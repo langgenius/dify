@@ -69,7 +69,7 @@ def validate_agent_knowledge_spaces(
         # Missing and forbidden targets deliberately share an error and do not
         # disclose names/IDs from another principal's space catalog.
         raise InvalidComposerConfigError(
-            "knowledge_fs_space_unavailable: one or more selected KnowledgeFS spaces are unavailable or unauthorized"
+            "knowledge_fs_space_unavailable: one or more selected Agent Knowledge Bases are unavailable or unauthorized"
         )
 
 
@@ -87,7 +87,9 @@ def sync_agent_app_knowledge_bindings(
     app_id = agent.backing_app_id or agent.app_id
     if not app_id:
         if agent_soul.knowledge.spaces:
-            raise InvalidComposerConfigError("knowledge_fs_app_required: KnowledgeFS requires an app-backed Agent")
+            raise InvalidComposerConfigError(
+                "knowledge_fs_app_required: Agent Knowledge Base access requires an app-backed Agent"
+            )
         return
     ids = [binding.control_space_id for binding in agent_soul.knowledge.spaces]
     if (

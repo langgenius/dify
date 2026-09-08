@@ -164,7 +164,7 @@ class AgentStubKnowledgeHandler:
             result = project_result(command, plan, raw, citation)
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise KnowledgeFsError(
-                "KNOWLEDGE_PROTOCOL_MISMATCH", "KnowledgeFS returned invalid evidence.", 502
+                "KNOWLEDGE_PROTOCOL_MISMATCH", "Agent Knowledge Base returned invalid evidence.", 502
             ) from exc
         if len(result.model_dump_json().encode()) > KNOWLEDGE_FS_MAX_RESULT_BYTES:
             raise KnowledgeFsError(
@@ -192,7 +192,7 @@ class AgentStubKnowledgeHandler:
             return raw
         except (ValueError, RecursionError) as exc:
             raise KnowledgeFsError(
-                "KNOWLEDGE_PROTOCOL_MISMATCH", "KnowledgeFS returned an invalid response.", 502
+                "KNOWLEDGE_PROTOCOL_MISMATCH", "Agent Knowledge Base returned an invalid response.", 502
             ) from exc
 
     async def _fetch_plan(self, plan: KnowledgeFsPreparedRequest) -> tuple[bytes, str]:
@@ -235,7 +235,7 @@ class AgentStubKnowledgeHandler:
                 async for chunk in response.aiter_bytes():
                     if len(data) + len(chunk) > max_bytes:
                         raise KnowledgeFsError(
-                            "KNOWLEDGE_RESPONSE_TOO_LARGE", "KnowledgeFS response exceeds the byte limit.", 413
+                            "KNOWLEDGE_RESPONSE_TOO_LARGE", "Agent Knowledge Base response exceeds the byte limit.", 413
                         )
                     data.extend(chunk)
                 if response.status_code >= 300:
@@ -251,7 +251,7 @@ class AgentStubKnowledgeHandler:
                         403: "Knowledge access was denied or revoked.",
                         404: "Knowledge resource is unavailable.",
                         409: "Knowledge state changed; refresh the evidence or configuration.",
-                        422: "Query modality or arguments are unsupported by this knowledge space.",
+                        422: "Query modality or arguments are unsupported by this Agent Knowledge Base.",
                         429: "Knowledge provider or run budget is exhausted.",
                     }.get(response.status_code, "Knowledge service could not complete this command.")
                     raise KnowledgeFsError(code, message, response.status_code)
