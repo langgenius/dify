@@ -540,9 +540,9 @@ class TestAppRunner:
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.InputModeration.check",
-            lambda self, app_id, tenant_id, app_config, inputs, query, message_id, trace_manager: (True, {}, ""),
+            lambda self, app_id, tenant_id, app_config, inputs, query, message_id, trace_recorder: (True, {}, ""),
         )
-        app_generate_entity = AppGenerateEntity.model_construct(app_config=None, trace_manager=None)
+        app_generate_entity = AppGenerateEntity.model_construct(app_config=None, trace_recorder=None)
 
         result = runner.moderation_for_inputs(
             app_id="app",

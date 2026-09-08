@@ -43,3 +43,15 @@ def post_patch(event):
 
 
 gevent_events.subscribers.append(post_patch)
+
+
+def post_worker_init(worker):
+    from app import flask_app
+
+    flask_app.extensions["start_ops_tracing"]()
+
+
+def worker_exit(server, worker):
+    from app import flask_app
+
+    flask_app.extensions["close_ops_tracing"]()

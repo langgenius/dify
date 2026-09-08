@@ -13,7 +13,7 @@ from yarl import URL
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
@@ -55,7 +55,7 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
+        trace_recorder: MessageTraceRecorder | None = None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
@@ -79,6 +79,7 @@ class ToolEngine:
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
+        started_at = datetime.now(UTC)
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
@@ -122,7 +123,8 @@ class ToolEngine:
                 tool_inputs=tool_parameters,
                 tool_outputs=plain_text,
                 message_id=message.id,
-                trace_manager=trace_manager,
+                trace_recorder=trace_recorder,
+                timer={"start": started_at, "end": datetime.now(UTC)},
             )
 
             # transform tool invoke message to get LLM friendly message
@@ -148,12 +150,30 @@ class ToolEngine:
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
             logger.error(e, exc_info=True)
+            if trace_recorder:
+                trace_recorder.record_operation(
+                    tool.entity.identity.name,
+                    span_type="tool",
+                    inputs=tool_parameters,
+                    outputs=error_response,
+                    error=error_response,
+                    timer={"start": started_at, "end": datetime.now(UTC)},
+                )
             return error_response, [], meta
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
             logger.error(e, exc_info=True)
 
+        if trace_recorder:
+            trace_recorder.record_operation(
+                tool.entity.identity.name,
+                span_type="tool",
+                inputs=tool_parameters,
+                outputs=error_response,
+                error=error_response,
+                timer={"start": started_at, "end": datetime.now(UTC)},
+            )
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
     @staticmethod

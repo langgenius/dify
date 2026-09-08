@@ -560,6 +560,7 @@ def test_pause_snapshot_completes_before_pause_is_published(
     channel = InMemoryChannel()
     channel.send_command(PauseCommand(reason="wait"))
     entry = object.__new__(WorkflowEntry)
+    entry._workflow_trace = None
     entry._response_stream_filter = ResponseStreamFilter()
     entry.graph_engine = GraphEngine(
         graph=Graph.new().add_root(start).build(), runtime_state=state, command_channel=channel, workers=1
@@ -591,9 +592,9 @@ def test_pause_snapshot_completes_before_pause_is_published(
         # snapshot guard active; the host must report this instead of a pause.
         original_persist = layer.persist_pending_pause
 
-        def persist_with_active_worker():
+        def persist_with_active_worker(*, workflow_trace=None):
             with state.graph_execution.track_execution():
-                original_persist()
+                original_persist(workflow_trace=workflow_trace)
 
         monkeypatch.setattr(layer, "persist_pending_pause", persist_with_active_worker)
 

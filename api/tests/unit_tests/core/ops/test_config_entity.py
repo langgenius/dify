@@ -5,7 +5,7 @@ from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_opik.config import OpikConfig
 from dify_trace_weave.config import WeaveConfig
 
-from core.ops.entities.config_entity import TracingProviderEnum
+from core.ops.provider_config import TracingProviderEnum
 
 
 class TestTracingProviderEnum:

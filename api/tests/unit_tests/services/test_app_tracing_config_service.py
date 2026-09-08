@@ -166,6 +166,7 @@ def test_update_validates_reads_prepares_and_writes_in_order() -> None:
         current_tracing_config={"api_key": "old-encrypted"},
     )
     configs.update.assert_called_once_with(
+        expected_revision=0,
         workspace_id="workspace-1",
         app_id="app-1",
         tracing_provider="arize",

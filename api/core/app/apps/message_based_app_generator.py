@@ -250,6 +250,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if isinstance(application_generate_entity, ConversationAppGenerateEntity):
                 application_generate_entity.conversation_id = conversation.id
                 application_generate_entity.is_new_conversation = created_new_conversation
+            if application_generate_entity.trace_recorder is not None:
+                application_generate_entity.trace_recorder.bind_message(
+                    message.id,
+                    conversation.id,
+                    external_trace_id=application_generate_entity.extras.get("external_trace_id"),
+                    session_id=application_generate_entity.extras.get("trace_session_id"),
+                )
             return conversation, message
         except Exception:
             session.rollback()

@@ -29,7 +29,7 @@ class TestMessageService:
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
             patch("services.message_service.LLMGenerator") as mock_llm_generator,
-            patch("services.message_service.TraceQueueManager") as mock_trace_manager_class,
+            patch("services.message_service.MessageTraceRecorder") as mock_trace_recorder_class,
             patch("services.message_service.TokenBufferMemory") as mock_token_buffer_memory,
         ):
             # Setup default mock returns
@@ -52,8 +52,8 @@ class TestMessageService:
             # Mock LLMGenerator
             mock_llm_generator.generate_suggested_questions_after_answer.return_value = ["Question 1", "Question 2"]
 
-            # Mock TraceQueueManager
-            mock_trace_manager_instance = mock_trace_manager_class.return_value
+            # Mock MessageTraceRecorder
+            mock_trace_recorder_instance = mock_trace_recorder_class.return_value
 
             # Mock TokenBufferMemory
             mock_memory_instance = mock_token_buffer_memory.return_value
@@ -65,8 +65,8 @@ class TestMessageService:
                 "workflow_service": mock_workflow_service,
                 "app_config_manager": mock_app_config_manager,
                 "llm_generator": mock_llm_generator,
-                "trace_manager_class": mock_trace_manager_class,
-                "trace_manager_instance": mock_trace_manager_instance,
+                "trace_recorder_class": mock_trace_recorder_class,
+                "trace_recorder_instance": mock_trace_recorder_instance,
                 "token_buffer_memory": mock_token_buffer_memory,
                 # "current_user": mock_current_user,
             }
@@ -756,8 +756,8 @@ class TestMessageService:
             "llm_generator"
         ].generate_suggested_questions_after_answer.assert_called_once()
 
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
+        # Verify MessageTraceRecorder was called
+        mock_external_service_dependencies["trace_recorder_instance"].record_operation.assert_called_once()
 
     def test_get_suggested_questions_after_answer_no_user(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -882,5 +882,5 @@ class TestMessageService:
             app_model=app, session=ANY
         )
 
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
+        # Verify MessageTraceRecorder was called
+        mock_external_service_dependencies["trace_recorder_instance"].record_operation.assert_called_once()

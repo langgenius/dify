@@ -10,7 +10,7 @@ def is_enabled() -> bool:
 def init_app(app: DifyApp):
     """Resolve Pydantic forward refs that would otherwise cause circular imports.
 
-    Rebuilds models in core.app.entities.app_invoke_entities with the real TraceQueueManager type.
+    Rebuilds models in core.app.entities.app_invoke_entities with the real MessageTraceRecorder type.
     Safe to run multiple times.
     """
     logger = logging.getLogger(__name__)
@@ -26,9 +26,9 @@ def init_app(app: DifyApp):
             RagPipelineGenerateEntity,
             WorkflowAppGenerateEntity,
         )
-        from core.ops.ops_trace_manager import TraceQueueManager  # heavy import, do it at startup only
+        from core.ops.message_trace import MessageTraceRecorder  # heavy import, do it at startup only
 
-        ns = {"TraceQueueManager": TraceQueueManager}
+        ns = {"MessageTraceRecorder": MessageTraceRecorder}
         for Model in (
             AppGenerateEntity,
             EasyUIBasedAppGenerateEntity,

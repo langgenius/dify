@@ -12,8 +12,6 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -43,6 +41,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.ops_trace_service import create_message_trace
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -445,12 +444,21 @@ class MessageService:
             )
             questions: list[str] = list(questions_sequence)
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE, message_id=message_id, suggested_question=questions, timer=timer
-            )
+        trace_recorder = create_message_trace(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            message_id=message_id,
+            conversation_id=conversation.id,
         )
+        if trace_recorder:
+            trace_recorder.record_operation(
+                "suggested_questions",
+                span_type="llm",
+                attributes={"operation_type": "suggested_question"},
+                inputs=histories,
+                outputs=questions,
+                timer=timer,
+                independent=True,
+            )
 
         return questions

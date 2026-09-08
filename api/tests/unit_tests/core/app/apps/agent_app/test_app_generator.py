@@ -211,7 +211,7 @@ class TestGenerateSuccess:
         mocker.patch(f"{MODULE}.FileUploadConfigManager.convert", return_value=file_upload_config)
         parsed_file = mocker.MagicMock()
         build_files = mocker.patch(f"{MODULE}.file_factory.build_from_mappings", return_value=[parsed_file])
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
         )
@@ -268,7 +268,7 @@ class TestGenerateSuccess:
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
@@ -310,7 +310,7 @@ class TestGenerateSuccess:
             return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
         )
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
         )
@@ -539,7 +539,7 @@ class TestResumeAfterFormSubmission:
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.create_message_trace", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
         generator._resolve_resume_draft = mocker.MagicMock(return_value=(None, None))

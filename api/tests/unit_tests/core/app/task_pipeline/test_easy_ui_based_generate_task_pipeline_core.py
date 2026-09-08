@@ -53,8 +53,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -95,9 +94,10 @@ class _AudioPublisher:
         return self._audio
 
 
-class _TraceManagerDouble:
+class _TraceRecorderDouble:
     def __init__(self) -> None:
-        self.add_trace_task = Mock()
+        self.record_saved_message = Mock()
+        self.close = Mock()
 
 
 class _FakeQueueManager(AppQueueManager):
@@ -282,7 +282,7 @@ def _make_entity(entity_cls, app_mode: AppMode):
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
         call_depth=0,
-        trace_manager=None,
+        trace_recorder=None,
     )
 
 
@@ -509,7 +509,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
             call_depth=0,
-            trace_manager=None,
+            trace_recorder=None,
         )
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -723,8 +723,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "handle_error", lambda **kwargs: ValueError("boom"))
         _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
 
-        trace_manager_double = _TraceManagerDouble()
-        trace_manager = cast(TraceQueueManager, trace_manager_double)
+        trace_recorder_double = _TraceRecorderDouble()
+        trace_recorder = cast(MessageTraceRecorder, trace_recorder_double)
 
         class _Session:
             def __enter__(self):
@@ -741,16 +741,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
             lambda: _Session(),
         )
 
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+        responses = list(pipeline._process_stream_response(publisher=None, trace_recorder=trace_recorder))
 
         assert len(responses) == 1
         assert isinstance(responses[0], ErrorStreamResponse)
-        trace_manager_double.add_trace_task.assert_called_once()
-        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
-        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-        assert trace_task.conversation_id == "conv"
-        assert trace_task.message_id == "msg"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
+        trace_recorder_double.record_saved_message.assert_called_once_with("msg")
 
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -850,7 +845,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(
             pipeline,
             "_wrapper_process_stream_response",
-            lambda trace_manager: iter([PingStreamResponse(task_id="task")]),
+            lambda trace_recorder: iter([PingStreamResponse(task_id="task")]),
         )
         _set_method(pipeline, "_to_stream_response", lambda generator: "streamed")
 
@@ -875,7 +870,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(
             pipeline,
             "_wrapper_process_stream_response",
-            lambda trace_manager: iter([PingStreamResponse(task_id="task")]),
+            lambda trace_recorder: iter([PingStreamResponse(task_id="task")]),
         )
         _set_method(pipeline, "_to_blocking_response", lambda generator: "blocking")
 
@@ -1004,7 +999,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             stream=True,
         )
         payload = PingStreamResponse(task_id="task")
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_recorder: iter([payload]))
 
         responses = list(pipeline._wrapper_process_stream_response())
 
@@ -1040,7 +1035,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         audio_calls = iter([inline_audio, None])
         payload = PingStreamResponse(task_id="task")
         _set_method(pipeline, "_listen_audio_msg", lambda publisher, task_id: next(audio_calls))
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_recorder: iter([payload]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: _Publisher(),
@@ -1082,7 +1077,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def cancel(self):
                 return None
 
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_recorder: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: _Publisher(),
@@ -1121,7 +1116,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def cancel(self):
                 return None
 
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_recorder: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: _Publisher(),
@@ -1150,7 +1145,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         publisher = Mock()
         publisher.check_and_get_audio.return_value = None
         error = ErrorStreamResponse(task_id="task", err=RuntimeError("generation failed"))
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([error]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_recorder: iter([error]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: publisher,
@@ -1364,8 +1359,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
         session = sqlite_session
         session.add_all([conversation_obj, message_obj])
         session.flush()
-        trace_manager_double = _TraceManagerDouble()
-        trace_manager = cast(TraceQueueManager, trace_manager_double)
+        trace_recorder_double = _TraceRecorderDouble()
+        trace_recorder = cast(MessageTraceRecorder, trace_recorder_double)
         sent_payloads: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
         monkeypatch.setattr(
@@ -1388,17 +1383,12 @@ class TestEasyUiBasedGenerateTaskPipeline:
             lambda *args, **kwargs: sent_payloads.append((args, kwargs)),
         )
 
-        pipeline._save_message(session=session, trace_manager=trace_manager)
+        pipeline._save_message(session=session)
 
         assert message_obj.message == "serialized-prompt"
         assert message_obj.answer == "hello"
         assert message_obj.provider_response_latency == 5.0
-        trace_manager_double.add_trace_task.assert_called_once()
-        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
-        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-        assert trace_task.conversation_id == "conv"
-        assert trace_task.message_id == "msg"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
+        trace_recorder_double.record_saved_message.assert_not_called()
         assert len(sent_payloads) == 1
 
     def test_save_stopped_message_preserves_backend_reported_usage(

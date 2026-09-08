@@ -1,77 +1,18 @@
 # Trace providers
 
-This directory holds **optional workspace packages** that send Dify **ops tracing** data (workflows, messages, tools, moderation, etc.) to an external observability backend (Langfuse, LangSmith, OpenTelemetry-style exporters, and others).
+OPS sends every provider an immutable `CompletedTrace` containing the full span tree. Provider code translates these spans and performs synchronous, bounded network calls. It does not query Dify records, reconstruct workflow trees, retain credentials between exports, or configure a global SDK.
 
-Unlike VDB providers, trace plugins are **not** discovered via entry points. The API core imports your package **explicitly** from `core/ops/ops_trace_manager.py` after you register the provider id and mapping.
+The shared types live in [`trace_data.py`](../../core/ops/trace_data.py). Configuration schemas, encryption and secret-field selection live in [`provider_config.py`](../../core/ops/provider_config.py). [`provider_export.py`](../../core/ops/provider_export.py) selects a fresh client for each delivery and adds destination ownership to returned parent receipts.
 
-## Architecture
+To add a provider:
 
-| Layer | Location | Role |
-|--------|----------|------|
-| Contracts | `api/core/ops/base_trace_instance.py`, `api/core/ops/entities/trace_entity.py`, `api/core/ops/entities/config_entity.py` | `BaseTraceInstance`, `BaseTracingConfig`, and typed `*TraceInfo` payloads |
-| Registry | `api/core/ops/ops_trace_manager.py` | `TracingProviderEnum`, `OpsTraceProviderConfigMap` — maps provider **string** → config class, encrypted keys, and trace class |
-| Your package | `api/providers/trace/trace-<name>/` | Pydantic config + subclass of `BaseTraceInstance` |
+1. Add its package under `trace-<name>/`, with a Pydantic configuration class and a client implementing `verify_credentials()`, `get_project_url()`, and `export_trace(completed_trace, parent_span=None)`.
+2. Add its name and config fields in `provider_config.py`, then its client construction in `provider_export.py`. Keep secret keys in the encrypted field list.
+3. Register the package in the API workspace sources and trace dependency groups. Include `py.typed` with the package.
+4. Exercise the real request serialization with a fake HTTP transport. Cover parent-first trees, deterministic IDs, auth isolation, retryable failures, and supported parent receipts.
 
-At runtime, `OpsTraceManager` decrypts stored credentials, builds your config model, caches a trace instance, and calls `trace(trace_info)` with a concrete `BaseTraceInfo` subtype.
+Use `TraceProviderHttpClient` for HTTP. It creates and closes an SSRF-aware HTTP client per request, disables redirects, and limits the overall export duration. Use the shared OTLP builder for OTLP providers. gRPC exports use an explicit channel and the configured SSRF proxy; they fail closed if proxy bypass rules would skip that proxy.
 
-## What you implement
+Return `ExportedParentSpans` keyed by internal span ID, with the provider IDs needed to append a later operation. The delivery worker retains only the root receipt. Databricks uses a separate linked trace for late operations because updating a completed trace artifact would overwrite sibling work. Raise `TraceExportError` with a safe reason and an explicit retry classification; never include credentials or trace content in errors.
 
-### 1. Config model (`BaseTracingConfig`)
-
-Subclass `BaseTracingConfig` from `core.ops.entities.config_entity`. Use Pydantic validators; reuse helpers from `core.ops.utils` (for example `validate_url`, `validate_url_with_path`, `validate_project_name`) where appropriate.
-
-Fields fall into two groups used by the manager:
-
-- **`secret_keys`** — names of fields that are **encrypted at rest** (API keys, tokens, passwords).
-- **`other_keys`** — non-secret connection settings (hosts, project names, endpoints).
-
-List these key names in your `OpsTraceProviderConfigMap` entry so encrypt/decrypt and merge logic stay correct.
-
-### 2. Trace instance (`BaseTraceInstance`)
-
-Subclass `BaseTraceInstance` and implement:
-
-```python
-def trace(self, trace_info: BaseTraceInfo) -> None: ...
-```
-
-Dispatch on the concrete type with `isinstance` (see `trace_langfuse` or `trace_langsmith` for full patterns). Payload types are defined in `core/ops/entities/trace_entity.py`, including:
-
-- `WorkflowTraceInfo`, `WorkflowNodeTraceInfo`, `DraftNodeExecutionTrace`
-- `MessageTraceInfo`, `ToolTraceInfo`, `ModerationTraceInfo`, `SuggestedQuestionTraceInfo`
-- `DatasetRetrievalTraceInfo`, `GenerateNameTraceInfo`, `PromptGenerationTraceInfo`
-
-You may ignore categories your backend does not support; existing providers often no-op unhandled types.
-
-Optional: use `get_service_account_with_tenant(app_id)` from the base class when you need tenant-scoped account context.
-
-### 3. Register in the API core
-
-Upstream changes are required so Dify knows your provider exists:
-
-1. **`TracingProviderEnum`** (`api/core/ops/entities/config_entity.py`) — add a new member whose **value** is the stable string stored in app tracing config (e.g. `"mybackend"`).
-2. **`OpsTraceProviderConfigMap.__getitem__`** (`api/core/ops/ops_trace_manager.py`) — add a `match` case for that enum member returning:
-   - `config_class`: your Pydantic config type
-   - `secret_keys` / `other_keys`: lists of field names as above
-   - `trace_instance`: your `BaseTraceInstance` subclass  
-   Lazy-import your package inside the case so missing optional installs raise a clear `ImportError`.
-
-If the `match` case is missing, the provider string will not resolve and tracing will be disabled for that app.
-
-## Package layout
-
-Each provider is a normal uv workspace member, for example:
-
-- `api/providers/trace/trace-<name>/pyproject.toml` — project name `dify-trace-<name>`, dependencies on vendor SDKs
-- `api/providers/trace/trace-<name>/src/dify_trace_<name>/` — `config.py`, `<name>_trace.py`, optional `entities/`, and an empty **`py.typed`** file (PEP 561) so the API type checker treats the package as typed; list `py.typed` under `[tool.setuptools.package-data]` for that import name in `pyproject.toml`.
-
-Reference implementations: `trace-langfuse/`, `trace-langsmith/`, `trace-opik/`.
-
-## Wiring into the `api` workspace
-
-In `api/pyproject.toml`:
-
-1. **`[tool.uv.sources]`** — `dify-trace-<name> = { workspace = true }`
-2. **`[dependency-groups]`** — add `trace-<name> = ["dify-trace-<name>"]` and include `dify-trace-<name>` in `trace-all` if it should ship with the default bundle
-
-After changing metadata, run **`uv sync`** from `api/`.
+The ten choices remain Langfuse, LangSmith, Opik, Weave, Arize, Phoenix, Aliyun, MLflow, Databricks and Tencent. Their existing configuration APIs and encrypted credentials remain supported. There is one OPS runtime; the former unified/legacy switch is removed.

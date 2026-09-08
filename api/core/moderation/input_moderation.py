@@ -7,8 +7,7 @@ from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.model_context import use_credit_usage_metadata
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.message_trace import MessageTraceRecorder
 from core.ops.utils import measure_time
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ class InputModeration:
         inputs: Mapping[str, Any],
         query: str,
         message_id: str,
-        trace_manager: TraceQueueManager | None = None,
+        trace_recorder: MessageTraceRecorder | None = None,
     ) -> tuple[bool, Mapping[str, Any], str]:
         """
         Process sensitive_word_avoidance.
@@ -33,7 +32,7 @@ class InputModeration:
         :param inputs: inputs
         :param query: query
         :param message_id: message id
-        :param trace_manager: trace manager
+        :param trace_recorder: trace manager
         :return:
         """
         inputs = dict(inputs)
@@ -51,15 +50,14 @@ class InputModeration:
             with measure_time() as timer:
                 moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
 
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MODERATION_TRACE,
-                    message_id=message_id,
-                    moderation_result=moderation_result,
-                    inputs=inputs,
-                    timer=timer,
-                )
+        if trace_recorder:
+            trace_recorder.record_operation(
+                "moderation",
+                span_type="tool",
+                message_id=message_id,
+                inputs={"inputs": inputs, "query": query},
+                outputs=moderation_result,
+                timer=timer,
             )
 
         if not moderation_result.flagged:

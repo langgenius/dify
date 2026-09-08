@@ -11,6 +11,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.ops.workflow_trace import WorkflowTraceRecorder
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
@@ -98,9 +99,11 @@ class WorkflowToolNestedContainerHandler:
         *,
         handler_factory: Callable[[FrameRegistry], ContainerHandler],
         hidden_event_listener: Callable[[NodeEvent], None] | None = None,
+        execution_event_listener: Callable[[NodeEvent], None] | None = None,
         event_listeners: Mapping[str, Callable[[NodeEvent], None]] | None = None,
     ) -> None:
         self._handler = handler_factory(frame_registry)
+        self._execution_event_listener = execution_event_listener
         self._hidden_event_listener = hidden_event_listener
         self._event_listeners = event_listeners if event_listeners is not None else {}
         self.node_type = self._handler.node_type
@@ -118,10 +121,12 @@ class WorkflowToolNestedContainerHandler:
 
     def should_emit(self, *, event: NodeEvent) -> bool:
         should_emit = self._handler.should_emit(event=event)
+        if not should_emit and self._execution_event_listener is not None:
+            self._execution_event_listener(event)
         if should_emit and _HIDDEN_CHILD_EVENT_KEY in event.node_run_result.process_data:
-            _save_workflow_tool_event(event, self._event_listeners)
             if self._hidden_event_listener is not None:
                 self._hidden_event_listener(event)
+            _save_workflow_tool_event(event, self._event_listeners)
             return False
         return should_emit
 
@@ -147,9 +152,11 @@ class WorkflowToolContainerHandler:
         event_listener_factory: WorkflowToolEventListenerFactory | None = None,
         event_listeners: dict[str, Callable[[NodeEvent], None]] | None = None,
         execution_context_factory: Callable[[], AbstractContextManager[object]] = nullcontext,
+        workflow_trace: WorkflowTraceRecorder | None = None,
     ) -> None:
         self._frame_registry = frame_registry
         self._source_repository = source_repository
+        self._workflow_trace = workflow_trace
         self._hidden_event_listener = hidden_event_listener
         self._event_listener_factory = event_listener_factory
         self._event_listeners = event_listeners if event_listeners is not None else {}
@@ -243,9 +250,9 @@ class WorkflowToolContainerHandler:
         }
 
     def should_emit(self, *, event: NodeEvent) -> bool:
-        _save_workflow_tool_event(event, self._event_listeners)
         if self._hidden_event_listener is not None:
             self._hidden_event_listener(event)
+        _save_workflow_tool_event(event, self._event_listeners)
         return False
 
     def record_frame_failure(self, *, frame: ExecutionFrame, event: NodeRunFailedEvent) -> None:
@@ -319,6 +326,15 @@ class WorkflowToolContainerHandler:
         )
         if source is None:
             raise ValueError("Workflow Tool source was not found")
+        if self._workflow_trace is not None:
+            self._workflow_trace.register_workflow_source(
+                tenant_id=run_context.tenant_id,
+                app_id=source.app_id,
+                workflow_id=source.workflow_id,
+                workflow_version=payload.source_workflow_version,
+                invocation_id=run_state.invocation_id,
+                parent_execution_id=parent_node.execution_id or "",
+            )
         graph_config = source.graph_config
         root_node_id = get_default_root_node_id(graph_config)
 

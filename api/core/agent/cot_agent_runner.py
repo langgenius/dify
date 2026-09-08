@@ -14,7 +14,7 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_context import use_credit_usage_metadata
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
@@ -63,7 +63,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._repack_app_generate_entity(app_generate_entity)
         self._init_react_state(query)
 
-        trace_manager = app_generate_entity.trace_manager
+        trace_recorder = app_generate_entity.trace_recorder
 
         # check model mode
         if "Observation" not in app_generate_entity.model_conf.stop:
@@ -246,7 +246,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
-                        trace_manager=trace_manager,
+                        trace_recorder=trace_recorder,
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
@@ -313,14 +313,14 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         action: AgentScratchpadUnit.Action,
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
-        trace_manager: TraceQueueManager | None = None,
+        trace_recorder: MessageTraceRecorder | None = None,
     ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
         :param action: action
         :param tool_instances: tool instances
         :param message_file_ids: message file ids
-        :param trace_manager: trace manager
+        :param trace_recorder: trace manager
         :return: observation, meta
         """
         # action is tool call, invoke tool
@@ -349,7 +349,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 message=self.message,
                 invoke_from=self.application_generate_entity.invoke_from,
                 agent_tool_callback=self.agent_callback,
-                trace_manager=trace_manager,
+                trace_recorder=trace_recorder,
             )
         session.commit()
         session.close()

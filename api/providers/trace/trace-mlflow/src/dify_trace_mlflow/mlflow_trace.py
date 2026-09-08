@@ -1,578 +1,255 @@
-import logging
-import os
-from datetime import datetime, timedelta
-from graphlib import TopologicalSorter
-from typing import Any, cast, override
+"""Explicit MLflow/Databricks REST requests; no tracking setters or environment credentials."""
 
-import mlflow
-from mlflow.entities import Document, LiveSpan, Span, SpanEvent, SpanStatusCode, SpanType
-from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
-from mlflow.tracing.fluent import start_span_no_context, update_current_trace
-from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
-from sqlalchemy import select
+import base64
+import json
+from typing import Any
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit
+from uuid import UUID
 
-from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    DatasetRetrievalTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    SuggestedQuestionTraceInfo,
-    ToolTraceInfo,
-    TraceTaskName,
-    WorkflowTraceInfo,
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
+from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
+from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans
+from pydantic import JsonValue
+
+from core.ops.otlp_trace import OtlpTraceClient, otlp_attributes, otlp_span
+from core.ops.provider_export import (
+    TraceExportError,
+    TraceProviderHttpClient,
+    basic_auth,
+    export_span_id,
+    json_text,
+    provider_uuid,
+    span_attributes,
+    span_id_bytes,
+    timestamp_ns,
 )
-from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
-from core.ops.utils import JSON_DICT_ADAPTER
+from core.ops.trace_data import CompletedTrace, ExportedParentSpans, TraceSpan
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
-from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes
-from models import EndUser
-from models.workflow import WorkflowNodeExecutionModel
-
-logger = logging.getLogger(__name__)
-
-type SpanAttributes = dict[str, object]
 
 
-def datetime_to_nanoseconds(dt: datetime | None) -> int | None:
-    """Convert datetime to nanosecond timestamp for MLflow API"""
-    if dt is None:
-        return None
-    return int(dt.timestamp() * 1_000_000_000)
-
-
-def _start_span_no_context(
-    *,
-    name: str,
-    span_type: str,
-    parent_span: LiveSpan | None = None,
-    inputs: object | None = None,
-    attributes: SpanAttributes | None = None,
-    start_time_ns: int | None = None,
-) -> LiveSpan:
-    """Start an MLflow span while preserving structured Dify attributes.
-
-    MLflow 3.11 annotates `start_span_no_context(..., attributes=...)` as `dict[str, str]`,
-    but the implementation immediately calls `LiveSpan.set_attributes(dict[str, Any])`.
-    `LiveSpan` JSON-serializes arbitrary values before storing them in OpenTelemetry, and
-    reserved attributes like `mlflow.chat.tokenUsage` are expected to round-trip as dicts.
-    """
-    return start_span_no_context(
-        name=name,
-        span_type=span_type,
-        parent_span=parent_span,
-        inputs=inputs,
-        attributes=cast(dict[str, str] | None, attributes),
-        start_time_ns=start_time_ns,
-    )
-
-
-class MLflowDataTrace(BaseTraceInstance):
-    def __init__(self, config: MLflowConfig | DatabricksConfig):
-        super().__init__(config)
-        if isinstance(config, DatabricksConfig):
-            self._setup_databricks(config)
-        else:
-            self._setup_mlflow(config)
-
-        # Enable async logging to minimize performance overhead
-        os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] = "true"
-
-    def _setup_databricks(self, config: DatabricksConfig):
-        """Setup connection to Databricks-managed MLflow instances"""
-        os.environ["DATABRICKS_HOST"] = config.host
-
-        if config.client_id and config.client_secret:
-            # OAuth: https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m?language=Environment
-            os.environ["DATABRICKS_CLIENT_ID"] = config.client_id
-            os.environ["DATABRICKS_CLIENT_SECRET"] = config.client_secret
-        elif config.personal_access_token:
-            # PAT: https://docs.databricks.com/aws/en/dev-tools/auth/pat
-            os.environ["DATABRICKS_TOKEN"] = config.personal_access_token
-        else:
-            raise ValueError(
-                "Either Databricks token (PAT) or client id and secret (OAuth) must be provided"
-                "See https://docs.databricks.com/aws/en/dev-tools/auth/#what-authorization-option-should-i-choose "
-                "for more information about the authorization options."
-            )
-        mlflow.set_tracking_uri("databricks")
-        mlflow.set_experiment(experiment_id=config.experiment_id)
-
-        # Remove trailing slash from host
-        config.host = config.host.rstrip("/")
-        self._project_url = f"{config.host}/ml/experiments/{config.experiment_id}/traces"
-
-    def _setup_mlflow(self, config: MLflowConfig):
-        """Setup connection to MLflow instances"""
-        mlflow.set_tracking_uri(config.tracking_uri)
-        mlflow.set_experiment(experiment_id=config.experiment_id)
-
-        # Simple auth if provided
-        if config.username and config.password:
-            os.environ["MLFLOW_TRACKING_USERNAME"] = config.username
-            os.environ["MLFLOW_TRACKING_PASSWORD"] = config.password
-
-        self._project_url = f"{config.tracking_uri}/#/experiments/{config.experiment_id}/traces"
-
-    @override
-    def trace(self, trace_info: BaseTraceInfo):
-        """Simple dispatch to trace methods"""
-        try:
-            match trace_info:
-                case WorkflowTraceInfo():
-                    self.workflow_trace(trace_info)
-                case MessageTraceInfo():
-                    self.message_trace(trace_info)
-                case ToolTraceInfo():
-                    self.tool_trace(trace_info)
-                case ModerationTraceInfo():
-                    self.moderation_trace(trace_info)
-                case DatasetRetrievalTraceInfo():
-                    self.dataset_retrieval_trace(trace_info)
-                case SuggestedQuestionTraceInfo():
-                    self.suggested_question_trace(trace_info)
-                case GenerateNameTraceInfo():
-                    self.generate_name_trace(trace_info)
-        except Exception:
-            logger.exception("[MLflow] Trace error")
-            raise
-
-    def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        """Create workflow span as root, with node spans as children"""
-        # fields with sys.xyz is added by Dify, they are duplicate to trace_info.metadata
-        raw_inputs = trace_info.workflow_run_inputs or {}
-        workflow_inputs = {k: v for k, v in raw_inputs.items() if not k.startswith("sys.")}
-
-        # Special inputs propagated by system
-        if trace_info.query:
-            workflow_inputs["query"] = trace_info.query
-
-        workflow_span = _start_span_no_context(
-            name=TraceTaskName.WORKFLOW_TRACE.value,
-            span_type=SpanType.CHAIN,
-            inputs=workflow_inputs,
-            attributes=trace_info.metadata,
-            start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
+class MLflowTraceClient:
+    def __init__(self, provider_name: str, provider_config: dict[str, Any]):
+        self.provider_name = provider_name
+        self.config = (DatabricksConfig if provider_name == "databricks" else MLflowConfig).model_validate(
+            provider_config
         )
-
-        # Set reserved fields in trace-level metadata
-        trace_metadata = {}
-        if user_id := trace_info.metadata.get("user_id"):
-            trace_metadata[TraceMetadataKey.TRACE_USER] = user_id
-        if session_id := trace_info.conversation_id:
-            trace_metadata[TraceMetadataKey.TRACE_SESSION] = session_id
-        self._set_trace_metadata(workflow_span, trace_metadata)
-
-        try:
-            # Create child spans for workflow nodes
-            workflow_nodes = self._get_workflow_nodes(trace_info.workflow_run_id)
-            tool_parents = workflow_tool_parent_ids(workflow_nodes)
-            node_spans: dict[str, LiveSpan] = {}
-            nodes_by_id = {node.id: node for node in workflow_nodes}
-            ordered_node_ids = TopologicalSorter(
-                {node.id: (tool_parents[node.id],) if node.id in tool_parents else () for node in workflow_nodes}
-            ).static_order()
-            for node_id in ordered_node_ids:
-                node = nodes_by_id[node_id]
-                inputs = None
-                attributes: SpanAttributes = {
-                    "node_id": node.id,
-                    "node_type": node.node_type,
-                    "status": node.status,
-                    "tenant_id": node.tenant_id,
-                    "app_id": node.app_id,
-                    "app_name": node.title,
-                }
-
-                if node.node_type in (BuiltinNodeTypes.LLM, BuiltinNodeTypes.QUESTION_CLASSIFIER):
-                    inputs, llm_attributes = self._parse_llm_inputs_and_attributes(node)
-                    attributes.update(llm_attributes)
-                elif node.node_type == BuiltinNodeTypes.HTTP_REQUEST:
-                    inputs = node.process_data  # contains request URL
-
-                if not inputs:
-                    inputs = JSON_DICT_ADAPTER.validate_json(node.inputs) if node.inputs else {}
-
-                node_span = _start_span_no_context(
-                    name=node.title,
-                    span_type=self._get_node_span_type(node.node_type),
-                    parent_span=node_spans.get(tool_parents.get(node.id, ""), workflow_span),
-                    inputs=inputs,
-                    attributes=attributes,
-                    start_time_ns=datetime_to_nanoseconds(node.created_at),
-                )
-                node_spans[node.id] = node_span
-
-                # Handle node errors
-                if node.status != "succeeded":
-                    node_span.set_status(SpanStatusCode.ERROR)
-                    node_span.add_event(
-                        SpanEvent(  # type: ignore[abstract]
-                            name="exception",
-                            attributes={
-                                "exception.message": f"Node failed with status: {node.status}",
-                                "exception.type": "Error",
-                                "exception.stacktrace": f"Node failed with status: {node.status}",
-                            },
-                        )
-                    )
-
-                # End node span
-                finished_at = node.created_at + timedelta(seconds=node.elapsed_time)
-                outputs = JSON_DICT_ADAPTER.validate_json(node.outputs) if node.outputs else {}
-                if node.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-                    outputs = self._parse_knowledge_retrieval_outputs(outputs)
-                elif node.node_type == BuiltinNodeTypes.LLM:
-                    outputs = outputs.get("text", outputs)
-                node_span.end(
-                    outputs=outputs,
-                    end_time_ns=datetime_to_nanoseconds(finished_at),
-                )
-
-            # Handle workflow-level errors
-            if trace_info.error:
-                workflow_span.set_status(SpanStatusCode.ERROR)
-                workflow_span.add_event(
-                    SpanEvent(  # type: ignore[abstract]
-                        name="exception",
-                        attributes={
-                            "exception.message": trace_info.error,
-                            "exception.type": "Error",
-                            "exception.stacktrace": trace_info.error,
+        if isinstance(self.config, DatabricksConfig):
+            self.http = TraceProviderHttpClient(self.config.host)
+            token = self.config.personal_access_token
+            if not token:
+                if not self.config.client_id or not self.config.client_secret:
+                    raise TraceExportError("databricks_credentials_missing")
+                token = (
+                    self.http.request(
+                        "POST",
+                        "oidc/v1/token",
+                        headers={
+                            "Authorization": basic_auth(self.config.client_id, self.config.client_secret),
                         },
+                        data={"grant_type": "client_credentials", "scope": "all-apis"},
+                    )
+                    .json()
+                    .get("access_token")
+                )
+            if not isinstance(token, str) or not token:
+                raise TraceExportError("databricks_token_missing")
+            self.http.headers["Authorization"] = f"Bearer {token}"
+        else:
+            self.http = TraceProviderHttpClient(
+                self.config.tracking_uri,
+                {
+                    **(
+                        {"Authorization": basic_auth(self.config.username, self.config.password or "")}
+                        if self.config.username
+                        else {}
+                    ),
+                },
+            )
+
+    def verify_credentials(self) -> bool:
+        self.http.request("GET", "api/2.0/mlflow/experiments/get", params={"experiment_id": self.config.experiment_id})
+        return True
+
+    def get_project_url(self) -> str:
+        return self.http.endpoint + f"/#/experiments/{quote(self.config.experiment_id, safe='')}"
+
+    def _attributes(self, completed_trace: CompletedTrace, span: TraceSpan, trace_id: str) -> dict[str, str]:
+        attributes = span_attributes(completed_trace, span)
+        attributes.update(
+            {
+                "mlflow.traceRequestId": trace_id,
+                "mlflow.spanType": {"llm": "LLM", "tool": "TOOL", "retrieval": "RETRIEVER", "agent": "AGENT"}.get(
+                    span.span_type, "CHAIN"
+                ),
+                "mlflow.spanInputs": span.inputs,
+                "mlflow.spanOutputs": span.outputs,
+                "mlflow.chat.tokenUsage": {
+                    "input_tokens": span.usage.get("prompt_tokens"),
+                    "output_tokens": span.usage.get("completion_tokens"),
+                    "total_tokens": span.usage.get("total_tokens"),
+                },
+            }
+        )
+        return {key: json_text(value) for key, value in attributes.items()}
+
+    def export_trace(
+        self, completed_trace: CompletedTrace, parent_span: dict[str, JsonValue] | None = None
+    ) -> ExportedParentSpans:
+        trace_id = provider_uuid(completed_trace.trace_id)
+        if self.provider_name == "databricks":
+            self._export_databricks(completed_trace, trace_id, parent_span)
+        else:
+            trace_id = str(parent_span["trace_id"]) if parent_span else trace_id
+            spans = []
+            for span in completed_trace.spans:
+                exported_span = otlp_span(completed_trace, span, parent_span)
+                del exported_span.attributes[:]
+                exported_span.attributes.extend(
+                    otlp_attributes(
+                        {
+                            key: json.loads(value)
+                            for key, value in self._attributes(
+                                completed_trace, span, "tr-" + UUID(trace_id).hex
+                            ).items()
+                        }
                     )
                 )
-
-        finally:
-            workflow_span.end(
-                outputs=trace_info.workflow_run_outputs,
-                end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
+                spans.append(exported_span)
+            client = OtlpTraceClient(
+                self.http.endpoint + "/v1/traces",
+                {
+                    **self.http.headers,
+                    "x-mlflow-experiment-id": self.config.experiment_id,
+                },
+                {"service.name": "dify"},
+                self.get_project_url(),
             )
-
-    def _parse_llm_inputs_and_attributes(self, node: WorkflowNodeExecutionModel) -> tuple[object, SpanAttributes]:
-        """Parse LLM inputs and attributes from LLM workflow node"""
-        if node.process_data is None:
-            return {}, {}
-
-        try:
-            data = JSON_DICT_ADAPTER.validate_json(node.process_data)
-        except (ValueError, TypeError):
-            return {}, {}
-
-        inputs = self._parse_prompts(data.get("prompts"))
-        attributes = {
-            "model_name": data.get("model_name"),
-            "model_provider": data.get("model_provider"),
-            "finish_reason": data.get("finish_reason"),
-        }
-
-        if hasattr(SpanAttributeKey, "MESSAGE_FORMAT"):
-            attributes[SpanAttributeKey.MESSAGE_FORMAT] = "dify"
-
-        if usage := data.get("usage"):
-            # Set reserved token usage attributes
-            attributes[SpanAttributeKey.CHAT_USAGE] = {
-                TokenUsageKey.INPUT_TOKENS: usage.get("prompt_tokens", 0),
-                TokenUsageKey.OUTPUT_TOKENS: usage.get("completion_tokens", 0),
-                TokenUsageKey.TOTAL_TOKENS: usage.get("total_tokens", 0),
+            client.http.deadline = self.http.deadline
+            client.send_traces(
+                ExportTraceServiceRequest(
+                    resource_spans=[
+                        ResourceSpans(
+                            resource=client.resource,
+                            scope_spans=[ScopeSpans(scope=InstrumentationScope(name="dify.ops"), spans=spans)],
+                        )
+                    ]
+                )
+            )
+        return ExportedParentSpans(
+            spans={
+                span.span_id: {"trace_id": trace_id, "span_id": export_span_id(completed_trace, span.span_id)}
+                for span in completed_trace.spans
             }
-            # Store raw usage data as well as it includes more data like price
-            attributes["usage"] = usage
-
-        return inputs, attributes
-
-    def _parse_knowledge_retrieval_outputs(self, outputs: dict[str, Any]):
-        """Parse KR outputs and attributes from KR workflow node"""
-        retrieved = outputs.get("result", [])
-
-        if not retrieved or not isinstance(retrieved, list):
-            return outputs
-
-        documents = []
-        for item in retrieved:
-            documents.append(Document(page_content=item.get("content", ""), metadata=item.get("metadata", {})))
-        return documents
-
-    def message_trace(self, trace_info: MessageTraceInfo):
-        """Create span for CHATBOT message processing"""
-        if not trace_info.message_data:
-            return
-
-        file_list = cast(list[str], trace_info.file_list) or []
-        if message_file_data := trace_info.message_file_data:
-            base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-            file_list.append(f"{base_url}/{message_file_data.url}")
-
-        span = _start_span_no_context(
-            name=TraceTaskName.MESSAGE_TRACE.value,
-            span_type=SpanType.LLM,
-            inputs=self._parse_prompts(trace_info.inputs),
-            attributes={
-                "message_id": trace_info.message_id,
-                "model_provider": trace_info.message_data.model_provider,
-                "model_id": trace_info.message_data.model_id,
-                "conversation_mode": trace_info.conversation_mode,
-                "file_list": file_list,
-                "total_price": trace_info.message_data.total_price,
-                **trace_info.metadata,
-            },
-            start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
 
-        if hasattr(SpanAttributeKey, "MESSAGE_FORMAT"):
-            span.set_attribute(SpanAttributeKey.MESSAGE_FORMAT, "dify")
-
-        # Set token usage
-        span.set_attribute(
-            SpanAttributeKey.CHAT_USAGE,
-            {
-                TokenUsageKey.INPUT_TOKENS: trace_info.message_tokens or 0,
-                TokenUsageKey.OUTPUT_TOKENS: trace_info.answer_tokens or 0,
-                TokenUsageKey.TOTAL_TOKENS: trace_info.total_tokens or 0,
-            },
-        )
-
-        # Set reserved fields in trace-level metadata
-        trace_metadata = {}
-        if user_id := self._get_message_user_id(trace_info.metadata):
-            trace_metadata[TraceMetadataKey.TRACE_USER] = user_id
-        if session_id := trace_info.metadata.get("conversation_id"):
-            trace_metadata[TraceMetadataKey.TRACE_SESSION] = session_id
-        self._set_trace_metadata(span, trace_metadata)
-
-        if trace_info.error:
-            span.set_status(SpanStatusCode.ERROR)
-            span.add_event(
-                SpanEvent(  # type: ignore[abstract]
-                    name="error",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    },
-                )
-            )
-
-        span.end(
-            outputs=trace_info.message_data.answer,
-            end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
-        )
-
-    def _get_message_user_id(self, metadata: dict[str, Any]) -> str | None:
-        if (end_user_id := metadata.get("from_end_user_id")) and (
-            end_user_data := db.session.get(EndUser, end_user_id)
-        ):
-            return end_user_data.session_id
-
-        return metadata.get("from_account_id")  # type: ignore[return-value]
-
-    def tool_trace(self, trace_info: ToolTraceInfo):
-        span = _start_span_no_context(
-            name=trace_info.tool_name,
-            span_type=SpanType.TOOL,
-            inputs=trace_info.tool_inputs,
-            attributes={
-                "message_id": trace_info.message_id,
-                "metadata": trace_info.metadata,
-                "tool_config": trace_info.tool_config,
-                "tool_parameters": trace_info.tool_parameters,
-            },
-            start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
-        )
-
-        # Handle tool errors
-        if trace_info.error:
-            span.set_status(SpanStatusCode.ERROR)
-            span.add_event(
-                SpanEvent(  # type: ignore[abstract]
-                    name="error",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    },
-                )
-            )
-
-        span.end(
-            outputs=trace_info.tool_outputs,
-            end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
-        )
-
-    def moderation_trace(self, trace_info: ModerationTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        start_time = trace_info.start_time or trace_info.message_data.created_at
-        span = _start_span_no_context(
-            name=TraceTaskName.MODERATION_TRACE.value,
-            span_type=SpanType.TOOL,
-            inputs=trace_info.inputs or {},
-            attributes={
-                "message_id": trace_info.message_id,
-                "metadata": trace_info.metadata,
-            },
-            start_time_ns=datetime_to_nanoseconds(start_time),
-        )
-
-        span.end(
-            outputs={
-                "action": trace_info.action,
-                "flagged": trace_info.flagged,
-                "preset_response": trace_info.preset_response,
-            },
-            end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
-        )
-
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        span = _start_span_no_context(
-            name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
-            span_type=SpanType.RETRIEVER,
-            inputs=trace_info.inputs,
-            attributes={
-                "message_id": trace_info.message_id,
-                "metadata": trace_info.metadata,
-            },
-            start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
-        )
-        span.end(outputs={"documents": trace_info.documents}, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))
-
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        if trace_info.message_data is None:
-            return
-
-        start_time = trace_info.start_time or trace_info.message_data.created_at
-        end_time = trace_info.end_time or trace_info.message_data.updated_at
-
-        span = _start_span_no_context(
-            name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
-            span_type=SpanType.TOOL,
-            inputs=trace_info.inputs,
-            attributes={
-                "message_id": trace_info.message_id,
-                "model_provider": trace_info.model_provider,
-                "model_id": trace_info.model_id,
-                "total_tokens": trace_info.total_tokens or 0,
-            },
-            start_time_ns=datetime_to_nanoseconds(start_time),
-        )
-
-        if trace_info.error:
-            span.set_status(SpanStatusCode.ERROR)
-            span.add_event(
-                SpanEvent(  # type: ignore[abstract]
-                    name="error",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    },
-                )
-            )
-
-        span.end(outputs=trace_info.suggested_question, end_time_ns=datetime_to_nanoseconds(end_time))
-
-    def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        span = _start_span_no_context(
-            name=TraceTaskName.GENERATE_NAME_TRACE.value,
-            span_type=SpanType.CHAIN,
-            inputs=trace_info.inputs,
-            attributes={"message_id": trace_info.message_id},
-            start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
-        )
-        span.end(outputs=trace_info.outputs, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))
-
-    def _get_workflow_nodes(self, workflow_run_id: str):
-        """Helper method to get workflow nodes"""
-        workflow_nodes = db.session.scalars(
-            select(WorkflowNodeExecutionModel)
-            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
-            .order_by(WorkflowNodeExecutionModel.created_at)
-        ).all()
-        return workflow_nodes
-
-    def _get_node_span_type(self, node_type: str) -> str:
-        """Map Dify node types to MLflow span types"""
-        node_type_mapping = {
-            BuiltinNodeTypes.LLM: SpanType.LLM,
-            BuiltinNodeTypes.QUESTION_CLASSIFIER: SpanType.LLM,
-            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: SpanType.RETRIEVER,
-            BuiltinNodeTypes.TOOL: SpanType.TOOL,
-            BuiltinNodeTypes.CODE: SpanType.TOOL,
-            BuiltinNodeTypes.HTTP_REQUEST: SpanType.TOOL,
-            BuiltinNodeTypes.AGENT: SpanType.AGENT,
+    def _export_databricks(
+        self, completed_trace: CompletedTrace, trace_id: str, parent_span: dict[str, JsonValue] | None
+    ) -> None:
+        root = completed_trace.spans[0]
+        if root.started_at is None or root.ended_at is None:
+            raise TraceExportError("databricks_trace_time_missing")
+        request_id = "tr-" + UUID(trace_id).hex
+        # An experiment trace owns one immutable artifact. Late operations get a
+        # linked trace: appending by rewriting the parent's artifact loses siblings.
+        metadata = {
+            "dify.tenant_id": completed_trace.source.tenant_id,
+            "dify.app_id": completed_trace.source.app_id or "",
         }
-        return node_type_mapping.get(node_type, "CHAIN")  # type: ignore[arg-type,call-overload]
-
-    def _set_trace_metadata(self, span: Span, metadata: dict[str, Any]):
-        token = None
+        if parent_span:
+            metadata.update(
+                {
+                    "dify.linked_trace_id": str(parent_span["trace_id"]),
+                    "dify.linked_parent_span_id": str(parent_span["span_id"]),
+                }
+            )
+        trace_info = {
+            "trace_id": request_id,
+            "client_request_id": completed_trace.source.operation_id,
+            "trace_location": {
+                "type": "MLFLOW_EXPERIMENT",
+                "mlflow_experiment": {"experiment_id": self.config.experiment_id},
+            },
+            "request_time": root.started_at.isoformat(),
+            "execution_duration": f"{(root.ended_at - root.started_at).total_seconds():.6f}s",
+            "state": "ERROR" if root.status == "error" else "OK",
+            "request_preview": json_text(root.inputs)[:10000],
+            "response_preview": json_text(root.outputs)[:10000],
+            "trace_metadata": metadata,
+            "tags": {"mlflow.traceName": root.span_name},
+        }
         try:
-            # NB: Set span in context such that we can use update_current_trace() API
-            token = set_span_in_context(span)
-            update_current_trace(metadata=metadata)
-        finally:
-            if token:
-                detach_span_from_context(token)
+            self.http.request("POST", "api/3.0/mlflow/traces", json={"trace": {"trace_info": trace_info}})
+        except TraceExportError as error:
+            if str(error) != "provider_http_409":
+                raise
+            # A previous attempt may have created the metadata before its upload
+            # failed. Verify identity before reusing this deterministic record.
+            existing = self.http.request("GET", f"api/3.0/mlflow/traces/{request_id}").json()["trace"]["trace_info"]
+            if (
+                existing.get("client_request_id") != completed_trace.source.operation_id
+                or existing.get("trace_metadata", {}).get("dify.tenant_id") != completed_trace.source.tenant_id
+                or existing.get("trace_metadata", {}).get("dify.app_id") != completed_trace.source.app_id
+                or existing.get("trace_location", {}).get("mlflow_experiment", {}).get("experiment_id")
+                != self.config.experiment_id
+            ):
+                raise TraceExportError("databricks_trace_identity_mismatch") from error
+        spans = [
+            {
+                "trace_id": base64.b64encode(UUID(trace_id).bytes).decode(),
+                "span_id": base64.b64encode(span_id_bytes(export_span_id(completed_trace, span.span_id))).decode(),
+                "parent_span_id": base64.b64encode(
+                    span_id_bytes(export_span_id(completed_trace, span.parent_span_id))
+                ).decode()
+                if span.parent_span_id
+                else None,
+                "name": span.span_name,
+                "start_time_unix_nano": timestamp_ns(span.started_at),
+                "end_time_unix_nano": timestamp_ns(span.ended_at),
+                "attributes": self._attributes(completed_trace, span, request_id),
+                "events": [
+                    {
+                        "name": event.name,
+                        "time_unix_nano": event.time_unix_nano,
+                        "attributes": {entry.key: entry.value.string_value for entry in event.attributes},
+                    }
+                    for event in otlp_span(completed_trace, span).events
+                ],
+                "status": {
+                    "code": "STATUS_CODE_ERROR" if span.status == "error" else "STATUS_CODE_OK",
+                    "message": span.error or "",
+                },
+            }
+            for span in completed_trace.spans
+        ]
+        upload = self.http.request("GET", f"api/3.0/mlflow/traces/{request_id}/credentials-for-data-upload").json()[
+            "credential_info"
+        ]
+        self._upload_spans(upload, json_text({"spans": spans}).encode())
 
-    def _parse_prompts(self, prompts):
-        """Postprocess prompts format to be standard chat messages"""
-        match prompts:
-            case str():
-                return prompts
-            case dict():
-                return self._parse_single_message(prompts)
-            case list():
-                messages = [self._parse_single_message(item) for item in prompts]
-                messages = self._resolve_tool_call_ids(messages)
-                return messages
-        return prompts  # Fallback to original format
+    def _upload_spans(self, upload: dict[str, Any], trace_json: bytes) -> None:
+        signed_url = str(upload["signed_uri"])
+        if urlsplit(signed_url).scheme != "https":
+            raise TraceExportError("databricks_upload_requires_https")
+        # These URLs are returned by the authenticated provider, never by trace
+        # content. Use only their own signed headers; do not forward the API key.
+        headers = {entry["name"]: entry["value"] for entry in upload.get("headers", [])}
+        client = TraceProviderHttpClient(signed_url, headers)
+        client.deadline = self.http.deadline
+        if upload.get("type") in {"AZURE_ADLS_GEN2_SAS_URI", 4}:
+            parsed = urlsplit(signed_url)
 
-    def _parse_single_message(self, item: dict[str, Any]):
-        """Postprocess single message format to be standard chat message"""
-        role = item.get("role", "user")
-        msg = {"role": role, "content": item.get("text", "")}
+            def query_url(**parameters: Any) -> str:
+                query = parsed.query + ("&" if parsed.query else "") + urlencode(parameters)
+                return urlunsplit(parsed._replace(query=query))
 
-        if (
-            (tool_calls := item.get("tool_calls"))
-            # Tool message does not contain tool calls normally
-            and role != "tool"
-        ):
-            msg["tool_calls"] = tool_calls
-
-        if files := item.get("files"):
-            msg["files"] = files
-
-        return msg
-
-    def _resolve_tool_call_ids(self, messages: list[dict]):
-        """
-        The tool call message from Dify does not contain tool call ids, which is not
-        ideal for debugging. This method resolves the tool call ids by matching the
-        tool call name and parameters with the tool instruction messages.
-        """
-        tool_call_ids = []
-        for msg in messages:
-            if tool_calls := msg.get("tool_calls"):
-                tool_call_ids = [t["id"] for t in tool_calls]
-            if msg["role"] == "tool":
-                # Get the tool call id in the order of the tool call messages
-                # assuming Dify runs tools sequentially
-                if tool_call_ids:
-                    msg["tool_call_id"] = tool_call_ids.pop(0)
-        return messages
-
-    def api_check(self):
-        """Simple connection test"""
-        try:
-            mlflow.search_experiments(max_results=1)
-            return True
-        except Exception as e:
-            raise ValueError(f"MLflow connection failed: {str(e)}")
-
-    def get_project_url(self):
-        return self._project_url
+            for method, parameters, content in (
+                ("PUT", {"resource": "file"}, b""),
+                ("PATCH", {"action": "append", "position": 0}, trace_json),
+                ("PATCH", {"action": "flush", "position": len(trace_json)}, b""),
+            ):
+                client.endpoint = query_url(**parameters)
+                client.request(method, content=content)
+        else:
+            if upload.get("type") in {"AZURE_SAS_URI", 1}:
+                headers["x-ms-blob-type"] = "BlockBlob"
+            client.request("PUT", content=trace_json, headers=headers)

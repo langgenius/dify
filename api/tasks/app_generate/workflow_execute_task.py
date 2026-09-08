@@ -511,12 +511,20 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             logger.warning("Workflow run %s not found during resume", workflow_run_id)
             return
 
-        workflow = session.get(Workflow, workflow_run.workflow_id)
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.id == workflow_run.workflow_id,
+                Workflow.tenant_id == workflow_run.tenant_id,
+                Workflow.app_id == workflow_run.app_id,
+            )
+        )
         if workflow is None:
             logger.warning("Workflow %s not found during resume", workflow_run.workflow_id)
             return
 
-        app_model = session.get(App, workflow_run.app_id)
+        app_model = session.scalar(
+            select(App).where(App.id == workflow_run.app_id, App.tenant_id == workflow_run.tenant_id)
+        )
         if app_model is None:
             logger.warning("App %s not found during resume", workflow_run.app_id)
             return
@@ -531,7 +539,11 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 logger.warning("Conversation id missing in resumption context for workflow run %s", workflow_run_id)
                 return
 
-            conversation = session.get(Conversation, generate_entity.conversation_id)
+            conversation = session.scalar(
+                select(Conversation).where(
+                    Conversation.id == generate_entity.conversation_id, Conversation.app_id == app_model.id
+                )
+            )
             if conversation is None:
                 logger.warning(
                     "Conversation %s not found for workflow run %s", generate_entity.conversation_id, workflow_run_id
@@ -541,6 +553,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             message = session.scalar(
                 select(Message)
                 .where(
+                    Message.app_id == app_model.id,
                     Message.conversation_id == conversation.id,
                     Message.workflow_run_id == workflow_run_id,
                 )
@@ -558,6 +571,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             type(generate_entity),
         )
         return
+
+    resumption_context.restore_trace_state(
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        workflow_id=workflow.id,
+        workflow_run_id=workflow_run.id,
+    )
 
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it

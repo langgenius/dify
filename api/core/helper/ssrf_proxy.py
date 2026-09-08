@@ -101,6 +101,17 @@ def _build_ssrf_client(verify: bool) -> httpx.Client:
     return httpx.Client(verify=verify, limits=_SSRF_CLIENT_LIMITS)
 
 
+def create_http_client(*, ssl_verify: bool = True) -> httpx.Client:
+    """Create an independently owned SSRF-protected client; the caller must close it.
+
+    Use this when response cookies or authentication must not survive an operation.
+    The ordinary request path keeps its existing connection-pool behavior.
+    """
+    if not isinstance(ssl_verify, bool):
+        raise ValueError("SSRF client verify flag must be a boolean")
+    return _build_ssrf_client(ssl_verify)
+
+
 def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
     if not isinstance(ssl_verify_enabled, bool):
         raise ValueError("SSRF client verify flag must be a boolean")
@@ -165,6 +176,7 @@ def make_request(
     url: str,
     max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
     stream_response: bool = False,
+    http_client: httpx.Client | None = None,
     **kwargs: Any,
 ) -> httpx.Response:
     """Send one SSRF-protected request with optional streaming.
@@ -174,6 +186,7 @@ def make_request(
         url: Absolute request URL.
         max_retries: Number of retry attempts after the initial request.
         stream_response: Return an open streaming response that the caller must close.
+        http_client: Optional independently owned client from ``create_http_client``.
         **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
 
     Returns:
@@ -203,7 +216,7 @@ def make_request(
     verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
     if not isinstance(verify_option, bool):
         raise ValueError("ssl_verify must be a boolean")
-    client = _get_ssrf_client(verify_option)
+    client = http_client if http_client is not None else _get_ssrf_client(verify_option)
 
     # Inject traceparent header for distributed tracing (when OTEL is not enabled)
     try:
