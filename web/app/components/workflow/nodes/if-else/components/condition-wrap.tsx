@@ -14,6 +14,7 @@ import type {
 } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Select,
   SelectItem,
@@ -24,12 +25,13 @@ import {
   SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
+import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { VarType } from '../../../types'
 import { SUB_VARIABLES } from '../../constants'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
@@ -86,6 +88,15 @@ const ConditionWrap: FC<Props> = ({
   const getAvailableVars = useGetAvailableVars()
 
   const [willDeleteCaseId, setWillDeleteCaseId] = useState('')
+  const keyboardSort = useKeyboardSortable({
+    items: cases,
+    onChange: (items) => handleSortCase(items.map((item) => ({ ...item, id: item.case_id }))),
+    disabled: readOnly || isSubVariable,
+  })
+  const sortableCases = useMemo(
+    () => keyboardSort.items.map((item) => ({ ...item, id: item.case_id })),
+    [keyboardSort.items],
+  )
   const casesLength = cases.length
 
   const filterNumberVar = useCallback((varPayload: Var) => {
@@ -99,15 +110,22 @@ const ConditionWrap: FC<Props> = ({
 
   return (
     <>
+      {keyboardSort.announcement}
       <ReactSortable
-        list={cases.map((caseItem) => ({ ...caseItem, id: caseItem.case_id }))}
-        setList={handleSortCase}
+        list={sortableCases}
+        setList={(items) => {
+          if (
+            !keyboardSort.isSorting &&
+            items.some((item, index) => item.id !== sortableCases[index]?.id)
+          )
+            handleSortCase(items)
+        }}
         handle=".handle"
         ghostClass="bg-components-panel-bg"
         animation={150}
-        disabled={readOnly || isSubVariable}
+        disabled={readOnly || isSubVariable || keyboardSort.isSorting}
       >
-        {cases.map((item, index) => (
+        {keyboardSort.items.map((item, index) => (
           <div key={item.case_id}>
             <div
               className={cn(
@@ -119,12 +137,14 @@ const ConditionWrap: FC<Props> = ({
             >
               {!isSubVariable && (
                 <>
-                  <RiDraggable
-                    className={cn(
-                      'handle absolute top-2 left-1 hidden size-3 cursor-pointer text-text-quaternary',
-                      casesLength > 1 && 'group-hover:block',
-                    )}
-                  />
+                  {!readOnly && casesLength > 1 && (
+                    <IconButton
+                      {...keyboardSort.getHandleProps(index)}
+                      className="handle pointer-events-none absolute top-1 -left-2 z-10 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                    >
+                      <span aria-hidden="true" className="i-ri-draggable size-3" />
+                    </IconButton>
+                  )}
                   <div
                     className={cn(
                       'absolute left-4 text-[13px] leading-4 font-semibold text-text-secondary',

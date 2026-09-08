@@ -16,6 +16,9 @@ vi.mock('../../../hooks', () => ({
   useSelectOrDelete: (...args: unknown[]) => mockUseSelectOrDelete(...args),
 }))
 
+// Block ordering is verified with the real editor in keyboard-sort-button.spec.tsx.
+vi.mock('../../draggable-plugin/keyboard-sort-button', () => ({ default: () => null }))
+
 vi.mock('../component-ui', () => ({
   default: ({
     formInput,
