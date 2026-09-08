@@ -31,7 +31,6 @@ vi.mock('@/i18n-config/language', () => ({
     return map[locale] || 'en'
   }),
   getLanguage: vi.fn(),
-  getPricingPageLanguage: vi.fn(),
 }))
 
 describe('useDocLink', () => {

@@ -6552,7 +6552,9 @@ Check if dataset is in use
 | 404 | Recommended app not found |  |
 
 ### [GET] /features
-**Get feature configuration for current tenant**
+**Get current workspace features**
+
+Get feature availability and limits for the current workspace
 
 #### Responses
 
@@ -18453,6 +18455,8 @@ Flask blueprint initialization.
 
 #### FeatureModel
 
+Effective feature availability and limits for the current workspace.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
@@ -18460,20 +18464,15 @@ Flask blueprint initialization.
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
 | billing | [BillingModel](#billingmodel) |  | Yes |
 | can_replace_logo | boolean |  | Yes |
-| dataset_operator_enabled | boolean |  | Yes |
-| docs_processing | string, <br>**Default:** standard |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
-| knowledge_rate_limit | integer, <br>**Default:** 10 |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
-| next_credit_reset_date | integer |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
-| vector_space | [LimitationModel](#limitationmodel) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
@@ -21343,8 +21342,8 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| reset_date | integer, <br>**Default:** -1 |  | Yes |
+| limit | integer | Quota limit; -1 means unlimited and 0 means no quota | Yes |
+| reset_date | integer, <br>**Default:** -1 | Next quota reset as a Unix timestamp in seconds; -1 means no reset | Yes |
 | usage | integer |  | Yes |
 
 #### QuotaConfiguration

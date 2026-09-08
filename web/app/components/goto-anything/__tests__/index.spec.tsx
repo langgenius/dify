@@ -388,7 +388,7 @@ describe('GotoAnything', () => {
       expect(input).toHaveFocus()
     })
 
-    it('should reset search query when modal opens', async () => {
+    it('should reopen with an empty search after the modal finishes closing', async () => {
       const user = userEvent.setup()
       renderGotoAnything(<GotoAnything />)
 

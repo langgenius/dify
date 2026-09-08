@@ -88,10 +88,9 @@ const renderCloudPlanItem = ({
     <>
       <ToastHost timeout={0} />
       <CloudPlanItem
-        currentPlan={currentPlan}
         plan={plan}
         billingInterval={billingInterval}
-        isEducationDiscountEligible={isEducationDiscountEligible}
+        billing={{ currentPlan, isEducationDiscountEligible }}
       />
     </>,
     { wrapper },
