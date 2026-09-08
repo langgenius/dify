@@ -36,10 +36,8 @@ class TestFeatureService:
                 "vector_space": {"size": 2, "limit": 10},
                 "documents_upload_quota": {"size": 15, "limit": 100},
                 "annotation_quota_limit": {"size": 8, "limit": 50},
-                "docs_processing": "enhanced",
                 "can_replace_logo": True,
                 "model_load_balancing_enabled": True,
-                "knowledge_rate_limit": {"limit": 100},
             }
 
             mock_billing_service.get_knowledge_rate_limit.return_value = {
@@ -106,7 +104,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = True
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = True
 
             # Act: Execute the method under test
@@ -142,10 +139,8 @@ class TestFeatureService:
             assert result.annotation_quota_limit.limit == 50
 
             # Verify other features
-            assert result.docs_processing == "enhanced"
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is True
-            assert result.knowledge_rate_limit == 100
 
             # Enterprise workspace features are not loaded in Cloud.
             assert result.workspace_members.enabled is False
@@ -177,7 +172,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = False
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
             # Set mock return value inside the patch context
@@ -188,10 +182,8 @@ class TestFeatureService:
                 "vector_space": {"size": 1, "limit": 2},
                 "documents_upload_quota": {"size": 5, "limit": 20},
                 "annotation_quota_limit": {"size": 2, "limit": 10},
-                "docs_processing": "standard",
                 "can_replace_logo": False,
                 "model_load_balancing_enabled": False,
-                "knowledge_rate_limit": {"limit": 10},
             }
 
             # Act: Execute the method under test
@@ -218,8 +210,6 @@ class TestFeatureService:
         assert result.is_allow_transfer_workspace is False
         assert result.can_replace_logo is False
         assert result.model_load_balancing_enabled is False
-        assert result.docs_processing == "standard"
-        assert result.knowledge_rate_limit == 10
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -495,7 +485,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = True
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = True
 
             tenant_id = self._create_test_tenant_id()
@@ -510,7 +499,6 @@ class TestFeatureService:
             # Verify environment-based features
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is True
-            assert result.dataset_operator_enabled is True
             assert result.education.enabled is True
 
             # Verify default limitations
@@ -524,8 +512,6 @@ class TestFeatureService:
             assert result.documents_upload_quota.limit == 50
             assert result.annotation_quota_limit.size == 0
             assert result.annotation_quota_limit.limit == 10
-            assert result.knowledge_rate_limit == 10
-            assert result.docs_processing == "standard"
 
             # Verify no enterprise features
             assert result.workspace_members.enabled is False
@@ -580,7 +566,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.CAN_REPLACE_LOGO = False
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
             tenant_id = self._create_test_tenant_id()
@@ -603,7 +588,6 @@ class TestFeatureService:
             # Verify environment-based features
             assert result.can_replace_logo is False
             assert result.model_load_balancing_enabled is False
-            assert result.dataset_operator_enabled is False
             assert result.education.enabled is False
 
             # Verify default limitations
@@ -691,7 +675,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             # Act: Execute the method under test
@@ -704,7 +687,6 @@ class TestFeatureService:
             # Verify environment-based features
             assert result.can_replace_logo is True
             assert result.model_load_balancing_enabled is False
-            assert result.dataset_operator_enabled is True
             assert result.education.enabled is False
 
             # Verify default limitations
@@ -737,7 +719,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
@@ -767,8 +748,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10
-        assert result.knowledge_rate_limit == 10
-        assert result.docs_processing == "standard"
 
         # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
@@ -796,7 +775,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
@@ -831,8 +809,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10
-        assert result.knowledge_rate_limit == 10
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -912,7 +888,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
@@ -947,8 +922,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10
-        assert result.knowledge_rate_limit == 10
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -1231,7 +1204,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
@@ -1468,62 +1440,6 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
-    def test_get_features_edge_case_docs_processing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test feature retrieval with edge case document processing configuration.
-
-        This test verifies:
-        - Proper handling of different document processing modes
-        - Correct integration with billing service
-        - Proper fallback to default values
-        - Return value correctness and structure
-        """
-        # Arrange: Setup edge case docs processing mock with proper config
-        tenant_id = self._create_test_tenant_id()
-
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            mock_config.CAN_REPLACE_LOGO = True
-            mock_config.MODEL_LB_ENABLED = True
-            mock_config.DATASET_OPERATOR_ENABLED = True
-            mock_config.EDUCATION_ENABLED = False
-
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.TEAM, "interval": "monthly"},
-                "docs_processing": "advanced",
-                "can_replace_logo": True,
-                "model_load_balancing_enabled": True,
-            }
-
-            # Act: Execute the method under test
-            result = FeatureService.get_features(tenant_id)
-
-        # Assert: Verify the expected outcomes
-        assert result is not None
-        assert isinstance(result, FeatureModel)
-
-        # Verify docs processing configuration
-        assert result.docs_processing == "advanced"
-        assert result.can_replace_logo is True
-        assert result.model_load_balancing_enabled is True
-
-        # Verify paid plan behavior.
-        assert result.webapp_copyright_enabled is True
-        assert result.is_allow_transfer_workspace is True
-
-        # Verify default limitations (no specific billing info)
-        assert result.members.size == 0
-        assert result.members.limit == 1
-        assert result.apps.size == 0
-        assert result.apps.limit == 10
-        assert result.vector_space.size == 0
-        assert result.vector_space.limit == 5
-
-        # Verify mock interactions
-        mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
-
     def test_get_system_features_edge_case_branding(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -1604,13 +1520,11 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "annotation_quota_limit": {"size": 999, "limit": 1000},
-                "knowledge_rate_limit": {"limit": 500},
             }
 
             # Act: Execute the method under test
@@ -1623,9 +1537,6 @@ class TestFeatureService:
         # Verify annotation quota configuration
         assert result.annotation_quota_limit.size == 999
         assert result.annotation_quota_limit.limit == 1000
-
-        # Verify knowledge rate limit
-        assert result.knowledge_rate_limit == 500
 
         # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
@@ -1640,7 +1551,6 @@ class TestFeatureService:
         assert result.vector_space.limit == 5
         assert result.documents_upload_quota.size == 0
         assert result.documents_upload_quota.limit == 50
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -1664,7 +1574,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
@@ -1673,7 +1582,6 @@ class TestFeatureService:
                     "size": 0,  # Edge case: zero current size
                     "limit": 0,  # Edge case: zero limit
                 },
-                "knowledge_rate_limit": {"limit": 100},
             }
 
             # Act: Execute the method under test
@@ -1686,9 +1594,6 @@ class TestFeatureService:
         # Verify documents upload quota configuration (edge cases)
         assert result.documents_upload_quota.size == 0
         assert result.documents_upload_quota.limit == 0
-
-        # Verify knowledge rate limit
-        assert result.knowledge_rate_limit == 100
 
         # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
@@ -1703,7 +1608,6 @@ class TestFeatureService:
         assert result.vector_space.limit == 5
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10  # Default value when not provided
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
@@ -1778,7 +1682,6 @@ class TestFeatureService:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.CAN_REPLACE_LOGO = True
             mock_config.MODEL_LB_ENABLED = False
-            mock_config.DATASET_OPERATOR_ENABLED = True
             mock_config.EDUCATION_ENABLED = False
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
@@ -1787,7 +1690,6 @@ class TestFeatureService:
                     "interval": "monthly",
                     "education": False,  # Education explicitly disabled
                 },
-                "knowledge_rate_limit": {"limit": 100},
             }
 
             # Act: Execute the method under test
@@ -1799,9 +1701,6 @@ class TestFeatureService:
 
         # Verify education configuration
         assert result.education.activated is False
-
-        # Verify knowledge rate limit
-        assert result.knowledge_rate_limit == 100
 
         # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
@@ -1818,7 +1717,6 @@ class TestFeatureService:
         assert result.documents_upload_quota.limit == 50
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 10  # Default value when not provided
-        assert result.docs_processing == "standard"
 
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
