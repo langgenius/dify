@@ -623,7 +623,7 @@ class KnowledgeFSDataFacade:
                         code="KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
                         category="conflict",
                         message="Knowledge space settings have changed.",
-                        retryPolicy="manual",
+                        retry_policy="manual",
                         action="retry",
                     ),
                 )
