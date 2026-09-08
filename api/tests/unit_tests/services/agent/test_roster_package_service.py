@@ -26,6 +26,7 @@ from models.model import App, AppMode, IconType
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
+from services.agent import roster_package_reader as roster_package_reader_module
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
@@ -216,6 +217,17 @@ def test_reader_accepts_manifest_larger_than_legacy_limit() -> None:
     assert len(manifest.model_dump_json().encode()) > 1024 * 1024
     with RosterAgentPackageReader().read(io.BytesIO(package)) as prepared:
         assert prepared.manifest.soul.prompt.system_prompt == manifest.soul.prompt.system_prompt
+
+
+def test_reader_applies_the_whole_package_size_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+    monkeypatch.setattr(roster_package_reader_module, "ROSTER_AGENT_PACKAGE_MAX_BYTES", len(package) - 1)
+
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
 def test_preflight_rejects_tampered_payload() -> None:
@@ -439,6 +451,14 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
 
     assert sqlite_session.in_transaction()
     assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
+
+    monkeypatch.setattr(
+        roster_package_exporter_module,
+        "ROSTER_AGENT_PACKAGE_MAX_BYTES",
+        len(skill_payload) + len(file_payload),
+    )
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
 
 
 def test_export_uses_current_workspace_skill_bindings(
