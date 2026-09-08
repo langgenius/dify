@@ -89,10 +89,11 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
     def set_async_persistence(self, enabled: bool) -> None:
         """
-        Configure whether save operations should be queued through Celery.
+        Configure whether terminal saves should be queued through Celery.
 
-        Debug executions keep this disabled so the debugger can immediately read persisted
-        workflow state. Non-debug app executions enable it from the persistence layer.
+        Debug and traced executions keep this disabled for immediate database reads.
+        Other app executions enable it from the persistence layer.
+        Running and paused states always commit synchronously for pause/resume readers.
         """
         self._use_async_persistence = enabled
 
@@ -205,7 +206,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
-        if self._use_async_persistence:
+        if self._use_async_persistence and execution.finished_at is not None:
             self._queue_async_save(execution)
             return
 
@@ -237,8 +238,10 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
+        execution_data = execution.model_dump(exclude={"outputs"})
+        execution_data["outputs"] = WorkflowRuntimeTypeConverter().to_json_encodable(execution.outputs)
         save_workflow_execution_task.delay(
-            execution_data=execution.model_dump(),
+            execution_data=execution_data,
             tenant_id=self._tenant_id,
             app_id=self._app_id or "",
             triggered_from=self._triggered_from.value,

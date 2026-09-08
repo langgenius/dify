@@ -120,8 +120,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         """
         Configure whether save operations should be queued through Celery.
 
-        Debug executions keep this disabled so node data is readable immediately. Non-debug
-        app executions enable it from the workflow persistence layer.
+        Debug and traced executions keep this disabled so node data is readable immediately.
+        Other app executions enable it from the workflow persistence layer.
         """
         self._use_async_persistence = enabled
 
@@ -591,8 +591,15 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
+        payload_fields = {"inputs", "process_data", "outputs"}
+        execution_data = execution.model_dump(exclude=payload_fields)
+        converter = WorkflowRuntimeTypeConverter()
+        for field in payload_fields:
+            # Convert runtime files before model_dump loses their URL and related ID.
+            execution_data[field] = converter.to_json_encodable(getattr(execution, field))
+
         save_workflow_node_execution_data_task.delay(
-            execution_data=execution.model_dump(),
+            execution_data=execution_data,
             tenant_id=self._tenant_id,
             app_id=self._app_id or "",
             triggered_from=self._triggered_from.value,

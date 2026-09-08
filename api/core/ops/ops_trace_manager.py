@@ -1524,10 +1524,14 @@ class TraceQueueManager:
         if trace_manager_timer is None:
             self.start_timer()
 
+    @property
+    def is_enabled(self) -> bool:
+        return self._enterprise_telemetry_enabled or bool(self.trace_instance)
+
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue
         try:
-            if self._enterprise_telemetry_enabled or self.trace_instance:
+            if self.is_enabled:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception:

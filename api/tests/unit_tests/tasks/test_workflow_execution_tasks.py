@@ -3,6 +3,8 @@ from types import TracebackType
 from typing import Self
 from unittest.mock import Mock, patch
 
+import pytest
+
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import CreatorUserRole, WorkflowRun
@@ -77,13 +79,27 @@ def test_calculate_elapsed_time_clamps_negative_duration_to_zero() -> None:
 
 
 @patch("tasks.workflow_execution_tasks.session_factory.create_session")
-def test_save_workflow_execution_task_ignores_stale_nonterminal_snapshot(mock_create_session: Mock) -> None:
+@pytest.mark.parametrize(
+    ("persisted_status", "snapshot_status"),
+    [
+        (WorkflowExecutionStatus.SUCCEEDED, WorkflowExecutionStatus.RUNNING),
+        (WorkflowExecutionStatus.PAUSED, WorkflowExecutionStatus.RUNNING),
+        (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED),
+    ],
+)
+def test_save_workflow_execution_task_ignores_stale_nonterminal_snapshot(
+    mock_create_session: Mock,
+    persisted_status: WorkflowExecutionStatus,
+    snapshot_status: WorkflowExecutionStatus,
+) -> None:
     existing_run = WorkflowRun()
-    existing_run.status = WorkflowExecutionStatus.SUCCEEDED
-    existing_run.finished_at = datetime(2026, 1, 1, 12, 0, 10)
+    existing_run.status = persisted_status
+    existing_run.finished_at = (
+        datetime(2026, 1, 1, 12, 0, 10) if persisted_status == WorkflowExecutionStatus.SUCCEEDED else None
+    )
     session = _TaskSession(existing_run)
     mock_create_session.return_value = session
-    execution = _execution(finished_at=None, status=WorkflowExecutionStatus.RUNNING)
+    execution = _execution(finished_at=None, status=snapshot_status)
 
     result = save_workflow_execution_task.run(
         execution_data=execution.model_dump(),
@@ -96,7 +112,7 @@ def test_save_workflow_execution_task_ignores_stale_nonterminal_snapshot(mock_cr
 
     assert result is True
     assert session.committed is False
-    assert existing_run.status == WorkflowExecutionStatus.SUCCEEDED
+    assert existing_run.status == persisted_status
 
 
 class _TaskSession:

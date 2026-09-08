@@ -13,6 +13,7 @@ from unittest.mock import Mock
 
 import psycopg2.errors
 import pytest
+from kombu.utils import json as kombu_json
 from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,10 +30,12 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
 from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
 from models import Account, EndUser, Tenant
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from tasks.workflow_node_execution_tasks import save_workflow_node_execution_data_task
 
 
 def _account(*, tenant_id: str = "tenant-1", user_id: str = "user-1") -> Account:
@@ -466,6 +469,44 @@ def test_async_persistence_queues_metadata_and_data(
     assert data_task.delay.call_args.kwargs["creator_user_role"] == CreatorUserRole.ACCOUNT.value
     with sqlite_session_factory() as session:
         assert session.get(WorkflowNodeExecutionModel, execution.id) is None
+
+
+def test_async_execution_data_preserves_file_links_after_queue_round_trip(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    delay = Mock()
+    monkeypatch.setattr(save_workflow_node_execution_data_task, "delay", delay)
+    monkeypatch.setattr(File, "generate_url", lambda _self: "https://example.com/signed-file")
+    file = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="upload-1",
+        filename="image.png",
+    )
+    values = {"nested": {"files": [file]}}
+    execution = _execution(inputs=values, process_data=values, outputs=values)
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    repo.set_async_persistence(True)
+
+    repo.save_execution_data(execution)
+
+    queued_kwargs = kombu_json.loads(kombu_json.dumps(delay.call_args.kwargs))
+    worker_repo = _repository(monkeypatch, sqlite_session_factory)
+    monkeypatch.setattr(
+        "tasks.workflow_node_execution_tasks._create_sqlalchemy_repository",
+        lambda **_kwargs: worker_repo,
+    )
+    assert save_workflow_node_execution_data_task.run(**queued_kwargs)
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        for payload in (persisted.inputs_dict, persisted.process_data_dict, persisted.outputs_dict):
+            assert payload is not None
+            persisted_file = payload["nested"]["files"][0]
+            assert persisted_file["related_id"] == "upload-1"
+            assert persisted_file["url"] == "https://example.com/signed-file"
+    assert execution.inputs is not None
+    assert execution.inputs["nested"]["files"][0] is file
 
 
 def test_save_synchronously_bypasses_async_persistence(

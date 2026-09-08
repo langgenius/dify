@@ -10,7 +10,7 @@ from core.app.workflow.layers.persistence import (
     PersistenceWorkflowInfo,
     WorkflowPersistenceLayer,
 )
-from core.ops.ops_trace_manager import TraceTask, TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
@@ -134,6 +134,17 @@ class TestWorkflowPersistenceLayer:
 
         assert exec_repo.async_enabled is True
         assert node_repo.async_enabled is True
+
+    @pytest.mark.parametrize(("provider_enabled", "enterprise_enabled"), [(True, False), (False, True), (False, False)])
+    def test_trace_export_uses_synchronous_run_and_node_persistence(self, provider_enabled, enterprise_enabled):
+        trace_manager = TraceQueueManager.__new__(TraceQueueManager)
+        trace_manager.trace_instance = object() if provider_enabled else None
+        trace_manager._enterprise_telemetry_enabled = enterprise_enabled
+
+        _, exec_repo, node_repo, _ = _make_layer(invoke_from=InvokeFrom.WEB_APP, trace_manager=trace_manager)
+
+        assert exec_repo.async_enabled is not (provider_enabled or enterprise_enabled)
+        assert node_repo.async_enabled is not (provider_enabled or enterprise_enabled)
 
     def test_on_graph_start_resets_state(self):
         layer, _, _, _ = _make_layer()

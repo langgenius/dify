@@ -5,10 +5,10 @@ listening to ``GraphEngineEvent`` instances directly and persisting workflow
 and node execution state via the injected repositories.
 
 The layer owns domain-to-persistence event handling, while the injected
-repositories choose the write strategy. Debug executions use synchronous
-writes so developer tools can read DB state immediately; non-debug app
-executions use a Celery-backed write path to keep DB writes out of the engine
-thread.
+repositories choose the write strategy. Debug and traced executions use
+synchronous writes so developer tools and trace export can read complete DB
+state immediately. Other app executions enqueue node and terminal run writes;
+nonterminal run writes remain synchronous for pause/resume dependencies.
 """
 
 from collections.abc import Mapping
@@ -111,7 +111,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         effective_invoke_from = invoke_from if invoke_from is not None else application_generate_entity.invoke_from
-        use_async_persistence = effective_invoke_from != InvokeFrom.DEBUGGER
+        # Trace preprocessing reads both the run and its node payloads from the DB.
+        use_async_persistence = effective_invoke_from != InvokeFrom.DEBUGGER and not (
+            trace_manager and trace_manager.is_enabled
+        )
         _configure_async_persistence(self._workflow_execution_repository, use_async_persistence)
         _configure_async_persistence(self._workflow_node_execution_repository, use_async_persistence)
         self._trace_manager = trace_manager

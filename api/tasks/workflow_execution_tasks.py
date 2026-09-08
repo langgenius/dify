@@ -61,9 +61,12 @@ def save_workflow_execution_task(
             )
 
             if existing_run:
-                if existing_run.finished_at is not None and (
-                    execution.finished_at is None or execution.finished_at < existing_run.finished_at
-                ):
+                # Nonterminal states now commit synchronously. Delayed tasks from older
+                # producers must not overwrite a pause or a subsequent resumption.
+                if execution.finished_at is None:
+                    logger.debug("Ignored queued nonterminal workflow execution: %s", execution.id_)
+                    return True
+                if existing_run.finished_at is not None and execution.finished_at < existing_run.finished_at:
                     logger.debug("Ignored stale workflow execution: %s", execution.id_)
                     return True
                 # Update existing workflow run
