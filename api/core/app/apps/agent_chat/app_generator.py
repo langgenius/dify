@@ -23,13 +23,14 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.legacy_agent_trace import record_legacy_agent_result
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
+from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             )
 
             # get tracing instance
-            trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+            trace_recorder = create_message_trace(
+                record_message_result=record_legacy_agent_result,
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+            )
 
             # init application generate entity
             application_generate_entity = AgentChatAppGenerateEntity(
@@ -197,7 +203,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 invoke_from=invoke_from,
                 extras=extras,
                 call_depth=0,
-                trace_manager=trace_manager,
+                trace_recorder=trace_recorder,
             )
 
             # init generate records

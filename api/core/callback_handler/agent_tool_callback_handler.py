@@ -4,8 +4,7 @@ from typing import Any, TextIO, Union
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.message_trace import MessageTraceRecorder
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
@@ -60,7 +59,7 @@ class DifyAgentCallbackHandler(BaseModel):
         tool_outputs: Iterable[ToolInvokeMessage] | str,
         message_id: str | None = None,
         timer: Any | None = None,
-        trace_manager: TraceQueueManager | None = None,
+        trace_recorder: MessageTraceRecorder | None = None,
     ):
         """If not the final action, print out observation."""
         if dify_config.DEBUG:
@@ -70,16 +69,14 @@ class DifyAgentCallbackHandler(BaseModel):
             print_text("Outputs: " + str(tool_outputs)[:1000] + "\n", color=self.color)
             print_text("\n")
 
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.TOOL_TRACE,
-                    message_id=message_id,
-                    tool_name=tool_name,
-                    tool_inputs=tool_inputs,
-                    tool_outputs=tool_outputs,
-                    timer=timer,
-                )
+        if trace_recorder:
+            trace_recorder.record_operation(
+                tool_name,
+                span_type="tool",
+                message_id=message_id,
+                inputs=tool_inputs,
+                outputs=tool_outputs,
+                timer=timer,
             )
 
     def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any):

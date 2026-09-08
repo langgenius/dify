@@ -50,7 +50,6 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
-from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
@@ -71,6 +70,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
+from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +144,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 else []
             )
 
-        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+        trace_recorder = create_message_trace(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            user_id=user.id if isinstance(user, Account) else user.session_id,
+        )
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
@@ -168,7 +172,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "auto_generate_conversation_name": args.get("auto_generate_name", True),
             },
             call_depth=0,
-            trace_manager=trace_manager,
+            trace_recorder=trace_recorder,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
@@ -267,7 +271,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
         )
         model_conf = ModelConfigConverter.convert(app_config)
-        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+        trace_recorder = create_message_trace(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            user_id=user.id if isinstance(user, Account) else user.session_id,
+        )
 
         # ENG-638: the agent backend requires the resume composition's layer
         # names to match the suspended snapshot, which includes the per-turn
@@ -300,7 +308,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             extras={"auto_generate_conversation_name": False},
             call_depth=0,
-            trace_manager=trace_manager,
+            trace_recorder=trace_recorder,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
@@ -563,7 +571,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 inputs=dict(application_generate_entity.inputs),
                 query=query or "",
                 message_id=message.id,
-                trace_manager=application_generate_entity.trace_manager,
+                trace_recorder=application_generate_entity.trace_recorder,
             )
         except ModerationError as e:
             publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)

@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from core.ops.entities.trace_entity import TraceTaskName
 from core.telemetry.events import (
     AppCreatedEvent,
     AppCreatedPayload,
@@ -15,27 +12,24 @@ from core.telemetry.events import (
     TelemetryContext,
     TelemetryEvent,
 )
-from core.telemetry.gateway import PAYLOAD_SIZE_THRESHOLD_BYTES, emit
+from core.telemetry.gateway import emit
 from enterprise.telemetry.contracts import SignalType, TelemetryCase, TelemetryEnvelope
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_TRACE_CTX = TelemetryContext(tenant_id="tenant-789", user_id="user-456", app_id="app-123")
-_METRIC_CTX = TelemetryContext(tenant_id="tenant-123")
-
 
 def _node_event() -> DraftNodeExecutionTraceEvent:
     return DraftNodeExecutionTraceEvent(
-        context=_TRACE_CTX,
+        context=TelemetryContext(tenant_id="tenant-789", user_id="user-456", app_id="app-123"),
         payload=NodeExecutionPayload(node_execution_data={"key": "val"}),
     )
 
 
 def _prompt_event() -> PromptGenerationEvent:
     return PromptGenerationEvent(
-        context=_TRACE_CTX,
+        context=TelemetryContext(tenant_id="tenant-789", user_id="user-456", app_id="app-123"),
         payload=PromptGenerationPayload(
             tenant_id="tenant-789",
             operation_type="generate",
@@ -71,64 +65,23 @@ class TestEventRoutingMetadata:
         assert ev.case == TelemetryCase.DRAFT_NODE_EXECUTION
         assert ev.signal_type is SignalType.TRACE
         assert ev.ce_eligible is False
-        assert ev.trace_task_name is TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
 
     def test_prompt_generation_routing(self) -> None:
         ev = _prompt_event()
         assert ev.case == TelemetryCase.PROMPT_GENERATION
         assert ev.signal_type is SignalType.TRACE
         assert ev.ce_eligible is False
-        assert ev.trace_task_name is TraceTaskName.PROMPT_GENERATION_TRACE
 
     def test_app_created_routing(self) -> None:
         ev = _app_created_event()
         assert ev.case == TelemetryCase.APP_CREATED
         assert ev.signal_type is SignalType.METRIC_LOG
         assert ev.ce_eligible is False
-        assert ev.trace_task_name is None
 
     def test_all_events_satisfy_protocol(self) -> None:
         events: list[TelemetryEvent] = [_node_event(), _prompt_event(), _app_created_event()]
         for ev in events:
             assert isinstance(ev, TelemetryEvent)
-
-
-# ---------------------------------------------------------------------------
-# Trace routing
-# ---------------------------------------------------------------------------
-
-
-class TestGatewayTraceRouting:
-    @pytest.fixture
-    def mock_trace_manager(self) -> MagicMock:
-        return MagicMock()
-
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_trace_event_routes_to_trace_manager(
-        self,
-        mock_ee_enabled: MagicMock,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        emit(_prompt_event(), mock_trace_manager)
-        mock_trace_manager.add_trace_task.assert_called_once()
-
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False)
-    def test_enterprise_only_trace_dropped_when_ee_disabled(
-        self,
-        mock_ee_enabled: MagicMock,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        emit(_node_event(), mock_trace_manager)
-        mock_trace_manager.add_trace_task.assert_not_called()
-
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_enterprise_only_trace_enqueued_when_ee_enabled(
-        self,
-        mock_ee_enabled: MagicMock,
-        mock_trace_manager: MagicMock,
-    ) -> None:
-        emit(_node_event(), mock_trace_manager)
-        mock_trace_manager.add_trace_task.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +143,7 @@ class TestGatewayPayloadSizing:
         assert envelope.metadata is None
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    @patch("core.telemetry.gateway.storage")
+    @patch("extensions.ext_storage.storage")
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_large_payload_stored(
         self,
@@ -198,9 +151,9 @@ class TestGatewayPayloadSizing:
         mock_storage: MagicMock,
         mock_ee_enabled: MagicMock,
     ) -> None:
-        large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
+        large_value = "x" * (1048576 + 1000)
         ev = AppCreatedEvent(
-            context=_METRIC_CTX,
+            context=TelemetryContext(tenant_id="tenant-123"),
             payload=AppCreatedPayload(app_id=large_value),
         )
         emit(ev)
@@ -216,7 +169,7 @@ class TestGatewayPayloadSizing:
         assert envelope.metadata["payload_ref"] == storage_key
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    @patch("core.telemetry.gateway.storage")
+    @patch("extensions.ext_storage.storage")
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_large_payload_fallback_on_storage_error(
         self,
@@ -225,9 +178,9 @@ class TestGatewayPayloadSizing:
         mock_ee_enabled: MagicMock,
     ) -> None:
         mock_storage.save.side_effect = Exception("Storage failure")
-        large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
+        large_value = "x" * (1048576 + 1000)
         ev = AppCreatedEvent(
-            context=_METRIC_CTX,
+            context=TelemetryContext(tenant_id="tenant-123"),
             payload=AppCreatedPayload(app_id=large_value),
         )
         emit(ev)

@@ -33,6 +33,7 @@ from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
 from services.dataset_ref_service import DatasetRefService, DocumentRef
+from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,18 @@ class PipelineRunner(WorkflowBasedAppRunner):
             session.expunge(pipeline)
             session.expunge(workflow)
 
+        # Task serialization excludes the recorder. Recreate it only after validating
+        # the pipeline, dataset and workflow in this worker.
+        if self.application_generate_entity.trace_recorder is None:
+            self.application_generate_entity.trace_recorder = create_message_trace(
+                tenant_id=workflow.tenant_id,
+                pipeline_id=workflow.app_id,
+                user_id=user_id,
+                operation_id=self.application_generate_entity.workflow_execution_id,
+                external_trace_id=self.application_generate_entity.extras.get("external_trace_id"),
+                session_id=self.application_generate_entity.extras.get("trace_session_id"),
+            )
+
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -218,9 +231,21 @@ class PipelineRunner(WorkflowBasedAppRunner):
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
         )
 
+        trace_recorder = self.application_generate_entity.trace_recorder
+        workflow_trace = (
+            trace_recorder.create_workflow_trace(
+                workflow_id=workflow.id,
+                workflow_version=workflow.version,
+                workflow_run_id=self.application_generate_entity.workflow_execution_id,
+                inputs=self.application_generate_entity.inputs,
+                workflow_trace_state=self.application_generate_entity.workflow_trace_state,
+                resumed_without_state=self.application_generate_entity.extras.get("ops_resumed_without_state", False),
+            )
+            if trace_recorder is not None
+            else None
+        )
         workflow_entry = WorkflowEntry(
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
@@ -234,6 +259,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph_runtime_state=graph_runtime_state,
             variable_pool=variable_pool,
             workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_trace=workflow_trace,
             workflow_tool_event_listener_factory=persistence_layer.create_workflow_tool_event_listener,
         )
 

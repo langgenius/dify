@@ -5,8 +5,7 @@ import pytest
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
 from core.moderation.input_moderation import InputModeration
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
 from models.model import AppMode
 
 
@@ -69,14 +68,13 @@ class TestInputModeration:
         mock_factory.moderation_for_inputs.assert_called_once_with(dict(inputs), query)
 
     @patch("core.moderation.input_moderation.ModerationFactory")
-    @patch("core.moderation.input_moderation.TraceTask")
-    def test_check_with_trace_manager(self, mock_trace_task, mock_factory_cls, app_config, input_moderation):
+    def test_check_with_trace_recorder(self, mock_factory_cls, app_config, input_moderation):
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
         query = "test query"
         message_id = "test_message_id"
-        trace_manager = MagicMock(spec=TraceQueueManager)
+        trace_recorder = MagicMock(spec=MessageTraceRecorder)
 
         # Setup config
         sensitive_word_config = MagicMock(spec=SensitiveWordAvoidanceEntity)
@@ -96,18 +94,16 @@ class TestInputModeration:
             inputs=inputs,
             query=query,
             message_id=message_id,
-            trace_manager=trace_manager,
+            trace_recorder=trace_recorder,
         )
 
-        trace_manager.add_trace_task.assert_called_once_with(mock_trace_task.return_value)
-        mock_trace_task.assert_called_once()
-        call_kwargs = mock_trace_task.call_args.kwargs
-        call_args = mock_trace_task.call_args.args
-        assert call_args[0] == TraceTaskName.MODERATION_TRACE
-        assert call_kwargs["message_id"] == message_id
-        assert call_kwargs["moderation_result"] == mock_result
-        assert call_kwargs["inputs"] == inputs
-        assert "timer" in call_kwargs
+        trace_recorder.record_operation.assert_called_once()
+        call = trace_recorder.record_operation.call_args
+        assert call.args == ("moderation",)
+        assert call.kwargs["inputs"] == {"inputs": inputs, "query": query}
+        assert call.kwargs["outputs"] == mock_result
+        assert call.kwargs["message_id"] == message_id
+        assert call.kwargs["timer"]["start"] <= call.kwargs["timer"]["end"]
 
     @patch("core.moderation.input_moderation.ModerationFactory")
     def test_check_flagged_direct_output(self, mock_factory_cls, app_config, input_moderation):

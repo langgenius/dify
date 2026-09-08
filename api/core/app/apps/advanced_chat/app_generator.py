@@ -43,7 +43,6 @@ from core.app.entities.task_entities import (
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -60,6 +59,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
+from services.ops_trace_service import create_message_trace
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -199,8 +199,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
             # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+            trace_recorder = create_message_trace(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
             )
 
             if invoke_from == InvokeFrom.DEBUGGER:
@@ -227,7 +229,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras=extras,
-                trace_manager=trace_manager,
+                trace_recorder=trace_recorder,
                 workflow_run_id=str(workflow_run_id),
             )
             contexts.plugin_tool_providers.set({})
@@ -290,15 +292,20 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         """
         Resume a paused advanced chat execution.
 
-        ``trace_manager`` is transient and excluded from generate-entity serialization,
+        ``trace_recorder`` is transient and excluded from generate-entity serialization,
         so resumed executions rebuild it here before persistence layers receive the entity.
         """
-        if application_generate_entity.trace_manager is None:
+        if application_generate_entity.trace_recorder is None:
             application_generate_entity = application_generate_entity.model_copy(
                 update={
-                    "trace_manager": TraceQueueManager(
+                    "trace_recorder": create_message_trace(
+                        tenant_id=app_model.tenant_id,
                         app_id=app_model.id,
                         user_id=user.id if isinstance(user, Account) else user.session_id,
+                        message_id=message.id,
+                        conversation_id=conversation.id,
+                        external_trace_id=application_generate_entity.extras.get("external_trace_id"),
+                        session_id=application_generate_entity.extras.get("trace_session_id"),
                     )
                 }
             )

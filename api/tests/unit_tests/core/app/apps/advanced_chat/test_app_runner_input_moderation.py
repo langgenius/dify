@@ -85,7 +85,7 @@ def build_runner(sqlite_session: Session):
     gen.single_iteration_run = None
     gen.single_loop_run = None
     gen.extras = {}
-    gen.trace_manager = None
+    gen.trace_recorder = None
 
     runner = AdvancedChatAppRunner(
         application_generate_entity=gen,

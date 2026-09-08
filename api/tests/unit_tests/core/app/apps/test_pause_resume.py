@@ -1,8 +1,7 @@
-import sys
 import time
 from collections.abc import Mapping
 from decimal import Decimal
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 
 from pytest_mock import MockerFixture
@@ -40,16 +39,6 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
 from tests.workflow_test_utils import build_test_graph_init_params
-
-if "core.ops.ops_trace_manager" not in sys.modules:
-    ops_stub = ModuleType("core.ops.ops_trace_manager")
-
-    class _StubTraceQueueManager:
-        def __init__(self, *_, **__):
-            pass
-
-    ops_stub.TraceQueueManager = _StubTraceQueueManager
-    sys.modules["core.ops.ops_trace_manager"] = ops_stub
 
 
 class _StubToolNodeData(BaseNodeData):
@@ -303,7 +292,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
         application_generate_entity=SimpleNamespace(
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
-            trace_manager=SimpleNamespace(),
+            trace_recorder=SimpleNamespace(),
         ),
         graph_runtime_state=resumed_state,
         workflow_execution_repository=SimpleNamespace(),
@@ -350,7 +339,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
         application_generate_entity=SimpleNamespace(
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
-            trace_manager=SimpleNamespace(),
+            trace_recorder=SimpleNamespace(),
         ),
         workflow_execution_repository=SimpleNamespace(),
         workflow_node_execution_repository=SimpleNamespace(),

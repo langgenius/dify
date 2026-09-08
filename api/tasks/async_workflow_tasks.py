@@ -235,15 +235,30 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
-        workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.id == workflow_run.workflow_id,
+                Workflow.tenant_id == workflow_run.tenant_id,
+                Workflow.app_id == workflow_run.app_id,
+            )
+        )
         if workflow is None:
             raise WorkflowNotFoundError(
                 f"Workflow not found: workflow_run_id={workflow_run.id}, workflow_id={workflow_run.workflow_id}"
             )
         user = _get_user(session, workflow_run)
-        app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
+        app_model = session.scalar(
+            select(App).where(App.id == workflow_run.app_id, App.tenant_id == workflow_run.tenant_id)
+        )
         if app_model is None:
             raise _AppNotFoundError(f"App not found: app_id={workflow_run.app_id}, workflow_run_id={workflow_run.id}")
+
+    resumption_context.restore_trace_state(
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        workflow_id=workflow.id,
+        workflow_run_id=workflow_run.id,
+    )
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,

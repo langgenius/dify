@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -12,7 +13,8 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import TraceSource
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation
 from services.errors.conversation import ConversationNotExistsError
@@ -139,10 +141,12 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         "core.app.apps.advanced_chat.app_generator.db",
         SimpleNamespace(engine=sqlite_engine, session=db_session),
     )
-    trace_manager = object.__new__(TraceQueueManager)
+    trace_recorder = MessageTraceRecorder(
+        TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4())), MagicMock(), ()
+    )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-        lambda **_kwargs: trace_manager,
+        "core.app.apps.advanced_chat.app_generator.create_message_trace",
+        lambda **_kwargs: trace_recorder,
     )
     monkeypatch.setattr(
         "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",

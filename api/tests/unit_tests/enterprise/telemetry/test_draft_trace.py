@@ -234,7 +234,7 @@ class TestBuildNodeExecutionData:
 class TestEnqueueDraftNodeExecutionTrace:
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_emits_telemetry_event(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import DraftNodeExecutionTraceEvent, TraceTaskName
+        from core.telemetry import DraftNodeExecutionTraceEvent
         from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 
         execution = _make_execution()
@@ -247,7 +247,6 @@ class TestEnqueueDraftNodeExecutionTrace:
 
         mock_emit.assert_called_once()
         event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
-        assert event.trace_task_name == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
         assert event.context.tenant_id == "tenant-1"
         assert event.context.user_id == "user-1"
         assert event.context.app_id == "app-1"
@@ -306,7 +305,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 
 # ---------------------------------------------------------------------------
 # End-to-end token/model data flow: _build_node_execution_data →
-# ops_trace_manager.draft_node_execution_trace → DraftNodeExecutionTrace
+# record_enterprise_operation → DraftNodeExecutionTrace
 # ---------------------------------------------------------------------------
 
 
@@ -371,7 +370,7 @@ def _make_llm_execution() -> WorkflowNodeExecutionModel:
 
 class TestDraftTraceTokenDataFlow:
     """End-to-end test: verify all token and model fields survive from
-    _build_node_execution_data through ops_trace_manager.draft_node_execution_trace
+    _build_node_execution_data through record_enterprise_operation
     to the DraftNodeExecutionTrace that enterprise_trace.py consumes.
     """
 
@@ -388,7 +387,7 @@ class TestDraftTraceTokenDataFlow:
             workflow_execution_id="run-flow",
         )
 
-        # Simulate what ops_trace_manager.draft_node_execution_trace does:
+        # Simulate what record_enterprise_operation does:
         # it calls node_execution_trace(node_execution_data=node_data) which
         # reads top-level keys from node_data. Verify all expected keys exist.
         expected_keys = {
@@ -475,66 +474,3 @@ class TestDraftTraceTokenDataFlow:
         assert result["model_name"] is None
         assert result["prompt_tokens"] is None
         assert result["completion_tokens"] is None
-
-    def test_node_data_feeds_into_draft_node_execution_trace(self) -> None:
-        """Verify the node_data dict can be consumed by
-        ops_trace_manager.draft_node_execution_trace without error and
-        produces a DraftNodeExecutionTrace with correct token/model fields."""
-
-        from enterprise.telemetry.draft_trace import _build_node_execution_data
-
-        execution = _make_llm_execution()
-        node_data = _build_node_execution_data(
-            execution=execution,
-            outputs=None,
-            workflow_execution_id="run-e2e",
-        )
-
-        # Directly construct DraftNodeExecutionTrace the way
-        # ops_trace_manager.node_execution_trace does (lines 1315-1350),
-        # skipping DB lookups by providing minimal metadata.
-        from core.ops.entities.trace_entity import DraftNodeExecutionTrace
-
-        trace_info = DraftNodeExecutionTrace(
-            workflow_id=node_data.get("workflow_id", ""),
-            workflow_run_id=node_data.get("workflow_execution_id", ""),
-            tenant_id=node_data.get("tenant_id", ""),
-            node_execution_id=node_data.get("node_execution_id", ""),
-            node_id=node_data.get("node_id", ""),
-            node_type=node_data.get("node_type", ""),
-            title=node_data.get("title", ""),
-            status=node_data.get("status", ""),
-            error=node_data.get("error"),
-            elapsed_time=node_data.get("elapsed_time", 0.0),
-            index=node_data.get("index", 0),
-            predecessor_node_id=node_data.get("predecessor_node_id"),
-            total_tokens=node_data.get("total_tokens", 0),
-            total_price=node_data.get("total_price", 0.0),
-            currency=node_data.get("currency"),
-            model_provider=node_data.get("model_provider"),
-            model_name=node_data.get("model_name"),
-            prompt_tokens=node_data.get("prompt_tokens"),
-            completion_tokens=node_data.get("completion_tokens"),
-            tool_name=node_data.get("tool_name"),
-            iteration_id=node_data.get("iteration_id"),
-            iteration_index=node_data.get("iteration_index"),
-            loop_id=node_data.get("loop_id"),
-            loop_index=node_data.get("loop_index"),
-            parallel_id=node_data.get("parallel_id"),
-            node_inputs=node_data.get("node_inputs"),
-            node_outputs=node_data.get("node_outputs"),
-            process_data=node_data.get("process_data"),
-            start_time=node_data.get("created_at"),
-            end_time=node_data.get("finished_at"),
-            metadata={},
-        )
-
-        # These are the fields enterprise_trace._emit_node_execution_trace reads
-        assert trace_info.total_tokens == 80
-        assert trace_info.prompt_tokens == 50
-        assert trace_info.completion_tokens == 30
-        assert trace_info.model_provider == "openai"
-        assert trace_info.model_name == "gpt-4o"
-        assert trace_info.node_type == "llm"
-        assert trace_info.total_price == 0.0014
-        assert trace_info.currency == "USD"

@@ -139,7 +139,7 @@ from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_gateway import TraceProviderConfigChecks
 from services.app_tracing_config_service import AppTracingConfigService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -614,7 +614,7 @@ def build_application_services(
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-            provider=OpsTraceManagerGateway(),
+            provider=TraceProviderConfigChecks(),
         ),
         billing_portal=BillingPortalService(
             accounts=accounts,

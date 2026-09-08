@@ -1,6 +1,6 @@
 from pydantic import ValidationInfo, field_validator
 
-from core.ops.entities.config_entity import BaseTracingConfig
+from core.ops.provider_config import BaseTracingConfig
 from core.ops.utils import validate_url_with_path
 
 
