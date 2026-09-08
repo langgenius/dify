@@ -58,7 +58,7 @@ import { pluginSearchQueryOptions } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
-import { gotoAnythingDialogHandle } from './dialog-handle'
+import { consumeInitialSearchQuery, gotoAnythingDialogHandle } from './dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
 
 const appWorkflowPathPattern = /^\/app\/[^/]+\/workflow$/
@@ -376,7 +376,7 @@ function GotoAnythingDialog() {
   const groupedResults = groupSearchResults(dedupedResults)
 
   function resetSearch() {
-    setSearchQuery('')
+    setSearchQuery(consumeInitialSearchQuery())
   }
 
   useHotkey(
