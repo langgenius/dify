@@ -17,7 +17,7 @@ export type ProviderContextState = {
   isAPIKeySet: boolean
 }
 
-export const baseProviderContextValue: ProviderContextState = {
+const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   modelProviderPlugins: {},
   isLoadingModelProviders: false,
