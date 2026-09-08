@@ -300,7 +300,7 @@ def test_read_member_enforces_actual_output_limit() -> None:
     assert exc_info.value.error_code == "roster_agent_package_too_large"
 
 
-def test_export_uses_dedicated_read_session_and_preserves_caller_transaction(
+def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -369,7 +369,7 @@ def test_export_uses_dedicated_read_session_and_preserves_caller_transaction(
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
         app_id="33333333-3333-4333-8333-333333333333",
-        backing_app_id="33333333-3333-4333-8333-333333333333",
+        backing_app_id=None,
         status=AgentStatus.ACTIVE,
         created_by="account-1",
         updated_by="account-1",

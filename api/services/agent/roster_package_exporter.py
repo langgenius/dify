@@ -11,7 +11,7 @@ from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from typing import BinaryIO, Literal, Protocol, cast
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -111,7 +111,7 @@ class RosterAgentPackageExporter:
                     Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                     Agent.status == AgentStatus.ACTIVE,
                     Agent.app_id.is_not(None),
-                    Agent.backing_app_id == Agent.app_id,
+                    or_(Agent.backing_app_id == Agent.app_id, Agent.backing_app_id.is_(None)),
                     App.mode == AppMode.AGENT,
                     App.status == AppStatus.NORMAL,
                 )
