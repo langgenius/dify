@@ -18,12 +18,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.wraps import enforce_rbac_access
+from controllers.common.rbac import RBACCheck, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import Subject
-from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
@@ -118,20 +117,15 @@ class CheckScope(Requirement):
 
 
 class CheckRBACPermission(Requirement):
-    """One RBAC permission point. Inert wherever RBAC is off; a route that
-    needs a check there declares a `CheckWorkspaceRole` beside this.
+    """The same check bundles the console's `rbac_permission_required` takes.
+    Inert wherever RBAC is off; a route that needs a check there declares a
+    `CheckWorkspaceRole` beside this.
     """
 
-    def __init__(
-        self,
-        *,
-        resource_type: RBACResourceScope,
-        scene: RBACPermission,
-        resource_required: bool = True,
-    ) -> None:
-        self.resource_type = resource_type
-        self.scene = scene
-        self.resource_required = resource_required
+    def __init__(self, *checks: RBACCheck) -> None:
+        if not checks:
+            raise ValueError("CheckRBACPermission requires at least one RBACCheck")
+        self.checks = checks
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -139,12 +133,10 @@ class CheckRBACPermission(Requirement):
             return
         if not dify_config.RBAC_ENABLED:
             return
-        enforce_rbac_access(
+        enforce_rbac_checks(
             tenant_id=str(load_workspace(ctx).id),
             account_id=str(subject.account_id),
-            resource_type=self.resource_type,
-            scene=self.scene,
-            resource_required=self.resource_required,
+            checks=self.checks,
             path_args=dict(ctx.view_args),
         )
 
