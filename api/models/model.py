@@ -467,10 +467,6 @@ class App(Base):
             else:
                 return ""
 
-    @property
-    def site(self) -> Site | None:
-        return self.site_with_session(session=db.session())
-
     def site_with_session(self, *, session: Session) -> Site | None:
         return session.scalar(select(Site).where(Site.app_id == self.id))
 
@@ -701,10 +697,6 @@ class App(Base):
 
         return deleted_tools
 
-    @property
-    def tags(self) -> Sequence[Tag]:
-        return self.tags_with_session(session=db.session())
-
     def tags_with_session(self, *, session: Session) -> Sequence[Tag]:
         tags = session.scalars(
             select(Tag)
@@ -801,10 +793,6 @@ class AppModelConfig(TypeBase):
     dataset_configs: Mapped[str | None] = mapped_column(LongText, default=None)
     external_data_tools: Mapped[str | None] = mapped_column(LongText, default=None)
     file_upload: Mapped[str | None] = mapped_column(LongText, default=None)
-
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
 
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
@@ -1067,10 +1055,6 @@ class TrialApp(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     trial_limit: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=3)
-
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
 
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
