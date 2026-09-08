@@ -154,12 +154,6 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en',
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelProviders: Array<{ provider: string }> }) => unknown,
-  ) => selector({ modelProviders: mockModelProviders }),
-}))
-
 // useWorkflowNodes reads from WorkflowContext (real store via renderWorkflowHook)
 
 // ---------------------------------------------------------------------------
@@ -864,6 +858,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
+      if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
+        return { data: mockModelProviders }
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [] }
     },

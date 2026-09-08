@@ -4,17 +4,17 @@ import type { ModelProvider } from '../declarations'
 import type { ModelProviderPluginSummary } from '../index'
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
 import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
@@ -56,7 +56,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     }),
   })
   const language = useLanguage()
-  const refreshModelProviders = useProviderContextSelector((state) => state.refreshModelProviders)
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentProviderName = provider.provider
   const expanded = useModelProviderListExpanded(currentProviderName)
@@ -113,10 +113,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
 
   const refreshPluginData = useCallback(async () => {
     await Promise.all([
-      refreshModelProviders(),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      }),
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
       invalidateInstalledPluginList(PluginCategoryEnum.model),
     ])
-  }, [invalidateInstalledPluginList, refreshModelProviders])
+  }, [invalidateInstalledPluginList, queryClient])
 
   const handleOpenModelList = useCallback(() => {
     if (loading) return

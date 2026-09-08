@@ -4,6 +4,7 @@ import type { ModelProviderPluginSummary } from '../../index'
 import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { commonQueryKeys } from '@/service/use-common'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -20,11 +21,11 @@ let mockWorkspacePermissionKeys: string[] = [
   'credential.create',
   'credential.manage',
 ]
-const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockRefreshModelProviders } =
+const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockInvalidateQueries } =
   vi.hoisted(() => ({
     mockInvalidateInstalledPluginList: vi.fn(),
     mockProviderCardActions: vi.fn(),
-    mockRefreshModelProviders: vi.fn(),
+    mockInvalidateQueries: vi.fn(),
   }))
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(
@@ -49,6 +50,7 @@ vi.mock('@/service/console', () => ({
     workspaces: {
       current: {
         modelProviders: {
+          summary: { get: { key: () => ['model-provider-summary'] } },
           byProvider: {
             models: {
               get: {
@@ -79,11 +81,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: object) => unknown) =>
-    selector({ refreshModelProviders: mockRefreshModelProviders }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
@@ -142,6 +139,7 @@ const createConsoleQueryClient = () =>
 
 const renderWithQueryClient = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
+  vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
   seedSystemFeatures(queryClient, { rbac_enabled: mockRbacEnabled })
   return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
@@ -249,7 +247,7 @@ describe('ProviderAddedCard', () => {
   it('refreshes provider data and installed plugin details after an update', async () => {
     let resolveProviderRefresh: (() => void) | undefined
     let resolveInstalledPluginRefresh: (() => void) | undefined
-    mockRefreshModelProviders.mockReturnValue(
+    mockInvalidateQueries.mockReturnValue(
       new Promise<void>((resolve) => {
         resolveProviderRefresh = resolve
       }),
@@ -279,7 +277,10 @@ describe('ProviderAddedCard', () => {
     })
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
-    expect(mockRefreshModelProviders).toHaveBeenCalledOnce()
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-provider-summary'] })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: commonQueryKeys.modelProviderDetails,
+    })
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
 
     resolveProviderRefresh?.()

@@ -36,9 +36,6 @@ vi.mock('nuqs', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ modelProviders: mockModelProviders.current }),
-}))
 vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: () => ({
     variant: 'credits-active',

@@ -75,7 +75,6 @@ vi.mock('@/service/use-common', async (importOriginal) => {
   return {
     ...actual,
     useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-    useProviderContext: vi.fn(),
   }
 })
 

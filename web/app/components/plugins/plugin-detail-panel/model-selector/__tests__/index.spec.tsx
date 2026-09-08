@@ -35,13 +35,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 // Mock provider context
-const mockProviderContextValue = {
-  isAPIKeySet: true,
-  modelProviders: [],
-}
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContextValue,
-}))
 
 // Mock model list hook
 const mockTextGenerationList: ProviderWithModelsResponse[] = []
@@ -243,8 +236,6 @@ describe('ModelParameterModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProviderContextValue.isAPIKeySet = true
-    mockProviderContextValue.modelProviders = []
     setupModelLists()
     mockFetchAndMergeValidCompletionParams.mockResolvedValue({ params: {}, removedDetails: {} })
   })
@@ -660,7 +651,6 @@ describe('ModelParameterModal', () => {
   describe('Memoization - disabled', () => {
     it('should keep active TTS model settings available without an active text generation model', async () => {
       const user = userEvent.setup()
-      mockProviderContextValue.isAPIKeySet = false
       const ttsModel = createModel({
         provider: 'tts-provider',
         models: [
@@ -693,7 +683,6 @@ describe('ModelParameterModal', () => {
 
     it('should keep model selection available when isAPIKeySet is false', () => {
       // Arrange
-      mockProviderContextValue.isAPIKeySet = false
       const model = createModel({
         provider: 'openai',
         models: [createModelItem({ model: 'gpt-4', status: ModelStatusEnum.active })],
@@ -737,7 +726,6 @@ describe('ModelParameterModal', () => {
 
     it('should set disabled to false when all conditions are met', () => {
       // Arrange
-      mockProviderContextValue.isAPIKeySet = true
       const model = createModel({
         provider: 'openai',
         models: [createModelItem({ model: 'gpt-4', status: ModelStatusEnum.active })],
@@ -1330,14 +1318,12 @@ describe('ModelParameterModal', () => {
         models: [createModelItem({ model: 'gpt-4', status: ModelStatusEnum.active })],
       })
       setupModelLists({ textGeneration: [model] })
-      mockProviderContextValue.isAPIKeySet = true
       const props = createDefaultProps({ value: { provider: 'openai', model: 'gpt-4' } })
 
       // Act
       const { rerender } = render(<ModelParameterModal {...props} />)
       expect(screen.getByTestId('trigger')).toHaveAttribute('data-disabled', 'false')
 
-      mockProviderContextValue.isAPIKeySet = false
       rerender(<ModelParameterModal {...props} />)
 
       // Assert

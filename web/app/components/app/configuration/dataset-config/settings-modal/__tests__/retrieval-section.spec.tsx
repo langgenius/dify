@@ -32,12 +32,6 @@ vi.mock('ky', () => {
   return { __esModule: true, default: ky }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [],
-  }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
     mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
