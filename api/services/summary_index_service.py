@@ -517,8 +517,16 @@ class SummaryIndexService:
                         summary_record_id,
                         original_session is not None,
                     )
-                    # Always create a new session for error handling to avoid issues with closed sessions
-                    # Even if original_session was provided, we create a new one for safety
+                    if original_session is not None:
+                        # Keep the error update in the caller-owned transaction. Opening another
+                        # session here can deadlock when the caller has already flushed this row.
+                        summary_record.status = SummaryStatus.ERROR
+                        summary_record.error = f"Vectorization failed: {str(e)}"
+                        summary_record.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                        original_session.add(summary_record)
+                        raise
+
+                    # Standalone callers still need this method to persist the error itself.
                     with session_factory.create_session() as error_session:
                         # Try to find the record by id first
                         # Note: Using assignment only (no type annotation) to avoid redeclaration error

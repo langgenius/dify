@@ -45,7 +45,7 @@ class StepByStepTourService:
         self._rollout_started_at = rollout_started_at
 
     def get_state(self, context: RequestContext) -> StepByStepTourResult:
-        workspace_id = self._require_workspace(context)
+        workspace_id = context.active_workspace_id
         account = self._accounts.get(context.account_id)
         if account is None:
             raise RuntimeError("Console account admission resolved an unknown account")
@@ -56,7 +56,7 @@ class StepByStepTourService:
         return self._to_result(self._states.initialize(context.account_id, workspace_id))
 
     def patch_state(self, context: RequestContext, patch: StepByStepTourPatch) -> StepByStepTourResult:
-        workspace_id = self._require_workspace(context)
+        workspace_id = context.active_workspace_id
         state = self._states.mutate(
             context.account_id,
             lambda current: self._apply_action(current, patch=patch, workspace_id=workspace_id),
@@ -119,12 +119,6 @@ class StepByStepTourService:
                 )
             case _:
                 raise ValueError(f"Unsupported action: {patch.action}")
-
-    @staticmethod
-    def _require_workspace(context: RequestContext) -> str:
-        if context.active_workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
-        return context.active_workspace_id
 
     @staticmethod
     def _require_task_id(task_id: str | None) -> str:

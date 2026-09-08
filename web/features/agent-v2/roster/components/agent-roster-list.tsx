@@ -204,6 +204,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
+  const draftStatusId = useId()
   const [activeDialog, setActiveDialog] = useState<'delete' | 'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const updatedAt =
@@ -217,6 +218,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const publishedReferences = agent.published_references ?? []
   const hasPublishedReferences = publishedReferences.length > 0
   const isDraft = agent.active_config_is_published !== true
+  const accessibleDescriptionIds = [
+    isDraft ? draftStatusId : '',
+    agent.description ? descriptionId : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   const parsedIconType = zAgentIconType.safeParse(agent.icon_type).data
   const imageUrl =
     parsedIconType === 'image'
@@ -265,7 +272,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             <Link
               href={`/agents/${agent.id}/configure`}
               aria-labelledby={nameId}
-              aria-describedby={agent.description ? descriptionId : undefined}
+              aria-describedby={accessibleDescriptionIds || undefined}
               className="flex h-full min-w-0 cursor-pointer touch-manipulation flex-col rounded-xl pb-9 outline-hidden"
             >
               <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
@@ -294,7 +301,10 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               {isDraft && (
                 <div className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
                   <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-                  <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                  <div
+                    id={draftStatusId}
+                    className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
+                  >
                     {t(($) => $['roster.usageStatus.draft'])}
                   </div>
                 </div>

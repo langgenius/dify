@@ -1,5 +1,5 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -48,8 +48,8 @@ const mockUnstarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const withMutation = (operation: object, mutationFn: typeof mockCopyApp) =>
     new Proxy(operation, {
       get(target, property, receiver) {
@@ -159,7 +159,6 @@ vi.mock('use-context-selector', () => ({
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
-  isCurrentWorkspaceEditor: true,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
@@ -184,14 +183,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-
-// Mock provider context
-const mockOnPlanInfoChanged = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    onPlanInfoChanged: mockOnPlanInfoChanged,
-  }),
-}))
 
 // systemFeatures is seeded into the QueryClient via the local render helper.
 
@@ -454,7 +445,6 @@ describe('AppCard', () => {
     mockAppDslExport.exportAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockWorkflowAppDslExport.isExporting = false
     mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
-    mockConsoleState.isCurrentWorkspaceEditor = true
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
@@ -616,7 +606,6 @@ describe('AppCard', () => {
     })
 
     it('should allow app edit permission to bind tags without workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const editableApp = createMockApp({
@@ -634,7 +623,6 @@ describe('AppCard', () => {
     })
 
     it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = ['app.tag.manage']
       mockConsoleState.userProfile = { id: 'user-2' }
       const tagManageApp = createMockApp({
@@ -652,7 +640,6 @@ describe('AppCard', () => {
     })
 
     it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
-      mockConsoleState.isCurrentWorkspaceEditor = false
       mockConsoleState.workspacePermissionKeys = []
       mockConsoleState.userProfile = { id: 'user-2' }
       const readonlyApp = createMockApp({
@@ -1163,25 +1150,6 @@ describe('AppCard', () => {
       })
     })
 
-    it('should call onPlanInfoChanged after successful duplication', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(mockOnPlanInfoChanged).toHaveBeenCalled()
-      })
-    })
-
     it('should handle copy failure', async () => {
       mockCopyApp.mockRejectedValueOnce(new Error('Copy failed'))
 
@@ -1290,6 +1258,21 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
       })
+    })
+
+    it('should hide open in explore for SSO-restricted apps', async () => {
+      mockWebappAuthEnabled = true
+      const user = userEvent.setup()
+      const ssoApp = createMockApp({ access_mode: AccessMode.EXTERNAL_MEMBERS })
+
+      render(<AppCard app={ssoApp} />)
+
+      await user.click(getOperationsTrigger())
+      const menu = await screen.findByRole('menu')
+
+      expect(
+        within(menu).queryByRole('menuitem', { name: 'app.openInExplore' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -1622,14 +1605,6 @@ describe('AppCard', () => {
         // openInExplore should not be shown for draft trigger apps
         expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('Non-editor User', () => {
-    it('should handle non-editor workspace users', () => {
-      // This tests the isCurrentWorkspaceEditor=true branch (default mock)
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 

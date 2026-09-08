@@ -28,7 +28,7 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -72,7 +72,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubContent
         placement="right-start"
         sideOffset={6}
-        className="max-h-[360px] w-[139px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="max-h-90 w-34.75 bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}

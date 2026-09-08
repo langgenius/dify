@@ -1,14 +1,11 @@
 import type { ReactNode } from 'react'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { dehydrate, HydrationBoundary, noop } from '@tanstack/react-query'
 import { getQueryClient } from '@/app/get-query-client'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
-import {
-  getServerConsoleClientContext,
-  resolveServerConsoleApiUrl,
-  serverConsoleQuery,
-} from '@/service/server'
+import { consoleQuery } from '@/service/console'
+import { resolveServerConsoleApiUrl } from '@/service/console/server'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
@@ -60,22 +57,22 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
 
   if (accountProfileUrl) {
     try {
-      const context = await getServerConsoleClientContext()
-
       await Promise.all([
-        queryClient.fetchQuery(serverUserProfileQueryOptions()),
-        queryClient.prefetchQuery(
-          serverConsoleQuery.workspaces.current.summary.get.queryOptions({
-            context,
-            retry: false,
-          }),
-        ),
-        queryClient.prefetchQuery(
-          serverConsoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
-            context,
-            retry: false,
-          }),
-        ),
+        queryClient.query(serverUserProfileQueryOptions()),
+        queryClient
+          .query(
+            consoleQuery.workspaces.current.summary.get.queryOptions({
+              retry: false,
+            }),
+          )
+          .catch(noop),
+        queryClient
+          .query(
+            consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
+              retry: false,
+            }),
+          )
+          .catch(noop),
       ])
     } catch (error) {
       await handleProfileError(error)

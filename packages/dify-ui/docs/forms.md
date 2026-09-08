@@ -16,6 +16,22 @@ remains correct when another form library owns submission and validation; do not
 Set [`Button`] submit buttons to `type="submit"` explicitly. Keep every other button inside a form
 at `type="button"`.
 
+## Value and state ownership
+
+`Form` owns the submission and validation boundary described above, not each field's draft.
+
+Choose controlledness from source-of-truth needs, independently from where a draft is stored.
+Prefer `defaultValue` when application React code does not need to own the current value. Use
+`value` and change handlers when application rendering or coordination must own it while editing.
+Listening to change events, tracking dirty state, and native or primitive validation do not by
+themselves require controlled state.
+
+Application code owns the draft in the narrowest component whose lifetime matches it. A value can
+be controlled locally without being lifted. An uncontrolled field can participate in a persisted
+workflow when that workflow captures its value at an explicit persistence boundary. The
+surrounding surface defines its mount lifecycle; owner placement determines whether draft state
+lives inside or outside that lifecycle.
+
 ## Fields and labels
 
 Use `Field` when a control needs a shared name, label, validation, description, or error state. A
@@ -61,9 +77,9 @@ option with `FieldItem` and give it its own label:
 Every radio belongs to a `RadioGroup`. Use `FieldsetLegend` to name the group and `FieldLabel` to
 name each option; do not render a standalone `Radio`.
 
-Keep form state, schemas, server validation, and reset behavior outside these primitives. Pass
-their observable state through the public field and control props instead of replacing the
-semantic structure.
+Keep form state, schemas, server validation, and reset behavior outside the primitive internals,
+in the nearest application owner with the required lifetime. Pass observable state through the
+public field and control props instead of replacing the semantic structure.
 
 [Base UI Slider anatomy]: https://base-ui.com/react/components/slider#anatomy
 [Base UI forms handbook]: https://base-ui.com/react/handbook/forms

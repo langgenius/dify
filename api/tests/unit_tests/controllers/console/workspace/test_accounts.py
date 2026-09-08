@@ -16,7 +16,11 @@ from controllers.console.auth.error import (
     EmailCodeAccountDeletionRateLimitExceededError,
     EmailCodeError,
 )
-from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
+from controllers.console.error import (
+    AccountInFreezeError,
+    EmailDomainSuspendedError,
+    InvalidAccountPasswordRequestError,
+)
 from controllers.console.workspace.account import (
     AccountAvatarApi,
     AccountAvatarPayload,
@@ -50,7 +54,6 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountPasswordRequestError,
     MissingInvitationCodeRequestError,
 )
 from machinery.context import RequestContext
@@ -253,7 +256,7 @@ class TestAccountUpdateApis:
             request_id="request-1",
             trace_id=None,
             account_id=user.id,
-            active_workspace_id=None,
+            active_workspace_id="workspace-1",
         )
         profile = MagicMock()
         profile.update.return_value = user

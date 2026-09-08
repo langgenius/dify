@@ -48,6 +48,7 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
@@ -65,6 +66,7 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -658,6 +660,7 @@ class TestDocumentServiceFileOperations:
 class TestDocumentServiceSaveValidation:
     """Test validations during document saving."""
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     @patch("services.dataset_service.DatasetService.check_doc_form")
     @patch("services.dataset_service.FeatureService.get_features")
     def test_save_document_validates_doc_form(self, mock_features, mock_check_form, sqlite_session: Session):
@@ -665,7 +668,6 @@ class TestDocumentServiceSaveValidation:
         dataset = make_dataset(tenant_id="tenant_id")
         config = Mock()
         features = Mock()
-        features.billing.enabled = False
         mock_features.return_value = features
 
         class TestStopError(Exception):
@@ -1189,6 +1191,76 @@ class TestDocumentListApi(SQLiteControllerTest):
         assert "data_source_info_dict" not in response["data"][0]
         assert "doc_metadata_details" not in response["data"][0]
 
+    @patch("controllers.service_api.dataset.document.paginate_query")
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_list_documents_has_more_false_on_last_page_exact_limit(
+        self, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset
+    ):
+        """A full last page must set has_more false instead of forcing another fetch."""
+        self._persist_dataset(mock_dataset)
+        page_size = 20
+        documents = [
+            make_serializable_document(
+                id=f"doc-{index}",
+                name=f"Document {index}",
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
+            )
+            for index in range(page_size)
+        ]
+        mock_paginate.return_value = _PaginationRecord(items=documents, total=page_size)
+        mock_doc_svc.enrich_documents_with_summary_index_status.return_value = None
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents?page=1&limit={page_size}",
+            method="GET",
+        ):
+            api = DocumentListApi()
+            response = inspect.unwrap(type(api).get)(
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
+
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.document.paginate_query")
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_list_documents_has_more_true_when_limit_exceeds_cap(
+        self, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset
+    ):
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        self._persist_dataset(mock_dataset)
+        returned_count = 100
+        total = 150
+        documents = [
+            make_serializable_document(
+                id=f"doc-{index}",
+                name=f"Document {index}",
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
+            )
+            for index in range(returned_count)
+        ]
+        mock_paginate.return_value = _PaginationRecord(items=documents, total=total)
+        mock_doc_svc.enrich_documents_with_summary_index_status.return_value = None
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents?page=1&limit=200",
+            method="GET",
+        ):
+            api = DocumentListApi()
+            response = inspect.unwrap(type(api).get)(
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
+
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
+        assert mock_paginate.call_args.kwargs["per_page"] == 100
+
     def test_list_documents_dataset_not_found(self, app: Flask, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
         # Arrange
@@ -1346,7 +1418,6 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         mock_validate_token.return_value = api_token
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1521,7 +1592,6 @@ def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
     mock_validate_token.return_value = api_token
     mock_features = Mock()
-    mock_features.billing.enabled = False
     mock_feature_svc.get_features.return_value = mock_features
     mock_vector_space = Mock()
     mock_vector_space.limit = 10

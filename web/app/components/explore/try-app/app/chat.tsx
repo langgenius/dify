@@ -38,12 +38,12 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
   const currentConversationId = chatData.currentConversationId
   const inputsForms = chatData.inputsForms
   useEffect(() => {
-    if (appId) removeConversationIdInfo(appId)
-  }, [appId])
+    if (appId) removeConversationIdInfo()
+  }, [appId, removeConversationIdInfo])
   const [isHideTryNotice, { setTrue: hideTryNotice }] = useBoolean(false)
 
   const handleNewConversation = () => {
-    removeConversationIdInfo(appId)
+    removeConversationIdInfo()
     chatData.handleNewConversation()
   }
   return (

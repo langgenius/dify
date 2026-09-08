@@ -197,7 +197,7 @@ const ConditionWrap: FC<Props> = ({
                     </SelectTrigger>
                     <SelectPortal>
                       <SelectPositioner>
-                        <SelectPopup className="w-[165px]">
+                        <SelectPopup className="w-41.25">
                           <SelectList className="max-h-none p-1">
                             {subVarOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>

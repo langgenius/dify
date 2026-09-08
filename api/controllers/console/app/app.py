@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from configs import dify_config
 from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
-from controllers.common.helpers import FileInfo
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -22,11 +22,10 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model, with_session
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
@@ -39,6 +38,7 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from core.file.remote_file_metadata import FileInfo
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -77,7 +77,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.errors.account import NoPermissionError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -516,7 +516,7 @@ class AppImportResponse(ResponseModel):
 
 
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
-    if FeatureService.get_system_features().webapp_auth.enabled:
+    if SystemFeatureService.is_webapp_auth_enabled():
         app_ids = [str(app.id) for app in apps]
         res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
         if len(res) != len(app_ids):
@@ -691,7 +691,7 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace()))
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
@@ -868,7 +868,7 @@ class AppApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=None)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -877,7 +877,7 @@ class AppApi(Resource):
 
         app_model = app_service.get_app(app_model, session=session)
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode
 
@@ -907,8 +907,9 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(UpdateAppPayload)
@@ -942,8 +943,9 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_DELETE, PlainApp()), RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp())
+    )
     @with_session
     @get_app_model
     def delete(self, session: Session, app_model: App):
@@ -967,8 +969,7 @@ class AppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()))
     @with_current_user
     @with_current_tenant_id
     @get_app_model(mode=None)
@@ -1002,7 +1003,7 @@ class AppCopyApi(Resource):
             session.commit()
 
             # Inherit web app permission from original app
-            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+            if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
                 try:
                     # Get the original app's access mode
                     original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
@@ -1045,8 +1046,10 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+    )
     @get_app_model
     @model_validate(AppExportQuery)
     def get(self, req_data: AppExportQuery, app_model: App):
@@ -1070,8 +1073,10 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentBehindApp()),
+    )
     @with_current_user_id
     @get_app_model(mode=None)
     def post(self, current_user_id: str, app_model: App):
@@ -1111,8 +1116,9 @@ class AppNameApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppNamePayload)
@@ -1139,8 +1145,9 @@ class AppIconApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_EDIT, PlainApp()), RBACCheck(RBACPermission.AGENT_EDIT, AgentBehindApp())
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppIconPayload)
@@ -1173,8 +1180,10 @@ class AppSiteStatus(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppSiteStatusPayload)
@@ -1201,8 +1210,10 @@ class AppApiStatus(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+    )
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppApiStatusPayload)
@@ -1231,7 +1242,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @with_session
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model
     def get(self, session: Session, app_model: App):
         """Get app trace"""
@@ -1253,7 +1264,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp()))
     @get_app_model
     @model_validate(AppTracePayload)
     def post(self, req_data: AppTracePayload, app_model: App):

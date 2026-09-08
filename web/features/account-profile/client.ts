@@ -3,7 +3,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
 import { get } from '@/service/base'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export type UserProfileWithMeta = {
   profile: GetAccountProfileResponse

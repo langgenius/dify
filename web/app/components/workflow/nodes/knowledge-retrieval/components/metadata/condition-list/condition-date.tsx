@@ -1,7 +1,4 @@
-import type {
-  DatePickerProps,
-  TriggerProps,
-} from '@/app/components/base/date-and-time-picker/types'
+import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
@@ -31,7 +28,7 @@ const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
   )
 
   const renderTrigger = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
-    (props, _state, { handleClickTrigger }: TriggerProps) => {
+    (props) => {
       const hasValue = Boolean(value)
       const triggerText = value
         ? dayjs(value * 1000)
@@ -40,21 +37,20 @@ const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
         : t(($) => $['nodes.knowledgeRetrieval.metadata.panel.datePlaceholder'], { ns: 'workflow' })
 
       return (
-        <div {...props} className={cn('group flex items-center', props.className)}>
+        <div className={cn('group flex items-center', props.className)}>
           <button
+            {...props}
             type="button"
             className={cn(
               'mr-0.5 flex h-6 grow cursor-pointer items-center border-none bg-transparent px-1 py-0 text-left system-sm-regular focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
               hasValue ? 'text-text-secondary' : 'text-text-tertiary',
             )}
-            onClick={handleClickTrigger}
           >
             <span className="grow">{triggerText}</span>
             <RiCalendarLine
               className={cn(
                 'block size-4 shrink-0',
                 hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
-                hasValue && 'group-hover:hidden',
               )}
               aria-hidden="true"
             />
@@ -63,7 +59,7 @@ const ConditionDate = ({ value, onChange }: ConditionDateProps) => {
             <button
               type="button"
               aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="hidden size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [@media(hover:none)]:opacity-100"
               onClick={(e) => {
                 e.stopPropagation()
                 handleDateChange()

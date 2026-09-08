@@ -22,7 +22,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n-config'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelTypeEnum } from '../declarations'
@@ -347,7 +347,7 @@ function ModelSelectorPreviewCard({
   return (
     <PreviewCardContent
       placement="right"
-      className="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+      className="w-51.5 bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
     >
       <div className="flex flex-col gap-1">
         <div className="flex flex-col items-start gap-2">

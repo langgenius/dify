@@ -677,6 +677,46 @@ class TestSegmentServiceMutations:
         assert result is refreshed_segment
         assert segment.keywords == ["new"]
         vector_service.update_segment_vector.assert_called_once_with(["new"], segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
+
+    def test_update_segment_omits_attachment_ids_leaves_existing_bindings_unchanged(self, account_context):
+        session = MagicMock()
+        segment = _make_segment(content="same content")
+        document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=20)
+        dataset = _make_dataset()
+        refreshed_segment = SimpleNamespace(id=segment.id)
+        args = SegmentUpdateArgs(content="same content")
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+        ):
+            mock_redis.get.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
+
+        assert result is refreshed_segment
+        vector_service.update_multimodel_vector.assert_not_called()
+
+    def test_update_segment_explicit_empty_attachment_ids_clears_bindings(self, account_context):
+        session = MagicMock()
+        segment = _make_segment(content="same content")
+        document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=20)
+        dataset = _make_dataset()
+        refreshed_segment = SimpleNamespace(id=segment.id)
+        args = SegmentUpdateArgs(content="same content", attachment_ids=[])
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+        ):
+            mock_redis.get.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
+
+        assert result is refreshed_segment
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_regenerates_child_chunks_and_updates_manual_summary(self, account_context):
@@ -724,7 +764,7 @@ class TestSegmentServiceMutations:
             session=session,
         )
         update_summary.assert_called_once_with(segment, dataset, "new summary", session=session)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
 
     def test_update_segment_auto_regenerates_summary_after_content_change(self, account_context):
         session = MagicMock()
@@ -763,7 +803,7 @@ class TestSegmentServiceMutations:
         assert document.word_count == 18
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset, session=session)
         generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=session)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
 
     def test_update_segment_regenerates_summary_when_manual_summary_is_unchanged(self, account_context):
         session = MagicMock()
@@ -799,7 +839,7 @@ class TestSegmentServiceMutations:
         assert result is refreshed_segment
         generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=session)
         update_summary.assert_not_called()
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
 
     def test_delete_segment_removes_index_and_updates_document_word_count(self):
         session = MagicMock()
@@ -1012,7 +1052,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.word_count == len("question") + len("new answer")
         assert document.word_count == 20 + (len("question") + len("new answer") - 8)
         vector_service.update_segment_vector.assert_not_called()
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
 
     def test_update_segment_content_change_uses_answer_when_counting_tokens_for_qa_segments(self, account_context):
         session = MagicMock()
@@ -1049,7 +1089,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.tokens == 21
         assert segment.word_count == len("new question") + len("new answer")
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset, session=session)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
 
     def test_update_segment_content_change_parent_child_uses_default_embedding_and_ignores_summary_failures(
         self, account_context
@@ -1107,7 +1147,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             session=session,
         )
         update_summary.assert_called_once_with(segment, dataset, "new summary", session=session)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+        vector_service.update_multimodel_vector.assert_not_called()
 
     def test_update_segment_same_content_parent_child_marks_segment_error_for_non_high_quality_dataset(
         self, account_context

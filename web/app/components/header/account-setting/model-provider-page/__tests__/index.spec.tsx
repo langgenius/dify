@@ -329,8 +329,8 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const originalWorkspaces = actual.consoleQuery.workspaces
   return {
     ...actual,

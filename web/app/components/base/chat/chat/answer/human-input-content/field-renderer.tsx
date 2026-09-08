@@ -63,7 +63,7 @@ const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
         <SelectPortal>
           <SelectPositioner>
             <SelectPopup>
-              <SelectList className="max-h-[140px] overflow-y-auto">
+              <SelectList className="max-h-35 overflow-y-auto">
                 {options.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     <SelectItemText>{option.name}</SelectItemText>

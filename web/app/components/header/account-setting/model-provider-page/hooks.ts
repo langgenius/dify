@@ -20,8 +20,8 @@ import {
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
 import { fetchDefaultModal, fetchModelList } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
 import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
@@ -240,7 +240,7 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.fetchQuery(modelProviderDetailsQueryOptions())
+      const response = await queryClient.query(modelProviderDetailsQueryOptions())
       return response.data.find((provider) => provider.provider === providerName)
     } catch {
       return undefined
@@ -268,12 +268,14 @@ export const useMarketplaceAllPlugins = (
     queryPlugins,
     queryPluginsWithDebounced,
     cancelQueryPluginsWithDebounced = () => {},
+    resetQueryParams = () => {},
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins(enabled)
 
   useEffect(() => {
     if (!enabled) {
       cancelQueryPluginsWithDebounced()
+      resetQueryParams()
       return
     }
 
@@ -302,6 +304,7 @@ export const useMarketplaceAllPlugins = (
     enabled,
     queryPlugins,
     queryPluginsWithDebounced,
+    resetQueryParams,
     searchText,
     exclude,
   ])

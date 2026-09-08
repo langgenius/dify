@@ -216,18 +216,17 @@ class TestAppWebAuthPermission:
         extract_passport.assert_not_called()
 
     @pytest.mark.parametrize(
-        ("decoded", "expected_user_id", "allowed"),
+        ("user_id", "allowed"),
         [
-            pytest.param({"user_id": "user-1"}, "user-1", True, id="identified-user"),
-            pytest.param({}, "visitor", False, id="visitor-fallback"),
+            pytest.param("user-1", True, id="allowed-user"),
+            pytest.param("user-2", False, id="denied-user"),
         ],
     )
     @patch("controllers.web.app.application_services")
     def test_checks_private_app_permission(
         self,
         application_services: MagicMock,
-        decoded: dict[str, str],
-        expected_user_id: str,
+        user_id: str,
         allowed: bool,
         app: Flask,
     ) -> None:
@@ -241,14 +240,41 @@ class TestAppWebAuthPermission:
             patch("controllers.web.app.extract_webapp_passport", return_value="passport") as extract_passport,
             patch("controllers.web.app.PassportService") as passport_service,
         ):
-            passport_service.return_value.verify.return_value = decoded
+            passport_service.return_value.verify.return_value = {"user_id": user_id, "auth_type": "internal"}
             result = AppWebAuthPermission().get()
 
         assert result == {"result": allowed}
         webapp_access.requires_permission_check.assert_called_once_with("app-1")
         extract_passport.assert_called_once()
         passport_service.return_value.verify.assert_called_once_with("passport")
-        webapp_access.is_user_allowed.assert_called_once_with(user_id=expected_user_id, app_id="app-1")
+        webapp_access.is_user_allowed.assert_called_once_with(user_id=user_id, app_id="app-1")
+
+    @pytest.mark.parametrize(
+        "decoded",
+        [
+            pytest.param({}, id="missing-auth-type"),
+            pytest.param({"auth_type": "internal"}, id="missing-user-id"),
+            pytest.param({"user_id": "sso_external_user", "auth_type": "external"}, id="external-auth-type"),
+        ],
+    )
+    @patch("controllers.web.app.application_services")
+    def test_private_app_requires_internal_identity(
+        self, application_services: MagicMock, decoded: dict[str, str], app: Flask
+    ) -> None:
+        webapp_access = MagicMock()
+        webapp_access.requires_permission_check.return_value = True
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+
+        with (
+            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+            patch("controllers.web.app.extract_webapp_passport", return_value="passport"),
+            patch("controllers.web.app.PassportService") as passport_service,
+        ):
+            passport_service.return_value.verify.return_value = decoded
+            with pytest.raises(WebAppAuthRequiredError):
+                AppWebAuthPermission().get()
+
+        webapp_access.is_user_allowed.assert_not_called()
 
     @pytest.mark.parametrize("failing_method", ["requires_permission_check", "is_user_allowed"])
     @patch("controllers.web.app.application_services")
@@ -264,7 +290,7 @@ class TestAppWebAuthPermission:
         application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
 
         passport_service = MagicMock()
-        passport_service.return_value.verify.return_value = {"user_id": "user-1"}
+        passport_service.return_value.verify.return_value = {"user_id": "user-1", "auth_type": "internal"}
         with (
             app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
             patch("controllers.web.app.extract_webapp_passport", return_value="passport"),

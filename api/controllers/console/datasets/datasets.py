@@ -13,15 +13,15 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from configs import dify_config
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList
+from controllers.console.apikey import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
@@ -51,6 +51,7 @@ from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, U
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
+from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache
 from services.app_service import AppService
 from services.dataset_ref_service import DatasetRefService
@@ -162,6 +163,12 @@ class IndexingEstimatePayload(BaseModel):
         if result is None:
             return "text_model"
         return result
+
+
+class DatasetApiKeyCreatePayload(BaseModel):
+    # Knowledge bases to scope the key to. Absent/empty => the key can access every
+    # dataset in the tenant (default). Declared so the generated client can send it.
+    dataset_ids: list[str] = Field(default_factory=list)
 
 
 class ConsoleDatasetListQuery(BaseModel):
@@ -335,7 +342,12 @@ class AutoDisableLogsResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+    console_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    IndexingEstimatePayload,
+    ConsoleDatasetListQuery,
+    DatasetApiKeyCreatePayload,
 )
 register_response_schema_models(
     console_ns,
@@ -577,9 +589,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
@@ -650,7 +660,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -719,7 +729,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     @model_validate(DatasetUpdatePayload)
     def patch(
@@ -786,7 +796,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def delete(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -819,7 +829,7 @@ class DatasetUseCheckApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -841,7 +851,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -997,7 +1007,7 @@ class DatasetRelatedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1036,7 +1046,7 @@ class DatasetIndexingStatusApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1100,7 +1110,7 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
@@ -1108,18 +1118,34 @@ class DatasetApiKeyApi(Resource):
         keys = session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return dump_response(ApiKeyList, {"data": keys})
+        token_ids = [str(key.id) for key in keys]
+        bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, token_ids)
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys, bindings_by_token))
 
+    @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str):
+        # Optional list of knowledge bases to scope the key to. Absent/empty => the key
+        # can access every dataset in the tenant (default). Duplicates are de-duplicated.
+        payload = request.get_json(silent=True) or {}
+        raw_dataset_ids = payload.get("dataset_ids") or []
+        if not isinstance(raw_dataset_ids, list) or any(not isinstance(item, str) for item in raw_dataset_ids):
+            console_ns.abort(400, message="dataset_ids must be a list of strings.")
+        dataset_ids = list(dict.fromkeys(raw_dataset_ids))
+
+        if dataset_ids:
+            unknown = dataset_api_key_service.find_unknown_dataset_ids(session, dataset_ids, current_tenant_id)
+            if unknown:
+                console_ns.abort(400, message=f"Unknown knowledge base id(s): {', '.join(unknown)}")
+
         current_key_count = (
             session.scalar(
                 select(func.count(ApiToken.id)).where(
@@ -1143,7 +1169,13 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         session.add(api_token)
         session.flush()
-        return dump_response(ApiKeyItem, api_token), 200
+        dataset_api_key_service.bind_datasets(session, api_token.id, dataset_ids)
+        session.flush()
+
+        # Reveal-once: the create response carries the full secret and its bound scope.
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.dataset_ids = dataset_ids
+        return dump_response(ApiKeyItem, item), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
@@ -1157,7 +1189,7 @@ class DatasetApiDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @with_session
@@ -1194,7 +1226,7 @@ class DatasetEnableApiApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, status: str):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1269,7 +1301,7 @@ class DatasetErrorDocs(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
@@ -1296,7 +1328,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -1329,7 +1361,7 @@ class DatasetAutoDisableLogApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)

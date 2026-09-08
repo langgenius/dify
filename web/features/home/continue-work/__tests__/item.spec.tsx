@@ -168,10 +168,10 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should fall back to access point when RBAC is disabled for an access-config app with access point permission', () => {
+  it('should fall back to access point when RBAC is disabled and Access Point is viewable', () => {
     renderItem(
       createApp({
-        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPoint],
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
       }),
       {
         rbac_enabled: false,
