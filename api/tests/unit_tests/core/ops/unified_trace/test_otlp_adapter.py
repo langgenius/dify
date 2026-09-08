@@ -213,7 +213,7 @@ def test_status_recording_exporter_remembers_last_http_status() -> None:
     exporter = StatusRecordingOTLPSpanExporter(endpoint=ENDPOINT, timeout=1)
     exporter._session = MagicMock()
     exporter._session.post.return_value = SimpleNamespace(ok=False, status_code=404, reason="Not Found")
-    span = cast(trace_sdk.ReadableSpan, trace_sdk.TracerProvider().get_tracer("test").start_span("probe"))
+    span = cast(trace_sdk.Span, trace_sdk.TracerProvider().get_tracer("test").start_span("probe"))
     span.end()
 
     assert exporter.export((span,)) is SpanExportResult.FAILURE
