@@ -31,18 +31,19 @@ const ICON_MAP = {
 }
 
 type CloudPlanItemProps = {
-  currentPlan: CloudPlan
   plan: CloudPlan
   billingInterval: GetBillingSubscriptionData['query']['interval']
-  isEducationDiscountEligible: boolean
+  billing:
+    | {
+        currentPlan: CloudPlan
+        isEducationDiscountEligible: boolean
+      }
+    | undefined
 }
 
-export function CloudPlanItem({
-  plan,
-  currentPlan,
-  billingInterval,
-  isEducationDiscountEligible,
-}: CloudPlanItemProps) {
+export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemProps) {
+  const currentPlan = billing?.currentPlan
+  const isEducationDiscountEligible = billing?.isEducationDiscountEligible ?? false
   const { t } = useTranslation()
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
@@ -53,7 +54,8 @@ export function CloudPlanItem({
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
-  const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
+  const isPlanDisabled =
+    !billing || (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
     canManageBilling &&
@@ -83,7 +85,7 @@ export function CloudPlanItem({
   const runPlanAction = async () => {
     if (isPlanActionPending || isEducationDiscountLoading) return
 
-    if (isPlanDisabled) return
+    if (!billing || isPlanDisabled) return
 
     setIsPlanActionPending(true)
     try {

@@ -33,7 +33,7 @@ function setup() {
   }
 }
 
-it('withholds cloud plans until features arrive and allows browsing self-hosted plans', async () => {
+it('shows prices and disables purchase buttons while features load', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   let resolveFeatures!: (data: GetFeaturesResponse) => void
@@ -50,8 +50,14 @@ it('withholds cloud plans until features arrive and allows browsing self-hosted 
   expect(
     screen.getByRole('link', { name: 'billing.plansCommon.comparePlanAndFeatures' }),
   ).toBeVisible()
-  expect(screen.queryByText('billing.plans.professional.name')).not.toBeInTheDocument()
-  expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('heading', { name: 'billing.plans.professional.name' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
+  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByText('$59')).toBeVisible()
+  expect(screen.getByText('$159')).toBeVisible()
+  await user.click(screen.getByRole('switch'))
+  expect(screen.getByText('$590')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
   await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
   expect(await screen.findByText('billing.plans.community.name')).toBeInTheDocument()
   await act(async () => {
@@ -63,9 +69,10 @@ it('withholds cloud plans until features arrive and allows browsing self-hosted 
   await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' }))
   expect(await screen.findByText('billing.plans.team.name')).toBeInTheDocument()
   expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
-it('waits for education eligibility before enabling billing choices and retains a user selection', async () => {
+it('preserves a billing interval selected before education eligibility arrives', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient, { education: { enabled: true } })
@@ -83,15 +90,19 @@ it('waits for education eligibility before enabling billing choices and retains 
       }),
   })
   show()
-  expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
-  expect(screen.queryByText('billing.plans.professional.name')).not.toBeInTheDocument()
+  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('heading', { name: 'billing.plans.professional.name' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
+  await user.click(screen.getByRole('switch'))
+  await user.click(screen.getByRole('switch'))
   await act(async () => {
     resolveEducation({ is_student: true, allow_refresh: false, expire_at: null })
     await request
   })
-  await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
-  await user.click(screen.getByRole('switch'))
+  await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
   expect(screen.getByRole('switch')).not.toBeChecked()
+  expect(screen.getByText('$59')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeEnabled()
   act(() =>
     queryClient.setQueryData(options.queryKey, {
       is_student: true,
@@ -102,7 +113,22 @@ it('waits for education eligibility before enabling billing choices and retains 
   expect(screen.getByRole('switch')).not.toBeChecked()
 })
 
-it('offers retry after a failed features request without rendering a fallback plan', async () => {
+it('shows yearly pricing immediately for a cached eligible education account', () => {
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient, { education: { enabled: true } })
+  queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, {
+    is_student: true,
+    allow_refresh: false,
+    expire_at: null,
+  })
+  show()
+  expect(screen.getByRole('switch')).toBeChecked()
+  expect(screen.getByText('$590')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'education.useEducationDiscount' })).toBeEnabled()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
+it('keeps plan information visible after a request failure and restores billing on retry', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   queryClient.setDefaultOptions({
@@ -118,11 +144,17 @@ it('offers retry after a failed features request without rendering a fallback pl
     )
   show()
   expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
-  expect(screen.queryByText('billing.plans.sandbox.name')).not.toBeInTheDocument()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'billing.plans.sandbox.name' })).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'billing.plansCommon.currentPlan' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByText('$59')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-  await waitFor(() =>
-    expect(screen.getByText('billing.plans.professional.name')).toBeInTheDocument(),
-  )
+  expect(
+    await screen.findByRole('button', { name: 'billing.plansCommon.startBuilding' }),
+  ).toBeEnabled()
 })
 
 afterEach(() => vi.restoreAllMocks())
