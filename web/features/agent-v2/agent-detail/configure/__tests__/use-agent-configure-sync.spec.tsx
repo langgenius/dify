@@ -16,7 +16,7 @@ import {
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
@@ -186,7 +186,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: () => ({ data: toolProviderState.workflowTools }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       get: {

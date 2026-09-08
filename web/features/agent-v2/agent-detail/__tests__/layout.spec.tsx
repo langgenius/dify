@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailLayout } from '../layout'

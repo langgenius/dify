@@ -17,7 +17,7 @@ import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getCategoryMarketplaceId } from './category-marketplace'
 
 const MARKETPLACE_PAGE_SIZE = 30

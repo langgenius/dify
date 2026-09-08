@@ -10,7 +10,7 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useParams } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 

@@ -10,7 +10,7 @@ import { useLocale } from '@/context/i18n'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
   const { t } = useTranslation()

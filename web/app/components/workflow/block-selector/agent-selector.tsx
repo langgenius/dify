@@ -23,7 +23,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8

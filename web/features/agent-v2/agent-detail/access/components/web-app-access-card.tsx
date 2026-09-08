@@ -21,7 +21,7 @@ import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { useWebAppAccessControl } from './use-web-app-access-control'
 

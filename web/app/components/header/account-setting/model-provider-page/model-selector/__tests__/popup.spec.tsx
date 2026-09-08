@@ -1,6 +1,9 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelProviderSummaryResponse,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { Model, ModelItem } from '../../declarations'
 import type { PopupProps } from '../popup'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -57,7 +60,7 @@ vi.mock('../../hooks', async () => {
 })
 
 vi.mock('../popup-item', () => ({
-  default: ({ model }: { model: Model }) => (
+  default: ({ model }: { model: ProviderWithModelsResponse }) => (
     <div>
       <span>{model.provider}</span>
       {model.models.map((modelItem) => (
@@ -199,7 +202,9 @@ vi.mock('../../utils', async () => {
   }
 })
 
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const makeModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -210,7 +215,10 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
+const makeModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -523,7 +531,10 @@ describe('Popup', () => {
             models: [
               makeModelItem({
                 model: 'openrouter-model',
-                label: { en_US: 'OpenRouter Model', zh_Hans: 'OpenRouter Model' },
+                label: {
+                  en_US: 'OpenRouter Model',
+                  zh_Hans: 'OpenRouter Model',
+                },
               }),
             ],
           }),
@@ -533,7 +544,10 @@ describe('Popup', () => {
             models: [
               makeModelItem({
                 model: 'compatible-model',
-                label: { en_US: 'Compatible Model', zh_Hans: 'Compatible Model' },
+                label: {
+                  en_US: 'Compatible Model',
+                  zh_Hans: 'Compatible Model',
+                },
               }),
             ],
           }),

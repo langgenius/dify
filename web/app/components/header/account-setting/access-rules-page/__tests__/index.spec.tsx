@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'

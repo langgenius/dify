@@ -23,7 +23,7 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_redis import redis_client
@@ -1455,8 +1455,11 @@ class DatasetService:
 
     @staticmethod
     def get_dataset_auto_disable_logs(dataset_ref: DatasetRef, session: Session) -> AutoDisableLogsDict:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return {"document_ids": [], "count": 0}
+
         features = FeatureService.get_features(dataset_ref.tenant_id, exclude_vector_space=True)
-        if not features.billing.enabled or features.billing.subscription.plan == CloudPlan.SANDBOX:
+        if features.billing.subscription.plan == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
                 "count": 0,
@@ -2208,9 +2211,8 @@ class DocumentService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
-        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
-
-        if features.billing.enabled:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
             if not knowledge_config.original_document_id:
                 count = 0
                 if knowledge_config.data_source:
@@ -2339,6 +2341,23 @@ class DocumentService:
                         if not knowledge_config.data_source.info_list.file_info_list:
                             raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
+                        # Issue #41735: under MySQL's default
+                        # ``REPEATABLE READ`` isolation, the SELECT snapshot
+                        # for this transaction is pinned by the first
+                        # read done earlier in ``save_document_with_dataset_id``
+                        # (e.g. ``check_doc_form``). The caller has just
+                        # committed the upload in a different session
+                        # (``FileService.upload_text`` /
+                        # ``FileService.upload_file``), so the rows exist
+                        # but are invisible to *this* session until its
+                        # snapshot is refreshed. End the current transaction
+                        # so the next SELECT starts with a fresh snapshot.
+                        # The pending changes on ``dataset`` are also
+                        # flushed, which is what we want — they must be
+                        # persisted by this point anyway. PostgreSQL's
+                        # default ``READ COMMITTED`` rebuilds the read view
+                        # per statement so it isn't affected.
+                        session.commit()
                         files = list(
                             session.scalars(
                                 select(UploadFile).where(
@@ -2520,7 +2539,7 @@ class DocumentService:
     #     # check document limit
     #     features = FeatureService.get_features(current_user.current_tenant_id)
 
-    #     if features.billing.enabled:
+    #     if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
     #         if not knowledge_config.original_document_id:
     #             count = 0
     #             if knowledge_config.data_source:
@@ -2797,7 +2816,7 @@ class DocumentService:
     @staticmethod
     def check_document_creation_limits(count: int, features: FeatureModel):
         """Validate billing-backed document creation limits before document rows are created."""
-        if not features.billing.enabled:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
 
         if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
@@ -3014,9 +3033,8 @@ class DocumentService:
         assert current_user.current_tenant_id is not None
         assert knowledge_config.data_source
 
-        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
-
-        if features.billing.enabled:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
             count = 0
             if knowledge_config.data_source.info_list.data_source_type == "upload_file":
                 upload_file_list = (

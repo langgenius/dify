@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createTestQueryClient } from '@/test/query-client'
 import PermissionSetModal from '../index'
 

@@ -1,20 +1,16 @@
 'use client'
-
-/* oxlint-disable eslint-react/set-state-in-effect -- The builder resets its local transcript when the authoritative detail snapshot changes. */
-
 import type {
+  ProviderWithModelsResponse,
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+/* oxlint-disable eslint-react/set-state-in-effect -- The builder resets its local transcript when the authoritative detail snapshot changes. */
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
-import type {
-  FormValue,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
@@ -22,12 +18,10 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
 import {
@@ -78,7 +72,7 @@ function BuilderModelSelector({
   onSelect,
 }: {
   isLoading: boolean
-  modelList: Model[]
+  modelList: ProviderWithModelsResponse[]
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
@@ -345,8 +339,13 @@ export function SkillBuilderPanel({
   const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
   const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const { data: textGenerationModelList, isLoading: isTextGenerationModelListLoading } =
-    useModelList(ModelTypeEnum.textGeneration)
+  const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
+    useQuery(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        input: { params: { model_type: ModelTypeEnum.textGeneration } },
+        select: (response) => response.data,
+      }),
+    )
   const fallbackModel = useMemo<SkillBuilderModel | undefined>(() => {
     for (const provider of textGenerationModelList) {
       if (provider.status !== ModelStatusEnum.active) continue

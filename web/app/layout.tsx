@@ -23,6 +23,7 @@ import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import { TanStackQueryProvider } from './query-provider'
+import '@/service/console/server'
 import './styles/globals.css'
 import './styles/markdown.css'
 

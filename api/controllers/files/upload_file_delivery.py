@@ -7,14 +7,16 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
-import services
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.files import files_ns
-from extensions.ext_database import db
-from services.account_service import TenantService
-from services.file_service import FileService
+from extensions.ext_application_services import application_services
+from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
+from services.upload_file_delivery_service import (
+    UploadFileDelivery,
+    UploadFileDeliveryNotFoundError,
+)
 
 
 class FileSignatureQuery(BaseModel):
@@ -28,6 +30,21 @@ class FilePreviewQuery(FileSignatureQuery):
 
 
 register_schema_models(files_ns, FileSignatureQuery, FilePreviewQuery)
+
+_RANGE_MEDIA_TYPES = frozenset(
+    {
+        "audio/aac",
+        "audio/flac",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/wav",
+        "audio/x-m4a",
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+    }
+)
 
 
 def _is_svg_content(mime_type: str | None, filename: str | None, extension: str | None) -> bool:
@@ -51,37 +68,32 @@ class ImagePreviewApi(Resource):
     @files_ns.doc(
         params={
             "file_id": "ID of the file to preview",
-            "timestamp": "Unix timestamp used in the signature",
-            "nonce": "Random string used in the signature",
-            "sign": "HMAC signature verifying the request",
+            **query_params_from_model(FileSignatureQuery),
         }
     )
     @files_ns.doc(
         responses={
             200: "Image preview returned successfully",
-            400: "Missing or invalid signature parameters",
+            400: "Missing or invalid query parameters",
+            404: "File not found or signature is invalid",
             415: "Unsupported file type",
         }
     )
-    def get(self, file_id: UUID):
-        file_id_str = str(file_id)
-
+    def get(self, file_id: UUID) -> Response:
         args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))
-        timestamp = args.timestamp
-        nonce = args.nonce
-        sign = args.sign
-
         try:
-            generator, mimetype = FileService(db.engine).get_image_preview(
-                file_id=file_id_str,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
+            delivery = application_services().upload_file_delivery.get_signed_image_preview(
+                file_id=str(file_id),
+                timestamp=args.timestamp,
+                nonce=args.nonce,
+                sign=args.sign,
             )
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+        except UploadFileDeliveryNotFoundError as error:
+            raise NotFound(str(error) or None) from error
+        except UnsupportedFileTypeServiceError as error:
+            raise UnsupportedFileTypeError() from error
 
-        return Response(generator, mimetype=mimetype)
+        return Response(delivery.content, mimetype=delivery.file.mime_type)
 
 
 @files_ns.route("/<uuid:file_id>/file-preview")
@@ -91,60 +103,42 @@ class FilePreviewApi(Resource):
     @files_ns.doc(
         params={
             "file_id": "ID of the file to preview",
-            "timestamp": "Unix timestamp used in the signature",
-            "nonce": "Random string used in the signature",
-            "sign": "HMAC signature verifying the request",
-            "as_attachment": "Whether to download the file as an attachment",
+            **query_params_from_model(FilePreviewQuery),
         }
     )
     @files_ns.doc(
         responses={
             200: "File stream returned successfully",
-            400: "Missing or invalid signature parameters",
-            404: "File not found",
-            415: "Unsupported file type",
+            400: "Missing or invalid query parameters",
+            404: "File not found or signature is invalid",
         }
     )
-    def get(self, file_id: UUID):
-        file_id_str = str(file_id)
-
+    def get(self, file_id: UUID) -> Response:
         args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
-            generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
-                file_id=file_id_str,
+            delivery = application_services().upload_file_delivery.get_signed_file_preview(
+                file_id=str(file_id),
                 timestamp=args.timestamp,
                 nonce=args.nonce,
                 sign=args.sign,
             )
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+        except UploadFileDeliveryNotFoundError as error:
+            raise NotFound(str(error) or None) from error
 
-        response = Response(
-            generator,
-            mimetype=upload_file.mime_type,
-            direct_passthrough=True,
-            headers={},
-        )
-        # add Accept-Ranges header for audio/video files
-        if upload_file.mime_type in [
-            "audio/mpeg",
-            "audio/wav",
-            "audio/mp4",
-            "audio/ogg",
-            "audio/flac",
-            "audio/aac",
-            "video/mp4",
-            "video/webm",
-            "video/quicktime",
-            "audio/x-m4a",
-        ]:
+        return self._build_response(delivery=delivery, as_attachment=args.as_attachment)
+
+    @staticmethod
+    def _build_response(*, delivery: UploadFileDelivery, as_attachment: bool) -> Response:
+        file = delivery.file
+        response = Response(delivery.content, mimetype=file.mime_type, direct_passthrough=True, headers={})
+        if file.mime_type in _RANGE_MEDIA_TYPES:
             response.headers["Accept-Ranges"] = "bytes"
-        if upload_file.size > 0:
-            response.headers["Content-Length"] = str(upload_file.size)
-        is_svg = _is_svg_content(upload_file.mime_type, upload_file.name, upload_file.extension)
-        if args.as_attachment or is_svg:
-            encoded_filename = quote(upload_file.name)
+        if file.size > 0:
+            response.headers["Content-Length"] = str(file.size)
+        is_svg = _is_svg_content(file.mime_type, file.name, file.extension)
+        if as_attachment or is_svg:
+            encoded_filename = quote(file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             response.headers["Content-Type"] = "application/octet-stream"
         if is_svg:
@@ -152,9 +146,9 @@ class FilePreviewApi(Resource):
 
         enforce_download_for_html(
             response,
-            mime_type=upload_file.mime_type,
-            filename=upload_file.name,
-            extension=upload_file.extension,
+            mime_type=file.mime_type,
+            filename=file.name,
+            extension=file.extension,
         )
 
         return response
@@ -176,20 +170,14 @@ class WorkspaceWebappLogoApi(Resource):
             415: "Unsupported file type",
         }
     )
-    def get(self, workspace_id: UUID):
-        workspace_id_str = str(workspace_id)
-
-        custom_config = TenantService.get_custom_config(workspace_id_str)
-        webapp_logo_file_id = custom_config.get("replace_webapp_logo") if custom_config is not None else None
-
-        if not webapp_logo_file_id:
-            raise NotFound("webapp logo is not found")
-
+    def get(self, workspace_id: UUID) -> Response:
         try:
-            generator, mimetype = FileService(db.engine).get_public_image_preview(
-                webapp_logo_file_id,
+            delivery = application_services().upload_file_delivery.get_workspace_webapp_logo(
+                workspace_id=str(workspace_id),
             )
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+        except UploadFileDeliveryNotFoundError as error:
+            raise NotFound(str(error) or None) from error
+        except UnsupportedFileTypeServiceError as error:
+            raise UnsupportedFileTypeError() from error
 
-        return Response(generator, mimetype=mimetype)
+        return Response(delivery.content, mimetype=delivery.file.mime_type)

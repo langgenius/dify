@@ -4,17 +4,10 @@ import type { DebugWithSingleModelRefType } from '../index'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Collection } from '@/app/components/tools/types'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  ConfigurationMethodEnum,
-  ModelFeatureEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
@@ -93,43 +86,6 @@ function createMockCollections(collections: Partial<Collection>[] = []): Collect
   )
 }
 
-/**
- * Factory function for creating mock Provider Context
- */
-function createMockProviderContext(
-  overrides: Partial<ProviderContextState> = {},
-): ProviderContextState {
-  return {
-    textGenerationModelList: [
-      {
-        provider: 'openai',
-        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-        icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-        status: ModelStatusEnum.active,
-        models: [
-          {
-            model: 'gpt-3.5-turbo',
-            label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-            model_type: ModelTypeEnum.textGeneration,
-            features: [ModelFeatureEnum.vision],
-            fetch_from: ConfigurationMethodEnum.predefinedModel,
-            model_properties: {},
-            deprecated: false,
-          },
-        ],
-      },
-    ],
-    hasSettedApiKey: true,
-    modelProviders: [],
-    speech2textDefaultModel: null,
-    ttsDefaultModel: null,
-    agentThoughtDefaultModel: null,
-    updateModelList: vi.fn(),
-    refreshModelProviders: vi.fn(),
-    ...overrides,
-  } as ProviderContextState
-}
-
 // ============================================================================
 // Mock External Dependencies ONLY (Following testing.md guidelines)
 // ============================================================================
@@ -186,7 +142,6 @@ const mockDebugConfigContext = {
   readonly: false,
   canTestAndRun: true,
   appId: 'test-app-id',
-  isAPIKeySet: true,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -300,18 +255,6 @@ mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: mockUseDebugConfigurationContext,
-}))
-
-const mockProviderContext = createMockProviderContext()
-
-const { mockUseProviderContext } = vi.hoisted(() => ({
-  mockUseProviderContext: vi.fn(),
-}))
-
-mockUseProviderContext.mockReturnValue(mockProviderContext)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
 }))
 
 const mockConsoleState = {
@@ -624,7 +567,6 @@ describe('DebugWithSingleModel', () => {
 
     // Reset mock implementations using module-level mocks
     mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
-    mockUseProviderContext.mockReturnValue(mockProviderContext)
     mockConsoleStateReader.mockReturnValue(mockConsoleState)
     mockUseConfigFromDebugContext.mockReturnValue(mockConfigFromDebugContext)
     mockUseFormattingChangedSubscription.mockReturnValue(undefined)
@@ -807,52 +749,12 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should handle model without vision support', () => {
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-3.5-turbo',
-                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [], // No vision support
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
-      )
-
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing model in provider list', () => {
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'different-provider',
-              label: { en_US: 'Different Provider', zh_Hans: '不同提供商' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [],
-            },
-          ],
-        }),
-      )
-
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
@@ -1026,32 +928,6 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-3.5-turbo',
-                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [ModelFeatureEnum.document],
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
-      )
-
       mockFeaturesState = {
         ...defaultFeatures,
         file: { enabled: true },
@@ -1083,32 +959,6 @@ describe('DebugWithSingleModel', () => {
           model_id: 'gpt-4-vision',
         }),
       })
-
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-4-vision',
-                  label: { en_US: 'GPT-4 Vision', zh_Hans: 'GPT-4 Vision' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [ModelFeatureEnum.vision],
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
-      )
 
       mockFeaturesState = {
         ...defaultFeatures,

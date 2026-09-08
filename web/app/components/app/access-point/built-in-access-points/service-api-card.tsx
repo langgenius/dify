@@ -7,7 +7,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
 

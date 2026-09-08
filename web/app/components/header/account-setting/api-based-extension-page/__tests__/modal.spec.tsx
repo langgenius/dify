@@ -27,7 +27,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       post: {

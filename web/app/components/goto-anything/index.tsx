@@ -40,10 +40,10 @@ import { useTranslation } from 'react-i18next'
 import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
@@ -231,9 +231,13 @@ function GotoAnythingDialog() {
   const router = useRouter()
   const defaultLocale = useGetLanguage()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const agentsAvailable = isAgentV2Enabled()
-  const skillsAvailable = enableSkill && !isCurrentWorkspaceDatasetOperator
+  const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)

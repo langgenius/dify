@@ -15,7 +15,6 @@ type IndexingProgressItemProps = {
   name?: string
   sourceType?: DataSourceType
   notionIcon?: string
-  enableBilling?: boolean
 }
 
 // Status icon component for completed/error states
@@ -71,7 +70,6 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
   name,
   sourceType,
   notionIcon,
-  enableBilling,
 }) => {
   const isEmbedding = isSourceEmbedding(detail)
   const percent = getSourcePercent(detail)
@@ -94,7 +92,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
         <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
           <div className="truncate system-xs-medium text-text-secondary">{name}</div>
-          {enableBilling && <PriorityLabel className="ml-0" />}
+          <PriorityLabel className="ml-0" />
         </div>
         {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}
         <StatusIcon status={detail.indexing_status} error={detail.error} />

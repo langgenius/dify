@@ -7,7 +7,7 @@ import {
   workspacePermissionKeysAtom,
 } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { AgentPermission, getAgentACLCapabilities } from './acl'
 

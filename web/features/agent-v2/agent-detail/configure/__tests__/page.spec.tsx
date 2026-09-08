@@ -6,7 +6,7 @@ import { ScopeProvider } from 'jotai-scope'
 import { useState } from 'react'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentScope } from '@/features/agent-v2/analytics'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { AgentConfigureComposerScope } from '../components/composer-session'
 import { useAgentConfigureData } from '../hooks'
@@ -204,7 +204,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: trackEventMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

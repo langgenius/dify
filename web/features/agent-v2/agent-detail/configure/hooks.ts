@@ -11,7 +11,7 @@ import {
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function useAgentConfigureData(agentId: string, requestedVersionId: string | null) {
   const agentQuery = useQuery(

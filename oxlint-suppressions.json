@@ -2294,7 +2294,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
@@ -4788,7 +4788,7 @@
   },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "eslint-react/set-state-in-effect": {
-      "count": 3
+      "count": 1
     },
     "no-restricted-globals": {
       "count": 2
@@ -5117,7 +5117,7 @@
   },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 12
+      "count": 10
     }
   },
   "web/service/use-datasource.ts": {
