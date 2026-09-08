@@ -128,3 +128,27 @@ after
         docs = extractor.extract()
 
         assert [doc.page_content for doc in docs] == ["plain", "\n\nHeader\nvalue"]
+
+
+    def test_markdown_code_block_angle_brackets_preserved(self):
+        extractor = MarkdownExtractor(file_path="dummy.md")
+        sample_text = """# Header
+Here is some <b>bold</b> text.
+
+```cpp
+#include <iostream>
+#include <vector>
+
+int main() {
+    std::vector<int> nums;
+    return 0;
+}
+```
+"""
+        tups = extractor.markdown_to_tups(sample_text)
+        assert len(tups) == 1
+        header, content = tups[0]
+        assert header == "Header"
+        assert "Here is some bold text." in content
+        assert "#include <iostream>" in content
+        assert "std::vector<int> nums;" in content

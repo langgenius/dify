@@ -84,7 +84,8 @@ class ExtractProcessor:
             if not suffix and suffix != ".":
                 # get content-type
                 if response.headers.get("Content-Type"):
-                    suffix = "." + response.headers.get("Content-Type").split("/")[-1]
+                    raw_ct = response.headers.get("Content-Type", "").split(";")[0].strip()
+                    suffix = "." + raw_ct.split("/")[-1]
                 else:
                     content_disposition = response.headers.get("Content-Disposition")
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)

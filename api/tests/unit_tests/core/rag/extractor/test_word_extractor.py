@@ -820,3 +820,18 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+def test_word_table_pipe_escaping():
+    extractor = object.__new__(WordExtractor)
+    extractor._parse_cell = lambda cell, image_map: "a | b"
+    
+    mock_row = MagicMock()
+    mock_cell_1 = MagicMock()
+    mock_cell_1.grid_span = 1
+    mock_cell_2 = MagicMock()
+    mock_cell_2.grid_span = 1
+    mock_row.cells = [mock_cell_1, mock_cell_2]
+
+    row_cells = extractor._parse_row(mock_row, {}, 2)
+    assert row_cells == ["a \\| b", "a \\| b"]

@@ -222,7 +222,7 @@ class WordExtractor(BaseExtractor):
                 break
             # get the correct cell
             cell = row.cells[col_index]
-            cell_content = self._parse_cell(cell, image_map).strip()
+            cell_content = self._parse_cell(cell, image_map).strip().replace('|', '\\|')
             cell_colspan = cell.grid_span or 1
             for i in range(cell_colspan):
                 if col_index + i < total_cols:

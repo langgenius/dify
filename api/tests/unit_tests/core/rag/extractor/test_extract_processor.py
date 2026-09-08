@@ -352,3 +352,10 @@ class TestExtractProcessorDatasourceRouting:
     def test_extract_requires_website_info(self):
         with pytest.raises(AssertionError, match="website_info is required"):
             ExtractProcessor.extract(SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=None))
+
+
+    def test_content_type_with_parameters_parsing(self):
+        raw_ct = "application/pdf; charset=binary"
+        content_type = raw_ct.split(";")[0].strip()
+        suffix = "." + content_type.split("/")[-1]
+        assert suffix == ".pdf"

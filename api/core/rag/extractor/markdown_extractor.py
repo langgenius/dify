@@ -76,8 +76,22 @@ class MarkdownExtractor(BaseExtractor):
                 current_text += line + "\n"
         markdown_tups.append((current_header, current_text))
 
+        def _clean_markdown_text(text: str) -> str:
+            lines = text.split("\n")
+            cleaned_lines = []
+            in_code = False
+            for line in lines:
+                if line.strip().startswith("```"):
+                    in_code = not in_code
+                    cleaned_lines.append(line)
+                elif in_code:
+                    cleaned_lines.append(line)
+                else:
+                    cleaned_lines.append(re.sub(r"<.*?>", "", line))
+            return "\n".join(cleaned_lines)
+
         markdown_tups = [
-            (re.sub(r"#", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
+            (re.sub(r"#", "", key).strip() if key else None, _clean_markdown_text(value))
             for key, value in markdown_tups
         ]
 

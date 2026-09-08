@@ -543,3 +543,42 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceFound)
 
         assert notion_extractor.NotionExtractor._get_access_token("tenant", "cred") == "token-from-credential"
+
+
+def test_notion_read_table_rows_mixed_formatting_and_empty_cells():
+    extractor = object.__new__(NotionExtractor)
+    extractor._notion_access_token = "test_token"
+
+    mock_response_data = {
+        "results": [
+            {
+                "table_row": {
+                    "cells": [
+                        [{"text": {"content": "Header 1"}}],
+                        [{"text": {"content": "Header "}}, {"text": {"content": "2 (Bold)"}}],
+                    ]
+                }
+            },
+            {
+                "table_row": {
+                    "cells": [
+                        [{"text": {"content": "Part A "}}, {"text": {"content": "Part B"}}],
+                        [],
+                    ]
+                }
+            }
+        ],
+        "next_cursor": None
+    }
+
+    mock_res = MagicMock()
+    mock_res.json.return_value = mock_response_data
+
+    with patch("httpx.request", return_value=mock_res):
+        table_md = extractor._read_table_rows("mock_block_id")
+
+    lines = [l.strip() for l in table_md.strip().split("\n")]
+    assert len(lines) == 3
+    assert lines[0] == "| Header 1 | Header 2 (Bold) |"
+    assert lines[1] == "| --- | --- |"
+    assert lines[2] == "| Part A Part B |  |"
