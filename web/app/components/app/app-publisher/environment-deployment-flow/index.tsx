@@ -2,10 +2,11 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/environment-deployment-flow'
+import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/shared/environment-deployment-flow'
+import Loading from '@/app/components/base/loading'
 import {
   publisherEnvironmentDeploymentPollingAtom,
   startPublisherEnvironmentDeploymentPollingAtom,
@@ -15,6 +16,7 @@ import { PublisherEnvironmentSummarySection } from './summary-section'
 
 type PublisherEnvironmentFlowProps = {
   appId?: string
+  canViewAccessPoint: boolean
   deployment?: EnvironmentDeployment
   environmentId: string
   environmentName: string
@@ -23,11 +25,13 @@ type PublisherEnvironmentFlowProps = {
   isDeploymentError: boolean
   isDeploymentLoading: boolean
   latestVersion?: DeploymentVersion | null
+  onConfigurationOpenChange?: (open: boolean) => void
   onGoToPublish: () => void
 }
 
 export function PublisherEnvironmentFlow({
   appId,
+  canViewAccessPoint,
   deployment,
   environmentId,
   environmentName,
@@ -36,6 +40,7 @@ export function PublisherEnvironmentFlow({
   isDeploymentError,
   isDeploymentLoading,
   latestVersion,
+  onConfigurationOpenChange,
   onGoToPublish,
 }: PublisherEnvironmentFlowProps) {
   const { t } = useTranslation()
@@ -46,19 +51,16 @@ export function PublisherEnvironmentFlow({
     return (
       <div aria-busy={isDeploymentLoading} className="flex min-h-40 flex-col gap-3 p-4">
         {environmentTabs}
-        <div
-          role={isDeploymentError ? 'alert' : 'status'}
-          className="flex flex-1 items-center justify-center gap-2 system-sm-regular text-text-tertiary"
-        >
-          {isDeploymentLoading ? (
-            <>
-              <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
-              {t(($) => $.loading, { ns: 'common' })}
-            </>
-          ) : (
-            t(($) => $['common.loadFailed'], { ns: 'deployments' })
-          )}
-        </div>
+        {isDeploymentLoading ? (
+          <Loading className="flex-1" />
+        ) : (
+          <div
+            role="alert"
+            className="flex flex-1 items-center justify-center system-sm-regular text-text-tertiary"
+          >
+            {t(($) => $['common.loadFailed'], { ns: 'deployments' })}
+          </div>
+        )}
       </div>
     )
   }
@@ -70,6 +72,7 @@ export function PublisherEnvironmentFlow({
       disabled={deploymentPolling?.environmentId === environmentId}
       environmentId={environmentId}
       environmentName={environmentName}
+      onConfigurationOpenChange={onConfigurationOpenChange}
       onDeploymentStarted={(operationId) => {
         startDeploymentPolling({ environmentId, operationId })
       }}
@@ -91,6 +94,7 @@ export function PublisherEnvironmentFlow({
           />
           <PublisherEnvironmentActionsSection
             appId={appId}
+            canViewAccessPoint={canViewAccessPoint}
             deployment={deployment}
             environmentId={environmentId}
           />

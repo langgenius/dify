@@ -54,6 +54,7 @@ from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -556,9 +557,9 @@ class TestChatApiController:
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)
@@ -582,13 +583,12 @@ class TestChatApiController:
         assert exc_info.value.error_code == "workflow_version_execution_not_allowed"
 
     @pytest.mark.parametrize(
-        ("deployment_edition", "billing_enabled", "plan", "workflow_id"),
+        ("deployment_edition", "plan", "workflow_id"),
         [
-            (DeploymentEdition.COMMUNITY, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (DeploymentEdition.ENTERPRISE, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (DeploymentEdition.CLOUD, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (DeploymentEdition.CLOUD, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
-            (DeploymentEdition.CLOUD, True, CloudPlan.SANDBOX, None),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, None),
         ],
     )
     def test_allows_default_or_entitled_workflow_version_execution(
@@ -597,14 +597,13 @@ class TestChatApiController:
         monkeypatch: pytest.MonkeyPatch,
         orm_session: Session,
         deployment_edition: DeploymentEdition,
-        billing_enabled: bool,
         plan: CloudPlan,
         workflow_id: str | None,
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=deployment_edition)
 
-        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
+        billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(AppGenerateService, "generate", generate)

@@ -86,7 +86,7 @@ const previewSourceCases = [
   },
 ] as const
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     agent: {
       byAgentId: {

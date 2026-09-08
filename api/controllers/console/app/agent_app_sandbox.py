@@ -10,10 +10,12 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
+from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from clients.agent_backend.errors import backend_error_detail, backend_reported_failure
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -25,7 +27,6 @@ from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     model_validate,
     rbac_permission_required,
@@ -135,15 +136,10 @@ register_response_schema_models(
 def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     if isinstance(exc, AgentSandboxInspectorError):
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    if isinstance(exc, DifyAgentHTTPError):
-        detail = exc.detail
-        if isinstance(detail, dict):
-            return {
-                "code": detail.get("code", "agent_backend_error"),
-                "message": detail.get("message", str(exc)),
-            }, exc.status_code
-        return {"code": "agent_backend_error", "message": str(detail)}, exc.status_code
-    if isinstance(exc, DifyAgentTimeoutError | DifyAgentClientError):
+    if isinstance(exc, DifyAgentHTTPError) and backend_reported_failure(exc):
+        code, message = backend_error_detail(exc)
+        return {"code": code, "message": message}, exc.status_code
+    if isinstance(exc, DifyAgentClientError):
         return {"code": "agent_backend_unreachable", "message": str(exc)}, 502
     raise exc
 
@@ -157,7 +153,7 @@ class AgentAppSandboxInfoResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -187,7 +183,7 @@ class AgentAppSandboxListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -218,7 +214,7 @@ class AgentAppSandboxReadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -249,7 +245,7 @@ class AgentAppSandboxDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_tenant_id
     @with_current_user
     @model_validate(AgentSandboxDownloadPayload)
@@ -293,7 +289,7 @@ class WorkflowAgentSandboxListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
@@ -331,7 +327,7 @@ class WorkflowAgentSandboxReadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
@@ -362,7 +358,7 @@ class WorkflowAgentSandboxDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_current_user
     @with_current_tenant_id
     @model_validate(WorkflowAgentSandboxDownloadPayload)

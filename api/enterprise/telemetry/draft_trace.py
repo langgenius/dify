@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import DraftNodeExecutionTraceEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
@@ -22,8 +22,7 @@ def enqueue_draft_node_execution_trace(
         workflow_execution_id=workflow_execution_id,
     )
     telemetry_emit(
-        TelemetryEvent(
-            name=TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
+        DraftNodeExecutionTraceEvent(
             context=TelemetryContext(
                 tenant_id=execution.tenant_id,
                 user_id=user_id,

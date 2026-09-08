@@ -9,6 +9,8 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunStartedEvent,
     RunStatusResponse,
@@ -51,6 +53,7 @@ def _request() -> CreateRunRequest:
 
 class _SuccessfulClient:
     stream_options: tuple[int | None, object, Callable[[], bool] | None] | None = None
+    cancel_after: str | None = None
 
     def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
         assert isinstance(request, CreateRunRequest)
@@ -59,6 +62,21 @@ class _SuccessfulClient:
     def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
+
+    def cancel_run_and_wait_sync(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        self.cancel_after = after
+        request = request or CancelRunRequest()
+        return RunCancelledEvent(
+            id="2-0",
+            run_id=run_id,
+            data=RunCancelledEventData(reason=request.reason, message=request.message),
+        )
 
     def stream_events_sync(
         self,
@@ -94,13 +112,20 @@ def test_dify_agent_backend_run_client_delegates_sync_methods() -> None:
 
     created = client.create_run(_request())
     cancelled = client.cancel_run(created.run_id)
+    cancelled_event = client.cancel_run_and_wait(
+        created.run_id,
+        CancelRunRequest(reason="stopped"),
+        after="1-0",
+    )
     events = list(client.stream_events(created.run_id, should_stop=should_stop))
     status = client.wait_run(created.run_id)
 
     assert created.run_id == "run-1"
     assert cancelled.status == "cancelled"
+    assert cancelled_event.data.reason == "stopped"
     assert events[0].type == "run_started"
     assert status.status == "succeeded"
+    assert wrapped.cancel_after == "1-0"
     assert wrapped.stream_options == (2, _STREAM_TIMEOUT_UNSET, should_stop)
 
 

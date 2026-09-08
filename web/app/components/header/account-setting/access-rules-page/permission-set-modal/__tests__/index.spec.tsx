@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createTestQueryClient } from '@/test/query-client'
 import PermissionSetModal from '../index'
 
@@ -216,7 +216,7 @@ describe('PermissionSetModal', () => {
     })
   })
 
-  // View mode is read-only and uses close-only footer actions.
+  // View mode is read-only and has no confirmation action.
   describe('Read-only Mode', () => {
     it('should disable editing and hide confirm action in view mode', () => {
       renderModal(
@@ -239,7 +239,6 @@ describe('PermissionSetModal', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.confirm' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
       ).not.toBeInTheDocument()

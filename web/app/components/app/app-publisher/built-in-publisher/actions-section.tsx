@@ -23,6 +23,7 @@ type PublisherActionsSectionProps = Pick<
     | null
     | undefined
   appURL: string
+  canViewAccessPoint: boolean
   disabledFunctionButton: boolean
   disabledFunctionTooltip?: string
   handleOpenRunConfig?: (url: string) => void
@@ -41,6 +42,7 @@ type PublisherActionsSectionProps = Pick<
 export function PublisherActionsSection({
   appDetail,
   appURL,
+  canViewAccessPoint,
   disabledFunctionButton,
   disabledFunctionTooltip,
   handleOpenRunConfig,
@@ -111,17 +113,19 @@ export function PublisherActionsSection({
               {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
             </SuggestedAction>
           </TooltipTrigger>
-          <TooltipContent role="tooltip">{disabledFunctionTooltip}</TooltipContent>
+          <TooltipContent>{disabledFunctionTooltip}</TooltipContent>
         </Tooltip>
       )}
-      <SuggestedAction
-        disabled={navigationDisabled}
-        description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-        link={appId ? `/app/${appId}/access-point` : undefined}
-        icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
-      >
-        {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
-      </SuggestedAction>
+      {canViewAccessPoint && (
+        <SuggestedAction
+          disabled={navigationDisabled}
+          description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
+          link={appId ? `/app/${appId}/access-point` : undefined}
+          icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
+        >
+          {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
+        </SuggestedAction>
+      )}
       {showDeploy && (
         <SuggestedAction
           disabled={navigationDisabled}

@@ -10,7 +10,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import Badge from '@/app/components/base/badge'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -233,12 +233,10 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                         href={fullContent?.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={buttonVariants({
-                          variant: 'ghost',
-                          size: 'small',
-                          className:
-                            'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                        })}
+                        className={cn(
+                          buttonVariants({ variant: 'ghost', size: 'small' }),
+                          'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                        )}
                       >
                         <span aria-hidden className="i-ri-file-download-fill size-4" />
                       </a>

@@ -23,12 +23,7 @@ const PublishAction = ({
   const { t } = useTranslation('snippet')
 
   return (
-    <Button
-      variant="primary"
-      loading={isPublishing}
-      disabled={isPublishing || !canSave}
-      onClick={onPublish}
-    >
+    <Button variant="primary" loading={isPublishing} disabled={!canSave} onClick={onPublish}>
       {t(($) => $.publishButton)}
     </Button>
   )

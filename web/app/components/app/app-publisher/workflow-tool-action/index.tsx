@@ -74,7 +74,10 @@ const WorkflowToolAction = ({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex min-h-7 items-center gap-2 pt-1 pr-1 pb-1">
-            <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+            <span
+              className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary"
+              title={workflowToolLabel}
+            >
               {workflowToolLabel}
             </span>
             <WorkflowToolStateLabel label={stateLabel} outdated={outdated} />

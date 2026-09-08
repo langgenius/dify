@@ -20,7 +20,7 @@ import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 import { AgentDetailSidebarActions } from './sidebar-actions'
 

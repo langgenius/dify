@@ -19,13 +19,20 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import (
+    CreditUsageCreatedBy,
+    EasyUIBasedAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    get_credit_usage_app_type,
+)
 from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -102,9 +109,19 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetRetrieval:
-    def __init__(self, application_generate_entity=None):
+    def __init__(self, application_generate_entity: EasyUIBasedAppGenerateEntity | None = None):
         self.application_generate_entity = application_generate_entity
         self._llm_usage = LLMUsage.empty_usage()
+        self._request_metadata: dict[str, object] | None = None
+        if application_generate_entity is not None:
+            app_config = application_generate_entity.app_config
+            self._request_metadata = {
+                "app_type": get_credit_usage_app_type(app_config.app_mode),
+                "app_id": app_config.app_id,
+            }
+
+    def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None:
+        self._request_metadata = dict(request_metadata) if request_metadata else None
 
     @property
     def llm_usage(self) -> LLMUsage:
@@ -119,6 +136,8 @@ class DatasetRetrieval:
             self._llm_usage = self._llm_usage.plus(usage)
 
     @trace_span()
+    @with_credit_usage_metadata
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def knowledge_retrieval(self, session: Session, request: KnowledgeRetrievalRequest) -> list[Source]:
         self._check_knowledge_rate_limit(request.tenant_id)
         available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
@@ -354,6 +373,8 @@ class DatasetRetrieval:
                 item.metadata.position = position  # type: ignore[index]
         return retrieval_resource_list
 
+    @with_credit_usage_metadata
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def retrieve(
         self,
         session: Session,
@@ -1447,6 +1468,7 @@ class DatasetRetrieval:
         )
         return filter_documents[:top_k] if top_k else filter_documents
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def get_metadata_filter_condition(
         self,
         session: Session,

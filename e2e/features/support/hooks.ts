@@ -170,15 +170,6 @@ After(
           })
         },
       })),
-      ...this.createdAgentDriveFiles.toReversed().map((file) => ({
-        label: `Delete Agent drive file ${file.key}`,
-        run: async () => {
-          await this.getConsoleClient().agent.byAgentId.files.delete({
-            params: { agent_id: file.agentId },
-            query: { key: file.key },
-          })
-        },
-      })),
       ...this.createdAppIds.toReversed().map((id) => ({
         label: `Delete app ${id}`,
         run: async () => {

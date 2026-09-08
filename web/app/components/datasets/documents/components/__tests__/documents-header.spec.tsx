@@ -36,7 +36,6 @@ describe('DocumentsHeader', () => {
     canManageMetadata: true,
     canAddDocument: true,
     canEditDocument: true,
-    isFreePlan: false,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
     inputValue: '',
@@ -83,7 +82,7 @@ describe('DocumentsHeader', () => {
 
     it('should render filter input', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
 
     it('should hide action controls by default when permissions are omitted', () => {
@@ -104,16 +103,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('AutoDisabledDocument', () => {
-    it('should show AutoDisabledDocument when not free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={false} />)
-      expect(screen.getByTestId('auto-disabled-document')).toBeInTheDocument()
-    })
-
-    it('should not show AutoDisabledDocument when on free plan', () => {
-      render(<DocumentsHeader {...defaultProps} isFreePlan={true} />)
-      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
-    })
-
     it('should not show AutoDisabledDocument without document edit permission', () => {
       render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
@@ -204,7 +193,7 @@ describe('DocumentsHeader', () => {
       const onInputChange = vi.fn()
       render(<DocumentsHeader {...defaultProps} onInputChange={onInputChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'search query' } })
 
       expect(onInputChange).toHaveBeenCalledWith('search query')

@@ -8,7 +8,7 @@ import {
   ENVIRONMENT_TAB_MAX_WIDTH,
   estimateFallbackTabWidth,
   estimateFallbackTextWidth,
-} from './layout'
+} from './layout-calculations'
 
 export function useEnvironmentTabMeasurements({
   builtInLabel,

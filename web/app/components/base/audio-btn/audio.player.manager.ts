@@ -1,4 +1,4 @@
-import AudioPlayer from '@/app/components/base/audio-btn/audio'
+import { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 
 declare global {
   // oxlint-disable-next-line typescript/consistent-type-definitions

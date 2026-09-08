@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolDateRangePicker from '../tool-date-range-picker'
 
@@ -46,6 +47,29 @@ describe('ToolDateRangePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start date: Clear' }))
 
     expect(onChange).toHaveBeenCalledWith(JSON.stringify({ end: '2024-05-03' }))
+  })
+
+  it('keeps both clear actions separate from their date triggers in keyboard order', async () => {
+    const user = userEvent.setup()
+    render(
+      <ToolDateRangePicker
+        value={JSON.stringify({ start: '2024-05-01', end: '2024-05-03' })}
+        onChange={vi.fn()}
+        timezone="UTC"
+      />,
+    )
+
+    for (const name of [
+      'Start date: May 1, 2024',
+      'Start date: Clear',
+      'End date: May 3, 2024',
+      'End date: Clear',
+    ]) {
+      const button = screen.getByRole('button', { name })
+      expect(within(button).queryByRole('button')).not.toBeInTheDocument()
+      await user.tab()
+      expect(button).toHaveFocus()
+    }
   })
 
   it('returns an empty value when clearing the last boundary', () => {

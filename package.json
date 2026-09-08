@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "vp check && pnpm lint:eslint",
-    "check:fix": "pnpm lint:eslint:fix && vp check --fix",
+    "check": "vp check && vp run lint:eslint",
+    "check:fix": "vp run lint:eslint:fix && vp check --fix",
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
     "knip": "knip --workspace web",
     "knip:production": "knip --workspace web --production --include files",
@@ -36,7 +36,6 @@
     "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
     "eslint-plugin-erasable-syntax-only": "catalog:",
-    "eslint-plugin-hyoban": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
@@ -57,12 +56,12 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^22.22.1",
+      "version": "24.20.0",
       "onFail": "download"
     }
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   },
-  "packageManager": "pnpm@11.21.0"
+  "packageManager": "pnpm@11.25.0"
 }

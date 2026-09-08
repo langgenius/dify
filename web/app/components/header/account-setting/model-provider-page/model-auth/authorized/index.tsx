@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
 import type {
   ConfigurationMethodEnum,
@@ -31,7 +31,7 @@ type PopoverOffsetOptions = {
   alignmentAxis?: number
 }
 
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
@@ -52,8 +52,6 @@ type AuthorizedProps = {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: number | PopoverOffsetOptions
-  placement?: Placement
-  triggerPopupSameWidth?: boolean
   popupClassName?: string
   showItemSelectedIcon?: boolean
   onItemClick?: (credential: Credential, model?: CustomModel) => void
@@ -78,7 +76,6 @@ const Authorized = ({
   onOpenChange,
   offset = 8,
   placement = 'bottom-end',
-  triggerPopupSameWidth = false,
   popupClassName,
   showItemSelectedIcon,
   onItemClick,
@@ -157,9 +154,6 @@ const Authorized = ({
     typeof offset === 'number'
       ? 0
       : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
-  const popupProps = triggerPopupSameWidth
-    ? { style: { width: 'var(--anchor-width, auto)' } }
-    : undefined
   const handleTriggerClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       if (!triggerOnlyOpenModal) return
@@ -178,10 +172,7 @@ const Authorized = ({
         <PopoverTrigger
           nativeButton={false}
           render={(props, state) => (
-            <div
-              {...props}
-              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
-            >
+            <div {...props} className={cn('inline-block', props.className)}>
               {renderTrigger(state.open)}
             </div>
           )}
@@ -191,8 +182,7 @@ const Authorized = ({
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupProps={popupProps}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div
             className={cn(

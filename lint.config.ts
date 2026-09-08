@@ -164,6 +164,10 @@ export const lintConfig = {
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     'eslint-plugin-command',
+    {
+      name: 'dify',
+      specifier: './web/plugins/eslint/index.js',
+    },
     'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
@@ -173,7 +177,6 @@ export const lintConfig = {
       name: 'eslint-react',
       specifier: '@eslint-react/eslint-plugin',
     },
-    'eslint-plugin-hyoban',
     {
       name: 'jsdoc-js',
       specifier: 'eslint-plugin-jsdoc',
@@ -768,6 +771,7 @@ export const lintConfig = {
         '@tanstack/query/infinite-query-property-order': 'error',
         '@tanstack/query/no-void-query-fn': 'error',
         '@tanstack/query/mutation-property-order': 'error',
+        '@tanstack/query/prefer-query-options': 'error',
         'react/exhaustive-deps': 'warn',
         'react/no-array-index-key': 'warn',
         'react/no-clone-element': 'warn',
@@ -813,7 +817,7 @@ export const lintConfig = {
     {
       files: ['web/**/*.tsx'],
       rules: {
-        'hyoban/prefer-tailwind-icons': [
+        'dify/prefer-tailwind-icons': [
           'warn',
           {
             prefix: 'i-',
@@ -1115,6 +1119,19 @@ export const lintConfig = {
       },
     },
     {
+      files: ['web/**/*.{jsx,tsx}'],
+      excludeFiles: [
+        'web/**/__tests__/**',
+        'web/**/*.spec.{jsx,tsx}',
+        'web/**/*.test.{jsx,tsx}',
+        'web/**/*.stories.{jsx,tsx}',
+        'web/**/*.story.{jsx,tsx}',
+      ],
+      rules: {
+        'dify/require-title-for-truncated-text': 'warn',
+      },
+    },
+    {
       files: [
         'web/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
         'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -1281,15 +1298,6 @@ export const lintConfig = {
             packageJsonLocation: difyUiPackageJson,
           },
         ],
-      },
-    },
-    {
-      files: [
-        'packages/dify-ui/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-        'packages/dify-ui/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-      ],
-      rules: {
-        'eslint-react/purity': 'off',
       },
     },
     {

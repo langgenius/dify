@@ -24,7 +24,7 @@ import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
@@ -280,7 +280,7 @@ export function AgentBlockItem({
       <PopoverContent
         placement="right-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <PopoverTitle className="sr-only">
           {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}

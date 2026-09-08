@@ -1,4 +1,4 @@
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { PublisherDeployingMarker } from '../publisher-deploying-marker'

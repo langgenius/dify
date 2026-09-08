@@ -50,21 +50,13 @@ export function UndeployConfirmDialog({
             <p className="system-md-regular text-text-secondary">
               {t(($) => $['studio.undeployConfirmDesc'])}
             </p>
-            <p className="system-md-medium text-text-warning">
-              {t(($) => $['deployTab.undeployConfirmWarning'])}
-            </p>
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton variant="secondary" className="min-w-20" disabled={isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            className="min-w-20"
-            disabled={isPending}
-            loading={isPending}
-            onClick={onConfirm}
-          >
+          <AlertDialogConfirmButton className="min-w-20" loading={isPending} onClick={onConfirm}>
             {t(($) => $['deployTab.confirmUndeploy'])}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

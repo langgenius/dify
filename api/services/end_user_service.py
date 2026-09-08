@@ -63,6 +63,11 @@ class EndUserService:
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.session_id == user_id,
+                    # An AppDeploy row is never a legacy row this could upgrade:
+                    # the type was added after the split, and FileGrantService
+                    # reads its rows by type. Retyping one here would hide it
+                    # from that read and strand the files it owns.
+                    EndUser.type != EndUserType.APP_DEPLOY,
                 )
                 .order_by(
                     # Prioritize records with matching type (0 = match, 1 = no match)

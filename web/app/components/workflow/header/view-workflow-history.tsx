@@ -173,10 +173,7 @@ const ViewWorkflowHistory = () => {
           }
         />
       </TipPopup>
-      <PopoverContent
-        placement="bottom-end"
-        popupClassName="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent placement="bottom-end" className="border-none bg-transparent shadow-none">
         <div className="flex max-w-90 min-w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
             <div className="system-mg-regular grow text-text-secondary">

@@ -36,7 +36,7 @@ concurrency:
 jobs:
   accessibility:
     name: WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} · ${{ inputs.page }}
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     defaults:
       run:
