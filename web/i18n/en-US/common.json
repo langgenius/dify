@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "Set the default model for text-to-speech input in conversation.",
   "modelProvider.upgradeForLoadBalancing": "Upgrade your plan to enable Load Balancing.",
   "modelProvider.used": "used",
+  "navigation.primary": "Main menu",
   "navigation.skipToMain": "Skip to main content",
   "noData": "No data",
   "operation.add": "Add",

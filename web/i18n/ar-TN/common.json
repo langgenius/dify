@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل النص إلى كلام في المحادثة.",
   "modelProvider.upgradeForLoadBalancing": "قم بترقية خطتك لتمكين موازنة التحميل.",
   "modelProvider.used": "مستخدم",
+  "navigation.primary": "القائمة الرئيسية",
   "navigation.skipToMain": "الانتقال إلى المحتوى الرئيسي",
   "noData": "لا توجد بيانات",
   "operation.add": "إضافة",

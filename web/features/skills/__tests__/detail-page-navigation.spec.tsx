@@ -51,12 +51,21 @@ describe('SkillDetailPage navigation', () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
+    expect(
+      await screen.findByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.collapseSidebar',
       }),
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -64,6 +73,9 @@ describe('SkillDetailPage navigation', () => {
       }),
     )
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).toBeInTheDocument()
   })
 
   it('shows the sidebar while the collapsed rail is hovered', async () => {
