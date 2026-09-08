@@ -575,19 +575,11 @@ class App(Base):
             return True
         return False
 
-    @property
-    def mode_compatible_with_agent(self) -> str:
-        return self.mode_compatible_with_agent_with_session(session=db.session())
-
     def mode_compatible_with_agent_with_session(self, *, session: Session) -> str:
         if self.mode == AppMode.CHAT and self.is_agent_with_session(session=session):
             return AppMode.AGENT_CHAT
 
         return str(self.mode)
-
-    @property
-    def deleted_tools(self) -> list[DeletedToolInfo]:
-        return self.deleted_tools_with_session(session=db.session())
 
     def deleted_tools_with_session(self, *, session: Session) -> list[DeletedToolInfo]:
         from core.plugin.plugin_service import PluginService
