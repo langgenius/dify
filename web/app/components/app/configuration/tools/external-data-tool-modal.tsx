@@ -133,7 +133,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="w-[354px]">
+            <SelectContent className="w-88.5">
               {providers.map((option) => (
                 <SelectItem key={option.key} value={option.key}>
                   <SelectItemText>{option.name}</SelectItemText>

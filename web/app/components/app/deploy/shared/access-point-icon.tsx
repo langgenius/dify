@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPoint } from '../access-point'
+import type { AccessPoint } from '../utils/access-point'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'

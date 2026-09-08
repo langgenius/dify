@@ -2,13 +2,12 @@
 import type { InitValidateStatusResponse } from '@/models/common'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useStore } from '@tanstack/react-form'
-import * as React from 'react'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import { formContext, useAppForm } from '@/app/components/base/form'
-import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import {
@@ -17,18 +16,20 @@ import {
   sendForgotPasswordEmail,
 } from '@/service/common'
 import { basePath } from '@/utils/var'
-import Input from '../components/base/input'
 import Loading from '../components/base/loading'
 
-const accountFormSchema = z.object({
-  email: z.email('error.emailInValid').min(1, {
-    error: 'error.emailInValid',
-  }),
+type ForgotPasswordFormValues = {
+  email: string
+}
+
+const emailSchema = z.email('error.emailInValid').min(1, {
+  error: 'error.emailInValid',
 })
 
 const ForgotPasswordForm = () => {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
   const documentTitle = loading
     ? t(($) => $.loading, { ns: 'common' })
@@ -37,32 +38,22 @@ const ForgotPasswordForm = () => {
       : t(($) => $.forgotPassword, { ns: 'login' })
   useDocumentTitle(documentTitle)
 
-  const form = useAppForm({
-    defaultValues: { email: '' },
-    validators: {
-      onSubmit: zodSubmitValidator(accountFormSchema),
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        const res = await sendForgotPasswordEmail({
-          url: '/forgot-password',
-          body: { email: value.email },
-        })
-        if (res.result === 'success') setIsEmailSent(true)
-        else console.error('Email verification failed')
-      } catch (error) {
-        console.error('Request failed:', error)
-      }
-    },
-  })
-
-  const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
-  const emailErrors = useStore(form.store, (state) => state.fieldMeta.email?.errors)
-
-  const handleSendResetPasswordClick = () => {
+  const handleSubmit = async ({ email }: ForgotPasswordFormValues) => {
     if (isSubmitting) return
 
-    form.handleSubmit()
+    setIsSubmitting(true)
+    try {
+      const res = await sendForgotPasswordEmail({
+        url: '/forgot-password',
+        body: { email },
+      })
+      if (res.result === 'success') setIsEmailSent(true)
+      else console.error('Email verification failed')
+    } catch (error) {
+      console.error('Request failed:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   useEffect(() => {
@@ -93,63 +84,42 @@ const ForgotPasswordForm = () => {
       </div>
       <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
         <div className="relative">
-          <formContext.Provider value={form}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                form.handleSubmit()
-              }}
-            >
-              {!isEmailSent && (
-                <div className="mb-5">
-                  <label
-                    htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                  >
-                    {t(($) => $.email, { ns: 'login' })}
-                  </label>
-                  <div className="mt-1">
-                    <form.AppField name="email">
-                      {(field) => (
-                        <Input
-                          id="email"
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
-                        />
-                      )}
-                    </form.AppField>
-                    {emailErrors && emailErrors.length > 0 && (
-                      <span className="text-sm text-red-400">
-                        {t(($) => $[`${emailErrors[0]}` as 'error.emailInValid'], { ns: 'login' })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div>
-                {isEmailSent ? (
-                  <Link
-                    href="/signin"
-                    className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
-                  >
-                    {t(($) => $.backToSignIn, { ns: 'login' })}
-                  </Link>
-                ) : (
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    disabled={isSubmitting}
-                    onClick={handleSendResetPasswordClick}
-                  >
-                    {t(($) => $.sendResetLink, { ns: 'login' })}
-                  </Button>
-                )}
-              </div>
-            </form>
-          </formContext.Provider>
+          <Form<ForgotPasswordFormValues>
+            onFormSubmit={(value) => {
+              void handleSubmit(value)
+            }}
+          >
+            {!isEmailSent && (
+              <Field
+                name="email"
+                validate={(value) =>
+                  emailSchema.safeParse(value).success
+                    ? null
+                    : t(($) => $['error.emailInValid'], { ns: 'login' })
+                }
+                className="mb-5"
+              >
+                <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  required
+                  placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                />
+                <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
+              </Field>
+            )}
+            {isEmailSent ? (
+              <Link href="/signin" className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}>
+                {t(($) => $.backToSignIn, { ns: 'login' })}
+              </Link>
+            ) : (
+              <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
+                {t(($) => $.sendResetLink, { ns: 'login' })}
+              </Button>
+            )}
+          </Form>
         </div>
       </div>
     </>

@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mocks.tagList }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {

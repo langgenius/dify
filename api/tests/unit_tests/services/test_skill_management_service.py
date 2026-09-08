@@ -2664,6 +2664,64 @@ def test_import_skill_package_creates_draft_and_rejects_name_conflicts() -> None
     assert exc_info.value.code == "skill_name_conflict"
 
 
+def test_import_skill_package_accepts_crlf_skill_md() -> None:
+    """Windows CRLF SKILL.md must not blank out the frontmatter name on import."""
+    skill_md = (
+        "---\r\n"
+        "name: expense-sop\r\n"
+        "description: Expenses\r\n"
+        "metadata:\r\n"
+        "  display-name: Expense SOP\r\n"
+        "---\r\n"
+        "\r\n"
+        "# Expenses\r\n"
+    )
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("expense-sop/SKILL.md", skill_md.encode("utf-8"))
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    assert imported["display_name"] == "Expense SOP"
+    assert imported["description"] == "Expenses"
+    skill_md_file = next(item for item in imported["files"] if item["path"] == "SKILL.md")
+    assert "\r" not in skill_md_file["content"]
+    assert skill_md_file["content"].startswith("---\nname: expense-sop\n")
+
+
+def test_import_skill_package_strips_root_alongside_macos_metadata_folder() -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr(
+            "expense-sop/SKILL.md",
+            "---\nname: expense-sop\ndescription: Expenses\n---\n# Expenses",
+        )
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+        # macOS Finder "Compress" adds an AppleDouble metadata sibling folder
+        # for archives whose source files carry extended attributes.
+        archive.writestr("__MACOSX/expense-sop/._SKILL.md", b"\x00")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    imported_paths = [item["path"] for item in imported["files"]]
+    assert "SKILL.md" in imported_paths
+    assert "references/policy.md" in imported_paths
+    assert not any(path.startswith("__MACOSX") for path in imported_paths)
+
+
 def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w") as archive:

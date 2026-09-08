@@ -1,14 +1,19 @@
 'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -16,14 +21,20 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
+
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -32,10 +43,6 @@ const ChangePasswordForm = () => {
       ? t(($) => $.passwordChangedTip, { ns: 'login' })
       : t(($) => $.changePassword, { ns: 'login' }),
   )
-
-  const showErrorMessage = useCallback((message: string) => {
-    toast.error(message)
-  }, [])
 
   const getSignInUrl = () => {
     if (searchParams.has('invite_token')) {
@@ -63,39 +70,29 @@ const ChangePasswordForm = () => {
     },
   })
 
-  const valid = useCallback(() => {
-    if (!password.trim()) {
-      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
-      return false
-    }
-    if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
-      return false
-    }
-    return true
-  }, [password, confirmPassword, showErrorMessage, t])
-
-  const handleChangePassword = useCallback(async () => {
-    if (!valid()) return
-    try {
-      await changePasswordWithToken({
-        url: '/forgot-password/resets',
-        body: {
-          token,
-          new_password: password,
-          password_confirm: confirmPassword,
-        },
-      })
-      setShowSuccess(true)
-      setLeftTime(AUTO_REDIRECT_TIME)
-    } catch (error) {
-      console.error(error)
-    }
-  }, [password, token, valid, confirmPassword])
+  const handleChangePassword = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isSubmitting) return
+      setIsSubmitting(true)
+      try {
+        await changePasswordWithToken({
+          url: '/forgot-password/resets',
+          body: {
+            token,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+          },
+        })
+        setShowSuccess(true)
+        setLeftTime(AUTO_REDIRECT_TIME)
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [isSubmitting, token],
+  )
 
   return (
     <div
@@ -113,18 +110,33 @@ const ChangePasswordForm = () => {
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <Form onFormSubmit={() => void handleChangePassword()}>
-              <Field name="password" className="mb-5">
-                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
-                  {t(($) => $['account.newPassword'], { ns: 'common' })}
-                </FieldLabel>
+            <Form<PasswordFormValues>
+              actionsRef={formActionsRef}
+              onFormSubmit={(formValues) => void handleChangePassword(formValues)}
+            >
+              <Field
+                name="password"
+                validate={(value) => {
+                  const passwordValue = String(value)
+                  if (!passwordValue.trim())
+                    return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                  return validPassword.test(passwordValue)
+                    ? null
+                    : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>{t(($) => $['account.newPassword'], { ns: 'common' })}</FieldLabel>
                 <InputGroup>
                   <InputGroupInput
                     type={showPassword ? 'text' : 'password'}
+                    required
                     autoComplete="new-password"
                     spellCheck={false}
-                    value={password}
-                    onValueChange={setPassword}
+                    onValueChange={() => {
+                      if (confirmPasswordRef.current?.value)
+                        formActionsRef.current?.validate('confirmPassword')
+                    }}
                     placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                   />
                   <InputGroupAddon align="inline-end">
@@ -143,21 +155,47 @@ const ChangePasswordForm = () => {
                     </IconButton>
                   </InputGroupAddon>
                 </InputGroup>
-                <FieldDescription className="py-0 body-xs-regular text-text-secondary">
-                  {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-                </FieldDescription>
+                <FieldValidity>
+                  {({ validity }) =>
+                    validity.valid !== false ? (
+                      <FieldDescription>
+                        {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                      </FieldDescription>
+                    ) : null
+                  }
+                </FieldValidity>
+                <FieldValidity>
+                  {({ validity }) => (
+                    <FieldError>
+                      {t(
+                        ($) =>
+                          $[
+                            validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'
+                          ],
+                        { ns: 'login' },
+                      )}
+                    </FieldError>
+                  )}
+                </FieldValidity>
               </Field>
-              <Field name="confirmPassword" className="mb-5">
-                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
-                  {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-                </FieldLabel>
+              <Field
+                name="confirmPassword"
+                validate={(value, formValues) => {
+                  const confirmationValue = String(value)
+                  return !confirmationValue || confirmationValue === formValues.password
+                    ? null
+                    : t(($) => $['account.notEqual'], { ns: 'common' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>{t(($) => $['account.confirmPassword'], { ns: 'common' })}</FieldLabel>
                 <InputGroup>
                   <InputGroupInput
                     type={showConfirmPassword ? 'text' : 'password'}
+                    required
                     autoComplete="new-password"
                     spellCheck={false}
-                    value={confirmPassword}
-                    onValueChange={setConfirmPassword}
+                    ref={confirmPasswordRef}
                     placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   />
                   <InputGroupAddon align="inline-end">
@@ -177,8 +215,9 @@ const ChangePasswordForm = () => {
                     </IconButton>
                   </InputGroupAddon>
                 </InputGroup>
+                <FieldError>{t(($) => $['account.notEqual'], { ns: 'common' })}</FieldError>
               </Field>
-              <Button type="submit" variant="primary" className="w-full">
+              <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
                 {t(($) => $.changePasswordBtn, { ns: 'login' })}
               </Button>
             </Form>
@@ -189,7 +228,10 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill aria-hidden="true" className="size-6 text-text-success" />
+              <span
+                className="i-ri-checkbox-circle-fill size-6 text-text-success"
+                aria-hidden="true"
+              />
             </div>
             <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}

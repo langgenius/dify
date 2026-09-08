@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { CreateAgentDialog } from './create-agent-dialog'
 
 export function RosterCreateMenu() {

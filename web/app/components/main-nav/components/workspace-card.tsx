@@ -5,23 +5,32 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  noop,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { formatCredits } from '../utils'
@@ -126,10 +135,7 @@ function WorkspaceCardTrigger({
         </span>
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
-            <span
-              className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary"
-              title={name}
-            >
+            <span className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary">
               {name}
             </span>
             {showStatus && <span className="flex shrink-0 items-center">{status}</span>}
@@ -183,8 +189,8 @@ function WorkspaceMenuHeader({
   name: string
   status: ReactNode
   showInviteMembers: boolean
-  settingsLabel: ReactNode
-  inviteMembersLabel: ReactNode
+  settingsLabel: string
+  inviteMembersLabel: string
   onOpenSettings: () => void
   onInviteMembers: () => void
 }) {
@@ -205,6 +211,7 @@ function WorkspaceMenuHeader({
         </div>
         <button
           type="button"
+          title={settingsLabel}
           className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={onOpenSettings}
         >
@@ -218,6 +225,7 @@ function WorkspaceMenuHeader({
         {showInviteMembers && (
           <button
             type="button"
+            title={inviteMembersLabel}
             className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
             onClick={onInviteMembers}
           >
@@ -266,11 +274,11 @@ export function WorkspaceCard() {
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
-    void queryClient.prefetchQuery(workspacesQueryOptions)
+    void queryClient.query(workspacesQueryOptions).catch(noop)
   }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
@@ -320,13 +328,13 @@ export function WorkspaceCard() {
           planActionLabel={planActionLabel}
           creditsHref={buildIntegrationPath('provider')}
           onPrefetchWorkspaces={prefetchWorkspaces}
-          onPlanClick={setShowPricingModal}
+          onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
           placement="bottom-start"
           sideOffset={-workspaceMenuTriggerHeight}
           alignOffset={workspaceMenuAlignOffset}
-          className="w-[280px] overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          className="w-70 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <WorkspaceMenuHeader
             name={currentWorkspace.name}

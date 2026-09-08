@@ -12,7 +12,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
@@ -155,7 +155,10 @@ export function usePublishController({
 
       if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
       void queryClient
-        .fetchQuery(appWorkflowQueryOptions(appId))
+        .query({
+          ...appWorkflowQueryOptions(appId),
+          staleTime: 0,
+        })
         .then((publishedWorkflow) => {
           workflowStore?.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
         })

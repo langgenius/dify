@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable, Mapping
 from typing import NamedTuple, Protocol, cast
 
+from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
 from services.file_service import FileService
@@ -50,11 +51,13 @@ class WebAppRuntimeQueryService:
         file_service: FileService,
         workspace_features: Callable[[str], FeatureModel],
         files_url: str,
+        deployment_edition: DeploymentEdition,
     ) -> None:
         self._runtime = runtime
         self._file_service = file_service
         self._workspace_features = workspace_features
         self._files_url = files_url
+        self._deployment_edition = deployment_edition
 
     def get_bootstrap(self, app_id: str) -> WebAppBootstrap:
         record = self._runtime.get_runtime_record(app_id)
@@ -70,7 +73,7 @@ class WebAppRuntimeQueryService:
 
         site = cast(dict[str, str | bool | None], record.site._asdict())
         site["icon_url"] = site_icon_url
-        if features.billing.enabled and not features.webapp_copyright_enabled:
+        if self._deployment_edition == DeploymentEdition.CLOUD and not features.webapp_copyright_enabled:
             site["copyright"] = None
             site["input_placeholder"] = None
 

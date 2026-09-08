@@ -54,8 +54,11 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
       <Tooltip>
         <TooltipTrigger
           render={
-            <span aria-label={tip} className="inline-flex">
-              {config.icon}
+            <span className="inline-flex">
+              <span aria-hidden className="inline-flex">
+                {config.icon}
+              </span>
+              <span className="sr-only">{tip}</span>
             </span>
           }
         />

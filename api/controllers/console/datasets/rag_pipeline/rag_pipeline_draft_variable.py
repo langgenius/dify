@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.rbac import DatasetByPipeline, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -26,7 +27,6 @@ from controllers.console.app.workflow_draft_variable import (
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -82,7 +82,7 @@ def _api_prerequisite[T, **P, R](
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @wraps(f)
     def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:

@@ -32,7 +32,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { HomeBanner } from '../banner/home-banner'
@@ -343,11 +343,12 @@ export function HomeContent() {
       const appId = currApp?.app_id
       if (!appId) return
 
-      const appDetail = await queryClient.ensureQueryData(
-        consoleQuery.explore.apps.byAppId.get.queryOptions({
+      const appDetail = await queryClient.query({
+        ...consoleQuery.explore.apps.byAppId.get.queryOptions({
           input: { params: { app_id: appId } },
         }),
-      )
+        staleTime: 'static',
+      })
 
       const { export_data, mode } = appDetail
       currentCreateAppModeRef.current = mode
