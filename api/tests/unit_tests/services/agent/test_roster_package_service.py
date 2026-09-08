@@ -32,6 +32,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageSkill,
 )
 from services.agent.roster_package_service import RosterAgentPackageError, RosterAgentPackageService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _MemoryStorage:
@@ -230,6 +231,37 @@ def test_preflight_rejects_invalid_skill_payload(sqlite_session: Session) -> Non
 
     with pytest.raises(RosterAgentPackageError, match="package Skill 'research' is invalid"):
         RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+
+
+def test_preflight_rejects_oversized_skill_before_materializing(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+
+    with pytest.raises(RosterAgentPackageError) as exc_info:
+        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+
+    assert exc_info.value.code == "package_too_large"
+    assert exc_info.value.status_code == 413
+
+
+def test_read_member_enforces_actual_output_limit() -> None:
+    package = _zip({"payload.bin": b"x" * 32})
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        with pytest.raises(RosterAgentPackageError) as exc_info:
+            RosterAgentPackageService._read_member(
+                archive,
+                archive.getinfo("payload.bin"),
+                collect=True,
+                max_bytes=8,
+            )
+
+    assert exc_info.value.code == "package_too_large"
 
 
 def test_export_uses_draft_and_round_trips_through_preflight(sqlite_session: Session) -> None:

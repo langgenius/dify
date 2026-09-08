@@ -24,6 +24,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_storage import storage
 from models.agent import (
@@ -558,7 +559,12 @@ class RosterAgentPackageService:
                     raise RosterAgentPackageError("invalid_package", "Roster Agent package is missing manifest.json")
                 if manifest_info.file_size > _MAX_MANIFEST_BYTES:
                     raise RosterAgentPackageError("invalid_package", "Roster Agent package manifest is too large")
-                manifest_bytes, _ = self._read_member(archive, manifest_info, collect=True)
+                manifest_bytes, _ = self._read_member(
+                    archive,
+                    manifest_info,
+                    collect=True,
+                    max_bytes=_MAX_MANIFEST_BYTES,
+                )
                 try:
                     manifest_data = json.loads(manifest_bytes, object_pairs_hook=self._reject_duplicate_json_keys)
                     manifest = RosterAgentPackageManifest.model_validate(manifest_data)
@@ -584,8 +590,25 @@ class RosterAgentPackageService:
 
                 members: dict[str, RosterAgentPackageMember] = {}
                 for resource in [*manifest.skills, *manifest.files]:
-                    _payload, digest = self._read_member(archive, info_by_path[resource.path], collect=False)
-                    if info_by_path[resource.path].file_size != resource.size or digest != resource.sha256:
+                    info = info_by_path[resource.path]
+                    payload = b""
+                    if isinstance(resource, RosterAgentPackageSkill):
+                        max_skill_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+                        if info.file_size > max_skill_bytes:
+                            raise RosterAgentPackageError(
+                                "package_too_large",
+                                f"Roster Agent package Skill {resource.name!r} exceeds the size limit",
+                                status_code=413,
+                            )
+                        payload, digest = self._read_member(
+                            archive,
+                            info,
+                            collect=True,
+                            max_bytes=max_skill_bytes,
+                        )
+                    else:
+                        _, digest = self._read_member(archive, info, collect=False)
+                    if info.file_size != resource.size or digest != resource.sha256:
                         raise RosterAgentPackageError(
                             "invalid_package",
                             f"Roster Agent package resource {resource.path!r} failed integrity checks",
@@ -596,7 +619,6 @@ class RosterAgentPackageService:
                         sha256=digest,
                     )
                     if isinstance(resource, RosterAgentPackageSkill):
-                        payload, _ = self._read_member(archive, info_by_path[resource.path], collect=True)
                         try:
                             normalized = self._skill_packages.validate_and_normalize(
                                 content=payload, filename=resource.path
@@ -678,11 +700,25 @@ class RosterAgentPackageService:
         return normalized
 
     @staticmethod
-    def _read_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo, *, collect: bool) -> tuple[bytes, str]:
+    def _read_member(
+        archive: zipfile.ZipFile,
+        info: zipfile.ZipInfo,
+        *,
+        collect: bool,
+        max_bytes: int | None = None,
+    ) -> tuple[bytes, str]:
         digest = hashlib.sha256()
         output = io.BytesIO() if collect else None
+        size = 0
         with archive.open(info) as member:
             while chunk := member.read(_COPY_CHUNK_SIZE):
+                size += len(chunk)
+                if max_bytes is not None and size > max_bytes:
+                    raise RosterAgentPackageError(
+                        "package_too_large",
+                        "Roster Agent package member exceeds the size limit",
+                        status_code=413,
+                    )
                 digest.update(chunk)
                 if output is not None:
                     output.write(chunk)
