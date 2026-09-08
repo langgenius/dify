@@ -353,16 +353,49 @@ class TestFileService:
     def test_get_icon_url_uses_preview_url_outside_cloud_s3(
         self,
         file_service: FileService,
+        db_session: Session,
         deployment_edition: DeploymentEdition,
         storage_type: StorageType,
         config_overrides: Callable[..., None],
     ):
+        self._persist_upload_file(db_session)
         config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
         with patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url:
             result = file_service.get_icon_url("file_id", "tenant_id")
 
         assert result == "preview-url"
         get_url.assert_called_once_with(upload_file_id="file_id")
+
+    @pytest.mark.parametrize(
+        ("deployment_edition", "storage_type"),
+        [
+            (DeploymentEdition.COMMUNITY, StorageType.S3),
+            (DeploymentEdition.CLOUD, StorageType.LOCAL),
+        ],
+    )
+    def test_get_icon_url_rejects_missing_file_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        deployment_edition: DeploymentEdition,
+        storage_type: StorageType,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
+
+        with pytest.raises(FileNotExistsError, match="File reference not found"):
+            file_service.get_icon_url("file_id", "tenant_id")
+
+    def test_get_icon_url_rejects_cross_tenant_file_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        self._persist_upload_file(db_session, tenant_id="other_tenant_id")
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, STORAGE_TYPE=StorageType.LOCAL)
+
+        with pytest.raises(FileNotExistsError, match="File reference not found"):
+            file_service.get_icon_url("file_id", "tenant_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup

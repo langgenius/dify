@@ -192,13 +192,24 @@ class FileService:
         )
 
     def get_icon_url(self, file_id: str, tenant_id: str) -> str:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
-            StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
-        ):
-            try:
+        try:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+                StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+            ):
                 return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
-            except NotFound as exc:
-                raise FileNotExistsError("File reference not found") from exc
+            with self._session_maker(expire_on_commit=False) as session:
+                upload_file_id = session.scalar(
+                    select(UploadFile.id)
+                    .where(
+                        UploadFile.id == file_id,
+                        UploadFile.tenant_id == tenant_id,
+                    )
+                    .limit(1)
+                )
+            if upload_file_id is None:
+                raise NotFound("File not found")
+        except NotFound as exc:
+            raise FileNotExistsError("File reference not found") from exc
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
