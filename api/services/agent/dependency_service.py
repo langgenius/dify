@@ -8,6 +8,11 @@ def extract_agent_soul_dependencies(soul: AgentSoulConfig) -> list[str]:
     dependencies: list[str] = []
     if soul.model is not None:
         dependencies.append(DependenciesAnalysisService.analyze_model_provider_dependency(soul.model.model_provider))
+    suggested_questions = soul.app_features.suggested_questions_after_answer
+    if suggested_questions is not None and suggested_questions.model is not None:
+        dependencies.append(
+            DependenciesAnalysisService.analyze_model_provider_dependency(suggested_questions.model.provider)
+        )
     for tool in soul.tools.dify_tools:
         provider_id = tool.provider_id or (
             f"{tool.plugin_id}/{tool.provider}" if tool.plugin_id and tool.provider else None
