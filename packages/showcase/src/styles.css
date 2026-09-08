@@ -1,0 +1,112 @@
+/*
+ * Deck stylesheet. Tailwind v4 (CSS-first) plus the Dify design system preset:
+ * tokens, light/dark themes and the typography utilities come from
+ * @langgenius/dify-ui; everything below only adds deck-specific chart roles
+ * and entrance animations on top of those tokens.
+ */
+
+@import 'tailwindcss';
+@import '@langgenius/dify-ui/styles.css';
+
+@plugin './icons-plugin.ts';
+
+@source '../../dify-ui/src';
+@source not '../../dify-ui/src/**/*.{spec,test}.{ts,tsx}';
+@source not '../../dify-ui/src/**/*.stories.{ts,tsx}';
+
+@theme {
+  --font-sans:
+    Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans',
+    Arial, sans-serif;
+}
+
+/* Chart roles. Marks wear these; labels and values always wear text tokens. */
+:root {
+  --viz-accent: var(--color-state-accent-solid);
+  --viz-track: var(--color-util-colors-blue-brand-blue-brand-100);
+  --viz-rest: var(--color-divider-deep);
+  --viz-glow: rgb(0 51 255 / 0.1);
+}
+
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --viz-track: rgb(48 114 255 / 0.22);
+  --viz-glow: rgb(48 114 255 / 0.26);
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes deck-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes deck-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes deck-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes deck-ring {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+}
+
+.deck-rise {
+  animation: deck-rise 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+
+.deck-pop {
+  animation: deck-pop 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.deck-grow-x {
+  transform-origin: left center;
+  animation: deck-grow-x 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 200ms both;
+}
+
+.deck-ring {
+  animation: deck-ring 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) 200ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-rise,
+  .deck-pop,
+  .deck-grow-x,
+  .deck-ring {
+    animation: none;
+  }
+}

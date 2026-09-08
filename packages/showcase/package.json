@@ -1,0 +1,33 @@
+{
+  "name": "@langgenius/showcase",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vp build && node scripts/inline.mjs",
+    "dev": "vp dev",
+    "preview": "vp preview",
+    "type-check": "tsc"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@langgenius/dify-ui": "workspace:*",
+    "class-variance-authority": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@egoist/tailwindcss-icons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

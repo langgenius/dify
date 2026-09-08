@@ -1107,6 +1107,61 @@ importers:
         specifier: 'catalog:'
         version: 0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(esbuild@0.28.2)(happy-dom@20.12.0)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)
 
+  packages/showcase:
+    dependencies:
+      '@base-ui/react':
+        specifier: 'catalog:'
+        version: 1.8.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@langgenius/dify-ui':
+        specifier: workspace:*
+        version: link:../dify-ui
+      class-variance-authority:
+        specifier: 'catalog:'
+        version: 0.7.1
+      react:
+        specifier: 'catalog:'
+        version: 19.2.8
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.8(react@19.2.8)
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.3
+    devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@egoist/tailwindcss-icons':
+        specifier: 'catalog:'
+        version: 1.9.2(tailwindcss@4.3.3)
+      '@iconify-json/ri':
+        specifier: 'catalog:'
+        version: 1.2.10
+      '@tailwindcss/vite':
+        specifier: 'catalog:'
+        version: 4.3.3(@voidzero-dev/vite-plus-core@0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.5(@types/react@19.2.18)
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 6.1.1(@voidzero-dev/vite-plus-core@0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
+      vite:
+        specifier: 'catalog:'
+        version: '@voidzero-dev/vite-plus-core@0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(@voidzero-dev/vite-plus-core@0.3.0(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(esbuild@0.28.2)(happy-dom@20.12.0)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)
+
   packages/tsconfig: {}
 
   sdks/nodejs-client:
@@ -7677,9 +7732,6 @@ packages:
     resolution: {integrity: sha512-MyIV3ZA/PmyBN/ud8vV9XzwTrNtR4jFrObymZYnZqMmW0zA8Z17vnT0rBgFE/TlohB+YCHqXMgZzb3Csp49vqg==}
     engines: {node: '>=14.16'}
 
-  package-manager-detector@1.6.0:
-    resolution: {integrity: sha512-61A5ThoTiDG/C8s8UMZwSorAGwMJ0ERVGj2OjoW5pAalsNOg15+iQiPzrLJ4jhZ1HJzmC2PIHT2oEiH3R5fzNA==}
-
   package-manager-detector@1.8.0:
     resolution: {integrity: sha512-yQA4H19AmPEoMUeavPMDIe1higySl/gH/yaQrkT/s07Qp+7pp2hYz30N3z2l5BkjVkF9Ow6o0wjJamm2y7Sn0A==}
 
@@ -9261,7 +9313,7 @@ snapshots:
 
   '@antfu/install-pkg@1.1.0':
     dependencies:
-      package-manager-detector: 1.6.0
+      package-manager-detector: 1.8.0
       tinyexec: 1.2.4
 
   '@antfu/utils@8.1.1': {}
@@ -15350,8 +15402,6 @@ snapshots:
       p-limit: 3.1.0
 
   p-timeout@6.1.4: {}
-
-  package-manager-detector@1.6.0: {}
 
   package-manager-detector@1.8.0: {}
 
