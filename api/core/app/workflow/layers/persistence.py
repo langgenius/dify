@@ -70,18 +70,6 @@ class PersistenceWorkflowInfo:
     graph_data: Mapping[str, Any]
 
 
-@dataclass(slots=True)
-class _NodeRuntimeSnapshot:
-    """Lightweight cache to keep node metadata across event phases."""
-
-    node_id: str
-    title: str
-    predecessor_node_id: str | None
-    iteration_id: str | None
-    loop_id: str | None
-    created_at: datetime
-
-
 class WorkflowPersistenceLayer(Layer):
     """Engine layer that persists workflow and node execution state."""
 
@@ -103,7 +91,6 @@ class WorkflowPersistenceLayer(Layer):
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
-        self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
         self._is_resumption = False
         self._workflow_tool_layers: dict[tuple[str, str], WorkflowPersistenceLayer] = {}
@@ -158,7 +145,6 @@ class WorkflowPersistenceLayer(Layer):
     def on_graph_start(self) -> None:
         self._workflow_execution = None
         self._node_execution_cache.clear()
-        self._node_snapshots.clear()
         self._node_sequence = 0
         self._is_resumption = False
         for child in self._workflow_tool_layers.values():
@@ -192,10 +178,6 @@ class WorkflowPersistenceLayer(Layer):
             case NodeRunPauseRequestedEvent():
                 self._handle_node_pause_requested(event)
 
-    @override
-    def on_graph_end(self, error: Exception | None) -> None:
-        return
-
     # ------------------------------------------------------------------
     # Graph-level handlers
     # ------------------------------------------------------------------
@@ -223,42 +205,32 @@ class WorkflowPersistenceLayer(Layer):
         execution = self._get_workflow_execution()
         execution.outputs = event.outputs
         execution.status = WorkflowExecutionStatus.SUCCEEDED
-        self._populate_completion_statistics(execution)
-
-        self._workflow_execution_repository.save(execution)
-        self._enqueue_trace_task(execution)
-        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
+        self._finalize_workflow_execution(execution)
 
     def _handle_graph_run_partial_succeeded(self, event: GraphRunPartialSucceededEvent) -> None:
         execution = self._get_workflow_execution()
         execution.outputs = event.outputs
         execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         execution.exceptions_count = event.exceptions_count
-        self._populate_completion_statistics(execution)
-
-        self._workflow_execution_repository.save(execution)
-        self._enqueue_trace_task(execution)
-        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
+        self._finalize_workflow_execution(execution)
 
     def _handle_graph_run_failed(self, event: GraphRunFailedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.FAILED
         execution.error_message = event.error
         execution.exceptions_count = event.exceptions_count
-        self._populate_completion_statistics(execution)
-
-        self._fail_running_node_executions(error_message=event.error)
-        self._workflow_execution_repository.save(execution)
-        self._enqueue_trace_task(execution)
-        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
+        self._finalize_workflow_execution(execution)
 
     def _handle_graph_run_aborted(self, event: GraphRunAbortedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.STOPPED
         execution.error_message = event.reason or "Workflow execution aborted"
-        self._populate_completion_statistics(execution)
+        self._finalize_workflow_execution(execution)
 
-        self._fail_running_node_executions(error_message=execution.error_message or "")
+    def _finalize_workflow_execution(self, execution: WorkflowExecution) -> None:
+        self._populate_completion_statistics(execution)
+        if execution.status in (WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.STOPPED):
+            self._fail_running_node_executions(error_message=execution.error_message or "")
         self._workflow_execution_repository.save(execution)
         self._enqueue_trace_task(execution)
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
@@ -312,15 +284,6 @@ class WorkflowPersistenceLayer(Layer):
         else:
             self._workflow_node_execution_repository.save(domain_execution)
 
-        snapshot = _NodeRuntimeSnapshot(
-            node_id=event.node_id,
-            title=event.node_title,
-            predecessor_node_id=event.predecessor_node_id,
-            iteration_id=iteration_id,
-            loop_id=loop_id,
-            created_at=event.start_at,
-        )
-        self._node_snapshots[event.id] = snapshot
         _inspector_publish_node_changed(workflow_run_id=execution.id_, node_id=event.node_id, status="running")
 
     def _handle_node_retry(self, event: NodeRunRetryEvent) -> None:
@@ -492,11 +455,9 @@ class WorkflowPersistenceLayer(Layer):
         finished_at: datetime | None = None,
     ) -> None:
         actual_finished_at = finished_at or naive_utc_now()
-        snapshot = self._node_snapshots.get(domain_execution.id)
-        start_at = snapshot.created_at if snapshot else domain_execution.created_at
         domain_execution.status = status
         domain_execution.finished_at = actual_finished_at
-        domain_execution.elapsed_time = max((actual_finished_at - start_at).total_seconds(), 0.0)
+        domain_execution.elapsed_time = max((actual_finished_at - domain_execution.created_at).total_seconds(), 0.0)
 
         if error:
             domain_execution.error = error

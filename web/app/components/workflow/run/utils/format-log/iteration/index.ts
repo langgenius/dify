@@ -1,5 +1,6 @@
 import type { NodeTracing } from '@/types/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { getContainerExecutions } from '../get-container-executions'
 
 export function addChildrenToIterationNode(
   iterationNode: NodeTracing,
@@ -39,33 +40,12 @@ export const getIterationDurationMap = (nodeInfo: NodeTracing) => {
 }
 
 export const getIterationResultList = (nodeInfo: NodeTracing, allExecutions?: NodeTracing[]) => {
-  const getNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
-
-    const parallelNodes = allExecutions.filter(
-      (exec) => exec.execution_metadata?.parallel_mode_run_id === key,
-    )
-    if (parallelNodes.length > 0) return parallelNodes
-
-    const serialIndex = Number.parseInt(key, 10)
-    if (!Number.isNaN(serialIndex)) {
-      const serialNodes = allExecutions.filter(
-        (exec) =>
-          exec.execution_metadata?.iteration_id === nodeInfo.node_id &&
-          exec.execution_metadata?.iteration_index === serialIndex,
-      )
-      if (serialNodes.length > 0) return serialNodes
-    }
-
-    return []
-  }
-
   const iterationNodeMeta = nodeInfo.execution_metadata
 
   if (!iterationNodeMeta?.iteration_duration_map) return nodeInfo.details || []
 
   const structuredList = Object.keys(iterationNodeMeta.iteration_duration_map)
-    .map(getNodesForInstance)
+    .map((key) => getContainerExecutions(key, nodeInfo, 'iteration', allExecutions))
     .filter((branchNodes) => branchNodes.length > 0)
 
   if (!allExecutions || !nodeInfo.details?.length) return structuredList

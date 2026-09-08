@@ -1,4 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
+import { getContainerExecutions } from '../get-container-executions'
 
 export function addChildrenToLoopNode(
   loopNode: NodeTracing,
@@ -45,32 +46,11 @@ export function addChildrenToLoopNode(
 }
 
 export const getLoopResultList = (nodeInfo: NodeTracing, allExecutions?: NodeTracing[]) => {
-  const filterNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
-
-    const parallelNodes = allExecutions.filter(
-      (exec) => exec.execution_metadata?.parallel_mode_run_id === key,
-    )
-    if (parallelNodes.length > 0) return parallelNodes
-
-    const serialIndex = Number.parseInt(key, 10)
-    if (!Number.isNaN(serialIndex)) {
-      const serialNodes = allExecutions.filter(
-        (exec) =>
-          exec.execution_metadata?.loop_id === nodeInfo.node_id &&
-          exec.execution_metadata?.loop_index === serialIndex,
-      )
-      if (serialNodes.length > 0) return serialNodes
-    }
-
-    return []
-  }
-
   if (nodeInfo.details?.length) return nodeInfo.details
   const loopDurationMap = nodeInfo.execution_metadata?.loop_duration_map
   return loopDurationMap
     ? Object.keys(loopDurationMap)
-        .map(filterNodesForInstance)
+        .map((key) => getContainerExecutions(key, nodeInfo, 'loop', allExecutions))
         .filter((branchNodes) => branchNodes.length > 0)
     : []
 }
