@@ -17,6 +17,7 @@ export * from "./auth";
 export * from "./auto-retrieval-mode-resolver";
 export * from "./backpressure-automation";
 export * from "./background-task";
+export * from "./background-runtime-controller";
 export * from "./background-task-handlers";
 export * from "./background-task-routes";
 export * from "./bounded-concurrency";
@@ -715,6 +716,7 @@ export function createDifyCapabilityV2OrLegacyApiKeyMiddleware(
 
 export function createKnowledgeGateway({
   adapter,
+  backgroundRuntime,
   allowLegacyPermissionSnapshotAdmission,
   allowLegacyResearchTaskProfileFallback = false,
   allowLocalQueryFallback = false,
@@ -1783,7 +1785,8 @@ export function createKnowledgeGateway({
       runtimeSnapshots: runtimeSnapshotResolver,
       workerId: qualityControl.workerId,
     });
-    qualityReplayRuntime.start();
+    if (backgroundRuntime) backgroundRuntime.register("quality.replay", qualityReplayRuntime);
+    else qualityReplayRuntime.start();
     qualityControl.onRuntime?.(qualityReplayRuntime);
   }
 
@@ -2179,6 +2182,7 @@ export function createKnowledgeGateway({
       sources: sourceRepository,
     });
     const sourceWorkflowRuntime = createSourceProductWorkflowRuntime({
+      ...(backgroundRuntime ? { claimBatchSize: 1 } : {}),
       access: accessService,
       ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
       bulkRemoval: sourceProduct.bulkRemoval,
@@ -2237,8 +2241,13 @@ export function createKnowledgeGateway({
     const sourceSyncPolicyRuntime = createSourceSyncPolicyRuntime({
       repository: sourceProduct.repository,
     });
-    sourceWorkflowRuntime.start();
-    sourceSyncPolicyRuntime.start();
+    if (backgroundRuntime) {
+      backgroundRuntime.register("source.execute", sourceWorkflowRuntime);
+      backgroundRuntime.register("source.schedule", sourceSyncPolicyRuntime);
+    } else {
+      sourceWorkflowRuntime.start();
+      sourceSyncPolicyRuntime.start();
+    }
     sourceProduct.onWorkflowRuntime?.(sourceWorkflowRuntime);
     sourceProduct.onSyncPolicyRuntime?.(sourceSyncPolicyRuntime);
     registerSourceProductHandlers({
@@ -2259,7 +2268,7 @@ export function createKnowledgeGateway({
         workflows: sourceProductWorkflows,
       });
       registerNamespaceSourcePreviewHandlers({ app, service: namespacePreviews });
-      createNamespaceSourcePreviewRuntime({
+      const namespacePreviewRuntime = createNamespaceSourcePreviewRuntime({
         onError: (error) => {
           process.stderr.write(
             `${JSON.stringify({
@@ -2271,7 +2280,13 @@ export function createKnowledgeGateway({
           );
         },
         service: namespacePreviews,
-      }).start();
+      });
+      if (backgroundRuntime)
+        backgroundRuntime.register("source.preview", {
+          tick: () => namespacePreviews.tick(),
+          stop: namespacePreviewRuntime.stop,
+        });
+      else namespacePreviewRuntime.start();
     }
   }
   registerBackgroundTaskHandlers({
@@ -2320,7 +2335,8 @@ export function createKnowledgeGateway({
       }),
       sources: sourceRepository,
     });
-    sourceSyncScheduler.start();
+    if (backgroundRuntime) backgroundRuntime.register("source.legacy-sync", sourceSyncScheduler);
+    else sourceSyncScheduler.start();
     sourceSync.onScheduler?.(sourceSyncScheduler);
   }
 

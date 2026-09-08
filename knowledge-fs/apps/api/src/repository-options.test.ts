@@ -440,7 +440,7 @@ describe("API app repository wiring", () => {
   it("assembles the durable candidate runtime and injects its control plane", () => {
     const source = readFileSync(resolve(import.meta.dirname, "index.ts"), "utf8");
     const optionOffset = source.indexOf("createApiDocumentCompilationOptions()");
-    const adapterOffset = source.indexOf("createNodePlatformAdapter()");
+    const adapterOffset = source.indexOf("export const adapter = createNodePlatformAdapter(");
     const assemblyOffset = source.indexOf("createApiDocumentCompilationRuntime({");
     const gatewayOffset = source.indexOf("createKnowledgeGateway({");
     const startOffset = source.indexOf("documentCompilationRuntime?.start();");
@@ -452,5 +452,8 @@ describe("API app repository wiring", () => {
     expect(source).toContain("documentCompilationJobs: documentCompilationRuntime.compilationJobs");
     expect(source).toContain("documentCompilationRuntime.legacyBootstrapService");
     expect(startOffset).toBeGreaterThan(gatewayOffset);
+    expect(source).toContain('if (backgroundExecutionMode === "embedded")');
+    expect(source).toContain('backgroundRuntime.register("document.execute", compilation.runtime)');
+    expect(source).toContain("{ jobs: celeryJobQueue.jobs }");
   });
 });

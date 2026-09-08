@@ -61,6 +61,32 @@ if [[ "${MODE}" == "worker" ]]; then
   fi
 
   WORKER_POOL="${CELERY_WORKER_POOL:-${CELERY_WORKER_CLASS:-gevent}}"
+  case ",${DEFAULT_QUEUES}," in
+    *,knowledge_fs_document,*|*,knowledge_fs_source,*|*,knowledge_fs_research,*|*,knowledge_fs_maintenance,*|*,knowledge_fs_dispatch,*)
+      if [[ "${WORKER_POOL}" != "prefork" || "${CELERY_PREFETCH_MULTIPLIER:-1}" != "1" ]]; then
+        echo "KnowledgeFS queues require CELERY_WORKER_POOL=prefork and CELERY_PREFETCH_MULTIPLIER=1." >&2
+        exit 1
+      fi
+      if [[ "${KNOWLEDGE_BACKGROUND_EXECUTION}" != "celery" || -z "${DATABASE_URL}" || ! -f "${KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH:-/app/knowledge-fs/celery-worker.mjs}" ]]; then
+        echo "KnowledgeFS worker requires Celery execution mode, its durable DATABASE_URL, and a bundled local engine." >&2
+        exit 1
+      fi
+      case ",${DEFAULT_QUEUES}," in
+        *,knowledge_fs_source,*)
+          case ",${DEFAULT_QUEUES}," in
+            *,knowledge_fs_document,*)
+              echo "Source and document queues require separate worker pools to avoid publication-wait starvation." >&2
+              exit 1
+              ;;
+          esac
+          ;;
+      esac
+      case "${KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME,,}" in
+        on|true|1) ;;
+        *) echo "KnowledgeFS Celery workers require durable document compilation to be enabled." >&2; exit 1 ;;
+      esac
+      ;;
+  esac
   echo "Starting Celery worker with queues: ${DEFAULT_QUEUES}"
 
   exec celery -A celery_entrypoint.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \

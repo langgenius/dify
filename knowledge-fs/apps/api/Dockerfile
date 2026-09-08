@@ -75,6 +75,7 @@ RUN apt-get update \
 
 COPY --from=builder /workspace/apps/api/dist/server.mjs ./server.mjs
 COPY --from=builder /workspace/apps/api/dist/migrate.mjs ./migrate.mjs
+COPY --from=builder /workspace/apps/api/dist/celery-worker.mjs ./celery-worker.mjs
 COPY --from=builder /workspace/apps/api/dist/native-parser-worker.mjs ./native-parser-worker.mjs
 COPY --from=builder /workspace/apps/api/dist/image-variant-worker.mjs ./image-variant-worker.mjs
 COPY --from=builder /runtime/node_modules ./node_modules

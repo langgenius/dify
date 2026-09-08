@@ -7,6 +7,7 @@ import {
 import {
   type KnowledgeSpaceEmbeddingResolver,
   RETRIEVAL_MAX_TOP_K,
+  createBackgroundRuntimeController,
   createDatabaseDeletionObjectWriteAdmission,
   createDatabaseHybridRetrievalRepository,
   createDatabasePublishedGraphIndexRepository,
@@ -48,11 +49,13 @@ import {
 
 import { createApiProfileReasoningCapability } from "./answer-generation-options";
 import { createApiAuthVerifier } from "./auth-options";
+import { resolveBackgroundExecutionMode } from "./background-execution-options";
 import {
   createApiBufferedDocumentUploadAdmission,
   createApiBufferedDocumentUploadOptions,
 } from "./buffered-document-upload-options";
 import { createApiCapabilityV2Assembly } from "./capability-v2-options";
+import { createCeleryJobQueue } from "./celery-job-queue";
 import { createApiComputeRuntime } from "./compute-options";
 import {
   assertApiDatabaseConnectionReady,
@@ -130,7 +133,13 @@ const researchTaskDirectStream = createApiResearchTaskDirectStreamAssembly({
   env: process.env,
 });
 
-const adapter = createNodePlatformAdapter();
+export const backgroundExecutionMode = resolveBackgroundExecutionMode();
+export const backgroundRuntime = createBackgroundRuntimeController(false);
+export const celeryJobQueue =
+  backgroundExecutionMode === "celery" ? createCeleryJobQueue() : undefined;
+export const adapter = createNodePlatformAdapter(
+  celeryJobQueue ? { jobs: celeryJobQueue.jobs } : {},
+);
 const documentRemoteAssetFetcher = createNodeRemoteDocumentImageFetcher();
 const queryImageResolver = createApiQueryImageResolver({ env: process.env });
 const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
@@ -341,6 +350,9 @@ const autoRetrievalModeResolver = createLlmAutoRetrievalModeResolver({
 const databaseRepositories = createApiDatabaseRepositories({
   database: adapter.database,
 });
+if (backgroundExecutionMode === "celery" && !databaseRepositories.usesDatabaseRepositories) {
+  throw new Error("Celery execution requires durable KnowledgeFS database repositories");
+}
 const retrievalExecutionLeases =
   databaseRepositories.durableDeletionEnabled && databaseRepositories.usesDatabaseRepositories
     ? createRetrievalExecutionLeaseCoordinator({
@@ -541,6 +553,7 @@ const researchEvidenceReasoning = createResearchEvidenceReasoning({
   timeoutMs: researchEvidenceReasoningOptions.timeoutMs,
 });
 const documentCompilationRuntime = createApiDocumentCompilationRuntime({
+  externalExecution: backgroundExecutionMode === "celery",
   adapter,
   compute,
   config: documentCompilationOptions,
@@ -999,6 +1012,7 @@ const uploadSessions = await createApiUploadSessionAssembly({
 });
 directUploadReady = uploadSessions?.ready === true;
 const app = createKnowledgeGateway({
+  ...(backgroundExecutionMode === "celery" ? { backgroundRuntime } : {}),
   adapter,
   autoRetrievalModeResolver,
   bufferedDocumentUploadAdmission,
@@ -1113,11 +1127,43 @@ const app = createKnowledgeGateway({
   ...(tracingOptions ?? {}),
 });
 
-documentCompilationRuntime?.start();
-tidbFtsPostingBackfill?.start();
-researchTaskRuntime?.start();
-durableDeletion?.start();
-knowledgeSpaceProfileBackfill?.start();
-uploadSessions?.start();
+if (backgroundExecutionMode === "embedded") {
+  documentCompilationRuntime?.start();
+  tidbFtsPostingBackfill?.start();
+  researchTaskRuntime?.start();
+  durableDeletion?.start();
+  knowledgeSpaceProfileBackfill?.start();
+  uploadSessions?.start();
+} else {
+  if (documentCompilationRuntime) {
+    const compilation = documentCompilationRuntime;
+    backgroundRuntime.register("document.dispatch", compilation.dispatcher);
+    backgroundRuntime.register("document.execute", compilation.runtime);
+    backgroundRuntime.register("document.reconcile", {
+      tick: () => compilation.reconcileDocuments(),
+    });
+    backgroundRuntime.register("legacy.bootstrap", compilation.legacyBootstrapRuntime);
+    backgroundRuntime.register("page-index.upgrade", compilation.pageIndexUpgradeBackfillRuntime);
+    if (compilation.semanticEnrichmentRuntime)
+      backgroundRuntime.register("document.semantic", compilation.semanticEnrichmentRuntime);
+    if (compilation.pageIndexFindabilityRuntime)
+      backgroundRuntime.register("page-index.findability", compilation.pageIndexFindabilityRuntime);
+    if (compilation.pageIndexSummaryRepairRuntime)
+      backgroundRuntime.register("page-index.repair", compilation.pageIndexSummaryRepairRuntime);
+    if (compilation.profileMigrationRuntime)
+      backgroundRuntime.register("profile.migrate", compilation.profileMigrationRuntime);
+  }
+  if (researchTaskRuntime)
+    backgroundRuntime.register("research.execute", researchTaskRuntime.runtime);
+  if (durableDeletion) {
+    backgroundRuntime.register("deletion.dispatch", durableDeletion.dispatcher);
+    backgroundRuntime.register("deletion.execute", durableDeletion.runtime);
+  }
+  if (tidbFtsPostingBackfill)
+    backgroundRuntime.register("fts.backfill", tidbFtsPostingBackfill.runtime);
+  if (knowledgeSpaceProfileBackfill)
+    backgroundRuntime.register("profile.backfill", knowledgeSpaceProfileBackfill.runtime);
+  if (uploadSessions?.cleanup) backgroundRuntime.register("upload.cleanup", uploadSessions.cleanup);
+}
 
 export default app;

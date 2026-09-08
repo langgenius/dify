@@ -69,6 +69,7 @@ export interface ApiUploadSessionCleanupRuntime {
 }
 
 export interface ApiUploadSessionAssembly {
+  readonly cleanup?: ApiUploadSessionCleanupRuntime | undefined;
   readonly fallbackAdmission?: SmallFileFallbackAdmission | undefined;
   readonly ready: boolean;
   readonly sessions?: UploadSessionService | undefined;
@@ -276,6 +277,7 @@ export async function createApiUploadSessionAssembly(input: {
     sessions,
   });
   return {
+    cleanup,
     fallbackAdmission,
     ready: true,
     sessions,

@@ -7,10 +7,27 @@
 !dify-agent/README.md
 !dify-agent/src/
 !dify-agent/src/**
+!knowledge-fs/
+!knowledge-fs/package.json
+!knowledge-fs/pnpm-lock.yaml
+!knowledge-fs/pnpm-workspace.yaml
+!knowledge-fs/turbo.json
+!knowledge-fs/tsconfig.base.json
+!knowledge-fs/apps/
+!knowledge-fs/apps/api/
+!knowledge-fs/apps/api/**
+!knowledge-fs/packages/
+!knowledge-fs/packages/**
+**/node_modules/
+**/dist/
+**/.turbo/
 
 # Environment configuration and example
 .env
 *.env.*
+**/.env
+**/*.env
+**/*.env.*
 
 # Python related files
 **/__pycache__

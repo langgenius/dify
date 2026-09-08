@@ -1,0 +1,303 @@
+# Inert reference: replace the image and env references, verify the runbook, then scale each role.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-fs-celery
+data:
+  MODE: worker
+  MIGRATION_ENABLED: "false"
+  KNOWLEDGE_BACKGROUND_EXECUTION: celery
+  KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED: "true"
+  KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH: /app/knowledge-fs/celery-worker.mjs
+  KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS: "7200"
+  KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS: "5"
+  KNOWLEDGE_DOCUMENT_COMPILATION_OUTBOX_VISIBILITY_MS: "10800000"
+  CELERY_BROKER_VISIBILITY_TIMEOUT: "10800"
+  CELERY_WORKER_POOL: prefork
+  CELERY_PREFETCH_MULTIPLIER: "1"
+  MAX_TASKS_PER_CHILD: "1000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-fs-document-worker
+  labels:
+    app.kubernetes.io/part-of: dify
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-document-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-fs-document-worker
+        app.kubernetes.io/part-of: dify
+    spec:
+      automountServiceAccountToken: false
+      # Allow a long document task to finish on normal rollout/scale-down. Forced eviction still
+      # recovers through broker redelivery and database leases/checkpoints.
+      terminationGracePeriodSeconds: 7500
+      containers:
+        - name: worker
+          # SAME immutable API image digest as the Dify API and Beat, built with api/Dockerfile.
+          image: dify-api:knowledge-fs-celery
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            # Operator-owned standard Dify worker configuration (broker, DB, security, etc.).
+            - configMapRef:
+                name: dify-worker-runtime
+            - secretRef:
+                name: dify-worker-runtime
+            # Operator-owned KnowledgeFS settings and dedicated DB, public JWKS, inner API key.
+            - configMapRef:
+                name: knowledge-fs-runtime
+            - secretRef:
+                name: knowledge-fs-runtime
+            - configMapRef:
+                name: knowledge-fs-celery
+          env:
+            - name: CELERY_WORKER_QUEUES
+              value: knowledge_fs_document
+            - name: CELERY_WORKER_CONCURRENCY
+              value: "1"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-fs-source-worker
+  labels:
+    app.kubernetes.io/part-of: dify
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-source-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-fs-source-worker
+        app.kubernetes.io/part-of: dify
+    spec:
+      automountServiceAccountToken: false
+      # Allow a long document task to finish on normal rollout/scale-down. Forced eviction still
+      # recovers through broker redelivery and database leases/checkpoints.
+      terminationGracePeriodSeconds: 7500
+      containers:
+        - name: worker
+          # SAME immutable API image digest as the Dify API and Beat, built with api/Dockerfile.
+          image: dify-api:knowledge-fs-celery
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            # Operator-owned standard Dify worker configuration (broker, DB, security, etc.).
+            - configMapRef:
+                name: dify-worker-runtime
+            - secretRef:
+                name: dify-worker-runtime
+            # Operator-owned KnowledgeFS settings and dedicated DB, public JWKS, inner API key.
+            - configMapRef:
+                name: knowledge-fs-runtime
+            - secretRef:
+                name: knowledge-fs-runtime
+            - configMapRef:
+                name: knowledge-fs-celery
+          env:
+            - name: CELERY_WORKER_QUEUES
+              value: knowledge_fs_source
+            - name: CELERY_WORKER_CONCURRENCY
+              value: "1"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-fs-research-worker
+  labels:
+    app.kubernetes.io/part-of: dify
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-research-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-fs-research-worker
+        app.kubernetes.io/part-of: dify
+    spec:
+      automountServiceAccountToken: false
+      # Allow a long document task to finish on normal rollout/scale-down. Forced eviction still
+      # recovers through broker redelivery and database leases/checkpoints.
+      terminationGracePeriodSeconds: 7500
+      containers:
+        - name: worker
+          # SAME immutable API image digest as the Dify API and Beat, built with api/Dockerfile.
+          image: dify-api:knowledge-fs-celery
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            # Operator-owned standard Dify worker configuration (broker, DB, security, etc.).
+            - configMapRef:
+                name: dify-worker-runtime
+            - secretRef:
+                name: dify-worker-runtime
+            # Operator-owned KnowledgeFS settings and dedicated DB, public JWKS, inner API key.
+            - configMapRef:
+                name: knowledge-fs-runtime
+            - secretRef:
+                name: knowledge-fs-runtime
+            - configMapRef:
+                name: knowledge-fs-celery
+          env:
+            - name: CELERY_WORKER_QUEUES
+              value: knowledge_fs_research
+            - name: CELERY_WORKER_CONCURRENCY
+              value: "1"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 3Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-fs-maintenance-worker
+  labels:
+    app.kubernetes.io/part-of: dify
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-maintenance-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-fs-maintenance-worker
+        app.kubernetes.io/part-of: dify
+    spec:
+      automountServiceAccountToken: false
+      # Allow a long document task to finish on normal rollout/scale-down. Forced eviction still
+      # recovers through broker redelivery and database leases/checkpoints.
+      terminationGracePeriodSeconds: 7500
+      containers:
+        - name: worker
+          # SAME immutable API image digest as the Dify API and Beat, built with api/Dockerfile.
+          image: dify-api:knowledge-fs-celery
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            # Operator-owned standard Dify worker configuration (broker, DB, security, etc.).
+            - configMapRef:
+                name: dify-worker-runtime
+            - secretRef:
+                name: dify-worker-runtime
+            # Operator-owned KnowledgeFS settings and dedicated DB, public JWKS, inner API key.
+            - configMapRef:
+                name: knowledge-fs-runtime
+            - secretRef:
+                name: knowledge-fs-runtime
+            - configMapRef:
+                name: knowledge-fs-celery
+          env:
+            - name: CELERY_WORKER_QUEUES
+              value: knowledge_fs_maintenance
+            - name: CELERY_WORKER_CONCURRENCY
+              value: "1"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-fs-dispatch-worker
+  labels:
+    app.kubernetes.io/part-of: dify
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-dispatch-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-fs-dispatch-worker
+        app.kubernetes.io/part-of: dify
+    spec:
+      automountServiceAccountToken: false
+      # Allow a long document task to finish on normal rollout/scale-down. Forced eviction still
+      # recovers through broker redelivery and database leases/checkpoints.
+      terminationGracePeriodSeconds: 7500
+      containers:
+        - name: worker
+          # SAME immutable API image digest as the Dify API and Beat, built with api/Dockerfile.
+          image: dify-api:knowledge-fs-celery
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            # Operator-owned standard Dify worker configuration (broker, DB, security, etc.).
+            - configMapRef:
+                name: dify-worker-runtime
+            - secretRef:
+                name: dify-worker-runtime
+            # Operator-owned KnowledgeFS settings and dedicated DB, public JWKS, inner API key.
+            - configMapRef:
+                name: knowledge-fs-runtime
+            - secretRef:
+                name: knowledge-fs-runtime
+            - configMapRef:
+                name: knowledge-fs-celery
+          env:
+            - name: CELERY_WORKER_QUEUES
+              value: knowledge_fs_dispatch
+            - name: CELERY_WORKER_CONCURRENCY
+              value: "1"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]

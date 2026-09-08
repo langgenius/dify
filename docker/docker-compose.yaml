@@ -137,6 +137,49 @@ x-shared-worker-config: &shared-worker-config
     - default
   restart: always
 
+x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
+  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.17.0}
+  profiles:
+    - knowledge-fs-celery
+  restart: always
+  # Match the two-hour default task deadline plus shutdown margin for long document jobs.
+  stop_grace_period: 125m
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/worker.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/core-services/knowledge-fs.env
+      required: false
+    - path: ./envs/core-services/knowledge-fs-worker.env
+      required: false
+    - ./.env
+  environment: &knowledge-fs-celery-environment
+    MODE: worker
+    MIGRATION_ENABLED: "false"
+    CELERY_WORKER_POOL: prefork
+    CELERY_PREFETCH_MULTIPLIER: "1"
+    # Periodic database sweeps are cheap Celery tasks; the standard 50-task recycling would
+    # repeatedly discard a warm engine even while idle.
+    MAX_TASKS_PER_CHILD: ${KNOWLEDGE_FS_WORKER_MAX_TASKS_PER_CHILD:-1000}
+    DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+    DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+    KNOWLEDGE_INTEGRATED_MODE_ENABLED: ${KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true}
+    KNOWLEDGE_DIRECT_UPLOAD_ENABLED: ${KNOWLEDGE_DIRECT_UPLOAD_ENABLED:-true}
+  depends_on:
+    api:
+      condition: service_healthy
+  networks:
+    - default
+
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
     - path: ./envs/core-services/shared.env
@@ -698,6 +741,7 @@ services:
       - path: ./envs/core-services/knowledge-fs.env
         required: false
     environment:
+      DIFY_ROOT_KNOWLEDGE_BACKGROUND_EXECUTION_OVERRIDE: ${KNOWLEDGE_BACKGROUND_EXECUTION-}
       DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE: ${KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY-}
       # Canonical values stay in the service env/image. These whitelisted proxies let an explicitly
       # set docker/.env value override them without injecting the complete root environment.
@@ -734,6 +778,39 @@ services:
       start_period: 30s
     networks:
       - default
+
+  # All five worker roles use the standard Dify API image and Celery broker. Only the optional
+  # cutover profile starts them; set KNOWLEDGE_BACKGROUND_EXECUTION=celery in the root env first.
+  knowledge_fs_document_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_document
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_DOCUMENT_WORKER_CONCURRENCY:-2}
+  knowledge_fs_source_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_source
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_SOURCE_WORKER_CONCURRENCY:-1}
+  knowledge_fs_research_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_research
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_RESEARCH_WORKER_CONCURRENCY:-2}
+  knowledge_fs_maintenance_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_maintenance
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_MAINTENANCE_WORKER_CONCURRENCY:-1}
+  knowledge_fs_dispatch_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_dispatch
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_DISPATCH_WORKER_CONCURRENCY:-1}
 
   # Dify Agent backend service.
   agent_backend:

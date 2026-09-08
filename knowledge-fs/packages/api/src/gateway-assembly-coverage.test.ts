@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   type KnowledgeGatewayOptions,
+  createBackgroundRuntimeController,
   createInMemoryKnowledgeSpaceManifestRepository,
   createInMemoryKnowledgeSpaceProfileMigrationRepository,
   createInMemoryKnowledgeSpaceProfileRepository,
@@ -60,115 +61,135 @@ afterEach(() => {
 });
 
 describe("knowledge gateway assembly coverage", () => {
-  it("assembles the opt-in production ports and exposes their managed runtimes", async () => {
+  it.each(["embedded", "celery"])(
+    "assembles managed runtimes with %s lifecycle ownership",
+    async (mode) => {
+      vi.useFakeTimers();
+      const backgroundRuntime =
+        mode === "celery" ? createBackgroundRuntimeController(false) : undefined;
+      const stops: Array<() => Promise<void> | void> = [];
+      const profileMigrations = createInMemoryKnowledgeSpaceProfileMigrationRepository({
+        maxRuns: 10,
+      });
+      const profiles = createInMemoryKnowledgeSpaceProfileRepository({
+        maxListLimit: 10,
+        maxRevisions: 10,
+      });
+
+      const app = createKnowledgeGateway({
+        ...(backgroundRuntime ? { backgroundRuntime } : {}),
+        adapter: adapter(),
+        allowLegacyResearchTaskProfileFallback: true,
+        answerTraces: uninvokedPort<"answerTraces">(),
+        autoRetrievalModeResolver: uninvokedPort<"autoRetrievalModeResolver">(),
+        bulkOperations: uninvokedPort<"bulkOperations">(),
+        capabilityGrantProvenance: uninvokedPort<"capabilityGrantProvenance">(),
+        denseEmbeddingModel: "dense-v1",
+        denseEmbeddingProvider: uninvokedPort<"denseEmbeddingProvider">(),
+        deletionLifecycleFence: uninvokedPort<"deletionLifecycleFence">(),
+        deletionObjectWriteAdmission: uninvokedPort<"deletionObjectWriteAdmission">(),
+        difyCapabilityV2Auth: uninvokedPort<"difyCapabilityV2Auth">(),
+        difyIntegrationFreezes: uninvokedPort<"difyIntegrationFreezes">(),
+        difyIntegrationStates: uninvokedPort<"difyIntegrationStates">(),
+        documentChunkState: uninvokedPort<"documentChunkState">(),
+        documentChunks: uninvokedPort<"documentChunks">(),
+        documentCompilationJobs: uninvokedPort<"documentCompilationJobs">(),
+        documentMultimodalImageVariantGenerator:
+          uninvokedPort<"documentMultimodalImageVariantGenerator">(),
+        documentMultimodalLocalAssetAllowlist: ["https://assets.example.com"],
+        documentMultimodalManifestEnhancer: uninvokedPort<"documentMultimodalManifestEnhancer">(),
+        documentMultimodalMaxExtractedAssets: 2,
+        documentMultimodalMaxLocalAssetBytes: 1_024,
+        documentMultimodalMaxPdfRasterizedAssets: 2,
+        documentOutlineSummaryEnhancer: uninvokedPort<"documentOutlineSummaryEnhancer">(),
+        documentPdfRasterizer: uninvokedPort<"documentPdfRasterizer">(),
+        documentProcessingTasks: uninvokedPort<"documentProcessingTasks">(),
+        documentRevisionRollbacks: uninvokedPort<"documentRevisionRollbacks">(),
+        documentSettings: uninvokedPort<"documentSettings">(),
+        documentSettingsChanges: uninvokedPort<"documentSettingsChanges">(),
+        durableDeletionRepository: uninvokedPort<"durableDeletionRepository">(),
+        embeddingProvider: uninvokedPort<"embeddingProvider">(),
+        embeddingResolver: uninvokedPort<"embeddingResolver">(),
+        failedQueryLowConfidenceScoreFloor: 0.25,
+        integratedKnowledgeSpaceProvisioning: {
+          ...uninvokedPort<"integratedKnowledgeSpaceProvisioning">(),
+          provisioningMode: "integrated",
+        },
+        knowledgeSpaceProfileMigrationRepository: profileMigrations,
+        knowledgeSpaceProfilePublications: uninvokedPort<"knowledgeSpaceProfilePublications">(),
+        knowledgeSpaceProfiles: profiles,
+        knowledgeSpaceProvisioning: uninvokedPort<"knowledgeSpaceProvisioning">(),
+        knowledgeSpaceUnpublishedProfileActivations:
+          uninvokedPort<"knowledgeSpaceUnpublishedProfileActivations">(),
+        legacySpacePublicationBootstraps: uninvokedPort<"legacySpacePublicationBootstraps">(),
+        logicalDocuments: uninvokedPort<"logicalDocuments">(),
+        modelCapabilityCatalog: uninvokedPort<"modelCapabilityCatalog">(),
+        modelCapabilityPreflight: uninvokedPort<"modelCapabilityPreflight">(),
+        onlineDocumentConnector: uninvokedPort<"onlineDocumentConnector">(),
+        onlineDriveConnector: uninvokedPort<"onlineDriveConnector">(),
+        pageIndexUpgradeBackfills: uninvokedPort<"pageIndexUpgradeBackfills">(),
+        projectionSetPublications: uninvokedPort<"projectionSetPublications">(),
+        publishedGraph: uninvokedPort<"publishedGraph">(),
+        qualityControl: {
+          onRuntime: (runtime) => stops.push(() => runtime.stop()),
+          repository: uninvokedPort<"qualityControl">().repository,
+          workerId: "quality-worker",
+          workerIntervalMs: 60_000,
+        },
+        relevanceTriageSignals: uninvokedPort<"relevanceTriageSignals">(),
+        researchTaskDeletionVisibility: uninvokedPort<"researchTaskDeletionVisibility">(),
+        researchTaskDirectStream: {
+          maxConnectionMs: 60_000,
+        },
+        retrievalExecutionLeases: uninvokedPort<"retrievalExecutionLeases">(),
+        retrievalTestExecutor: uninvokedPort<"retrievalTestExecutor">(),
+        runtimeSnapshotResolver: uninvokedPort<"runtimeSnapshotResolver">(),
+        semanticCommunitySummaryProvider: uninvokedPort<"semanticCommunitySummaryProvider">(),
+        semanticEntityExtractionProvider: uninvokedPort<"semanticEntityExtractionProvider">(),
+        semanticRelationExtractionProvider: uninvokedPort<"semanticRelationExtractionProvider">(),
+        sourceCredentials: uninvokedPort<"sourceCredentials">(),
+        sourceProduct: {
+          bulkRemoval: uninvokedPort<"sourceProduct">().bulkRemoval,
+          connections: uninvokedPort<"sourceProduct">().connections,
+          logicalRevisions: uninvokedPort<"sourceProduct">().logicalRevisions,
+          onSyncPolicyRuntime: (runtime) => stops.push(() => runtime.stop()),
+          onWorkflowRuntime: (runtime) => stops.push(() => runtime.stop()),
+          providers: uninvokedPort<"sourceProduct">().providers,
+          repository: uninvokedPort<"sourceProduct">().repository,
+          workerId: "source-worker",
+        },
+        tidbFtsPostingReadiness: uninvokedPort<"tidbFtsPostingReadiness">(),
+        uploadSessions: uninvokedPort<"uploadSessions">(),
+        visualEmbeddingModel: "vision-v1",
+        visualEmbeddingProvider: uninvokedPort<"visualEmbeddingProvider">(),
+        websiteCrawlConnector: uninvokedPort<"websiteCrawlConnector">(),
+      });
+
+      expect(app).toBeDefined();
+      expect(stops).toHaveLength(3);
+      if (backgroundRuntime) {
+        expect(backgroundRuntime.names()).toEqual([
+          "quality.replay",
+          "source.execute",
+          "source.schedule",
+          "source.preview",
+        ]);
+        expect(vi.getTimerCount()).toBe(0);
+      } else {
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+      }
+      for (const stop of stops) await stop();
+    },
+  );
+
+  it.each(["embedded", "celery"])("assembles the legacy source scheduler in %s mode", (mode) => {
     vi.useFakeTimers();
-    const stops: Array<() => Promise<void> | void> = [];
-    const profileMigrations = createInMemoryKnowledgeSpaceProfileMigrationRepository({
-      maxRuns: 10,
-    });
-    const profiles = createInMemoryKnowledgeSpaceProfileRepository({
-      maxListLimit: 10,
-      maxRevisions: 10,
-    });
-
-    const app = createKnowledgeGateway({
-      adapter: adapter(),
-      allowLegacyResearchTaskProfileFallback: true,
-      answerTraces: uninvokedPort<"answerTraces">(),
-      autoRetrievalModeResolver: uninvokedPort<"autoRetrievalModeResolver">(),
-      bulkOperations: uninvokedPort<"bulkOperations">(),
-      capabilityGrantProvenance: uninvokedPort<"capabilityGrantProvenance">(),
-      denseEmbeddingModel: "dense-v1",
-      denseEmbeddingProvider: uninvokedPort<"denseEmbeddingProvider">(),
-      deletionLifecycleFence: uninvokedPort<"deletionLifecycleFence">(),
-      deletionObjectWriteAdmission: uninvokedPort<"deletionObjectWriteAdmission">(),
-      difyCapabilityV2Auth: uninvokedPort<"difyCapabilityV2Auth">(),
-      difyIntegrationFreezes: uninvokedPort<"difyIntegrationFreezes">(),
-      difyIntegrationStates: uninvokedPort<"difyIntegrationStates">(),
-      documentChunkState: uninvokedPort<"documentChunkState">(),
-      documentChunks: uninvokedPort<"documentChunks">(),
-      documentCompilationJobs: uninvokedPort<"documentCompilationJobs">(),
-      documentMultimodalImageVariantGenerator:
-        uninvokedPort<"documentMultimodalImageVariantGenerator">(),
-      documentMultimodalLocalAssetAllowlist: ["https://assets.example.com"],
-      documentMultimodalManifestEnhancer: uninvokedPort<"documentMultimodalManifestEnhancer">(),
-      documentMultimodalMaxExtractedAssets: 2,
-      documentMultimodalMaxLocalAssetBytes: 1_024,
-      documentMultimodalMaxPdfRasterizedAssets: 2,
-      documentOutlineSummaryEnhancer: uninvokedPort<"documentOutlineSummaryEnhancer">(),
-      documentPdfRasterizer: uninvokedPort<"documentPdfRasterizer">(),
-      documentProcessingTasks: uninvokedPort<"documentProcessingTasks">(),
-      documentRevisionRollbacks: uninvokedPort<"documentRevisionRollbacks">(),
-      documentSettings: uninvokedPort<"documentSettings">(),
-      documentSettingsChanges: uninvokedPort<"documentSettingsChanges">(),
-      durableDeletionRepository: uninvokedPort<"durableDeletionRepository">(),
-      embeddingProvider: uninvokedPort<"embeddingProvider">(),
-      embeddingResolver: uninvokedPort<"embeddingResolver">(),
-      failedQueryLowConfidenceScoreFloor: 0.25,
-      integratedKnowledgeSpaceProvisioning: {
-        ...uninvokedPort<"integratedKnowledgeSpaceProvisioning">(),
-        provisioningMode: "integrated",
-      },
-      knowledgeSpaceProfileMigrationRepository: profileMigrations,
-      knowledgeSpaceProfilePublications: uninvokedPort<"knowledgeSpaceProfilePublications">(),
-      knowledgeSpaceProfiles: profiles,
-      knowledgeSpaceProvisioning: uninvokedPort<"knowledgeSpaceProvisioning">(),
-      knowledgeSpaceUnpublishedProfileActivations:
-        uninvokedPort<"knowledgeSpaceUnpublishedProfileActivations">(),
-      legacySpacePublicationBootstraps: uninvokedPort<"legacySpacePublicationBootstraps">(),
-      logicalDocuments: uninvokedPort<"logicalDocuments">(),
-      modelCapabilityCatalog: uninvokedPort<"modelCapabilityCatalog">(),
-      modelCapabilityPreflight: uninvokedPort<"modelCapabilityPreflight">(),
-      onlineDocumentConnector: uninvokedPort<"onlineDocumentConnector">(),
-      onlineDriveConnector: uninvokedPort<"onlineDriveConnector">(),
-      pageIndexUpgradeBackfills: uninvokedPort<"pageIndexUpgradeBackfills">(),
-      projectionSetPublications: uninvokedPort<"projectionSetPublications">(),
-      publishedGraph: uninvokedPort<"publishedGraph">(),
-      qualityControl: {
-        onRuntime: (runtime) => stops.push(() => runtime.stop()),
-        repository: uninvokedPort<"qualityControl">().repository,
-        workerId: "quality-worker",
-        workerIntervalMs: 60_000,
-      },
-      relevanceTriageSignals: uninvokedPort<"relevanceTriageSignals">(),
-      researchTaskDeletionVisibility: uninvokedPort<"researchTaskDeletionVisibility">(),
-      researchTaskDirectStream: {
-        maxConnectionMs: 60_000,
-      },
-      retrievalExecutionLeases: uninvokedPort<"retrievalExecutionLeases">(),
-      retrievalTestExecutor: uninvokedPort<"retrievalTestExecutor">(),
-      runtimeSnapshotResolver: uninvokedPort<"runtimeSnapshotResolver">(),
-      semanticCommunitySummaryProvider: uninvokedPort<"semanticCommunitySummaryProvider">(),
-      semanticEntityExtractionProvider: uninvokedPort<"semanticEntityExtractionProvider">(),
-      semanticRelationExtractionProvider: uninvokedPort<"semanticRelationExtractionProvider">(),
-      sourceCredentials: uninvokedPort<"sourceCredentials">(),
-      sourceProduct: {
-        bulkRemoval: uninvokedPort<"sourceProduct">().bulkRemoval,
-        connections: uninvokedPort<"sourceProduct">().connections,
-        logicalRevisions: uninvokedPort<"sourceProduct">().logicalRevisions,
-        onSyncPolicyRuntime: (runtime) => stops.push(() => runtime.stop()),
-        onWorkflowRuntime: (runtime) => stops.push(() => runtime.stop()),
-        providers: uninvokedPort<"sourceProduct">().providers,
-        repository: uninvokedPort<"sourceProduct">().repository,
-        workerId: "source-worker",
-      },
-      tidbFtsPostingReadiness: uninvokedPort<"tidbFtsPostingReadiness">(),
-      uploadSessions: uninvokedPort<"uploadSessions">(),
-      visualEmbeddingModel: "vision-v1",
-      visualEmbeddingProvider: uninvokedPort<"visualEmbeddingProvider">(),
-      websiteCrawlConnector: uninvokedPort<"websiteCrawlConnector">(),
-    });
-
-    expect(app).toBeDefined();
-    expect(stops).toHaveLength(3);
-    for (const stop of stops) await stop();
-  });
-
-  it("assembles the legacy source scheduler with every connector", () => {
-    vi.useFakeTimers();
+    const backgroundRuntime =
+      mode === "celery" ? createBackgroundRuntimeController(false) : undefined;
     const schedulers: unknown[] = [];
 
     const app = createKnowledgeGateway({
+      ...(backgroundRuntime ? { backgroundRuntime } : {}),
       adapter: adapter(),
       onlineDocumentConnector: uninvokedPort<"onlineDocumentConnector">(),
       onlineDriveConnector: uninvokedPort<"onlineDriveConnector">(),
@@ -183,6 +204,12 @@ describe("knowledge gateway assembly coverage", () => {
 
     expect(app).toBeDefined();
     expect(schedulers).toHaveLength(1);
+    if (backgroundRuntime) {
+      expect(backgroundRuntime.names()).toEqual(["source.legacy-sync"]);
+      expect(vi.getTimerCount()).toBe(0);
+    } else {
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+    }
   });
 
   it("assembles the bounded local-query fallback outside production", () => {

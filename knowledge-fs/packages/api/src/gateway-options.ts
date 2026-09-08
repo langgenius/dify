@@ -163,6 +163,8 @@ export interface ResearchTaskDirectStreamOptions {
 
 export interface KnowledgeGatewayOptions {
   adapter: PlatformAdapter;
+  /** Deployment-owned lifecycle for worker operations; omitted only in embedded/test runtimes. */
+  backgroundRuntime?: import("./background-runtime-controller").BackgroundRuntimeController;
   /**
    * Explicitly enables the development-only local node query fallback when no query generator is
    * injected. Disabled by default because the fallback does not implement the production retrieval

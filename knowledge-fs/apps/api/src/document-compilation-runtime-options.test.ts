@@ -5,6 +5,7 @@ import {
   createApiDocumentCompilationRuntime,
   createApiProfileMigrationGatewayOptions,
   createDocumentSemanticEnrichmentGenerationGuard,
+  resolveDocumentCompilationOutboxLockMs,
   resolveHeavyMaterializationPreAdmissionMaxConcurrency,
 } from "./document-compilation-runtime-options";
 import { createApiDatabaseRepositories } from "./repository-options";
@@ -20,6 +21,11 @@ const config = {
 };
 
 describe("createApiDocumentCompilationRuntime", () => {
+  it("does not hold a crashed Celery publisher lock for the broker backlog visibility window", () => {
+    expect(resolveDocumentCompilationOutboxLockMs(10_800_000, true)).toBe(30_000);
+    expect(resolveDocumentCompilationOutboxLockMs(60_000, false)).toBe(60_000);
+    expect(resolveDocumentCompilationOutboxLockMs(5_000, true)).toBe(5_000);
+  });
   it("clamps the shared heavy pre-admission width while reserving an ordinary slot", () => {
     expect(
       resolveHeavyMaterializationPreAdmissionMaxConcurrency({

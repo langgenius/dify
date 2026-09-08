@@ -427,6 +427,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
   assert.deepEqual(envVariableNames(difyKnowledgeFsEnv), [
     "DATABASE_URL",
     "KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME",
+    "KNOWLEDGE_BACKGROUND_EXECUTION",
     "DURABLE_DELETION_STEP_TIMEOUT_MS",
     "KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY",
     "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY",

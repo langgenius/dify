@@ -1,4 +1,4 @@
-import { type PlatformAdapter, collectPlatformHealth } from "@knowledge/core";
+import { type JobQueueAdapter, type PlatformAdapter, collectPlatformHealth } from "@knowledge/core";
 
 import { createMemoryCacheAdapter } from "./cache";
 import { createSchemaDatabaseAdapter } from "./database";
@@ -16,6 +16,7 @@ import {
 type RuntimeEnv = Readonly<Record<string, string | undefined>>;
 
 export interface NodePlatformAdapterOptions {
+  readonly jobs?: JobQueueAdapter;
   readonly databasePool?: PostgresPoolLike;
   readonly difyStorageFetch?: typeof globalThis.fetch;
   readonly env?: RuntimeEnv;
@@ -37,16 +38,18 @@ export function createNodePlatformAdapter(
     database,
     objectStorage: createNodeObjectStorageAdapter(env, options.difyStorageFetch),
     cache: createMemoryCacheAdapter({ maxEntries: 10_000 }),
-    jobs: options.jobBoss
-      ? createPgBossJobQueueAdapter({
-          boss: options.jobBoss,
-          maxBatchSize: 100,
-          maxQueuedJobs: 10_000,
-        })
-      : createInlineJobQueueAdapter({
-          maxBatchSize: 100,
-          maxQueuedJobs: 10_000,
-        }),
+    jobs:
+      options.jobs ??
+      (options.jobBoss
+        ? createPgBossJobQueueAdapter({
+            boss: options.jobBoss,
+            maxBatchSize: 100,
+            maxQueuedJobs: 10_000,
+          })
+        : createInlineJobQueueAdapter({
+            maxBatchSize: 100,
+            maxQueuedJobs: 10_000,
+          })),
     health: async () => collectPlatformHealth(adapter),
   };
 

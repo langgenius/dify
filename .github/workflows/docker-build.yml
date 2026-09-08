@@ -9,6 +9,13 @@ on:
       - api/Dockerfile.dockerignore
       - api/pyproject.toml
       - api/uv.lock
+      - knowledge-fs/apps/api/**
+      - knowledge-fs/packages/**
+      - knowledge-fs/package.json
+      - knowledge-fs/pnpm-lock.yaml
+      - knowledge-fs/pnpm-workspace.yaml
+      - knowledge-fs/tsconfig.base.json
+      - knowledge-fs/turbo.json
       - dify-agent/pyproject.toml
       - dify-agent/README.md
       - dify-agent/src/**

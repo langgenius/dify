@@ -1,5 +1,10 @@
 # Dify Integration Kubernetes Baseline
 
+For the separate, opt-in Celery execution topology, see `celery-workers.yaml` and
+[`celery-worker-runbook.md`](../../docs/celery-worker-runbook.md). It reuses the Dify API image and
+existing broker/Beat, provides five independently scalable worker roles, and is also inert at zero
+replicas. Do not enable its workers alongside the baseline's embedded API executors.
+
 `dify-integration-baseline.yaml` is an inert P0 reference for operators who already deploy Dify
 with Kubernetes. Dify does not maintain a first-party Helm chart in this repository, so this file
 only defines the KnowledgeFS boundary that a downstream chart must preserve:

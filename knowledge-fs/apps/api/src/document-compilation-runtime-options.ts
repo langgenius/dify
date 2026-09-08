@@ -126,6 +126,7 @@ export interface ApiDocumentCompilationRuntimeRepositories {
 }
 
 export interface CreateApiDocumentCompilationRuntimeOptions {
+  readonly externalExecution?: boolean | undefined;
   readonly adapter: KnowledgeGatewayOptions["adapter"];
   readonly compute: ComputeRuntime | undefined;
   readonly config: ApiDocumentCompilationOptions | undefined;
@@ -220,7 +221,20 @@ export function resolveHeavyMaterializationPreAdmissionMaxConcurrency(input: {
   );
 }
 
+/** Queue backlog visibility is deliberately long for Celery, but a crashed publisher must not
+ * hold its database dispatch lock for that whole period. HTTP publication is bounded at 10s. */
+export function resolveDocumentCompilationOutboxLockMs(
+  visibilityMs: number,
+  externalExecution: boolean,
+): number {
+  return externalExecution ? Math.min(visibilityMs, 30_000) : visibilityMs;
+}
+
 export interface ApiDocumentCompilationRuntimeAssembly {
+  readonly semanticEnrichmentRuntime?:
+    | import("@knowledge/api").DocumentSemanticEnrichmentRuntime
+    | undefined;
+  reconcileDocuments(): Promise<unknown>;
   readonly compilationJobs: DocumentCompilationJobStateMachine;
   readonly documentChunkState: NonNullable<KnowledgeGatewayOptions["documentChunkState"]>;
   readonly documentRevisionRollbacks: NonNullable<
@@ -279,6 +293,7 @@ export function createApiDocumentCompilationRuntime({
   adapter,
   compute,
   config,
+  externalExecution = false,
   createModelBudget,
   deletionFence,
   objectWriteAdmission,
@@ -765,7 +780,7 @@ export function createApiDocumentCompilationRuntime({
     intervalMs: config.tickMs,
     jobs: adapter.jobs,
     leaseMs: config.leaseMs,
-    maxBatchSize: config.batchSize,
+    maxBatchSize: externalExecution ? 1 : config.batchSize,
     maxRetryDelayMs: config.retryMaxMs,
     ...(metrics ? { metrics } : {}),
     processor,
@@ -783,7 +798,7 @@ export function createApiDocumentCompilationRuntime({
     initialRetryDelayMs: config.retryBaseMs,
     intervalMs: config.tickMs,
     jobs: adapter.jobs,
-    lockMs: config.outboxVisibilityMs,
+    lockMs: resolveDocumentCompilationOutboxLockMs(config.outboxVisibilityMs, externalExecution),
     maxBatchSize: config.batchSize,
     maxDispatchAttempts: config.maxAttempts,
     maxRetryDelayMs: config.retryMaxMs,
@@ -890,6 +905,8 @@ export function createApiDocumentCompilationRuntime({
 
   return {
     compilationJobs,
+    ...(semanticEnrichment ? { semanticEnrichmentRuntime: semanticEnrichment.runtime } : {}),
+    reconcileDocuments: () => documentMutationReconciler.tick(),
     documentChunkState,
     documentRevisionRollbacks,
     documentSettingsChanges,

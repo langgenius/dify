@@ -2,11 +2,15 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from dify_app import DifyApp
-from extensions.ext_celery import init_app
+from extensions.ext_celery import get_celery_broker_transport_options, init_app
+from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 
 
-def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_ready() -> None:
+@pytest.mark.parametrize("background_enabled", [False, True])
+def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_ready(background_enabled: bool) -> None:
     config = MagicMock()
     config.BROKER_USE_SSL = False
     config.REDIS_KEY_PREFIX = "test"
@@ -15,6 +19,10 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     config.CELERY_BACKEND = "redis"
     config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
     config.CELERY_USE_SENTINEL = False
+    config.CELERY_BROKER_VISIBILITY_TIMEOUT = 10800
+    config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED = background_enabled
+    config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS = 5
+    config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS = 7200
     config.LOG_FORMAT = "%(message)s"
     config.LOG_TZ = "UTC"
     config.LOG_FILE = None
@@ -71,6 +79,18 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
         "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
         "schedule": timedelta(seconds=2),
     }
+    schedules = celery_app.conf["beat_schedule"]
+    if background_enabled:
+        assert celery_app.conf["broker_transport_options"]["visibility_timeout"] == 10800
+        for operation, queue in OPERATION_QUEUES.items():
+            assert schedules[f"knowledge_fs_background_{operation}"] == {
+                "task": OPERATION_TASK,
+                "schedule": timedelta(seconds=5),
+                "kwargs": {"operation": operation},
+                "options": {"queue": queue, "expires": 30},
+            }
+    else:
+        assert not any(name.startswith("knowledge_fs_background_") for name in schedules)
 
     with (
         patch("extensions.ext_celery.dify_config", config),
@@ -86,3 +106,16 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     assert "tasks.knowledge_fs_initial_source_tasks" not in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" not in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_source_import_tasks" not in preview_only_app.conf["imports"]
+
+
+@pytest.mark.parametrize("visibility", [None, 3600, 7200, 7230])
+def test_long_running_delivery_rejects_an_unsafe_redis_visibility(visibility: int | None) -> None:
+    with patch("extensions.ext_celery.dify_config") as config:
+        config.CELERY_USE_SENTINEL = False
+        config.REDIS_KEY_PREFIX = ""
+        config.CELERY_BROKER_URL = "redis://localhost:6379/0"
+        config.CELERY_BROKER_VISIBILITY_TIMEOUT = visibility
+        config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED = True
+        config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS = 7200
+        with pytest.raises(ValueError, match="VISIBILITY_TIMEOUT"):
+            get_celery_broker_transport_options()

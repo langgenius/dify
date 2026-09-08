@@ -10,6 +10,14 @@ from pydantic_settings import BaseSettings
 class KnowledgeFSConfig(BaseSettings):
     """Server-only KnowledgeFS connection and rollout settings."""
 
+    KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED: bool = Field(
+        default=False,
+        description="Publish KnowledgeFS background work to dedicated Celery queues after worker rollout.",
+    )
+    KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH: str = Field(default="/app/knowledge-fs/celery-worker.mjs")
+    KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS: PositiveInt = Field(default=7200, ge=300, le=14400)
+    KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS: PositiveInt = Field(default=5, ge=1, le=60)
+
     KNOWLEDGE_FS_ENABLED: bool = Field(
         default=False,
         description="Enable the KnowledgeFS control-plane product routes.",

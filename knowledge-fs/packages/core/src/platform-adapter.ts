@@ -348,7 +348,7 @@ export interface JobQueueStats {
 }
 
 export interface JobQueueAdapter {
-  readonly kind: "cloudflare-queues" | "pg-boss" | "inline";
+  readonly kind: "cloudflare-queues" | "pg-boss" | "inline" | "celery";
   cancel(jobId: string, reason?: string): Promise<void>;
   close?(): Promise<void>;
   complete(jobId: string): Promise<void>;
