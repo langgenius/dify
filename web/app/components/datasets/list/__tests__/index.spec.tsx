@@ -71,7 +71,6 @@ function NewKnowledgeGuideDismissedProbe() {
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 let mockConsoleState = {
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   knowledgeFsEnabled: false,
@@ -247,7 +246,6 @@ describe('List', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockConsoleState = {
-      isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
       knowledgeFsEnabled: false,
@@ -428,7 +426,6 @@ describe('List', () => {
 
     it('should hide external API panel button without dataset.external.connect', () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
         knowledgeFsEnabled: false,
@@ -539,9 +536,8 @@ describe('List', () => {
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
-    it('should render first empty state when dataset.create_and_management is available without the legacy editor role', async () => {
+    it('should render first empty state when dataset.create_and_management is available', async () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
         knowledgeFsEnabled: false,
@@ -566,7 +562,6 @@ describe('List', () => {
 
     it('should render a permission empty state without dataset creation permissions', async () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
         knowledgeFsEnabled: false,
@@ -676,7 +671,6 @@ describe('List', () => {
 
     it('should not show include all checkbox when not workspace owner', async () => {
       mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         knowledgeFsEnabled: false,

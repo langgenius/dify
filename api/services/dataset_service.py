@@ -2341,6 +2341,23 @@ class DocumentService:
                         if not knowledge_config.data_source.info_list.file_info_list:
                             raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
+                        # Issue #41735: under MySQL's default
+                        # ``REPEATABLE READ`` isolation, the SELECT snapshot
+                        # for this transaction is pinned by the first
+                        # read done earlier in ``save_document_with_dataset_id``
+                        # (e.g. ``check_doc_form``). The caller has just
+                        # committed the upload in a different session
+                        # (``FileService.upload_text`` /
+                        # ``FileService.upload_file``), so the rows exist
+                        # but are invisible to *this* session until its
+                        # snapshot is refreshed. End the current transaction
+                        # so the next SELECT starts with a fresh snapshot.
+                        # The pending changes on ``dataset`` are also
+                        # flushed, which is what we want — they must be
+                        # persisted by this point anyway. PostgreSQL's
+                        # default ``READ COMMITTED`` rebuilds the read view
+                        # per statement so it isn't affected.
+                        session.commit()
                         files = list(
                             session.scalars(
                                 select(UploadFile).where(

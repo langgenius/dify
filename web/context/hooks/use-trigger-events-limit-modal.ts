@@ -48,7 +48,7 @@ export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult =
     currentWorkspaceId &&
     quota &&
     quota.plan !== 'team' &&
-    quota.limit > 0 &&
+    quota.limit >= 0 &&
     quota.usage >= quota.limit
       ? `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${quota.plan}-${quota.limit}-${cycleTag}`
       : null

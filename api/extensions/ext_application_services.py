@@ -547,7 +547,7 @@ def build_application_services(
                 passwords=passwords,
                 tokens=RedisForgotPasswordTokenGateway(
                     redis=redis,
-                    expiry_seconds=int(dify_config.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES * 60),
+                    expiry_seconds=dify_config.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES * 60,
                 ),
                 codes=SecureForgotPasswordCodeGenerator(),
                 notifications=CeleryForgotPasswordNotificationGateway(),

@@ -137,7 +137,6 @@ const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): Conso
     userProfile: testUserProfile,
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
-    isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceDatasetOperator: false,
     workspacePermissionKeys: ['customization.manage'],
     refreshCurrentWorkspace: vi.fn(),

@@ -536,7 +536,7 @@ class AppAnnotationService:
             if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
                 features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
                 annotation_quota_limit = features.annotation_quota_limit
-                if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
+                if 0 < annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
                     raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())

@@ -19,7 +19,7 @@ import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import UpgradeBtn from '../upgrade-btn'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
-import { getResetInDaysFromDate, parseLimit, parseRateLimit } from '../utils'
+import { getResetInDaysFromDate, parseLimit } from '../utils'
 import { Professional, Sandbox, Team } from './assets'
 
 type Props = Readonly<{
@@ -49,8 +49,8 @@ const PlanComp: FC<Props> = ({ loc }) => {
   )
   const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const type = features.billing.subscription.plan
-  const triggerEventsLimit = parseRateLimit(features.trigger_event.limit)
-  const apiRateLimit = parseRateLimit(features.api_rate_limit.limit)
+  const triggerEventsLimit = features.trigger_event.limit
+  const apiRateLimit = features.api_rate_limit.limit
   const apiRateLimitReset = getResetInDaysFromDate(features.api_rate_limit.reset_date)
   const triggerEventsResetInDays =
     type === 'professional' && triggerEventsLimit !== NUM_INFINITE
