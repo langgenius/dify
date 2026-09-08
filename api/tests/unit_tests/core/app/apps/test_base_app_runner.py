@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-from contextlib import nullcontext
 
 import pytest
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import event, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     AdvancedChatMessageEntity,
@@ -381,11 +380,10 @@ class TestAppRunner:
         assert events[-1].llm_result.usage == usage
         assert "Failed to handle multimodal image output" in caplog.messages
 
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_handle_invoke_result_stream_commits_message_file_before_publish(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
     ):
         runner = AppRunner()
         monkeypatch.setattr(
@@ -394,17 +392,11 @@ class TestAppRunner:
             lambda **kwargs: "message-file-1",
         )
         events: list[str] = []
-        original_commit = sqlite_session.commit
 
-        def commit():
+        def record_commit(session: Session) -> None:
             events.append("commit")
-            original_commit()
 
-        monkeypatch.setattr(sqlite_session, "commit", commit)
-        monkeypatch.setattr(
-            "core.app.apps.base_app_runner.session_factory.create_session",
-            lambda: nullcontext(sqlite_session),
-        )
+        event.listen(sqlite_session_factory.class_, "after_commit", record_commit)
         queue = _queue_manager()
         original_publish = queue.publish
 
@@ -433,14 +425,17 @@ class TestAppRunner:
                 ),
             )
 
-        runner._handle_invoke_result_stream(
-            invoke_result=stream(),
-            queue_manager=queue,
-            agent=False,
-            message_id="message-1",
-            user_id="user-1",
-            tenant_id="tenant-1",
-        )
+        try:
+            runner._handle_invoke_result_stream(
+                invoke_result=stream(),
+                queue_manager=queue,
+                agent=False,
+                message_id="message-1",
+                user_id="user-1",
+                tenant_id="tenant-1",
+            )
+        finally:
+            event.remove(sqlite_session_factory.class_, "after_commit", record_commit)
 
         assert events == ["commit", "publish"]
 

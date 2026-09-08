@@ -13,7 +13,7 @@ class AgentBackendConfig(BaseSettings):
     )
 
     AGENT_BACKEND_API_TOKEN: str | None = Field(
-        description="Bearer token for authenticating with the Agent backend /runs API.",
+        description="Bearer token for authenticating with the Agent backend control-plane API.",
         default=None,
     )
 
@@ -37,9 +37,17 @@ class AgentBackendConfig(BaseSettings):
         default=3,
     )
 
-    AGENT_BACKEND_RUN_TIMEOUT_SECONDS: PositiveFloat = Field(
-        description="Total deadline for one Agent backend run event stream.",
-        default=1200,
+    AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description=(
+            "Client timeout for Agent backend calls that may carry a Home Snapshot transfer: "
+            "snapshot capture and delete, and Execution Binding creation that restores one. "
+        ),
+        default=45.0,
+    )
+
+    AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description="Client timeout for converting a Binding file to a ToolFile through the Agent backend.",
+        default=240,
     )
 
     AGENT_SHELL_ENABLED: bool = Field(

@@ -179,10 +179,12 @@ class ProviderWithModelsResponse(BaseModel):
 
     tenant_id: str
     provider: str
-    label: I18nObject
+    label: I18nObject = Field(description="Localized display name of the provider.")
     icon_small: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
-    status: CustomConfigurationStatus
+    status: CustomConfigurationStatus = Field(
+        description="Provider status. `active` when credentials are configured and valid."
+    )
     models: list[ProviderModelWithStatusEntity]
 
     @model_validator(mode="after")

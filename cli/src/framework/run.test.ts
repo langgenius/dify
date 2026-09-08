@@ -1,6 +1,6 @@
 import type { CommandConstructor } from './command'
 import type { CommandTree } from './registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { CONTRACT } from '@/help/contract'
@@ -484,6 +484,39 @@ describe('run() help routing', () => {
     expect(obj.commands.some((c: { command: string }) => c.command === 'get app')).toBe(true)
     expect(obj.topics.some((t: { name: string }) => t.name === 'account')).toBe(true)
     expect(result.exit).toBeUndefined()
+  })
+
+  it('routes `--compact` to the site map instead of the full tree', async () => {
+    const result = await captureRun(tree, ['help', '-o', 'json', '--compact'])
+    const obj = JSON.parse(result.stdout) as { bin?: unknown; contract?: unknown }
+    expect(result.exit).toBeUndefined()
+    expect(obj.bin).toBeUndefined()
+    expect(obj.contract).toBeUndefined()
+  })
+
+  it('accepts every boolean spelling of `--compact`', async () => {
+    const canonical = await captureRun(tree, ['help', '-o', 'json', '--compact'])
+    for (const flag of ['--compact=true', '--compact=1']) {
+      const result = await captureRun(tree, ['help', '-o', 'json', flag])
+      expect(result.stdout, flag).toBe(canonical.stdout)
+    }
+  })
+
+  it('rejects `--compact` without a structured format', async () => {
+    const result = await captureRun(tree, ['help', '--compact'])
+    expect(result.exit).toBe(ExitCode.Usage)
+    expect(result.stderr).toContain('--compact requires -o json or -o yaml')
+  })
+
+  it('rejects `--compact` on per-command help', async () => {
+    const result = await captureRun(tree, ['help', 'get', 'app', '-o', 'json', '--compact'])
+    expect(result.exit).toBe(ExitCode.Usage)
+    expect(JSON.parse(result.stderr)).toEqual({
+      error: {
+        code: 'usage_invalid_flag',
+        message: '--compact is only valid on top-level help',
+      },
+    })
   })
 
   it('emits a JSON descriptor for `help <cmd> -o json`', async () => {

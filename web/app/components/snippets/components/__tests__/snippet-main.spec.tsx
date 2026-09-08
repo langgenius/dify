@@ -24,6 +24,7 @@ const mockHandleStartWorkflowRun = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
+const mockHandleExportDSL = vi.fn()
 const mockUseAvailableNodesMetaData = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['snippets.create_and_modify'] as string[],
@@ -138,6 +139,12 @@ vi.mock('../../hooks/use-snippet-start-run', () => ({
   useSnippetStartRun: () => ({
     handleStartWorkflowRun: mockHandleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
+  }),
+}))
+
+vi.mock('../hooks/use-snippet-dsl', () => ({
+  useSnippetDSL: () => ({
+    handleExportDSL: mockHandleExportDSL,
   }),
 }))
 
@@ -640,6 +647,14 @@ describe('SnippetMain', () => {
         runUrl: '/snippets/snippet-1/workflow-runs/run-1',
         traceUrl: '/snippets/snippet-1/workflow-runs/run-1/node-executions',
       })
+    })
+  })
+
+  describe('DSL Export', () => {
+    it('should pass the snippet DSL export handler to WorkflowWithInnerContext', () => {
+      renderSnippetMain()
+
+      expect(capturedHooksStore?.handleExportDSL).toBe(mockHandleExportDSL)
     })
   })
 })

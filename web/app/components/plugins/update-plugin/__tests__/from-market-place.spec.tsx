@@ -1,6 +1,6 @@
 import type { UpdateFromMarketPlacePayload } from '@/app/components/plugins/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { render } from '@/test/console/render'
 import UpdateFromMarketplace from '../from-market-place'

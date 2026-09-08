@@ -12,9 +12,9 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -99,9 +99,12 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="relative border-b border-divider-subtle p-4 pb-3">
                 <div className="absolute top-3 right-3">
-                  <ActionButton onClick={onClose}>
-                    <RiCloseLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    onClick={onClose}
+                  >
+                    <RiCloseLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 </div>
                 <div
                   className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"

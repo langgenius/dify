@@ -9,16 +9,15 @@ from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
+from models.account import Account
 from models.tools import MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 
 @pytest.fixture
 def mock_user():
-    """Provides a mock user object."""
-    user = Mock()
-    user.name = "Test User"
-    return user
+    """Provides a real mapped account returned by the provider lookup."""
+    return Account(name="Test User", email="user@example.com")
 
 
 @pytest.fixture

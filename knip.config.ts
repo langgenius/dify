@@ -15,6 +15,10 @@ const config: KnipConfig = {
         'tsslint.config.ts',
         'dev-proxy.config.ts',
         'plugins/eslint/index.js',
+        // Public surface consumed by the standalone Marketplace host.
+        // The `!` suffix keeps these entries in `knip --production`.
+        'app/components/plugins/marketplace/standalone/server.ts!',
+        'app/components/plugins/marketplace/standalone/client.ts!',
       ],
       project: [
         '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',
@@ -24,14 +28,11 @@ const config: KnipConfig = {
         '!.storybook/**!',
         '!plugins/**!',
         '!test/**!',
+        '!vitest.browser.setup.ts!',
         '!vitest.setup.ts!',
       ],
       ignore: ['public/**'],
-      ignoreFiles: [
-        'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
-        'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
-        'i18n-config/locale-resources/*.ts',
-      ],
+      ignoreFiles: ['i18n-config/locale-resources/*.ts'],
       ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding'],
     },
   },

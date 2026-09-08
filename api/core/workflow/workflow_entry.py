@@ -7,10 +7,14 @@ from uuid import uuid4
 from configs import dify_config
 from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.entities.app_invoke_entities import (
+    InvokeFrom,
+    UserFrom,
+    build_dify_run_context,
+)
 from core.app.file_access import DatabaseFileAccessController
-from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
+from core.credit_usage import CreditUsageAppType
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -170,7 +174,6 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
-        self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
@@ -217,7 +220,11 @@ class WorkflowEntry:
         if node_type in {BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION}:
             raise ValueError("Loop and Iteration nodes must use their engine-backed debug endpoints")
         node_version = str(node_config_data.version)
-        node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+        node_cls = resolve_workflow_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_config_data,
+        )
 
         # init graph context and runtime state
         run_context = build_dify_run_context(
@@ -226,6 +233,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
@@ -385,6 +393,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id="",
@@ -550,10 +559,7 @@ class WorkflowEntry:
         """
         Run a standalone node with the same quota and observability hooks as GraphEngine.
         """
-        layers: Sequence[GraphEngineLayer] = (
-            LLMQuotaLayer(tenant_id=tenant_id),
-            ObservabilityLayer(),
-        )
+        layers: Sequence[GraphEngineLayer] = (ObservabilityLayer(),)
         command_channel = InMemoryChannel()
         runtime_state = ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state)
         for layer in layers:

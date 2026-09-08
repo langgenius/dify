@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { AppModeEnum, Resolution } from '@/types/app'
 import { useAppInputsFormSchema } from '../use-app-inputs-form-schema'

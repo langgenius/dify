@@ -8,7 +8,7 @@ from libs.helper import escape_like_pattern
 from models import App, AppModelConfig, InstalledApp, Workflow
 from models.model import AppMode
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class InstalledAppCursor(BaseModel):
@@ -118,7 +118,7 @@ class InstalledAppService:
             escaped_name = escape_like_pattern(normalized_name)
             stmt = stmt.where(App.name.ilike(f"%{escaped_name}%", escape="\\"))
 
-        webapp_auth_enabled = FeatureService.get_system_features().webapp_auth.enabled
+        webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
         scan_size = limit * 2 if webapp_auth_enabled else limit + 1
         visible_rows: list[tuple[InstalledApp, App]] = []
         scan_cursor = cursor

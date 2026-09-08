@@ -1,14 +1,10 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { CreateAppModalProps } from '../index'
-import type { UsagePlanInfo } from '@/app/components/billing/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import {
-  createMockPlan,
-  createMockPlanTotal,
-  createMockPlanUsage,
-} from '@/__mocks__/provider-context'
-import { Plan } from '@/app/components/billing/type'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 
@@ -46,29 +42,10 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-const createPlanInfo = (buildApps: number): UsagePlanInfo => ({
-  vectorSpace: 0,
-  buildApps,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-})
-
-let mockEnableBilling = false
-let mockPlanType: Plan = Plan.team
-let mockUsagePlanInfo: UsagePlanInfo = createPlanInfo(1)
-let mockTotalPlanInfo: UsagePlanInfo = createPlanInfo(10)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => {
-    const withPlan = createMockPlan(mockPlanType)
-    const withUsage = createMockPlanUsage(mockUsagePlanInfo, withPlan)
-    const withTotal = createMockPlanTotal(mockTotalPlanInfo, withUsage)
-    return { ...withTotal, enableBilling: mockEnableBilling }
-  },
-}))
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
+let mockPlanType: CloudPlan = 'team'
+let mockAppCount = 1
+const mockAppLimit = 10
 
 type ConfirmPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
@@ -114,13 +91,22 @@ const openAppIconPicker = () => {
   return screen.getByRole('dialog', { name: 'app.iconPicker.emoji' })
 }
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: {
+      billing: { subscription: { plan: mockPlanType } },
+      apps: { size: mockAppCount, limit: mockAppLimit },
+    },
+  })
+}
+
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEnableBilling = false
-    mockPlanType = Plan.team
-    mockUsagePlanInfo = createPlanInfo(1)
-    mockTotalPlanInfo = createPlanInfo(10)
+    deploymentEdition = 'COMMUNITY'
+    mockPlanType = 'team'
+    mockAppCount = 1
     hotkeyMocks.handlers.clear()
   })
 
@@ -222,10 +208,9 @@ describe('CreateAppModal', () => {
 
   describe('Quota Gating', () => {
     it('should show AppsFull and disable create when apps quota is reached', async () => {
-      mockEnableBilling = true
-      mockPlanType = Plan.team
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      deploymentEdition = 'CLOUD'
+      mockPlanType = 'team'
+      mockAppCount = 10
 
       await setup({ isEditModal: false })
 
@@ -234,10 +219,9 @@ describe('CreateAppModal', () => {
     })
 
     it('should allow saving when apps quota is reached in edit mode', async () => {
-      mockEnableBilling = true
-      mockPlanType = Plan.team
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      deploymentEdition = 'CLOUD'
+      mockPlanType = 'team'
+      mockAppCount = 10
 
       await setup({ isEditModal: true })
 
@@ -280,10 +264,9 @@ describe('CreateAppModal', () => {
     })
 
     it('should not submit when apps quota is reached in create mode', async () => {
-      mockEnableBilling = true
-      mockPlanType = Plan.team
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      deploymentEdition = 'CLOUD'
+      mockPlanType = 'team'
+      mockAppCount = 10
 
       const { onConfirm, onHide } = await setup({ isEditModal: false })
 
@@ -297,10 +280,9 @@ describe('CreateAppModal', () => {
     })
 
     it('should submit when apps quota is reached in edit mode', async () => {
-      mockEnableBilling = true
-      mockPlanType = Plan.team
-      mockUsagePlanInfo = createPlanInfo(10)
-      mockTotalPlanInfo = createPlanInfo(10)
+      deploymentEdition = 'CLOUD'
+      mockPlanType = 'team'
+      mockAppCount = 10
 
       const { onConfirm, onHide } = await setup({ isEditModal: true })
 
@@ -554,4 +536,25 @@ describe('CreateAppModal', () => {
       expect(onHide).not.toHaveBeenCalled()
     })
   })
+})
+
+it('edits an existing app without waiting for application quota data', async () => {
+  const onConfirm = vi.fn()
+  renderWithConsoleQuery(
+    <CreateAppModal
+      isEditModal
+      show
+      appName="Existing"
+      appDescription=""
+      appIconType="emoji"
+      appIcon="🤖"
+      onConfirm={onConfirm}
+      onHide={vi.fn()}
+    />,
+    { systemFeatures: { deployment_edition: 'CLOUD' } },
+  )
+  const save = screen.getByRole('button', { name: /operation.save/ })
+  expect(save).toBeEnabled()
+  await userEvent.setup().click(save)
+  await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
 })

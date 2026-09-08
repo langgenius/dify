@@ -3,38 +3,18 @@ import type { AgentV2NodeType } from './types'
 import type { Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 
-export const defaultAgentV2DeclaredOutputs: DeclaredOutputConfig[] = [
-  {
-    name: 'text',
-    type: 'string',
-    required: false,
-    description: 'Free-form text answer.',
-  },
-  {
-    name: 'files',
-    type: 'array',
-    required: false,
-    description: 'Files produced by the agent.',
-    array_item: {
-      type: 'file',
-    },
-  },
-  {
-    name: 'json',
-    type: 'object',
-    required: false,
-    description: 'Free-form JSON object.',
-  },
-]
+export const agentV2SystemTextOutput: DeclaredOutputConfig = Object.freeze({
+  name: 'text',
+  type: 'string',
+  required: false,
+  description: 'Free-form text answer.',
+})
 
-const outputTypeLabels: Record<DeclaredOutputConfig['type'], string> = {
-  array: 'Array',
-  boolean: 'Boolean',
-  file: 'File',
-  number: 'Number',
-  object: 'Object',
-  string: 'String',
-}
+export const AGENT_V2_RESERVED_OUTPUT_NAMES: ReadonlySet<string> = new Set([
+  'text',
+  'switch',
+  '_session',
+])
 
 const outputVarTypes: Record<DeclaredOutputConfig['type'], VarType> = {
   array: VarType.array,
@@ -55,20 +35,15 @@ const arrayItemVarTypes: Record<DeclaredOutputConfig['type'], VarType> = {
 }
 
 export function getAgentV2DeclaredOutputs(data: AgentV2NodeType) {
-  return data.agent_declared_outputs?.length
-    ? data.agent_declared_outputs
-    : defaultAgentV2DeclaredOutputs
+  return normalizeAgentV2DeclaredOutputs(data.agent_declared_outputs ?? [])
 }
 
-/**
- * @public
- */
-// TODO: Remove this marker after the output type label consumer is wired.
-export function getDeclaredOutputTypeLabel(output: DeclaredOutputConfig) {
-  if (output.type === 'array')
-    return `Array[${output.array_item ? outputTypeLabels[output.array_item.type] : 'Object'}]`
+export function getAgentV2CustomDeclaredOutputs(outputs: readonly DeclaredOutputConfig[]) {
+  return outputs.filter((output) => !AGENT_V2_RESERVED_OUTPUT_NAMES.has(output.name))
+}
 
-  return outputTypeLabels[output.type]
+export function normalizeAgentV2DeclaredOutputs(outputs: readonly DeclaredOutputConfig[]) {
+  return [agentV2SystemTextOutput, ...getAgentV2CustomDeclaredOutputs(outputs)]
 }
 
 function getDeclaredOutputVarType(output: DeclaredOutputConfig) {

@@ -1,7 +1,7 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { IndexingType } from '../../hooks'
@@ -54,15 +54,17 @@ vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', (
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    onSelect,
-    readonly,
+  ModelSelector: ({
+    onValueChange,
+    disabled,
   }: {
-    onSelect?: (val: Record<string, string>) => void
-    readonly?: boolean
+    onValueChange?: (val: Record<string, string>) => void
+    disabled?: boolean
   }) => (
-    <div data-testid="model-selector" data-readonly={readonly}>
-      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>
+    <div data-testid="model-selector" data-disabled={disabled}>
+      <button
+        onClick={() => onValueChange?.({ provider: 'openai', model: 'text-embedding-3-small' })}
+      >
         Select Model
       </button>
     </div>
@@ -160,9 +162,9 @@ describe('IndexingModeSection', () => {
       expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
 
-    it('should mark model selector as readonly when disabled', () => {
+    it('should disable model selector when disabled', () => {
       render(<IndexingModeSection {...defaultProps} isModelAndRetrievalConfigDisabled />)
-      expect(screen.getByTestId('model-selector'))!.toHaveAttribute('data-readonly', 'true')
+      expect(screen.getByTestId('model-selector'))!.toHaveAttribute('data-disabled', 'true')
     })
 
     it('should call onEmbeddingModelChange when model selected', () => {

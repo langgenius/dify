@@ -3,18 +3,17 @@ import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Plan } from '@/app/components/billing/type'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { disableModel, enableModel } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
@@ -42,9 +41,14 @@ const ModelListItem = ({
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const modelLoadBalancingEnabled = useProviderContextSelector(
-    (state) => state.modelLoadBalancingEnabled,
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: features } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => ({
+        plan: features.billing.subscription.plan,
+        model_load_balancing_enabled: features.model_load_balancing_enabled,
+      }),
+    }),
   )
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
@@ -123,7 +127,7 @@ const ModelListItem = ({
         showFeaturesLabel
       ></ModelName>
       <div className="flex shrink-0 items-center">
-        {modelLoadBalancingEnabled &&
+        {features?.model_load_balancing_enabled &&
           !model.deprecated &&
           model.load_balancing_enabled &&
           !model.has_invalid_load_balancing_configs && (
@@ -132,7 +136,9 @@ const ModelListItem = ({
             </Badge>
           )}
         {canConfigureModels &&
-          (modelLoadBalancingEnabled || plan.type === Plan.sandbox) &&
+          (deploymentEdition !== 'CLOUD' ||
+            features?.model_load_balancing_enabled ||
+            features?.plan === 'sandbox') &&
           !model.deprecated &&
           [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
             <ConfigModel
@@ -155,7 +161,7 @@ const ModelListItem = ({
                 </span>
               }
             />
-            <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+            <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
               {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
             </PopoverContent>
           </Popover>

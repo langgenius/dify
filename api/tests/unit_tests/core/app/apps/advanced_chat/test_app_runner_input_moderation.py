@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -12,7 +13,8 @@ from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
-from models.model import App, AppMode, IconType
+from models.model import App, AppMode, Conversation, IconType, Message, MessageAnnotation
+from models.workflow import Workflow, WorkflowType
 
 MINIMAL_GRAPH = {
     "nodes": [
@@ -38,39 +40,36 @@ def build_runner(sqlite_session: Session):
     # Mocks for constructor args
     mock_queue_manager = MagicMock()
 
-    mock_conversation = MagicMock()
-    mock_conversation.id = str(uuid4())
-    mock_conversation.app_id = app_id
-
-    mock_message = MagicMock()
-    mock_message.id = str(uuid4())
-
-    mock_workflow = MagicMock()
-    mock_workflow.id = workflow_id
-    mock_workflow.tenant_id = tenant_id
-    mock_workflow.app_id = app_id
-    mock_workflow.type = "chat"
-    mock_workflow.graph_dict = MINIMAL_GRAPH
-    mock_workflow.environment_variables = []
+    conversation = Conversation(id=str(uuid4()), app_id=app_id)
+    message = Message(id=str(uuid4()), app_id=app_id, conversation_id=conversation.id)
+    workflow = Workflow(
+        id=workflow_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=WorkflowType.CHAT,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(MINIMAL_GRAPH),
+        features="{}",
+        created_by=str(uuid4()),
+    )
 
     mock_app_config = MagicMock()
     mock_app_config.app_id = app_id
     mock_app_config.workflow_id = workflow_id
     mock_app_config.tenant_id = tenant_id
 
-    sqlite_session.add(
-        App(
-            id=app_id,
-            tenant_id=tenant_id,
-            name="Advanced chat app",
-            mode=AppMode.ADVANCED_CHAT,
-            icon_type=IconType.EMOJI,
-            icon="chat",
-            icon_background="#ffffff",
-            enable_site=False,
-            enable_api=False,
-        )
+    app = App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Advanced chat app",
+        mode=AppMode.ADVANCED_CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=False,
     )
+    sqlite_session.add(app)
     sqlite_session.commit()
 
     gen = MagicMock(spec=AdvancedChatAppGenerateEntity)
@@ -91,13 +90,13 @@ def build_runner(sqlite_session: Session):
     runner = AdvancedChatAppRunner(
         application_generate_entity=gen,
         queue_manager=mock_queue_manager,
-        conversation=mock_conversation,
-        message=mock_message,
+        conversation=conversation,
+        message=message,
         dialogue_count=1,
         variable_loader=MagicMock(),
-        workflow=mock_workflow,
+        workflow=workflow,
         system_user_id=str(uuid4()),
-        app=MagicMock(),
+        app=app,
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
     )
@@ -125,7 +124,7 @@ def test_handle_input_moderation_stops_on_moderation_error(build_runner):
         patch.object(runner, "_complete_with_stream_output") as mock_complete,
     ):
         stop, new_inputs, new_query = runner.handle_input_moderation(
-            app_record=MagicMock(),
+            app_record=runner._app,
             app_generate_entity=runner.application_generate_entity,
             inputs={"k": "v"},
             query="hello",
@@ -206,7 +205,12 @@ def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engi
             events.append("commit")
 
     event.listen(Session, "after_commit", record_commit)
-    annotation_reply = MagicMock(id="annotation-1", content="annotated answer")
+    annotation_reply = MessageAnnotation(
+        app_id=runner._app.id,
+        question="question",
+        content="annotated answer",
+        account_id=str(uuid4()),
+    )
 
     def publish(event):
         if isinstance(event, QueueAnnotationReplyEvent):

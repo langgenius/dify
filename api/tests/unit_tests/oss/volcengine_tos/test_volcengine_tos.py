@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 from tos import TosClientV2
 
@@ -14,14 +12,15 @@ pytest_plugins = ("tests.unit_tests.oss.__mock.volcengine_tos",)
 
 class TestVolcengineTos(BaseStorageTest):
     @pytest.fixture(autouse=True)
-    def setup_method(self, setup_volcengine_tos_mock):
+    def setup_method(self, setup_volcengine_tos_mock, config_overrides):
         """Executed before each test method."""
-        with patch("extensions.storage.volcengine_tos_storage.dify_config") as mock_config:
-            mock_config.VOLCENGINE_TOS_ACCESS_KEY = "test_access_key"
-            mock_config.VOLCENGINE_TOS_SECRET_KEY = "test_secret_key"
-            mock_config.VOLCENGINE_TOS_ENDPOINT = "test_endpoint"
-            mock_config.VOLCENGINE_TOS_REGION = "test_region"
-            self.storage = VolcengineTosStorage()
+        config_overrides(
+            VOLCENGINE_TOS_ACCESS_KEY="test_access_key",
+            VOLCENGINE_TOS_SECRET_KEY="test_secret_key",
+            VOLCENGINE_TOS_ENDPOINT="test_endpoint",
+            VOLCENGINE_TOS_REGION="test_region",
+        )
+        self.storage = VolcengineTosStorage()
 
         self.storage.bucket_name = get_example_bucket()
         self.storage.client = TosClientV2(

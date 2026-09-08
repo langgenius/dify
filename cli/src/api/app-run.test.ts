@@ -1,7 +1,7 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { AppRunClient, buildRunBody } from './app-run.js'
 
 describe('buildRunBody', () => {

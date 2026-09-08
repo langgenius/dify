@@ -1,5 +1,5 @@
 import type { PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../types'
 import {
   convertRepoToUrl,

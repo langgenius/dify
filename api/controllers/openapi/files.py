@@ -20,10 +20,9 @@ from controllers.openapi._contract import returns
 from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.oauth_bearer import Scope
-from services.file_service import FileService
 
 
 @openapi_ns.route("/apps/<string:app_id>/files")
@@ -33,16 +32,16 @@ class AppFileUploadApi(Resource):
     @openapi_ns.doc(
         responses={
             201: "File uploaded successfully",
-            400: "Bad request — no file or filename missing",
+            400: "Bad request — no file, multiple files, invalid filename, or blocked extension",
             401: "Unauthorized — invalid or expired bearer token",
             413: "File too large",
-            415: "Unsupported file type or blocked extension",
+            415: "Unsupported file type",
         }
     )
     @auth_router.guard(scope=Scope.APPS_RUN)
     @returns(HTTPStatus.CREATED, FileResponse, description="File uploaded")
-    def post(self, app_id: str, *, auth_data: AuthData):
-        app_model, caller, _ = auth_data.require_app_context()
+    def post(self, app_id: str, *, auth_data: AuthData) -> FileResponse:
+        _app_model, caller, _caller_kind = auth_data.require_app_context()
         if "file" not in request.files:
             raise NoFileUploadedError()
         if len(request.files) > 1:
@@ -55,19 +54,19 @@ class AppFileUploadApi(Resource):
             raise FilenameNotExists()
 
         try:
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = application_services().files.upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=caller,
             )
-        except ValueError as exc:
-            raise BadRequest(str(exc))
         except services.errors.file.FileTooLargeError as exc:
-            raise FileTooLargeError(exc.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+            raise FileTooLargeError(exc.description) from exc
+        except services.errors.file.UnsupportedFileTypeError as exc:
+            raise UnsupportedFileTypeError() from exc
         except services.errors.file.BlockedFileExtensionError as exc:
-            raise BlockedFileExtensionError(exc.description)
+            raise BlockedFileExtensionError(exc.description) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
 
         return FileResponse.model_validate(upload_file, from_attributes=True)

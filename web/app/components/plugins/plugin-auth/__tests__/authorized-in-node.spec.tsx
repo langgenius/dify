@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
@@ -241,6 +241,24 @@ describe('AuthorizedInNode Component', () => {
       wrapper: createWrapper(),
     })
     const button = screen.getByRole('button')
+    expect(button.textContent).toContain('plugin.auth.unavailable')
+  })
+
+  it('should show unavailable when workspace default credential is missing', async () => {
+    const AuthorizedInNode = (await import('../authorized-in-node')).default
+    mockGetPluginCredentialInfo.mockReturnValue({
+      credentials: [],
+      supported_credential_types: [CredentialTypeEnum.API_KEY],
+      allow_custom_token: true,
+    })
+    const pluginPayload = createPluginPayload()
+
+    render(<AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
+
+    const button = screen.getByRole('button')
+    expect(button.textContent).toContain('plugin.auth.workspaceDefault')
     expect(button.textContent).toContain('plugin.auth.unavailable')
   })
 })

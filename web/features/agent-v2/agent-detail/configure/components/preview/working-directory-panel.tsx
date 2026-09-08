@@ -18,7 +18,7 @@ import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-qu
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
@@ -673,10 +673,9 @@ export function AgentWorkingDirectoryPanel({
           onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) =>
             loadingFolderPaths.has(file.id) ? (
-              <span
-                aria-label={tCommon(($) => $.loading)}
-                className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary"
-              />
+              <span className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary">
+                <span className="sr-only">{tCommon(($) => $.loading)}</span>
+              </span>
             ) : null,
           selectedFileId: selectedWorkingDirectoryFile?.id,
           sections: [],

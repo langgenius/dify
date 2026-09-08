@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
@@ -12,20 +13,8 @@ const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
 const mockTrackCreateApp = vi.fn()
-let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
-
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    latestDebounceFn = fn
-    return {
-      run: () => setTimeout(() => latestDebounceFn(), 0),
-      cancel: vi.fn(),
-      flush: () => latestDebounceFn(),
-    }
-  },
-}))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -142,8 +131,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
 
   return {
     ...actual,
@@ -258,7 +247,7 @@ describe('Apps', () => {
   })
 
   it('renders template cards when data is available', () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getAllByTestId('app-card')).toHaveLength(6)
     expect(screen.getByText('Alpha'))!.toBeInTheDocument()
@@ -266,7 +255,7 @@ describe('Apps', () => {
   })
 
   it('opens create modal when a template card is clicked', () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     expect(screen.getByTestId('create-from-template-modal'))!.toBeInTheDocument()
@@ -275,7 +264,7 @@ describe('Apps', () => {
   it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
     mockWorkspacePermissionKeys = ['app.create_and_management']
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getAllByTestId('app-card')[0]).toHaveAttribute('data-can-create', 'true')
   })
@@ -283,7 +272,7 @@ describe('Apps', () => {
   it('does not allow template creation when app.create_and_management permission is missing', () => {
     mockWorkspacePermissionKeys = []
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getAllByTestId('app-card')[0]).toHaveAttribute('data-can-create', 'false')
   })
@@ -294,14 +283,14 @@ describe('Apps', () => {
       isLoading: false,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
     expect(screen.getByText('app.newApp.noTemplateFoundTip'))!.toBeInTheDocument()
   })
 
   it('filters templates by keyword and selected app type', async () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.change(screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate'), {
       target: { value: 'Bravo' },
@@ -325,9 +314,9 @@ describe('Apps', () => {
   })
 
   it('creates an app from a template and redirects after import succeeds', async () => {
-    const onSuccess = vi.fn()
+    const onClose = vi.fn()
 
-    render(<Apps onSuccess={onSuccess} />)
+    render(<Apps onClose={onClose} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
@@ -348,7 +337,7 @@ describe('Apps', () => {
       templateId: 'Alpha',
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onSuccess).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
     expect(mockGetRedirection).toHaveBeenCalledWith(
       {
@@ -372,7 +361,7 @@ describe('Apps', () => {
       app_mode: AppModeEnum.WORKFLOW,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
@@ -398,7 +387,7 @@ describe('Apps', () => {
   it('shows an error toast when importing the template fails', async () => {
     mockImportDSL.mockRejectedValueOnce(new Error('failed'))
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
@@ -411,7 +400,7 @@ describe('Apps', () => {
   it('forwards the create-from-blank action from the sidebar', () => {
     const onCreateFromBlank = vi.fn()
 
-    render(<Apps onCreateFromBlank={onCreateFromBlank} />)
+    render(<Apps onClose={vi.fn()} onCreateFromBlank={onCreateFromBlank} />)
 
     fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
 
@@ -424,7 +413,7 @@ describe('Apps', () => {
       isLoading: true,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByRole('status'))!.toBeInTheDocument()
   })
@@ -435,13 +424,13 @@ describe('Apps', () => {
       isLoading: false,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
   })
 
   it('should filter templates by category and the remaining app modes', async () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByText('Cat C'))
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
@@ -484,7 +473,7 @@ describe('Apps', () => {
       isLoading: false,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByText('Cat A'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'v' })).not.toBeInTheDocument()
@@ -492,7 +481,7 @@ describe('Apps', () => {
   })
 
   it('should clear the search, hide the sidebar during search, and close the modal when requested', async () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     const searchInput = screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate')
     fireEvent.change(searchInput, {
@@ -517,5 +506,25 @@ describe('Apps', () => {
     fireEvent.click(screen.getByTestId('hide-create-modal'))
 
     expect(screen.queryByTestId('create-from-template-modal')).not.toBeInTheDocument()
+  })
+
+  it('clears an active search immediately and returns focus to the searchbox', async () => {
+    const user = userEvent.setup()
+    render(<Apps onClose={vi.fn()} />)
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'app.newAppFromTemplate.searchAllTemplate',
+    })
+
+    await user.type(searchInput, 'Alpha')
+    await waitFor(() => {
+      expect(screen.queryByText('Bravo')).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
+    expect(screen.getByText('Cat A')).toBeInTheDocument()
+    expect(screen.getAllByTestId('app-card')).toHaveLength(6)
   })
 })

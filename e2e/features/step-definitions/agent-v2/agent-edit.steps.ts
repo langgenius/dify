@@ -86,7 +86,7 @@ When(
     const copyName = createE2EResourceName('Agent', 'copy')
 
     await page.goto('/agents')
-    const card = page.getByRole('article', { name: agentName, exact: true })
+    const card = page.getByRole('listitem', { name: agentName, exact: true })
 
     await expect(card).toBeVisible({ timeout: 30_000 })
     await card.hover()
@@ -174,7 +174,7 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
   await expect(advancedSettings).toBeVisible()
   await expect(
-    advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
+    advancedSettings.getByText('For power users, such as environment variables.'),
   ).toBeVisible()
 })
 

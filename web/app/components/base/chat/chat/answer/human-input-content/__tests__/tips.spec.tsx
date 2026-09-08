@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import Tips from '../tips'

@@ -1,8 +1,9 @@
 'use client'
 
-import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
+import * as React from 'react'
 import { cn } from '../cn'
+import { iconButtonVariants } from '../icon-button/variants'
 
 const Drawer = BaseDrawer.Root
 const DrawerProvider = BaseDrawer.Provider
@@ -119,12 +120,13 @@ function DrawerCloseButton({
       type={type}
       aria-label={ariaLabel}
       className={cn(
-        'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50',
+        iconButtonVariants({ size: 'lg' }),
+        'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50 data-disabled:text-text-tertiary',
         className,
       )}
       {...props}
     >
-      {children ?? <span aria-hidden="true" className="i-ri-close-line h-4 w-4" />}
+      {children ?? <span aria-hidden="true" className="i-ri-close-line size-4" />}
     </BaseDrawer.Close>
   )
 }

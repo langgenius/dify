@@ -1,24 +1,18 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
+let canReplaceLogo = true
+
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -28,11 +22,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -86,12 +75,11 @@ vi.mock('@/service/use-common', async (importOriginal) => {
   return {
     ...actual,
     useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-    useProviderContext: vi.fn(),
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {
@@ -150,21 +138,13 @@ const baseConsoleState: ConsoleStateFixture = {
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
-    plan: '',
+    plan: null,
     role: 'owner',
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '0.1.0',
-    latest_version: '0.1.0',
-    release_notes: '',
-    version: '0.1.0',
-  },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',
@@ -209,6 +189,10 @@ describe('AccountSetting', () => {
     }
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
+      features: {
+        billing: { subscription: { plan: 'sandbox' } },
+        can_replace_logo: canReplaceLogo,
+      },
       accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
       systemFeatures: {
         deployment_edition: deploymentEdition,
@@ -223,11 +207,7 @@ describe('AccountSetting', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      enableReplaceWebAppLogo: true,
-    })
+    canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -238,7 +218,7 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getByText('common.settings.settings'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'common.settings.settings' })).toBeInTheDocument()
       expect(screen.getAllByText('common.settings.workspace').length).toBeGreaterThan(0)
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
@@ -453,14 +433,10 @@ describe('AccountSetting', () => {
 
     it('should hide billing and custom tabs when disabled', () => {
       // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        enableBilling: false,
-        enableReplaceWebAppLogo: false,
-      })
+      canReplaceLogo = false
 
       // Act
-      renderAccountSetting()
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
       // Assert
       // Assert
@@ -638,15 +614,13 @@ describe('AccountSetting', () => {
   })
 
   describe('Interactions', () => {
-    it('should call onCancel when clicking close button', () => {
-      // Act
+    it('should call onCancel when clicking close button', async () => {
+      const user = userEvent.setup()
       renderAccountSetting()
-      const closeIcon = document.querySelector('.i-ri-close-line')
-      const closeButton = closeIcon?.closest('button')
-      expect(closeButton).not.toBeNull()
-      fireEvent.click(closeButton!)
+      const dialog = screen.getByRole('dialog', { name: 'common.settings.settings' })
 
-      // Assert
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+
       expect(mockOnCancel).toHaveBeenCalled()
     })
 

@@ -1,7 +1,14 @@
-import * as React from 'react'
 import CreateFromPipeline from '@/app/components/datasets/create-from-pipeline'
+import { getRouteMetadata } from '@/app/route-metadata'
 
-const DatasetCreation = async () => {
+export function generateMetadata() {
+  return getRouteMetadata(
+    'common',
+    ($) => $['stepByStepTour.guides.knowledge.empty.pipeline.title'],
+  )
+}
+
+const DatasetCreation = () => {
   return <CreateFromPipeline />
 }
 

@@ -14,7 +14,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
  * - detail.spec.tsx
  * - trigger-by-display.spec.tsx
  */
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'

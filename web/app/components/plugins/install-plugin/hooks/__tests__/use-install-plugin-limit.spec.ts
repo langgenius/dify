@@ -1,6 +1,6 @@
 import type { PluginInstallationScope } from '@dify/contracts/api/console/system-features/types.gen'
 import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
 

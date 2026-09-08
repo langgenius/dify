@@ -1,19 +1,22 @@
 'use client'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { downloadUrl } from '@/utils/download'
 
 type Props = Readonly<{
   content: string
+  downloadLabel?: string
+  scanLabel?: string
+  triggerLabel?: string
 }>
 
 const prefixEmbedded = 'overview.appInfo.qrcode.title'
 
-const ShareQRCode = ({ content }: Props) => {
+const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props) => {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState<boolean>(false)
   const qrCodeRef = useRef<HTMLDivElement>(null)
@@ -42,19 +45,20 @@ const ShareQRCode = ({ content }: Props) => {
     downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
-  const tooltipText = t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
+  const tooltipText = triggerLabel ?? t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
   /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
   const safeTooltipText = tooltipText || ''
-  const downloadText = t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
+  const downloadText =
+    downloadLabel ?? t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
 
   return (
     <Tooltip>
       <div className="relative size-6">
         <TooltipTrigger
           render={
-            <ActionButton aria-label={safeTooltipText} onClick={toggleQRCode}>
+            <IconButton aria-label={safeTooltipText} onClick={toggleQRCode}>
               <span className="i-ri-qr-code-line size-4" aria-hidden="true" />
-            </ActionButton>
+            </IconButton>
           }
         />
         {isShow && (
@@ -64,10 +68,12 @@ const ShareQRCode = ({ content }: Props) => {
           >
             <QRCode size={160} value={content} className="mb-2" />
             <div className="flex items-center system-xs-regular">
-              <div className="text-text-tertiary">
-                {t(($) => $['overview.appInfo.qrcode.scan'], { ns: 'appOverview' })}
-              </div>
-              <div className="text-text-tertiary">·</div>
+              {scanLabel ? (
+                <>
+                  <div className="text-text-tertiary">{scanLabel}</div>
+                  <div className="text-text-tertiary">·</div>
+                </>
+              ) : null}
               <button
                 type="button"
                 className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

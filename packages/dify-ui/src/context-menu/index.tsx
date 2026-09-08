@@ -1,9 +1,9 @@
 'use client'
 
-import type * as React from 'react'
 import type { MenuItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
+import * as React from 'react'
 import { cn } from '../cn'
 import {
   floatingGroupLabelClassName,
@@ -45,40 +45,21 @@ function ContextMenuRadioGroup<Value = unknown>(
   return <BaseContextMenu.RadioGroup {...props} />
 }
 
-type ContextMenuContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-  popupClassName?: string
-  positionerProps?: Omit<
-    BaseContextMenu.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<BaseContextMenu.Popup.Props, 'children' | 'className'>
-}
+type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children' | 'className'> &
+  Pick<BaseContextMenu.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+    children: React.ReactNode
+    placement?: Placement
+    className?: string
+  }
 
-type ContextMenuPopupRenderProps = Required<Pick<ContextMenuContentProps, 'children'>> & {
-  placement: Placement
-  sideOffset: number
-  alignOffset: number
-  className?: string
-  popupClassName?: string
-  positionerProps?: ContextMenuContentProps['positionerProps']
-  popupProps?: ContextMenuContentProps['popupProps']
-}
-
-function renderContextMenuPopup({
+function ContextMenuContent({
   children,
-  placement,
-  sideOffset,
-  alignOffset,
+  placement = 'bottom-start',
+  sideOffset = 0,
+  alignOffset = 0,
   className,
-  popupClassName,
-  positionerProps,
-  popupProps,
-}: ContextMenuPopupRenderProps) {
+  ...props
+}: ContextMenuContentProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
@@ -88,40 +69,17 @@ function renderContextMenuPopup({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
+        className="z-50 outline-hidden"
       >
         <BaseContextMenu.Popup
-          className={cn(menuPopupClassName, floatingPopupAnimationClassName, popupClassName)}
-          {...popupProps}
+          className={cn(menuPopupClassName, floatingPopupAnimationClassName, className)}
+          {...props}
         >
           {children}
         </BaseContextMenu.Popup>
       </BaseContextMenu.Positioner>
     </BaseContextMenu.Portal>
   )
-}
-
-function ContextMenuContent({
-  children,
-  placement = 'bottom-start',
-  sideOffset = 0,
-  alignOffset = 0,
-  className,
-  popupClassName,
-  positionerProps,
-  popupProps,
-}: ContextMenuContentProps) {
-  return renderContextMenuPopup({
-    children,
-    placement,
-    sideOffset,
-    alignOffset,
-    className,
-    popupClassName,
-    positionerProps,
-    popupProps,
-  })
 }
 
 type ContextMenuItemProps = Omit<BaseContextMenu.Item.Props, 'className'> & {
@@ -247,16 +205,7 @@ function ContextMenuSubTrigger({
   )
 }
 
-type ContextMenuSubContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-  popupClassName?: string
-  positionerProps?: ContextMenuContentProps['positionerProps']
-  popupProps?: ContextMenuContentProps['popupProps']
-}
+type ContextMenuSubContentProps = ContextMenuContentProps
 
 function ContextMenuSubContent({
   children,
@@ -264,20 +213,28 @@ function ContextMenuSubContent({
   sideOffset = 4,
   alignOffset = 0,
   className,
-  popupClassName,
-  positionerProps,
-  popupProps,
+  ...props
 }: ContextMenuSubContentProps) {
-  return renderContextMenuPopup({
-    children,
-    placement,
-    sideOffset,
-    alignOffset,
-    className,
-    popupClassName,
-    positionerProps,
-    popupProps,
-  })
+  const { side, align } = parsePlacement(placement)
+
+  return (
+    <BaseContextMenu.Portal>
+      <BaseContextMenu.Positioner
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        className="z-50 outline-hidden"
+      >
+        <BaseContextMenu.Popup
+          className={cn(menuPopupClassName, floatingPopupAnimationClassName, className)}
+          {...props}
+        >
+          {children}
+        </BaseContextMenu.Popup>
+      </BaseContextMenu.Positioner>
+    </BaseContextMenu.Portal>
+  )
 }
 
 type ContextMenuLabelProps = Omit<BaseContextMenu.GroupLabel.Props, 'className'> & {

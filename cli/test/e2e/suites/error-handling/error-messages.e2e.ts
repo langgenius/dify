@@ -33,7 +33,7 @@ import type { AuthFixture } from '../../helpers/cli.js'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { ZERO } from '@/util/uuid.js'
 import {
   assertErrorEnvelope,

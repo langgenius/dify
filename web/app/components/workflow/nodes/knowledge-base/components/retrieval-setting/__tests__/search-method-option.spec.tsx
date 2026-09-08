@@ -1,41 +1,14 @@
 import type { ComponentType, SVGProps } from 'react'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum, WeightedScoreEnum } from '../../../types'
 import { SearchMethodOption } from '../search-method-option'
 
-const mockUseModelListAndDefaultModel = vi.hoisted(() => vi.fn())
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
-const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
-      >()
-    return {
-      ...actual,
-      useModelListAndDefaultModel: (
-        ...args: Parameters<typeof actual.useModelListAndDefaultModel>
-      ) => mockUseModelListAndDefaultModel(...args),
-    }
-  },
-)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('../reranking-model-selector', () => ({
+  default: () => <button type="button">plugin.detailPanel.configureModel</button>,
 }))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
-  () => ({
-    useCredentialPanelState: (...args: unknown[]) => mockUseCredentialPanelState(...args),
-  }),
-)
 
 const SearchIcon: ComponentType<SVGProps<SVGSVGElement>> = (props) => (
   <svg aria-hidden="true" {...props} />
@@ -128,27 +101,6 @@ function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
 }
 
 describe('SearchMethodOption', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseModelListAndDefaultModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-    })
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [],
-    })
-    mockUseCredentialPanelState.mockReturnValue({
-      variant: 'api-active',
-      priority: 'apiKeyOnly',
-      supportsCredits: false,
-      showPrioritySwitcher: false,
-      hasCredentials: true,
-      isCreditsExhausted: false,
-      credentialName: undefined,
-      credits: 0,
-    })
-  })
-
   it('should render semantic search controls and notify retrieval and reranking changes', () => {
     const props = createProps()
 
@@ -210,8 +162,8 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Weighted mode'))!.toBeInTheDocument()
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
+    expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+    expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
     expect(
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),

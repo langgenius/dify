@@ -328,7 +328,7 @@ function NormalForm() {
                 </Link>
               </div>
               {isNonCloudEdition && (
-                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
+                <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                   {t(($) => $.goToInit, { ns: 'login' })}
                   &nbsp;
                   <Link

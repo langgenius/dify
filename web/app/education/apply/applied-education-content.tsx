@@ -8,7 +8,6 @@ import type {
 import type { ReactNode } from 'react'
 import { Select, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdown/workplace-selector'
 import { PlanBadge } from '@/app/components/header/plan-badge'
 
@@ -21,12 +20,6 @@ type AppliedEducationContentProps = {
   onSwitchWorkspace: (tenantId: string) => void
 }
 
-const workspacePlans = new Set<string>(Object.values(Plan))
-
-function isWorkspacePlan(plan: string | null | undefined): plan is Plan {
-  return !!plan && workspacePlans.has(plan)
-}
-
 const AppliedEducationContent = ({
   workspaces,
   currentWorkspace,
@@ -37,11 +30,7 @@ const AppliedEducationContent = ({
 }: AppliedEducationContentProps) => {
   const { t } = useTranslation()
   const currentWorkspaceInList = workspaces.find((workspace) => workspace.current)
-  const workspacePlan = isWorkspacePlan(currentWorkspaceInList?.plan)
-    ? currentWorkspaceInList.plan
-    : isWorkspacePlan(plan)
-      ? plan
-      : Plan.sandbox
+  const workspacePlan = currentWorkspaceInList?.plan ?? plan
   const workspaceName = currentWorkspaceInList?.name || currentWorkspace?.name
   const workspaceId = currentWorkspaceInList?.id || currentWorkspace?.id
 

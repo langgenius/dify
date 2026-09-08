@@ -1,5 +1,6 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import {
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -9,18 +10,17 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'
@@ -54,18 +54,21 @@ function ComplianceDocActionVisual({
 }: ComplianceDocActionVisualProps) {
   if (isCurrentPlanCanDownload) {
     return (
-      <Button
-        size="small"
-        disabled={isPending}
-        loading={isPending}
-        aria-hidden
-        className="pointer-events-none flex items-center"
-      >
-        <span className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled" />
+      <span data-disabled={isPending || undefined} className={buttonVariants({ size: 'small' })}>
+        <span
+          aria-hidden
+          className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled"
+        />
         <span className="system-xs-medium text-components-button-secondary-text">
           {downloadText}
         </span>
-      </Button>
+        {isPending && (
+          <span
+            className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+            aria-hidden
+          />
+        )}
+      </span>
     )
   }
 
@@ -98,10 +101,15 @@ type ComplianceDocRowItemProps = {
 
 function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: docName !== DocName.GDPR,
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const { setShowPricingModal } = useModalContext()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
-  const isFreePlan = plan.type === Plan.sandbox
+  const isFreePlan = plan === 'sandbox'
 
   const { isPending, mutate: downloadCompliance } = useMutation({
     mutationKey: ['downloadCompliance', docName],
@@ -117,14 +125,16 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     },
   })
 
-  const whichPlanCanDownloadCompliance = {
-    [DocName.SOC2_Type_I]: [Plan.professional, Plan.team],
-    [DocName.SOC2_Type_II]: [Plan.team],
-    [DocName.ISO_27001]: [Plan.team],
-    [DocName.GDPR]: [Plan.team, Plan.professional, Plan.sandbox],
+  const whichPlanCanDownloadCompliance: Record<DocName, CloudPlan[]> = {
+    [DocName.SOC2_Type_I]: ['professional', 'team'],
+    [DocName.SOC2_Type_II]: ['team'],
+    [DocName.ISO_27001]: ['team'],
+    [DocName.GDPR]: ['team', 'professional', 'sandbox'],
   }
 
-  const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[docName].includes(plan.type)
+  const isCurrentPlanCanDownload =
+    docName === DocName.GDPR ||
+    (plan !== undefined && whichPlanCanDownloadCompliance[docName].includes(plan))
 
   const handleSelect = useCallback(() => {
     if (isCurrentPlanCanDownload) {
@@ -143,18 +153,20 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     setShowPricingModal,
   ])
 
-  const upgradeTooltip: Record<Plan, string> = {
-    [Plan.sandbox]: t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' }),
-    [Plan.professional]: t(($) => $['compliance.professionalUpgradeTooltip'], { ns: 'common' }),
-    [Plan.team]: '',
-    [Plan.enterprise]: '',
+  const upgradeTooltip: Record<CloudPlan, string> = {
+    sandbox: t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' }),
+    professional: t(($) => $['compliance.professionalUpgradeTooltip'], { ns: 'common' }),
+    team: '',
   }
   const labelTitle = typeof label === 'string' ? label : undefined
+
+  if (docName !== DocName.GDPR && plan === undefined) return null
 
   return (
     <DropdownMenuItem
       className="h-10 justify-between py-1 pr-2 pl-1"
       closeOnClick={!isCurrentPlanCanDownload}
+      disabled={isPending}
       onClick={handleSelect}
     >
       {icon}
@@ -164,7 +176,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
       <ComplianceDocActionVisual
         isCurrentPlanCanDownload={isCurrentPlanCanDownload}
         isPending={isPending}
-        tooltipText={upgradeTooltip[plan.type]}
+        tooltipText={plan ? upgradeTooltip[plan] : ''}
         downloadText={t(($) => $['operation.download'], { ns: 'common' })}
         upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       />
@@ -184,7 +196,7 @@ export default function Compliance() {
           label={t(($) => $['userProfile.compliance'], { ns: 'common' })}
         />
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent popupClassName="w-[337px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
+      <DropdownMenuSubContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
         <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
