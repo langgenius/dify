@@ -475,6 +475,12 @@ class TestFileService:
         result = FileService.get_upload_files_by_ids("tenant_id", [], session=db_session)
         assert result == {}
 
+    def test_get_upload_file_by_id_scopes_to_tenant(self, db_session: Session) -> None:
+        upload_file = self._persist_upload_file(db_session)
+
+        assert FileService.get_upload_file_by_id("tenant_id", "file_id", session=db_session) == upload_file
+        assert FileService.get_upload_file_by_id("other_tenant_id", "file_id", session=db_session) is None
+
     def test_get_upload_files_by_ids(self, db_session: Session):
         upload_file = self._persist_upload_file(db_session, file_id="550e8400-e29b-41d4-a716-446655440000")
         self._persist_upload_file(

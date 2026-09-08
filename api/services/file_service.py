@@ -171,14 +171,7 @@ class FileService:
     def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
         """Generate a direct storage URL for a tenant-owned upload file."""
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(
-                select(UploadFile)
-                .where(
-                    UploadFile.id == file_id,
-                    UploadFile.tenant_id == tenant_id,
-                )
-                .limit(1)
-            )
+            upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
             if upload_file is None:
                 raise NotFound("File not found")
 
@@ -198,15 +191,8 @@ class FileService:
             ):
                 return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
             with self._session_maker(expire_on_commit=False) as session:
-                upload_file_id = session.scalar(
-                    select(UploadFile.id)
-                    .where(
-                        UploadFile.id == file_id,
-                        UploadFile.tenant_id == tenant_id,
-                    )
-                    .limit(1)
-                )
-            if upload_file_id is None:
+                upload_file = self.get_upload_file_by_id(tenant_id, file_id, session=session)
+            if upload_file is None:
                 raise NotFound("File not found")
         except NotFound as exc:
             raise FileNotExistsError("File reference not found") from exc
@@ -284,6 +270,17 @@ class FileService:
                 return
             storage.delete(upload_file.key)
             session.delete(upload_file)
+
+    @staticmethod
+    def get_upload_file_by_id(tenant_id: str, upload_file_id: str, *, session: Session) -> UploadFile | None:
+        return session.scalar(
+            select(UploadFile)
+            .where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id == upload_file_id,
+            )
+            .limit(1)
+        )
 
     @staticmethod
     def get_upload_files_by_ids(
