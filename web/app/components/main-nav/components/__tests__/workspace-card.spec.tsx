@@ -177,10 +177,7 @@ describe('WorkspaceCard', () => {
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
@@ -344,10 +341,7 @@ describe('WorkspaceCard', () => {
       plan: 'team',
     })
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
       enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 

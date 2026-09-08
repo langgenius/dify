@@ -430,7 +430,6 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "professional", "interval": "month", "education": False},
             "members": {"size": 1, "limit": 50},
             "apps": {"size": 1, "limit": 200},
@@ -458,7 +457,6 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "professional", "interval": "month", "education": False},
             "members": {"size": 1, "limit": 50},
             "apps": {"size": 1, "limit": 200},
@@ -488,7 +486,6 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "professional", "interval": "month", "education": False},
             "members": {"size": 1, "limit": 50},
             "apps": {"size": 1, "limit": 200},
@@ -544,7 +541,6 @@ class TestBillingServiceSubscriptionInfo:
     def test_get_info_preserves_unknown_vector_space_usage(self, mock_send_request):
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
             "subscription": {"plan": "sandbox", "interval": "", "education": False},
             "members": {"size": 1, "limit": 1},
             "apps": {"size": 1, "limit": 10},
@@ -1750,7 +1746,6 @@ class TestBillingServiceIntegrationScenarios:
 
         # Step 1: Get current billing info
         mock_send_request.return_value = {
-            "enabled": True,
             "subscription": {"plan": "sandbox", "interval": "", "education": False},
             "members": {"size": 0, "limit": 1},
             "apps": {"size": 0, "limit": 5},
@@ -1822,7 +1817,6 @@ class TestBillingServiceSubscriptionInfoDataType:
     @pytest.fixture
     def normal_billing_response(self) -> dict:
         return {
-            "enabled": True,
             "subscription": {
                 "plan": "team",
                 "interval": "year",
@@ -1844,7 +1838,6 @@ class TestBillingServiceSubscriptionInfoDataType:
     @pytest.fixture
     def string_billing_response(self) -> dict:
         return {
-            "enabled": True,
             "subscription": {
                 "plan": "team",
                 "interval": "year",
@@ -1865,7 +1858,6 @@ class TestBillingServiceSubscriptionInfoDataType:
 
     @staticmethod
     def _assert_billing_info_types(result: dict):
-        assert isinstance(result["enabled"], bool)
         assert isinstance(result["subscription"]["plan"], str)
         assert isinstance(result["subscription"]["interval"], str)
         assert isinstance(result["subscription"]["education"], bool)

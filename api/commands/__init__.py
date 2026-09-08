@@ -24,6 +24,7 @@ from .plugin import (
     transform_datasource_credentials,
 )
 from .rbac import (
+    migrate_agent_permissions_to_rbac,
     migrate_dataset_permissions_to_rbac,
     migrate_member_roles_to_rbac,
     migrate_only_me_resource_whitelist_scopes_to_automatic_include,
@@ -83,6 +84,7 @@ __all__ = [
     "install_rag_pipeline_plugins",
     "knowledge_fs_control_space",
     "legacy_model_types",
+    "migrate_agent_permissions_to_rbac",
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",
     "migrate_dataset_permissions_to_rbac",

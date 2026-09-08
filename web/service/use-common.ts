@@ -15,7 +15,6 @@ import type {
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
-import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 // oxlint-disable-next-line no-restricted-imports
@@ -32,7 +31,6 @@ export const commonQueryKeys = {
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
-  retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
@@ -224,13 +222,6 @@ export const useModelListByType = (type: ModelTypeEnum | ModelType, enabled = tr
     }),
     queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
     enabled,
-  })
-}
-
-export const useSupportRetrievalMethods = () => {
-  return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
-    queryKey: commonQueryKeys.retrievalMethods,
-    queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
   })
 }
 

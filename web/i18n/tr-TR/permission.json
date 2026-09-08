@@ -34,6 +34,7 @@
   "accessRule.updated": "Erişim kuralı başarıyla güncellendi",
   "accessRule.workspaceOwner": "Çalışma alanı sahibi",
   "common.duplicateAction": "Çoğalt",
+  "group.agent": "Ajanlar",
   "group.app": "Uygulamalar",
   "group.app_acl": "Uygulama erişim izinleri",
   "group.billing": "Faturalandırma",

@@ -9,7 +9,7 @@ import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
@@ -28,7 +28,7 @@ import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/type
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
-import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
@@ -50,7 +50,16 @@ const FeaturesTrigger = () => {
   const appID = appDetail?.id
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  const { plan, isFetchedPlan } = useProviderContext()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (features) => features.billing.subscription.plan,
+    }),
+  )
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
@@ -135,8 +144,8 @@ const FeaturesTrigger = () => {
       if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
       return count
     }, 0)
-    return isFetchedPlan && plan.type === 'sandbox' && entryCount > 2
-  }, [nodes, plan.type, isFetchedPlan])
+    return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
+  }, [nodes, plan, deploymentEdition])
 
   const hasHumanInputNode = useMemo(() => {
     return nodes.some((node) => node.data.type === BlockEnum.HumanInput)

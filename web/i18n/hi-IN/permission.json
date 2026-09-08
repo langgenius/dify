@@ -34,6 +34,7 @@
   "accessRule.updated": "एक्सेस नियम सफलतापूर्वक अपडेट किया गया",
   "accessRule.workspaceOwner": "वर्कस्पेस का मालिक",
   "common.duplicateAction": "डुप्लिकेट करें",
+  "group.agent": "एजेंट",
   "group.app": "अनुप्रयोग",
   "group.app_acl": "ऐप एक्सेस अनुमतियाँ",
   "group.billing": "बिलिंग",

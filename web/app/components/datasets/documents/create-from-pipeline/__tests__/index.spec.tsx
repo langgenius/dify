@@ -6,7 +6,7 @@ import CreateFromPipeline from '../index'
 const mockPlan = {
   usage: { vectorSpace: 50 },
   total: { vectorSpace: 100 },
-  type: 'professional',
+  type: 'professional' as 'professional' | 'sandbox',
 }
 
 const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
@@ -16,19 +16,17 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
     limit: mockPlan.total.vectorSpace,
     usage_unknown: vectorSpaceUsageUnknown,
   })
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
 }
 
 let mockDatasetPermissionKeys = ['dataset.acl.use']
 let mockAllFileLoaded = false
 const mockRouterReplace = vi.fn()
 const mockStepOneContent = vi.fn()
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { plan: typeof mockPlan; enableBilling: boolean }) => unknown,
-  ) => selector({ plan: mockPlan, enableBilling: true }),
-}))
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -37,6 +35,7 @@ vi.mock('@/context/workspace-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -47,6 +46,7 @@ vi.mock('@/context/permission-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -57,6 +57,7 @@ vi.mock('@/features/system-features/state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 

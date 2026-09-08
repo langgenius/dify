@@ -2,23 +2,12 @@
 
 import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
-import { useEffect } from 'react'
-import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
-import { defaultPlan } from '@/app/components/billing/config'
-import { parseCurrentPlan } from '@/app/components/billing/utils'
 import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ZENDESK_FIELD_IDS } from '@/config'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
-import {
-  commonQueryKeys,
-  useModelListByType,
-  useSupportRetrievalMethods,
-} from '@/service/use-common'
+import { commonQueryKeys, useModelListByType } from '@/service/use-common'
 import { ProviderContext } from './provider-context'
 
 type ProviderContextProviderProps = {
@@ -26,7 +15,6 @@ type ProviderContextProviderProps = {
 }
 
 export const ProviderContextProvider = ({ children }: ProviderContextProviderProps) => {
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const queryClient = useQueryClient()
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const {
@@ -35,18 +23,12 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
     isSuccess: isSuccessModelProviders,
   } = useQuery(consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions())
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
-  const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
   const features = featuresQuery.data
-  const enableBilling = features?.billing.enabled ?? false
-  const plan = enableBilling && features ? parseCurrentPlan(features) : defaultPlan
-  const isFetchedPlan = featuresQuery.isSuccess && enableBilling
-  const isFetchedPlanInfo = featuresQuery.isFetched
   const enableEducationPlan = features?.education.enabled ?? false
   const enableSkill = features?.enable_skill ?? false
   const enableReplaceWebAppLogo = features?.can_replace_logo ?? false
   const modelLoadBalancingEnabled = features?.model_load_balancing_enabled ?? false
-  const webappCopyrightEnabled = features?.webapp_copyright_enabled ?? false
   const isAllowTransferWorkspace = features?.is_allow_transfer_workspace ?? false
   const isAllowPublishAsCustomKnowledgePipelineTemplate =
     features?.knowledge_pipeline.publish_enabled ?? false
@@ -60,27 +42,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
       queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
     ]).then(() => undefined)
 
-  const refreshFeatures = () =>
-    queryClient
-      .invalidateQueries({ queryKey: consoleQuery.features.get.key() })
-      .then(() => undefined)
-
-  // #region Zendesk conversation fields
-  useEffect(() => {
-    if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
-      zendeskRuntime.setConversationFields(
-        [
-          {
-            id: ZENDESK_FIELD_IDS.PLAN,
-            value: `${plan.type}-plan`,
-          },
-        ],
-        deploymentEdition,
-      )
-    }
-  }, [deploymentEdition, plan.type])
-  // #endregion Zendesk conversation fields
-
   return (
     <ProviderContext.Provider
       value={{
@@ -93,17 +54,10 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isAPIKeySet: !!textGenerationModelList?.data?.some(
           (model) => model.status === ModelStatusEnum.active,
         ),
-        supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
-        plan,
-        isFetchedPlan,
-        isFetchedPlanInfo,
-        enableBilling,
         enableSkill,
-        onPlanInfoChanged: refreshFeatures,
         enableReplaceWebAppLogo,
         modelLoadBalancingEnabled,
         enableEducationPlan,
-        webappCopyrightEnabled,
         isAllowTransferWorkspace,
         isAllowPublishAsCustomKnowledgePipelineTemplate,
         humanInputEmailDeliveryEnabled,

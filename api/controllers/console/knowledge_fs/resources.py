@@ -26,6 +26,7 @@ from werkzeug.exceptions import (
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -47,7 +48,6 @@ from controllers.console.knowledge_fs.error import (
 )
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     rbac_permission_required,
@@ -1677,11 +1677,7 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET,
-        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_required=False,
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
@@ -1724,11 +1720,7 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET,
-        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_required=False,
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def get(self, control_space_id: str, document_id: str):
