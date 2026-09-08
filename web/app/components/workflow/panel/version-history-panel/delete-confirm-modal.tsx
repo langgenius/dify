@@ -48,17 +48,10 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
-          <AlertDialogCancelButton
-            nativeButton={false}
-            variant="secondary"
-            closeProps={{ nativeButton: false }}
-          >
+          <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            nativeButton={false}
-            onClick={onDelete.bind(null, versionInfo.id)}
-          >
+          <AlertDialogConfirmButton onClick={onDelete.bind(null, versionInfo.id)}>
             {t(($) => $['operation.delete'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

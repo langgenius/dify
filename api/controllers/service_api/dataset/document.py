@@ -1015,8 +1015,9 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
+        effective_limit = min(query_params.limit, 100)
         paginated_documents = paginate_query(
-            query, session=session, page=query_params.page, per_page=query_params.limit, max_per_page=100
+            query, session=session, page=query_params.page, per_page=effective_limit, max_per_page=100
         )
         documents = paginated_documents.items
 
@@ -1029,8 +1030,8 @@ class DocumentListApi(DatasetApiResource):
 
         response = {
             "data": document_responses(documents, session=session),
-            "has_more": len(documents) == query_params.limit,
-            "limit": query_params.limit,
+            "has_more": query_params.page * effective_limit < paginated_documents.total,
+            "limit": effective_limit,
             "total": paginated_documents.total,
             "page": query_params.page,
         }

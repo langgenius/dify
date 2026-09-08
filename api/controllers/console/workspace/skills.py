@@ -10,13 +10,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import BinaryFileResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     edit_permission_required,
 )
 from fields.base import ResponseModel
@@ -293,20 +293,12 @@ def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, object]
     return body, exc.status_code
 
 
-def _workspace_id(context: RequestContext) -> str:
-    if context.active_workspace_id is None:
-        raise RuntimeError("Console account admission did not resolve an active workspace")
-    return context.active_workspace_id
-
-
 @console_ns.route("/workspaces/current/skills")
 class WorkspaceSkillsApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkspaceSkillsQuery))
     @console_ns.response(200, "Workspace skills", console_ns.models[SkillListResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext):
@@ -320,7 +312,7 @@ class WorkspaceSkillsApi(Resource):
             query_input["page"] = request.args.get("page")
         query = WorkspaceSkillsQuery.model_validate(query_input)
         result = SkillManagementService(session=session).list_skills(
-            tenant_id=_workspace_id(request_context),
+            tenant_id=request_context.active_workspace_id,
             keyword=query.keyword,
             page=query.page,
             limit=query.limit,
@@ -331,9 +323,7 @@ class WorkspaceSkillsApi(Resource):
     @console_ns.expect(console_ns.models[SkillCreatePayload.__name__])
     @console_ns.response(201, "Skill created", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -341,7 +331,7 @@ class WorkspaceSkillsApi(Resource):
         try:
             payload = SkillCreatePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).create_skill(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 payload=payload,
             )
@@ -371,7 +361,7 @@ class WorkspaceSkillFileUploadApi(Resource):
 
         try:
             result = SkillManagementService(session=session).upload_file(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 filename=file.filename,
                 content=file.stream.read(),
@@ -388,7 +378,7 @@ class WorkspaceSkillTagsApi(Resource):
     @console_account_admission()
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext):
-        result = SkillManagementService(session=session).list_tags(tenant_id=_workspace_id(request_context))
+        result = SkillManagementService(session=session).list_tags(tenant_id=request_context.active_workspace_id)
         return dump_response(SkillTagListResponse, result)
 
 
@@ -397,9 +387,7 @@ class WorkspaceSkillImportApi(Resource):
     @console_ns.doc(description="Import a Skill zip package from multipart form field `file`.")
     @console_ns.response(201, "Skill imported", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -410,7 +398,7 @@ class WorkspaceSkillImportApi(Resource):
         try:
             payload = SkillImportPayload(content=upload.read(), filename=upload.filename or "skill.zip")
             result = SkillManagementService(session=session).import_skill(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 payload=payload,
             )
@@ -425,15 +413,13 @@ class WorkspaceSkillImportApi(Resource):
 class WorkspaceSkillApi(Resource):
     @console_ns.response(200, "Skill detail", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
             result = SkillManagementService(session=session).get_skill(
-                tenant_id=_workspace_id(request_context), skill_id=skill_id
+                tenant_id=request_context.active_workspace_id, skill_id=skill_id
             )
             return dump_response(SkillDetailResponse, result)
         except SkillManagementServiceError as exc:
@@ -442,9 +428,7 @@ class WorkspaceSkillApi(Resource):
     @console_ns.expect(console_ns.models[SkillMetadataPayload.__name__])
     @console_ns.response(200, "Skill updated", console_ns.models[SkillResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -452,7 +436,7 @@ class WorkspaceSkillApi(Resource):
         try:
             payload = SkillMetadataPayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).update_metadata(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
                 payload=payload,
@@ -468,9 +452,7 @@ class WorkspaceSkillApi(Resource):
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_DELETE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -478,7 +460,7 @@ class WorkspaceSkillApi(Resource):
         try:
             payload = SkillDeletePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).delete_skill(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 confirmation_name=payload.confirmation_name,
             )
@@ -493,16 +475,14 @@ class WorkspaceSkillApi(Resource):
 class WorkspaceSkillDuplicateApi(Resource):
     @console_ns.response(201, "Skill duplicated", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
     def post(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
             result = SkillManagementService(session=session).duplicate_skill(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
             )
@@ -515,15 +495,13 @@ class WorkspaceSkillDuplicateApi(Resource):
 class WorkspaceSkillExportApi(Resource):
     @console_ns.response(200, "Published Skill zip archive")
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
             result = SkillManagementService(session=session).pull_published_archive(
-                tenant_id=_workspace_id(request_context), skill_id=skill_id
+                tenant_id=request_context.active_workspace_id, skill_id=skill_id
             )
             return send_file(
                 io.BytesIO(result.payload),
@@ -547,7 +525,7 @@ class WorkspaceSkillAssistMessageApi(Resource):
         try:
             payload = SkillAssistMessagePayload.model_validate(console_ns.payload or {})
             response = SkillManagementService(session=session).create_assistant_action_stream(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 user_id=request_context.account_id,
                 message=payload.message,
@@ -574,7 +552,7 @@ class WorkspaceSkillFilesCheckApi(Resource):
         try:
             payload = SkillDraftFileCheckPayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).check_draft_files(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 payload=payload,
             )
@@ -598,7 +576,7 @@ class WorkspaceSkillFilesApi(Resource):
         try:
             payload = SkillDraftFileOperationPayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).apply_draft_file_operation(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
                 payload=payload,
@@ -620,7 +598,7 @@ class WorkspaceSkillFilesApi(Resource):
         try:
             payload = SkillDraftTreePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).replace_draft_tree(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
                 payload=payload,
@@ -649,7 +627,7 @@ class WorkspaceSkillFilePreviewApi(Resource):
                 }
             )
             result = SkillManagementService(session=session).preview_file(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 path=query.path,
                 version_id=query.version_id,
@@ -678,7 +656,7 @@ class WorkspaceSkillFileContentApi(Resource):
                 }
             )
             result = SkillManagementService(session=session).pull_file(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 path=query.path,
                 version_id=query.version_id,
@@ -702,9 +680,7 @@ class WorkspaceSkillPublishApi(Resource):
     @console_ns.expect(console_ns.models[SkillPublishPayload.__name__])
     @console_ns.response(200, "Skill published", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_PUBLISH,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -712,7 +688,7 @@ class WorkspaceSkillPublishApi(Resource):
         try:
             payload = SkillPublishPayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).publish_skill(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
                 payload=payload,
@@ -729,9 +705,7 @@ class WorkspaceSkillRestoreApi(Resource):
     @console_ns.expect(console_ns.models[SkillRestorePayload.__name__])
     @console_ns.response(200, "Skill version restored to draft", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_PUBLISH,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -739,7 +713,7 @@ class WorkspaceSkillRestoreApi(Resource):
         try:
             payload = SkillRestorePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).restore_version(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
                 payload=payload,
@@ -759,7 +733,7 @@ class WorkspaceSkillReferencesApi(Resource):
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
             result = SkillManagementService(session=session).list_skill_references(
-                tenant_id=_workspace_id(request_context), skill_id=skill_id
+                tenant_id=request_context.active_workspace_id, skill_id=skill_id
             )
             return dump_response(SkillReferenceListResponse, result)
         except SkillManagementServiceError as exc:
@@ -774,7 +748,7 @@ class WorkspaceSkillVersionsApi(Resource):
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
             result = SkillManagementService(session=session).list_versions(
-                tenant_id=_workspace_id(request_context), skill_id=skill_id
+                tenant_id=request_context.active_workspace_id, skill_id=skill_id
             )
             return dump_response(SkillVersionListResponse, result)
         except SkillManagementServiceError as exc:
@@ -789,7 +763,7 @@ class WorkspaceSkillVersionApi(Resource):
     def get(self, session: Session, request_context: RequestContext, skill_id: str, version_id: str):
         try:
             result = SkillManagementService(session=session).get_version(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 version_id=version_id,
             )
@@ -806,7 +780,7 @@ class WorkspaceSkillVersionApi(Resource):
         try:
             payload = SkillVersionUpdatePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).update_version(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 skill_id=skill_id,
                 version_id=version_id,
                 payload=payload,
@@ -824,7 +798,7 @@ class WorkspaceSkillVersionApi(Resource):
     def delete(self, session: Session, request_context: RequestContext, skill_id: str, version_id: str):
         try:
             result = SkillManagementService(session=session).delete_version(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
                 version_id=version_id,
@@ -841,7 +815,7 @@ class WorkspaceAgentSkillBindingsApi(Resource):
     @with_session
     def get(self, session: Session, request_context: RequestContext, agent_id: str):
         result = SkillManagementService(session=session).list_agent_bindings(
-            tenant_id=_workspace_id(request_context), agent_id=agent_id
+            tenant_id=request_context.active_workspace_id, agent_id=agent_id
         )
         return dump_response(AgentSkillBindingsResponse, result)
 
@@ -854,7 +828,7 @@ class WorkspaceAgentSkillBindingsApi(Resource):
         try:
             payload = AgentSkillBindingsPayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).replace_agent_bindings(
-                tenant_id=_workspace_id(request_context),
+                tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 agent_id=agent_id,
                 skill_ids=payload.skill_ids,

@@ -116,8 +116,8 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
   default: () => <div data-testid="reference-setting-modal" />,
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const originalWorkspaces = actual.consoleQuery.workspaces
   return {
     ...actual,

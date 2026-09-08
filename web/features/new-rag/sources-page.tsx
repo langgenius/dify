@@ -31,7 +31,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { newKnowledgeAddSourcePath } from './routes'
 
@@ -192,7 +192,6 @@ function SourceActions({
             <AlertDialogConfirmButton
               tone="destructive"
               loading={pendingAction === 'remove'}
-              disabled={pendingAction === 'remove'}
               onClick={() =>
                 void onRemove().then((removed) => {
                   if (removed) setRemoveDialogOpen(false)
@@ -375,7 +374,7 @@ function SourceRow({
               size="small"
               variant="secondary"
               loading={pendingAction === 'sync'}
-              disabled={Boolean(pendingAction)}
+              disabled={pendingAction !== undefined && pendingAction !== 'sync'}
               onClick={() => void syncSource()}
             >
               {tCommon(($) => $['operation.retry'])}

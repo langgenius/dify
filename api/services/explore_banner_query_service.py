@@ -7,6 +7,8 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, NamedTuple, Protocol
 
+from constants.languages import languages
+
 _DEFAULT_LANGUAGE = "en-US"
 
 
@@ -37,6 +39,7 @@ class ExploreBannerQueryService:
         if not self._enabled:
             return ()
 
+        language = language if language in languages else _DEFAULT_LANGUAGE
         banners = tuple(self._banners.list_enabled(language))
         if banners or language == _DEFAULT_LANGUAGE:
             return banners

@@ -185,7 +185,7 @@ export const Infotip: Story = {
         />
         <PopoverContent
           placement="top"
-          className="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
+          className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary"
         >
           Set which resource to use first when running models. The Trial quota will be used after
           the paid quota is exhausted.

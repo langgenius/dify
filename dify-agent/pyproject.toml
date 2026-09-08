@@ -19,7 +19,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
 server = [
-    "e2b>=2.34.0,<3.0.0",
+    "e2b>=2.38.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
@@ -38,12 +38,12 @@ include = ["agenton*", "agenton_collections*", "dify_agent*", "shellctl*"]
 [tool.setuptools.package-data]
 "dify_agent.layers" = ["_agent_cli_help.json"]
 
-[tool.pyright]
-include = ["src", "examples", "tests"]
-venvPath = "."
-venv = ".venv"
-pythonVersion = "3.12"
-extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
+[tool.pyrefly]
+project-includes = ["src", "examples"]
+project-excludes = [".venv", "tests/"]
+search-path = ["src", "examples/agenton", "examples/dify_agent"]
+python-platform = "linux"
+python-version = "3.12.0"
 
 [tool.pytest.ini_options]
 # Several test modules share a basename across directories (test_layer.py,
@@ -61,8 +61,8 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.3",
     "coverage[toml]>=7.10.7",
+    "pyrefly>=1.2.0",
     "pytest>=9.0.3",
     "pytest-examples>=0.0.18",
     "pytest-mock>=3.14.0",

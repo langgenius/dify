@@ -238,10 +238,10 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
-  it('should allow users with access point permission to open access point directly', async () => {
+  it('should allow users with Access Point view permission to open the page directly', async () => {
     mockPathname = '/app/app-1/access-point'
     mockFetchAppDetailDirect.mockResolvedValue(
-      createAppDetail({ permission_keys: [AppACLPermission.AccessPoint] }),
+      createAppDetail({ permission_keys: [AppACLPermission.AccessPointView] }),
     )
 
     render(
@@ -256,11 +256,9 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
-  it('should redirect access point pages when access point permission is missing', async () => {
+  it('should redirect access point pages when view permission is missing', async () => {
     mockPathname = '/app/app-1/access-point'
-    mockFetchAppDetailDirect.mockResolvedValue(
-      createAppDetail({ permission_keys: [AppACLPermission.Monitor] }),
-    )
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">
@@ -269,17 +267,15 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()
   })
 
-  it('should keep access point content hidden while redirecting cached app data without permission', async () => {
+  it('should keep cached Access Point content hidden while redirecting without view permission', async () => {
     mockPathname = '/app/app-1/access-point'
-    useStore
-      .getState()
-      .setAppDetail(createAppDetail({ permission_keys: [AppACLPermission.Monitor] }))
+    useStore.getState().setAppDetail(createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">
@@ -289,7 +285,7 @@ describe('AppDetailLayout', () => {
 
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
   })
@@ -518,7 +514,9 @@ describe('AppDetailLayout', () => {
     mockIsRbacEnabled = false
     mockPathname = '/app/app-1/access-config'
     mockFetchAppDetailDirect.mockResolvedValue(
-      createAppDetail({ permission_keys: [AppACLPermission.AccessConfig] }),
+      createAppDetail({
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
+      }),
     )
 
     render(
@@ -528,7 +526,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()

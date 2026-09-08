@@ -5,6 +5,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_enum_models,
@@ -14,7 +15,6 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
     model_validate,
@@ -227,7 +227,7 @@ class DefaultModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostDefault)
@@ -276,7 +276,7 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostModels)
@@ -325,7 +325,7 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserDeleteModels)
@@ -349,6 +349,8 @@ class ModelProviderModelCredentialApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -411,7 +413,7 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserCreateCredential)
@@ -444,7 +446,7 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserUpdateCredential)
@@ -472,7 +474,7 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserDeleteCredential)
@@ -497,7 +499,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserSwitch)
@@ -524,7 +526,7 @@ class ModelProviderModelEnableApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @model_validate(ParserDeleteModels)
     def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
 
@@ -546,7 +548,7 @@ class ModelProviderModelDisableApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @model_validate(ParserDeleteModels)
     def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
 

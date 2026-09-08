@@ -32,7 +32,6 @@ const render = (ui: React.ReactElement) => {
   })
   seedFeatures(queryClient, {
     billing: {
-      enabled: true,
       subscription: { interval: 'month', plan: mockCurrentPlan },
     },
     education: { enabled: mockEducationEnabled },
@@ -50,8 +49,8 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleClient: new Proxy(actual.consoleClient, {

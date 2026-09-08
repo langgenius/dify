@@ -1,7 +1,7 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { TagSelector } from './tag-selector'
 
 type SkillCardTagsProps = {

@@ -1,9 +1,9 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
-  Model,
-  ModelItem,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ModelProviderSummaryResponse,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMemo } from 'react'
 import { deriveModelStatus } from '@/app/components/header/account-setting/model-provider-page/derive-model-status'
 import { useCredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
@@ -12,13 +12,13 @@ import { useProviderContext } from '@/context/provider-context'
 type UseEmbeddingModelStatusProps = {
   embeddingModel?: string
   embeddingModelProvider?: string
-  embeddingModelList: Model[]
+  embeddingModelList: ProviderWithModelsResponse[]
 }
 
 type UseEmbeddingModelStatusResult = {
   providerMeta: ModelProviderSummaryResponse | ModelProvider | undefined
-  modelProvider: Model | undefined
-  currentModel: ModelItem | undefined
+  modelProvider: ProviderWithModelsResponse | undefined
+  currentModel: ProviderModelWithStatusEntity | undefined
   status: ReturnType<typeof deriveModelStatus>
 }
 

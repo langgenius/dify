@@ -13,7 +13,7 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import UpdateSettingDialog from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'

@@ -27,6 +27,7 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
+from .think_tags import ThinkStreamState
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -54,7 +55,7 @@ class AgentMessageTransformer:
             conversation_id=conversation_id,
         )
 
-        text = ""
+        think_state = ThinkStreamState()
         files: list[File] = []
         json_list: list[dict | list] = []
 
@@ -125,10 +126,10 @@ class AgentMessageTransformer:
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                text += message.message.text
+                chunk = think_state.feed_text(message.message.text)
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
-                    chunk=message.message.text,
+                    chunk=chunk,
                     is_final=False,
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
@@ -152,8 +153,9 @@ class AgentMessageTransformer:
                 linked_file = self._file_from_link_message(message=message, tenant_id=tenant_id)
                 if linked_file is not None:
                     files.append(linked_file)
+                yield from self._close_open_think(think_state=think_state, node_id=node_id)
                 stream_text = f"{'File' if linked_file is not None else 'Link'}: {message.message.text}\n"
-                text += stream_text
+                think_state.feed_text(stream_text)
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
                     chunk=stream_text,
@@ -249,6 +251,8 @@ class AgentMessageTransformer:
                 else:
                     agent_logs.append(agent_log)
 
+                yield from self._close_open_think(think_state=think_state, node_id=node_id)
+
                 yield agent_log
 
         json_output: list[dict[str, Any] | list[Any]] = []
@@ -271,6 +275,8 @@ class AgentMessageTransformer:
         else:
             json_output.append({"data": []})
 
+        yield from self._close_open_think(think_state=think_state, node_id=node_id)
+
         yield StreamChunkEvent(
             selector=[node_id, "text"],
             chunk="",
@@ -288,7 +294,7 @@ class AgentMessageTransformer:
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
-                    "text": text,
+                    "text": think_state.text,
                     "usage": jsonable_encoder(llm_usage),
                     "files": ArrayFileSegment(value=files),
                     "json": json_output,
@@ -302,6 +308,17 @@ class AgentMessageTransformer:
                 inputs=parameters_for_log,
                 llm_usage=llm_usage,
             )
+        )
+
+    @staticmethod
+    def _close_open_think(*, think_state: ThinkStreamState, node_id: str) -> Generator[StreamChunkEvent, None, None]:
+        closed = think_state.close_if_open()
+        if closed is None:
+            return
+        yield StreamChunkEvent(
+            selector=[node_id, "text"],
+            chunk=closed,
+            is_final=False,
         )
 
     @staticmethod

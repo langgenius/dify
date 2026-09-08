@@ -26,7 +26,7 @@ export function PlanFeatureInfotip({ label, content }: { label: string; content:
       />
       <PopoverContent
         placement="top-end"
-        className="w-[260px] rounded-none border-0 bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface shadow-none"
+        className="w-65 rounded-none border-0 bg-saas-dify-blue-static px-5 py-4.5 system-xs-regular text-text-primary-on-surface shadow-none"
       >
         <PopoverTitle className="sr-only">{label}</PopoverTitle>
         {content}

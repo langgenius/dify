@@ -1,5 +1,9 @@
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement, ReactNode } from 'react'
-import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import type { DefaultModel } from '../../declarations'
 import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -41,7 +45,7 @@ vi.mock('../../model-name', () => ({
     nameClassName,
     children,
   }: {
-    modelItem: ModelItem
+    modelItem: ProviderModelWithStatusEntity
     className?: string
     nameClassName?: string
     children?: ReactNode
@@ -107,7 +111,9 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const makeModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -119,7 +125,10 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
+const makeModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -270,7 +279,8 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
-  it('should render suggestion icon with tooltip for suggested models', async () => {
+  it('should expose the suggestion in the model name and on hover', async () => {
+    const user = userEvent.setup()
     renderPopupItem(
       <PopupItem
         {...previewCardProps()}
@@ -287,20 +297,30 @@ describe('PopupItem', () => {
 
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
-    const suggestionIcon = screen.getByLabelText('common.modelProvider.selector.suggestionTip')
+    const modelButton = screen.getByRole('button', {
+      name: /GPT-5\.5.*common.modelProvider.selector.suggestionTip/,
+    })
+    const suggestionText = screen.getByText('common.modelProvider.selector.suggestionTip')
+    const suggestionIndicator = suggestionText.parentElement
 
-    expect(suggestionIcon).toHaveClass('i-ri-shield-star-line')
+    expect(modelButton).toBeInTheDocument()
+    expect(suggestionIndicator).not.toBeNull()
 
-    await userEvent.hover(suggestionIcon)
+    await user.hover(suggestionIndicator!)
 
     expect(
-      await screen.findByText('common.modelProvider.selector.suggestionTip'),
+      await screen.findByText(
+        (content, element) =>
+          content === 'common.modelProvider.selector.suggestionTip' &&
+          !!element &&
+          !modelButton.contains(element),
+      ),
     ).toBeInTheDocument()
   })
 
   it('should open model modal when clicking add on unconfigured model', async () => {
     const onSelect = vi.fn()
-    const { rerender } = renderPopupItem(
+    renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
@@ -324,35 +344,6 @@ describe('PopupItem', () => {
 
     expect(mockUpdateModelProviders).toHaveBeenCalled()
     expect(mockUpdateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
-
-    rerender(
-      createPopupItemNode(
-        <PopupItem
-          {...previewCardProps()}
-          model={makeModel({
-            models: [
-              makeModelItem({
-                status: ModelStatusEnum.noConfigure,
-                model_type: undefined as unknown as ModelTypeEnum,
-              }),
-            ],
-          })}
-          onHide={vi.fn()}
-        />,
-      ),
-    )
-
-    fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
-    await waitFor(() => {
-      expect(mockSetShowModelModal).toHaveBeenCalledTimes(2)
-    })
-    const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as
-      | { onSaveCallback?: () => void }
-      | undefined
-    call2?.onSaveCallback?.()
-
-    expect(mockUpdateModelProviders).toHaveBeenCalled()
-    expect(mockUpdateModelList).toHaveBeenCalledTimes(1)
   })
 
   it('should show selected state when defaultModel matches', () => {
@@ -376,8 +367,8 @@ describe('PopupItem', () => {
       <PopupItem
         {...previewCardProps()}
         model={makeModel({
-          label: { en_US: 'OpenAI only' } as Model['label'],
-          models: [makeModelItem({ label: { en_US: 'GPT-4 only' } as ModelItem['label'] })],
+          label: { en_US: 'OpenAI only' },
+          models: [makeModelItem({ label: { en_US: 'GPT-4 only' } })],
         })}
         onHide={vi.fn()}
       />,

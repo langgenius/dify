@@ -1,12 +1,12 @@
 import { COOKIEYES_SITE_KEY, IS_PROD, WEB_PREFIX } from '@/config'
-import { getCachedSystemFeatures } from '@/features/system-features/server'
+import { getOptionalSystemFeatures } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import { AnalyticsDisabled } from './analytics-disabled'
 import { CloudAnalyticsLayoutBoundary } from './cloud-analytics-layout-boundary'
 import { isCloudAnalyticsRequest } from './request-boundary'
 
 export async function CloudAnalytics() {
-  const systemFeatures = getCachedSystemFeatures()
+  const systemFeatures = await getOptionalSystemFeatures()
 
   if (!systemFeatures) return null
 

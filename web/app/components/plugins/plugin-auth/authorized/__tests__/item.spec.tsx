@@ -184,8 +184,7 @@ describe('Item Component', () => {
       )
 
       const enterRenameMode = () => {
-        const firstButton = result.container.querySelectorAll('button')[0] as HTMLElement
-        fireEvent.click(firstButton)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.rename' }))
       }
 
       return { ...result, onRename, enterRenameMode }
@@ -196,7 +195,7 @@ describe('Item Component', () => {
 
       enterRenameMode()
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'common.operation.rename' })).toBeInTheDocument()
     })
 
     it('should show save and cancel buttons in rename mode', () => {
@@ -213,7 +212,7 @@ describe('Item Component', () => {
 
       enterRenameMode()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'common.operation.rename' })
       fireEvent.change(input, { target: { value: 'New Name' } })
       fireEvent.click(screen.getByText('common.operation.save'))
 
@@ -228,7 +227,7 @@ describe('Item Component', () => {
       const { enterRenameMode } = renderWithRenameEnabled()
 
       enterRenameMode()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'common.operation.rename' })).toBeInTheDocument()
 
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
@@ -240,7 +239,7 @@ describe('Item Component', () => {
 
       enterRenameMode()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'common.operation.rename' })
       fireEvent.change(input, { target: { value: 'Updated Value' } })
 
       expect(input).toHaveValue('Updated Value')
