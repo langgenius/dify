@@ -84,12 +84,6 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAPIKeySet: true,
-  }),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({

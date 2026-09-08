@@ -195,6 +195,19 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     assert "default" in conversation_id
     assert conversation_id["default"] is None
 
+    schemas = service_payload["components"]["schemas"]
+    document_detail = schemas["DocumentDetailResponse"]
+    validator = Draft202012Validator(service_payload)
+    for schema in (document_detail, *schemas["DocumentTextUpdate"]["anyOf"]):
+        for property_schema in schema["properties"].values():
+            if "default" in property_schema:
+                validator.evolve(schema=property_schema).validate(property_schema["default"])
+
+    assert document_detail["required"] == ["id"]
+    assert document_detail["properties"]["enabled"]["type"] == "boolean"
+    assert "default" not in document_detail["properties"]["enabled"]
+    assert document_detail["properties"]["tokens"]["default"] is None
+
 
 def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
     module = _load_generate_swagger_specs_module()

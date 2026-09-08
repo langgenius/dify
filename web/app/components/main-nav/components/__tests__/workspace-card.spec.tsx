@@ -3,13 +3,11 @@ import type {
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -33,10 +31,6 @@ const mockConsoleState = vi.hoisted(() => ({
   current: {
     workspacePermissionKeys: [] as string[],
   },
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -176,9 +170,6 @@ describe('WorkspaceCard', () => {
     mockFetchWorkspaces.mockResolvedValue({ workspaces: mockWorkspaces })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -340,9 +331,6 @@ describe('WorkspaceCard', () => {
       ...currentWorkspaceValue,
       plan: 'team',
     })
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText('team')).toBeInTheDocument()

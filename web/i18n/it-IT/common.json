@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "Imposta il modello predefinito per l'input da testo a voce nella conversazione.",
   "modelProvider.upgradeForLoadBalancing": "Aggiorna il tuo piano per abilitare il Bilanciamento del Carico.",
   "modelProvider.used": "utilizzati",
+  "navigation.primary": "Menu principale",
   "navigation.skipToMain": "Vai al contenuto principale",
   "noData": "Nessun dato",
   "operation.add": "Aggiungi",

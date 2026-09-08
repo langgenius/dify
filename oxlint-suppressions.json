@@ -2294,7 +2294,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
@@ -5133,7 +5133,7 @@
   },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 11
+      "count": 10
     }
   },
   "web/service/use-datasource.ts": {

@@ -1,7 +1,5 @@
-import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FileTypesRes } from './datasets'
 import type {
-  Model,
   ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
@@ -17,7 +15,6 @@ import type {
 } from '@/models/common'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
-import { consoleQuery } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
@@ -207,20 +204,6 @@ export const modelProviderDetailsQueryOptions = () =>
 export const useModelProviderDetails = (enabled = true) => {
   return useQuery({
     ...modelProviderDetailsQueryOptions(),
-    enabled,
-  })
-}
-
-export const useModelListByType = (type: ModelTypeEnum | ModelType, enabled = true) => {
-  return useQuery<{ data: Model[] }>({
-    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-      input: {
-        params: {
-          model_type: type,
-        },
-      },
-    }),
-    queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
     enabled,
   })
 }

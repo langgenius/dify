@@ -6,8 +6,6 @@ import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
@@ -31,7 +29,6 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/use-common')
@@ -247,11 +244,7 @@ describe('MembersPage', () => {
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
 
     deploymentEdition = 'COMMUNITY'
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        isAllowTransferWorkspace: true,
-      }),
-    )
+    memberFeatures = { ...memberFeatures, is_allow_transfer_workspace: true }
 
     vi.mocked(useFormatTimeFromNow).mockReturnValue({
       formatTimeFromNow: mockFormatTimeFromNow,
@@ -334,11 +327,7 @@ describe('MembersPage', () => {
 
   it('should show non-interactive owner role when transfer ownership is not allowed', () => {
     deploymentEdition = 'COMMUNITY'
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        isAllowTransferWorkspace: false,
-      }),
-    )
+    memberFeatures = { ...memberFeatures, is_allow_transfer_workspace: false }
 
     renderMembersPage()
 
@@ -406,7 +395,6 @@ describe('MembersPage', () => {
       billing: { subscription: { plan: 'sandbox' } },
       members: { size: 2, limit: 5 },
     }
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -422,7 +410,6 @@ describe('MembersPage', () => {
       billing: { subscription: { plan: 'sandbox' } },
       members: { size: 2, limit: 0 },
     }
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -435,7 +422,6 @@ describe('MembersPage', () => {
       billing: { subscription: { plan: 'team' } },
       members: { size: 2, limit: 50 },
     }
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -540,7 +526,6 @@ describe('MembersPage', () => {
       billing: { subscription: { plan: 'sandbox' } },
       members: { size: 2, limit: 5 },
     }
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
@@ -708,7 +693,6 @@ describe('MembersPage', () => {
       billing: { subscription: { plan: 'sandbox' } },
       members: { size: 2, limit: 2 },
     }
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({}))
 
     renderMembersPage()
 
