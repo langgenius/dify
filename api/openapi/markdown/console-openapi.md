@@ -2925,7 +2925,6 @@ Update application site configuration
 | 200 | Site configuration updated successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | App not found |  |
-| 409 | Site configuration invalid |  |
 
 ### [POST] /apps/{app_id}/site-enable
 Enable or disable app site

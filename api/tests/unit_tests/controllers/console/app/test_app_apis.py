@@ -55,7 +55,6 @@ from controllers.console.app import (
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
 from controllers.console.app.error import (
     AppNotFoundError,
-    SiteConfigurationInvalidError,
     TracingConfigNotFoundError,
     TracingConfigVerificationFailedError,
 )
@@ -86,7 +85,6 @@ from services.app_tracing_config_service import (
     AppTracingConfigNotFoundError,
     AppTracingConfigVerificationFailedError,
 )
-from services.icon_configuration_service import IconConfigurationError
 from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -528,32 +526,6 @@ class TestSiteEndpoints:
             context,
             APP_ID,
             AppSiteChanges(title="My Site", input_placeholder="Ask me anything"),
-        )
-
-    def test_app_site_update_rejects_invalid_icon_reference(
-        self,
-    ) -> None:
-        api = site_module.AppSite()
-        method = unwrap(api.post)
-        services = MagicMock()
-        services.app_sites.update.side_effect = IconConfigurationError("The site icon is invalid.")
-        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
-
-        with (
-            patch.object(site_module, "application_services", return_value=services),
-            pytest.raises(SiteConfigurationInvalidError, match="The site icon is invalid"),
-        ):
-            method(
-                api,
-                AppSiteUpdatePayload(icon_type="image", icon="invalid-icon"),
-                context,
-                app_id=uuid.UUID(APP_ID),
-            )
-
-        services.app_sites.update.assert_called_once_with(
-            context,
-            APP_ID,
-            AppSiteChanges(icon_type="image", icon="invalid-icon"),
         )
 
     def test_app_site_access_token_reset(

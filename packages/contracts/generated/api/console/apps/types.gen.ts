@@ -4671,7 +4671,6 @@ export type PostAppsByAppIdSiteData = {
 export type PostAppsByAppIdSiteErrors = {
   403: unknown
   404: unknown
-  409: unknown
 }
 
 export type PostAppsByAppIdSiteResponses = {

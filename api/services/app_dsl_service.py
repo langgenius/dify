@@ -62,11 +62,10 @@ from services.entities.dsl_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
-from services.icon_configuration_service import (
+from services.icon_configuration import (
     DEFAULT_ICON,
     DEFAULT_ICON_TYPE,
-    IconConfigurationError,
-    IconConfigurationService,
+    is_valid_image_icon,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -523,14 +522,12 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
-        try:
-            IconConfigurationService.validate_icon_reference(
-                session=self._session,
-                tenant_id=target_tenant_id,
-                icon_type=resolved_icon_type,
-                icon=icon,
-            )
-        except IconConfigurationError:
+        if not is_valid_image_icon(
+            session=self._session,
+            tenant_id=target_tenant_id,
+            icon_type=resolved_icon_type,
+            icon=icon,
+        ):
             resolved_icon_type = DEFAULT_ICON_TYPE
             icon = DEFAULT_ICON
 

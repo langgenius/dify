@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import IconType, UploadFile
-from services.icon_configuration_service import IconConfigurationError, IconConfigurationService
+from services.icon_configuration import is_valid_image_icon
 
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
 OTHER_TENANT_ID = "33333333-3333-3333-3333-333333333333"
@@ -36,7 +36,7 @@ def test_validate_icon_reference_accepts_tenant_owned_file(sqlite_session: Sessi
     sqlite_session.add(_upload_file(tenant_id=TENANT_ID))
     sqlite_session.commit()
 
-    IconConfigurationService.validate_icon_reference(
+    assert is_valid_image_icon(
         session=sqlite_session,
         tenant_id=TENANT_ID,
         icon_type=IconType.IMAGE,
@@ -53,30 +53,27 @@ def test_validate_icon_reference_rejects_unavailable_file(
         sqlite_session.add(_upload_file(tenant_id=persisted_tenant_id))
         sqlite_session.commit()
 
-    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
-        IconConfigurationService.validate_icon_reference(
-            session=sqlite_session,
-            tenant_id=TENANT_ID,
-            icon_type=IconType.IMAGE,
-            icon=FILE_ID,
-        )
+    assert not is_valid_image_icon(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        icon_type=IconType.IMAGE,
+        icon=FILE_ID,
+    )
 
 
 def test_validate_icon_reference_rejects_empty_image_icon(sqlite_session: Session) -> None:
-    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
-        IconConfigurationService.validate_icon_reference(
-            session=sqlite_session,
-            tenant_id=TENANT_ID,
-            icon_type=IconType.IMAGE,
-            icon=None,
-        )
+    assert not is_valid_image_icon(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        icon_type=IconType.IMAGE,
+        icon=None,
+    )
 
 
 def test_validate_icon_reference_rejects_non_uuid_without_querying_database(sqlite_session: Session) -> None:
-    with pytest.raises(IconConfigurationError, match="missing or does not belong"):
-        IconConfigurationService.validate_icon_reference(
-            session=sqlite_session,
-            tenant_id=TENANT_ID,
-            icon_type=IconType.IMAGE,
-            icon="not-a-uuid",
-        )
+    assert not is_valid_image_icon(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        icon_type=IconType.IMAGE,
+        icon="not-a-uuid",
+    )
