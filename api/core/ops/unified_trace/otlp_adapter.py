@@ -120,7 +120,9 @@ class StatusRecordingOTLPSpanExporter(OTLPSpanExporter):
         self._session.headers.update(requests.utils.default_headers())
         self._session.headers.update(_OTLP_HTTP_HEADERS)
         self._session.headers.update(headers)
-        self._certificate_file = True
+        # The SDK's own default for this attribute is True (system CA bundle, REQUESTS_CA_BUNDLE
+        # honoured by requests); mypy only narrows the untyped base attribute to str.
+        self._certificate_file = True  # type: ignore[assignment]
         self._client_key_file = None
         self._client_certificate_file = None
         self._client_cert = None
@@ -129,8 +131,7 @@ class StatusRecordingOTLPSpanExporter(OTLPSpanExporter):
     def _export(self, serialized_data: bytes, timeout_sec: float | None = None):
         self.last_status_code = None
         response = super()._export(serialized_data, timeout_sec)
-        status_code = getattr(response, "status_code", None)
-        self.last_status_code = status_code if isinstance(status_code, int) else None
+        self.last_status_code = response.status_code
         return response
 
 
@@ -154,8 +155,8 @@ class OTLPUnifiedAdapter[ConfigT: BaseTracingConfig]:
 
     @property
     def last_export_status_code(self) -> int | None:
-        """HTTP status of the most recent export attempt, when the exporter records it."""
-        status_code = getattr(self._exporter, "last_status_code", None)
+        """HTTP status of the most recent export attempt; None when no response was received."""
+        status_code = self._exporter.last_status_code
         return status_code if isinstance(status_code, int) else None
 
     def build_headers(self, config: ConfigT) -> dict[str, str]:
@@ -164,7 +165,7 @@ class OTLPUnifiedAdapter[ConfigT: BaseTracingConfig]:
     def build_resource(self, config: ConfigT) -> Resource:
         return Resource.create({})
 
-    def build_exporter(self, config: ConfigT) -> OTLPSpanExporter:
+    def build_exporter(self, config: ConfigT) -> StatusRecordingOTLPSpanExporter:
         return StatusRecordingOTLPSpanExporter(
             endpoint=self._endpoint,
             headers=self.build_headers(config),

@@ -3,7 +3,6 @@
 from typing import override
 from urllib.parse import urlparse
 
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 
 from core.ops.unified_trace.otlp_adapter import (
@@ -40,7 +39,7 @@ class UnifiedPhoenixAdapter(OTLPUnifiedAdapter[PhoenixConfig]):
         )
 
     @override
-    def build_exporter(self, config: PhoenixConfig) -> OTLPSpanExporter:
+    def build_exporter(self, config: PhoenixConfig) -> StatusRecordingOTLPSpanExporter:
         parsed = urlparse(config.endpoint)
         endpoint = f"{parsed.scheme}://{parsed.netloc}{parsed.path.rstrip('/')}/v1/traces"
         return StatusRecordingOTLPSpanExporter(
