@@ -10,7 +10,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
@@ -19,12 +19,11 @@ import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -67,9 +66,21 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     shouldExpandBeginnerAppTypes(defaultAppMode),
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -82,7 +93,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const [isCreating, setIsCreating] = useState(false)
 
   const onCreate = useCallback(async () => {
-    if (!canCreateApp) return
+    if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
 
     if (!appMode) {
       toast.error(t(($) => $['newApp.appTypeRequired'], { ns: 'app' }))
@@ -137,6 +148,8 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
       setIsCreating(false)
     }
   }, [
+    isAppQuotaUnavailable,
+    isAppsFull,
     canCreateApp,
     currentUserId,
     name,
@@ -155,7 +168,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   useHotkey(
     CREATE_APP_HOTKEY,
     () => {
-      if (isAppsFull || !canCreateApp) return
+      if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
       handleCreateApp()
     },
     {
@@ -358,7 +371,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button
-                  disabled={!canCreateApp || isAppsFull || !name}
+                  disabled={isAppQuotaUnavailable || !canCreateApp || isAppsFull || !name}
                   loading={isCreating}
                   variant="primary"
                   onClick={handleCreateApp}

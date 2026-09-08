@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/config', () => ({ MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1' }))
-vi.mock('@/service/client', () => ({ marketplaceClient: mocks }))
+vi.mock('@/service/marketplace', () => ({ marketplaceClient: mocks }))
 
 const plugin = {
   type: 'plugin',

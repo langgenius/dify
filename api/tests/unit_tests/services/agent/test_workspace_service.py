@@ -49,6 +49,7 @@ def _workspace(
     app_id: str = "app-1",
     owner_type: AgentWorkspaceOwnerType = AgentWorkspaceOwnerType.CONVERSATION,
     owner_id: str = "conversation-1",
+    owner_scope_key: str = "root",
     status: AgentWorkingResourceStatus = AgentWorkingResourceStatus.ACTIVE,
     updated_at: datetime | None = None,
     backend_workspace_ref: str = "workspace-ref",
@@ -59,7 +60,7 @@ def _workspace(
         app_id=app_id,
         owner_type=owner_type,
         owner_id=owner_id,
-        owner_scope_key="root",
+        owner_scope_key=owner_scope_key,
         backend_workspace_ref=backend_workspace_ref,
         status=status,
         active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
@@ -327,6 +328,62 @@ def test_retire_workspace_retires_all_active_bindings(sqlite_session: Session) -
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert all(binding.status is AgentWorkingResourceStatus.RETIRED for binding in bindings)
     assert all(binding.retired_at == workspace.retired_at for binding in bindings)
+
+
+def test_resolve_active_binding_for_scope_returns_matching_participant(sqlite_session: Session) -> None:
+    workspace = _workspace(owner_scope_key="node-1:workflow-binding-1")
+    binding = _binding(binding_id="binding-chatflow", workspace_id=workspace.id)
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+
+    resolved = AgentWorkspaceService.resolve_active_binding_for_scope(
+        session=sqlite_session,
+        scope=WorkspaceOwnerScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+            owner_id="conversation-1",
+            owner_scope_key="node-1:workflow-binding-1",
+        ),
+        agent_id="agent-1",
+    )
+
+    assert resolved is not None
+    assert resolved.id == binding.id
+
+
+def test_retire_all_for_conversation_retires_only_matching_conversation_workspaces(
+    sqlite_session: Session,
+) -> None:
+    matching = _workspace(
+        workspace_id="workspace-chatflow",
+        owner_scope_key="node-1:workflow-binding-1",
+    )
+    other_conversation = _workspace(
+        workspace_id="workspace-other-conversation",
+        owner_id="conversation-2",
+        owner_scope_key="node-2:workflow-binding-2",
+    )
+    workflow_run = _workspace(
+        workspace_id="workspace-workflow-run",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="run-1",
+        owner_scope_key="node-1:workflow-binding-1",
+    )
+    sqlite_session.add_all([matching, other_conversation, workflow_run])
+    sqlite_session.commit()
+
+    retired_ids = AgentWorkspaceService.retire_all_for_conversation(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id="conversation-1",
+    )
+
+    assert retired_ids == [matching.id]
+    assert matching.status is AgentWorkingResourceStatus.RETIRED
+    assert other_conversation.status is AgentWorkingResourceStatus.ACTIVE
+    assert workflow_run.status is AgentWorkingResourceStatus.ACTIVE
 
 
 def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_session: Session) -> None:

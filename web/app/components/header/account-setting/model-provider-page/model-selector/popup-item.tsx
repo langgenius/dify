@@ -13,12 +13,13 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import {
   useLanguage,
@@ -68,10 +69,13 @@ function PopupItem({
   const providerLabel = renderI18nObject(model.label, language)
   const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
   const { setShowModelModal } = useModalContext()
-  const { modelProviders } = useProviderContext()
+  const { data: currentProvider } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data.find((provider) => provider.provider === model.provider),
+    }),
+  )
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
-  const currentProvider = modelProviders.find((provider) => provider.provider === model.provider)
   const { providerDetail, loadProviderDetail } = useLazyModelProviderDetail(model.provider)
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialDropdown = canUseCredential || canCreateCredential || canManageCredential

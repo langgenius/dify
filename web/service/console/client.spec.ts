@@ -1,58 +1,34 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppDetail, AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
-import type { consoleQuery as ConsoleQuery } from './client'
-import { QueryClient } from '@tanstack/react-query'
+import type { consoleQuery as ConsoleQuery } from '@/service/console'
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
-
-const loadGetBaseURL = async (isClientValue: boolean) => {
-  vi.resetModules()
-  vi.doMock('@/utils/client', () => ({ isClient: isClientValue, isServer: !isClientValue }))
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const module = await import('./client')
-  warnSpy.mockClear()
-  return { getBaseURL: module.getBaseURL, warnSpy }
-}
+import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const module = await import('./client')
-  warnSpy.mockRestore()
+  const module = await import('@/service/console')
   return module.consoleQuery
 }
 
 const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  vi.doMock('./base', () => ({ request }))
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const module = await import('./client')
-  warnSpy.mockRestore()
+  vi.doMock('../base', () => ({ request }))
+  const module = await import('@/service/console')
   return module.consoleQuery
 }
 
 const loadConsoleQueryWithFetch = async () => {
   vi.resetModules()
-  vi.doUnmock('./base')
+  vi.doUnmock('../base')
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const module = await import('./client')
-  warnSpy.mockRestore()
+  const module = await import('@/service/console')
   return module.consoleQuery
-}
-
-const loadWorkflowGenerationStream = async (sseGeneratorPost: ReturnType<typeof vi.fn>) => {
-  vi.resetModules()
-  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  vi.doMock('./base', () => ({ request: vi.fn(), sseGeneratorPost }))
-  const module = await import('./client')
-  return module.streamWorkflowGeneration
 }
 
 const createMutationContext = (queryClient: QueryClient): MutationFunctionContext => ({
@@ -217,92 +193,6 @@ const createWorkflowComposerState = (
 })
 
 // Scenario: base URL selection and warnings.
-describe('getBaseURL', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  // Scenario: client environment uses window origin.
-  it('should use window origin when running on the client', async () => {
-    // Arrange
-    const { origin } = window.location
-    const { getBaseURL, warnSpy } = await loadGetBaseURL(true)
-
-    // Act
-    const url = getBaseURL('/api')
-
-    // Assert
-    expect(url.href).toBe(`${origin}/api`)
-    expect(warnSpy).not.toHaveBeenCalled()
-  })
-
-  // Scenario: server environment falls back to localhost with warning.
-  it('should fall back to localhost and warn on the server', async () => {
-    // Arrange
-    const { getBaseURL, warnSpy } = await loadGetBaseURL(false)
-
-    // Act
-    const url = getBaseURL('/api')
-
-    // Assert
-    expect(url.href).toBe('http://localhost/api')
-    expect(warnSpy).toHaveBeenCalledTimes(1)
-    expect(warnSpy).toHaveBeenCalledWith(
-      'Using localhost as base URL in server environment, please configure accordingly.',
-    )
-  })
-
-  // Scenario: non-http protocols surface warnings.
-  it('should warn when protocol is not http or https', async () => {
-    // Arrange
-    const { getBaseURL, warnSpy } = await loadGetBaseURL(true)
-
-    // Act
-    const url = getBaseURL('localhost:5001/console/api')
-
-    // Assert
-    expect(url.protocol).toBe('localhost:')
-    expect(url.href).toBe('localhost:5001/console/api')
-    expect(warnSpy).toHaveBeenCalledTimes(1)
-    expect(warnSpy).toHaveBeenCalledWith(
-      'Unexpected protocol for API requests, expected http or https. Current protocol: localhost:. Please configure accordingly.',
-    )
-  })
-
-  // Scenario: absolute http URLs are preserved.
-  it('should keep absolute http URLs intact', async () => {
-    // Arrange
-    const { getBaseURL, warnSpy } = await loadGetBaseURL(true)
-
-    // Act
-    const url = getBaseURL('https://api.example.com/console/api')
-
-    // Assert
-    expect(url.href).toBe('https://api.example.com/console/api')
-    expect(warnSpy).not.toHaveBeenCalled()
-  })
-})
-
-describe('streamWorkflowGeneration', () => {
-  it('should preserve the generator stream transport contract', async () => {
-    const expectedResult = Promise.resolve()
-    const sseGeneratorPost = vi.fn().mockReturnValue(expectedResult)
-    const streamWorkflowGeneration = await loadWorkflowGenerationStream(sseGeneratorPost)
-    const body = { instruction: 'Build a researched answer' }
-    const callbacks = { onCompleted: vi.fn() }
-
-    const result = streamWorkflowGeneration('/workflow-generate/stream', body, callbacks)
-
-    expect(result).toBe(expectedResult)
-    expect(sseGeneratorPost).toHaveBeenCalledWith('/workflow-generate/stream', body, callbacks)
-  })
-})
-
-// Scenario: oRPC operation context controls transport behavior without handwritten REST helpers.
 describe('consoleQuery transport context', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -1620,346 +1510,248 @@ describe('consoleQuery Web app access mutation defaults', () => {
   })
 })
 
-describe('consoleQuery App Instance mutation defaults', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should bypass a fresh list cache while waiting for a created app instance', async () => {
-    const appInstance = {
-      id: 'app-instance-1',
-      tenantId: 'tenant-1',
-      displayName: 'Production App',
-      description: '',
-      createdBy: { id: 'user-1', displayName: 'Ada' },
-      updatedBy: { id: 'user-1', displayName: 'Ada' },
-      createdAt: '2026-09-03T00:00:00Z',
-      updatedAt: '2026-09-03T00:00:00Z',
-    }
-    const request = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ appInstances: [], pagination: {} }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ appInstances: [appInstance], pagination: {} }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-      )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, staleTime: Infinity },
-      },
-    })
-    const listInput = {
-      query: {
-        pageNumber: 1,
-        resultsPerPage: 100,
-      },
-    }
-    const listOptions = consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-      input: listInput,
-    })
-    queryClient.setQueryData(listOptions.queryKey, {
-      appInstances: [],
-      pagination: {},
-    })
-
-    const onSuccess =
-      consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions().onSuccess
-    const completion = onSuccess?.(
-      { appInstance },
-      { body: { displayName: appInstance.displayName } },
-      undefined,
-      createMutationContext(queryClient),
-    )
-    await completion
-
-    expect(request).toHaveBeenCalledTimes(2)
-  })
-})
-
-// Scenario: legacy App Deploy mutations share cache behavior through oRPC defaults.
-describe('consoleQuery App Deploy mutation defaults', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should synchronize environment access details and deployment summaries after toggles', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    const params = {
-      app_id: 'app-1',
-      environment_id: 'staging',
-    }
-    const siteQuery =
-      consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryOptions({
-        input: { params },
+describe('consoleQuery App Deploy cache behavior', () => {
+  it.each([
+    ['api', 'active'],
+    ['site', 'active'],
+    ['api', 'reopened'],
+    ['site', 'reopened'],
+  ] as const)(
+    'keeps the saved %s switch in %s deployment reads when refreshing fails',
+    async (accessPoint, view) => {
+      const consoleQuery = await loadConsoleQuery()
+      const client = new QueryClient({
+        defaultOptions: { queries: { staleTime: Infinity, retry: false } },
       })
-    const apiQuery = consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions(
-      {
-        input: { params },
-      },
-    )
-    const deploymentsQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-        input: {
-          params: {
-            app_id: params.app_id,
-          },
+      const params = { app_id: 'app-1', environment_id: 'staging' }
+      const staging = {
+        environment: {
+          id: 'staging',
+          display_name: 'Staging',
+          description: '',
+          status: 'ENVIRONMENT_STATUS_READY' as const,
+        },
+        access: { enable_api: true, enable_site: true },
+      }
+      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const deployments = consoleQuery.enterprise.appDeploy.deploymentService
+      const list = deployments.listEnvironmentDeployments.queryOptions({
+        input: { params: { app_id: params.app_id } },
+        queryFn: async () => {
+          throw new Error('Deployment list unavailable')
         },
       })
-    const deploymentQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+      const detail = deployments.getEnvironmentDeployment.queryOptions({
         input: { params },
+        queryFn: async () => {
+          throw new Error('Deployment detail unavailable')
+        },
       })
-    const stagingDeployment: EnvironmentDeployment = {
-      access: {
-        enable_api: false,
-        enable_site: false,
-      },
-      environment: {
-        description: 'Staging environment',
+      const otherApp = deployments.listEnvironmentDeployments.queryOptions({
+        input: { params: { app_id: 'app-2' } },
+      })
+      const otherEnvironment = deployments.getEnvironmentDeployment.queryOptions({
+        input: { params: { ...params, environment_id: 'production' } },
+      })
+      client.setQueryData(list.queryKey, { environment_deployments: [staging, production] })
+      client.setQueryData(detail.queryKey, { environment_deployment: staging })
+      client.setQueryData(otherApp.queryKey, { environment_deployments: [staging] })
+      client.setQueryData(otherEnvironment.queryKey, { environment_deployment: production })
+      const listObserver = new QueryObserver(client, list)
+      const detailObserver = new QueryObserver(client, detail)
+      const unsubscribe =
+        view === 'active'
+          ? [listObserver.subscribe(() => {}), detailObserver.subscribe(() => {})]
+          : []
+
+      try {
+        const access = consoleQuery.enterprise.appDeploy.accessService
+        if (accessPoint === 'api') {
+          const saved = { enabled: false, base_url: 'https://api.example.com/v1', api_key_count: 1 }
+          await new MutationObserver(
+            client,
+            access.updateEnvironmentApi.mutationOptions({
+              mutationFn: async () => saved,
+            }),
+          ).mutate({ params, body: { enabled: false } })
+          expect(
+            client.getQueryData(
+              access.getEnvironmentApi.queryOptions({ input: { params } }).queryKey,
+            ),
+          ).toEqual(saved)
+        } else {
+          const saved = {
+            enabled: false,
+            code: 'site-1',
+            app_base_url: 'https://app.example.com',
+            access_mode: 'public',
+          }
+          await new MutationObserver(
+            client,
+            access.updateEnvironmentSite.mutationOptions({
+              mutationFn: async () => saved,
+            }),
+          ).mutate({ params, body: { enabled: false } })
+          expect(
+            client.getQueryData(
+              access.getEnvironmentSite.queryOptions({ input: { params } }).queryKey,
+            ),
+          ).toEqual(saved)
+        }
+
+        if (view === 'reopened') {
+          unsubscribe.push(
+            listObserver.subscribe(() => {}),
+            detailObserver.subscribe(() => {}),
+          )
+          await Promise.all([
+            listObserver.refetch({ cancelRefetch: false }),
+            detailObserver.refetch({ cancelRefetch: false }),
+          ])
+        }
+
+        const savedDeployment = {
+          ...staging,
+          access: { enable_api: accessPoint !== 'api', enable_site: accessPoint !== 'site' },
+        }
+        expect(listObserver.getCurrentResult()).toMatchObject({
+          isRefetchError: true,
+          data: { environment_deployments: [savedDeployment, production] },
+        })
+        expect(detailObserver.getCurrentResult()).toMatchObject({
+          isRefetchError: true,
+          data: { environment_deployment: savedDeployment },
+        })
+        expect(client.getQueryData(otherApp.queryKey)).toEqual({
+          environment_deployments: [staging],
+        })
+        expect(client.getQueryData(otherEnvironment.queryKey)).toEqual({
+          environment_deployment: production,
+        })
+      } finally {
+        unsubscribe.forEach((stop) => stop())
+        client.clear()
+      }
+    },
+  )
+
+  it.each(['create', 'delete'] as const)(
+    'refreshes environment keys and their count after %s',
+    async (action) => {
+      const consoleQuery = await loadConsoleQuery()
+      const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+      const params = { app_id: 'app-1', environment_id: 'staging' }
+      const key = { created_at: 1, id: 'key-1', token: 'secret', type: 'api' }
+      let keys = action === 'create' ? [] : [key]
+      const list = {
+        ...consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+          input: { params },
+        }),
+        queryFn: async () => ({ data: keys }),
+      }
+      const summary = {
+        ...consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+          input: { params },
+        }),
+        queryFn: async () => ({
+          enabled: true,
+          base_url: 'https://api.example.com/v1',
+          api_key_count: keys.length,
+        }),
+      }
+      await Promise.all([client.query(list), client.query(summary)])
+
+      if (action === 'create') {
+        const mutation = new MutationObserver(client, {
+          ...consoleQuery.enterprise.appDeploy.accessService.createEnvironmentApiKey.mutationOptions(),
+          mutationFn: async () => {
+            keys = [key]
+            return key
+          },
+        })
+        await mutation.mutate({ params })
+      } else {
+        const mutation = new MutationObserver(client, {
+          ...consoleQuery.enterprise.appDeploy.accessService.deleteEnvironmentApiKey.mutationOptions(),
+          mutationFn: async () => {
+            keys = []
+            return {}
+          },
+        })
+        await mutation.mutate({ params: { ...params, api_key_id: key.id } })
+      }
+
+      expect((await client.query(list)).data).toEqual(keys)
+      expect((await client.query(summary)).api_key_count).toBe(keys.length)
+    },
+  )
+
+  it.each(['deploy', 'undeploy'] as const)(
+    'refreshes deployment reads after %s',
+    async (action) => {
+      const consoleQuery = await loadConsoleQuery()
+      const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+      const params = { app_id: 'app-1', environment_id: 'staging', workflow_id: 'workflow-1' }
+      const environment = {
+        id: 'staging',
         display_name: 'Staging',
-        id: params.environment_id,
-        status: 'ENVIRONMENT_STATUS_READY',
-      },
-    }
-    const productionDeployment: EnvironmentDeployment = {
-      access: {
-        enable_api: false,
-        enable_site: false,
-      },
-      environment: {
-        description: 'Production environment',
-        display_name: 'Production',
-        id: 'production',
-        status: 'ENVIRONMENT_STATUS_READY',
-      },
-    }
-    const updatedSite = {
-      access_mode: 'private',
-      app_base_url: 'https://site.example.test',
-      code: 'staging-code',
-      enabled: true,
-    }
-    const updatedApi = {
-      api_key_count: 2,
-      base_url: 'https://api.example.test/v1',
-      enabled: true,
-    }
-
-    queryClient.setQueryData(siteQuery.queryKey, { ...updatedSite, enabled: false })
-    queryClient.setQueryData(apiQuery.queryKey, { ...updatedApi, enabled: false })
-    queryClient.setQueryData(deploymentsQuery.queryKey, {
-      environment_deployments: [stagingDeployment, productionDeployment],
-    })
-    queryClient.setQueryData(deploymentQuery.queryKey, {
-      environment_deployment: stagingDeployment,
-    })
-
-    const siteMutation =
-      consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions()
-    await siteMutation.onSuccess?.(
-      updatedSite,
-      { body: { enabled: true }, params },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(queryClient.getQueryData(siteQuery.queryKey)).toEqual(updatedSite)
-    expect(queryClient.getQueryData(deploymentsQuery.queryKey)).toEqual({
-      environment_deployments: [
-        {
-          ...stagingDeployment,
-          access: {
-            enable_api: false,
-            enable_site: true,
-          },
-        },
-        productionDeployment,
-      ],
-    })
-    expect(queryClient.getQueryData(deploymentQuery.queryKey)).toEqual({
-      environment_deployment: {
-        ...stagingDeployment,
-        access: {
-          enable_api: false,
-          enable_site: true,
-        },
-      },
-    })
-
-    const apiMutation =
-      consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentApi.mutationOptions()
-    await apiMutation.onSuccess?.(
-      updatedApi,
-      { body: { enabled: true }, params },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(queryClient.getQueryData(apiQuery.queryKey)).toEqual(updatedApi)
-    expect(queryClient.getQueryData(deploymentsQuery.queryKey)).toEqual({
-      environment_deployments: [
-        {
-          ...stagingDeployment,
-          access: {
-            enable_api: true,
-            enable_site: true,
-          },
-        },
-        productionDeployment,
-      ],
-    })
-    expect(queryClient.getQueryData(deploymentQuery.queryKey)).toEqual({
-      environment_deployment: {
-        ...stagingDeployment,
-        access: {
-          enable_api: true,
-          enable_site: true,
-        },
-      },
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentsQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledTimes(4)
-  })
-
-  it('should invalidate the environment key list and API summary after creating or deleting a key', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    const params = {
-      app_id: 'app-1',
-      environment_id: 'staging',
-    }
-    const listQuery =
-      consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
-        input: { params },
-      })
-    const apiQuery = consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions(
-      {
-        input: { params },
-      },
-    )
-
-    const createOptions =
-      consoleQuery.enterprise.appDeploy.accessService.createEnvironmentApiKey.mutationOptions()
-    await createOptions.onSuccess?.(
-      {
-        created_at: 1,
-        id: 'key-1',
-        token: 'secret',
-        type: 'api',
-      },
-      { params },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: listQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: apiQuery.queryKey })
-
-    invalidateQueries.mockClear()
-    const deleteOptions =
-      consoleQuery.enterprise.appDeploy.accessService.deleteEnvironmentApiKey.mutationOptions()
-    await deleteOptions.onSuccess?.(
-      {},
-      {
-        params: {
-          ...params,
-          api_key_id: 'key-1',
-        },
-      },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: listQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: apiQuery.queryKey })
-  })
-
-  it('should keep deploy and undeploy cache invalidation aligned', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    const params = {
-      app_id: 'app-1',
-      environment_id: 'staging',
-      workflow_id: 'workflow-1',
-    }
-    const appEnvironmentsQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
-        input: {
-          params: {
-            app_id: params.app_id,
-          },
-        },
-      })
-    const deploymentsQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-        input: {
-          params: {
-            app_id: params.app_id,
-          },
-        },
-      })
-    const deploymentQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
-        input: {
-          params: {
-            app_id: params.app_id,
-            environment_id: params.environment_id,
-          },
-        },
-      })
-    const response = {
-      operation: {
-        id: 'operation-1',
-        status: 'DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS' as const,
-        type: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY' as const,
-      },
-    }
-
-    const deployOptions =
-      consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions()
-    await deployOptions.onSuccess?.(
-      response,
-      { body: { environment_variable_groups: [] }, params },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentsQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentQuery.queryKey })
-    expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: appEnvironmentsQuery.queryKey })
-
-    invalidateQueries.mockClear()
-    const undeployOptions =
-      consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions()
-    await undeployOptions.onSuccess?.(
-      {
+        description: '',
+        status: 'ENVIRONMENT_STATUS_READY' as const,
+      }
+      const deployment = { environment, access: { enable_api: true, enable_site: true } }
+      const readList = vi.fn(async () => ({ environment_deployments: [deployment] }))
+      const readDetail = vi.fn(async () => ({ environment_deployment: deployment }))
+      const readEnvironments = vi.fn(async () => ({ data: [environment] }))
+      const list = {
+        ...consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
+          { input: { params: { app_id: params.app_id } } },
+        ),
+        queryFn: readList,
+      }
+      const detail = {
+        ...consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions(
+          { input: { params: { app_id: params.app_id, environment_id: params.environment_id } } },
+        ),
+        queryFn: readDetail,
+      }
+      const environments = {
+        ...consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+          input: { params: { app_id: params.app_id } },
+        }),
+        queryFn: readEnvironments,
+      }
+      await Promise.all([client.query(list), client.query(detail), client.query(environments)])
+      const response = {
         operation: {
-          ...response.operation,
-          type: 'DEPLOYMENT_OPERATION_TYPE_UNDEPLOY',
+          id: 'operation-1',
+          status: 'DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS' as const,
+          type: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY' as const,
         },
-      },
-      { params },
-      undefined,
-      createMutationContext(queryClient),
-    )
+      }
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentsQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentQuery.queryKey })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: appEnvironmentsQuery.queryKey })
-  })
+      if (action === 'deploy') {
+        await new MutationObserver(client, {
+          ...consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions(),
+          mutationFn: async () => response,
+        }).mutate({ params, body: { environment_variable_groups: [] } })
+      } else {
+        await new MutationObserver(client, {
+          ...consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions(),
+          mutationFn: async () => ({
+            operation: {
+              ...response.operation,
+              type: 'DEPLOYMENT_OPERATION_TYPE_UNDEPLOY' as const,
+            },
+          }),
+        }).mutate({ params })
+      }
+
+      await Promise.all([client.query(list), client.query(detail), client.query(environments)])
+      expect(readList).toHaveBeenCalledTimes(2)
+      expect(readDetail).toHaveBeenCalledTimes(2)
+      expect(readEnvironments).toHaveBeenCalledTimes(action === 'undeploy' ? 2 : 1)
+    },
+  )
 })
 
 // Scenario: oRPC mutation defaults own shared tag cache behavior.

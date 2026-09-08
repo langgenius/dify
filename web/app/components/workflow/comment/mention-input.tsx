@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
 import { useParams } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {

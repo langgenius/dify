@@ -1,25 +1,35 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LLMNodeType } from '../types'
-import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { PanelProps } from '@/types/workflow'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import {
-  ConfigurationMethodEnum,
-  CurrentSystemQuotaTypeEnum,
-  CustomConfigurationStatusEnum,
-  ModelTypeEnum,
-  PreferredProviderTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { ProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { BlockEnum } from '../../../types'
 import Panel from '../panel'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 const mockUseConfig = vi.fn()
 const mockFetchAndMergeValidCompletionParams = vi.mocked(fetchAndMergeValidCompletionParams)
@@ -81,37 +91,6 @@ vi.mock('../components/reasoning-format-config', () => ({
 }))
 
 type MockUseConfigReturn = ReturnType<typeof mockUseConfig>
-
-const createMockModelProvider = (provider: string): ModelProvider => ({
-  provider,
-  label: { en_US: provider, zh_Hans: provider },
-  help: {
-    title: { en_US: provider, zh_Hans: provider },
-    url: { en_US: '', zh_Hans: '' },
-  },
-  icon_small: { en_US: '', zh_Hans: '' },
-  supported_model_types: [ModelTypeEnum.textGeneration],
-  configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-  provider_credential_schema: {
-    credential_form_schemas: [],
-  },
-  model_credential_schema: {
-    model: {
-      label: { en_US: '', zh_Hans: '' },
-      placeholder: { en_US: '', zh_Hans: '' },
-    },
-    credential_form_schemas: [],
-  },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-  },
-  system_configuration: {
-    enabled: true,
-    current_quota_type: CurrentSystemQuotaTypeEnum.free,
-    quota_configurations: [],
-  },
-})
 
 const baseNodeData: LLMNodeType = {
   type: BlockEnum.LLM,
@@ -176,24 +155,28 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
   ...overrides,
 })
 
+let panelQueryClient = createConsoleQueryWrapper().queryClient
+
 const renderPanelElement = (data?: Partial<LLMNodeType>) => (
-  // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its special provider.
-  <ProviderContext.Provider
-    value={createMockProviderContextValue({
-      modelProviders: [
-        {
-          ...createMockModelProvider('openai'),
-          is_configured: true,
-          plugin_id: 'langgenius/openai',
-        } as unknown as ModelProviderSummaryResponse,
-      ],
-    })}
-  >
+  <QueryClientProvider client={panelQueryClient}>
     <Panel id="llm-node" data={{ ...baseNodeData, ...data }} panelProps={panelProps} />
-  </ProviderContext.Provider>
+  </QueryClientProvider>
 )
 
 const renderPanel = (data?: Partial<LLMNodeType>, flowType?: FlowType) => {
+  panelQueryClient = createConsoleQueryWrapper().queryClient
+  panelQueryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+    {
+      data: [
+        {
+          ...providerSummaryFixture,
+          ...{ provider: 'openai' },
+        } satisfies ModelProviderSummaryResponse,
+      ],
+      plugins: {},
+    },
+  )
   return renderWorkflowFlowComponent(renderPanelElement(data), {
     hooksStoreProps: flowType
       ? { configsMap: { flowId: 'test-flow', flowType, fileSettings: {} } }
