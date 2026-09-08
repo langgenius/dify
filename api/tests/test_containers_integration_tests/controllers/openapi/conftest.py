@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
 from typing import Literal
 from unittest.mock import patch
 
@@ -12,7 +11,8 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import Scope, TokenType
+from machinery.context import AccountRequestContext
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -91,34 +91,14 @@ def auth_for(
     )
 
 
-@contextmanager
-def account_auth_context(
+def request_context_for(
     account: Account,
     *,
-    token_id: uuid.UUID,
-    client_id: str = "integration-cli",
-) -> Generator[AuthContext]:
-    """Publish an account ``AuthContext`` for handlers that read ``get_auth_ctx()``.
-
-    The auth pipeline normally sets this ContextVar; the integration suite
-    bypasses the pipeline via ``inspect.unwrap``, so endpoints that resolve the
-    caller through ``get_auth_ctx()`` (the ``/account/sessions*`` family) need it
-    set explicitly. Resets on exit so the worker thread can't leak identity.
-    """
-    ctx = AuthContext(
-        subject_type=SubjectType.ACCOUNT,
-        subject_email=account.email,
-        subject_issuer=None,
-        account_id=uuid.UUID(str(account.id)),
-        client_id=client_id,
-        scopes=frozenset({Scope.FULL}),
-        token_id=token_id,
-        token_type=TokenType.OAUTH_ACCOUNT,
-        expires_at=None,
-        token_hash="integration-test",
+    token_id: uuid.UUID | None = None,
+) -> AccountRequestContext:
+    return AccountRequestContext(
+        request_id="integration-request",
+        trace_id="integration-trace",
+        account_id=str(account.id),
+        access_token_id=str(token_id) if token_id is not None else None,
     )
-    reset_token = set_auth_ctx(ctx)
-    try:
-        yield ctx
-    finally:
-        reset_auth_ctx(reset_token)

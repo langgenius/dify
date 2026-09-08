@@ -12,7 +12,7 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'

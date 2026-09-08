@@ -34,6 +34,7 @@
   "accessRule.updated": "Toegangsregel succesvol bijgewerkt",
   "accessRule.workspaceOwner": "Eigenaar van de workspace",
   "common.duplicateAction": "Dupliceren",
+  "group.agent": "Agenten",
   "group.app": "Applicaties",
   "group.app_acl": "Toegangsrechten voor app",
   "group.billing": "Facturering",

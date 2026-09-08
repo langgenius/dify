@@ -22,9 +22,9 @@ import type {
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { del, get, patch, post, put } from './base'
-import { consoleQuery } from './client'
 import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
 import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'

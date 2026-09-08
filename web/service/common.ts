@@ -335,6 +335,6 @@ export const getAvatar = async ({
 }: {
   avatar: string
 }): Promise<{ avatar_url: string }> => {
-  const { consoleClient } = await import('./client')
+  const { consoleClient } = await import('@/service/console')
   return consoleClient.account.avatar.get({ query: { avatar } })
 }

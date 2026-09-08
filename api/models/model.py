@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column, validates
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session, validates
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -57,6 +57,7 @@ from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from .agent import Agent
+    from .dataset import DatasetCollectionBinding
     from .workflow import Workflow
 
 
@@ -508,7 +509,9 @@ class App(Base):
         agent = self.agent_app_binding_with_session(session=session)
         return agent.id if agent else None
 
-    def agent_app_binding_with_session(self, *, session: Session, include_archived: bool = False) -> Agent | None:
+    def agent_app_binding_with_session(
+        self, *, session: Session | scoped_session, include_archived: bool = False
+    ) -> Agent | None:
         """For an Agent App (mode=agent), the Agent bound to it.
 
         A roster Agent is bound through ``Agent.app_id``; a workflow-only Agent
@@ -1042,9 +1045,8 @@ class InstalledApp(TypeBase):
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
 
 class TrialApp(TypeBase):
@@ -1333,10 +1335,6 @@ class Conversation(Base):
 
         return model_config
 
-    @property
-    def summary_or_query(self):
-        return self.summary_or_query_with_session(session=db.session())
-
     def summary_or_query_with_session(self, *, session: Session) -> str:
         if self.summary:
             return self.summary
@@ -1347,40 +1345,20 @@ class Conversation(Base):
             else:
                 return ""
 
-    @property
-    def annotated(self) -> bool:
-        return self.annotated_with_session(session=db.session())
-
     def annotated_with_session(self, *, session: Session) -> bool:
         return (
             session.scalar(select(func.count(MessageAnnotation.id)).where(MessageAnnotation.conversation_id == self.id))
             or 0
         ) > 0
 
-    @property
-    def annotation(self) -> MessageAnnotation | None:
-        return self.annotation_with_session(session=db.session())
-
     def annotation_with_session(self, *, session: Session) -> MessageAnnotation | None:
         return session.scalar(select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1))
-
-    @property
-    def message_count(self) -> int:
-        return self.message_count_with_session(session=db.session())
 
     def message_count_with_session(self, *, session: Session) -> int:
         return session.scalar(select(func.count(Message.id)).where(Message.conversation_id == self.id)) or 0
 
-    @property
-    def user_feedback_stats(self) -> dict[str, int]:
-        return self.user_feedback_stats_with_session(session=db.session())
-
     def user_feedback_stats_with_session(self, *, session: Session) -> dict[str, int]:
         return self._feedback_stats_with_session(session=session, from_source=FeedbackFromSource.USER)
-
-    @property
-    def admin_feedback_stats(self) -> dict[str, int]:
-        return self.admin_feedback_stats_with_session(session=db.session())
 
     def admin_feedback_stats_with_session(self, *, session: Session) -> dict[str, int]:
         return self._feedback_stats_with_session(session=session, from_source=FeedbackFromSource.ADMIN)
@@ -1409,10 +1387,6 @@ class Conversation(Base):
         )
 
         return {"like": like, "dislike": dislike}
-
-    @property
-    def status_count(self):
-        return self.status_count_with_session(session=db.session())
 
     def status_count_with_session(self, *, session: Session) -> dict[str, int] | None:
         from models.workflow import WorkflowRun
@@ -1468,10 +1442,6 @@ class Conversation(Base):
             "paused": status_counts[WorkflowExecutionStatus.PAUSED],
         }
 
-    @property
-    def first_message(self) -> Message | None:
-        return self.first_message_with_session(session=db.session())
-
     def first_message_with_session(self, *, session: Session) -> Message | None:
         return session.scalar(
             select(Message).where(Message.conversation_id == self.id).order_by(Message.created_at.asc())
@@ -1482,10 +1452,6 @@ class Conversation(Base):
         with Session(db.engine, expire_on_commit=False) as session:
             return session.scalar(select(App).where(App.id == self.app_id))
 
-    @property
-    def from_end_user_session_id(self) -> str | None:
-        return self.from_end_user_session_id_with_session(session=db.session())
-
     def from_end_user_session_id_with_session(self, *, session: Session) -> str | None:
         if self.from_end_user_id:
             end_user = session.scalar(select(EndUser).where(EndUser.id == self.from_end_user_id))
@@ -1493,10 +1459,6 @@ class Conversation(Base):
                 return end_user.session_id
 
         return None
-
-    @property
-    def from_account_name(self) -> str | None:
-        return self.from_account_name_with_session(session=db.session())
 
     def from_account_name_with_session(self, *, session: Session) -> str | None:
         if self.from_account_id:
@@ -1740,10 +1702,6 @@ class Message(Base):
 
         return re_sign_file_url_answer
 
-    @property
-    def user_feedback(self) -> MessageFeedback | None:
-        return self.user_feedback_with_session(session=db.session())
-
     def user_feedback_with_session(self, *, session: Session) -> MessageFeedback | None:
         return session.scalar(
             select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
@@ -1757,23 +1715,11 @@ class Message(Base):
             select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
         )
 
-    @property
-    def feedbacks(self) -> Sequence[MessageFeedback]:
-        return self.feedbacks_with_session(session=db.session())
-
     def feedbacks_with_session(self, *, session: Session) -> Sequence[MessageFeedback]:
         return session.scalars(select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
 
-    @property
-    def annotation(self) -> MessageAnnotation | None:
-        return self.annotation_with_session(session=db.session())
-
     def annotation_with_session(self, *, session: Session) -> MessageAnnotation | None:
         return session.scalar(select(MessageAnnotation).where(MessageAnnotation.message_id == self.id))
-
-    @property
-    def annotation_hit_history(self) -> MessageAnnotation | None:
-        return self.annotation_hit_history_with_session(session=db.session())
 
     def annotation_hit_history_with_session(self, *, session: Session) -> MessageAnnotation | None:
         annotation_history = session.scalar(
@@ -1784,10 +1730,6 @@ class Message(Base):
                 select(MessageAnnotation).where(MessageAnnotation.id == annotation_history.annotation_id)
             )
         return None
-
-    @property
-    def app_model_config(self) -> AppModelConfig | None:
-        return self.app_model_config_with_session(session=db.session())
 
     def app_model_config_with_session(self, *, session: Session) -> AppModelConfig | None:
         conversation = session.scalar(select(Conversation).where(Conversation.id == self.conversation_id))
@@ -1804,10 +1746,6 @@ class Message(Base):
     def message_metadata_dict(self) -> dict[str, Any]:
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
-    @property
-    def agent_thoughts(self) -> Sequence[MessageAgentThought]:
-        return self.agent_thoughts_with_session(session=db.session())
-
     def agent_thoughts_with_session(self, *, session: Session) -> Sequence[MessageAgentThought]:
         return session.scalars(
             select(MessageAgentThought)
@@ -1818,10 +1756,6 @@ class Message(Base):
     @property
     def retriever_resources(self) -> Any:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
-
-    @property
-    def message_files(self) -> list[MessageFileInfo]:
-        return self.message_files_with_session(session=db.session())
 
     def message_files_with_session(self, *, session: Session) -> list[MessageFileInfo]:
         from factories import file_factory
@@ -1993,10 +1927,6 @@ class MessageFeedback(TypeBase):
         init=False,
     )
 
-    @property
-    def from_account(self) -> Account | None:
-        return self.from_account_with_session(session=db.session())
-
     def from_account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.from_account_id))
 
@@ -2082,16 +2012,8 @@ class MessageAnnotation(TypeBase):
         """Return a non-null question string, falling back to the answer content."""
         return self.question or self.content
 
-    @property
-    def account(self) -> Account | None:
-        return self.account_with_session(session=db.session())
-
     def account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.account_id))
-
-    @property
-    def annotation_create_account(self) -> Account | None:
-        return self.annotation_create_account_with_session(session=db.session())
 
     def annotation_create_account_with_session(self, *, session: Session) -> Account | None:
         return session.scalar(select(Account).where(Account.id == self.account_id))
@@ -2123,17 +2045,15 @@ class AppAnnotationHitHistory(TypeBase):
     annotation_question: Mapped[str] = mapped_column(LongText, nullable=False)
     annotation_content: Mapped[str] = mapped_column(LongText, nullable=False)
 
-    @property
-    def account(self):
-        return db.session.scalar(
+    def account(self, session: Session) -> Account | None:
+        return session.scalar(
             select(Account)
             .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
             .where(MessageAnnotation.id == self.annotation_id)
         )
 
-    @property
-    def annotation_create_account(self):
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+    def annotation_create_account(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.account_id))
 
 
 class AppAnnotationSetting(TypeBase):
@@ -2162,11 +2082,10 @@ class AppAnnotationSetting(TypeBase):
         init=False,
     )
 
-    @property
-    def collection_binding_detail(self):
+    def collection_binding_detail(self, session: Session) -> DatasetCollectionBinding | None:
         from .dataset import DatasetCollectionBinding
 
-        return db.session.scalar(
+        return session.scalar(
             select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id)
         )
 

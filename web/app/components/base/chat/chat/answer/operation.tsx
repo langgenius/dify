@@ -443,21 +443,18 @@ function Operation({
           </div>
         )}
       </div>
-      {canManageAnnotation && (
+      {canManageAnnotation && annotation?.id && isShowReplyModal && (
         <EditReplyModal
-          isShow={isShowReplyModal}
+          isShow
           onHide={() => setIsShowReplyModal(false)}
           query={question}
           answer={content}
           onEdited={(editedQuery, editedAnswer) =>
             onAnnotationEdited?.(editedQuery, editedAnswer, index)
           }
-          onAdded={(annotationId, authorName, editedQuery, editedAnswer) =>
-            onAnnotationAdded?.(annotationId, authorName, editedQuery, editedAnswer, index)
-          }
           appId={config?.appId || ''}
           messageId={id}
-          annotationId={annotation?.id || ''}
+          annotationId={annotation.id}
           createdAt={annotation?.created_at}
           onRemove={() => onAnnotationRemoved?.(index)}
         />

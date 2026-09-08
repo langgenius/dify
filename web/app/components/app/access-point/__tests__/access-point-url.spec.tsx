@@ -48,7 +48,7 @@ describe('AccessPointUrl', () => {
     )
 
     await user.hover(screen.getByRole('button', { name: 'Open' }))
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Publish first')
+    expect(await screen.findByText('Publish first')).toBeVisible()
   })
 
   it('shows an unavailable endpoint without replacing it with a loading skeleton', () => {

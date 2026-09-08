@@ -1037,7 +1037,9 @@ describe('GotoAnything', () => {
 
       const input = screen.getByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
       expect(input).toHaveAttribute('aria-haspopup', 'grid')
-      expect(screen.getByRole('grid')).toHaveAttribute('id', input.getAttribute('aria-controls'))
+      expect(
+        screen.getByRole('grid', { name: 'app.gotoAnything.groups.commands' }),
+      ).toHaveAttribute('id', input.getAttribute('aria-controls'))
       expect(screen.getByRole('rowgroup')).toBeInTheDocument()
       for (const cell of screen.getAllByRole('gridcell'))
         expect(cell.parentElement).toHaveAttribute('role', 'row')

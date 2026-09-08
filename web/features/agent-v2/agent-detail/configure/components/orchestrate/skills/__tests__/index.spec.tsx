@@ -120,7 +120,7 @@ vi.mock('@/context/provider-context', () => ({
     selector(mocks.providerContext),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {

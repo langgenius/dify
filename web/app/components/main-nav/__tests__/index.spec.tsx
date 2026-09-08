@@ -33,7 +33,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
@@ -253,8 +253,8 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
   const currentPermissionsQueryKey = [
     ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
@@ -464,7 +464,7 @@ const ownerWorkspacePermissionKeys = [
   'dataset.external.connect',
   'tool.manage',
   'mcp.manage',
-  'agent.manage',
+  'agent.acl.preview',
   'skill.view',
 ]
 
@@ -517,7 +517,6 @@ const consoleState: MainNavConsoleState = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   profileMeta: {
@@ -604,6 +603,7 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      features: { billing: { subscription: { plan: 'sandbox' } } },
       educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
@@ -655,10 +655,7 @@ describe('MainNav', () => {
       enableSkill: true,
     }
     ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -750,10 +747,12 @@ describe('MainNav', () => {
     )
   })
 
-  it('hides the roster entry when the user lacks agent.manage', () => {
+  it('hides the roster entry when the user lacks agent.acl.preview', () => {
     mockConsoleState.current = {
       ...consoleState,
-      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'agent.manage'),
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
+        (key) => key !== 'agent.acl.preview',
+      ),
     }
 
     renderMainNav()
@@ -761,7 +760,7 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
-  it('shows the roster entry when the user has agent.manage', () => {
+  it('shows the roster entry when the user has agent.acl.preview', () => {
     renderMainNav()
 
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
@@ -833,10 +832,7 @@ describe('MainNav', () => {
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: true,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
 
     renderMainNav(defaultMainNavSystemFeatures, {
@@ -858,7 +854,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
@@ -895,10 +890,9 @@ describe('MainNav', () => {
         role: 'normal',
       },
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.manage'],
+      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.acl.preview'],
     }
 
     renderMainNav({ branding: { enabled: false } })
@@ -979,14 +973,17 @@ describe('MainNav', () => {
     )
   })
 
-  it('marks marketplace active on marketplace routes', () => {
-    mockPathname = '/marketplace'
+  it.each(['/marketplace', '/plugins', '/templates', '/templates/marketing'])(
+    'marks marketplace active on route %s',
+    (pathname) => {
+      mockPathname = pathname
 
-    renderMainNav()
+      renderMainNav()
 
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
-  })
+      const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+      expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
+    },
+  )
 
   it('marks roster active on roster routes', () => {
     mockPathname = '/agents'
@@ -1184,7 +1181,8 @@ describe('MainNav', () => {
       'common.mainNav.help.learnDify',
       'common.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
-      'Discord',
+      'common.userProfile.discord',
+      'common.mainNav.help.creatorCenter',
       'common.userProfile.github',
       'common.userProfile.about',
     ]
@@ -1193,6 +1191,23 @@ describe('MainNav', () => {
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
+  })
+
+  it('opens Creator Center from the help menu above GitHub', async () => {
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    const creatorCenter = await screen.findByRole('menuitem', {
+      name: 'common.mainNav.help.creatorCenter',
+    })
+    const github = screen.getByRole('menuitem', { name: /common\.userProfile\.github/ })
+
+    expect(creatorCenter).toHaveAttribute('href', 'https://creators.dify.ai/')
+    expect(creatorCenter).toHaveAttribute('target', '_blank')
+    expect(creatorCenter).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(creatorCenter.compareDocumentPosition(github)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(creatorCenter.querySelector('.i-ri-user-star-line')).toBeTruthy()
   })
 
   it('opens About from its real Help menu owner and restores focus when closed', async () => {
@@ -1267,7 +1282,7 @@ describe('MainNav', () => {
     fireEvent.click(contactUsItem)
 
     await waitFor(() => {
-      expect(screen.queryByText('Discord')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
     })
     expect(mockSetShowPricingModal).toHaveBeenCalled()
   })
@@ -1371,7 +1386,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,

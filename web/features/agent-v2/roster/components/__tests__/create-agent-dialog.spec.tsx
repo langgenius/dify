@@ -38,7 +38,7 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: trackCreateAppMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       post: {

@@ -46,7 +46,6 @@ export type Quota = {
 }
 
 export type BillingModel = {
-  enabled: boolean
   subscription: SubscriptionModel
 }
 
