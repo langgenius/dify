@@ -248,7 +248,7 @@ def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_sess
 
     workflow_entry = MagicMock()
 
-    def run_workflow():
+    def run_workflow(**kwargs):
         events.append("run")
         return iter([])
 

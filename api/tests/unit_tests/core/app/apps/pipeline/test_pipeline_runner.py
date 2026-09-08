@@ -448,7 +448,7 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
 
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.side_effect = lambda: events.append("workflow_run") or []
+    workflow_entry.run.side_effect = lambda **_kwargs: events.append("workflow_run") or []
     mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
     mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
 
