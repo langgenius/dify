@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.plugin.entities.plugin import PluginDependency
 
@@ -19,15 +19,13 @@ class ImportStatus(StrEnum):
 
 
 class PendingImportOwner(BaseModel):
-    tenant_id: str | None = None
-    account_id: str | None = None
+    model_config = ConfigDict(hide_input_in_errors=True)
+
+    tenant_id: str
+    account_id: str
 
     def is_accessible_by(self, *, tenant_id: str | None, account_id: str) -> bool:
-        if tenant_id is None:
-            return False
-        owner = (self.tenant_id, self.account_id)
-        # Ownerless payloads come from older pods and expire after 10 minutes; #40106 removes this bridge.
-        return owner in ((None, None), (tenant_id, account_id))
+        return tenant_id is not None and (self.tenant_id, self.account_id) == (tenant_id, account_id)
 
 
 class DslImportWarning(BaseModel):

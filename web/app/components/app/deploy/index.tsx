@@ -108,7 +108,7 @@ function AppDeployContent({
 
   return (
     <>
-      <main className="flex h-full flex-col bg-components-panel-bg">
+      <div className="flex h-full flex-col bg-components-panel-bg">
         <header className="flex shrink-0 flex-col gap-y-0.5 px-6 pt-3 pb-2">
           <div className="flex h-6 items-center">
             <h1 className="title-xl-semi-bold text-text-primary">
@@ -140,7 +140,7 @@ function AppDeployContent({
             onUndeploy={undeployWorkflow}
           />
         </div>
-      </main>
+      </div>
       {deploymentRequest && (
         <DeploymentDialog
           appId={appId}

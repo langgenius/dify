@@ -27,6 +27,7 @@ from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
+from services.enterprise import rbac_service as enterprise_rbac_service
 
 
 def _persist_account(session: Session) -> Account:
@@ -220,6 +221,63 @@ class TestCreateAppTransactionBoundary:
         model_manager.get_default_provider_model_name.assert_called_once_with(
             tenant_id=account.current_tenant_id, model_type=ModelType.LLM
         )
+
+
+class TestCreateAppRBACAccessInitialization:
+    """`create_app` bootstraps RBAC access per app mode: agents get the agent flavour."""
+
+    @staticmethod
+    def _create(session: Session, account: Account, mode: AppMode) -> App:
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch(
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
+            ),
+        ):
+            return AppService().create_app(
+                account.current_tenant_id,
+                CreateAppParams(name=f"RBAC {mode.value}", mode=mode.value),
+                account,
+                session=session,
+            )
+
+    def test_agent_app_initializes_agent_access_and_skips_the_app_creator_sync(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=True)
+        account = _persist_account(sqlite_session)
+
+        with (
+            patch(
+                "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist"
+            ) as replace_whitelist,
+            patch("services.rbac_agent_access_service.initialize_created_app_rbac_access_task.delay") as seed_task,
+            patch(
+                "services.rbac_agent_access_service.enterprise_rbac_service.RBACService.AccessPolicies"
+                ".sync_creator_access_policy_member_bindings"
+            ) as creator_sync,
+            patch(
+                "services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ) as app_creator_sync,
+        ):
+            app = self._create(sqlite_session, account, AppMode.AGENT)
+
+        agent = sqlite_session.scalars(select(Agent).where(Agent.app_id == app.id)).one()
+        replace_whitelist.assert_called_once_with(
+            account.current_tenant_id,
+            account.id,
+            agent.id,
+            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        )
+        seed_task.assert_called_once_with(account.current_tenant_id, account.id, agent_id=agent.id)
+        creator_sync.assert_called_once_with(
+            account.current_tenant_id,
+            account.id,
+            resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+            resource_id=agent.id,
+        )
+        app_creator_sync.assert_not_called()
 
 
 @pytest.mark.parametrize(

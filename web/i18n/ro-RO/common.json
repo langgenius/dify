@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "Setați modelul implicit pentru intrarea de conversie vorbire-la-text în conversație.",
   "modelProvider.upgradeForLoadBalancing": "Actualizați-vă planul pentru a activa Load Balancing.",
   "modelProvider.used": "utilizate",
+  "navigation.primary": "Meniu principal",
   "navigation.skipToMain": "Sări la conținutul principal",
   "noData": "Fără date",
   "operation.add": "Adaugă",

@@ -2,7 +2,7 @@
 
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { emptyWorkspacePermissionKeys } from './app-context-normalizers'
 
 const workspacePermissionKeysQueryAtom = atomWithQuery(() =>

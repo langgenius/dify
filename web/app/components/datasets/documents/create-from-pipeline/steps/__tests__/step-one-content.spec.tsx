@@ -254,6 +254,7 @@ describe('StepOneContent', () => {
     datasourceType: DatasourceType.localFile,
     pipelineNodes: mockPipelineNodes,
     supportBatchUpload: true,
+    showBatchUploadUpgrade: false,
     isShowVectorSpaceFull: false,
     isShowVectorSpaceUnavailable: false,
     isRetryingVectorSpace: false,
@@ -346,7 +347,20 @@ describe('StepOneContent', () => {
   })
 
   describe('Conditional Rendering - UpgradeCard', () => {
-    it('should render UpgradeCard immediately when batch upload is not supported', () => {
+    it('should render UpgradeCard for a Sandbox local file source', () => {
+      render(
+        <StepOneContent
+          {...defaultProps}
+          supportBatchUpload={false}
+          showBatchUploadUpgrade
+          datasourceType={DatasourceType.localFile}
+        />,
+      )
+      // UpgradeCard contains an upgrade button
+      expect(screen.getByTestId('upgrade-btn')).toBeInTheDocument()
+    })
+
+    it('does not infer an upgrade requirement from unavailable batch upload', () => {
       render(
         <StepOneContent
           {...defaultProps}
@@ -354,8 +368,7 @@ describe('StepOneContent', () => {
           datasourceType={DatasourceType.localFile}
         />,
       )
-      // UpgradeCard contains an upgrade button
-      expect(screen.getByTestId('upgrade-btn')).toBeInTheDocument()
+      expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
     })
 
     it('should not render UpgradeCard when batch upload is supported', () => {

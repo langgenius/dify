@@ -107,22 +107,40 @@ class DraftWorkflowNotSync(BaseHTTPException):
     code = 409
 
 
-class TracingConfigNotExist(BaseHTTPException):
-    error_code = "trace_config_not_exist"
-    description = "Trace config not exist."
+class TracingConfigNotFoundError(BaseHTTPException):
+    error_code = "trace_config_not_found"
+    description = "Tracing configuration not found."
+    code = 404
+
+
+class TracingConfigAlreadyExistsError(BaseHTTPException):
+    error_code = "trace_config_already_exists"
+    description = "A tracing configuration already exists for this provider."
+    code = 409
+
+
+class UnsupportedTracingProviderError(BaseHTTPException):
+    error_code = "unsupported_tracing_provider"
+    description = "The tracing provider is not supported."
     code = 400
 
 
-class TracingConfigIsExist(BaseHTTPException):
-    error_code = "trace_config_is_exist"
-    description = "Trace config is exist."
+class InvalidTracingConfigError(BaseHTTPException):
+    error_code = "invalid_tracing_config"
+    description = "The tracing configuration is invalid."
     code = 400
 
 
-class TracingConfigCheckError(BaseHTTPException):
-    error_code = "trace_config_check_error"
-    description = "Invalid Credentials."
+class TracingConfigVerificationFailedError(BaseHTTPException):
+    error_code = "tracing_config_verification_failed"
+    description = "The tracing configuration could not be verified."
     code = 400
+
+
+class TracingConfigProcessingError(BaseHTTPException):
+    error_code = "tracing_config_processing_failed"
+    description = "The tracing configuration could not be processed."
+    code = 500
 
 
 class InvokeRateLimitError(BaseHTTPException):

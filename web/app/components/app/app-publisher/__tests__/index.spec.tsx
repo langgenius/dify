@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -149,7 +149,6 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
