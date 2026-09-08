@@ -11,9 +11,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import {
-  applyHumanInputFilled,
-  applyHumanInputRequired,
-  applyHumanInputTimeout,
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
 } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getProcessedInputs, processOpeningStatement } from '@/app/components/base/chat/chat/utils'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
@@ -627,7 +627,7 @@ export const useChat = (
           }
         },
         onHumanInputRequired: ({ data }) => {
-          applyHumanInputRequired(responseItem, data)
+          updatePendingHumanInputForm(responseItem, data)
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(
             (item) => item.node_id === data.node_id,
           )
@@ -643,7 +643,7 @@ export const useChat = (
           }
         },
         onHumanInputFormFilled: ({ data }) => {
-          applyHumanInputFilled(responseItem, data)
+          updateFilledHumanInputForm(responseItem, data)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -652,7 +652,7 @@ export const useChat = (
           })
         },
         onHumanInputFormTimeout: ({ data }) => {
-          applyHumanInputTimeout(responseItem, data)
+          updateHumanInputFormTimeout(responseItem, data)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -916,7 +916,7 @@ export const useChat = (
         },
         onHumanInputRequired: ({ data: humanInputRequiredData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            applyHumanInputRequired(responseItem, humanInputRequiredData)
+            updatePendingHumanInputForm(responseItem, humanInputRequiredData)
             if (responseItem.workflowProcess?.tracing) {
               const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(
                 (item) => item.node_id === humanInputRequiredData.node_id,
@@ -929,12 +929,12 @@ export const useChat = (
         },
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            applyHumanInputFilled(responseItem, humanInputFilledFormData)
+            updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            applyHumanInputTimeout(responseItem, humanInputFormTimeoutData)
+            updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           })
         },
         onWorkflowPaused: () => {

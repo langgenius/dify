@@ -313,14 +313,14 @@ class DifyNodeFactory(NodeFactory):
         graph_init_context: DifyGraphInitContext,
         runtime_state: "RuntimeState",
         human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
-        containerize_workflow_tools: bool = True,
+        use_workflow_tool_containers: bool = True,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
             init_params=graph_init_context.to_graph_init_params(),
             runtime_state=runtime_state,
             human_input_run_context=human_input_run_context,
-            containerize_workflow_tools=containerize_workflow_tools,
+            use_workflow_tool_containers=use_workflow_tool_containers,
         )
 
     def __init__(
@@ -328,12 +328,12 @@ class DifyNodeFactory(NodeFactory):
         init_params: "InitParams",
         runtime_state: "RuntimeState",
         human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
-        containerize_workflow_tools: bool = True,
+        use_workflow_tool_containers: bool = True,
     ) -> None:
         self.init_params = init_params
         self.runtime_state = runtime_state
         self._dify_context = self._resolve_dify_context(init_params.run_context)
-        self._containerize_workflow_tools = containerize_workflow_tools
+        self._use_workflow_tool_containers = use_workflow_tool_containers
         self._human_input_run_context = (
             self._dify_context
             if human_input_run_context is None
@@ -408,7 +408,7 @@ class DifyNodeFactory(NodeFactory):
             init_params=self.init_params,
             runtime_state=runtime_state,
             human_input_run_context=self._human_input_run_context,
-            containerize_workflow_tools=self._containerize_workflow_tools,
+            use_workflow_tool_containers=self._use_workflow_tool_containers,
         )
 
     @override
@@ -572,7 +572,7 @@ class DifyNodeFactory(NodeFactory):
             else None
         )
         if (
-            self._containerize_workflow_tools
+            self._use_workflow_tool_containers
             and node_type == BuiltinNodeTypes.TOOL
             and provider_type == ToolProviderType.WORKFLOW
         ):

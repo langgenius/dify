@@ -1,13 +1,13 @@
 import type { NodeTracing } from '@/types/workflow'
 import { createContext } from 'react'
 
-export type WorkflowRunScope = {
+export type WorkflowRunInfo = {
   appId: string
   runId: string
   status?: string
 }
 
 export const WorkflowToolTracingContext = createContext<{
-  workflowRun: WorkflowRunScope
+  workflowRun: WorkflowRunInfo
   onShowWorkflowTool: (node: NodeTracing) => void
 } | null>(null)

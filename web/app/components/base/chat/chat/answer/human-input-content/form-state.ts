@@ -10,28 +10,31 @@ type HumanInputFormState = {
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
-export const applyHumanInputRequired = (state: HumanInputFormState, data: HumanInputFormData) => {
+export const updatePendingHumanInputForm = (
+  state: HumanInputFormState,
+  data: HumanInputFormData,
+) => {
   const forms = (state.humanInputFormDataList ??= [])
   const index = forms.findIndex((form) => form.form_id === data.form_id)
   if (index === -1) forms.push(data)
   else forms[index] = data
 }
 
-export const applyHumanInputFilled = (
+export const updateFilledHumanInputForm = (
   state: HumanInputFormState,
   data: HumanInputFilledFormData,
 ) => {
-  const pending = state.humanInputFormDataList
-  const index = pending?.findIndex((form) => form.form_id === data.form_id) ?? -1
-  const required = index === -1 ? undefined : pending?.splice(index, 1)[0]
-  const enriched = enrichSubmittedHumanInputFormData(data, required)
-  const filled = (state.humanInputFilledFormDataList ??= [])
-  const existing = filled.find((form) => form.form_id === data.form_id)
-  if (existing) Object.assign(existing, enriched)
-  else filled.push(enriched)
+  const pendingForms = state.humanInputFormDataList
+  const index = pendingForms?.findIndex((form) => form.form_id === data.form_id) ?? -1
+  const pendingForm = index === -1 ? undefined : pendingForms?.splice(index, 1)[0]
+  const filledForm = enrichSubmittedHumanInputFormData(data, pendingForm)
+  const filledForms = (state.humanInputFilledFormDataList ??= [])
+  const existingForm = filledForms.find((form) => form.form_id === data.form_id)
+  if (existingForm) Object.assign(existingForm, filledForm)
+  else filledForms.push(filledForm)
 }
 
-export const applyHumanInputTimeout = (
+export const updateHumanInputFormTimeout = (
   state: HumanInputFormState,
   data: HumanInputFormTimeoutData,
 ) => {

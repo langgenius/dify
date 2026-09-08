@@ -840,9 +840,9 @@ describe('AppPublisher', () => {
     render(<AppPublisher publishedAt={1_710_000_000_000} />)
 
     await user.click(screen.getByRole('button', { name: /common\.publish\b/ }))
-    const configureAction = screen.getByRole('button', { name: /common\.workflowAsTool\b/ })
-    expect(configureAction).toBeEnabled()
-    await user.click(configureAction)
+    const configureButton = screen.getByRole('button', { name: /common\.workflowAsTool\b/ })
+    expect(configureButton).toBeEnabled()
+    await user.click(configureButton)
 
     expect(screen.getByRole('dialog', { name: 'Workflow tool drawer' })).toBeInTheDocument()
     expect(
@@ -957,9 +957,9 @@ describe('AppPublisher', () => {
     render(<AppPublisher publishedAt={Date.now()} />)
 
     await user.click(screen.getByRole('button', { name: /common\.publish\b/ }))
-    const configureAction = screen.getByRole('button', { name: /common\.workflowAsTool\b/ })
-    expect(configureAction).toBeDisabled()
-    await user.click(configureAction)
+    const configureButton = screen.getByRole('button', { name: /common\.workflowAsTool\b/ })
+    expect(configureButton).toBeDisabled()
+    await user.click(configureButton)
 
     expect(screen.queryByRole('dialog', { name: 'Workflow tool drawer' })).not.toBeInTheDocument()
   })

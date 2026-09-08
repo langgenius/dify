@@ -20,7 +20,7 @@ from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOff
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionSnapshot,
-    WorkflowNodeExecutionSnapshotSource,
+    WorkflowNodeExecutionSnapshotRow,
 )
 
 
@@ -215,7 +215,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         )
 
         with self._session_maker() as session:
-            rows = cast(Sequence[WorkflowNodeExecutionSnapshotSource], session.execute(stmt).all())
+            rows = cast(Sequence[WorkflowNodeExecutionSnapshotRow], session.execute(stmt).all())
 
         return [WorkflowNodeExecutionSnapshot.from_execution(row) for row in rows]
 

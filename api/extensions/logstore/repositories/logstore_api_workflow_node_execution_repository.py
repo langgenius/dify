@@ -163,15 +163,17 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         node_id: str,
     ) -> WorkflowNodeExecutionModel | None:
         """Return the most recent visible, non-paused execution after selecting each latest version."""
-        scope = {"tenant_id": tenant_id, "app_id": app_id, "workflow_id": workflow_id, "node_id": node_id}
-        filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in scope.items())
-        search = " and ".join(f"{key}: {escape_logstore_query_value(value)}" for key, value in scope.items())
+        filter_values = {"tenant_id": tenant_id, "app_id": app_id, "workflow_id": workflow_id, "node_id": node_id}
+        sql_filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in filter_values.items())
+        search_query = " and ".join(
+            f"{key}: {escape_logstore_query_value(value)}" for key, value in filter_values.items()
+        )
         results = self.logstore_client.execute_sql(
             sql=f"""
                 SELECT * FROM (
                     SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                     FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                    WHERE {filters} AND __time__ > 0
+                    WHERE {sql_filters} AND __time__ > 0
                 ) AS executions WHERE rn = 1
                   AND (triggered_from IS NULL
                        OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}')
@@ -179,7 +181,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 ORDER BY created_at DESC LIMIT 1
             """,
             logstore=AliyunLogStore.workflow_node_execution_logstore,
-            query=search,
+            query=search_query,
         )
         return _dict_to_workflow_node_execution_model(results[0]) if results else None
 
@@ -216,12 +218,14 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         triggered_from: str | None = None,
     ) -> list[WorkflowNodeExecutionModel]:
         """Read latest versions through the shared SQL/SDK adapter; snapshots omit payloads."""
-        scope = {"tenant_id": tenant_id, "app_id": app_id, "workflow_run_id": workflow_run_id}
+        filter_values = {"tenant_id": tenant_id, "app_id": app_id, "workflow_run_id": workflow_run_id}
         if workflow_id is not None:
-            scope["workflow_id"] = workflow_id
-        filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in scope.items())
-        search = " and ".join(f"{key}: {escape_logstore_query_value(value)}" for key, value in scope.items())
-        origin = (
+            filter_values["workflow_id"] = workflow_id
+        sql_filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in filter_values.items())
+        search_query = " and ".join(
+            f"{key}: {escape_logstore_query_value(value)}" for key, value in filter_values.items()
+        )
+        trigger_filter = (
             f"triggered_from = '{escape_identifier(triggered_from)}'"
             if triggered_from is not None
             else f"(triggered_from IS NULL OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL}')"
@@ -241,11 +245,11 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     SELECT {columns} FROM (
                         SELECT {columns}, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                         FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE {filters} AND {origin} AND __time__ > 0
+                        WHERE {sql_filters} AND {trigger_filter} AND __time__ > 0
                     ) AS executions WHERE rn = 1 ORDER BY created_at, "index", id LIMIT 1000 OFFSET {offset}
                 """,
                 logstore=AliyunLogStore.workflow_node_execution_logstore,
-                query=search,
+                query=search_query,
                 to_time=to_time,
             )
             for row in page:
@@ -266,7 +270,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         workflow_run_id: str,
         parent_node_execution_id: str,
     ) -> Sequence[WorkflowNodeExecutionModel]:
-        scope = (
+        sql_filters = (
             f"tenant_id = '{escape_identifier(tenant_id)}' "
             f"AND workflow_run_id = '{escape_identifier(workflow_run_id)}' AND __time__ > 0"
         )
@@ -279,7 +283,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         parents = self.logstore_client.execute_sql(
             sql=f"""
                 SELECT id, node_execution_id FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                WHERE {scope} AND node_type = '{BuiltinNodeTypes.TOOL}'
+                WHERE {sql_filters} AND node_type = '{BuiltinNodeTypes.TOOL}'
                   AND (id = '{requested_id}' OR node_execution_id = '{requested_id}')
                 ORDER BY log_version DESC LIMIT 1
             """,
@@ -298,7 +302,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     SELECT * FROM (
                         SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                         FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE {scope}
+                        WHERE {sql_filters}
                           AND triggered_from = '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}'
                           AND json_extract_scalar(process_data, '$.{WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY}')
                               = '{parent_execution_id}'
@@ -321,18 +325,20 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         tenant_id: str | None = None,
     ) -> WorkflowNodeExecutionModel | None:
         """Return the latest version of an execution, optionally scoped to its tenant."""
-        scope = {"id": execution_id}
+        filter_values = {"id": execution_id}
         if tenant_id:
-            scope["tenant_id"] = tenant_id
-        filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in scope.items())
-        search = " and ".join(f"{key}: {escape_logstore_query_value(value)}" for key, value in scope.items())
+            filter_values["tenant_id"] = tenant_id
+        sql_filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in filter_values.items())
+        search_query = " and ".join(
+            f"{key}: {escape_logstore_query_value(value)}" for key, value in filter_values.items()
+        )
         results = self.logstore_client.execute_sql(
             sql=f"""
                 SELECT * FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                WHERE {filters} AND __time__ > 0
+                WHERE {sql_filters} AND __time__ > 0
                 ORDER BY log_version DESC LIMIT 1
             """,
             logstore=AliyunLogStore.workflow_node_execution_logstore,
-            query=search,
+            query=search_query,
         )
         return _dict_to_workflow_node_execution_model(results[0]) if results else None

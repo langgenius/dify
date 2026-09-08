@@ -23,7 +23,7 @@ from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutio
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
-class WorkflowNodeExecutionSnapshotSource(Protocol):
+class WorkflowNodeExecutionSnapshotRow(Protocol):
     id: str
     node_execution_id: str | None
     node_id: str
@@ -59,7 +59,7 @@ class WorkflowNodeExecutionSnapshot:
 
     @classmethod
     def from_execution(
-        cls, row: WorkflowNodeExecutionSnapshotSource | WorkflowNodeExecutionModel
+        cls, row: WorkflowNodeExecutionSnapshotRow | WorkflowNodeExecutionModel
     ) -> WorkflowNodeExecutionSnapshot:
         metadata: dict[str, object] = {}
         if row.execution_metadata:
