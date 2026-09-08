@@ -1582,6 +1582,7 @@ class ToolMCPDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:

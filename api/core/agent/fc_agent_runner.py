@@ -144,6 +144,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         model_instance = self.model_instance
 
+        # Main agent loop: keep calling the LLM and executing tools until
+        # the model stops requesting tool calls or we hit the iteration limit.
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
 

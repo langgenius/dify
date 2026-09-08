@@ -821,6 +821,9 @@ class DatasetRetrieval:
                     ].embedding_model_provider
                     weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
         dataset_count = len(available_datasets)
+        # Query text and attachments are searched in parallel threads so we
+        # don't block one while waiting on the other. Each thread appends to
+        # the shared all_documents list and signals errors via thread_exceptions.
         with measure_time() as timer:
             cancel_event = threading.Event()
             thread_exceptions: list[Exception] = []
