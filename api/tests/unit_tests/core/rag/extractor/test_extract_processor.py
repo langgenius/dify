@@ -105,6 +105,8 @@ class TestExtractProcessorLoaders:
         [
             ("https://example.com/file.txt", {"Content-Type": "text/plain"}, ".txt"),
             ("https://example.com/no_suffix", {"Content-Type": "application/pdf"}, ".pdf"),
+            ("https://example.com/no_suffix", {"Content-Type": "application/pdf; charset=binary"}, ".pdf"),
+            ("https://example.com/no_suffix", {"Content-Type": "text/plain; charset=utf-8"}, ".plain"),
             (
                 "https://example.com/no_suffix",
                 {"Content-Disposition": 'attachment; filename="report.md"'},

@@ -84,7 +84,9 @@ class ExtractProcessor:
             if not suffix and suffix != ".":
                 # get content-type
                 if response.headers.get("Content-Type"):
-                    suffix = "." + response.headers.get("Content-Type").split("/")[-1]
+                    # strip parameters (e.g. "; charset=utf-8") before deriving the extension
+                    media_type = response.headers.get("Content-Type").split(";")[0].strip()
+                    suffix = "." + media_type.split("/")[-1]
                 else:
                     content_disposition = response.headers.get("Content-Disposition")
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
