@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import base64
 from typing import cast
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
@@ -20,14 +21,16 @@ from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.workflow_dsl_bundle import WorkflowDslBundleService
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
 class AppDslImportApi(Resource):
     """Import a DSL YAML string into the specified workspace.
 
-    Use ``mode=yaml-content`` with ``yaml_content`` for inline YAML, or
-    ``mode=yaml-url`` with ``yaml_url`` for a remote URL.  Provide ``app_id``
+    Use ``mode=yaml-content`` with ``yaml_content`` for inline YAML,
+    ``mode=bundle-content`` with base64 ZIP in ``yaml_content``, or
+    ``mode=yaml-url`` with ``yaml_url`` for a remote YAML or ZIP URL. Provide ``app_id``
     to overwrite an existing workflow or advanced-chat app; omit it to create
     a new app.
 
@@ -127,6 +130,10 @@ class AppDslExportApi(Resource):
     ``include_secret=true`` to embed encrypted credential values (e.g. tool
     node secrets); omit it to produce a portable, sharable DSL safe to share.
 
+    Pass ``include_workflow_tools=true`` to recursively package referenced workflows
+    as separate DSL files. The response is base64 ZIP with ``format=zip`` when
+    workflow tools are present, otherwise YAML with ``format=yaml``.
+
     Note: the pipeline enforces ``app.enable_api`` for all ``/apps/<app_id>``
     routes in the openapi group.  Apps with the service API disabled will
     receive a 403; enable the API in the console first if needed.
@@ -143,12 +150,25 @@ class AppDslExportApi(Resource):
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDslExportQuery):
         app = cast(App, auth_data.app)
         try:
+            if query.include_workflow_tools:
+                bundle = WorkflowDslBundleService(db.session()).export_bundle(
+                    app_model=app,
+                    account=cast(Account, auth_data.caller),
+                    include_secret=query.include_secret,
+                    workflow_id=query.workflow_id,
+                )
+                if bundle is not None:
+                    return AppDslExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip"), 200
             data = AppDslService.export_dsl(
                 app_model=app,
                 session=db.session(),
                 include_secret=query.include_secret,
                 workflow_id=query.workflow_id,
             )
+        except NoPermissionError as exc:
+            raise Forbidden(str(exc)) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
         except WorkflowNotFoundError as exc:
             return str(exc), 404
         return AppDslExportResponse(data=data), 200

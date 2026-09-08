@@ -1,4 +1,5 @@
 import type {
+  AppDslExportResponse,
   AppDslImportPayload,
   CheckDependenciesResult,
   Import,
@@ -9,6 +10,7 @@ import { createOpenApiClient } from '@/http/orpc'
 
 export type ExportQuery = {
   readonly includeSecret?: boolean
+  readonly includeWorkflowTools?: boolean
   readonly workflowId?: string
 }
 
@@ -32,23 +34,20 @@ export class AppDslClient {
     })
   }
 
-  async exportDsl(appId: string, query?: ExportQuery): Promise<string> {
+  async exportDsl(appId: string, query?: ExportQuery): Promise<AppDslExportResponse> {
     const resp = await this.orpc.apps.byAppId.dsl.get({
       params: { app_id: appId },
       query:
         query !== undefined
           ? {
               include_secret: query.includeSecret,
+              include_workflow_tools: query.includeWorkflowTools,
               workflow_id: query.workflowId,
             }
           : undefined,
     })
-    // The response schema is an open object {"data": "<yaml string>"}; the
-    // contract generator marks it as loose because the backend annotation
-    // does not narrow the shape. Extract `data` directly.
-    const data = (resp as Record<string, unknown>).data
-    if (typeof data !== 'string') throw new Error('export response missing data field')
-    return data
+    if (typeof resp.data !== 'string') throw new Error('export response missing data field')
+    return resp
   }
 
   async checkDependencies(appId: string): Promise<CheckDependenciesResult> {

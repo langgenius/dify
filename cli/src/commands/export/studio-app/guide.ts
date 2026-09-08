@@ -5,6 +5,8 @@ WHEN TO USE
   that 'run app' invokes. Export pulls that definition as YAML to back it
   up, diff it, or recreate the app elsewhere with 'import studio-app'. To
   run or inspect an app instead, use the 'app' noun.
+  Add --include-workflow-tools --output ./app.zip to include every nested
+  workflow tool as a separate DSL file with its deployment configuration.
 
 ERROR RECOVERY
   app not found (404)      difyctl get app

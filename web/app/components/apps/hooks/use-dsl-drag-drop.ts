@@ -42,8 +42,7 @@ export const useDSLDragDrop = ({
     if (files.length === 0) return
 
     const file = files[0]
-    if (file!.name.toLowerCase().endsWith('.yaml') || file!.name.toLowerCase().endsWith('.yml'))
-      onDSLFileDropped(file!)
+    if (/\.(?:ya?ml|zip)$/i.test(file!.name)) onDSLFileDropped(file!)
   })
 
   useEffect(() => {

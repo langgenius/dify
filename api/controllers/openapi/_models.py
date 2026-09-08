@@ -8,6 +8,7 @@ from typing import Any, Final, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from enums import DeploymentEdition
+from fields.base import ResponseModel
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
@@ -454,9 +455,13 @@ class AppDslImportPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["yaml-content", "yaml-url"] = Field(..., description="Import mode: yaml-content or yaml-url")
-    yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
-    yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
+    mode: Literal["yaml-content", "yaml-url", "bundle-content"] = Field(
+        ..., description="Import YAML text, a URL, or a base64 ZIP bundle"
+    )
+    yaml_content: str | None = Field(
+        None, description="YAML DSL text or base64-encoded ZIP (required for yaml-content or bundle-content)"
+    )
+    yaml_url: str | None = Field(None, description="Remote YAML or ZIP URL (required when mode is yaml-url)")
     name: str | None = Field(None, description="Override the app name from the DSL")
     description: str | None = Field(None, description="Override the app description from the DSL")
     icon_type: str | None = Field(None)
@@ -466,8 +471,8 @@ class AppDslImportPayload(BaseModel):
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
-        if self.mode == "yaml-content" and not self.yaml_content:
-            raise ValueError("yaml_content is required when mode is 'yaml-content'")
+        if self.mode in {"yaml-content", "bundle-content"} and not self.yaml_content:
+            raise ValueError(f"yaml_content is required when mode is '{self.mode}'")
         if self.mode == "yaml-url" and not self.yaml_url:
             raise ValueError("yaml_url is required when mode is 'yaml-url'")
         return self
@@ -476,16 +481,18 @@ class AppDslImportPayload(BaseModel):
 class AppDslExportQuery(BaseModel):
     """Query parameters for GET /apps/<app_id>/dsl."""
 
+    include_workflow_tools: bool = Field(False, description="Package referenced workflow tools recursively in a ZIP")
     include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
     workflow_id: UUIDStr | None = Field(
         None, description="Export a specific workflow version instead of the current draft"
     )
 
 
-class AppDslExportResponse(BaseModel):
+class AppDslExportResponse(ResponseModel):
     """Export DSL response."""
 
-    data: str = Field(..., description="DSL YAML string")
+    data: str = Field(..., description="YAML DSL text, or base64-encoded ZIP when format is zip")
+    format: Literal["yaml", "zip"] = "yaml"
 
 
 class FormSubmitResponse(BaseModel):
