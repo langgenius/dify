@@ -8,8 +8,21 @@ from typing import Any, Union
 
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client
+from extensions.redis_names import get_redis_key_prefix, serialize_redis_name_arg
 
 logger = logging.getLogger(__name__)
+
+# Atomically checks the active-request count against the cap and, if there is room,
+# registers the new request in the same round trip. Doing this check-and-set in Lua
+# closes the race where two concurrent HLEN checks could both pass before either HSET lands.
+_ENTER_SCRIPT = """
+local count = redis.call('HLEN', KEYS[1])
+if count >= tonumber(ARGV[1]) then
+    return 0
+end
+redis.call('HSET', KEYS[1], ARGV[2], ARGV[3])
+return 1
+"""
 
 
 class RateLimit:
@@ -78,13 +91,15 @@ class RateLimit:
         if not request_id:
             request_id = RateLimit.gen_request_key()
 
-        active_requests_count = redis_client.hlen(self.active_requests_key)
-        if active_requests_count >= self.max_active_requests:
+        prefixed_key = serialize_redis_name_arg(self.active_requests_key, get_redis_key_prefix())
+        admitted = redis_client.eval(
+            _ENTER_SCRIPT, 1, prefixed_key, self.max_active_requests, request_id, str(time.time())
+        )
+        if not admitted:
             raise AppInvokeQuotaExceededError(
                 f"Too many requests. Please try again later. The current maximum concurrent requests allowed "
                 f"for {self.client_id} is {self.max_active_requests}."
             )
-        redis_client.hset(self.active_requests_key, request_id, str(time.time()))
         return request_id
 
     def exit(self, request_id: str):
