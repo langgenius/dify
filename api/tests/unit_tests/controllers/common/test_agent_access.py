@@ -121,9 +121,7 @@ class TestResolveAgentAccessFilter:
             lambda _tenant_id, _account_id: whitelist,
         )
 
-    def test_default_preview_is_unrestricted(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ) -> None:
+    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
 
         access_filter = resolve_agent_access_filter(
