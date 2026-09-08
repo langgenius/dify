@@ -33,6 +33,7 @@ from services.agent.errors import (
     RosterAgentPackageTooLargeError,
 )
 from services.agent.roster_package_entities import (
+    ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
     RosterAgentPackageMetadata,
@@ -217,6 +218,18 @@ def test_reader_accepts_manifest_larger_than_legacy_limit() -> None:
     assert len(manifest.model_dump_json().encode()) > 1024 * 1024
     with RosterAgentPackageReader().read(io.BytesIO(package)) as prepared:
         assert prepared.manifest.soul.prompt.system_prompt == manifest.soul.prompt.system_prompt
+
+
+def test_reader_rejects_manifest_larger_than_five_mib() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest_data = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    manifest_data["soul"]["prompt"]["system_prompt"] = "x" * ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES
+    manifest = RosterAgentPackageManifest.model_validate(manifest_data)
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
 def test_reader_applies_the_whole_package_size_limit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -451,6 +464,15 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
 
     assert sqlite_session.in_transaction()
     assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
+
+    monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES", 1)
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+    monkeypatch.setattr(
+        roster_package_exporter_module,
+        "ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES",
+        ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+    )
 
     monkeypatch.setattr(
         roster_package_exporter_module,

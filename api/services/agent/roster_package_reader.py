@@ -20,6 +20,7 @@ from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_BYTES,
     ROSTER_AGENT_PACKAGE_MAX_COMPRESSION_RATIO,
     ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
+    ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
     PreparedRosterAgentPackage,
     RosterAgentPackageManifest,
@@ -81,7 +82,14 @@ class RosterAgentPackageReader:
                 manifest_info = info_by_path.get("manifest.json")
                 if manifest_info is None:
                     raise InvalidRosterAgentPackageError("Roster Agent package is missing manifest.json")
-                manifest_bytes, _ = self._read_member(archive, manifest_info, collect=True)
+                if manifest_info.file_size > ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+                    raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
+                manifest_bytes, _ = self._read_member(
+                    archive,
+                    manifest_info,
+                    collect=True,
+                    max_bytes=ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+                )
                 try:
                     manifest_data = json.loads(manifest_bytes, object_pairs_hook=self._reject_duplicate_json_keys)
                     manifest = RosterAgentPackageManifest.model_validate(manifest_data)

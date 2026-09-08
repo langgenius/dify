@@ -40,6 +40,7 @@ from services.agent.errors import (
 )
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_MAX_BYTES,
+    ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageAudit,
     RosterAgentPackageExport,
     RosterAgentPackageFile,
@@ -241,6 +242,8 @@ class RosterAgentPackageExporter:
                     dependencies=dependencies,
                 )
                 manifest_bytes = manifest.model_dump_json(indent=2, exclude_none=True).encode("utf-8")
+                if len(manifest_bytes) > ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+                    raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
                 if total_size + len(manifest_bytes) > ROSTER_AGENT_PACKAGE_MAX_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the size limit")
                 archive.writestr("manifest.json", manifest_bytes)
