@@ -57,8 +57,8 @@ def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
     `ResponseStreamFilter.dumps()` raises `RuntimeError` unless the filter has
     processed a `EngineEventFilterContext` first. In production this always
     happens before any event (including `GraphRunPausedEvent`) reaches
-    `PauseStatePersistenceLayer.on_event`, so tests that exercise `on_event`
-    or a subsequent `dumps()` call need a filter in that same state. A
+    `PauseStatePersistenceLayer.on_event`, so tests that later call
+    `persist_pending_pause()` need a filter in that same state. A
     nodeless graph is enough to satisfy the precondition.
     """
     response_stream_filter = ResponseStreamFilter()
@@ -351,8 +351,17 @@ class TestPauseStatePersistenceLayerTestContainers:
             outputs={"intermediate": "result"},
         )
 
-        # Act
+        # Capturing an event does not write a checkpoint while workers may run.
         layer.on_event(event)
+        self.session.refresh(self.test_workflow_run)
+        assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
+        pending_pause = self.session.scalar(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
+        )
+        assert pending_pause is None
+
+        # WorkflowEntry calls this after the engine and its threads stop.
+        layer.persist_pending_pause()
 
         # Assert - Verify pause state was saved to database
         self.session.refresh(self.test_workflow_run)
@@ -410,6 +419,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Act - Save pause state
         layer.on_event(event)
+        layer.persist_pending_pause()
 
         # Assert - Retrieve and verify
         pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(self.test_workflow_run_id)
@@ -442,6 +452,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Act
         layer.on_event(event)
+        layer.persist_pending_pause()
 
         # Assert - Verify data is committed and accessible in new session
         with Session(bind=self.session.get_bind(), expire_on_commit=False) as new_session:
@@ -476,6 +487,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Act
         layer.on_event(event)
+        layer.persist_pending_pause()
 
         # Assert - Verify file was uploaded to storage
         self.session.refresh(self.test_workflow_run)
@@ -542,6 +554,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Act
         layer.on_event(event)
+        layer.persist_pending_pause()
 
         # Assert - Should use workflow creator (not run creator)
         self.session.refresh(different_workflow_run)
@@ -576,6 +589,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.on_event(GraphRunStartedEvent())
         layer.on_event(GraphRunSucceededEvent(outputs={"result": "success"}))
         layer.on_event(GraphRunFailedEvent(error="test error", exceptions_count=1))
+        layer.persist_pending_pause()
 
         # Assert - No pause state should be created
         self.session.refresh(self.test_workflow_run)
@@ -587,13 +601,15 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert len(pause_states) == 0
 
     def test_layer_requires_initialization(self, db_session_with_containers: Session):
-        """Test that layer requires proper initialization before handling events."""
+        """Test that saving a captured pause requires initialized runtime state."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
         # Don't initialize - runtime_state should be uninitialized
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
-        # Act & Assert - Should raise RuntimeError
+        layer.on_event(event)
+
+        # Capturing the event is safe; persisting needs the initialized runtime.
         with pytest.raises(RuntimeError, match="runtime state is not initialized"):
-            layer.on_event(event)
+            layer.persist_pending_pause()
