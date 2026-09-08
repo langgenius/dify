@@ -5,7 +5,7 @@ allowBuilds:
   sharp: false
 autoInstallPeers: false
 blockExoticSubdeps: true
-catalogMode: prefer
+catalogMode: strict
 catalogPrune: true
 dedupeDirectDeps: true
 engineStrict: true

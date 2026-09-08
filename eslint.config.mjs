@@ -198,6 +198,7 @@ export default defineConfig([
       '!packages/**/*',
       '!sdks/',
       '!sdks/nodejs-client/',
+      '!sdks/nodejs-client/package.json',
       '!sdks/nodejs-client/src/',
       '!sdks/nodejs-client/src/**/*',
       '!sdks/nodejs-client/tests/',
@@ -228,7 +229,8 @@ export default defineConfig([
       '**/storybook-static/**',
       'e2e/.auth/**',
       'e2e/cucumber-report/**',
-      'packages/contracts/**',
+      'packages/contracts/**/*',
+      '!packages/contracts/package.json',
       'web/next/**',
       'web/next-env.d.ts',
       'web/public/**',
@@ -315,8 +317,10 @@ export default defineConfig([
       'pnpm/json-enforce-catalog': [
         'error',
         {
+          allowedProtocols: ['workspace'],
           autofix: true,
-          ignores: ['@types/vscode'],
+          conflicts: 'error',
+          fields: ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'],
         },
       ],
       'pnpm/json-prefer-workspace-settings': ['error', { autofix: true }],
@@ -349,6 +353,7 @@ export default defineConfig([
         'error',
         {
           settings: {
+            catalogMode: 'strict',
             shellEmulator: true,
             trustPolicy: 'no-downgrade',
           },
