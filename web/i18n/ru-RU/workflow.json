@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Узел не найден: {{nodeId}}",
   "panel.locateNodeSuccess": "Узел найден: {{title}}",
   "panel.nextStep": "Следующий шаг",
+  "panel.nodePanel": "Панель настройки узла",
   "panel.openWorkflow": "Открыть рабочий процесс",
   "panel.optional": "(необязательно)",
   "panel.optional_and_hidden": "(необязательно и скрыто)",

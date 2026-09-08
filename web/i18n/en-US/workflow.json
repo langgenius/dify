@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Node not found: {{nodeId}}",
   "panel.locateNodeSuccess": "Located node: {{title}}",
   "panel.nextStep": "Next Step",
+  "panel.nodePanel": "Node configuration panel",
   "panel.openWorkflow": "Open Workflow",
   "panel.optional": "(optional)",
   "panel.optional_and_hidden": "(optional & hidden)",

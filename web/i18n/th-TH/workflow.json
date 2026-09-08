@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "ไม่พบโหนด: {{nodeId}}",
   "panel.locateNodeSuccess": "พบโหนดแล้ว: {{title}}",
   "panel.nextStep": "ขั้นตอนถัดไป",
+  "panel.nodePanel": "แผงการตั้งค่าโหนด",
   "panel.openWorkflow": "เปิดเวิร์กโฟลว์",
   "panel.optional": "(ไม่บังคับ)",
   "panel.optional_and_hidden": "(ตัวเลือก & ซ่อน)",

@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Düğüm bulunamadı: {{nodeId}}",
   "panel.locateNodeSuccess": "Düğüm bulundu: {{title}}",
   "panel.nextStep": "Sonraki Adım",
+  "panel.nodePanel": "Düğüm yapılandırma paneli",
   "panel.openWorkflow": "İş Akışını Aç",
   "panel.optional": "(isteğe bağlı)",
   "panel.optional_and_hidden": "(isteğe bağlı ve gizli)",

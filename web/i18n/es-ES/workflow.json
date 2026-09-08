@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Nodo no encontrado: {{nodeId}}",
   "panel.locateNodeSuccess": "Nodo localizado: {{title}}",
   "panel.nextStep": "Siguiente paso",
+  "panel.nodePanel": "Panel de configuración del nodo",
   "panel.openWorkflow": "Abrir flujo de trabajo",
   "panel.optional": "(opcional)",
   "panel.optional_and_hidden": "(opcional y oculto)",

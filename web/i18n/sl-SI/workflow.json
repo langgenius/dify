@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Vozlišče ni najdeno: {{nodeId}}",
   "panel.locateNodeSuccess": "Vozlišče najdeno: {{title}}",
   "panel.nextStep": "Naslednji korak",
+  "panel.nodePanel": "Podokno za nastavitev vozlišča",
   "panel.openWorkflow": "Odpri delovni tok",
   "panel.optional": "(neobvezno)",
   "panel.optional_and_hidden": "(neobvezno in skrito)",

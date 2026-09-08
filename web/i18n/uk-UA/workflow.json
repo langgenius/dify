@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Вузол не знайдено: {{nodeId}}",
   "panel.locateNodeSuccess": "Вузол знайдено: {{title}}",
   "panel.nextStep": "Наступний крок",
+  "panel.nodePanel": "Панель налаштування вузла",
   "panel.openWorkflow": "Відкрити робочий процес",
   "panel.optional": "(необов'язково)",
   "panel.optional_and_hidden": "(необов'язково & приховано)",

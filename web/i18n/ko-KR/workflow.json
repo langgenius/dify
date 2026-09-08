@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "노드를 찾을 수 없습니다: {{nodeId}}",
   "panel.locateNodeSuccess": "노드를 찾았습니다: {{title}}",
   "panel.nextStep": "다음 단계",
+  "panel.nodePanel": "노드 설정 패널",
   "panel.openWorkflow": "워크플로 열기",
   "panel.optional": "(선택사항)",
   "panel.optional_and_hidden": "(선택 사항 및 숨김)",

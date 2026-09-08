@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Nod negăsit: {{nodeId}}",
   "panel.locateNodeSuccess": "Nod localizat: {{title}}",
   "panel.nextStep": "Pasul următor",
+  "panel.nodePanel": "Panoul de configurare a nodului",
   "panel.openWorkflow": "Deschide fluxul de lucru",
   "panel.optional": "(opțional)",
   "panel.optional_and_hidden": "(opțional și ascuns)",

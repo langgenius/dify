@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "ノードが見つかりません：{{nodeId}}",
   "panel.locateNodeSuccess": "ノードを特定しました：{{title}}",
   "panel.nextStep": "次のステップ",
+  "panel.nodePanel": "ノード設定パネル",
   "panel.openWorkflow": "ワークフローを開く",
   "panel.optional": "（任意）",
   "panel.optional_and_hidden": "（オプションおよび非表示）",

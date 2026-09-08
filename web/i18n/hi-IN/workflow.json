@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "नोड नहीं मिला: {{nodeId}}",
   "panel.locateNodeSuccess": "नोड मिला: {{title}}",
   "panel.nextStep": "अगला कदम",
+  "panel.nodePanel": "नोड कॉन्फ़िगरेशन पैनल",
   "panel.openWorkflow": "वर्कफ़्लो खोलें",
   "panel.optional": "(वैकल्पिक)",
   "panel.optional_and_hidden": "(वैकल्पिक और छिपा हुआ)",

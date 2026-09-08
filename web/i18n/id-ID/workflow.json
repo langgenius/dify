@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Node tidak ditemukan: {{nodeId}}",
   "panel.locateNodeSuccess": "Node ditemukan: {{title}}",
   "panel.nextStep": "Langkah Berikutnya",
+  "panel.nodePanel": "Panel konfigurasi node",
   "panel.openWorkflow": "Buka Alur Kerja",
   "panel.optional": "(opsional)",
   "panel.optional_and_hidden": "(opsional & tersembunyi)",

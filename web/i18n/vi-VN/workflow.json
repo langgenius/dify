@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Không tìm thấy nút: {{nodeId}}",
   "panel.locateNodeSuccess": "Đã định vị nút: {{title}}",
   "panel.nextStep": "Bước tiếp theo",
+  "panel.nodePanel": "Bảng cấu hình nút",
   "panel.openWorkflow": "Mở quy trình làm việc",
   "panel.optional": "(tùy chọn)",
   "panel.optional_and_hidden": "(tùy chọn & ẩn)",

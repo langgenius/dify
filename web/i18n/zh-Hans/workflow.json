@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "未找到节点：{{nodeId}}",
   "panel.locateNodeSuccess": "已定位到节点：{{title}}",
   "panel.nextStep": "下一步",
+  "panel.nodePanel": "节点配置面板",
   "panel.openWorkflow": "打开工作流",
   "panel.optional": "（选填）",
   "panel.optional_and_hidden": "（选填 & 隐藏）",

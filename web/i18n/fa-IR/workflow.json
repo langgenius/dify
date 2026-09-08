@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "گره پیدا نشد: {{nodeId}}",
   "panel.locateNodeSuccess": "گره پیدا شد: {{title}}",
   "panel.nextStep": "مرحله بعدی",
+  "panel.nodePanel": "پنل تنظیمات گره",
   "panel.openWorkflow": "باز کردن گردش کار",
   "panel.optional": "(اختیاری)",
   "panel.optional_and_hidden": "(اختیاری و مخفی)",

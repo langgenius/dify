@@ -98,6 +98,22 @@ describe('SnippetRunPanel', () => {
     checkInputMocks.checkInputsForm.mockReturnValue(true)
   })
 
+  it('resizes the run panel with the keyboard within the available canvas width', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(<SnippetRunPanel fields={[]} />, {
+      initialStoreState: { previewPanelWidth: 480, workflowCanvasWidth: 1000 },
+    })
+    await user.tab()
+    const handle = screen.getByRole('separator', { name: 'workflow.singleRun.testRun' })
+    expect(handle).toHaveFocus()
+    await user.keyboard('{ArrowLeft}{Shift>}{ArrowLeft}{/Shift}')
+    expect(handle).toHaveAttribute('aria-valuenow', '520')
+    await user.keyboard('{End}{ArrowLeft}')
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+    await user.keyboard('{Home}{ArrowRight}')
+    expect(handle).toHaveAttribute('aria-valuenow', '400')
+  })
+
   it('should render snippet input fields with defaults and run with edited inputs', async () => {
     const user = userEvent.setup()
 

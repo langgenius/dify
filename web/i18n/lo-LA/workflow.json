@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "ບໍ່ພົບ node: {{nodeId}}",
   "panel.locateNodeSuccess": "ທີ່ຢູ່: {{title}}",
   "panel.nextStep": "ຂັ້ນຕອນຖັດໄປ",
+  "panel.nodePanel": "ແຜງຕັ້ງຄ່າໂນດ",
   "panel.openWorkflow": "ເປີດ Workflow",
   "panel.optional": "(ເລືອກໄດ້)",
   "panel.optional_and_hidden": "(ເລືອກໄດ້ & ເຊື່ອງໄວ້)",

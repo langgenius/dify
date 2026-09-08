@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Knoten nicht gefunden: {{nodeId}}",
   "panel.locateNodeSuccess": "Knoten gefunden: {{title}}",
   "panel.nextStep": "Nächster Schritt",
+  "panel.nodePanel": "Knotenkonfiguration",
   "panel.openWorkflow": "Workflow öffnen",
   "panel.optional": "(optional)",
   "panel.optional_and_hidden": "(optional & hidden)",

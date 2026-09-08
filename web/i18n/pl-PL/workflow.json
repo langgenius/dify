@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Nie znaleziono węzła: {{nodeId}}",
   "panel.locateNodeSuccess": "Zlokalizowano węzeł: {{title}}",
   "panel.nextStep": "Następny krok",
+  "panel.nodePanel": "Panel konfiguracji węzła",
   "panel.openWorkflow": "Otwórz przepływ pracy",
   "panel.optional": "(opcjonalne)",
   "panel.optional_and_hidden": "(opcjonalne i ukryte)",

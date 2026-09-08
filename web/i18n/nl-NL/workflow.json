@@ -998,6 +998,7 @@
   "panel.locateNodeNotFound": "Node niet gevonden: {{nodeId}}",
   "panel.locateNodeSuccess": "Node gevonden: {{title}}",
   "panel.nextStep": "Next Step",
+  "panel.nodePanel": "Configuratiepaneel voor knooppunten",
   "panel.openWorkflow": "Open Workflow",
   "panel.optional": "(optional)",
   "panel.optional_and_hidden": "(optional & hidden)",
