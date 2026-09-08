@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 

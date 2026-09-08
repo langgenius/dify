@@ -5,6 +5,7 @@ from typing import TypedDict
 
 import contexts
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from machinery.context import RequestContext
@@ -202,7 +203,7 @@ class WorkflowRunService:
             app_id=app_id,
             workflow_run_id=run_id,
         )
-        return assemble_workflow_node_execution_traces(node_executions, self._node_executions)
+        return assemble_workflow_node_execution_traces(node_executions, self._node_executions, session=db.session())
 
     def get_pause_details(
         self,

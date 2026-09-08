@@ -242,6 +242,35 @@ class TestAppModelValidation:
         assert result == AppMode.CHAT
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_mode_compatible_with_agent_reports_agent_chat(self, sqlite_session: Session):
+        """A CHAT app whose own config enables agent mode reports AGENT_CHAT."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        app.app_model_config_id = str(uuid4())
+        config = AppModelConfig(
+            app_id=app.id,
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
+        config.id = app.app_model_config_id
+        sqlite_session.add(config)
+        sqlite_session.flush()
+
+        # Act
+        result = app.mode_compatible_with_agent_with_session(session=sqlite_session)
+
+        # Assert
+        assert result == AppMode.AGENT_CHAT
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
     def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, sqlite_session: Session):
         """Plugin-backed built-in tools are checked through core PluginService."""
         # Arrange
@@ -541,8 +570,9 @@ class TestConversationModel:
         # Assert
         assert conversation._inputs == inputs
 
-    def test_conversation_summary_or_query_with_summary(self):
-        """Test summary_or_query property when summary exists."""
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
+    def test_conversation_summary_or_query_with_summary(self, sqlite_session: Session):
+        """Test summary_or_query_with_session when summary exists."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),
@@ -555,14 +585,14 @@ class TestConversationModel:
         )
 
         # Act
-        result = conversation.summary_or_query
+        result = conversation.summary_or_query_with_session(session=sqlite_session)
 
         # Assert
         assert result == "Test summary"
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
     def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session):
-        """Test summary_or_query property when summary is empty."""
+        """Test summary_or_query_with_session when summary is empty."""
         # Arrange
         conversation = Conversation(
             app_id=str(uuid4()),

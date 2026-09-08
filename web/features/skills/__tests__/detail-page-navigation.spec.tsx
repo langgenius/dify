@@ -51,12 +51,21 @@ describe('SkillDetailPage navigation', () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
+    expect(
+      await screen.findByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.collapseSidebar',
       }),
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -64,6 +73,9 @@ describe('SkillDetailPage navigation', () => {
       }),
     )
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).toBeInTheDocument()
   })
 
   it('shows the sidebar while the collapsed rail is hovered', async () => {
@@ -91,6 +103,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('resizes the file tree sidebar within its accessible range', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
 
     const resizeHandle = await screen.findByRole('separator', {
@@ -108,11 +121,14 @@ describe('SkillDetailPage navigation', () => {
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
     fireEvent.pointerUp(document)
 
-    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' })
+    resizeHandle.focus()
+    await user.keyboard('{ArrowRight}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '248')
-    fireEvent.keyDown(resizeHandle, { key: 'End' })
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '280')
+    await user.keyboard('{End}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
-    fireEvent.keyDown(resizeHandle, { key: 'Home' })
+    await user.keyboard('{Home}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
   })
 

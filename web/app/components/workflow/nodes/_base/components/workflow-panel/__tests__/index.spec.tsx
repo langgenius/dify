@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
@@ -788,7 +789,122 @@ describe('workflow-panel index', () => {
     expect(mockHandleStop).toHaveBeenCalledTimes(1)
   })
 
-  it('should persist user resize changes and compress oversized panel widths', async () => {
+  it('should resize the node panel with the keyboard, persist its width, and allow focus to leave', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <>
+        <button>Before panel</button>
+        <BasePanel id="node-resize" data={createData() as never}>
+          <div>panel-child</div>
+        </BasePanel>
+      </>,
+      {
+        initialStoreState: {
+          workflowCanvasWidth: 1200,
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Before panel' })).toHaveFocus()
+    await user.tab()
+    const separator = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+    expect(separator).toHaveFocus()
+    expect(separator).toHaveAttribute('aria-orientation', 'vertical')
+    const panel = document.getElementById(separator.getAttribute('aria-controls')!)!
+
+    await user.keyboard('{ArrowLeft}')
+    expect(panel).toHaveStyle({ width: '488px' })
+    expect(separator).toHaveAttribute('aria-valuenow', '488')
+    await user.keyboard('{Shift>}{ArrowLeft}{/Shift}')
+    expect(panel).toHaveStyle({ width: '520px' })
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}{ArrowRight}')
+    expect(panel).toHaveStyle({ width: '480px' })
+    expect(separator).toHaveAttribute('aria-valuenow', '480')
+    await waitFor(() => {
+      expect(localStorage.getItem('workflow-node-panel-width')).toBe('480')
+    })
+
+    await user.tab()
+    expect(separator).not.toHaveFocus()
+    await user.tab({ shift: true })
+    expect(separator).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Before panel' })).toHaveFocus()
+  })
+
+  it('should constrain keyboard resizing to the available space and keep unrelated keys untouched', async () => {
+    const user = userEvent.setup()
+    const onKeyDown = vi.fn()
+    const { store } = renderWorkflowComponent(
+      <BasePanel id="node-resize" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          workflowCanvasWidth: 1200,
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+    await user.tab()
+    const separator = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+    expect(separator).toHaveFocus()
+    expect(separator).toHaveAttribute('aria-valuemin', '400')
+    expect(separator).toHaveAttribute('aria-valuemax', '600')
+    document.addEventListener('keydown', onKeyDown)
+    try {
+      await user.keyboard('{Home}{ArrowRight}')
+      expect(separator).toHaveAttribute('aria-valuenow', '400')
+      await user.keyboard('{End}{ArrowLeft}')
+      expect(separator).toHaveAttribute('aria-valuenow', '600')
+      expect(onKeyDown).not.toHaveBeenCalled()
+
+      act(() => store.setState({ otherPanelWidth: 300 }))
+      await waitFor(() => expect(separator).toHaveAttribute('aria-valuenow', '500'))
+      expect(separator).toHaveAttribute('aria-valuemax', '500')
+      await user.keyboard('{Home}{End}')
+      expect(separator).toHaveAttribute('aria-valuenow', '500')
+
+      onKeyDown.mockClear()
+      await user.keyboard('{ArrowDown}')
+      expect(separator).toHaveAttribute('aria-valuenow', '500')
+      expect(onKeyDown).toHaveBeenCalledOnce()
+      await user.keyboard('{Control>}{ArrowRight}{/Control}')
+      expect(separator).toHaveAttribute('aria-valuenow', '500')
+    } finally {
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  })
+
+  it('compresses the node panel when the preview grows without replacing the saved node width', async () => {
+    localStorage.setItem('workflow-node-panel-width', '600')
+    const { store } = renderWorkflowComponent(
+      <BasePanel id="node-resize" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          workflowCanvasWidth: 1400,
+          nodePanelWidth: 600,
+          otherPanelWidth: 400,
+        },
+      },
+    )
+    const handle = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+
+    act(() => store.getState().setOtherPanelWidth(600))
+
+    await waitFor(() => expect(handle).toHaveAttribute('aria-valuenow', '400'))
+    expect(handle).toHaveAttribute('aria-valuemax', '400')
+    expect(localStorage.getItem('workflow-node-panel-width')).toBe('600')
+  })
+
+  it('should compress oversized panel widths', async () => {
     const { container } = renderWorkflowComponent(
       <BasePanel id="node-resize" data={createData() as never}>
         <div>panel-child</div>

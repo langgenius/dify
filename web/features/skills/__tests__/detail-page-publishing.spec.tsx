@@ -517,7 +517,7 @@ describe('SkillDetailPage publishing', () => {
       await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
     )
 
-    await screen.findByText('skill.skillManagement.detail.versions')
+    await screen.findByRole('region', { name: 'skill.skillManagement.detail.versions' })
     expect(screen.getAllByRole('button', { current: true })).toHaveLength(1)
 
     await user.click(

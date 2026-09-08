@@ -29,7 +29,7 @@ import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
 import { commonQueryKeys } from '@/service/use-common'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
@@ -269,7 +269,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+            <AlertDialogConfirmButton loading={deleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

@@ -150,7 +150,6 @@ class AnnotationReplyActionStatusApi(Resource):
         responses={
             200: "Job status retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Job not found",
         }
     )
     @service_api_ns.response(

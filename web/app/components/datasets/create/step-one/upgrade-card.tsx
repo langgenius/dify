@@ -1,11 +1,16 @@
 'use client'
+
 import type { FC } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useModalContext } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const UpgradeCard: FC = () => {
@@ -14,11 +19,11 @@ const UpgradeCard: FC = () => {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   const handleUpgrade = useCallback(() => {
-    setShowPricingModal()
-  }, [setShowPricingModal])
+    setPricing('open')
+  }, [setPricing])
 
   if (deploymentEdition !== 'CLOUD') return null
 
