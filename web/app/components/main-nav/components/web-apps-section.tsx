@@ -39,7 +39,7 @@ import { InstalledAppPaginationSkeleton } from '@/app/components/explore/install
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
@@ -369,7 +369,6 @@ const WebAppsSectionContent = () => {
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={uninstallAppMutation.isPending}
-              disabled={uninstallAppMutation.isPending}
               onClick={handleDelete}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}

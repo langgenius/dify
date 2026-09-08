@@ -7,7 +7,7 @@ import {
 } from '@/app/components/plugins/marketplace/hooks'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export const useMarketplace = (
   searchPluginText: string,

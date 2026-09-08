@@ -11,8 +11,6 @@ import type {
 import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -20,6 +18,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -29,15 +28,18 @@ import {
   stepByStepTourSkipRecoveryVisibleAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
@@ -168,11 +170,8 @@ type MainNavConsoleState = ConsoleStateFixture & {
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as MainNavConsoleState | undefined,
 }))
-const mockProviderContextState = vi.hoisted(() => ({
-  current: {
-    enableSkill: true,
-  } as Partial<ProviderContextState>,
-}))
+let skillEnabled = true
+let educationEnabled = false
 
 vi.mock('@tanstack/react-virtual')
 
@@ -192,12 +191,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
-    selector(mockProviderContextState.current),
-  ),
-}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
@@ -253,8 +246,8 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
   const currentPermissionsQueryKey = [
     ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
@@ -409,11 +402,15 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const mockPush = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockSetSettingsDestination = vi.fn()
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+  return {
+    ...actual,
+    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
+      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
+  }
 })
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
@@ -464,7 +461,7 @@ const ownerWorkspacePermissionKeys = [
   'dataset.external.connect',
   'tool.manage',
   'mcp.manage',
-  'agent.manage',
+  'agent.acl.preview',
   'skill.view',
 ]
 
@@ -517,7 +514,6 @@ const consoleState: MainNavConsoleState = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   profileMeta: {
@@ -535,7 +531,7 @@ const consoleState: MainNavConsoleState = {
 const workspaceMenuAccessibleName = /Solar Studio.*common\.mainNav\.workspace\.openMenu/
 
 type MainNavSystemFeatures = Exclude<
-  NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'],
+  NonNullable<Parameters<typeof renderWithoutPricing>[1]>['systemFeatures'],
   null | undefined
 >
 
@@ -551,7 +547,7 @@ const renderMainNav = (
   options: {
     store?: ReturnType<typeof createStore>
     extra?: ReactNode
-    educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+    educationStatus?: NonNullable<Parameters<typeof renderWithoutPricing>[1]>['educationStatus']
     skipRecoveryVisible?: boolean
   } = {},
 ) => {
@@ -597,18 +593,28 @@ const renderMainNav = (
       ...systemFeatures.branding,
     },
   }
-  return renderWithConsoleQuery(
+  return render(
     <JotaiProvider store={store}>
       <MainNav />
       {options.extra}
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      features: {
+        billing: { subscription: { plan: 'sandbox' } },
+        enable_skill: skillEnabled,
+        education: { enabled: educationEnabled },
+      },
       educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
     },
   )
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('MainNav', () => {
@@ -651,18 +657,9 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     mockConsoleState.current = consoleState
-    mockProviderContextState.current = {
-      enableSkill: true,
-    }
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
-    } as ProviderContextState)
-    ;(useModalContext as Mock).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    } as unknown as ModalContextState)
+    skillEnabled = true
+    educationEnabled = false
+
     mockInstalledAppsRequest.mockImplementation(
       async ({ query }: { query: { cursor?: string; name?: string } }) => {
         if (mockInstalledAppsPending) return new Promise(() => {})
@@ -724,7 +721,7 @@ describe('MainNav', () => {
       marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('navigation'))
+      within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).toEqual([
@@ -750,10 +747,12 @@ describe('MainNav', () => {
     )
   })
 
-  it('hides the roster entry when the user lacks agent.manage', () => {
+  it('hides the roster entry when the user lacks agent.acl.preview', () => {
     mockConsoleState.current = {
       ...consoleState,
-      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'agent.manage'),
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
+        (key) => key !== 'agent.acl.preview',
+      ),
     }
 
     renderMainNav()
@@ -761,7 +760,7 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
-  it('shows the roster entry when the user has agent.manage', () => {
+  it('shows the roster entry when the user has agent.acl.preview', () => {
     renderMainNav()
 
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
@@ -776,9 +775,7 @@ describe('MainNav', () => {
   })
 
   it('hides the skills entry when skill is disabled', () => {
-    mockProviderContextState.current = {
-      enableSkill: false,
-    }
+    skillEnabled = false
 
     renderMainNav()
 
@@ -832,12 +829,7 @@ describe('MainNav', () => {
   })
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      enableEducationPlan: true,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
-    } as ProviderContextState)
+    educationEnabled = true
 
     renderMainNav(defaultMainNavSystemFeatures, {
       educationStatus: { is_student: true },
@@ -858,7 +850,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
@@ -895,10 +886,9 @@ describe('MainNav', () => {
         role: 'normal',
       },
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.manage'],
+      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.acl.preview'],
     }
 
     renderMainNav({ branding: { enabled: false } })
@@ -1290,7 +1280,9 @@ describe('MainNav', () => {
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
     })
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('hides the help menu when branding is enabled', () => {
@@ -1313,7 +1305,9 @@ describe('MainNav', () => {
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith('provider')
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.settings'))
@@ -1345,7 +1339,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
   })
 
-  it('shows the view plan shortcut for paid workspaces', () => {
+  it('shows the view plan shortcut for paid workspaces', async () => {
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -1358,7 +1352,9 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
@@ -1392,7 +1388,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,

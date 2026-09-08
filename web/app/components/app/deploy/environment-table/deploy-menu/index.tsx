@@ -73,7 +73,6 @@ export function EnvironmentDeployMenu({
                 size="small"
                 variant="ghost"
                 loading={isRetrying}
-                disabled={isRetrying}
                 className="gap-1 px-2"
                 onClick={() => void refetchEnvironments()}
               >

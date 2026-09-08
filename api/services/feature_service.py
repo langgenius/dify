@@ -12,8 +12,6 @@ class FeatureService:
             return CloudPlan.SANDBOX
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        if not billing_info["enabled"]:
-            return CloudPlan.SANDBOX
         return CloudPlan(billing_info["subscription"]["plan"])
 
     @classmethod
@@ -86,7 +84,7 @@ class FeatureService:
             return True
         if not tenant_id:
             return False
-        return features.billing.enabled and features.billing.subscription.plan.is_paid
+        return features.billing.subscription.plan.is_paid
 
     @classmethod
     def _fulfill_trial_models_from_env(cls, quota_types: tuple[str, ...] | None = None) -> list[str]:
@@ -114,7 +112,6 @@ class FeatureService:
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
-        features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
         features.education.enabled = dify_config.EDUCATION_ENABLED
         features.enable_skill = dify_config.ENABLE_SKILL
 
@@ -140,7 +137,6 @@ class FeatureService:
 
         features_usage_info = BillingService.get_quota_info(tenant_id)
 
-        features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = CloudPlan(billing_info["subscription"]["plan"])
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
@@ -180,21 +176,11 @@ class FeatureService:
             features.annotation_quota_limit.size = billing_info["annotation_quota_limit"]["size"]
             features.annotation_quota_limit.limit = billing_info["annotation_quota_limit"]["limit"]
 
-        if "docs_processing" in billing_info:
-            features.docs_processing = billing_info["docs_processing"]
-
         if "can_replace_logo" in billing_info:
             features.can_replace_logo = billing_info["can_replace_logo"]
 
         if "model_load_balancing_enabled" in billing_info:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
-
-        if "knowledge_rate_limit" in billing_info:
-            # NOTE (hj24):
-            # 1. knowledge_rate_limit size is nullable, currently it's defined but never used, only limit is used.
-            # 2. So be careful if later we decide to use [size], we cannot assume it is always present.
-            features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
-            # NOTE END
 
         if "knowledge_pipeline_publish_enabled" in billing_info:
             features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]

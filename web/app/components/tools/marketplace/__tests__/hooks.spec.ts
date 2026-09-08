@@ -26,7 +26,7 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     workspaces: {
       current: {

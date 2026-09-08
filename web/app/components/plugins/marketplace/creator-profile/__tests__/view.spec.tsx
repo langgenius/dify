@@ -1,5 +1,5 @@
 import type { CreatorProfileViewModel } from '../model'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import CreatorProfileView from '../view'
@@ -12,10 +12,6 @@ vi.mock('#i18n', async () => {
     }),
   }
 })
-
-vi.mock('../creator-sidebar', () => ({
-  default: () => <aside>Creator sidebar</aside>,
-}))
 
 vi.mock('../creator-content', () => ({
   default: () => <section>Creator content</section>,
@@ -35,6 +31,26 @@ const profile: CreatorProfileViewModel = {
 }
 
 describe('CreatorProfileView SSR background', () => {
+  it('keeps the creator profile within the parent main landmark', () => {
+    render(
+      <main>
+        <CreatorProfileView
+          profile={profile}
+          homeHref="/marketplace"
+          isMarketplacePlatform
+          getCreationAction={() => ({ type: 'link', href: '/' })}
+        />
+      </main>,
+    )
+
+    const main = screen.getByRole('main')
+    expect(within(main).getByRole('heading', { level: 1, name: 'Creator' })).toBeInTheDocument()
+    expect(
+      within(main).getByRole('navigation', { name: 'marketplace.creatorProfile.breadcrumbLabel' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
   it('includes the default background in server markup before the remote background loads', () => {
     const markup = renderToStaticMarkup(
       <CreatorProfileView
@@ -63,7 +79,7 @@ describe('CreatorProfileView SSR background', () => {
     )
 
     expect(markup).toContain('default-background.png')
-    expect(markup).not.toContain('<img')
+    expect(markup).not.toContain('src="/creator-background.png"')
     expect(markup).toContain('border-0')
   })
 
