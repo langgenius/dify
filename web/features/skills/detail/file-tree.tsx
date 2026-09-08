@@ -55,7 +55,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -175,6 +175,7 @@ export function FileTree({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
+  const filesTitleId = useId()
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
@@ -1105,7 +1106,7 @@ export function FileTree({
   const creatorName = detail?.created_by_name ?? detail?.created_by ?? '-'
   if (collapsed && !sidebarFloating) {
     return (
-      <aside
+      <div
         data-testid="skill-detail-sidebar-shell"
         className="relative flex h-full w-16 shrink-0 bg-background-body p-1"
         onMouseEnter={openSidebarFloatingPreview}
@@ -1137,13 +1138,14 @@ export function FileTree({
             <SkillSidebarAccountFooter compact />
           </div>
         </div>
-      </aside>
+      </div>
     )
   }
 
   return (
     <>
-      <aside
+      <section
+        aria-labelledby={filesTitleId}
         ref={sidebarRef}
         data-testid="skill-detail-sidebar-shell"
         className={cn(
@@ -1313,7 +1315,10 @@ export function FileTree({
             <div className="h-px w-full bg-linear-to-r from-divider-subtle to-transparent" />
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
-            <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
+            <h2
+              id={filesTitleId}
+              className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary"
+            >
               {t(
                 ($) =>
                   fileCount === 1
@@ -1325,6 +1330,7 @@ export function FileTree({
             {!readonly && (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
+                  aria-label={tCommon(($) => $['operation.add'])}
                   className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
@@ -1601,7 +1607,7 @@ export function FileTree({
           </div>
           <SkillSidebarAccountFooter />
         </div>
-      </aside>
+      </section>
     </>
   )
 }

@@ -710,7 +710,7 @@ describe('MainNav', () => {
       marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('navigation'))
+      within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).toEqual([

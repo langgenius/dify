@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "Atur model default untuk input teks-ke-ucapan dalam percakapan.",
   "modelProvider.upgradeForLoadBalancing": "Tingkatkan paket Anda untuk mengaktifkan Penyeimbangan Beban.",
   "modelProvider.used": "digunakan",
+  "navigation.primary": "Menu utama",
   "navigation.skipToMain": "Lewati ke konten utama",
   "noData": "Tidak ada data",
   "operation.add": "Tambah",

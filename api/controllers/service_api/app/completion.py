@@ -208,7 +208,6 @@ class CompletionApi(Resource):
             200: "Completion created successfully",
             400: "Bad request - invalid parameters",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
             500: "Internal server error",
         }
     )

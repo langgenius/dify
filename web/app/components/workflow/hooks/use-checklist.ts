@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
@@ -30,7 +31,6 @@ import { normalizeModelProviderModelsResponse } from '@/app/components/header/ac
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import {
   createAgentToolProviderCatalog,
@@ -79,6 +79,8 @@ import useNodesAvailableVarList, {
 } from './use-nodes-available-var-list'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useGetToolIcon } from './use-tool-icon'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryResponse[] = []
 
 export type ChecklistItem = {
   id: string
@@ -184,7 +186,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const modelProviders = useProviderContextSelector((s) => s.modelProviders)
+  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data,
+    }),
+  )
   const workflowStore = useWorkflowStore()
   const configsMap = useHooksStore((s) => s.configsMap)
 
@@ -618,7 +624,11 @@ export const useChecklistBeforePublish = () => {
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
-  const modelProviders = useProviderContextSelector((s) => s.modelProviders)
+  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data,
+    }),
+  )
   const updateDatasetsDetail = useDatasetsDetailStore((s) => s.updateDatasetsDetail)
   const updateTimeRef = useRef(0)
   const workflowStore = useWorkflowStore()

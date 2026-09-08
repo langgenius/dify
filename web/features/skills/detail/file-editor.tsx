@@ -1075,7 +1075,7 @@ export function FileEditor({
   }
 
   return (
-    <main className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
+    <div className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
       <FileTabs
         endAction={
           onOpenBuilder && (
@@ -1518,6 +1518,6 @@ export function FileEditor({
           onExit={onExitVersion}
         />
       )}
-    </main>
+    </div>
   )
 }

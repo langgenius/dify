@@ -645,13 +645,9 @@ export async function openFileTreeActions(user: ReturnType<typeof userEvent.setu
 }
 
 export async function openRootCreateMenu(user: ReturnType<typeof userEvent.setup>) {
-  const triggers = Array.from(document.querySelectorAll('aside .i-ri-add-line'))
-    .map((icon) => icon.closest('button'))
-    .filter((button): button is HTMLButtonElement => button instanceof HTMLButtonElement)
-  const trigger = triggers.at(-1)
-  if (!(trigger instanceof HTMLButtonElement)) throw new Error('root create menu trigger not found')
+  const fileTree = screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ })
 
-  await user.click(trigger)
+  await user.click(within(fileTree).getByRole('button', { name: 'common.operation.add' }))
 }
 
 export async function confirmUploadReview() {
