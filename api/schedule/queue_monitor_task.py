@@ -7,7 +7,6 @@ from redis import Redis
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
 from libs.email_i18n import EmailType, get_email_i18n_service
 
 redis_config = parse_url(dify_config.CELERY_BROKER_URL)
@@ -77,6 +76,3 @@ def queue_monitor_task():
 
     except Exception:
         logger.exception(click.style("Exception occurred during queue monitoring", fg="red"))
-    finally:
-        if db.session.is_active:
-            db.session.close()
