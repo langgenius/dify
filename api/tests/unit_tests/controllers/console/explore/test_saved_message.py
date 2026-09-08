@@ -10,7 +10,6 @@ from flask import Flask
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.saved_message as module
-from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from graphon.file import File, FileTransferMethod, FileType
 from machinery.context import RequestContext
@@ -32,7 +31,6 @@ _WORKSPACE_ID = "22222222-2222-4222-8222-222222222222"
 
 @dataclass(frozen=True)
 class _ApplicationServiceMocks:
-    app_definitions: MagicMock
     saved_messages: MagicMock
 
 
@@ -41,11 +39,12 @@ _REQUEST_CONTEXT = RequestContext(
 )
 
 
-def _installed_app() -> InstalledAppRef:
+def _installed_app(*, app_mode: str = "completion") -> InstalledAppRef:
     return InstalledAppRef(
         id="99999999-9999-4999-8999-999999999999",
         tenant_id=_WORKSPACE_ID,
         app_id="33333333-3333-4333-8333-333333333333",
+        app_mode=app_mode,
     )
 
 
@@ -126,10 +125,8 @@ def _expected_record() -> dict[str, object]:
 @pytest.fixture
 def services() -> Generator[_ApplicationServiceMocks]:
     service_mocks = _ApplicationServiceMocks(
-        app_definitions=MagicMock(),
         saved_messages=MagicMock(),
     )
-    service_mocks.app_definitions.get_mode.return_value = "completion"
     with patch.object(
         module,
         "application_services",
@@ -157,7 +154,6 @@ class TestSavedMessageListApi:
                 installed_app,
             )
 
-        services.app_definitions.get_mode.assert_called_once_with(installed_app.app_id)
         services.saved_messages.pagination_by_last_id.assert_called_once_with(
             app_id=installed_app.app_id,
             actor=SavedMessageActor.account(_ACCOUNT_ID),
@@ -207,25 +203,14 @@ class TestSavedMessageListApi:
 
         assert raised.value.description == description
 
-    def test_get_rejects_missing_app(self, app: Flask, services: _ApplicationServiceMocks) -> None:
-        services.app_definitions.get_mode.side_effect = module.AppDefinitionUnavailableError
-
-        with app.test_request_context("/"), pytest.raises(AppUnavailableError):
-            unwrap(module.SavedMessageListApi().get)(
-                module.SavedMessageListApi(),
-                _REQUEST_CONTEXT,
-                _installed_app(),
-            )
-
     def test_get_rejects_non_completion_app(self, app: Flask, services: _ApplicationServiceMocks) -> None:
-        services.app_definitions.get_mode.return_value = "chat"
-
         with app.test_request_context("/"), pytest.raises(NotCompletionAppError):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
                 _REQUEST_CONTEXT,
-                _installed_app(),
+                _installed_app(app_mode="chat"),
             )
+        services.saved_messages.pagination_by_last_id.assert_not_called()
 
     def test_post_success(self, services: _ApplicationServiceMocks) -> None:
         installed_app = _installed_app()
@@ -244,6 +229,16 @@ class TestSavedMessageListApi:
             message_id=message_id,
         )
         assert result == {"result": "success"}
+
+    def test_post_rejects_non_completion_app(self, services: _ApplicationServiceMocks) -> None:
+        with pytest.raises(NotCompletionAppError):
+            unwrap(module.SavedMessageListApi().post)(
+                module.SavedMessageListApi(),
+                module.SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())}),
+                _REQUEST_CONTEXT,
+                _installed_app(app_mode="chat"),
+            )
+        services.saved_messages.save.assert_not_called()
 
     def test_post_maps_missing_message_to_not_found(self, services: _ApplicationServiceMocks) -> None:
         services.saved_messages.save.side_effect = MessageNotExistsError()
@@ -277,12 +272,11 @@ class TestSavedMessageApi:
         assert result == ("", 204)
 
     def test_delete_rejects_non_completion_app(self, services: _ApplicationServiceMocks) -> None:
-        services.app_definitions.get_mode.return_value = "chat"
-
         with pytest.raises(NotCompletionAppError):
             unwrap(module.SavedMessageApi().delete)(
                 module.SavedMessageApi(),
                 _REQUEST_CONTEXT,
-                _installed_app(),
+                _installed_app(app_mode="chat"),
                 uuid4(),
             )
+        services.saved_messages.delete.assert_not_called()

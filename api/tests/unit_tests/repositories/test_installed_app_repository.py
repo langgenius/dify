@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, inspect
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, RecommendedApp
 from models.workflow import Workflow, WorkflowKind, WorkflowType
@@ -32,15 +32,17 @@ def _installation(*, app_id: str) -> InstalledApp:
     )
 
 
+@pytest.mark.parametrize("app_mode", list(AppMode))
 def test_resolve_returns_pure_reference_to_cross_workspace_app(
     sqlite_session_factory: sessionmaker[Session],
+    app_mode: AppMode,
 ) -> None:
     with sqlite_session_factory.begin() as session:
         # Admission must not add public, published, or app-mode constraints.
         app = App(
             tenant_id=_OWNER_TENANT_ID,
             name="Installed app",
-            mode=AppMode.AGENT,
+            mode=app_mode,
             is_public=False,
             enable_site=True,
             enable_api=True,
@@ -54,9 +56,21 @@ def test_resolve_returns_pure_reference_to_cross_workspace_app(
         app_id = app.id
 
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
+    select_count = 0
+
+    @event.listens_for(sqlite_session_factory, "do_orm_execute")
+    def count_selects(state: ORMExecuteState) -> None:
+        nonlocal select_count
+        if state.is_select:
+            select_count += 1
+
     result = repository.resolve(installed_app_id=installed_app_id, tenant_id=_VIEWER_TENANT_ID)
 
-    assert result == InstalledAppRef(id=installed_app_id, app_id=app_id, tenant_id=_VIEWER_TENANT_ID)
+    assert result == InstalledAppRef(
+        id=installed_app_id, app_id=app_id, tenant_id=_VIEWER_TENANT_ID, app_mode=app_mode.value
+    )
+    # The app existence read also supplies its mode; no separate mode query.
+    assert select_count == 2
     assert inspect(result, raiseerr=False) is None
     with sqlite_session_factory() as session:
         assert session.get(InstalledApp, installed_app_id) is not None
@@ -130,7 +144,9 @@ def installed_app(sqlite_session_factory: sessionmaker[Session]) -> InstalledApp
 
 
 def _reference(installation: InstalledApp) -> InstalledAppRef:
-    return InstalledAppRef(id=installation.id, app_id=installation.app_id, tenant_id=installation.tenant_id)
+    return InstalledAppRef(
+        id=installation.id, app_id=installation.app_id, tenant_id=installation.tenant_id, app_mode="completion"
+    )
 
 
 def test_record_commits_usage_for_cross_workspace_app_without_changing_installation_settings(

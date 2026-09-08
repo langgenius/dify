@@ -11,16 +11,17 @@ import services.installed_app_generation_service as completion_service_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
-from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
-from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_generate_service import AppGenerateService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
+    _set_app_mode,
     harness,
 )
 
@@ -74,10 +75,6 @@ def runtime(
 ) -> _Runtime:
     runtime = _Runtime(sqlite_session_factory, harness.installed_app.id)
     service = InstalledAppGenerationService(
-        app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
-            builtin_icon_url_prefix="/tools/icons",
-        ),
         usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
         runtime=runtime,
     )
@@ -323,6 +320,21 @@ def test_wrong_mode_does_not_record_usage_or_start_runtime(
     assert _last_used_at(harness, sqlite_session_factory) is None
 
 
+def test_completion_uses_the_mode_captured_at_admission(
+    harness: _Harness,
+    runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    harness.state.permission_action = lambda: _set_app_mode(harness, sqlite_session_factory, AppMode.CHAT)
+
+    response = harness.app.test_client().post(_url(harness), json={"inputs": {}})
+
+    assert response.status_code == 200
+    assert response.get_json() == _BLOCKING_RESPONSE
+    assert len(runtime.calls) == 1
+    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
+
+
 @pytest.mark.parametrize("rejection", ["permission", "missing", "tenant"])
 def test_completion_requires_installed_app_admission_before_payload_validation(
     harness: _Harness,
@@ -363,10 +375,11 @@ def test_completion_requires_installed_app_admission_before_payload_validation(
 
 
 @pytest.mark.parametrize("deleted_resource", ["app", "installation"])
-def test_resource_removed_after_admission_does_not_start_runtime(
+@pytest.mark.usefixtures("runtime")
+def test_resource_removed_after_admission_is_revalidated_before_generation(
     harness: _Harness,
-    runtime: _Runtime,
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
     deleted_resource: str,
 ) -> None:
     def delete_resource() -> None:
@@ -379,6 +392,18 @@ def test_resource_removed_after_admission_does_not_start_runtime(
             session.delete(resource)
 
     harness.state.permission_action = delete_resource
+    services = _Services(
+        installed_app_generation=InstalledAppGenerationService(
+            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+            runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+        )
+    )
+    monkeypatch.setattr(completion_module, "application_services", lambda: services)
+
+    def generate(**_kwargs: object) -> GenerationResponse:
+        pytest.fail("Removed app or installation must be rejected before generation")
+
+    monkeypatch.setattr(AppGenerateService, "generate", generate)
 
     response = harness.app.test_client().post(_url(harness), json={"inputs": {}})
 
@@ -392,11 +417,10 @@ def test_resource_removed_after_admission_does_not_start_runtime(
                 "status": 400,
             },
         )
-        assert _last_used_at(harness, sqlite_session_factory) is None
+        assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
     else:
         _assert_json_response(
             response,
             status=404,
             body={"code": "not_found", "message": "Installed app not found", "status": 404},
         )
-    assert runtime.calls == []
