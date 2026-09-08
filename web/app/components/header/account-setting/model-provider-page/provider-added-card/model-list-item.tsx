@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { disableModel, enableModel } from '@/service/common'
 import { consoleQuery } from '@/service/console'
@@ -43,14 +42,13 @@ const ModelListItem = ({
 }: ModelListItemProps) => {
   const { t } = useTranslation()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (features) => features.billing.subscription.plan,
+      select: (features) => ({
+        plan: features.billing.subscription.plan,
+        model_load_balancing_enabled: features.model_load_balancing_enabled,
+      }),
     }),
-  )
-  const modelLoadBalancingEnabled = useProviderContextSelector(
-    (state) => state.modelLoadBalancingEnabled,
   )
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
@@ -129,7 +127,7 @@ const ModelListItem = ({
         showFeaturesLabel
       ></ModelName>
       <div className="flex shrink-0 items-center">
-        {modelLoadBalancingEnabled &&
+        {features?.model_load_balancing_enabled &&
           !model.deprecated &&
           model.load_balancing_enabled &&
           !model.has_invalid_load_balancing_configs && (
@@ -138,7 +136,9 @@ const ModelListItem = ({
             </Badge>
           )}
         {canConfigureModels &&
-          (deploymentEdition !== 'CLOUD' || modelLoadBalancingEnabled || plan === 'sandbox') &&
+          (deploymentEdition !== 'CLOUD' ||
+            features?.model_load_balancing_enabled ||
+            features?.plan === 'sandbox') &&
           !model.deprecated &&
           [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
             <ConfigModel

@@ -16,23 +16,12 @@ type ProviderContextProviderProps = {
 
 export const ProviderContextProvider = ({ children }: ProviderContextProviderProps) => {
   const queryClient = useQueryClient()
-  const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const {
     data: providersData,
     isLoading: isLoadingModelProviders,
     isSuccess: isSuccessModelProviders,
   } = useQuery(consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions())
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
-
-  const features = featuresQuery.data
-  const enableEducationPlan = features?.education.enabled ?? false
-  const enableSkill = features?.enable_skill ?? false
-  const enableReplaceWebAppLogo = features?.can_replace_logo ?? false
-  const modelLoadBalancingEnabled = features?.model_load_balancing_enabled ?? false
-  const isAllowTransferWorkspace = features?.is_allow_transfer_workspace ?? false
-  const isAllowPublishAsCustomKnowledgePipelineTemplate =
-    features?.knowledge_pipeline.publish_enabled ?? false
-  const humanInputEmailDeliveryEnabled = features?.human_input_email_delivery_enabled ?? false
 
   const refreshModelProviders = () =>
     Promise.all([
@@ -54,13 +43,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isAPIKeySet: !!textGenerationModelList?.data?.some(
           (model) => model.status === ModelStatusEnum.active,
         ),
-        enableSkill,
-        enableReplaceWebAppLogo,
-        modelLoadBalancingEnabled,
-        enableEducationPlan,
-        isAllowTransferWorkspace,
-        isAllowPublishAsCustomKnowledgePipelineTemplate,
-        humanInputEmailDeliveryEnabled,
       }}
     >
       {children}

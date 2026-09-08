@@ -12,6 +12,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { seedFeatures } from '@/test/console/query-data'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
 import { AgentConfigApiContextProvider } from '../../config-context'
@@ -81,9 +82,7 @@ const mocks = vi.hoisted(() => ({
   fileUploadConfig: {
     skill_file_size_limit: 64,
   },
-  providerContext: {
-    enableSkill: true,
-  },
+  skillEnabled: true,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -115,13 +114,9 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
-    selector(mocks.providerContext),
-}))
-
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
   consoleQuery: {
+    features: (await importOriginal<typeof import('@/service/console')>()).consoleQuery.features,
     tags: {
       get: {
         queryOptions: mocks.workspaceSkillTagsQueryOptions,
@@ -224,7 +219,9 @@ vi.mock('@/service/console', () => ({
                 queryOptions: mocks.agentSkillBindingsQueryOptions,
               },
               put: {
-                mutationOptions: () => ({ mutationFn: mocks.replaceAgentSkillBindingsMutationFn }),
+                mutationOptions: () => ({
+                  mutationFn: mocks.replaceAgentSkillBindingsMutationFn,
+                }),
               },
             },
           },
@@ -328,6 +325,8 @@ function renderAgentSkills({
     },
   })
 
+  seedFeatures(queryClient, { enable_skill: mocks.skillEnabled })
+
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
@@ -353,7 +352,7 @@ function renderAgentSkills({
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.providerContext.enableSkill = true
+    mocks.skillEnabled = true
     mocks.fileUploadConfig.skill_file_size_limit = 64
     vi.stubGlobal('fetch', mocks.fetch)
     document.cookie = 'csrf_token=csrf-token; path=/'
@@ -790,7 +789,7 @@ describe('AgentSkills', () => {
 
   it('should hide workspace skill selection when skill is disabled', async () => {
     const user = userEvent.setup()
-    mocks.providerContext.enableSkill = false
+    mocks.skillEnabled = false
 
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 

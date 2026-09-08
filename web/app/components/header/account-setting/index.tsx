@@ -1,4 +1,5 @@
 'use client'
+
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -8,7 +9,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,13 +18,13 @@ import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import MembersPage from './members-page'
@@ -56,7 +57,11 @@ export default function AccountSetting({
   onTabChangeAction,
 }: IAccountSettingProps) {
   const { t } = useTranslation()
-  const { enableReplaceWebAppLogo } = useProviderContext()
+  const { data: enableReplaceWebAppLogo } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.can_replace_logo,
+    }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)

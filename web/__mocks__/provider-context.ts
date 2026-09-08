@@ -11,14 +11,6 @@ export const baseProviderContextValue: ProviderContextState = {
   isSuccessModelProviders: false,
   textGenerationModelList: [],
   isAPIKeySet: true,
-
-  enableSkill: false,
-  enableReplaceWebAppLogo: false,
-  modelLoadBalancingEnabled: false,
-  enableEducationPlan: false,
-  isAllowTransferWorkspace: false,
-  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-  humanInputEmailDeliveryEnabled: false,
 }
 
 export const createMockProviderContextValue = (

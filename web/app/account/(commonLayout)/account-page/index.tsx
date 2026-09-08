@@ -16,7 +16,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { validPassword } from '@/config'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { updateUserProfile } from '@/service/common'
@@ -55,10 +54,14 @@ export default function AccountPage() {
   const userProfile = userProfileResp.profile
   const mutateUserProfile = () =>
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
-  const { enableEducationPlan } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: enableEducationPlan,
+      enabled: enableEducationPlan === true,
       select: ({ is_student }) => is_student ?? false,
     }),
   )

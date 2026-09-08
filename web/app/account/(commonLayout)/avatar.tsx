@@ -11,7 +11,6 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -23,10 +22,14 @@ export default function AppSelector() {
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
-  const { enableEducationPlan } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: enableEducationPlan,
+      enabled: enableEducationPlan === true,
       select: ({ is_student }) => is_student ?? false,
     }),
   )

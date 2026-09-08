@@ -43,14 +43,6 @@ const defaultProviderContext = {
   isSuccessModelProviders: false,
   textGenerationModelList: [],
   isAPIKeySet: false,
-
-  enableSkill: false,
-  enableReplaceWebAppLogo: false,
-  modelLoadBalancingEnabled: false,
-  enableEducationPlan: false,
-  isAllowTransferWorkspace: false,
-  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-  humanInputEmailDeliveryEnabled: false,
 }
 
 type MockOverrides = {
