@@ -36,7 +36,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
 type VersionFilterValue = 'all' | 'onlyNamed'

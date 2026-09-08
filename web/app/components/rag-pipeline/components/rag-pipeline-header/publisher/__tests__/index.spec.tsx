@@ -4,7 +4,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
@@ -126,20 +126,7 @@ vi.mock('@/context/modal-context', () => ({
   ): T => selector({ setShowPricingModal: mockSetShowPricingModal }),
 }))
 
-const mockIsAllowPublishAsCustomKnowledgePipelineTemplate = vi.fn(() => true)
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAllowPublishAsCustomKnowledgePipelineTemplate:
-      mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
-  }),
-  useProviderContextSelector: <T,>(
-    selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T,
-  ): T =>
-    selector({
-      isAllowPublishAsCustomKnowledgePipelineTemplate:
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
-    }),
-}))
+let publishEnabled = true
 
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
@@ -246,6 +233,7 @@ const createQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
+        staleTime: Infinity,
       },
     },
   })
@@ -254,6 +242,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+  seedFeatures(queryClient, { knowledge_pipeline: { publish_enabled: publishEnabled } })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
@@ -265,7 +254,7 @@ describe('publisher', () => {
     mockPublishedAt.mockReturnValue(null)
     mockDraftUpdatedAt.mockReturnValue(1700000000)
     mockPipelineId.mockReturnValue('test-pipeline-id')
-    mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+    publishEnabled = true
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockDatasetPermissionKeys = ['dataset.acl.use']
     mockDatasetMaintainer = undefined
@@ -360,7 +349,7 @@ describe('publisher', () => {
 
       it('should close the outer popover before opening publish-as follow-up flow', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -429,7 +418,7 @@ describe('publisher', () => {
 
       it('should show premium badge when publish as template is not allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
 
         renderWithQueryClient(<Popup />)
 
@@ -438,7 +427,7 @@ describe('publisher', () => {
 
       it('should not show premium badge when publish as template is allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
 
         renderWithQueryClient(<Popup />)
 
@@ -500,7 +489,7 @@ describe('publisher', () => {
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Popup />)
 
         const publishAsButton = screen
@@ -513,7 +502,7 @@ describe('publisher', () => {
 
       it('should show publish as knowledge pipeline modal when permitted', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -530,7 +519,7 @@ describe('publisher', () => {
 
       it('should close publish as knowledge pipeline modal when cancel is clicked', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -851,7 +840,7 @@ describe('publisher', () => {
 
     describe('Prop Variations', () => {
       it('should display correct width when permission is allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
@@ -859,7 +848,7 @@ describe('publisher', () => {
       })
 
       it('should display correct width when permission is not allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement

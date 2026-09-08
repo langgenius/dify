@@ -3,7 +3,7 @@ import { skillAction, skillSearchQueryOptions } from '../skill'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     workspaces: { current: { skills: { get: { queryOptions: serviceMocks.queryOptions } } } },
   },

@@ -12,8 +12,8 @@ import {
   SelectPortal,
   SelectPositioner,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
-import { RiArrowDownSLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -35,7 +35,6 @@ type Props = Readonly<{
 
 const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const items = useMemo<TimePeriodOption[]>(() => {
     return ranges.map((range) => ({
       ...range,
@@ -69,8 +68,6 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
   return (
     <Select<number>
       value={selectedItem?.value ?? null}
-      open={open}
-      onOpenChange={setOpen}
       onValueChange={(nextValue) => {
         if (nextValue == null) return
         const nextItem = items.find((item) => item.value === nextValue)
@@ -79,15 +76,12 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
         handleSelectRange(nextItem)
       }}
     >
-      <SelectTrigger className="h-auto w-fit max-w-none border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden">
-        <div className="flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
-          <div className="system-sm-regular text-components-input-text-filled">
-            {isCustomRange
-              ? t(($) => $['filter.period.custom'], { ns: 'appLog' })
-              : selectedItem?.name}
-          </div>
-          <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
-        </div>
+      <SelectTrigger className="w-fit">
+        <SelectValue>
+          {isCustomRange
+            ? t(($) => $['filter.period.custom'], { ns: 'appLog' })
+            : selectedItem?.name}
+        </SelectValue>
       </SelectTrigger>
       <SelectPortal>
         <SelectPositioner className="-translate-x-6">

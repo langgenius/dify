@@ -2,8 +2,6 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { RenderOptions } from '@testing-library/react'
 import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen } from '@testing-library/react'
-import { noop } from 'es-toolkit/function'
-import { defaultPlan } from '@/app/components/billing/config'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import APIKeyInfoPanel from '../index'
@@ -44,21 +42,7 @@ const defaultProviderContext = {
   isLoadingModelProviders: false,
   isSuccessModelProviders: false,
   textGenerationModelList: [],
-  supportRetrievalMethods: [],
   isAPIKeySet: false,
-  plan: defaultPlan,
-  isFetchedPlan: false,
-  isFetchedPlanInfo: false,
-  enableBilling: false,
-  enableSkill: false,
-  onPlanInfoChanged: noop,
-  enableReplaceWebAppLogo: false,
-  modelLoadBalancingEnabled: false,
-  enableEducationPlan: false,
-  webappCopyrightEnabled: false,
-  isAllowTransferWorkspace: false,
-  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-  humanInputEmailDeliveryEnabled: false,
 }
 
 type MockOverrides = {

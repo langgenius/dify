@@ -16,7 +16,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {

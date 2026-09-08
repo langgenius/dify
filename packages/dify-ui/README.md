@@ -49,13 +49,13 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 
 Utilities:
 
-- `./cn` composes conditional classes with `clsx` and `tailwind-merge`.
+- `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
 - `./styles.css` provides design tokens, theme variables, and shared utilities.
 
 ## Guides
 
-Start here, then open only the guide for the contract being changed. Component-specific Dify
-behavior lives beside the component. Contracts shared by several primitives live in `docs/`.
+Open only the guide for the contract being changed. Component-specific Dify behavior lives beside
+the component. Contracts shared by several primitives live in `docs/`.
 Upstream behavior remains owned by the [Base UI documentation].
 
 ### Component guides
@@ -80,8 +80,8 @@ Upstream behavior remains owned by the [Base UI documentation].
 
 ## Contributing
 
-Read [component authoring rules] before modifying the package, then open only the matching owner
-guide. This index intentionally does not duplicate those contracts.
+[Package rules][component authoring rules] own the package boundary and contributor guidance.
+For a known contract, go directly to its guide above.
 
 [Accessible names and descriptions]: ./docs/accessible-names-and-descriptions.md
 [Base UI documentation]: https://base-ui.com/llms.txt

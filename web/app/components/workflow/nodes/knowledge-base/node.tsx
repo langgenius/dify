@@ -12,7 +12,7 @@ import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
 import { IndexMethodEnum } from './types'

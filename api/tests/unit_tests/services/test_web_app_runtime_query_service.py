@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
+from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
 from services.file_service import FileService
@@ -62,6 +63,7 @@ def _runtime_record(
 def _service(
     runtime: MagicMock,
     *,
+    deployment_edition: DeploymentEdition = DeploymentEdition.COMMUNITY,
     file_service: MagicMock | None = None,
     workspace_features: MagicMock | None = None,
 ) -> WebAppRuntimeQueryService:
@@ -75,6 +77,7 @@ def _service(
         file_service=file_service,
         workspace_features=workspace_features,
         files_url=_FILES_URL,
+        deployment_edition=deployment_edition,
     )
 
 
@@ -87,13 +90,25 @@ def test_get_bootstrap_rejects_unavailable_runtime(record: WebAppRuntimeRecord |
         _service(runtime).get_bootstrap("app-1")
 
 
+@pytest.mark.parametrize(
+    ("deployment_edition", "copyright_enabled", "expected_copyright", "expected_placeholder"),
+    [
+        (DeploymentEdition.CLOUD, False, None, None),
+        (DeploymentEdition.CLOUD, True, "Copyright", "Ask anything"),
+        (DeploymentEdition.COMMUNITY, False, "Copyright", "Ask anything"),
+        (DeploymentEdition.ENTERPRISE, False, "Copyright", "Ask anything"),
+    ],
+)
 def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     workspace_features: MagicMock,
+    deployment_edition: DeploymentEdition,
+    copyright_enabled: bool,
+    expected_copyright: str | None,
+    expected_placeholder: str | None,
 ) -> None:
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     record = _runtime_record()
-    features = FeatureModel(can_replace_logo=True, webapp_copyright_enabled=False)
-    features.billing.enabled = True
+    features = FeatureModel(can_replace_logo=True, webapp_copyright_enabled=copyright_enabled)
     events: list[str] = []
     runtime.get_runtime_record.side_effect = lambda _app_id: events.append("record") or record
     workspace_features.side_effect = lambda _tenant_id, **_kwargs: events.append("features") or features
@@ -104,6 +119,7 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
         runtime,
         file_service=file_service,
         workspace_features=workspace_features,
+        deployment_edition=deployment_edition,
     ).get_bootstrap("app-1")
 
     assert result == WebAppBootstrap(
@@ -112,8 +128,8 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
         enable_site=True,
         site={
             **record.site._asdict(),
-            "copyright": None,
-            "input_placeholder": None,
+            "copyright": expected_copyright,
+            "input_placeholder": expected_placeholder,
             "icon_url": "https://icon",
         },
         plan="pro",

@@ -17,13 +17,6 @@ class SubscriptionModel(FeatureResponseModel):
 
 
 class BillingModel(FeatureResponseModel):
-    # Deprecated compatibility field. Deployment edition is the only source of truth for product edition.
-    # TODO: Remove after clients migrate to `SystemFeatureModel.deployment_edition`.
-    enabled: bool = Field(
-        default=False,
-        deprecated=True,
-        description="Deprecated. Use system features deployment_edition to determine the product edition.",
-    )
     subscription: SubscriptionModel = SubscriptionModel()
 
 

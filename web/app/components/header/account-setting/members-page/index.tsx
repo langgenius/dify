@@ -4,21 +4,20 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
-import { NUM_INFINITE } from '@/app/components/billing/config'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
+import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
@@ -48,10 +47,24 @@ const MembersPage = () => {
     MemberInviteResponse['invitation_results'] | null
   >(null)
   const accounts = data?.accounts || []
-  const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== 'team'
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: features } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (data) => ({
+        plan: data.billing.subscription.plan,
+        members: data.members,
+        is_allow_transfer_workspace: data.is_allow_transfer_workspace,
+      }),
+    }),
+  )
+
+  const isNotUnlimitedMemberPlan =
+    deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
+  // A limit of 0 means unlimited.
   const isMemberFull =
-    enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
+    isNotUnlimitedMemberPlan &&
+    features.members.limit > 0 &&
+    accounts.length >= features.members.limit
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
@@ -130,7 +143,7 @@ const MembersPage = () => {
               )}
             </div>
             <div className="mt-1 system-xs-medium text-text-tertiary">
-              {enableBilling && isNotUnlimitedMemberPlan ? (
+              {isNotUnlimitedMemberPlan ? (
                 <div className="flex space-x-1">
                   <div>
                     {t(($) => $['plansCommon.member'], { ns: 'billing' })}
@@ -139,9 +152,9 @@ const MembersPage = () => {
                   <div className="">{accounts.length}</div>
                   <div>/</div>
                   <div>
-                    {plan.total.teamMembers === NUM_INFINITE
+                    {features.members.limit === 0
                       ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-                      : plan.total.teamMembers}
+                      : features.members.limit}
                   </div>
                 </div>
               ) : (
@@ -188,7 +201,9 @@ const MembersPage = () => {
                 roles={account.roles}
                 isCurrentUser={userProfileEmail === account.email}
                 canManage={canManageMembers}
-                canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
+                canTransferOwnership={
+                  isCurrentWorkspaceOwner && features?.is_allow_transfer_workspace === true
+                }
                 allowMultipleRoles={systemFeatures.rbac_enabled}
                 onOpenDetails={handleOpenDetails}
                 onTransferOwnership={handleTransferOwnership}

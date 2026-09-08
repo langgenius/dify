@@ -186,7 +186,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {

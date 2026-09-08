@@ -80,6 +80,11 @@ single-or-multiple union.
 Prefer the Base UI `items` collection pattern so the root, value display, and item list share one
 runtime source of truth. Convert values to strings only at real serialization boundaries.
 
+Treat collection values exposed for rendering as read-only views. In multiple mode, `SelectValue`
+may receive a shared frozen empty array, and `useAutocompleteFilteredItems` exposes internal
+filtered state. Use non-mutating transforms such as `map`, `filter`, or `toSorted`; create an
+explicit copy only when a mutable array is required.
+
 ### Combobox source items and selected values
 
 Combobox has separate types for the selected business value and the source record rendered by the

@@ -16,7 +16,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'

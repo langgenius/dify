@@ -1,4 +1,5 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
@@ -6,7 +7,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
@@ -29,14 +30,8 @@ vi.mock('@/next/link', () => ({
 }))
 
 // Mock provider context
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: CloudPlan = 'sandbox'
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling: mockEnableBilling,
-    plan: { type: mockPlanType },
-  }),
-}))
 
 vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
   default: ({
@@ -142,6 +137,13 @@ const createDefaultProps = (
   ...overrides,
 })
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+}
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -151,7 +153,7 @@ describe('EmbeddingProcess', () => {
     documentIdCounter = 0
 
     // Reset mock states
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
     mockIndexingStatusData = []
 
@@ -192,7 +194,7 @@ describe('EmbeddingProcess', () => {
   describe('Billing and Upgrade Banner', () => {
     // Tests for billing-related UI
     it('should not show upgrade banner when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -203,7 +205,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner when billing is enabled and plan is not team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const props = createDefaultProps()
 
@@ -215,7 +217,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show upgrade banner when plan is team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const props = createDefaultProps()
 
@@ -227,7 +229,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner for professional plan', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'professional'
       const props = createDefaultProps()
 
@@ -379,7 +381,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not suggest an upgrade to team users', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -1052,7 +1054,7 @@ describe('EmbeddingProcess', () => {
   describe('Priority Label', () => {
     // Tests for priority label display
     it('should show priority label when billing is enabled', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -1071,7 +1073,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show priority label when billing is disabled', async () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
         createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),

@@ -13,7 +13,7 @@ import {
   DataSourceType,
   RerankingModeEnum,
 } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
