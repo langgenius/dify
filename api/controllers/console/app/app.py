@@ -63,7 +63,7 @@ from services.app_service import (
 )
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import DslImportWarning, ImportMode, ImportStatus
+from services.entities.dsl_entities import DslImportWarning, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -987,12 +987,11 @@ class AppCopyApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
 
         import_service = AppDslService(session)
-        yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
         try:
-            result = import_service.import_app(
+            result, app = import_service.copy_app(
+                app_model=app_model,
                 account=current_user,
-                import_mode=ImportMode.YAML_CONTENT,
-                yaml_content=yaml_content,
+                tenant_id=current_tenant_id,
                 name=req_data.name,
                 description=req_data.description,
                 icon_type=req_data.icon_type,
@@ -1002,28 +1001,9 @@ class AppCopyApi(Resource):
         except NoPermissionError as e:
             raise Forbidden(str(e))
         if result.status == ImportStatus.FAILED:
-            session.rollback()
             return dump_response(AppImportResponse, result), 400
         if result.status == ImportStatus.PENDING:
-            session.rollback()
             return dump_response(AppImportResponse, result), 202
-        session.commit()
-
-        # Inherit web app permission from original app
-        if result.app_id and SystemFeatureService.is_webapp_auth_enabled():
-            try:
-                # Get the original app's access mode
-                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
-                access_mode = original_settings.access_mode
-            except Exception:
-                # If original app has no settings (old app), default to public to match fallback behavior
-                access_mode = "public"
-
-            # Apply the same access mode to the copied app
-            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
-
-        stmt = select(App).where(App.id == result.app_id)
-        app = session.scalar(stmt)
         if not app:
             raise NotFound("App not found")
 

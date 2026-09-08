@@ -128,6 +128,8 @@ def app_module():
             "OpsTraceManager": _OpsTraceManager,
             "TraceQueueManager": object,
             "TraceTask": object,
+            "TracingProviderConfigEntry": dict,
+            "provider_config_map": {},
         },
     )
 
@@ -277,9 +279,9 @@ def _persist_response_graph(session: Session) -> App:
         default_language="en-US",
         input_placeholder="Ask anything",
         customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-        created_at=_ts(14),
-        updated_at=_ts(14),
     )
+    site.created_at = _ts(14)
+    site.updated_at = _ts(14)
     tag = Tag(tenant_id=TENANT_ID, type=TagType.APP, name="Utilities", created_by=ACCOUNT_ID)
     tag.id = TAG_ID
     binding = TagBinding(tenant_id=TENANT_ID, tag_id=TAG_ID, target_id=APP_ID, created_by=ACCOUNT_ID)
@@ -1107,8 +1109,7 @@ def test_app_copy_api_attaches_permission_keys(
                 app_module,
                 "AppDslService",
                 lambda *_args, **_kwargs: SimpleNamespace(
-                    export_dsl=lambda **_kwargs: "dsl",
-                    import_app=lambda **_kwargs: import_result,
+                    copy_app=lambda **_kwargs: (import_result, app_obj),
                 ),
             )
             monkeypatch.setattr(
