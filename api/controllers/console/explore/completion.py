@@ -2,10 +2,11 @@ import logging
 from typing import Any, Literal
 from uuid import UUID
 
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
 from controllers.common.fields import SimpleResultResponse
@@ -39,12 +40,14 @@ from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models import Account
 from models.model import AppMode, InstalledApp
+from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.conversation_service import ConversationService
 from services.errors.llm import InvokeRateLimitError
-from services.installed_app_access_service import InstalledAppRef
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.installed_app_completion_service import InstalledAppNotCompletionError
 
 from .. import console_ns
 
@@ -91,45 +94,35 @@ register_response_schema_models(console_ns, SimpleResultResponse)
     "/installed-apps/<uuid:installed_app_id>/completion-messages",
     endpoint="installed_app_completion",
 )
-class CompletionApi(InstalledAppResource):
+class CompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
+    @console_account_admission()
+    @get_installed_app
     @model_validate(CompletionMessageExplorePayload)
     def post(
         self,
         req_data: CompletionMessageExplorePayload,
-        session: Session,
-        current_user: Account,
-        installed_app: InstalledApp,
-    ):
-        app_model = installed_app.app_with_session(session=session)
-        if app_model is None:
-            raise AppUnavailableError()
-        if app_model.mode != AppMode.COMPLETION:
-            raise NotCompletionAppError()
-
-        args = req_data.model_dump(exclude_none=True)
-
-        streaming = req_data.response_mode == "streaming"
-        args["auto_generate_name"] = False
-
-        installed_app.last_used_at = naive_utc_now()
-        db.session.commit()
-
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> Response:
         try:
-            response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=streaming,
+            response = application_services().installed_app_completion.generate(
+                installed_app=installed_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(exclude_none=True),
             )
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except InstalledAppNotCompletionError:
+            raise NotCompletionAppError() from None
+        except InstalledAppNotFoundError:
+            raise NotFound("Installed app not found") from None
+        except AccountNotFoundError:
+            raise Unauthorized("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:

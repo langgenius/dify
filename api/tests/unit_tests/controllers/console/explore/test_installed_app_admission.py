@@ -32,7 +32,7 @@ from machinery.context import RequestContext
 from models import Account, App, AppMode, InstalledApp, Tenant
 from models.account import AccountStatus
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
-from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
 from services.saved_message_service import SavedMessageActor, SavedMessagePage, SavedMessageRecord, SavedMessageService
@@ -124,7 +124,7 @@ def harness(
 
     services = _ApplicationServices(
         installed_app_access=InstalledAppAccessService(
-            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=repository_factory),
+            installed_apps=SQLAlchemyInstalledAppRepository(session_factory=repository_factory),
             is_user_allowed=permission_check,
         )
     )

@@ -7,7 +7,7 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
@@ -414,7 +414,7 @@ def generate_text_hash(text: str) -> str:
 
 
 def compact_generate_response(
-    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | Iterator[str],
 ) -> Response:
     if isinstance(response, Mapping):
         return Response(
