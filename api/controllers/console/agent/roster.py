@@ -254,6 +254,7 @@ class AgentStatisticsQuery(BaseModel):
 
 
 class AgentAppPartial(GenericAppPartial):
+    permission_keys: list[str]
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
@@ -266,6 +267,7 @@ class AgentAppPartial(GenericAppPartial):
 
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
+    permission_keys: list[str]
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
@@ -395,7 +397,7 @@ def _serialize_agent_app_detail(
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
     roster_service = _agent_roster_service(session)
-    payload = AgentAppDetailWithSite.model_validate(
+    payload = GenericAppDetailWithSite.model_validate(
         app_model,
         from_attributes=True,
         context={"session": session},
@@ -439,7 +441,7 @@ def _serialize_agent_app_detail(
         session=session,
     )
     payload["permission_keys"] = permissions.agent.permission_keys_by_resource_ids([agent.id]).get(agent.id, [])
-    return payload
+    return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
 
 def _serialize_agent_app_pagination(
@@ -485,20 +487,20 @@ def _serialize_agent_app_pagination(
     permission_keys_by_agent_id = agent_permissions.permission_keys_by_resource_ids(
         [agent.id for agent in agents_by_app_id.values()]
     )
-    payload = AgentAppPagination.model_validate(
+    payload = GenericAppPagination.model_validate(
         {
             "page": app_pagination.page,
             "limit": app_pagination.per_page,
             "total": app_pagination.total,
             "has_more": app_pagination.has_next,
             "data": app_pagination.items,
-            "publication_counts": {
-                "published": publication_counts.published,
-                "drafts": publication_counts.drafts,
-            },
         },
         context={"session": session},
     ).model_dump(mode="json")
+    payload["publication_counts"] = {
+        "published": publication_counts.published,
+        "drafts": publication_counts.drafts,
+    }
     for item in payload["data"]:
         app_id = item["id"]
         item.pop("bound_agent_id", None)

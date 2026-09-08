@@ -307,6 +307,11 @@ def test_agent_list_reads_do_not_require_workspace_preview() -> None:
         assert "RBACPermission.AGENT_PREVIEW, Workspace()" not in getsource(route_class.get)
 
 
+def test_agent_app_permission_keys_are_required_response_fields() -> None:
+    assert roster_controller.AgentAppPartial.model_fields["permission_keys"].is_required()
+    assert roster_controller.AgentAppDetailWithSite.model_fields["permission_keys"].is_required()
+
+
 @pytest.fixture
 def account_id() -> str:
     return "account-1"
