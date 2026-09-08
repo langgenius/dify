@@ -71,6 +71,7 @@
   "customIntervalHours": "Aangepast interval (uren)",
   "customIntervalInvalid": "Voer een geheel getal van 1 tot 720 uur in.",
   "deleteDocuments": "Verwijderen…",
+  "deleteSuccess": "Agent-kennisbank verwijderd.",
   "description": "Beschrijving",
   "descriptionHelp": "Een duidelijke beschrijving helpt apps bepalen wanneer ze deze Agent-kennisbank moeten doorzoeken.",
   "descriptionPlaceholder": "bijv. Terugbetalingsbeleid, veelgestelde vragen over verzending en escalatiestappen - gebruik deze voor vragen over klantenondersteuning",

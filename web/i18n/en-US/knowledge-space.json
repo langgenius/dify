@@ -71,6 +71,7 @@
   "customIntervalHours": "Custom interval (hours)",
   "customIntervalInvalid": "Enter a whole number from 1 to 720 hours.",
   "deleteDocuments": "Delete…",
+  "deleteSuccess": "Agent Knowledge Base deleted.",
   "description": "Description",
   "descriptionHelp": "A clear description helps apps decide when to search this Agent Knowledge Base.",
   "descriptionPlaceholder": "e.g. Refund policy, shipping FAQs, and escalation steps — use for customer support questions",

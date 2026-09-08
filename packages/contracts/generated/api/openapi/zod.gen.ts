@@ -442,7 +442,7 @@ export const zKnowledgeFsEntryInspectQuery = z.object({
 /**
  * KnowledgeFSEntryListQuery
  *
- * List direct children in stable KnowledgeFS traversal order.
+ * List direct children in stable Agent Knowledge Base traversal order.
  */
 export const zKnowledgeFsEntryListQuery = z.object({
   consistency_class: zKnowledgeFsConsistencyClass.nullish(),
@@ -1275,7 +1275,7 @@ export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpa
   })
 
 /**
- * Knowledge-space entry content
+ * Agent Knowledge Base entry content
  */
 export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse =
   zKnowledgeFsEntryReadContentResponse
@@ -1290,7 +1290,7 @@ export const zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSp
   })
 
 /**
- * Knowledge-space entry comparison
+ * Agent Knowledge Base entry comparison
  */
 export const zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse =
   zKnowledgeFsEntryComparisonResponse
@@ -1322,7 +1322,7 @@ export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpa
   })
 
 /**
- * Knowledge-space entry search results
+ * Agent Knowledge Base entry search results
  */
 export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse =
   zKnowledgeFsEntryListResponse
@@ -1350,7 +1350,7 @@ export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpa
   })
 
 /**
- * Knowledge-space content matches
+ * Agent Knowledge Base content matches
  */
 export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse =
   zKnowledgeFsEntryContentSearchResponse
@@ -1376,7 +1376,7 @@ export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpa
   })
 
 /**
- * Knowledge-space entry page
+ * Agent Knowledge Base entry page
  */
 export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse =
   zKnowledgeFsEntryListResponse
@@ -1400,7 +1400,7 @@ export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpa
   })
 
 /**
- * Knowledge-space entry metadata
+ * Agent Knowledge Base entry metadata
  */
 export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse =
   zKnowledgeFsEntryMetadataResponse
@@ -1427,7 +1427,7 @@ export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpa
   })
 
 /**
- * Knowledge-space entry tree
+ * Agent Knowledge Base entry tree
  */
 export const zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse =
   zKnowledgeFsEntryTreeResponse

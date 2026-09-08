@@ -18,11 +18,11 @@ from services.knowledge_fs_capability import KNOWLEDGE_FS_CAPABILITY_OPERATIONS
 
 
 class KnowledgeFSProductPermission(StrEnum):
-    """Product-level capability of a caller on one KnowledgeFS space.
+    """Product-level capability of a caller on one Agent Knowledge Base.
 
     These values are what the console returns as ``permission_keys`` so the web can gate
-    its UI. Enterprise RBAC is not evaluated in this vocabulary: KnowledgeFS spaces reuse
-    the legacy knowledge base (``dataset_*``) permission points, and each capability is
+    its UI. Enterprise RBAC is not evaluated in this vocabulary: Agent Knowledge Bases reuse
+    the Classic Knowledge Base (``dataset_*``) permission points, and each capability is
     granted when the caller holds the dataset permission it maps to (see
     :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
     """

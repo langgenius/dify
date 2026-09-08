@@ -71,6 +71,7 @@
   "customIntervalHours": "Interval khusus (jam)",
   "customIntervalInvalid": "Masukkan bilangan bulat antara 1 hingga 720 jam.",
   "deleteDocuments": "Hapus…",
+  "deleteSuccess": "Basis pengetahuan Agent dihapus.",
   "description": "Deskripsi",
   "descriptionHelp": "Deskripsi yang jelas membantu aplikasi menentukan kapan harus mencari di basis pengetahuan Agent ini.",
   "descriptionPlaceholder": "misalnya Kebijakan pengembalian dana, FAQ pengiriman, dan langkah eskalasi — digunakan untuk pertanyaan dukungan pelanggan",

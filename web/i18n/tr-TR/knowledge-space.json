@@ -71,6 +71,7 @@
   "customIntervalHours": "Özel aralık (saat)",
   "customIntervalInvalid": "1 ile 720 saat arasında bir tam sayı girin.",
   "deleteDocuments": "Sil…",
+  "deleteSuccess": "Agent bilgi tabanı silindi.",
   "description": "Açıklama",
   "descriptionHelp": "Açık bir açıklama, uygulamaların bu Agent bilgi tabanında ne zaman arama yapacağına karar vermesine yardımcı olur.",
   "descriptionPlaceholder": "Örn. geri ödeme politikası, kargo hakkında sık sorulan sorular ve uzman ekibe yönlendirme adımları — müşteri desteği soruları için kullanın",

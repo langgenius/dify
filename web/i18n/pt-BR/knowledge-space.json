@@ -71,6 +71,7 @@
   "customIntervalHours": "Intervalo personalizado (horas)",
   "customIntervalInvalid": "Digite um número inteiro de 1 a 720 horas.",
   "deleteDocuments": "Excluir…",
+  "deleteSuccess": "Base de conhecimento Agent excluída.",
   "description": "Descrição",
   "descriptionHelp": "Uma descrição clara ajuda os aplicativos a decidir quando pesquisar nesta base de conhecimento Agent.",
   "descriptionPlaceholder": "por exemplo Política de reembolso, perguntas frequentes sobre envio e etapas de escalonamento — use para perguntas de suporte ao cliente",

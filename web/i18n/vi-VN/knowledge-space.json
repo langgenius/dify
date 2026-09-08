@@ -71,6 +71,7 @@
   "customIntervalHours": "Khoảng thời gian tùy chỉnh (giờ)",
   "customIntervalInvalid": "Nhập số nguyên từ 1 đến 720 giờ.",
   "deleteDocuments": "Xóa…",
+  "deleteSuccess": "Đã xóa cơ sở tri thức Agent.",
   "description": "Mô tả",
   "descriptionHelp": "Mô tả rõ ràng giúp ứng dụng quyết định khi nào cần tìm kiếm trong cơ sở tri thức Agent này.",
   "descriptionPlaceholder": "Ví dụ: chính sách hoàn tiền, câu hỏi thường gặp về giao hàng và quy trình chuyển vấn đề lên bộ phận chuyên trách — dùng để trả lời câu hỏi hỗ trợ khách hàng",

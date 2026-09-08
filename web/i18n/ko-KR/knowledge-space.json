@@ -71,6 +71,7 @@
   "customIntervalHours": "사용자 지정 간격(시간)",
   "customIntervalInvalid": "1~720 사이의 정수를 입력하세요.",
   "deleteDocuments": "삭제…",
+  "deleteSuccess": "Agent 지식 베이스가 삭제되었습니다.",
   "description": "설명",
   "descriptionHelp": "설명을 명확하게 작성하면 앱이 이 Agent 지식 베이스를 언제 검색할지 판단하는 데 도움이 됩니다.",
   "descriptionPlaceholder": "예를 들어 환불 정책, 배송 FAQ, 에스컬레이션 단계 - 고객 지원 질문에 사용",

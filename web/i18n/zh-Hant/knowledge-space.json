@@ -71,6 +71,7 @@
   "customIntervalHours": "自訂間隔（小時）",
   "customIntervalInvalid": "請輸入 1 到 720 之間的整數小時數。",
   "deleteDocuments": "刪除…",
+  "deleteSuccess": "Agent 知識庫已刪除",
   "description": "描述",
   "descriptionHelp": "清楚的描述有助於應用程式判斷何時搜尋此 Agent 知識庫。",
   "descriptionPlaceholder": "例如：退款政策、配送常見問題和問題轉交處理流程，用於回答客戶支援相關問題",

@@ -885,7 +885,7 @@ class DatasetApi(Resource):
 class DatasetKnowledgeFSUpgradeJobsApi(Resource):
     @console_ns.response(
         200,
-        "Recoverable KnowledgeFS Dataset upgrade jobs",
+        "Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base",
         console_ns.models[KnowledgeFSUpgradeJobListResponse.__name__],
     )
     @setup_required
@@ -934,7 +934,7 @@ class DatasetKnowledgeFSUpgradeJobsApi(Resource):
 class DatasetKnowledgeFSUpgradeApi(Resource):
     @console_ns.response(
         200,
-        "KnowledgeFS Dataset upgrade discovery",
+        "Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base",
         console_ns.models[KnowledgeFSUpgradeDiscoveryResponse.__name__],
     )
     @setup_required
@@ -960,7 +960,7 @@ class DatasetKnowledgeFSUpgradeApi(Resource):
     @console_ns.doc(params=_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         202,
-        "KnowledgeFS Dataset upgrade accepted",
+        "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
         console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
     )
     @setup_required
@@ -1004,7 +1004,7 @@ class DatasetKnowledgeFSUpgradeApi(Resource):
 class DatasetKnowledgeFSUpgradeJobApi(Resource):
     @console_ns.response(
         200,
-        "KnowledgeFS Dataset upgrade status",
+        "Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base",
         console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
     )
     @setup_required
@@ -1027,7 +1027,7 @@ class DatasetKnowledgeFSUpgradeJobApi(Resource):
 
     @console_ns.response(
         202,
-        "KnowledgeFS Dataset upgrade retry accepted",
+        "Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
         console_ns.models[KnowledgeFSUpgradeRetryResponse.__name__],
     )
     @setup_required

@@ -1026,6 +1026,7 @@ export type KnowledgeFsAsyncSourceImportPayload =
 
 export type KnowledgeFsCrawlImportPayload = {
   pages?: Array<KnowledgeFsCrawlImportPagePayload> | null
+  replaceExistingSelection?: boolean
   sourceUrls: Array<string>
 }
 

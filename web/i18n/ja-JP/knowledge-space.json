@@ -71,6 +71,7 @@
   "customIntervalHours": "カスタム間隔（時間）",
   "customIntervalInvalid": "1～720 の整数を入力してください。",
   "deleteDocuments": "削除…",
+  "deleteSuccess": "Agent ナレッジベースを削除しました。",
   "description": "説明",
   "descriptionHelp": "内容をわかりやすく説明すると、アプリがこの Agent ナレッジベースを検索するタイミングを判断しやすくなります。",
   "descriptionPlaceholder": "例:返金ポリシー、配送に関する FAQ、エスカレーション手順 - カスタマー サポートの質問に使用します",

@@ -71,6 +71,7 @@
   "customIntervalHours": "Niestandardowy interwał (godziny)",
   "customIntervalInvalid": "Wprowadź liczbę całkowitą od 1 do 720 godzin.",
   "deleteDocuments": "Usuń…",
+  "deleteSuccess": "Usunięto bazę wiedzy Agent.",
   "description": "Opis",
   "descriptionHelp": "Jasny opis pomaga aplikacjom zdecydować, kiedy przeszukiwać tę bazę wiedzy Agent.",
   "descriptionPlaceholder": "np. Polityka zwrotów, często zadawane pytania dotyczące wysyłki i etapy eskalacji — używaj w przypadku pytań do obsługi klienta",

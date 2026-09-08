@@ -71,6 +71,7 @@
   "customIntervalHours": "कस्टम अंतराल (घंटे)",
   "customIntervalInvalid": "1 से 720 घंटे तक की पूर्ण संख्या दर्ज करें।",
   "deleteDocuments": "हटाएं...",
+  "deleteSuccess": "Agent ज्ञान आधार हटा दिया गया।",
   "description": "विवरण",
   "descriptionHelp": "स्पष्ट विवरण से ऐप्स तय कर पाते हैं कि इस Agent ज्ञान आधार में कब खोजना है।",
   "descriptionPlaceholder": "जैसे रिफंड नीति, शिपिंग एफएक्यू और एस्केलेशन चरण - ग्राहक सहायता प्रश्नों के लिए उपयोग करें",

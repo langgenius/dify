@@ -329,8 +329,8 @@ def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path)
     assert path_names == {"knowledge_space_id", "workspace_id"}
     assert "requestBody" not in list_operation
     assert list_operation["operationId"] == "ls_knowledge_fs"
-    assert list_operation["summary"] == "List a KnowledgeFS directory (ls)"
-    assert "stable KnowledgeFS traversal order" in list_operation["description"]
+    assert list_operation["summary"] == "List an Agent Knowledge Base directory (ls)"
+    assert "stable Agent Knowledge Base traversal order" in list_operation["description"]
     assert "total is intentionally omitted" in list_operation["description"]
     assert "WORKSPACE_READ" in list_operation["description"]
     assert _response_schema(list_operation)["$ref"] == "#/components/schemas/KnowledgeFSEntryListResponse"

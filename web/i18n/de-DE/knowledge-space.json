@@ -71,6 +71,7 @@
   "customIntervalHours": "Benutzerdefiniertes Intervall (Stunden)",
   "customIntervalInvalid": "Gib eine ganze Zahl zwischen 1 und 720 Stunden ein.",
   "deleteDocuments": "Löschen…",
+  "deleteSuccess": "Agent-Wissensdatenbank gelöscht.",
   "description": "Beschreibung",
   "descriptionHelp": "Eine klare Beschreibung hilft Apps zu entscheiden, wann sie diese Agent-Wissensdatenbank durchsuchen sollen.",
   "descriptionPlaceholder": "z.B. Rückerstattungsrichtlinien, häufig gestellte Fragen zum Versand und Eskalationsschritte – für Fragen zum Kundensupport verwenden",

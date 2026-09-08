@@ -1090,7 +1090,7 @@ describe('NewKnowledgeList', () => {
     expect(invalidateQueriesMock).toHaveBeenCalledWith({
       queryKey: consoleQueryMock.listKey,
     })
-    expect(toastMock.success).toHaveBeenCalledWith('dataset.datasetDeleted')
+    expect(toastMock.success).toHaveBeenCalledWith('knowledgeSpace.deleteSuccess')
   })
 
   it('syncs tag filters to the URL and collection API while keeping search interactive', async () => {

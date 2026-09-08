@@ -71,6 +71,7 @@
   "customIntervalHours": "Interval personalizat (ore)",
   "customIntervalInvalid": "Introdu un număr întreg între 1 și 720 de ore.",
   "deleteDocuments": "Șterge…",
+  "deleteSuccess": "Baza de cunoștințe Agent a fost ștearsă.",
   "description": "Descriere",
   "descriptionHelp": "O descriere clară ajută aplicațiile să decidă când să caute în această bază de cunoștințe Agent.",
   "descriptionPlaceholder": "de ex. Politica de rambursare, întrebări frecvente despre expediere și pași de escaladare — utilizați pentru întrebările de asistență pentru clienți",

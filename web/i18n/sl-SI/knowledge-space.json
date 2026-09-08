@@ -71,6 +71,7 @@
   "customIntervalHours": "Interval po meri (ure)",
   "customIntervalInvalid": "Vnesite celo število od 1 do 720 ur.",
   "deleteDocuments": "Izbriši ...",
+  "deleteSuccess": "Zbirka znanja Agent je izbrisana.",
   "description": "Opis",
   "descriptionHelp": "Jasen opis pomaga aplikacijam odločiti, kdaj naj iščejo po tej zbirki znanja Agent.",
   "descriptionPlaceholder": "npr. Politika vračil, pogosta vprašanja o pošiljanju in koraki za eskalacijo — uporabite za vprašanja podpore strankam",

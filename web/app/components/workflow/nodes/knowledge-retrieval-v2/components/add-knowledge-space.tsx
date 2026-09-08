@@ -120,7 +120,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
       >
         <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['feature.dataSet.selectTitle'], { ns: 'appDebug' })}
+            {t(($) => $['nodes.knowledgeRetrievalV2.selectTitle'], { ns: 'workflow' })}
           </DialogTitle>
           <DialogClose
             render={
@@ -188,7 +188,10 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
             <div className="mt-8 flex items-center justify-between">
               <div className="text-sm font-medium text-text-secondary">
                 {selectedDraftSpaces.length > 0 &&
-                  `${selectedDraftSpaces.length} ${t(($) => $['feature.dataSet.selected'], { ns: 'appDebug' })}`}
+                  t(($) => $['nodes.knowledgeRetrievalV2.selectedCount'], {
+                    ns: 'workflow',
+                    count: selectedDraftSpaces.length,
+                  })}
               </div>
               <div className="flex space-x-2">
                 <Button onClick={close}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>

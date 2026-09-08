@@ -71,6 +71,7 @@
   "customIntervalHours": "自定义间隔（小时）",
   "customIntervalInvalid": "请输入 1 到 720 之间的整数小时数。",
   "deleteDocuments": "删除…",
+  "deleteSuccess": "Agent 知识库已删除",
   "description": "描述",
   "descriptionHelp": "清晰的描述有助于应用判断何时搜索此 Agent 知识库。",
   "descriptionPlaceholder": "例如：退款政策、配送常见问题和问题转交处理流程，用于回答客户支持相关问题",
