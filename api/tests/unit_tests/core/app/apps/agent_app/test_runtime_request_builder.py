@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
@@ -13,6 +15,8 @@ from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsL
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
+from dify_agent.layers.user_prompt.layer import DifyUserPromptLayer
+from pydantic_ai.messages import BinaryContent, ImageUrl
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -33,6 +37,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.agent_config_entities import AgentSoulConfig
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -350,10 +355,97 @@ class TestAgentAppRuntimeRequestBuilder:
             {
                 "delivery": "download",
                 "type": "image",
+                "filename": "earth.png",
                 "transfer_method": "local_file",
                 "reference": build_file_reference(record_id="upload-file-1"),
             }
         ]
+
+    @pytest.mark.parametrize("vision", [False, True])
+    @pytest.mark.parametrize("transport", ["url", "base64"])
+    def test_knowledge_image_search_retains_named_upload_references(
+        self, monkeypatch: pytest.MonkeyPatch, vision: bool, transport: str
+    ) -> None:
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: vision,
+        )
+        model_factory = Mock()
+        model_factory.return_value.init_model_instance.return_value.get_model_schema.return_value = SimpleNamespace(
+            features=[ModelFeature.VISION] if vision else []
+        )
+        monkeypatch.setattr("services.agent.knowledge_runtime_config.DifyModelFactory", model_factory)
+
+        def image_content(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+            return ImagePromptMessageContent(
+                format="png",
+                url=f"https://files.example.com/{file.filename}" if transport == "url" else "",
+                base64_data="aW1hZ2UtYnl0ZXM=" if transport == "base64" else "",
+                mime_type="image/png",
+                filename=file.filename or "image.png",
+                detail="low",
+            )
+
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content", image_content
+        )
+        soul = _soul_with_model()
+        soul.knowledge = AgentSoulConfig.model_validate(
+            {
+                "knowledge": {
+                    "spaces": [
+                        {
+                            "id": "docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000001",
+                            "name": "Docs",
+                        }
+                    ]
+                }
+            }
+        ).knowledge
+        upload_ids = ["a013fb44-3e12-4f5d-8de2-000000000001", "a013fb44-3e12-4f5d-8de2-000000000002"]
+        references = [build_file_reference(record_id=upload_id) for upload_id in upload_ids]
+        # Cover both raw upload IDs and already-canonical references, with distinct filenames.
+        files = tuple(
+            File(
+                file_id=upload_id,
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=reference,
+                filename=filename,
+                extension=".png",
+                mime_type="image/png",
+                size=11,
+            )
+            for upload_id, reference, filename in zip(
+                upload_ids, [upload_ids[0], references[1]], ["earth.png", "moon.png"]
+            )
+        )
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(  # type: ignore[arg-type]
+            _ctx(soul, query="Search knowledge using these images.", files=files)
+        )
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert any(layer.type == "dify.knowledge_fs" for layer in layers.values())
+        config = DifyUserPromptLayerConfig.model_validate(layers["agent_app_user_prompt"].config)
+        # Render the serialized request through the actual runtime layer, not just the API DTO.
+        prompts = DifyUserPromptLayer.from_config(
+            DifyUserPromptLayerConfig.model_validate_json(config.model_dump_json())
+        ).user_prompts
+        assert isinstance(prompts[0], str)
+        assert json.loads(prompts[0].splitlines()[-1]) == [
+            {"filename": file.filename, "transfer_method": "local_file", "reference": reference}
+            for file, reference in zip(files, references)
+        ]
+        assert len(prompts) == (3 if vision else 1)
+        for content, file in zip(prompts[1:], files):
+            if transport == "url":
+                assert isinstance(content, ImageUrl)
+                assert content.url == f"https://files.example.com/{file.filename}"
+            else:
+                assert isinstance(content, BinaryContent)
+                assert content.data == b"image-bytes"
+            assert content.vendor_metadata == {"filename": file.filename, "detail": "low"}
 
     def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -412,6 +504,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert download.model_dump(exclude_none=True) == {
             "delivery": "download",
             "type": "document",
+            "filename": "brief.pdf",
             "transfer_method": "local_file",
             "reference": build_file_reference(record_id="upload-document-1"),
         }

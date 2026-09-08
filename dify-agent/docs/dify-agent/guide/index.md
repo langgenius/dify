@@ -395,7 +395,14 @@ is presented, independently of its file `type` (`image`, `document`, `audio`,
 - `delivery: "download"` preserves the original file `type`, including `image`
   when the selected model has no Vision feature. It contains either
   `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
-  `datasource_file` transfer method with a canonical `reference`.
+  `datasource_file` transfer method with a canonical `reference`. An optional
+  `filename` identifies the attachment in the rendered file locators.
+
+When an Agent App has KnowledgeFS spaces, each uploaded `local_file` image sent
+as multimodal content also has a named download entry. The model receives the
+image directly and can use its canonical `reference` with
+`dify-agent knowledge search --image-file-id`. Remote URLs and tool/datasource
+file references are not valid upload references for KnowledgeFS image search.
 
 The layer appends sandbox file-download instructions for download attachments
 and adds multimodal attachments as structured model content. Callers keep

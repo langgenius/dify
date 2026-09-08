@@ -48,8 +48,11 @@ class DifyUserPromptImageConfig(LayerConfig):
 
 
 class DifyUserPromptDownloadConfig(LayerConfig):
+    """A file locator, optionally named to match a directly attached image."""
+
     delivery: Literal["download"] = "download"
     type: DifyUserPromptFileType
+    filename: str | None = Field(default=None, min_length=1)
     transfer_method: Literal["remote_url", "local_file", "tool_file", "datasource_file"]
     url: str | None = Field(default=None, min_length=1)
     reference: str | None = Field(default=None, min_length=1)
