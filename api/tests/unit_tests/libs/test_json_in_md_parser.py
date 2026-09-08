@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -124,3 +126,42 @@ def test_parse_json_markdown_backtick_in_surrounding_prose():
 def test_parse_json_markdown_fenced_scalar_still_supported():
     """Fenced content without brackets still parses via the fence fallback."""
     assert parse_json_markdown('```json\n"hello"\n```') == "hello"
+
+
+def test_parse_json_markdown_returns_first_unfenced_json_object():
+    """Two unfenced objects must not be concatenated into one json.loads() call."""
+    src = '{"a": 1}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"a": 1}
+
+
+def test_parse_json_markdown_returns_first_unfenced_json_array():
+    src = "[1, 2]\n[3, 4]"
+    assert parse_json_markdown(src) == [1, 2]
+
+
+def test_parse_json_markdown_first_unfenced_value_keeps_nested_objects():
+    src = '{"a": {"b": [1, {"c": 2}]}}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"a": {"b": [1, {"c": 2}]}}
+
+
+def test_parse_json_markdown_brackets_inside_string_values():
+    """Brackets inside string values must not terminate the value early."""
+    src = '{"s": "{not json} [nor this]"}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"s": "{not json} [nor this]"}
+
+
+def test_parse_json_markdown_first_value_followed_by_prose():
+    src = '{"a": 1}\nThat is the answer.'
+    assert parse_json_markdown(src) == {"a": 1}
+
+
+def test_parse_json_markdown_malformed_first_value_still_fails():
+    with pytest.raises(json.JSONDecodeError):
+        parse_json_markdown('{"a": }\n{"a": 2}')
+
+
+def test_parse_and_check_json_markdown_multiple_unfenced_objects():
+    """The reported failure mode now resolves to the first value instead of raising."""
+    src = '{"keywords": ["a"], "category_id": "1", "category_name": "x"}\n{"category_id": "2"}'
+    obj = parse_and_check_json_markdown(src, ["keywords", "category_id", "category_name"])
+    assert obj == {"keywords": ["a"], "category_id": "1", "category_name": "x"}

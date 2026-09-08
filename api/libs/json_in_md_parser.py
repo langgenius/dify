@@ -15,6 +15,16 @@ def parse_json_markdown(json_string: str):
     start_candidates = [i for i in (json_string.find("{"), json_string.find("[")) if i != -1]
     if start_candidates:
         start_index = min(start_candidates)
+
+        # Without code fences there is no end marker to anchor on, so the last
+        # "}" / "]" may belong to a *later* value. Models sometimes emit more
+        # than one JSON value in a row, and slicing to the last bracket hands
+        # all of them to json.loads() at once, which fails with "Extra data".
+        # Decode only the first complete value instead.
+        if "`" not in json_string:
+            first_value, _ = json.JSONDecoder().raw_decode(json_string, start_index)
+            return first_value
+
         end_index = max(json_string.rfind("}"), json_string.rfind("]"))
         if end_index != -1 and start_index < end_index:
             end_index += 1
