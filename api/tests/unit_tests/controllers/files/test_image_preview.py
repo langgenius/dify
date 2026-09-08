@@ -123,10 +123,50 @@ class TestFilePreviewApi:
 
         response = get_fn("file-id")
 
+        # Inline preview must preserve the real mime type so the browser can
+        # render the file. Forcing application/octet-stream here breaks
+        # every image preview in the logs UI (#40479).
         assert response.mimetype == "application/pdf"
-        assert response.headers["Content-Type"] == "application/pdf"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
+        # Content-Type may be set automatically by Flask from mimetype, but it
+        # must never be the generic octet-stream value the controller used to
+        # force for inline previews.
+        assert response.headers.get("Content-Type") != "application/octet-stream"
+        mock_enforce.assert_called_once()
+
+    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "FileService")
+    def test_inline_image_preview_preserves_image_mime(self, mock_file_service, mock_enforce):
+        """Regression for #40479: image previews (inline, as_attachment=False)
+        must keep image/png (or whatever the upload mime is) so the log UI
+        renders them. Previously the endpoint always forced octet-stream,
+        which made every image in the logs broken."""
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "as_attachment": False,
+            }
+        )
+
+        generator = iter([b"\x89PNG\r\n\x1a\n"])
+        upload_file = _upload_file(mime_type="image/png", size=64, name="logo.png", extension="png")
+
+        mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            generator,
+            upload_file,
+        )
+
+        api = module.FilePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.mimetype == "image/png"
+        assert response.headers["Content-Length"] == "64"
+        assert "Content-Disposition" not in response.headers
         mock_enforce.assert_called_once()
 
     @pytest.mark.parametrize(
