@@ -318,6 +318,66 @@ async def test_real_read_script_handles_boundary_truncation_and_binary(tmp_path:
 
 
 @pytest.mark.anyio
+async def test_real_read_script_handles_utf8_truncation_at_multibyte_boundary(tmp_path: Path) -> None:
+    service, backend, commands, workspace, _ = _local_service(tmp_path)
+
+    latin = "ñ".encode("utf-8")  # 2-byte: c3 b1
+    euro = "€".encode("utf-8")  # 3-byte: e2 82 ac
+    smile = "😀".encode("utf-8")  # 4-byte: f0 9f 98 80
+    cjk = "中".encode("utf-8")  # 3-byte: e4 b8 ad
+
+    (workspace / "latin.txt").write_bytes(b"a" + latin)
+    (workspace / "euro.txt").write_bytes(b"a" + euro)
+    (workspace / "smile.txt").write_bytes(b"a" + smile)
+    (workspace / "cjk.txt").write_bytes(b"a" + cjk)
+    (workspace / "invalid.txt").write_bytes(b"a\xff" + euro)
+
+    latin_result = await service.read_file(
+        BindingFileReadRequest(backend_binding_ref="binding-ref", path="latin.txt", max_bytes=2)
+    )
+    euro_result = await service.read_file(
+        BindingFileReadRequest(backend_binding_ref="binding-ref", path="euro.txt", max_bytes=2)
+    )
+    smile_result = await service.read_file(
+        BindingFileReadRequest(backend_binding_ref="binding-ref", path="smile.txt", max_bytes=3)
+    )
+    cjk_result = await service.read_file(
+        BindingFileReadRequest(backend_binding_ref="binding-ref", path="cjk.txt", max_bytes=3)
+    )
+    invalid_result = await service.read_file(
+        BindingFileReadRequest(backend_binding_ref="binding-ref", path="invalid.txt", max_bytes=4)
+    )
+
+    assert latin_result.size == 3
+    assert latin_result.truncated is True
+    assert latin_result.binary is False
+    assert latin_result.text == "a"
+
+    assert euro_result.size == 4
+    assert euro_result.truncated is True
+    assert euro_result.binary is False
+    assert euro_result.text == "a"
+
+    assert smile_result.size == 5
+    assert smile_result.truncated is True
+    assert smile_result.binary is False
+    assert smile_result.text == "a"
+
+    assert cjk_result.size == 4
+    assert cjk_result.truncated is True
+    assert cjk_result.binary is False
+    assert cjk_result.text == "a"
+
+    assert invalid_result.size == 5
+    assert invalid_result.truncated is True
+    assert invalid_result.binary is True
+    assert invalid_result.text is None
+
+    assert commands.deletes == ["local-job-1", "local-job-2", "local-job-3", "local-job-4", "local-job-5"]
+    assert backend.releases == 5
+
+
+@pytest.mark.anyio
 async def test_real_browse_script_output_over_command_cap_normalizes_to_unavailable(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

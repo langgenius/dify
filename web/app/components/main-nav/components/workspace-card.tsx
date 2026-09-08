@@ -5,23 +5,32 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  noop,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { formatCredits } from '../utils'
@@ -265,11 +274,11 @@ export function WorkspaceCard() {
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
-    void queryClient.prefetchQuery(workspacesQueryOptions)
+    void queryClient.query(workspacesQueryOptions).catch(noop)
   }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
@@ -319,7 +328,7 @@ export function WorkspaceCard() {
           planActionLabel={planActionLabel}
           creditsHref={buildIntegrationPath('provider')}
           onPrefetchWorkspaces={prefetchWorkspaces}
-          onPlanClick={setShowPricingModal}
+          onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
           placement="bottom-start"

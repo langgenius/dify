@@ -1,3 +1,4 @@
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -29,10 +30,10 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   ]
 
   return (
-    <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-text-tertiary">
+    <Fieldset className="space-y-2">
+      <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
         {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflow' })}
-      </label>
+      </FieldsetLegend>
 
       <div className="space-y-1.5">
         {rows.map((row, rowIndex) => (
@@ -96,7 +97,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
           </div>
         </div>
       )}
-    </div>
+    </Fieldset>
   )
 }
 

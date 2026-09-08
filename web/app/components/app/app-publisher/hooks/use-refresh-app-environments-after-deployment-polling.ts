@@ -4,8 +4,8 @@ import { DeploymentOperationStatus } from '@dify/contracts/enterprise-app-deploy
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
-import { isEnvironmentDeploymentInProgress } from '@/app/components/app/deploy/state'
-import { consoleQuery } from '@/service/client'
+import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
+import { consoleQuery } from '@/service/console'
 import {
   appPublisherOpenAtom,
   finishPublisherEnvironmentDeploymentPollingAtom,
@@ -44,7 +44,7 @@ export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?:
         polling.environmentId !== environment.id ||
         operation?.id !== polling.operationId ||
         !isDeploymentOperationTerminal(operation.status) ||
-        isEnvironmentDeploymentInProgress(deployment)
+        shouldPollEnvironmentDeployment(deployment)
       )
         return
 
@@ -72,7 +72,7 @@ export function useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appId?:
       return
     }
 
-    if (isEnvironmentDeploymentInProgress(deployment)) {
+    if (shouldPollEnvironmentDeployment(deployment)) {
       if (operationKey) operationsNeedingEnvironmentRefreshRef.current.add(operationKey)
       return
     }

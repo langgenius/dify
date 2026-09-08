@@ -1,5 +1,7 @@
 import type { FC, ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -60,6 +62,53 @@ describe('CommentInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mentionInputProps = null
+  })
+
+  it('moves the draft using a focused handle and finishes moving with Enter', async () => {
+    const user = userEvent.setup()
+    const onPositionChange = vi.fn()
+    function Draft() {
+      const [position, setPosition] = useState({ x: 100, y: 100 })
+      return (
+        <CommentInput
+          position={position}
+          onCancel={vi.fn()}
+          onSubmit={vi.fn()}
+          onPositionChange={(next) => {
+            onPositionChange(next)
+            setPosition({ x: next.elementX, y: next.elementY })
+          }}
+        />
+      )
+    }
+    render(<Draft />)
+    await user.tab()
+    const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+    await user.keyboard('{Enter}{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
+    expect(onPositionChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ elementX: 105, elementY: 120 }),
+    )
+    expect(handle).toHaveAttribute('aria-pressed', 'true')
+    await user.keyboard('{Enter}{ArrowRight}')
+    expect(handle).toHaveAttribute('aria-pressed', 'false')
+    expect(onPositionChange).toHaveBeenCalledTimes(2)
+    await user.tab()
+    expect(screen.getByTestId('mention-input')).toHaveFocus()
+  })
+
+  it('does not offer keyboard movement while disabled', () => {
+    render(
+      <CommentInput
+        position={{ x: 0, y: 0 }}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+        onPositionChange={vi.fn()}
+        disabled
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' }),
+    ).toBeDisabled()
   })
 
   it('passes translated placeholder to mention input', () => {

@@ -82,7 +82,7 @@ export default function CheckCode() {
         } else {
           const profileQueryOptions = userProfileQueryOptions()
           await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
-          await queryClient.fetchQuery(profileQueryOptions)
+          await queryClient.query(profileQueryOptions)
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } else {

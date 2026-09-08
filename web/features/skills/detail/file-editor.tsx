@@ -13,13 +13,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob } from '../client'
 import { FileTabs } from './file-tabs'
@@ -986,16 +987,18 @@ export function FileEditor({
       return
     }
 
-    const references = await queryClient.fetchQuery(
-      consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+    const references = await queryClient.query({
+      ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
         input: {
           params: {
             skill_id: skillId,
           },
         },
       }),
-    )
+      staleTime: 0,
+    })
     const fetchedReferenceCount = references.data?.length ?? 0
+
     if (fetchedReferenceCount > 0) {
       if (detail && detail.reference_count !== fetchedReferenceCount)
         setSkillDetailCache(queryClient, skillId, {
@@ -1019,12 +1022,16 @@ export function FileEditor({
     skillId,
   ])
 
+  const handlePublishAction = useCallback(() => {
+    void handlePublish().catch(noop)
+  }, [handlePublish])
+
   useEffect(() => {
     if (!pendingPublishAfterSaveRef.current || saveStatus === 'saving') return
 
     pendingPublishAfterSaveRef.current = false
-    void handlePublish()
-  }, [handlePublish, saveStatus])
+    handlePublishAction()
+  }, [handlePublishAction, saveStatus])
 
   const saveStateText =
     saveStatus === 'saving'
@@ -1068,7 +1075,7 @@ export function FileEditor({
   }
 
   return (
-    <main className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
+    <div className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
       <FileTabs
         endAction={
           onOpenBuilder && (
@@ -1496,7 +1503,7 @@ export function FileEditor({
                 canPublish={canPublish}
                 metaLabel={publishMetaText}
                 onOpenVersions={onOpenVersions}
-                onPublish={handlePublish}
+                onPublish={handlePublishAction}
                 state={publishState}
               />
             </div>
@@ -1511,6 +1518,6 @@ export function FileEditor({
           onExit={onExitVersion}
         />
       )}
-    </main>
+    </div>
   )
 }

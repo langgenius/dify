@@ -1,15 +1,14 @@
 """User-scoped identity + session endpoints under /openapi/v1/account."""
 
 import builtins
-import uuid
-from dataclasses import dataclass
+import sys
+from types import SimpleNamespace
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
-from werkzeug.exceptions import UnprocessableEntity
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
-from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.account import (
     AccountApi,
@@ -17,8 +16,8 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.data import AuthData
-from services.oauth_device_contracts import OAuthDeviceSession, OAuthDeviceSessionPage
+from machinery.context import AccountRequestContext
+from services.entities.account_access_entities import AccountSessionPage
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -88,49 +87,47 @@ def test_session_by_id_dispatches_to_correct_class(openapi_app: Flask):
     assert "DELETE" in rule.methods
 
 
+def test_session_by_id_rejects_malformed_uuid(app: Flask) -> None:
+    api = AccountSessionByIdApi()
+    with app.test_request_context("/openapi/v1/account/sessions/not-a-uuid", method="DELETE"):
+        with pytest.raises(NotFound, match="session not found"):
+            api.delete.__wrapped__(api, _request_context(), session_id="not-a-uuid")
+
+
 # --- GET /account/sessions query validation (the handler routes ?page/?limit through
-# SessionListQuery so the server enforces the bounds the contract advertises).
+# SessionListQuery so the server enforces the bounds the contract advertises). The application
+# service is replaced with a small fake so these exercise only parsing and serialization;
+# __wrapped__ skips the complete Admission boundary. ---
+
+_ACCOUNT_MOD = "controllers.openapi.account"
 
 
-def _session_auth_data() -> AuthData:
-    return AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        token_hash="test",
-        token_id=uuid.uuid4(),
-        scopes=frozenset({Scope.FULL}),
-        required_scope=Scope.FULL,
-        allowed_roles=None,
+def _request_context() -> AccountRequestContext:
+    return AccountRequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        access_token_id="token-1",
     )
 
 
-@dataclass(frozen=True, slots=True)
-class _OAuthDeviceService:
-    rows: tuple[OAuthDeviceSession, ...]
-
-    def list_account_sessions(self, *, account_id: str, page: int, limit: int) -> OAuthDeviceSessionPage:
-        _ = account_id
-        return OAuthDeviceSessionPage(page=page, limit=limit, total=len(self.rows), items=self.rows)
+class _SessionListService:
+    def list_sessions(self, _context: AccountRequestContext, *, page: int, limit: int) -> AccountSessionPage:
+        return AccountSessionPage(page=page, limit=limit, total=0, items=())
 
 
-@dataclass(frozen=True, slots=True)
-class _ApplicationServices:
-    oauth_device: _OAuthDeviceService
-
-
-def _stub_session_deps(monkeypatch: pytest.MonkeyPatch, rows: tuple[OAuthDeviceSession, ...]) -> None:
-    from controllers.openapi import account
-
-    services = _ApplicationServices(oauth_device=_OAuthDeviceService(rows=rows))
-    monkeypatch.setattr(account, "application_services", lambda: services)
+def _stub_account_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    mod = sys.modules[_ACCOUNT_MOD]
+    services = SimpleNamespace(accounts=SimpleNamespace(access=_SessionListService()))
+    monkeypatch.setattr(mod, "application_services", lambda: services)
 
 
 def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):
     """A valid ?page&limit round-trips through SessionListQuery into the response envelope."""
     api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, ())
+    _stub_account_service(monkeypatch)
     with app.test_request_context("/openapi/v1/account/sessions?page=2&limit=5"):
-        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
+        body, status = api.get.__wrapped__(api, _request_context())
     assert status == 200
     assert body["page"] == 2
     assert body["limit"] == 5
@@ -141,9 +138,9 @@ def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch
 def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pytest.MonkeyPatch):
     """No query → the model's defaults (page=1, limit=100) drive the envelope."""
     api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, ())
+    _stub_account_service(monkeypatch)
     with app.test_request_context("/openapi/v1/account/sessions"):
-        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
+        body, status = api.get.__wrapped__(api, _request_context())
     assert status == 200
     assert body["page"] == 1
     assert body["limit"] == 100
@@ -163,7 +160,7 @@ def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pyte
 def test_sessions_list_rejects_out_of_bounds_query(app: Flask, monkeypatch: pytest.MonkeyPatch, query):
     """Out-of-range / unknown query params raise 422 instead of being silently coerced."""
     api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, ())
+    _stub_account_service(monkeypatch)
     with app.test_request_context(f"/openapi/v1/account/sessions?{query}"):
         with pytest.raises(UnprocessableEntity):
-            api.get.__wrapped__(api, auth_data=_session_auth_data())
+            api.get.__wrapped__(api, _request_context())
