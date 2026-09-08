@@ -47,6 +47,8 @@ class AppSiteConfiguration(NamedTuple):
 
 
 class AppDefinitionQuery(Protocol):
+    def get_mode(self, app_id: str) -> str | None: ...
+
     def get_published_parameter_config(
         self,
         app_id: str,
@@ -81,6 +83,12 @@ class AppDefinitionQueryService:
     ) -> None:
         self._definitions = definitions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
+
+    def get_mode(self, app_id: str) -> str:
+        mode = self._definitions.get_mode(app_id)
+        if mode is None:
+            raise AppDefinitionUnavailableError("App not found")
+        return mode
 
     def get_parameters(self, app_id: str) -> AppParametersDict:
         config = self._definitions.get_published_parameter_config(app_id)

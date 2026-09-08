@@ -53,6 +53,21 @@ def _persist_app(
     return app
 
 
+def test_get_mode_returns_none_for_missing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.get_mode(_APP_ID) is None
+
+
+def test_get_mode_returns_app_mode(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        _persist_app(session, mode=AppMode.COMPLETION)
+
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.get_mode(_APP_ID) == AppMode.COMPLETION.value
+
+
 def test_get_published_parameter_config_returns_none_for_missing_app(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
