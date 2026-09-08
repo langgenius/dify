@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
-from context import capture_current_context
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope
+from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
@@ -80,11 +80,11 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
         granted_upload_file_ids=frozenset({stored_file.id}) if permission == "granted" else frozenset(),
     )
     with bind_file_access_scope(scope):
+        execution_context_layer = ExecutionContextLayer()
         runtime_state = RuntimeState(
             workflow_id="outer-workflow",
             variable_pool=VariablePool(),
             start_at=1,
-            execution_context=capture_current_context(),
         )
     template_node, runtime, payload = _workflow_tool_node(runtime_state)
     monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _: runtime)
@@ -183,8 +183,15 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
         runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
         workers=1,
-        container_handler_factories=(partial(WorkflowToolContainerHandler, source_repository=repository),),
+        container_handler_factories=(
+            partial(
+                WorkflowToolContainerHandler,
+                source_repository=repository,
+                execution_context_factory=execution_context_layer.enter_context,
+            ),
+        ),
     )
+    engine.add_layer(execution_context_layer)
 
     if permission == "other-user":
         expected_error = (
