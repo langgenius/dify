@@ -8,6 +8,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -18,7 +19,6 @@ from controllers.openapi.auth.requirements import (
     assert_license_valid,
 )
 from controllers.openapi.auth.subjects import AccountSubject
-from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from models.account import AccountStatus, TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
@@ -48,7 +48,7 @@ FEATURES = "controllers.openapi.auth.requirements.SystemFeatureService.get_publi
 WEBAPP_AUTH = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth"
 ACCESS_MODE = f"{WEBAPP_AUTH}.get_app_access_mode_by_id"
 WEBAPP_PERMISSION = f"{WEBAPP_AUTH}.is_user_allowed_to_access_webapp"
-ENFORCE_RBAC = "controllers.openapi.auth.requirements.enforce_rbac_access"
+ENFORCE_RBAC = "controllers.openapi.auth.requirements.enforce_rbac_checks"
 APP_FETCH = "controllers.openapi.auth.loaders.AppService.get_app_by_id"
 
 
@@ -130,7 +130,7 @@ def test_an_app_requirement_off_an_app_route_is_a_wiring_bug(
 class TestCheckRBACPermission:
     @staticmethod
     def _requirement() -> CheckRBACPermission:
-        return CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
+        return CheckRBACPermission(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
 
     def test_skips_a_non_account_caller(self, sqlite_session: Session, config_overrides: Callable[..., None]) -> None:
         """No matrix row reaches this: on the routes an SSO token can address,

@@ -4,6 +4,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
@@ -18,7 +19,6 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
-from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
@@ -47,11 +47,7 @@ class AppDslImportApi(Resource):
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
-            CheckRBACPermission(
-                resource_type=RBACResourceScope.APP,
-                scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-                resource_required=False,
-            ),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
         body=AppDslImportPayload,
@@ -113,11 +109,7 @@ class AppDslImportConfirmApi(Resource):
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
-            CheckRBACPermission(
-                resource_type=RBACResourceScope.APP,
-                scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
-                resource_required=False,
-            ),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
         returns=((200, Import, "Import confirmed"), (400, Import, "Import failed")),
@@ -161,7 +153,7 @@ class AppDslExportApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_READ),
-            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
         query=AppDslExportQuery,
@@ -197,7 +189,7 @@ class AppDslCheckDependenciesApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_READ),
-            CheckRBACPermission(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
         ),
         returns=(200, CheckDependenciesResult, "Dependencies checked"),

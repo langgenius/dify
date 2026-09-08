@@ -85,6 +85,7 @@ from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
+from services.rbac_resource_service import RBACResourceService
 from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -200,7 +201,7 @@ DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
 DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
 DENY_EDITION = Expect(404, note="endpoint-level edition gate, raised before the bearer is read")
 DENY_LICENSE = Expect(403, "license_invalid")
-DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_access")
+DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_checks")
 ADMIT_NO_RBAC_PERMISSION = Expect(
     ADMITTED,
     note=(
@@ -1214,9 +1215,8 @@ def _run_case(
                 side_effect=_end_user,
             )
         )
-        stack.enter_context(
-            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False),
-        )
+        stack.enter_context(patch.object(RBACResourceService, "get_app_agent_binding", return_value=None))
+        stack.enter_context(patch.object(RBACResourceService, "get_app_maintainer", return_value=None))
         stack.enter_context(
             patch(
                 "services.enterprise.rbac_service.RBACService.CheckAccess.check",

@@ -19,6 +19,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
@@ -44,7 +45,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject
-from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -179,11 +180,7 @@ class WorkspaceMembersApi(Resource):
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
-            CheckRBACPermission(
-                resource_type=RBACResourceScope.WORKSPACE,
-                scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
-                resource_required=False,
-            ),
+            CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_MEMBER_MANAGE, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
         ),
         body=MemberInvitePayload,
@@ -243,11 +240,7 @@ class WorkspaceMemberApi(Resource):
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
-            CheckRBACPermission(
-                resource_type=RBACResourceScope.WORKSPACE,
-                scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
-                resource_required=False,
-            ),
+            CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_MEMBER_MANAGE, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
         ),
         returns=(200, MemberActionResponse, "Member removed"),
@@ -273,11 +266,7 @@ class WorkspaceMemberApi(Resource):
             CheckSubject(allowed=(AccountSubject,)),
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
-            CheckRBACPermission(
-                resource_type=RBACResourceScope.WORKSPACE,
-                scene=RBACPermission.WORKSPACE_ROLE_MANAGE,
-                resource_required=False,
-            ),
+            CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())),
             CheckWorkspaceRole(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
         ),
         body=MemberRoleUpdatePayload,
