@@ -1,128 +1,189 @@
 """Behavior tests for channel-neutral resolved Human Input v2 forms."""
 
-from dataclasses import FrozenInstanceError, fields
-from typing import get_type_hints
+import json
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
-from core import human_input_v2
-from core.human_input_v2 import (
+from core.human_input import ButtonStyle
+from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
-    MarkdownText,
+    MarkdownFragment,
     ParagraphInput,
     ResolvedForm,
-    ResolvedFormAction,
     SelectInput,
+    UserAction,
 )
-from core.workflow.nodes.human_input.enums import ButtonStyle
 from graphon.file.enums import FileTransferMethod, FileType
 
 
-def _file_input() -> FileInput:
-    return FileInput(
-        output_variable_name="attachment",
-        allowed_file_types=(FileType.DOCUMENT, FileType.CUSTOM),
-        allowed_file_extensions=("pdf", "md"),
-        allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
-    )
-
-
-def test_resolved_form_values_are_frozen_and_own_immutable_tuples() -> None:
-    paragraph = ParagraphInput(output_variable_name="reason", default_value="Ship it")
-    select = SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value="approve")
-    file_input = _file_input()
-    file_list = FileListInput(
-        output_variable_name="evidence",
-        allowed_file_types=(FileType.IMAGE,),
-        allowed_file_extensions=(),
-        allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE,),
-        number_limits=3,
-    )
-    action = ResolvedFormAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY)
-    form = ResolvedForm(
+@pytest.fixture
+def form() -> ResolvedForm:
+    return ResolvedForm(
         title="Review",
-        blocks=(MarkdownText("Please review\n"), paragraph, select, file_input, file_list),
-        user_actions=(action,),
+        parts=(
+            MarkdownFragment(text="Please review\n"),
+            ParagraphInput(output_variable_name="reason", default_value="Ship it"),
+            SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value=None),
+            FileInput(
+                output_variable_name="attachment",
+                allowed_file_types=(FileType.DOCUMENT, FileType.CUSTOM),
+                allowed_file_extensions=("pdf", "md"),
+                allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
+            ),
+            FileListInput(
+                output_variable_name="evidence",
+                allowed_file_types=(FileType.IMAGE,),
+                allowed_file_extensions=(),
+                allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE,),
+                number_limits=3,
+            ),
+        ),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="Please review {{#$output.reason#}}",
     )
 
-    assert form.blocks[3].allowed_file_types == (FileType.DOCUMENT, FileType.CUSTOM)
-    assert form.blocks[3].allowed_file_upload_methods == (
-        FileTransferMethod.LOCAL_FILE,
-        FileTransferMethod.REMOTE_URL,
-    )
-    with pytest.raises(FrozenInstanceError):
-        form.title = "Changed"
-    with pytest.raises(FrozenInstanceError):
-        paragraph.default_value = "Changed"
+
+def test_resolved_form_json_round_trip_preserves_all_parts_and_enums(form: ResolvedForm) -> None:
+    serialized = form.model_dump_json()
+
+    assert json.loads(serialized) == {
+        "title": "Review",
+        "parts": [
+            {"type": "markdown_fragment", "text": "Please review\n"},
+            {"type": "paragraph_input", "output_variable_name": "reason", "default_value": "Ship it"},
+            {
+                "type": "select_input",
+                "output_variable_name": "decision",
+                "options": ["approve", "reject"],
+                "default_value": None,
+            },
+            {
+                "type": "file_input",
+                "output_variable_name": "attachment",
+                "allowed_file_types": ["document", "custom"],
+                "allowed_file_extensions": ["pdf", "md"],
+                "allowed_file_upload_methods": ["local_file", "remote_url"],
+            },
+            {
+                "type": "file_list_input",
+                "output_variable_name": "evidence",
+                "allowed_file_types": ["image"],
+                "allowed_file_extensions": [],
+                "allowed_file_upload_methods": ["local_file"],
+                "number_limits": 3,
+            },
+        ],
+        "actions": [{"id": "approve", "title": "Approve", "button_style": "primary"}],
+        "legacy_form_content": "Please review {{#$output.reason#}}",
+    }
+    restored = ResolvedForm.model_validate_json(serialized)
+    assert restored == form
+    assert restored.actions[0].button_style is ButtonStyle.PRIMARY
+    attachment = restored.parts[3]
+    assert isinstance(attachment, FileInput)
+    assert attachment.allowed_file_types[0] is FileType.DOCUMENT
+    assert attachment.allowed_file_upload_methods[0] is FileTransferMethod.LOCAL_FILE
+    assert ResolvedForm.model_validate(form.model_dump()) == form
+
+
+def test_resolved_form_and_nested_values_are_frozen(form: ResolvedForm) -> None:
+    with pytest.raises(ValidationError, match="frozen_instance"):
+        form.title = "Changed"  # pyrefly: ignore[read-only]
+    paragraph = form.parts[1]
+    assert isinstance(paragraph, ParagraphInput)
+    with pytest.raises(ValidationError, match="frozen_instance"):
+        paragraph.default_value = "Changed"  # pyrefly: ignore[read-only]
+    with pytest.raises(ValidationError, match="frozen_instance"):
+        form.actions[0].title = "Changed"  # pyrefly: ignore[read-only]
 
 
 @pytest.mark.parametrize(
-    "constructor",
+    ("model", "values", "error_type"),
     [
-        lambda: SelectInput("decision", ["approve"], None),
-        lambda: FileInput("file", [FileType.DOCUMENT], (), (FileTransferMethod.LOCAL_FILE,)),
-        lambda: FileInput("file", (FileType.DOCUMENT,), ["pdf"], (FileTransferMethod.LOCAL_FILE,)),
-        lambda: FileInput("file", (FileType.DOCUMENT,), (), [FileTransferMethod.LOCAL_FILE]),
-        lambda: FileListInput("files", (FileType.DOCUMENT,), (), [FileTransferMethod.LOCAL_FILE], 1),
-        lambda: ResolvedForm(None, [MarkdownText("content")], (), "content"),
-        lambda: ResolvedForm(None, (), [ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY)], "content"),
+        (MarkdownFragment, {"text": 1}, "string_type"),
+        (ParagraphInput, {"output_variable_name": "reason", "default_value": 1}, "string_type"),
+        (SelectInput, {"output_variable_name": "choice", "options": ["yes"], "default_value": None}, "tuple_type"),
+        (SelectInput, {"output_variable_name": "choice", "options": (1,), "default_value": None}, "string_type"),
+        (UserAction, {"id": "approve", "title": "Approve", "button_style": "primary"}, "is_instance_of"),
+        (ResolvedForm, {"title": None, "parts": (), "actions": (), "legacy_form_content": ""}, "string_type"),
+        (ResolvedForm, {"title": "", "parts": [], "actions": (), "legacy_form_content": ""}, "tuple_type"),
+        (ResolvedForm, {"title": "", "parts": (), "actions": [], "legacy_form_content": ""}, "tuple_type"),
     ],
 )
-def test_resolved_form_values_reject_mutable_sequence_ownership(constructor) -> None:
-    with pytest.raises(TypeError, match="immutable tuple"):
-        constructor()
+def test_internal_construction_rejects_incorrect_types(
+    model: type[BaseModel], values: dict[str, object], error_type: str
+) -> None:
+    with pytest.raises(ValidationError, match=error_type):
+        model.model_validate(values)
+
+
+@pytest.mark.parametrize("field", ["allowed_file_types", "allowed_file_extensions", "allowed_file_upload_methods"])
+def test_file_constraints_reject_mutable_sequences(field: str, form: ResolvedForm) -> None:
+    values = form.parts[3].model_dump()
+    values[field] = []
+
+    with pytest.raises(ValidationError, match="tuple_type"):
+        FileInput.model_validate(values)
+
+
+@pytest.mark.parametrize("number_limits", [True, "3", 1.5])
+def test_file_list_number_limit_requires_an_integer(number_limits: object, form: ResolvedForm) -> None:
+    values = form.parts[4].model_dump()
+    values["number_limits"] = number_limits
+
+    with pytest.raises(ValidationError, match="int_type"):
+        FileListInput.model_validate(values)
+
+
+def test_all_models_reject_extra_fields(form: ResolvedForm) -> None:
+    for model in (form, *form.parts, *form.actions):
+        values = model.model_dump()
+        values["unexpected"] = True
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            type(model).model_validate(values)
 
 
 @pytest.mark.parametrize(
-    ("action_id", "title"),
-    [("", "Approve"), ("approve", "")],
+    ("part", "error_type"),
+    [
+        ({"type": "unknown", "text": "content"}, "union_tag_invalid"),
+        ({"text": "content"}, "union_tag_not_found"),
+        ({"type": "paragraph_input", "text": "content"}, "missing"),
+    ],
 )
-def test_resolved_form_action_rejects_each_blank_component(action_id: str, title: str) -> None:
-    with pytest.raises(ValueError, match="must not be blank"):
-        ResolvedFormAction(action_id, title, ButtonStyle.PRIMARY)
+def test_json_deserialization_requires_matching_part_discriminator(part: dict[str, str], error_type: str) -> None:
+    serialized = json.dumps({"title": "", "parts": [part], "actions": [], "legacy_form_content": ""})
+
+    with pytest.raises(ValidationError, match=error_type):
+        ResolvedForm.model_validate_json(serialized)
 
 
-def test_resolved_defaults_and_identifiers_are_validated_at_construction() -> None:
-    with pytest.raises(ValueError, match="default"):
-        SelectInput("decision", ("approve", "reject"), "escalate")
-    with pytest.raises(ValueError, match="output variable name"):
-        ParagraphInput("", None)
-    with pytest.raises(ValueError, match="number limits"):
-        FileListInput("files", (), (), (), 0)
-    with pytest.raises(TypeError, match="ButtonStyle"):
-        ResolvedFormAction("approve", "Approve", "primary")
+def test_type_correct_values_are_preserved_without_business_validation() -> None:
+    action = UserAction(id="", title="", button_style=ButtonStyle.DEFAULT)
+    form = ResolvedForm(
+        title="",
+        parts=(
+            ParagraphInput(output_variable_name="", default_value="  Untrimmed  "),
+            SelectInput(output_variable_name=" Choice ", options=("", "", " Yes "), default_value="unlisted"),
+            FileListInput(
+                output_variable_name="",
+                allowed_file_types=(),
+                allowed_file_extensions=(" .PDF ",),
+                allowed_file_upload_methods=(),
+                number_limits=0,
+            ),
+        ),
+        actions=(action, action),
+        legacy_form_content=" {{#$output.reason#}} ",
+    )
 
-
-def test_resolved_form_rejects_duplicate_action_identifiers() -> None:
-    action = ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY)
-
-    with pytest.raises(ValueError, match="unique"):
-        ResolvedForm(None, (), (action, action), "content")
-
-
-def test_input_blocks_expose_only_resolved_presentation_fields() -> None:
-    paragraph_fields = {field.name for field in fields(ParagraphInput)}
-    select_fields = {field.name for field in fields(SelectInput)}
-    file_fields = {field.name for field in fields(FileInput)}
-    resolved_form_fields = {field.name for field in fields(ResolvedForm)}
-
-    assert paragraph_fields == {"output_variable_name", "default_value"}
-    assert select_fields == {"output_variable_name", "options", "default_value"}
-    assert file_fields == {
-        "output_variable_name",
-        "allowed_file_types",
-        "allowed_file_extensions",
-        "allowed_file_upload_methods",
-    }
-    assert resolved_form_fields == {"title", "blocks", "user_actions", "legacy_form_content"}
-    assert get_type_hints(ResolvedFormAction)["button_style"] is ButtonStyle
-    assert not hasattr(human_input_v2, "InputBlock")
-
-
-def test_resolved_form_exports_use_channel_neutral_names() -> None:
-    assert hasattr(human_input_v2, "ResolvedFormAction")
-    assert hasattr(human_input_v2, "ResolvedFormContent")
-    assert not hasattr(human_input_v2, "CardAction")
-    assert not hasattr(human_input_v2, "CardContent")
+    assert ResolvedForm.model_validate_json(form.model_dump_json()) == form
+    paragraph = form.parts[0]
+    assert isinstance(paragraph, ParagraphInput)
+    assert paragraph.default_value == "  Untrimmed  "
+    select = form.parts[1]
+    assert isinstance(select, SelectInput)
+    assert select.output_variable_name == " Choice "
+    assert form.legacy_form_content == " {{#$output.reason#}} "

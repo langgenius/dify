@@ -28,16 +28,6 @@ from jwt.algorithms import RSAAlgorithm
 from msrest.authentication import BasicTokenAuthentication
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    FileInput,
-    FileListInput,
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -59,6 +49,16 @@ from core.human_input_v2.im_integration.adapters import (
     StaticCardIntent,
     WebhookRequest,
     ms_teams,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
 )
 
 _PUBLIC_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
@@ -327,19 +327,32 @@ def _card_intent(
     action_style: ButtonStyle = ButtonStyle.PRIMARY,
 ) -> ResolvedForm:
     if input_type == "select":
-        input_block: ResolvedFormContent = SelectInput("decision", ("Approve", "Reject"), "Approve")
+        input_block: FormPart = SelectInput(
+            output_variable_name="decision", options=("Approve", "Reject"), default_value="Approve"
+        )
     elif input_type == "file":
-        input_block = FileInput("decision", (), (), ())
+        input_block = FileInput(
+            output_variable_name="decision",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+        )
     elif input_type == "file-list":
-        input_block = FileListInput("decision", (), (), (), 1)
+        input_block = FileListInput(
+            output_variable_name="decision",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+            number_limits=1,
+        )
     else:
-        input_block = ParagraphInput("decision", "Sanitized initial value")
+        input_block = ParagraphInput(output_variable_name="decision", default_value="Sanitized initial value")
     return ResolvedForm(
         title="Sanitized title",
-        blocks=(MarkdownText(markdown_text), input_block, MarkdownText("Sanitized trailing content")),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", action_style),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        parts=(MarkdownFragment(text=markdown_text), input_block, MarkdownFragment(text="Sanitized trailing content")),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=action_style),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -684,8 +697,8 @@ def test_graph_boundary_never_publishes_partial_directory(
         _card_intent(markdown_text="x" * 30_000),
         ResolvedForm(
             title="Sanitized title",
-            blocks=(SelectInput("decision", ("One", "One"), "One"),),
-            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            parts=(SelectInput(output_variable_name="decision", options=("One", "One"), default_value="One"),),
+            actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
             legacy_form_content="This value must not be rendered",
         ),
     ],

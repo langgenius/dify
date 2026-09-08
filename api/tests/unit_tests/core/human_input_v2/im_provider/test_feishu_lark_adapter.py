@@ -8,16 +8,6 @@ from typing import Literal, overload
 import pytest
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    FileInput,
-    FileListInput,
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     CorrelationToken,
@@ -41,6 +31,16 @@ from core.human_input_v2.im_integration.adapters.credentials import FeishuCreden
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
     LarkIMProviderAdapter,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
 )
 
 
@@ -211,19 +211,32 @@ def _scope_page(
 
 def _intent(input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
-        input_block: ResolvedFormContent = SelectInput("comment", ("Approve", "Reject"), "Approve")
+        input_block: FormPart = SelectInput(
+            output_variable_name="comment", options=("Approve", "Reject"), default_value="Approve"
+        )
     elif input_type == "file":
-        input_block = FileInput("comment", (), (), ())
+        input_block = FileInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+        )
     elif input_type == "file-list":
-        input_block = FileListInput("comment", (), (), (), 1)
+        input_block = FileListInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+            number_limits=1,
+        )
     else:
-        input_block = ParagraphInput("comment", "Initial")
+        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
     return ResolvedForm(
         title="Approval",
-        blocks=(MarkdownText("Rendered **content**"), input_block),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.DEFAULT),
+        parts=(MarkdownFragment(text="Rendered **content**"), input_block),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.DEFAULT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -232,14 +245,14 @@ def _intent(input_type: str = "paragraph") -> ResolvedForm:
 def _provider_confirmed_form_intent() -> ResolvedForm:
     return ResolvedForm(
         title="Synthetic decision",
-        blocks=(
-            MarkdownText("Synthetic **approval** content"),
-            ParagraphInput("explanation", "Synthetic default"),
-            SelectInput("decision", ("allow", "deny"), "allow"),
+        parts=(
+            MarkdownFragment(text="Synthetic **approval** content"),
+            ParagraphInput(output_variable_name="explanation", default_value="Synthetic default"),
+            SelectInput(output_variable_name="decision", options=("allow", "deny"), default_value="allow"),
         ),
-        user_actions=(
-            ResolvedFormAction("continue", "Continue", ButtonStyle.PRIMARY),
-            ResolvedFormAction("stop", "Stop", ButtonStyle.ACCENT),
+        actions=(
+            UserAction(id="continue", title="Continue", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="stop", title="Stop", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -1015,8 +1028,11 @@ def test_provider_confirmed_form_preserves_markdown_after_input_without_reorderi
     adapter = _adapter(monkeypatch, provider, gateway)
     intent = ResolvedForm(
         title="Approval",
-        blocks=(ParagraphInput("comment", None), MarkdownText("After input")),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        parts=(
+            ParagraphInput(output_variable_name="comment", default_value=None),
+            MarkdownFragment(text="After input"),
+        ),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
     )
 

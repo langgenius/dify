@@ -6,15 +6,15 @@ from collections.abc import Mapping
 from typing import assert_never
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.human_input_v2 import (
+from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
-    MarkdownText,
+    FormPart,
+    MarkdownFragment,
     ParagraphInput,
     ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
     SelectInput,
+    UserAction,
 )
 from core.workflow.nodes.human_input.entities import (
     OUTPUT_VARIABLE_PATTERN,
@@ -27,9 +27,9 @@ from core.workflow.nodes.human_input.entities import (
     StringSource,
 )
 from core.workflow.nodes.human_input.enums import ValueSourceType
-from graphon.runtime import VariablePool
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.segments import Segment
+from graphon.variables.template_resolution import convert_template
 
 from .entities import HumanInputNodeData
 
@@ -49,12 +49,12 @@ def compile_resolved_form(
     legacy_form_content = _resolve_legacy_form_content(node_data.form_content, variable_pool)
     inputs_by_name = {input_config.output_variable_name: input_config for input_config in node_data.inputs}
     default_values = resolved_default_values or {}
-    blocks: list[ResolvedFormContent] = []
+    blocks: list[FormPart] = []
     cursor = 0
     for match in OUTPUT_VARIABLE_PATTERN.finditer(legacy_form_content):
         fragment = legacy_form_content[cursor : match.start()]
         if fragment != "":
-            blocks.append(MarkdownText(fragment))
+            blocks.append(MarkdownFragment(text=fragment))
         output_variable_name = match.group("field_name")
         input_config = inputs_by_name.get(output_variable_name)
         if input_config is None:
@@ -69,13 +69,13 @@ def compile_resolved_form(
         cursor = match.end()
     trailing_fragment = legacy_form_content[cursor:]
     if trailing_fragment != "":
-        blocks.append(MarkdownText(trailing_fragment))
+        blocks.append(MarkdownFragment(text=trailing_fragment))
 
     return ResolvedForm(
-        title=node_data.title or None,
-        blocks=tuple(blocks),
-        user_actions=tuple(
-            ResolvedFormAction(
+        title=node_data.title,
+        parts=tuple(blocks),
+        actions=tuple(
+            UserAction(
                 id=action.id,
                 title=action.title,
                 button_style=action.button_style,
@@ -87,9 +87,7 @@ def compile_resolved_form(
 
 
 def _resolve_legacy_form_content(form_content: str, variable_pool: ReadOnlyVariablePool) -> str:
-    if not isinstance(variable_pool, VariablePool):
-        raise TypeError("resolved form compilation requires graphon.runtime.VariablePool for template expansion")
-    return variable_pool.convert_template(form_content).markdown
+    return convert_template(variable_pool, form_content).markdown
 
 
 def _resolve_input(
@@ -103,7 +101,7 @@ def _resolve_input(
             default_value = _resolve_paragraph_default(input_config.default, variable_pool)
             if default_value is None and resolved_default is not None:
                 default_value = _resolved_text(resolved_default, field_name=input_config.output_variable_name)
-            return ParagraphInput(input_config.output_variable_name, default_value)
+            return ParagraphInput(output_variable_name=input_config.output_variable_name, default_value=default_value)
         case SelectInputConfig():
             options = _resolve_select_options(input_config.option_source, variable_pool)
             default_value = (
@@ -111,7 +109,9 @@ def _resolve_input(
                 if resolved_default is not None
                 else None
             )
-            return SelectInput(input_config.output_variable_name, options, default_value)
+            return SelectInput(
+                output_variable_name=input_config.output_variable_name, options=options, default_value=default_value
+            )
         case FileInputConfig():
             return FileInput(
                 output_variable_name=input_config.output_variable_name,

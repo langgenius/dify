@@ -22,16 +22,6 @@ from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    FileInput,
-    FileListInput,
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     CardAssessment,
@@ -54,6 +44,16 @@ from core.human_input_v2.im_integration.adapters import (
     StaticCardIntent,
     WebhookRequest,
     ms_teams,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
 )
 
 _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
@@ -154,19 +154,30 @@ def _card_intent(
     action_style: ButtonStyle = ButtonStyle.PRIMARY,
 ) -> ResolvedForm:
     if input_type == "select":
-        input_block: ResolvedFormContent = SelectInput("comment", ("One", "Two"), "One")
+        input_block: FormPart = SelectInput(output_variable_name="comment", options=("One", "Two"), default_value="One")
     elif input_type == "file":
-        input_block = FileInput("comment", (), (), ())
+        input_block = FileInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+        )
     elif input_type == "file-list":
-        input_block = FileListInput("comment", (), (), (), 1)
+        input_block = FileListInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+            number_limits=1,
+        )
     else:
-        input_block = ParagraphInput("comment", "Initial")
+        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
     return ResolvedForm(
         title="Approval",
-        blocks=(MarkdownText(markdown_text), input_block, MarkdownText("After input")),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", action_style),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        parts=(MarkdownFragment(text=markdown_text), input_block, MarkdownFragment(text="After input")),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=action_style),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -174,14 +185,14 @@ def _card_intent(
 
 def _custom_card_intent(
     *,
-    blocks: tuple[ResolvedFormContent, ...],
-    title: str | None = "Approval",
+    blocks: tuple[FormPart, ...],
+    title: str = "Approval",
     action_style: ButtonStyle = ButtonStyle.DEFAULT,
 ) -> ResolvedForm:
     return ResolvedForm(
         title=title,
-        blocks=blocks,
-        user_actions=(ResolvedFormAction("approve", "Approve", action_style),),
+        parts=blocks,
+        actions=(UserAction(id="approve", title="Approve", button_style=action_style),),
         legacy_form_content="This value must not be rendered",
     )
 
@@ -854,24 +865,23 @@ def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker) 
     "intent",
     [
         _custom_card_intent(
-            blocks=(SelectInput("choice", (), None),),
+            blocks=(SelectInput(output_variable_name="choice", options=(), default_value=None),),
         ),
         _custom_card_intent(
-            blocks=(SelectInput("choice", ("",), None),),
+            blocks=(SelectInput(output_variable_name="choice", options=("",), default_value=None),),
         ),
         _custom_card_intent(
-            blocks=(SelectInput("choice", ("One", "One"), "One"),),
+            blocks=(SelectInput(output_variable_name="choice", options=("One", "One"), default_value="One"),),
         ),
         _custom_card_intent(
             blocks=(
-                ParagraphInput("comment", None),
-                ParagraphInput("comment", None),
+                ParagraphInput(output_variable_name="comment", default_value=None),
+                ParagraphInput(output_variable_name="comment", default_value=None),
             ),
         ),
-        _custom_card_intent(blocks=(MarkdownText(""),)),
-        _custom_card_intent(blocks=(), title=""),
+        _custom_card_intent(blocks=(MarkdownFragment(text=""),)),
     ],
-    ids=("empty-options", "empty-option", "duplicate-options", "duplicate-input", "empty-markdown", "empty-title"),
+    ids=("empty-options", "empty-option", "duplicate-options", "duplicate-input", "empty-markdown"),
 )
 def test_card_assessment_rejects_unpreservable_resolved_controls_and_presentation(
     mocker,

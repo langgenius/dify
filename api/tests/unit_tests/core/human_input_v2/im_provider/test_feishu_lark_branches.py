@@ -11,14 +11,6 @@ from typing import cast, get_type_hints
 import pytest
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as adapters_package
 from core.human_input_v2.im_integration.adapters import (
@@ -33,6 +25,14 @@ from core.human_input_v2.im_integration.adapters.credentials import FeishuCreden
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
     LarkIMProviderAdapter,
+)
+from core.human_input_v2.resolved_form import (
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
 )
 
 
@@ -108,14 +108,14 @@ def _credentials() -> FeishuCredentials:
 
 def _intent(
     *,
-    blocks: tuple[ResolvedFormContent, ...] = (MarkdownText("Rendered content"),),
-    actions: tuple[ResolvedFormAction, ...] = (),
-    title: str | None = None,
+    blocks: tuple[FormPart, ...] = (MarkdownFragment(text="Rendered content"),),
+    actions: tuple[UserAction, ...] = (),
+    title: str = "",
 ) -> ResolvedForm:
     return ResolvedForm(
         title=title,
-        blocks=blocks,
-        user_actions=actions,
+        parts=blocks,
+        actions=actions,
         legacy_form_content="This value must not be rendered",
     )
 
@@ -246,16 +246,22 @@ def test_signature_accepts_timezone_aware_received_at() -> None:
     "intent",
     [
         _intent(blocks=(), actions=()),
-        _intent(blocks=(MarkdownText(""),)),
-        _intent(blocks=(SelectInput("decision", ("Approve", ""), "Approve"),)),
-        _intent(blocks=(SelectInput("decision", ("Approve", "Approve"), "Approve"),)),
+        _intent(blocks=(MarkdownFragment(text=""),)),
+        _intent(
+            blocks=(SelectInput(output_variable_name="decision", options=("Approve", ""), default_value="Approve"),)
+        ),
         _intent(
             blocks=(
-                ParagraphInput("duplicate", None),
-                ParagraphInput("duplicate", None),
+                SelectInput(output_variable_name="decision", options=("Approve", "Approve"), default_value="Approve"),
             )
         ),
-        _intent(actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.GHOST),)),
+        _intent(
+            blocks=(
+                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                ParagraphInput(output_variable_name="duplicate", default_value=None),
+            )
+        ),
+        _intent(actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.GHOST),)),
     ],
 )
 def test_card_assessment_rejects_every_lossy_shape(intent: ResolvedForm) -> None:
@@ -263,7 +269,7 @@ def test_card_assessment_rejects_every_lossy_shape(intent: ResolvedForm) -> None
 
 
 def test_headerless_resolved_paragraph_renders_without_default() -> None:
-    intent = _intent(blocks=(ParagraphInput("comment", None),))
+    intent = _intent(blocks=(ParagraphInput(output_variable_name="comment", default_value=None),))
     card = adapter_module._MSFeishuLarkCardCodec().encode(intent, CorrelationToken("opaque-correlation-token"))
     assert "header" not in card
     body = card["body"]

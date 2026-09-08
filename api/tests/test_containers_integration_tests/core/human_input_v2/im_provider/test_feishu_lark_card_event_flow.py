@@ -14,7 +14,6 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import (
 )
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -35,6 +34,7 @@ from core.human_input_v2.im_integration.adapters.credentials import FeishuCreden
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
 )
+from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
 
 _FIXTURE_DIRECTORY = Path(__file__).resolve().parents[4] / "unit_tests/core/human_input_v2/im_provider/fixtures"
 _WEBHOOK_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_webhook.json"
@@ -150,12 +150,12 @@ class _FixtureSDKObjectStreamClient:
 def _intent(marker: str = "test-only") -> ResolvedForm:
     return ResolvedForm(
         title=f"Feishu/Lark card agreement [{marker}]",
-        blocks=(
-            MarkdownText("Review the provider wire card."),
-            ParagraphInput("comment", "Initial review"),
-            SelectInput("decision", ("ship", "hold"), "hold"),
+        parts=(
+            MarkdownFragment(text="Review the provider wire card."),
+            ParagraphInput(output_variable_name="comment", default_value="Initial review"),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
         ),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
 
@@ -437,7 +437,7 @@ def test_sender_wire_agrees_with_sanitized_webhook_and_stream_boundaries(
 
     try:
         assert adapter.dynamic_card_messaging.assess(_intent()).representable is True
-        empty_intent = ResolvedForm(title=None, blocks=(), user_actions=(), legacy_form_content="unused")
+        empty_intent = ResolvedForm(title="", parts=(), actions=(), legacy_form_content="unused")
         assert adapter.dynamic_card_messaging.assess(empty_intent).representable is False
         result = adapter.dynamic_card_messaging.send_card(
             ProviderUserId("union_test_only"),
@@ -560,9 +560,9 @@ def test_protocol_failure_and_routing_boundaries_remain_distinct() -> None:
         codec.decode(_event({}, payload="not-json"))
 
     oversized = ResolvedForm(
-        title=None,
-        blocks=(MarkdownText("x" * (31 * 1024)),),
-        user_actions=(),
+        title="",
+        parts=(MarkdownFragment(text="x" * (31 * 1024)),),
+        actions=(),
         legacy_form_content="unused",
     )
     with pytest.raises(DynamicCardMessagingError, match="Provider payload limit"):

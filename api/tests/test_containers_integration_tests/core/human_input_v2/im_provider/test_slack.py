@@ -17,7 +17,6 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -42,6 +41,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
+from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
 
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
 _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
@@ -566,15 +566,23 @@ def test_slack_card_assessment_matches_static_select_provider_boundary(
     supported_options = tuple(f"option-{ordinal}" for ordinal in range(100))
     supported = ResolvedForm(
         title="Supported Slack selector boundary",
-        blocks=(SelectInput("risk_level", supported_options, supported_options[0]),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        parts=(
+            SelectInput(
+                output_variable_name="risk_level", options=supported_options, default_value=supported_options[0]
+            ),
+        ),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
     unsupported_options = (*supported_options, "option-100")
     unsupported = ResolvedForm(
         title="Unsupported Slack selector boundary",
-        blocks=(SelectInput("risk_level", unsupported_options, unsupported_options[0]),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        parts=(
+            SelectInput(
+                output_variable_name="risk_level", options=unsupported_options, default_value=unsupported_options[0]
+            ),
+        ),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
 
@@ -597,14 +605,14 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
     correlation_token = CorrelationToken(f"{marker}-correlation")
     intent = ResolvedForm(
         title=f"Slack card integration [{marker}]",
-        blocks=(
-            MarkdownText("Review the provider-persisted form."),
-            ParagraphInput("review_comment", "Initial review"),
-            SelectInput("risk_level", ("low", "high"), "low"),
+        parts=(
+            MarkdownFragment(text="Review the provider-persisted form."),
+            ParagraphInput(output_variable_name="review_comment", default_value="Initial review"),
+            SelectInput(output_variable_name="risk_level", options=("low", "high"), default_value="low"),
         ),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="unused",
     )
@@ -949,9 +957,9 @@ def test_slack_zero_input_card_round_trips_without_callback_state(
     marker = f"codex-implementer-slack-card-event-zero-input-5ab7-20260811-{uuid4()}"
     correlation_token = CorrelationToken(f"{marker}-correlation")
     intent = ResolvedForm(
-        title=None,
-        blocks=(MarkdownText(f"Choose one action [{marker}]."),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        title="",
+        parts=(MarkdownFragment(text=f"Choose one action [{marker}]."),),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
 

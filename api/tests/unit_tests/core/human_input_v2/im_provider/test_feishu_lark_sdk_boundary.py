@@ -22,7 +22,6 @@ from controllers.console.human_input_v2.providers import (
 )
 from controllers.console.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
 from core.human_input import ButtonStyle
-from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -55,6 +54,7 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
     _OfficialSDKGateway,
     _SynchronousEventChannel,
 )
+from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
 
 
 @dataclass(slots=True)
@@ -399,8 +399,11 @@ def _secure_credentials() -> FeishuCredentials:
 def _intent() -> ResolvedForm:
     return ResolvedForm(
         title="Approval",
-        blocks=(MarkdownText("Rendered **content**"), ParagraphInput("comment", "Initial")),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        parts=(
+            MarkdownFragment(text="Rendered **content**"),
+            ParagraphInput(output_variable_name="comment", default_value="Initial"),
+        ),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
     )
 
@@ -1086,9 +1089,9 @@ def test_directory_message_and_card_failures_are_safe_and_single_attempt(
     assert isinstance(card_result, MessageSendingError)
 
     empty_intent = ResolvedForm(
-        title=None,
-        blocks=(),
-        user_actions=(),
+        title="",
+        parts=(),
+        actions=(),
         legacy_form_content="This value must not be rendered",
     )
     assert card_adapter.dynamic_card_messaging.assess(empty_intent).representable is False

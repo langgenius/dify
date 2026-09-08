@@ -36,7 +36,6 @@ from msrest.exceptions import HttpOperationError
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import MSTeamsCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -75,6 +74,14 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMEventStream,
     IMMessaging,
     IMWebhookHandler,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
 )
 
 logger = logging.getLogger(__name__)
@@ -276,8 +283,8 @@ def _mutation_connector(credentials: MicrosoftAppCredentials, base_url: str) -> 
 def _card_summary(intent: ResolvedForm) -> str:
     if intent.title:
         return intent.title
-    for block in intent.blocks:
-        if isinstance(block, MarkdownText) and block.text.strip():
+    for block in intent.parts:
+        if isinstance(block, MarkdownFragment) and block.text.strip():
             return block.text
     return "Human input form"
 
@@ -400,15 +407,13 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
 
     @classmethod
     def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
-        if not intent.blocks and not intent.user_actions:
+        if not intent.parts and not intent.actions:
             return "Microsoft Teams cannot preserve an empty card."
-        if intent.title is not None and not intent.title:
-            return "Microsoft Teams cannot preserve an empty card title."
 
         input_names: set[str] = set()
-        for block in intent.blocks:
+        for block in intent.parts:
             match block:
-                case MarkdownText(text=text):
+                case MarkdownFragment(text=text):
                     if not text:
                         return "Microsoft Teams cannot preserve an empty Markdown block."
                     continue
@@ -429,7 +434,7 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                 return "Microsoft Teams card input identifier is reserved."
             input_names.add(input_name)
 
-        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.user_actions):
+        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.actions):
             return "Microsoft Teams cannot preserve one card action style."
         assessment_card = cls._render_card(intent, CorrelationToken(""))
         if cls._serialized_card_size(assessment_card) > cls._MAX_CARD_SIZE_BYTES:
@@ -443,7 +448,7 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
         correlation_token: CorrelationToken,
     ) -> dict[str, JsonValue]:
         body: list[JsonValue] = []
-        if intent.title is not None:
+        if intent.title:
             body.append(
                 {
                     "type": "TextBlock",
@@ -453,8 +458,8 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                     "weight": "Bolder",
                 }
             )
-        for block in intent.blocks:
-            if isinstance(block, MarkdownText):
+        for block in intent.parts:
+            if isinstance(block, MarkdownFragment):
                 body.append({"type": "TextBlock", "text": block.text, "wrap": True})
                 continue
             if isinstance(block, ParagraphInput):
@@ -483,7 +488,7 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
             raise DynamicCardMessagingError("Microsoft Teams cards cannot represent file inputs.")
 
         actions: list[JsonValue] = []
-        for action in intent.user_actions:
+        for action in intent.actions:
             metadata = cls._ButtonMetadata(
                 version=cls._CALLBACK_SCHEMA_VERSION,
                 action_id=action.id,

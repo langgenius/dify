@@ -7,7 +7,6 @@ from datetime import datetime
 import pytest
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -20,6 +19,7 @@ from core.human_input_v2.im_integration.adapters import (
     UnrecognizedIMEvent,
 )
 from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter, _MSTeamsCardCodec
+from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
 
 _RECEIVED_AT = datetime(2026, 8, 12, 2, 26, 40)
 
@@ -27,14 +27,14 @@ _RECEIVED_AT = datetime(2026, 8, 12, 2, 26, 40)
 def _form(*, comment_input_name: str = "review_comment") -> ResolvedForm:
     return ResolvedForm(
         title="Microsoft Teams card integration",
-        blocks=(
-            MarkdownText("Review the encoded form."),
-            ParagraphInput(comment_input_name, "Initial review"),
-            SelectInput("risk_level", ("low", "high"), "low"),
+        parts=(
+            MarkdownFragment(text="Review the encoded form."),
+            ParagraphInput(output_variable_name=comment_input_name, default_value="Initial review"),
+            SelectInput(output_variable_name="risk_level", options=("low", "high"), default_value="low"),
         ),
-        user_actions=(
-            ResolvedFormAction("approve-✅", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        actions=(
+            UserAction(id="approve-✅", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="unused",
     )

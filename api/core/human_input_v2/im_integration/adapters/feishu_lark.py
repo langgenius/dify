@@ -37,7 +37,6 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, Valid
 from websockets.asyncio.client import ClientConnection
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import (
     FeishuCredentials,
@@ -81,6 +80,14 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMEventConsumer,
     IMMessaging,
     IMWebhookHandler,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
 )
 
 logger = logging.getLogger(__name__)
@@ -894,13 +901,13 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
 
     @classmethod
     def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
-        if not intent.blocks and not intent.user_actions:
+        if not intent.parts and not intent.actions:
             return "Feishu/Lark cannot preserve an empty card."
 
         input_names: set[str] = set()
-        for block in intent.blocks:
+        for block in intent.parts:
             match block:
-                case MarkdownText(text=text):
+                case MarkdownFragment(text=text):
                     if not text:
                         return "Feishu/Lark cannot preserve an empty Markdown block."
                     continue
@@ -919,7 +926,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                 return "Feishu/Lark cannot preserve duplicate card input identifiers."
             input_names.add(input_name)
 
-        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.user_actions):
+        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.actions):
             return "Feishu/Lark cannot preserve one card action style."
         assessment_card = cls._render_card(intent, CorrelationToken(""))
         if cls._serialized_card_size(assessment_card) > cls._MAX_CARD_SIZE_BYTES:
@@ -933,8 +940,8 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
         correlation_token: CorrelationToken,
     ) -> dict[str, JsonValue]:
         rendered_elements: list[JsonValue] = []
-        for block in intent.blocks:
-            if isinstance(block, MarkdownText):
+        for block in intent.parts:
+            if isinstance(block, MarkdownFragment):
                 rendered_elements.append({"tag": "markdown", "content": block.text})
                 continue
             placeholder: dict[str, JsonValue] = {
@@ -975,9 +982,9 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                 continue
             raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
 
-        if intent.user_actions:
+        if intent.actions:
             columns: list[JsonValue] = []
-            for action in intent.user_actions:
+            for action in intent.actions:
                 if action.button_style is ButtonStyle.PRIMARY:
                     button_type = "primary_filled"
                 elif action.button_style is ButtonStyle.ACCENT:
@@ -1021,7 +1028,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                 }
             )
 
-        requires_form = any(not isinstance(block, MarkdownText) for block in intent.blocks) or bool(intent.user_actions)
+        requires_form = any(not isinstance(block, MarkdownFragment) for block in intent.parts) or bool(intent.actions)
         body_elements: list[JsonValue]
         if requires_form:
             body_elements = [{"tag": "form", "name": cls._FORM_NAME, "elements": rendered_elements}]
@@ -1032,7 +1039,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
             "config": {"update_multi": True},
             "body": {"direction": "vertical", "elements": body_elements},
         }
-        if intent.title is not None:
+        if intent.title:
             card["header"] = {"title": {"tag": "plain_text", "content": intent.title}}
         return card
 

@@ -4,13 +4,13 @@ import pytest
 from pydantic import ValidationError
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.human_input_v2 import (
+from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
-    MarkdownText,
+    MarkdownFragment,
     ParagraphInput,
-    ResolvedFormAction,
     SelectInput,
+    UserAction,
 )
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
@@ -62,16 +62,16 @@ def test_compiler_preserves_markdown_and_input_source_order() -> None:
 
     resolved = compile_resolved_form(node_data, VariablePool.empty())
 
-    assert resolved.blocks == (
-        MarkdownText("Before "),
-        ParagraphInput("reason", None),
-        MarkdownText(" between "),
-        SelectInput("decision", ("approve", "reject"), None),
-        MarkdownText(" after"),
+    assert resolved.parts == (
+        MarkdownFragment(text="Before "),
+        ParagraphInput(output_variable_name="reason", default_value=None),
+        MarkdownFragment(text=" between "),
+        SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value=None),
+        MarkdownFragment(text=" after"),
     )
     assert resolved.title == "Review"
-    assert resolved.user_actions == (ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),)
-    assert resolved.user_actions[0].button_style is ButtonStyle.PRIMARY
+    assert resolved.actions == (UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),)
+    assert resolved.actions[0].button_style is ButtonStyle.PRIMARY
 
 
 def test_compiler_keeps_adjacent_inputs_adjacent_and_preserves_whitespace_fragments() -> None:
@@ -86,11 +86,11 @@ def test_compiler_keeps_adjacent_inputs_adjacent_and_preserves_whitespace_fragme
 
     resolved = compile_resolved_form(node_data, VariablePool.empty())
 
-    assert resolved.blocks == (
-        ParagraphInput("first", None),
-        ParagraphInput("second", None),
-        MarkdownText(" \n "),
-        ParagraphInput("third", None),
+    assert resolved.parts == (
+        ParagraphInput(output_variable_name="first", default_value=None),
+        ParagraphInput(output_variable_name="second", default_value=None),
+        MarkdownFragment(text=" \n "),
+        ParagraphInput(output_variable_name="third", default_value=None),
     )
 
 
@@ -116,7 +116,7 @@ def test_compiler_rejects_missing_referenced_input_and_omits_unreferenced_input(
         ),
         VariablePool.empty(),
     )
-    assert resolved.blocks == (ParagraphInput("referenced", None),)
+    assert resolved.parts == (ParagraphInput(output_variable_name="referenced", default_value=None),)
 
 
 def test_compiler_resolves_legacy_content_paragraph_defaults_and_select_values() -> None:
@@ -155,10 +155,10 @@ def test_compiler_resolves_legacy_content_paragraph_defaults_and_select_values()
         "Review expense report / expense report: "
         "{{#$output.constant_reason#}} {{#$output.variable_reason#}} {{#$output.decision#}}"
     )
-    assert tuple(block for block in resolved.blocks if not isinstance(block, MarkdownText)) == (
-        ParagraphInput("constant_reason", "No concerns"),
-        ParagraphInput("variable_reason", "Looks good"),
-        SelectInput("decision", ("approve", "reject"), "approve"),
+    assert tuple(block for block in resolved.parts if not isinstance(block, MarkdownFragment)) == (
+        ParagraphInput(output_variable_name="constant_reason", default_value="No concerns"),
+        ParagraphInput(output_variable_name="variable_reason", default_value="Looks good"),
+        SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value="approve"),
     )
 
 
@@ -178,19 +178,19 @@ def test_compiler_freezes_file_constraints_and_effective_file_list_number_limits
 
     resolved = compile_resolved_form(node_data, VariablePool.empty())
 
-    assert resolved.blocks == (
+    assert resolved.parts == (
         FileInput(
-            "attachment",
-            (FileType.DOCUMENT, FileType.CUSTOM),
-            ("pdf", "md"),
-            (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
+            output_variable_name="attachment",
+            allowed_file_types=(FileType.DOCUMENT, FileType.CUSTOM),
+            allowed_file_extensions=("pdf", "md"),
+            allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
         ),
         FileListInput(
-            "evidence",
-            (FileType.DOCUMENT, FileType.CUSTOM),
-            ("pdf", "md"),
-            (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
-            DEFAULT_FILE_NUMBER_LIMITS,
+            output_variable_name="evidence",
+            allowed_file_types=(FileType.DOCUMENT, FileType.CUSTOM),
+            allowed_file_extensions=("pdf", "md"),
+            allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
+            number_limits=DEFAULT_FILE_NUMBER_LIMITS,
         ),
     )
 
@@ -204,10 +204,10 @@ def test_node_data_and_compiler_preserve_repeated_output_slots_in_source_order()
     resolved = compile_resolved_form(node_data, VariablePool.empty())
 
     assert node_data.output_variable_names() == ("reason", "reason")
-    assert resolved.blocks == (
-        ParagraphInput("reason", None),
-        MarkdownText(" then "),
-        ParagraphInput("reason", None),
+    assert resolved.parts == (
+        ParagraphInput(output_variable_name="reason", default_value=None),
+        MarkdownFragment(text=" then "),
+        ParagraphInput(output_variable_name="reason", default_value=None),
     )
 
 

@@ -17,7 +17,6 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import (
 )
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import FileInput, MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -32,6 +31,14 @@ from core.human_input_v2.im_integration.adapters import (
     UnrecognizedIMEvent,
     WebhookRequest,
     feishu_lark,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
 )
 
 _FIXTURE_DIRECTORY = Path(__file__).with_name("fixtures")
@@ -263,15 +270,15 @@ def _event(
 def _form() -> ResolvedForm:
     return ResolvedForm(
         title="Approval request",
-        blocks=(
-            MarkdownText("Review the generated answer."),
-            ParagraphInput("comment", "Looks good"),
-            MarkdownText("Choose the release decision."),
-            SelectInput("decision", ("ship", "hold"), "hold"),
+        parts=(
+            MarkdownFragment(text="Review the generated answer."),
+            ParagraphInput(output_variable_name="comment", default_value="Looks good"),
+            MarkdownFragment(text="Choose the release decision."),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
         ),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -421,9 +428,9 @@ def test_codec_encodes_the_provider_confirmed_shallow_form_layout() -> None:
 def test_codec_rejects_oversized_cards_before_provider_io() -> None:
     codec = feishu_lark._MSFeishuLarkCardCodec()
     oversized = ResolvedForm(
-        title=None,
-        blocks=(MarkdownText("x" * (31 * 1024)),),
-        user_actions=(),
+        title="",
+        parts=(MarkdownFragment(text="x" * (31 * 1024)),),
+        actions=(),
         legacy_form_content="unused",
     )
 
@@ -439,63 +446,73 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
     ("intent", "expected_reason"),
     [
         (
-            ResolvedForm(title=None, blocks=(), user_actions=(), legacy_form_content="unused"),
+            ResolvedForm(title="", parts=(), actions=(), legacy_form_content="unused"),
             "Feishu/Lark cannot preserve an empty card.",
         ),
         (
-            ResolvedForm(title=None, blocks=(MarkdownText(""),), user_actions=(), legacy_form_content="unused"),
+            ResolvedForm(title="", parts=(MarkdownFragment(text=""),), actions=(), legacy_form_content="unused"),
             "Feishu/Lark cannot preserve an empty Markdown block.",
         ),
         (
             ResolvedForm(
-                title=None,
-                blocks=(FileInput("attachment", (), (), ()),),
-                user_actions=(),
+                title="",
+                parts=(
+                    FileInput(
+                        output_variable_name="attachment",
+                        allowed_file_types=(),
+                        allowed_file_extensions=(),
+                        allowed_file_upload_methods=(),
+                    ),
+                ),
+                actions=(),
                 legacy_form_content="unused",
             ),
             "Feishu/Lark cards cannot represent file inputs.",
         ),
         (
             ResolvedForm(
-                title=None,
-                blocks=(SelectInput("decision", (), None),),
-                user_actions=(),
+                title="",
+                parts=(SelectInput(output_variable_name="decision", options=(), default_value=None),),
+                actions=(),
                 legacy_form_content="unused",
             ),
             "Feishu/Lark cannot preserve one select option.",
         ),
         (
             ResolvedForm(
-                title=None,
-                blocks=(SelectInput("decision", ("",), None),),
-                user_actions=(),
+                title="",
+                parts=(SelectInput(output_variable_name="decision", options=("",), default_value=None),),
+                actions=(),
                 legacy_form_content="unused",
             ),
             "Feishu/Lark cannot preserve one select option.",
         ),
         (
             ResolvedForm(
-                title=None,
-                blocks=(SelectInput("decision", ("ship", "ship"), None),),
-                user_actions=(),
+                title="",
+                parts=(SelectInput(output_variable_name="decision", options=("ship", "ship"), default_value=None),),
+                actions=(),
                 legacy_form_content="unused",
             ),
             "Feishu/Lark cannot preserve duplicate select options.",
         ),
         (
             ResolvedForm(
-                title=None,
-                blocks=(ParagraphInput("decision", None), SelectInput("decision", ("ship",), None)),
-                user_actions=(),
+                title="",
+                parts=(
+                    ParagraphInput(output_variable_name="decision", default_value=None),
+                    SelectInput(output_variable_name="decision", options=("ship",), default_value=None),
+                ),
+                actions=(),
                 legacy_form_content="unused",
             ),
             "Feishu/Lark cannot preserve duplicate card input identifiers.",
         ),
         (
             ResolvedForm(
-                title=None,
-                blocks=(MarkdownText("Review"),),
-                user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.GHOST),),
+                title="",
+                parts=(MarkdownFragment(text="Review"),),
+                actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.GHOST),),
                 legacy_form_content="unused",
             ),
             "Feishu/Lark cannot preserve one card action style.",
@@ -528,9 +545,9 @@ def test_codec_rejects_each_unrepresentable_provider_shape(
 def test_codec_rechecks_wire_size_with_the_actual_correlation_token() -> None:
     codec = feishu_lark._MSFeishuLarkCardCodec()
     intent = ResolvedForm(
-        title=None,
-        blocks=(MarkdownText("Review"),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.DEFAULT),),
+        title="",
+        parts=(MarkdownFragment(text="Review"),),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.DEFAULT),),
         legacy_form_content="unused",
     )
 
@@ -655,12 +672,12 @@ def test_encode_and_decode_preserve_exact_unicode_and_input_metadata_names() -> 
     codec = feishu_lark._MSFeishuLarkCardCodec()
     intent = ResolvedForm(
         title="Approval 🌍",
-        blocks=(
-            ParagraphInput("action_id", None),
-            ParagraphInput("correlation_token", None),
-            ParagraphInput("version", None),
+        parts=(
+            ParagraphInput(output_variable_name="action_id", default_value=None),
+            ParagraphInput(output_variable_name="correlation_token", default_value=None),
+            ParagraphInput(output_variable_name="version", default_value=None),
         ),
-        user_actions=(ResolvedFormAction("approve✅", "Approve", ButtonStyle.PRIMARY),),
+        actions=(UserAction(id="approve✅", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
     token = CorrelationToken("correlation-token-🔐")
@@ -718,9 +735,9 @@ def test_exact_private_marker_input_name_remains_isolated_from_action_metadata()
     codec = feishu_lark._MSFeishuLarkCardCodec()
     token = CorrelationToken("collision-correlation-token")
     intent = ResolvedForm(
-        title=None,
-        blocks=(ParagraphInput(_DIFY_ACTION_MARKER, None),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        title="",
+        parts=(ParagraphInput(output_variable_name=_DIFY_ACTION_MARKER, default_value=None),),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
 

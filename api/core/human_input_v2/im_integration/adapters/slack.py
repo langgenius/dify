@@ -41,7 +41,6 @@ from slack_sdk.web import WebClient
 from slack_sdk.web.slack_response import SlackResponse
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -82,6 +81,14 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMEventStream,
     IMMessaging,
     IMWebhookHandler,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
 )
 
 logger = logging.getLogger(__name__)
@@ -526,8 +533,8 @@ class _SlackCardCodec(IMCardEventDecoder):
         if intent.title:
             blocks.append({"type": "header", "text": {"type": "plain_text", "text": intent.title}})
         input_ordinal = 0
-        for block in intent.blocks:
-            if isinstance(block, MarkdownText):
+        for block in intent.parts:
+            if isinstance(block, MarkdownFragment):
                 blocks.append({"type": "markdown", "text": block.text})
                 continue
             input_name = block.output_variable_name
@@ -564,9 +571,9 @@ class _SlackCardCodec(IMCardEventDecoder):
                 }
             )
             input_ordinal += 1
-        if intent.user_actions:
+        if intent.actions:
             action_elements: list[JsonValue] = []
-            for action in intent.user_actions:
+            for action in intent.actions:
                 action_value = cls._encode_button_metadata(action.id, correlation_token)
                 if len(action_value) > cls._MAX_ACTION_VALUE_LENGTH:
                     raise DynamicCardMessagingError("Slack cannot preserve the correlation token.")
@@ -592,20 +599,20 @@ class _SlackCardCodec(IMCardEventDecoder):
 
     @classmethod
     def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
-        if not intent.blocks and not intent.user_actions:
+        if not intent.parts and not intent.actions:
             return "Slack cannot preserve an empty card."
-        if intent.title is not None and len(intent.title) > cls._MAX_HEADER_TEXT_LENGTH:
+        if len(intent.title) > cls._MAX_HEADER_TEXT_LENGTH:
             return "Slack cannot preserve the card title of this length."
-        block_count = len(intent.blocks) + (1 if intent.title else 0) + (1 if intent.user_actions else 0)
+        block_count = len(intent.parts) + (1 if intent.title else 0) + (1 if intent.actions else 0)
         if block_count > cls._MAX_BLOCK_COUNT:
             return "Slack cannot preserve this number of card controls."
-        if len(intent.user_actions) > cls._MAX_ACTION_COUNT:
+        if len(intent.actions) > cls._MAX_ACTION_COUNT:
             return "Slack cannot preserve this number of card actions."
 
         input_names: set[str] = set()
-        for block in intent.blocks:
+        for block in intent.parts:
             match block:
-                case MarkdownText(text=text):
+                case MarkdownFragment(text=text):
                     if not text or len(text) > cls._MAX_MARKDOWN_TEXT_LENGTH:
                         return "Slack cannot preserve one Markdown block of this length."
                     continue
@@ -633,7 +640,7 @@ class _SlackCardCodec(IMCardEventDecoder):
             if input_name in input_names:
                 return "Slack cannot preserve duplicate card input identifiers."
             input_names.add(input_name)
-        for action in intent.user_actions:
+        for action in intent.actions:
             if len(action.id) > cls._MAX_ACTION_ID_LENGTH or len(action.title) > cls._MAX_ACTION_TEXT_LENGTH:
                 return "Slack cannot preserve one card action identifier or title."
             if action.button_style not in {ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT}:

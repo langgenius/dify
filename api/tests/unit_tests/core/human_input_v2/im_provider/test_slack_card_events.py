@@ -10,7 +10,6 @@ from pathlib import Path
 import pytest
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -23,6 +22,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter, _SlackCardCodec
+from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
 
 _FIXTURE_DIRECTORY = Path(__file__).with_name("fixtures")
 _WEBHOOK_FIXTURE = _FIXTURE_DIRECTORY / "slack_block_actions_webhook.json"
@@ -61,12 +61,12 @@ def _event(
 def _form() -> ResolvedForm:
     return ResolvedForm(
         title="Approval",
-        blocks=(
-            MarkdownText("Review the response."),
-            ParagraphInput("说明📝", "初始值"),
-            SelectInput("选择🌐", ("选项 α", "选项 β"), "选项 β"),
+        parts=(
+            MarkdownFragment(text="Review the response."),
+            ParagraphInput(output_variable_name="说明📝", default_value="初始值"),
+            SelectInput(output_variable_name="选择🌐", options=("选项 α", "选项 β"), default_value="选项 β"),
         ),
-        user_actions=(ResolvedFormAction("批准✅", "Approve", ButtonStyle.PRIMARY),),
+        actions=(UserAction(id="批准✅", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
 
@@ -166,9 +166,9 @@ def test_sender_static_select_has_provider_owned_placeholder() -> None:
 def test_encode_relies_on_the_callers_representability_precondition() -> None:
     codec = _SlackCardCodec()
     empty_form = ResolvedForm(
-        title=None,
-        blocks=(),
-        user_actions=(),
+        title="",
+        parts=(),
+        actions=(),
         legacy_form_content="unused",
     )
 

@@ -19,15 +19,6 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    FileInput,
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -53,6 +44,15 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
+)
 
 _SIGNING_SECRET = "sanitized-signing-material"
 _RECEIVED_AT = datetime(2026, 8, 6, 8)
@@ -194,19 +194,21 @@ def _credentials() -> SlackCredentials:
 
 def _intent(*, input_type: str = "select") -> ResolvedForm:
     if input_type == "select":
-        input_block = SelectInput("decision", ("Approve", "Reject"), "Approve")
+        input_block = SelectInput(
+            output_variable_name="decision", options=("Approve", "Reject"), default_value="Approve"
+        )
     else:
-        input_block = ParagraphInput("decision", "Sanitized initial value")
+        input_block = ParagraphInput(output_variable_name="decision", default_value="Sanitized initial value")
     return ResolvedForm(
         title="Sanitized title",
-        blocks=(
-            MarkdownText("Sanitized rendered content"),
+        parts=(
+            MarkdownFragment(text="Sanitized rendered content"),
             input_block,
-            MarkdownText("Sanitized trailing content"),
+            MarkdownFragment(text="Sanitized trailing content"),
         ),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -214,16 +216,16 @@ def _intent(*, input_type: str = "select") -> ResolvedForm:
 
 def _custom_intent(
     *,
-    blocks: tuple[ResolvedFormContent, ...] = (MarkdownText("Sanitized rendered content"),),
-    actions: tuple[ResolvedFormAction, ...] | None = None,
-    title: str | None = "Sanitized title",
+    blocks: tuple[FormPart, ...] = (MarkdownFragment(text="Sanitized rendered content"),),
+    actions: tuple[UserAction, ...] | None = None,
+    title: str = "Sanitized title",
 ) -> ResolvedForm:
     if actions is None:
-        actions = (ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),)
+        actions = (UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),)
     return ResolvedForm(
         title=title,
-        blocks=blocks,
-        user_actions=actions,
+        parts=blocks,
+        actions=actions,
         legacy_form_content="This value must not be rendered",
     )
 
@@ -620,29 +622,43 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
 @pytest.mark.parametrize(
     "intent",
     [
-        _custom_intent(blocks=(), actions=(), title=None),
-        _custom_intent(blocks=(MarkdownText(""),)),
-        _custom_intent(blocks=(MarkdownText("x" * 20_000),)),
+        _custom_intent(blocks=(), actions=(), title=""),
+        _custom_intent(blocks=(MarkdownFragment(text=""),)),
+        _custom_intent(blocks=(MarkdownFragment(text="x" * 20_000),)),
         _custom_intent(title="x" * 151),
-        _custom_intent(blocks=tuple(ParagraphInput(f"input_{index}", None) for index in range(49))),
+        _custom_intent(
+            blocks=tuple(
+                ParagraphInput(output_variable_name=f"input_{index}", default_value=None) for index in range(49)
+            )
+        ),
         _custom_intent(
             actions=tuple(
-                ResolvedFormAction(f"action_{index}", f"Action {index}", ButtonStyle.DEFAULT) for index in range(26)
+                UserAction(id=f"action_{index}", title=f"Action {index}", button_style=ButtonStyle.DEFAULT)
+                for index in range(26)
             )
         ),
         _custom_intent(
             blocks=(
-                ParagraphInput("duplicate", None),
-                ParagraphInput("duplicate", None),
+                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                ParagraphInput(output_variable_name="duplicate", default_value=None),
             )
         ),
-        _custom_intent(actions=(ResolvedFormAction("x" * 256, "Action", ButtonStyle.DEFAULT),)),
-        _custom_intent(actions=(ResolvedFormAction("action", "Action", ButtonStyle.GHOST),)),
-        _custom_intent(blocks=(FileInput("attachment", (), (), ()),)),
-        _custom_intent(blocks=(ParagraphInput("x" * 256, None),)),
-        _custom_intent(blocks=(ParagraphInput("input", "x" * 3_001),)),
-        _custom_intent(blocks=(SelectInput("input", (), None),)),
-        _custom_intent(blocks=(SelectInput("input", ("",), None),)),
+        _custom_intent(actions=(UserAction(id="x" * 256, title="Action", button_style=ButtonStyle.DEFAULT),)),
+        _custom_intent(actions=(UserAction(id="action", title="Action", button_style=ButtonStyle.GHOST),)),
+        _custom_intent(
+            blocks=(
+                FileInput(
+                    output_variable_name="attachment",
+                    allowed_file_types=(),
+                    allowed_file_extensions=(),
+                    allowed_file_upload_methods=(),
+                ),
+            )
+        ),
+        _custom_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, default_value=None),)),
+        _custom_intent(blocks=(ParagraphInput(output_variable_name="input", default_value="x" * 3_001),)),
+        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=(), default_value=None),)),
+        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=("",), default_value=None),)),
     ],
     ids=(
         "empty-card",
@@ -692,9 +708,9 @@ def test_real_paragraph_resolved_default_survives_sdk_serialization(
     )
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
     intent = _custom_intent(
-        blocks=(ParagraphInput("comment", "Sanitized preserved default"),),
+        blocks=(ParagraphInput(output_variable_name="comment", default_value="Sanitized preserved default"),),
         actions=(),
-        title=None,
+        title="",
     )
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
@@ -729,13 +745,13 @@ def test_real_web_client_renders_optional_card_sections(
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000002"})
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     paragraph_intent = _custom_intent(
-        blocks=(ParagraphInput("comment", None),),
+        blocks=(ParagraphInput(output_variable_name="comment", default_value=None),),
         actions=(),
-        title=None,
+        title="",
     )
     default_action_intent = _custom_intent(
-        actions=(ResolvedFormAction("continue", "Continue", ButtonStyle.DEFAULT),),
-        title=None,
+        actions=(UserAction(id="continue", title="Continue", button_style=ButtonStyle.DEFAULT),),
+        title="",
     )
 
     paragraph_result = adapter.dynamic_card_messaging.send_card(

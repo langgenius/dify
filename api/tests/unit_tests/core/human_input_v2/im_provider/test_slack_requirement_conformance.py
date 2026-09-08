@@ -17,15 +17,6 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    FileInput,
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    ResolvedFormContent,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -49,6 +40,15 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
+)
 
 _SIGNING_SECRET = "sanitized-signing-material"
 
@@ -132,16 +132,16 @@ def _signed_request(
 
 def _card_intent(
     *,
-    blocks: tuple[ResolvedFormContent, ...] = (MarkdownText("Sanitized rendered content"),),
-    actions: tuple[ResolvedFormAction, ...] | None = None,
-    title: str | None = "Sanitized title",
+    blocks: tuple[FormPart, ...] = (MarkdownFragment(text="Sanitized rendered content"),),
+    actions: tuple[UserAction, ...] | None = None,
+    title: str = "Sanitized title",
 ) -> ResolvedForm:
     if actions is None:
-        actions = (ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),)
+        actions = (UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),)
     return ResolvedForm(
         title=title,
-        blocks=blocks,
-        user_actions=actions,
+        parts=blocks,
+        actions=actions,
         legacy_form_content="This value must not be rendered",
     )
 
@@ -526,9 +526,9 @@ def test_message_acceptance_requires_a_persistently_round_trippable_locator(
 def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: MockerFixture) -> None:
     intent = _card_intent(
         blocks=(
-            MarkdownText("Before input"),
-            ParagraphInput("comment", "Sanitized preserved default"),
-            MarkdownText("After input"),
+            MarkdownFragment(text="Before input"),
+            ParagraphInput(output_variable_name="comment", default_value="Sanitized preserved default"),
+            MarkdownFragment(text="After input"),
         )
     )
     client = mocker.Mock(spec=WebClient)
@@ -563,29 +563,43 @@ def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: Mocke
 @pytest.mark.parametrize(
     "intent",
     [
-        _card_intent(blocks=(), actions=(), title=None),
-        _card_intent(blocks=(MarkdownText(""),)),
-        _card_intent(blocks=(MarkdownText("x" * 20_000),)),
+        _card_intent(blocks=(), actions=(), title=""),
+        _card_intent(blocks=(MarkdownFragment(text=""),)),
+        _card_intent(blocks=(MarkdownFragment(text="x" * 20_000),)),
         _card_intent(title="x" * 151),
-        _card_intent(blocks=tuple(ParagraphInput(f"input_{index}", None) for index in range(49))),
+        _card_intent(
+            blocks=tuple(
+                ParagraphInput(output_variable_name=f"input_{index}", default_value=None) for index in range(49)
+            )
+        ),
         _card_intent(
             actions=tuple(
-                ResolvedFormAction(f"action_{index}", f"Action {index}", ButtonStyle.DEFAULT) for index in range(26)
+                UserAction(id=f"action_{index}", title=f"Action {index}", button_style=ButtonStyle.DEFAULT)
+                for index in range(26)
             )
         ),
         _card_intent(
             blocks=(
-                ParagraphInput("duplicate", None),
-                ParagraphInput("duplicate", None),
+                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                ParagraphInput(output_variable_name="duplicate", default_value=None),
             )
         ),
-        _card_intent(actions=(ResolvedFormAction("x" * 256, "Action", ButtonStyle.DEFAULT),)),
-        _card_intent(actions=(ResolvedFormAction("action", "Action", ButtonStyle.GHOST),)),
-        _card_intent(blocks=(FileInput("attachment", (), (), ()),)),
-        _card_intent(blocks=(ParagraphInput("x" * 256, None),)),
-        _card_intent(blocks=(ParagraphInput("input", "x" * 3_001),)),
-        _card_intent(blocks=(SelectInput("input", (), None),)),
-        _card_intent(blocks=(SelectInput("input", ("",), None),)),
+        _card_intent(actions=(UserAction(id="x" * 256, title="Action", button_style=ButtonStyle.DEFAULT),)),
+        _card_intent(actions=(UserAction(id="action", title="Action", button_style=ButtonStyle.GHOST),)),
+        _card_intent(
+            blocks=(
+                FileInput(
+                    output_variable_name="attachment",
+                    allowed_file_types=(),
+                    allowed_file_extensions=(),
+                    allowed_file_upload_methods=(),
+                ),
+            )
+        ),
+        _card_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, default_value=None),)),
+        _card_intent(blocks=(ParagraphInput(output_variable_name="input", default_value="x" * 3_001),)),
+        _card_intent(blocks=(SelectInput(output_variable_name="input", options=(), default_value=None),)),
+        _card_intent(blocks=(SelectInput(output_variable_name="input", options=("",), default_value=None),)),
     ],
     ids=(
         "empty-card",
@@ -632,13 +646,13 @@ def test_card_render_preserves_optional_sections_and_default_action_style(mocker
     )
     adapter = _adapter(mocker, client)
     paragraph_intent = _card_intent(
-        blocks=(ParagraphInput("comment", None),),
+        blocks=(ParagraphInput(output_variable_name="comment", default_value=None),),
         actions=(),
-        title=None,
+        title="",
     )
     default_action_intent = _card_intent(
-        actions=(ResolvedFormAction("continue", "Continue", ButtonStyle.DEFAULT),),
-        title=None,
+        actions=(UserAction(id="continue", title="Continue", button_style=ButtonStyle.DEFAULT),),
+        title="",
     )
 
     paragraph_result = adapter.dynamic_card_messaging.send_card(

@@ -7,7 +7,6 @@ from typing import get_type_hints
 import pytest
 from pydantic import ValidationError
 
-from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as im_adapters
 from core.human_input_v2.im_integration.adapters import (
@@ -30,6 +29,7 @@ from core.human_input_v2.im_integration.adapters import (
     SlackCredentials,
     UnrecognizedIMEvent,
 )
+from core.human_input_v2.resolved_form import ResolvedForm
 
 
 def _credentials() -> SlackCredentials:

@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -24,6 +23,7 @@ from core.human_input_v2.im_integration.adapters import (
     UnrecognizedIMEvent,
     ms_teams,
 )
+from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
 
 _CALLBACK_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ms_teams_card_submit.json"
 _RECEIVED_AT = datetime(2026, 8, 12, 2, 26, 40)
@@ -33,14 +33,14 @@ _MISSING_CALLBACK_VALUE = object()
 def _form(*, first_input_name: str = "comment-🧪") -> ResolvedForm:
     return ResolvedForm(
         title="Approval request",
-        blocks=(
-            MarkdownText("Review the generated answer."),
-            ParagraphInput(first_input_name, "Looks good"),
-            SelectInput("decision", ("ship", "hold"), "hold"),
+        parts=(
+            MarkdownFragment(text="Review the generated answer."),
+            ParagraphInput(output_variable_name=first_input_name, default_value="Looks good"),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
         ),
-        user_actions=(
-            ResolvedFormAction("approve-✅", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        actions=(
+            UserAction(id="approve-✅", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -145,9 +145,9 @@ def test_class_level_codec_encodes_the_complete_collision_safe_adaptive_card() -
 
 def test_codec_renders_select_input_as_compact_choice_set() -> None:
     form = ResolvedForm(
-        title=None,
-        blocks=(SelectInput("decision", ("ship", "hold"), "hold"),),
-        user_actions=(),
+        title="",
+        parts=(SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),),
+        actions=(),
         legacy_form_content="unused",
     )
 

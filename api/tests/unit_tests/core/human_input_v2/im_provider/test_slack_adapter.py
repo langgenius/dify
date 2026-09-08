@@ -16,15 +16,6 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
-from core.human_input_v2 import (
-    FileInput,
-    FileListInput,
-    MarkdownText,
-    ParagraphInput,
-    ResolvedForm,
-    ResolvedFormAction,
-    SelectInput,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     CorrelationToken,
@@ -50,6 +41,15 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
+)
 
 _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
 _REQUEST_TIMESTAMP = str(int(_RECEIVED_AT.replace(tzinfo=UTC).timestamp()))
@@ -151,19 +151,30 @@ def _adapter(
 
 def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
-        input_block = SelectInput("comment", ("One", "Two"), "One")
+        input_block = SelectInput(output_variable_name="comment", options=("One", "Two"), default_value="One")
     elif input_type == "file":
-        input_block = FileInput("comment", (), (), ())
+        input_block = FileInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+        )
     elif input_type == "file-list":
-        input_block = FileListInput("comment", (), (), (), 1)
+        input_block = FileListInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+            number_limits=1,
+        )
     else:
-        input_block = ParagraphInput("comment", "Initial")
+        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
     return ResolvedForm(
         title="Approval",
-        blocks=(MarkdownText("Rendered **content**"), input_block, MarkdownText("After input")),
-        user_actions=(
-            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
-            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        parts=(MarkdownFragment(text="Rendered **content**"), input_block, MarkdownFragment(text="After input")),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
         ),
         legacy_form_content="This value must not be rendered",
     )
@@ -172,8 +183,8 @@ def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
 def _intent_with_paragraph_default(default_value: str) -> ResolvedForm:
     return ResolvedForm(
         title="Approval",
-        blocks=(ParagraphInput("comment", default_value),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        parts=(ParagraphInput(output_variable_name="comment", default_value=default_value),),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
     )
 
@@ -182,8 +193,8 @@ def _intent_with_select_option_count(option_count: int) -> ResolvedForm:
     options = tuple(f"option-{ordinal}" for ordinal in range(option_count))
     return ResolvedForm(
         title="Approval",
-        blocks=(SelectInput("risk_level", options, options[0]),),
-        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        parts=(SelectInput(output_variable_name="risk_level", options=options, default_value=options[0]),),
+        actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
     )
 

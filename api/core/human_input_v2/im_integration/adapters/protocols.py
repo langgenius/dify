@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.resolved_form import ResolvedForm
 
 from .entities import (
     AuthenticatedIMEvent,
