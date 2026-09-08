@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from typing import Any, final
 
 from configs import dify_config
@@ -145,12 +146,14 @@ class WorkflowToolContainerHandler:
         hidden_event_listener: Callable[[NodeEvent], None] | None = None,
         event_listener_factory: WorkflowToolEventListenerFactory | None = None,
         event_listeners: dict[str, Callable[[NodeEvent], None]] | None = None,
+        execution_context_factory: Callable[[], AbstractContextManager[object]] = nullcontext,
     ) -> None:
         self._frame_registry = frame_registry
         self._source_repository = source_repository
         self._hidden_event_listener = hidden_event_listener
         self._event_listener_factory = event_listener_factory
         self._event_listeners = event_listeners if event_listeners is not None else {}
+        self._execution_context_factory = execution_context_factory
 
     def restore_frame(self, frame_state: ContainerFrameState) -> None:
         if not isinstance(frame_state, CustomContainerFrameState):
@@ -161,13 +164,14 @@ class WorkflowToolContainerHandler:
 
         run_state = self._get_tool_run_state(frame_state.parent_invocation_id)
         payload = WorkflowToolContainerPayload.model_validate_json(run_state.payload)
-        self._create_frame(
-            run_state=run_state,
-            payload=payload,
-            frame_id=frame_state.frame_id,
-            runtime_data=frame_state.runtime_data,
-            variable_pool=variable_pool.model_copy(deep=True),
-        )
+        with self._execution_context_factory():
+            self._create_frame(
+                run_state=run_state,
+                payload=payload,
+                frame_id=frame_state.frame_id,
+                runtime_data=frame_state.runtime_data,
+                variable_pool=variable_pool.model_copy(deep=True),
+            )
 
     def handle_request(
         self,
@@ -182,11 +186,12 @@ class WorkflowToolContainerHandler:
         payload = WorkflowToolContainerPayload.model_validate_json(request.payload)
         frame_id = f"{invocation_id}:workflow-tool"
         try:
-            child_frame = self._create_frame(
-                run_state=run_state,
-                payload=payload,
-                frame_id=frame_id,
-            )
+            with self._execution_context_factory():
+                child_frame = self._create_frame(
+                    run_state=run_state,
+                    payload=payload,
+                    frame_id=frame_id,
+                )
         except Exception as error:
             self._root_runtime_state().enqueue_ready_task(
                 ResumeTask(
@@ -318,16 +323,13 @@ class WorkflowToolContainerHandler:
         root_node_id = get_default_root_node_id(graph_config)
 
         if variable_pool is None:
-            # Container requests run on the dispatcher, outside the workers'
-            # captured context. Built-in child frames do not inherit that context.
-            with self._root_runtime_state().execution_context:
-                variable_pool = self._build_variable_pool(
-                    parent_frame=parent_frame,
-                    source=source,
-                    root_node_id=root_node_id,
-                    payload=payload,
-                    run_context=run_context,
-                )
+            variable_pool = self._build_variable_pool(
+                parent_frame=parent_frame,
+                source=source,
+                root_node_id=root_node_id,
+                payload=payload,
+                run_context=run_context,
+            )
         state = self._build_runtime_state(
             parent_frame=parent_frame,
             variable_pool=variable_pool,
@@ -411,7 +413,6 @@ class WorkflowToolContainerHandler:
             ready_queue=parent_frame.state.ready_queue,
             deferred_ready_queue=parent_frame.state.deferred_ready_queue,
             graph_execution=parent_frame.state.graph_execution,
-            execution_context=parent_frame.state.execution_context,
         )
         if runtime_data is not None:
             state.restore_graph_state(

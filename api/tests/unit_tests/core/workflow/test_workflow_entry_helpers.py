@@ -17,6 +17,7 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
@@ -50,9 +51,9 @@ def _build_minimal_workflow_entry(
 ) -> workflow_entry.WorkflowEntry:
     """Construct a minimal WorkflowEntry with Engine construction mocked out."""
     graph_engine = MagicMock()
-    graph_runtime_state = SimpleNamespace(_execution_context=None)
+    graph_runtime_state = sentinel.runtime_state
 
-    monkeypatch.setattr(workflow_entry, "capture_current_context", lambda: sentinel.execution_context)
+    monkeypatch.setattr(workflow_entry, "ExecutionContextLayer", MagicMock())
     monkeypatch.setattr(workflow_entry, "Engine", MagicMock(return_value=graph_engine))
     monkeypatch.setattr(workflow_entry, "InMemoryChannel", MagicMock(return_value=sentinel.command_channel))
 
@@ -95,14 +96,16 @@ class TestWorkflowEntryInit:
 
     def test_applies_execution_and_observability_layers(self):
         graph_engine = MagicMock()
-        graph_runtime_state = SimpleNamespace(_execution_context=None)
+        graph_runtime_state = sentinel.runtime_state
+        execution_context_layer = MagicMock()
         execution_limits_layer = MagicMock()
         observability_layer = sentinel.observability_layer
 
         with (
             config_overrides_context(DEBUG=True, ENABLE_OTEL=False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
-            patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
+            patch.object(workflow_entry, "ExecutionContextLayer", return_value=execution_context_layer),
+            patch.object(workflow_entry, "create_dify_workflow_file_runtime", return_value=sentinel.file_runtime),
             patch.object(workflow_entry, "Engine", return_value=graph_engine) as graph_engine_cls,
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
             patch.object(
@@ -135,6 +138,7 @@ class TestWorkflowEntryInit:
             runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
             workers=workflow_entry.dify_config.GRAPH_ENGINE_MAX_WORKERS,
+            file_runtime=sentinel.file_runtime,
             container_handler_factories=handler_factories,
         )
         assert len(handler_factories) == 3
@@ -146,12 +150,13 @@ class TestWorkflowEntryInit:
         )
         assert handler.should_emit(event=hidden_event) is False
         execution_limits_layer.on_event.assert_called_once_with(hidden_event)
-        assert graph_runtime_state._execution_context is sentinel.execution_context
+        assert handler._execution_context_factory == execution_context_layer.enter_context
         execution_limits_layer_cls.assert_called_once_with(
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_time=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_TIME,
         )
         assert graph_engine.add_layer.call_args_list == [
+            ((execution_context_layer,), {}),
             ((execution_limits_layer,), {}),
             ((observability_layer,), {}),
         ]
@@ -222,7 +227,7 @@ class TestWorkflowEntryRun:
         with patch.object(
             workflow_entry,
             "iter_dify_graph_engine_events",
-            return_value=iter([sentinel.filtered_event]),
+            return_value=(event for event in [sentinel.filtered_event]),
         ) as iter_dify_graph_engine_events:
             events = list(entry.run())
 
@@ -760,6 +765,39 @@ class TestMappingUserInputsBranches:
 
 
 class TestWorkflowEntryNodeLayers:
+    @pytest.mark.parametrize("completion", ["close", "throw"])
+    def test_standalone_scope_restores_caller_during_streaming_and_cleanup(self, completion: str) -> None:
+        observability_layer = MagicMock()
+        observed_runtime = []
+
+        def run_node():
+            observed_runtime.append(peek_workflow_file_runtime())
+            yield sentinel.event
+
+        node = MagicMock()
+        node.run.side_effect = run_node
+        error = RuntimeError("consumer failed")
+        with (
+            patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
+            patch.object(workflow_entry, "create_dify_workflow_file_runtime", return_value=sentinel.node_runtime),
+            use_workflow_file_runtime(sentinel.caller_runtime),
+        ):
+            events = workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id")
+            assert next(events) is sentinel.event
+            assert peek_workflow_file_runtime() is sentinel.caller_runtime
+            if completion == "throw":
+                with pytest.raises(RuntimeError, match="consumer failed"):
+                    events.throw(error)
+            else:
+                events.close()
+            assert peek_workflow_file_runtime() is sentinel.caller_runtime
+
+        assert observed_runtime == [sentinel.node_runtime]
+        observability_layer.on_node_run_end.assert_called_once_with(
+            node, error if completion == "throw" else None, None
+        )
+        observability_layer.on_graph_end.assert_called_once_with(error if completion == "throw" else None)
+
     def test_run_node_with_layers_reports_success(self):
         observability_layer = MagicMock()
         result_event = NodeRunSucceededEvent(

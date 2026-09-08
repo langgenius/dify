@@ -34,6 +34,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
 from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
@@ -433,7 +434,10 @@ class WorkflowBasedAppRunner:
         # to this response boundary, including forms inside hidden Tool frames.
         pause_reasons = tuple(workflow_entry.graph_engine.runtime_state.graph_execution.pause_reasons)
         published_form_ids: set[str] = set()
-        for event in workflow_entry.run():
+        pause_state_layer = next(
+            (layer for layer in self._graph_engine_layers if isinstance(layer, PauseStatePersistenceLayer)), None
+        )
+        for event in workflow_entry.run(pause_state_layer=pause_state_layer):
             if isinstance(
                 event,
                 GraphRunPausedEvent

@@ -8,6 +8,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers import pause_state_persist_layer as pause_layer_module
 from core.app.layers.pause_state_persist_layer import (
@@ -17,8 +18,10 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import SystemVariableKey
-from graphon.engine.command import Command
+from core.workflow.system_variables import SystemVariableKey, system_variable_selector
+from core.workflow.workflow_entry import WorkflowEntry
+from graphon.engine import Engine as GraphEngine
+from graphon.engine.command import Command, InMemoryChannel, PauseCommand
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter
 from graphon.engine_events import (
     GraphRunFailedEvent,
@@ -27,10 +30,14 @@ from graphon.engine_events import (
     GraphRunSucceededEvent,
 )
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.runtime import ReadOnlyVariablePool
+from graphon.graph import Graph
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import ReadOnlyVariablePool, RuntimeState, VariablePool
 from graphon.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
@@ -278,6 +285,8 @@ class TestPauseStatePersistenceLayer:
         expected_state = graph_runtime_state.dumps()
 
         layer.on_event(event)
+        mock_factory.assert_not_called()
+        layer.persist_pending_pause()
 
         mock_factory.assert_called_once_with(sqlite_session_factory)
         assert mock_repo.create_workflow_pause.call_count == 1
@@ -343,6 +352,7 @@ class TestPauseStatePersistenceLayer:
         event = GraphRunPausedEvent(reasons=[raw_reason], outputs={})
 
         layer.on_event(event)
+        layer.persist_pending_pause()
 
         enrich_mock.assert_called_once_with(
             reasons=[raw_reason],
@@ -381,7 +391,9 @@ class TestPauseStatePersistenceLayer:
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
 
-    def test_on_event_raises_when_runtime_state_is_uninitialized(self, sqlite_session_factory: sessionmaker[Session]):
+    def test_persist_pause_raises_when_runtime_state_is_uninitialized(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ):
         layer = PauseStatePersistenceLayer(
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
@@ -391,10 +403,11 @@ class TestPauseStatePersistenceLayer:
 
         event = TestDataFactory.create_graph_run_paused_event()
 
+        layer.on_event(event)
         with pytest.raises(RuntimeError, match="runtime state is not initialized"):
-            layer.on_event(event)
+            layer.persist_pending_pause()
 
-    def test_on_event_asserts_when_workflow_execution_id_missing(
+    def test_persist_pause_asserts_when_workflow_execution_id_missing(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
     ):
         layer = PauseStatePersistenceLayer(
@@ -414,8 +427,9 @@ class TestPauseStatePersistenceLayer:
 
         event = TestDataFactory.create_graph_run_paused_event()
 
+        layer.on_event(event)
         with pytest.raises(AssertionError):
-            layer.on_event(event)
+            layer.persist_pending_pause()
 
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
@@ -524,10 +538,80 @@ def test_on_event_persists_response_stream_filter_dump(
 
     event = TestDataFactory.create_graph_run_paused_event()
     layer.on_event(event)
+    layer.persist_pending_pause()
 
     serialized_state = mock_repo.create_workflow_pause.call_args.kwargs["state"]
     resumption_context = WorkflowResumptionContext.loads(serialized_state)
     assert resumption_context.serialized_response_stream_filter_state == response_stream_filter.dumps()
+
+
+@pytest.mark.parametrize("failure", [None, "snapshot", "storage"])
+def test_pause_snapshot_completes_before_pause_is_published(
+    failure: str | None, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=time())
+    state.variable_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "run-123")
+    start = StartNode(
+        node_id="start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=build_test_graph_init_params(),
+        runtime_state=state,
+    )
+    channel = InMemoryChannel()
+    channel.send_command(PauseCommand(reason="wait"))
+    entry = object.__new__(WorkflowEntry)
+    entry._response_stream_filter = ResponseStreamFilter()
+    entry.graph_engine = GraphEngine(
+        graph=Graph.new().add_root(start).build(), runtime_state=state, command_channel=channel, workers=1
+    )
+    layer = PauseStatePersistenceLayer(
+        session_factory=sqlite_session_factory,
+        state_owner_user_id="owner",
+        generate_entity=TestPauseStatePersistenceLayer._create_generate_entity(workflow_execution_id="run-123"),
+        response_stream_filter=entry._response_stream_filter,
+    )
+    repository = Mock()
+    monkeypatch.setattr(layer, "_get_repo", lambda: repository)
+    entry.graph_engine.add_layer(layer)
+    original_on_event = layer.on_event
+    active_pause_seen = []
+
+    def on_event(event):
+        if isinstance(event, GraphRunPausedEvent):
+            with pytest.raises(RuntimeError, match="during active execution"):
+                state.dumps()
+            active_pause_seen.append(event)
+        original_on_event(event)
+
+    monkeypatch.setattr(layer, "on_event", on_event)
+    if failure == "storage":
+        repository.create_workflow_pause.side_effect = RuntimeError("storage unavailable")
+    elif failure == "snapshot":
+        # A worker still alive after the engine's bounded shutdown keeps the
+        # snapshot guard active; the host must report this instead of a pause.
+        original_persist = layer.persist_pending_pause
+
+        def persist_with_active_worker():
+            with state.graph_execution.track_execution():
+                original_persist()
+
+        monkeypatch.setattr(layer, "persist_pending_pause", persist_with_active_worker)
+
+    runner = WorkflowBasedAppRunner(queue_manager=Mock(), app_id="app", graph_engine_layers=(layer,))
+    events = list(runner._run_workflow(entry))
+
+    assert len(active_pause_seen) == 1
+    if failure is not None:
+        assert isinstance(events[-1], GraphRunFailedEvent)
+        assert not any(isinstance(event, GraphRunPausedEvent) for event in events)
+        expected_error = "during active execution" if failure == "snapshot" else "storage unavailable"
+        assert expected_error in events[-1].error
+    else:
+        assert isinstance(events[-1], GraphRunPausedEvent)
+        repository.create_workflow_pause.assert_called_once()
+        snapshot = WorkflowResumptionContext.loads(repository.create_workflow_pause.call_args.kwargs["state"])
+        restored = RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state)
+        assert restored.graph_execution.paused
 
 
 def test_get_response_stream_filter_restores_dumped_state() -> None:
