@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { ReactFlowProvider, useStoreApi } from 'reactflow'
@@ -115,4 +115,34 @@ describe('preview width limits inside the workflow Panel', () => {
     await waitFor(() => expect(handle).toHaveAttribute('aria-valuenow', '600'))
     expect(handle).toHaveAttribute('aria-valuemax', '600')
   })
+
+  it.each([
+    ['workflow run', <WorkflowPreview key="workflow" />],
+    ['snippet run', <SnippetRunPanel key="snippet" fields={[]} />],
+    ['chat debug', <DebugAndPreview key="debug" />],
+  ])(
+    '%s keeps its size and ARIA range consistent when the canvas shrinks without a selected node',
+    async (_name, content) => {
+      const user = userEvent.setup()
+      const { store } = renderPanels(content)
+      await user.click(screen.getByRole('button', { name: 'Deselect node' }))
+      const handle = screen.getByRole('separator')
+      await user.tab()
+      expect(handle).toHaveFocus()
+      await user.keyboard('{End}')
+      expect(handle).toHaveAttribute('aria-valuenow', '1000')
+
+      act(() => store.getState().setWorkflowCanvasWidth(1000))
+
+      await waitFor(() => expect(handle).toHaveAttribute('aria-valuenow', '600'))
+      expect(handle).toHaveAttribute('aria-valuemax', '600')
+      const panel = document.getElementById(handle.getAttribute('aria-controls')!)!
+      expect(panel).toHaveStyle({ width: '600px' })
+      expect(handle).toHaveFocus()
+      await user.keyboard('{ArrowLeft}')
+      expect(handle).toHaveAttribute('aria-valuenow', '600')
+      await user.keyboard('{ArrowRight}')
+      expect(handle).toHaveAttribute('aria-valuenow', '592')
+    },
+  )
 })

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { debounce } from 'es-toolkit/compat'
-import { useCallback, useId, useMemo } from 'react'
+import { useCallback, useEffect, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
@@ -21,6 +21,11 @@ const VariableInspectPanel: FC = () => {
     if (!workflowCanvasHeight) return 480
     return Math.max(120, workflowCanvasHeight - 60)
   }, [workflowCanvasHeight])
+
+  useEffect(() => {
+    if (!workflowCanvasHeight) return
+    if (variableInspectPanelHeight > maxHeight) setVariableInspectPanelHeight(maxHeight)
+  }, [workflowCanvasHeight, variableInspectPanelHeight, maxHeight, setVariableInspectPanelHeight])
 
   const setPanelHeightStorage = useSetWorkflowVariableInspectPanelHeight()
 
