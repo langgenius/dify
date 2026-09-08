@@ -18,17 +18,19 @@ class SiteConfigurationService:
         icon: str | None,
     ) -> None:
         icon_type_value = icon_type.value if isinstance(icon_type, IconType) else icon_type
-        if icon_type_value != IconType.IMAGE.value or not icon:
+        if icon_type_value != IconType.IMAGE.value:
             return
 
-        upload_file_id = session.scalar(
-            select(UploadFile.id)
-            .where(
-                UploadFile.id == icon,
-                UploadFile.tenant_id == tenant_id,
+        upload_file_id = None
+        if icon:
+            upload_file_id = session.scalar(
+                select(UploadFile.id)
+                .where(
+                    UploadFile.id == icon,
+                    UploadFile.tenant_id == tenant_id,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
         if upload_file_id is None:
             raise SiteConfigurationError(
                 "The site icon is missing or does not belong to this workspace. Please upload it again."

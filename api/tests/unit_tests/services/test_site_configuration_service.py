@@ -88,6 +88,16 @@ def test_validate_icon_reference_rejects_unavailable_file(
         )
 
 
+def test_validate_icon_reference_rejects_empty_image_icon(sqlite_session: Session) -> None:
+    with pytest.raises(SiteConfigurationError, match="missing or does not belong"):
+        SiteConfigurationService.validate_icon_reference(
+            session=sqlite_session,
+            tenant_id=TENANT_ID,
+            icon_type=IconType.IMAGE,
+            icon=None,
+        )
+
+
 def test_validate_for_publish_rejects_cross_tenant_site_icon(sqlite_session: Session) -> None:
     app = _app()
     sqlite_session.add_all([app, _site(), _upload_file(tenant_id=OTHER_TENANT_ID)])
