@@ -105,6 +105,7 @@ const validConfigs = {
     headers: '{}',
     service_name: 'dify',
     resource_attributes: '{}',
+    project_url: '',
   },
 } satisfies Record<TracingProvider, ProviderPayload>
 
