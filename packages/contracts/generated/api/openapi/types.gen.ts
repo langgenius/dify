@@ -45,11 +45,13 @@ export type AppDescribeResponse = {
 
 export type AppDslExportQuery = {
   include_secret?: boolean
+  include_workflow_tools?: boolean
   workflow_id?: string | null
 }
 
 export type AppDslExportResponse = {
   data: string
+  format?: 'yaml' | 'zip'
 }
 
 export type AppDslImportPayload = {
@@ -58,7 +60,7 @@ export type AppDslImportPayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  mode: 'yaml-content' | 'yaml-url'
+  mode: 'bundle-content' | 'yaml-content' | 'yaml-url'
   name?: string | null
   yaml_content?: string | null
   yaml_url?: string | null
@@ -685,6 +687,7 @@ export type GetAppsByAppIdDslData = {
   }
   query?: {
     include_secret?: boolean
+    include_workflow_tools?: boolean
     workflow_id?: string
   }
   url: '/apps/{app_id}/dsl'

@@ -5,12 +5,14 @@ import { agentGuide } from './guide'
 import { runExportApp } from './run'
 
 export default class ExportStudioApp extends DifyCommand {
-  static override description = "Export a studio app's DSL configuration as YAML"
+  static override description =
+    "Export a studio app's DSL configuration as YAML or a ZIP with workflow tools"
 
   static override examples = [
     '<%= config.bin %> export studio-app <app-id>',
     '<%= config.bin %> export studio-app <app-id> --output ./my-app.yaml',
     '<%= config.bin %> export studio-app <app-id> --include-secret',
+    '<%= config.bin %> export studio-app <app-id> --include-workflow-tools --output ./my-app.zip',
     '<%= config.bin %> export studio-app <app-id> --workflow-id <workflow-id>',
   ]
 
@@ -23,8 +25,12 @@ export default class ExportStudioApp extends DifyCommand {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     output: Flags.string({
-      description: 'write DSL YAML to this file path (prints to stdout if omitted)',
+      description: 'write YAML or ZIP to this file path (YAML prints to stdout if omitted)',
       char: 'o',
+    }),
+    'include-workflow-tools': Flags.boolean({
+      description: 'package nested workflow tools in a ZIP (requires --output for bundles)',
+      default: false,
     }),
     'include-secret': Flags.boolean({
       description: 'include encrypted secret values in the exported DSL',
@@ -45,6 +51,7 @@ export default class ExportStudioApp extends DifyCommand {
         workspace: flags.workspace,
         output: flags.output,
         includeSecret: flags['include-secret'],
+        includeWorkflowTools: flags['include-workflow-tools'],
         workflowId: flags['workflow-id'],
       },
       { active: ctx.active, http: ctx.http, io: ctx.io },

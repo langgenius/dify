@@ -5,6 +5,8 @@ to attribute the created app; workspace/membership validation is done by the
 Go admin-api caller.
 """
 
+import base64
+from typing import Literal
 from uuid import UUID
 
 from flask import request
@@ -13,26 +15,36 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import query_params_from_model, register_schema_model
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_model,
+)
 from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from models import Account, App
 from models.account import AccountStatus
 from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import ImportMode, ImportStatus
+from services.entities.dsl_entities import ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.workflow_dsl_bundle import WorkflowDslBundleService
 
 
 class InnerAppDSLImportPayload(BaseModel):
-    yaml_content: str = Field(description="YAML DSL content")
+    mode: Literal["yaml-content", "bundle-content"] = "yaml-content"
+    yaml_content: str = Field(description="YAML DSL text or base64-encoded ZIP for bundle-content")
     creator_email: str = Field(description="Email of the workspace member who will own the imported app")
     name: str | None = Field(default=None, description="Override app name from DSL")
     description: str | None = Field(default=None, description="Override app description from DSL")
 
 
 class EnterpriseAppDSLExportQuery(BaseModel):
+    include_workflow_tools: bool = Field(
+        default=False, description="Package referenced workflow tools recursively in a ZIP"
+    )
     include_secret: bool = Field(default=False, description="Whether to include secret values in the exported DSL")
     workflow_id: UUID | None = Field(default=None, description="Published workflow version ID to export")
 
@@ -44,7 +56,13 @@ class EnterpriseAppDSLExportQuery(BaseModel):
         return bool(value)
 
 
+class InnerAppDSLExportResponse(ResponseModel):
+    data: str = Field(description="YAML DSL text, or base64-encoded ZIP when format is zip")
+    format: Literal["yaml", "zip"] = "yaml"
+
+
 register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
+register_response_schema_models(inner_api_ns, InnerAppDSLExportResponse)
 
 
 @inner_api_ns.route("/enterprise/workspaces/<string:workspace_id>/dsl/import")
@@ -74,7 +92,7 @@ class EnterpriseAppDSLImport(Resource):
             dsl_service = AppDslService(session)
             result = dsl_service.import_app(
                 account=account,
-                import_mode=ImportMode.YAML_CONTENT,
+                import_mode=args.mode,
                 yaml_content=args.yaml_content,
                 name=args.name,
                 description=args.description,
@@ -104,8 +122,9 @@ class EnterpriseAppDSLExport(Resource):
             404: "App or workflow version not found",
         },
     )
+    @inner_api_ns.response(200, "Export successful", inner_api_ns.models[InnerAppDSLExportResponse.__name__])
     def get(self, app_id: str):
-        """Export an app's DSL as YAML."""
+        """Export an app as YAML or a ZIP containing its nested workflow tools."""
         try:
             query = EnterpriseAppDSLExportQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError:
@@ -120,6 +139,25 @@ class EnterpriseAppDSLExport(Resource):
         app_model = db.session.get(App, app_id)
         if not app_model:
             return {"message": "app not found"}, 404
+
+        if query.include_workflow_tools:
+            try:
+                bundle = WorkflowDslBundleService(db.session()).export_bundle(
+                    app_model=app_model,
+                    account=None,
+                    include_secret=query.include_secret,
+                    workflow_id=workflow_id,
+                )
+            except WorkflowNotFoundError as exc:
+                return {"code": "workflow_version_not_found", "message": str(exc), "status": 404}, 404
+            except IsDraftWorkflowError as exc:
+                return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
+            except ValueError as exc:
+                return {"code": "invalid_workflow_bundle", "message": str(exc), "status": 400}, 400
+            if bundle is not None:
+                return InnerAppDSLExportResponse(
+                    data=base64.b64encode(bundle).decode("ascii"), format="zip"
+                ).model_dump(mode="json"), 200
 
         if not workflow_id:
             data = AppDslService.export_dsl(
@@ -140,7 +178,7 @@ class EnterpriseAppDSLExport(Resource):
             except IsDraftWorkflowError as exc:
                 return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
 
-        return {"data": data}, 200
+        return InnerAppDSLExportResponse(data=data).model_dump(mode="json"), 200
 
 
 def _get_active_account(email: str) -> Account | None:

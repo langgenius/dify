@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net'
 import type { Scenario } from './scenarios.js'
+import { Buffer } from 'node:buffer'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { ACCOUNT, APPS, DSL_YAML, SESSIONS, WORKSPACES } from './scenarios.js'
@@ -334,7 +335,9 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const found = APPS.find((a) => a.id === id)
     if (found === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
-    return c.json({ data: DSL_YAML })
+    if (c.req.query('include_workflow_tools') === 'true')
+      return c.json({ data: Buffer.from('PK\x03\x04bundle').toString('base64'), format: 'zip' })
+    return c.json({ data: DSL_YAML, format: 'yaml' })
   })
 
   app.get('/openapi/v1/apps/:id/dependencies:check', (c) => {

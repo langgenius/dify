@@ -2,6 +2,7 @@ import type { Import, PluginDependency } from '@dify/contracts/api/openapi/types
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
+import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import { AppDslClient } from '@/api/app-dsl'
 import { newError } from '@/errors/base'
@@ -60,14 +61,16 @@ export async function runImportApp(
   if (opts.fromFile !== undefined && opts.fromUrl !== undefined)
     throw newError(ErrorCode.UsageInvalidFlag, '--from-file and --from-url are mutually exclusive')
 
-  let mode: 'yaml-content' | 'yaml-url'
+  let mode: 'yaml-content' | 'yaml-url' | 'bundle-content'
   let yamlContent: string | undefined
   let yamlUrl: string | undefined
 
   if (opts.fromFile !== undefined) {
-    mode = 'yaml-content'
     try {
-      yamlContent = fs.readFileSync(opts.fromFile, 'utf8')
+      const content = fs.readFileSync(opts.fromFile)
+      const isBundle = content.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+      mode = isBundle ? 'bundle-content' : 'yaml-content'
+      yamlContent = content.toString(isBundle ? 'base64' : 'utf8')
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code === 'ENOENT')

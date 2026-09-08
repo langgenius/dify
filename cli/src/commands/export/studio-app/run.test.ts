@@ -1,5 +1,7 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
+import { Buffer } from 'node:buffer'
+import { readFileSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 import { DSL_YAML } from '@test/fixtures/dify-mock/scenarios'
@@ -54,6 +56,25 @@ describe('runExportApp', () => {
     expect(result.writtenTo).toBe(tmpFile)
     const { readFileSync } = await import('node:fs')
     expect(readFileSync(tmpFile, 'utf8')).toBe(DSL_YAML)
+  })
+
+  it('writes a bundle as binary ZIP and requires an output path', async () => {
+    const tmpFile = join(os.tmpdir(), `difyctl-test-bundle-${Date.now()}.zip`)
+    try {
+      await runExportApp(
+        { appId: 'app-1', includeWorkflowTools: true, output: tmpFile },
+        { active: baseActive, http: http() },
+      )
+      expect(readFileSync(tmpFile)).toEqual(Buffer.from('PK\x03\x04bundle'))
+      await expect(
+        runExportApp(
+          { appId: 'app-1', includeWorkflowTools: true },
+          { active: baseActive, http: http() },
+        ),
+      ).rejects.toThrow('requires --output')
+    } finally {
+      rmSync(tmpFile, { force: true })
+    }
   })
 
   it('err stream receives written-to path when --output is given', async () => {

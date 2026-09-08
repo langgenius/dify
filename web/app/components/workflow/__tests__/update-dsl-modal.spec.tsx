@@ -2,22 +2,11 @@ import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
 
-class MockFileReader {
-  onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
-
-  readAsText(_file: Blob) {
-    const event = {
-      target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n' },
-    } as unknown as ProgressEvent<FileReader>
-    this.onload?.call(this as unknown as FileReader, event)
-  }
-}
-
-vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 
@@ -32,9 +21,19 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/apps', () => ({
-  importDSL: (payload: unknown) => mockImportDSL(payload),
-  importDSLConfirm: (payload: unknown) => mockImportDSLConfirm(payload),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      imports: {
+        post: ({ body }: { body: unknown }) => mockImportDSL(body),
+        byImportId: {
+          confirm: {
+            post: ({ params }: { params: { import_id: string } }) => mockImportDSLConfirm(params),
+          },
+        },
+      },
+    },
+  },
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
@@ -153,7 +152,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -174,6 +173,26 @@ describe('UpdateDSLModal', () => {
     )
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('overwrites the current app from a ZIP bundle and refreshes its workflow', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['PK\u0003\u0004'], 'workflow.zip'),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledWith({
+        mode: 'bundle-content',
+        yaml_content: btoa('PK\u0003\u0004'),
+        app_id: 'app-1',
+      }),
+    )
+    await waitFor(() => expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1'))
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
@@ -201,7 +220,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -243,7 +262,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -283,7 +302,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -308,7 +327,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -341,7 +360,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -357,22 +376,18 @@ describe('UpdateDSLModal', () => {
   })
 
   it('should show an error when the selected file content is invalid for the current app mode', async () => {
-    class InvalidDSLFileReader extends MockFileReader {
-      override readAsText(_file: Blob) {
-        const event = {
-          target: {
-            result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n',
-          },
-        } as unknown as ProgressEvent<FileReader>
-        this.onload?.call(this as unknown as FileReader, event)
-      }
-    }
-
-    vi.stubGlobal('FileReader', InvalidDSLFileReader as unknown as typeof FileReader)
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: {
+        files: [
+          new File(
+            ['workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n'],
+            'workflow.yml',
+            { type: 'text/yaml' },
+          ),
+        ],
+      },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -381,8 +396,6 @@ describe('UpdateDSLModal', () => {
       expect(mockToastError).toHaveBeenCalled()
     })
     expect(mockImportDSL).not.toHaveBeenCalled()
-
-    vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
   })
 
   it('should show an error notification when import throws', async () => {
@@ -391,7 +404,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -410,7 +423,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -433,7 +446,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -460,7 +473,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
@@ -489,7 +502,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 

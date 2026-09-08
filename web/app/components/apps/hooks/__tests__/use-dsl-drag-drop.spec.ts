@@ -188,7 +188,7 @@ describe('useDSLDragDrop', () => {
   })
 
   describe('Drop functionality', () => {
-    it('should call onDSLFileDropped for .yaml file', () => {
+    it.each(['yaml', 'zip', 'ZIP'])('should call onDSLFileDropped for .%s files', (extension) => {
       const dropZoneRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
@@ -197,7 +197,7 @@ describe('useDSLDragDrop', () => {
         }),
       )
 
-      const file = createMockFile('test.yaml')
+      const file = createMockFile(`test.${extension}`)
       const dropEvent = createDragEvent('drop', [file])
 
       act(() => {

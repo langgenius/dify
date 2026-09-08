@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Callable
 from types import SimpleNamespace
@@ -16,7 +17,7 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow, WorkflowType
 from services.app_dsl_service import AppDslService, Import, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import ImportStatus
+from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.system_feature_service import SystemFeatureService
@@ -633,8 +634,12 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
-def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
+@pytest.mark.parametrize("finish", ["immediate", "commit", "rollback"])
+def test_create_or_update_app_forwards_imported_agent_purge_ids(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, finish: str
+) -> None:
+    session = unbound_session
+    session.begin()
     service = AppDslService(session=session)
     app = SimpleNamespace(
         id="app-1",
@@ -677,8 +682,17 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
             "agent_packages": {"package-1": {}},
         },
         account=Mock(id="account-1"),
+        commit=finish == "immediate",
     )
 
+    if finish != "immediate":
+        retire_unowned.assert_not_called()
+        if finish == "rollback":
+            session.rollback()
+            session.commit()
+            retire_unowned.assert_not_called()
+            return
+        session.commit()
     retire_unowned.assert_called_once_with(
         tenant_id="tenant-1",
         agent_ids={"retired-agent"},
@@ -795,3 +809,70 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             session=unbound_session,
             workflow_id=workflow_id,
         )
+
+
+def test_bundle_import_checks_every_version_and_preserves_pending_owner(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    documents = {
+        "root": {"version": "0.1.0", "app": {"mode": "workflow"}},
+        "child": {"version": "99.0.0", "app": {"mode": "workflow"}},
+    }
+    bundle = SimpleNamespace(documents=documents, manifest=SimpleNamespace(entrypoint="root"))
+    bundle_service = Mock()
+    bundle_service.parse_bundle.return_value = bundle
+    bundle_service.import_bundle.return_value = _app(mode=AppMode.WORKFLOW)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDslBundleService", Mock(return_value=bundle_service))
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
+    pending: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex", lambda key, _expiry, value: pending.__setitem__(key, value)
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", lambda key: pending.pop(key, None))
+    service = AppDslService(unbound_session)
+    encoded = base64.b64encode(b"PK archive").decode()
+    account = _account()
+
+    result = service.import_app(account=account, import_mode=ImportMode.BUNDLE_CONTENT, yaml_content=encoded)
+
+    assert result.status == ImportStatus.PENDING
+    assert result.imported_dsl_version == "99.0.0"
+    bundle_service.import_bundle.assert_not_called()
+    denied = service.confirm_import(import_id=result.id, account=_account(account_id="other"))
+    assert denied.status == ImportStatus.FAILED
+    bundle_service.import_bundle.assert_not_called()
+    confirmed = service.confirm_import(import_id=result.id, account=account)
+    assert confirmed.status == ImportStatus.COMPLETED_WITH_WARNINGS
+    bundle_service.import_bundle.assert_called_once()
+    assert not pending
+
+
+def test_bundle_url_import_uses_binary_response(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    response = Mock(content=b"PK\x03\x04\xff")
+    monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
+    service = AppDslService(unbound_session)
+    import_bundle = Mock(return_value=SimpleNamespace(status=ImportStatus.COMPLETED))
+    monkeypatch.setattr(service, "_import_bundle", import_bundle)
+
+    result = service.import_app(account=_account(), import_mode=ImportMode.YAML_URL, yaml_url="https://example.com/dsl")
+
+    assert result.status == ImportStatus.COMPLETED
+    assert base64.b64decode(import_bundle.call_args.kwargs["content"]) == response.content
+
+
+@pytest.mark.parametrize("content", ["!!!", "A" * 9])
+def test_bundle_content_rejects_invalid_or_oversized_input_before_parsing(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, content: str
+) -> None:
+    monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 6)
+    parse_bundle = Mock()
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDslBundleService.parse_bundle", parse_bundle)
+
+    result = AppDslService(unbound_session).import_app(
+        account=_account(), import_mode=ImportMode.BUNDLE_CONTENT, yaml_content=content
+    )
+
+    assert result.status == ImportStatus.FAILED
+    parse_bundle.assert_not_called()
+    assert not unbound_session.in_transaction()

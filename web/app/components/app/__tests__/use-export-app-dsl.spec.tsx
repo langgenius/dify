@@ -73,7 +73,7 @@ describe('useExportAppDsl', () => {
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
       {
         params: { app_id: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b' },
-        query: { include_secret: false },
+        query: { include_secret: false, include_workflow_tools: true },
       },
       { context: { silent: true } },
     )
@@ -85,6 +85,25 @@ describe('useExportAppDsl', () => {
     })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
     expect(await data.text()).toBe('kind: app\nversion: 0.1.5\n')
+  })
+
+  it('downloads workflow bundles as binary ZIP files', async () => {
+    mocks.exportAppDsl.mockResolvedValue({
+      data: btoa('PK\u0003\u0004\u0000\u00FF'),
+      format: 'zip',
+    })
+    const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await result.current.exportAppDsl({ appId: 'workflow-app-id', appName: 'Workflow bundle' })
+    })
+
+    const [{ data, fileName }] = mocks.downloadBlob.mock.calls[0] as [
+      { data: Blob; fileName: string },
+    ]
+    expect(fileName).toBe('Workflow bundle.zip')
+    expect(data.type).toBe('application/zip')
+    expect(new Uint8Array(await data.arrayBuffer())).toEqual(new Uint8Array([80, 75, 3, 4, 0, 255]))
   })
 
   it('exposes pending state until the export command settles', async () => {
@@ -120,7 +139,7 @@ describe('useExportAppDsl', () => {
       expect(result.current.isExporting).toBe(false)
     })
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
-      expect.objectContaining({ query: { include_secret: true } }),
+      expect.objectContaining({ query: { include_secret: true, include_workflow_tools: true } }),
       expect.anything(),
     )
   })

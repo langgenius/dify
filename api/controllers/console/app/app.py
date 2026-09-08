@@ -1,3 +1,4 @@
+import base64
 import logging
 import uuid
 from collections.abc import Sequence
@@ -47,7 +48,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, dump_response, to_timestamp
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
@@ -78,6 +79,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.errors.account import NoPermissionError
 from services.ops_trace_service import get_app_trace_settings, update_app_trace_settings
 from services.system_feature_service import SystemFeatureService
+from services.workflow_dsl_bundle import WorkflowDslBundleService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -180,6 +182,9 @@ class CopyAppPayload(BaseModel):
 
 
 class AppExportQuery(BaseModel):
+    include_workflow_tools: bool = Field(
+        default=False, description="Package referenced workflow tools recursively in a ZIP"
+    )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
 
@@ -501,7 +506,8 @@ class AppPagination(ResponseModel):
 
 
 class AppExportResponse(ResponseModel):
-    data: str
+    data: str = Field(description="YAML DSL text, or base64-encoded ZIP when format is zip")
+    format: Literal["yaml", "zip"] = "yaml"
 
 
 class AppImportResponse(ResponseModel):
@@ -1041,6 +1047,24 @@ class AppExportApi(Resource):
     @model_validate(AppExportQuery)
     def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
+
+        if req_data.include_workflow_tools:
+            account, _ = current_account_with_tenant()
+            try:
+                bundle = WorkflowDslBundleService(db.session()).export_bundle(
+                    app_model=app_model,
+                    account=account,
+                    include_secret=req_data.include_secret,
+                    workflow_id=req_data.workflow_id,
+                )
+            except NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
+            except ValueError as exc:
+                raise BadRequest(str(exc)) from exc
+            if bundle is not None:
+                return AppExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip").model_dump(
+                    mode="json"
+                )
 
         response = AppExportResponse(
             data=AppDslService.export_dsl(

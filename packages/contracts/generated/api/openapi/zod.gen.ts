@@ -51,6 +51,7 @@ export const zAppDescribeResponse = z.object({
  */
 export const zAppDslExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
+  include_workflow_tools: z.boolean().optional().default(false),
   workflow_id: z.uuid().nullish(),
 })
 
@@ -61,6 +62,7 @@ export const zAppDslExportQuery = z.object({
  */
 export const zAppDslExportResponse = z.object({
   data: z.string(),
+  format: z.enum(['yaml', 'zip']).optional().default('yaml'),
 })
 
 /**
@@ -74,7 +76,7 @@ export const zAppDslImportPayload = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
-  mode: z.enum(['yaml-content', 'yaml-url']),
+  mode: z.enum(['bundle-content', 'yaml-content', 'yaml-url']),
   name: z.string().nullish(),
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),
@@ -790,6 +792,7 @@ export const zGetAppsByAppIdDslPath = z.object({
 
 export const zGetAppsByAppIdDslQuery = z.object({
   include_secret: z.boolean().optional().default(false),
+  include_workflow_tools: z.boolean().optional().default(false),
   workflow_id: z.uuid().optional(),
 })
 
