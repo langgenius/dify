@@ -34,6 +34,9 @@ function Canvas() {
     <div onKeyDownCapture={onKeyDownCapture}>
       <div role="button" tabIndex={0} className="react-flow__node" data-id="node">
         Node
+        <button type="button" data-node-keyboard-target onClick={() => state.select('node')}>
+          Select node
+        </button>
       </div>
       <div
         role="button"
@@ -90,6 +93,40 @@ describe('node keyboard interactions', () => {
     expect(state.sync).not.toHaveBeenCalled()
   })
 
+  it('moves a Tab-focused unselected node without moving a separate selection', async () => {
+    rfState.nodes = [
+      createNode({ id: 'node', selected: false, position: { x: 0, y: 0 } }),
+      createNode({ id: 'other', selected: true, position: { x: 100, y: 100 } }),
+    ]
+    const user = userEvent.setup()
+    renderWorkflowComponent(<Canvas />)
+    await user.tab()
+    await user.keyboard('{ArrowRight}')
+    expect(rfState.nodes.map((node) => node.position)).toEqual([
+      { x: 5, y: 0 },
+      { x: 100, y: 100 },
+    ])
+    expect(state.sync).toHaveBeenCalledOnce()
+    expect(state.history).toHaveBeenCalledWith('NodeDragStop', { nodeId: 'node' })
+  })
+
+  it('moves from the title button through collaboration and keeps its native activation', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(<Canvas />)
+    await user.click(screen.getByRole('button', { name: 'Select node' }))
+    await user.keyboard('{ArrowRight}')
+    expect(rfState.nodes[0]!.position).toEqual({ x: 5, y: 0 })
+    expect(collaborationManager.setNodes).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ position: { x: 0, y: 0 } })]),
+      expect.arrayContaining([expect.objectContaining({ position: { x: 5, y: 0 } })]),
+      'keyboard-node-movement',
+    )
+    expect(state.sync).toHaveBeenCalledOnce()
+    state.select.mockClear()
+    await user.keyboard('{Enter} ')
+    expect(state.select.mock.calls).toEqual([['node'], ['node']])
+  })
+
   it('keeps selected children stationary relative to a moving selected container', async () => {
     rfState.nodes = [
       createNode({
@@ -103,6 +140,7 @@ describe('node keyboard interactions', () => {
     ]
     const user = userEvent.setup()
     renderWorkflowComponent(<Canvas />)
+    await user.tab()
     await user.tab()
     await user.tab()
     await user.keyboard('{ArrowRight}')
@@ -142,12 +180,11 @@ describe('node keyboard interactions', () => {
     },
   )
 
-  it.each(['readonly', 'comment', 'locked', 'unselected', 'start'] as const)(
+  it.each(['readonly', 'comment', 'locked', 'start'] as const)(
     'does not move in %s state',
     async (mode) => {
       state.readonly = mode === 'readonly'
       if (mode === 'locked') Object.assign(rfState.nodes[0]!, { draggable: false })
-      if (mode === 'unselected') Object.assign(rfState.nodes[0]!, { selected: false })
       if (mode === 'start') Object.assign(rfState.nodes[0]!, { type: CUSTOM_ITERATION_START_NODE })
       const user = userEvent.setup()
       renderWorkflowComponent(<Canvas />, {
