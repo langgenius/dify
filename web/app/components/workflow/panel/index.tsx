@@ -8,6 +8,7 @@ import dynamic from '@/next/dynamic'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
+import { getPreviewPanelMaxWidth } from './panel-width'
 
 const VersionHistoryPanel = dynamic(
   () => import('@/app/components/workflow/panel/version-history-panel'),
@@ -112,9 +113,7 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   useEffect(() => {
     if (!selectedNode || !workflowCanvasWidth) return
 
-    const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
-    const minNodePanelWidth = 400
-    const maxAllowed = Math.max(workflowCanvasWidth - reservedCanvasWidth - minNodePanelWidth, 400)
+    const maxAllowed = getPreviewPanelMaxWidth(workflowCanvasWidth, !!selectedNode)
 
     if (previewPanelWidth > maxAllowed) setPreviewPanelWidth(maxAllowed)
   }, [selectedNode, workflowCanvasWidth, previewPanelWidth, setPreviewPanelWidth])

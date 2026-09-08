@@ -880,6 +880,30 @@ describe('workflow-panel index', () => {
     }
   })
 
+  it('compresses the node panel when the preview grows without replacing the saved node width', async () => {
+    localStorage.setItem('workflow-node-panel-width', '600')
+    const { store } = renderWorkflowComponent(
+      <BasePanel id="node-resize" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          workflowCanvasWidth: 1400,
+          nodePanelWidth: 600,
+          otherPanelWidth: 400,
+        },
+      },
+    )
+    const handle = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+
+    act(() => store.getState().setOtherPanelWidth(600))
+
+    await waitFor(() => expect(handle).toHaveAttribute('aria-valuenow', '400'))
+    expect(handle).toHaveAttribute('aria-valuemax', '400')
+    expect(localStorage.getItem('workflow-node-panel-width')).toBe('600')
+  })
+
   it('should compress oversized panel widths', async () => {
     const { container } = renderWorkflowComponent(
       <BasePanel id="node-resize" data={createData() as never}>

@@ -107,8 +107,8 @@ const NodeResizer = ({
   return (
     <div
       className={cn(
-        'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
-        nodeData.selected && 'opacity-100',
+        'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100',
+        nodeData.selected && 'pointer-events-auto opacity-100',
       )}
     >
       <NodeResizeControl

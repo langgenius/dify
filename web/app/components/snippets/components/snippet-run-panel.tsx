@@ -8,6 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import Loading from '@/app/components/base/loading'
@@ -15,6 +16,7 @@ import ResizeHandle from '@/app/components/base/resize-handle'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import { getPreviewPanelMaxWidth } from '@/app/components/workflow/panel/panel-width'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import ResultText from '@/app/components/workflow/run/result-text'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
@@ -76,7 +78,8 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
   const panelWidth = useStore((s) => s.previewPanelWidth)
   const setPreviewPanelWidth = useStore((s) => s.setPreviewPanelWidth)
-  const maxPanelWidth = Math.max(400, workflowCanvasWidth ? workflowCanvasWidth - 400 : 1024)
+  const hasSelectedNode = useReactFlowStore((s) => s.getNodes().some((node) => node.data.selected))
+  const maxPanelWidth = getPreviewPanelMaxWidth(workflowCanvasWidth, hasSelectedNode)
 
   const previewFields = useMemo(() => buildPreviewFields(fields), [fields])
   const initialInputs = useMemo(() => buildInitialInputs(previewFields), [previewFields])
@@ -128,15 +131,9 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
       if (!isResizing) return
 
       const newWidth = window.innerWidth - e.clientX
-      const reservedCanvasWidth = 400
-      const maxAllowed = Math.max(
-        400,
-        workflowCanvasWidth ? workflowCanvasWidth - reservedCanvasWidth : 1024,
-      )
-
-      if (newWidth >= 400 && newWidth <= maxAllowed) setPreviewPanelWidth(newWidth)
+      if (newWidth >= 400 && newWidth <= maxPanelWidth) setPreviewPanelWidth(newWidth)
     },
-    [isResizing, setPreviewPanelWidth, workflowCanvasWidth],
+    [isResizing, setPreviewPanelWidth, maxPanelWidth],
   )
 
   useEffect(() => {

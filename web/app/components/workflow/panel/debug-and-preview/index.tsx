@@ -4,7 +4,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import ResizeHandle from '@/app/components/base/resize-handle'
@@ -15,6 +15,7 @@ import { useWorkflowInteractions } from '../../hooks/use-workflow-panel-interact
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
+import { getPreviewPanelMaxWidth } from '../panel-width'
 import ChatWrapper from './chat-wrapper'
 
 export type ChatWrapperRefType = {
@@ -46,7 +47,6 @@ const DebugAndPreview = () => {
   }
 
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
-  const nodePanelWidth = useStore((s) => s.nodePanelWidth)
   const panelWidth = useStore((s) => s.previewPanelWidth)
   const setPanelWidth = useStore((s) => s.setPreviewPanelWidth)
   const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
@@ -57,13 +57,7 @@ const DebugAndPreview = () => {
     },
     [setPanelWidth, setPanelWidthStorage],
   )
-  const maxPanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth) return 720
-
-    if (!selectedNode) return Math.max(400, workflowCanvasWidth - 400)
-
-    return Math.max(400, workflowCanvasWidth - 400 - nodePanelWidth)
-  }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
+  const maxPanelWidth = getPreviewPanelMaxWidth(workflowCanvasWidth, !!selectedNode, 720)
   const { triggerRef, containerRef } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',

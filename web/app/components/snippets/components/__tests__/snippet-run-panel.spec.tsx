@@ -1,10 +1,16 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { ReactFlowProvider } from 'reactflow'
+import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetRunPanel from '../snippet-run-panel'
+
+const renderWorkflowComponent = (
+  ui: Parameters<typeof renderWithWorkflowStore>[0],
+  options?: Parameters<typeof renderWithWorkflowStore>[1],
+) => renderWithWorkflowStore(<ReactFlowProvider>{ui}</ReactFlowProvider>, options)
 
 const workflowHookMocks = vi.hoisted(() => ({
   handleCancelDebugAndPreviewPanel: vi.fn(),

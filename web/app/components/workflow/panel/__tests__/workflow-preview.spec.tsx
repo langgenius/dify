@@ -5,14 +5,20 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { ReactFlowProvider } from 'reactflow'
 import {
   createNodeTracing,
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { submitHumanInputForm } from '@/service/workflow'
 import WorkflowPreview from '../workflow-preview'
+
+const renderWorkflowComponent = (
+  ui: Parameters<typeof renderWithWorkflowStore>[0],
+  options?: Parameters<typeof renderWithWorkflowStore>[1],
+) => renderWithWorkflowStore(<ReactFlowProvider>{ui}</ReactFlowProvider>, options)
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 
