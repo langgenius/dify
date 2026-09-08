@@ -26,6 +26,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -472,6 +473,48 @@ def test_get_by_workflow_execution_maps_real_rows_to_domain(
     assert len(domains) == 1
     assert domains[0].inputs == {"input": 1}
     assert domains[0].outputs == {"output": 2}
+
+
+def test_trace_read_includes_only_owned_workflow_tools_without_widening_default_reads(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    caller = _repository(monkeypatch, sqlite_session_factory)
+    caller.save(_execution(execution_id="root", node_execution_id="root"))
+    for execution_id, tenant_id, app_id, root_app_id, run_id, origin in (
+        ("child", "tenant-1", "source-app", "app-1", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ("same-app", "tenant-1", "app-1", "app-1", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ("foreign-root", "tenant-1", "source-app", "app-2", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        (
+            "foreign-tenant",
+            "tenant-2",
+            "source-app",
+            "app-1",
+            "run-1",
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        ),
+        ("foreign-run", "tenant-1", "source-app", "app-1", "run-2", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ("foreign-app", "tenant-1", "source-app", "app-1", "run-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+    ):
+        _repository(
+            monkeypatch, sqlite_session_factory, tenant_id=tenant_id, app_id=app_id, triggered_from=origin
+        ).save(
+            _execution(
+                execution_id=execution_id,
+                node_execution_id=execution_id,
+                run_id=run_id,
+                process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: root_app_id},
+            )
+        )
+    assert {node.id for node in caller.get_by_workflow_execution("run-1", include_workflow_tools=True)} == {
+        "root",
+        "child",
+        "same-app",
+    }
+    assert [node.id for node in caller.get_by_workflow_execution("run-1")] == ["root"]
+    with pytest.raises(ValueError, match="app_id is required"):
+        _repository(monkeypatch, sqlite_session_factory, app_id=None).get_by_workflow_execution(
+            "run-1", include_workflow_tools=True
+        )
 
 
 def test_to_domain_model_loads_offloaded_storage(

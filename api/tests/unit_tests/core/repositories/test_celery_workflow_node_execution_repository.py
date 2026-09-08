@@ -12,6 +12,7 @@ import pytest
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -75,6 +76,38 @@ def sample_workflow_node_execution():
 
 class TestCeleryWorkflowNodeExecutionRepository:
     """Test cases for CeleryWorkflowNodeExecutionRepository."""
+
+    def test_trace_read_keeps_source_nodes_out_of_runtime_cache(
+        self, sqlite_session_factory, mock_end_user, sample_workflow_node_execution
+    ):
+        caller = CeleryWorkflowNodeExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_end_user,
+            app_id="caller-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        root = sample_workflow_node_execution
+        caller.save_synchronously(root)
+        source = caller.for_workflow_tool("source-app")
+        child = root.model_copy(
+            update={
+                "id": "child",
+                "node_execution_id": "child",
+                "process_data": {WORKFLOW_TOOL_ROOT_APP_ID_KEY: "caller-app"},
+            }
+        )
+        source.save_synchronously(child)
+        assert [node.id for node in caller.get_by_workflow_execution(root.workflow_execution_id)] == [root.id]
+        assert {
+            node.id
+            for node in caller.get_by_workflow_execution(root.workflow_execution_id, include_workflow_tools=True)
+        } == {root.id, child.id}
+        assert [node.id for node in caller.get_by_workflow_execution(root.workflow_execution_id)] == [root.id]
+        assert child.id not in caller._execution_cache
+        caller._app_id = caller._sql_repository._app_id = None
+        with pytest.raises(ValueError, match="app_id is required"):
+            caller.get_by_workflow_execution(root.workflow_execution_id, include_workflow_tools=True)
 
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_workflow_tool_scope_keeps_async_backend_and_isolates_same_app_history(

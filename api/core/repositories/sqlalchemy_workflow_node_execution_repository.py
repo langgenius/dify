@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, override
 
 import psycopg2.errors
-from sqlalchemy import UnaryExpression, asc, desc, select
+from sqlalchemy import ColumnElement, UnaryExpression, asc, desc, or_, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -496,12 +496,18 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         workflow_run_id: str,
         order_config: OrderConfig | None = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+        *,
+        include_workflow_tools: bool = False,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
 
         The returned models have `offload_data` preloaded, along with the associated
         `inputs_file` and `outputs_file` data.
+
+        Trace export can include source-app Workflow Tool nodes owned by this
+        repository's root app. This requires app_id; ordinary reads keep their
+        existing app/origin scope.
 
         This method directly returns database models without converting to domain models,
         which is useful when you need to access database-specific fields like triggered_from.
@@ -516,18 +522,28 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Returns:
             A list of WorkflowNodeExecution database models
         """
+        if include_workflow_tools and not self._app_id:
+            raise ValueError("app_id is required to include Workflow Tool executions")
         with self._session_factory() as session:
             execution_origin = triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+            owner_scope: ColumnElement[bool] = WorkflowNodeExecutionModel.triggered_from == execution_origin
+            if self._app_id:
+                owner_scope &= WorkflowNodeExecutionModel.app_id == self._app_id
+            if include_workflow_tools:
+                assert self._app_id is not None
+                owner_scope = or_(
+                    owner_scope,
+                    WorkflowNodeExecutionModel.workflow_tool_owned_by_app(
+                        tenant_id=self._tenant_id, app_id=self._app_id
+                    ),
+                )
             stmt = WorkflowNodeExecutionModel.preload_offload_data_and_files(select(WorkflowNodeExecutionModel))
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from == execution_origin,
+                owner_scope,
                 WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
             )
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
             # Apply ordering if provided
             if order_config and order_config.order_by:
@@ -559,6 +575,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+        *,
+        include_workflow_tools: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
@@ -575,7 +593,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Returns:
             A list of node execution instances
         """
-        db_models = self.get_db_models_by_workflow_run(workflow_execution_id, order_config, triggered_from)
+        db_models = self.get_db_models_by_workflow_run(
+            workflow_execution_id, order_config, triggered_from, include_workflow_tools=include_workflow_tools
+        )
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)

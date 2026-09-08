@@ -339,24 +339,34 @@ class TestTencentDataTrace:
     def test_process_workflow_nodes(self, tencent_data_trace, mock_trace_utils):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.workflow_run_id = "run-id"
-        mock_trace_utils.convert_to_span_id.return_value = 111
+        mock_trace_utils.convert_to_span_id.side_effect = lambda _, kind: 111 if kind == "workflow" else 222
 
         node1 = MagicMock(spec=WorkflowNodeExecution)
         node1.id = "n1"
+        node1.process_data = {}
         node1.node_type = BuiltinNodeTypes.LLM
         node2 = MagicMock(spec=WorkflowNodeExecution)
         node2.id = "n2"
+        node2.node_execution_id = "tool-execution"
+        node2.process_data = {}
         node2.node_type = BuiltinNodeTypes.TOOL
+        child = MagicMock(spec=WorkflowNodeExecution)
+        child.id = "child"
+        child.node_type = BuiltinNodeTypes.LLM
+        child.process_data = {"workflow_tool_parent_execution_id": "tool-execution"}
 
         with (
-            patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node1, node2]),
-            patch.object(tencent_data_trace, "_build_workflow_node_span", side_effect=["span1", "span2"]),
+            patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node1, node2, child]),
+            patch.object(
+                tencent_data_trace, "_build_workflow_node_span", side_effect=["span1", "span2", "child-span"]
+            ) as build_span,
             patch.object(tencent_data_trace, "_record_llm_metrics") as mock_metrics,
         ):
             tencent_data_trace._process_workflow_nodes(trace_info, 123)
 
-            assert tencent_data_trace.trace_client.add_span.call_count == 2
-            mock_metrics.assert_called_once_with(node1)
+            assert tencent_data_trace.trace_client.add_span.call_count == 3
+            assert mock_metrics.call_count == 2
+            assert build_span.call_args.args[-1] == 222
 
     def test_process_workflow_nodes_node_exception(
         self, tencent_data_trace, mock_trace_utils, caplog: pytest.LogCaptureFixture
@@ -472,6 +482,9 @@ class TestTencentDataTrace:
         assert isinstance(service_account, Account)
         assert service_account.id == account.id
         assert mock_repo.call_args.kwargs["tenant_id"] == tenant.id
+        mock_repo.return_value.get_by_workflow_execution.assert_called_once_with(
+            workflow_execution_id="run-1", include_workflow_tools=True
+        )
 
     @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
     def test_get_workflow_node_executions_no_app_id(
