@@ -686,7 +686,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool")
 
         inputs, system_files = tool.prepare_container_inputs(tool_parameters)
-        encoded = WorkflowRuntimeTypeConverter().to_json_encodable(
+        json_inputs = WorkflowRuntimeTypeConverter().to_json_encodable(
             {
                 "inputs": inputs,
                 "system_files": system_files,
@@ -698,9 +698,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 "source_app_id": str(tool.workflow_app_id),
                 "source_workflow_id": str(tool.workflow_id),
                 "source_workflow_version": str(tool.version),
-                "inputs": encoded["inputs"],
-                "system_files": encoded["system_files"],
-                "inputs_for_log": encoded["inputs_for_log"],
+                "inputs": json_inputs["inputs"],
+                "system_files": json_inputs["system_files"],
+                "inputs_for_log": json_inputs["inputs_for_log"],
                 "call_depth": workflow_call_depth + 1,
             }
         )

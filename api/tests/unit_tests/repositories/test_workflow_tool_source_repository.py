@@ -28,7 +28,7 @@ _LATEST_GRAPH: dict[str, object] = {
 }
 
 
-def _persist_source(session_factory: sessionmaker[Session]) -> None:
+def _save_source(session_factory: sessionmaker[Session]) -> None:
     app = App(
         id=_APP_ID,
         tenant_id=_TENANT_ID,
@@ -70,10 +70,10 @@ def _persist_source(session_factory: sessionmaker[Session]) -> None:
         session.add_all((app, *workflows))
 
 
-def test_get_source_projects_pinned_workflow_after_a_new_version_is_published(
+def test_get_source_returns_requested_workflow_after_a_new_version_is_published(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    _persist_source(sqlite_session_factory)
+    _save_source(sqlite_session_factory)
     repository = SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory)
 
     source = repository.get_source(
@@ -107,7 +107,7 @@ def test_get_source_rejects_unavailable_source(
     workflow_id: str,
     version: str,
 ) -> None:
-    _persist_source(sqlite_session_factory)
+    _save_source(sqlite_session_factory)
     repository = SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory)
 
     assert (

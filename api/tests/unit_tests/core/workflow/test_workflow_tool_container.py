@@ -289,7 +289,7 @@ def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
 def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
     node, _, _ = _workflow_tool_node()
     factory = object.__new__(DifyNodeFactory)
-    factory._containerize_workflow_tools = True
+    factory._use_workflow_tool_containers = True
     assert (
         factory._resolve_node_class_for_factory(
             node_type=BuiltinNodeTypes.TOOL,
@@ -299,7 +299,7 @@ def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> N
         is DifyWorkflowToolNode
     )
 
-    factory._containerize_workflow_tools = False
+    factory._use_workflow_tool_containers = False
     assert (
         factory._resolve_node_class_for_factory(
             node_type=BuiltinNodeTypes.TOOL,
@@ -763,13 +763,13 @@ def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events(con
         event_listeners=event_listeners,
     )
     workflow_tool_handler.handle_request(invocation_id="invocation", request=request)
-    delegate = MagicMock()
-    delegate.node_type = container_type
-    delegate.should_emit.return_value = True
+    built_in_handler = MagicMock()
+    built_in_handler.node_type = container_type
+    built_in_handler.should_emit.return_value = True
     hidden_event_listener = MagicMock()
     nested_handler = WorkflowToolNestedContainerHandler(
         frame_registry,
-        handler_factory=lambda _: delegate,
+        handler_factory=lambda _: built_in_handler,
         hidden_event_listener=hidden_event_listener,
         event_listeners=event_listeners,
     )

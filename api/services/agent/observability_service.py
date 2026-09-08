@@ -474,11 +474,11 @@ class AgentObservabilityService:
         node = aliased(WorkflowNodeExecutionModel, name="wne") if statistics else WorkflowNodeExecutionModel
         binding = aliased(WorkflowAgentNodeBinding, name="wanb") if statistics else WorkflowAgentNodeBinding
         run = aliased(WorkflowRun, name="wr") if statistics else WorkflowRun
-        document = func.nullif(node.process_data, "")
+        process_data_json = func.nullif(node.process_data, "")
         if self._session.get_bind().dialect.name == "sqlite":
-            binding_id = func.json_extract(document, f"$.{WORKFLOW_AGENT_BINDING_ID_KEY}")
+            binding_id = func.json_extract(process_data_json, f"$.{WORKFLOW_AGENT_BINDING_ID_KEY}")
         else:
-            binding_id = sa.cast(document, sa.JSON)[WORKFLOW_AGENT_BINDING_ID_KEY].as_string()
+            binding_id = sa.cast(process_data_json, sa.JSON)[WORKFLOW_AGENT_BINDING_ID_KEY].as_string()
 
         node_table = "wne" if statistics else WorkflowNodeExecutionModel.__tablename__
         source_version = (
@@ -490,14 +490,14 @@ class AgentObservabilityService:
             )
             .scalar_subquery()
         )
-        legacy_binding = aliased(WorkflowAgentNodeBinding, name="legacy_binding")
-        unambiguous_version = (
-            select(func.min(legacy_binding.workflow_version))
+        old_binding = aliased(WorkflowAgentNodeBinding, name="old_binding")
+        single_binding_version = (
+            select(func.min(old_binding.workflow_version))
             .where(
-                legacy_binding.tenant_id == sa.literal_column(f"{node_table}.tenant_id"),
-                legacy_binding.app_id == sa.literal_column(f"{node_table}.app_id"),
-                legacy_binding.workflow_id == sa.literal_column(f"{node_table}.workflow_id"),
-                legacy_binding.node_id == sa.literal_column(f"{node_table}.node_id"),
+                old_binding.tenant_id == sa.literal_column(f"{node_table}.tenant_id"),
+                old_binding.app_id == sa.literal_column(f"{node_table}.app_id"),
+                old_binding.workflow_id == sa.literal_column(f"{node_table}.workflow_id"),
+                old_binding.node_id == sa.literal_column(f"{node_table}.node_id"),
             )
             .having(func.count() == 1)
             .scalar_subquery()
@@ -505,7 +505,7 @@ class AgentObservabilityService:
         is_tool = node.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
         # Old Tool rows may outlive their source Workflow. A sole source binding
         # is still unambiguous; never choose among versions using the caller run.
-        legacy_version = sa.case((is_tool, func.coalesce(source_version, unambiguous_version)), else_=run.version)
+        old_version = sa.case((is_tool, func.coalesce(source_version, single_binding_version)), else_=run.version)
         return and_(
             node.tenant_id == run.tenant_id,
             binding.tenant_id == node.tenant_id,
@@ -515,7 +515,7 @@ class AgentObservabilityService:
             or_(is_tool, and_(node.app_id == run.app_id, node.workflow_id == run.workflow_id)),
             or_(
                 sa.cast(binding.id, sa.String) == binding_id,
-                and_(binding_id.is_(None), binding.workflow_version == legacy_version),
+                and_(binding_id.is_(None), binding.workflow_version == old_version),
             ),
         )
 

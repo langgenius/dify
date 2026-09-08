@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { WorkflowRunScope } from './workflow-tool-tracing-context'
+import type { WorkflowRunInfo } from './workflow-tool-tracing-context'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -22,7 +22,7 @@ type TracingPanelProps = {
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
-  workflowRun?: WorkflowRunScope
+  workflowRun?: WorkflowRunInfo
 }
 
 function findExecution(nodes: NodeTracing[], id: string): NodeTracing | undefined {
@@ -40,8 +40,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
   hideNodeProcessDetail = false,
   workflowRun,
 }) => {
-  const inheritedTracing = use(WorkflowToolTracingContext)
-  const runScope = workflowRun ?? inheritedTracing?.workflowRun
+  const parentTracing = use(WorkflowToolTracingContext)
+  const currentWorkflowRun = workflowRun ?? parentTracing?.workflowRun
   const [workflowTool, setWorkflowTool] = useState<NodeTracing | null>(null)
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
@@ -159,11 +159,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
   }
 
   const content =
-    workflowTool && runScope ? (
+    workflowTool && currentWorkflowRun ? (
       <WorkflowToolTracing
         key={workflowTool.id}
         node={workflowTool}
-        workflowRun={runScope}
+        workflowRun={currentWorkflowRun}
         onBack={() => setWorkflowTool(null)}
       />
     ) : container || logs.showSpecialResultPanel ? (
@@ -193,7 +193,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
 
   return (
     <WorkflowToolTracingContext
-      value={runScope ? { workflowRun: runScope, onShowWorkflowTool: setWorkflowTool } : null}
+      value={
+        currentWorkflowRun
+          ? { workflowRun: currentWorkflowRun, onShowWorkflowTool: setWorkflowTool }
+          : null
+      }
     >
       {content}
     </WorkflowToolTracingContext>

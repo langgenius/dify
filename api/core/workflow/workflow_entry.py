@@ -317,7 +317,7 @@ class WorkflowEntry:
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             runtime_state=graph_runtime_state,
-            containerize_workflow_tools=False,
+            use_workflow_tool_containers=False,
         )
         node = node_factory.create_node(node_config)
 

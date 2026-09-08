@@ -18,7 +18,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.node_execution_process_data import preserve_workflow_agent_identity
+from core.workflow.node_execution_process_data import keep_agent_and_tool_ids
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -403,7 +403,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
-                merged_process_data = preserve_workflow_agent_identity(
+                merged_process_data = keep_agent_and_tool_ids(
                     existing.process_data_dict,
                     db_model.process_data_dict,
                 )
@@ -466,7 +466,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        process_data = preserve_workflow_agent_identity(db_model.process_data_dict, domain_model.process_data)
+        process_data = keep_agent_and_tool_ids(db_model.process_data_dict, domain_model.process_data)
         if process_data is not None:
             result = self._truncate_and_upload(
                 process_data,
@@ -474,7 +474,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                truncated_process_data = preserve_workflow_agent_identity(
+                truncated_process_data = keep_agent_and_tool_ids(
                     process_data,
                     result.truncated_value,
                 )
@@ -525,14 +525,14 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         if include_workflow_tools and not self._app_id:
             raise ValueError("app_id is required to include Workflow Tool executions")
         with self._session_factory() as session:
-            execution_origin = triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
-            owner_scope: ColumnElement[bool] = WorkflowNodeExecutionModel.triggered_from == execution_origin
+            trigger = triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+            owner_filter: ColumnElement[bool] = WorkflowNodeExecutionModel.triggered_from == trigger
             if self._app_id:
-                owner_scope &= WorkflowNodeExecutionModel.app_id == self._app_id
+                owner_filter &= WorkflowNodeExecutionModel.app_id == self._app_id
             if include_workflow_tools:
                 assert self._app_id is not None
-                owner_scope = or_(
-                    owner_scope,
+                owner_filter = or_(
+                    owner_filter,
                     WorkflowNodeExecutionModel.workflow_tool_owned_by_app(
                         tenant_id=self._tenant_id, app_id=self._app_id
                     ),
@@ -541,7 +541,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                owner_scope,
+                owner_filter,
                 WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
             )
 

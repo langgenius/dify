@@ -305,7 +305,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.add_layer(layer)
 
-        for event in self._iter_workflow_events(workflow_entry):
+        for event in self._run_workflow(workflow_entry):
             self._handle_event(workflow_entry, event)
 
     def handle_input_moderation(
