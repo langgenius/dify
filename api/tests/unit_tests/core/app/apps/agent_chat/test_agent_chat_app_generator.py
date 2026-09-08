@@ -183,7 +183,7 @@ class TestAgentChatAppGeneratorGenerate:
             return_value=_conversation(),
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
+            "core.app.apps.agent_chat.app_generator.create_message_trace",
             return_value=mocker.MagicMock(),
         )
 
@@ -270,7 +270,7 @@ class TestAgentChatAppGeneratorGenerate:
             return_value=["file-obj"],
         )
         mocker.patch(
-            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
+            "core.app.apps.agent_chat.app_generator.create_message_trace",
             return_value=mocker.MagicMock(),
         )
 

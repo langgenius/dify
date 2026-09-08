@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, NotRequired, Protocol, TypedDict, runtime_checkable
 
-from core.ops.entities.trace_entity import TraceTaskName
 from enterprise.telemetry.contracts import SignalType, TelemetryCase
 
 # ---------------------------------------------------------------------------
@@ -126,8 +125,6 @@ class TelemetryEvent(Protocol):
     def signal_type(self) -> SignalType: ...
     @property
     def ce_eligible(self) -> bool: ...
-    @property
-    def trace_task_name(self) -> TraceTaskName | None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +139,6 @@ class DraftNodeExecutionTraceEvent:
     case: TelemetryCase = TelemetryCase.DRAFT_NODE_EXECUTION
     signal_type: SignalType = SignalType.TRACE
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
 
 
 @dataclass(frozen=True)
@@ -152,7 +148,6 @@ class PromptGenerationEvent:
     case: TelemetryCase = TelemetryCase.PROMPT_GENERATION
     signal_type: SignalType = SignalType.TRACE
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = TraceTaskName.PROMPT_GENERATION_TRACE
 
 
 @dataclass(frozen=True)
@@ -162,7 +157,6 @@ class AppCreatedEvent:
     case: TelemetryCase = TelemetryCase.APP_CREATED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None
 
 
 @dataclass(frozen=True)
@@ -172,7 +166,6 @@ class AppUpdatedEvent:
     case: TelemetryCase = TelemetryCase.APP_UPDATED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None
 
 
 @dataclass(frozen=True)
@@ -182,7 +175,6 @@ class AppDeletedEvent:
     case: TelemetryCase = TelemetryCase.APP_DELETED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None
 
 
 @dataclass(frozen=True)
@@ -192,4 +184,3 @@ class FeedbackCreatedEvent:
     case: TelemetryCase = TelemetryCase.FEEDBACK_CREATED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None

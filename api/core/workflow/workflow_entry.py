@@ -19,6 +19,7 @@ from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.app.workflow.file_runtime import create_dify_workflow_file_runtime
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
+from core.ops.workflow_trace import WorkflowTraceRecorder
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_factory import (
@@ -49,7 +50,14 @@ from graphon.engine.container_handler.builtin.iteration import IterationContaine
 from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
-from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
+from graphon.engine_events import (
+    EngineEvent,
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPausedEvent,
+    NodeEvent,
+    is_node_result_event,
+)
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
@@ -85,14 +93,17 @@ def iter_dify_graph_engine_events(
     the filter's ``paths_map`` reflects everything the engine has actually
     streamed for this run.
     """
-    yield from filter_engine_events(
+    for event in filter_engine_events(
         engine.run(),
         context=EngineEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
             response_stream_filter or ResponseStreamFilter(),
         ],
-    )
+    ):
+        # GraphOn publishes before calling layers. Response consumers must own
+        # their mutable values so they cannot change an event OPS is copying.
+        yield event.model_copy(deep=True)
 
 
 class _NodeConfigDict(TypedDict):
@@ -132,6 +143,7 @@ class WorkflowEntry:
         workflow_tool_source_repository: WorkflowToolSourceRepository,
         command_channel: CommandChannel | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        workflow_trace: WorkflowTraceRecorder | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -162,6 +174,7 @@ class WorkflowEntry:
         if command_channel is None:
             command_channel = InMemoryChannel()
 
+        self._workflow_trace = workflow_trace
         self.command_channel = command_channel
         self.workflow_tool_event_listener_factory: WorkflowToolEventListenerFactory | None = None
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
@@ -172,6 +185,12 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         workflow_tool_event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
+
+        def record_hidden_event(event: NodeEvent) -> None:
+            if workflow_trace is not None:
+                workflow_trace.record_workflow_event(event)
+            limits_layer.on_event(event)
+
         self.graph_engine = Engine(
             graph=graph,
             runtime_state=graph_runtime_state,
@@ -182,19 +201,22 @@ class WorkflowEntry:
                 partial(
                     WorkflowToolNestedContainerHandler,
                     handler_factory=LoopContainerHandler,
-                    hidden_event_listener=limits_layer.on_event,
+                    execution_event_listener=workflow_trace.record_workflow_event if workflow_trace else None,
+                    hidden_event_listener=record_hidden_event,
                     event_listeners=workflow_tool_event_listeners,
                 ),
                 partial(
                     WorkflowToolNestedContainerHandler,
                     handler_factory=IterationContainerHandler,
-                    hidden_event_listener=limits_layer.on_event,
+                    execution_event_listener=workflow_trace.record_workflow_event if workflow_trace else None,
+                    hidden_event_listener=record_hidden_event,
                     event_listeners=workflow_tool_event_listeners,
                 ),
                 partial(
                     WorkflowToolContainerHandler,
                     source_repository=workflow_tool_source_repository,
-                    hidden_event_listener=limits_layer.on_event,
+                    workflow_trace=workflow_trace,
+                    hidden_event_listener=record_hidden_event,
                     event_listener_factory=self._create_workflow_tool_event_listener,
                     event_listeners=workflow_tool_event_listeners,
                     execution_context_factory=execution_context_layer.enter_context,
@@ -202,6 +224,8 @@ class WorkflowEntry:
             ),
         )
 
+        if workflow_trace is not None:
+            self.graph_engine.add_layer(workflow_trace)
         self.graph_engine.add_layer(execution_context_layer)
         # Add execution limits layer
         self.graph_engine.add_layer(limits_layer)
@@ -219,17 +243,40 @@ class WorkflowEntry:
     def response_stream_filter(self) -> ResponseStreamFilter:
         return self._response_stream_filter
 
-    def run(self) -> Generator[EngineEvent, None, None]:
+    @property
+    def workflow_trace(self) -> WorkflowTraceRecorder | None:
+        return self._workflow_trace
+
+    def run(self, *, finalize_trace: bool = True) -> Generator[EngineEvent, None, None]:
+        """Run the engine; an aggregate may defer trace completion until persistence finishes."""
+        graph_engine = self.graph_engine
+        workflow_trace = self._workflow_trace
+        execution_error = None
+        paused_event = None
         try:
-            generator = iter_dify_graph_engine_events(self.graph_engine, self._response_stream_filter)
+            generator = iter_dify_graph_engine_events(graph_engine, self._response_stream_filter)
             with closing(generator):
-                yield from generator
+                for event in generator:
+                    if isinstance(event, GraphRunPausedEvent):
+                        paused_event = event
+                    yield event
         except GenerateTaskStoppedError:
-            pass
+            if workflow_trace is not None:
+                workflow_trace.record_workflow_event(GraphRunAbortedEvent(reason="Workflow execution stopped"))
         except Exception as e:
+            execution_error = str(e)
             logger.exception("Unknown Error when workflow entry running")
             yield GraphRunFailedEvent(error=str(e))
             return
+        finally:
+            if workflow_trace is not None and (finalize_trace or execution_error is not None):
+                try:
+                    if paused_event is None or execution_error is not None:
+                        workflow_trace.finish_workflow_trace(execution_error)
+                    else:
+                        workflow_trace.save_pause_state()
+                except Exception:
+                    logger.exception("Failed to submit workflow trace")
 
     @classmethod
     def single_step_run(

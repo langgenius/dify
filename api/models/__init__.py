@@ -103,6 +103,7 @@ from .model import (
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
 from .onboarding import AccountStepByStepTourState
+from .ops_trace import OpsTraceDelivery
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -243,6 +244,7 @@ __all__ = [
     "MessageFile",
     "OAuthAccessToken",
     "OperationLog",
+    "OpsTraceDelivery",
     "PermissionEnum",
     "PinnedConversation",
     "Provider",

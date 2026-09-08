@@ -124,8 +124,10 @@ class WorkflowRunAgg:
     def iter_events(self) -> Generator[EngineEvent, None, None]:
         """Publish pause only after the engine closes and all persistence succeeds."""
         paused_event = None
+        workflow_trace = self._entry.workflow_trace
+        execution_error = None
         try:
-            with closing(self._entry.run()) as events:
+            with closing(self._entry.run(finalize_trace=False)) as events:
                 for event in events:
                     if isinstance(event, GraphRunPausedEvent):
                         paused_event = event
@@ -151,15 +153,24 @@ class WorkflowRunAgg:
                 yield paused_event
         except Exception as error:
             logger.exception("Workflow run orchestration failed")
+            execution_error = str(error)
             failed = GraphRunFailedEvent(
                 error=str(error), exceptions_count=self._runtime_state.graph_execution.exceptions_count
             )
+            if workflow_trace is not None:
+                workflow_trace.record_workflow_event(failed)
             for layer in self._prepared.application_layers:
                 try:
                     layer.on_event(failed)
                 except Exception:
                     logger.exception("Failed to handle workflow orchestration failure in %s", type(layer).__name__)
             yield failed
+        finally:
+            if workflow_trace is not None:
+                try:
+                    workflow_trace.finish_workflow_trace(execution_error)
+                except Exception:
+                    logger.exception("Failed to submit workflow trace")
 
     def _load_forms(self, form_ids: Sequence[str]) -> dict[str, HumanInputFormRecord]:
         forms = self._form_repository.get_by_form_ids(
@@ -217,6 +228,11 @@ class WorkflowRunAgg:
                     generate_entity=wrapper,
                     serialized_graph_runtime_state=self._runtime_state.dumps(),
                     serialized_response_stream_filter_state=self._entry.response_stream_filter.dumps(),
+                    ops_trace_state=(
+                        self._entry.workflow_trace.save_pause_state(close=False)
+                        if self._entry.workflow_trace is not None
+                        else None
+                    ),
                 ).dumps()
         execution = self._prepared.persistence_layer.workflow_execution
         execution.status = WorkflowExecutionStatus.PAUSED

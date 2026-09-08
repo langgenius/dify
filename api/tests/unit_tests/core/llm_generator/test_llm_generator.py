@@ -186,14 +186,18 @@ class TestLLMGenerator:
         mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Test Conversation Name"})
         mock_model_instance.invoke_llm.return_value = mock_response
 
-        with patch("core.llm_generator.llm_generator.TraceQueueManager") as mock_trace:
+        with patch("core.llm_generator.llm_generator.create_message_trace") as mock_trace:
             name = LLMGenerator.generate_conversation_name(
                 "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1"
             )
             assert name == "Test Conversation Name"
-            mock_trace.assert_called_once_with(app_id="app-1")
-            trace_task = mock_trace.return_value.add_trace_task.call_args.args[0]
-            assert trace_task.message_id == "message-1"
+            mock_trace.assert_called_once_with(
+                tenant_id="tenant_id", app_id="app-1", message_id="message-1", conversation_id="conversation-1"
+            )
+            call = mock_trace.return_value.record_operation.call_args
+            assert call.args == ("generate_conversation_name",)
+            assert call.kwargs["outputs"] == name
+            assert call.kwargs["independent"] is True
 
     def test_generate_conversation_name_truncated(self, mock_model_instance):
         long_query = "a" * 2100
@@ -201,7 +205,7 @@ class TestLLMGenerator:
         mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Short Name"})
         mock_model_instance.invoke_llm.return_value = mock_response
 
-        with patch("core.llm_generator.llm_generator.TraceQueueManager"):
+        with patch("core.llm_generator.llm_generator.create_message_trace"):
             name = LLMGenerator.generate_conversation_name("tenant_id", long_query)
             assert name == "Short Name"
 
@@ -219,7 +223,7 @@ class TestLLMGenerator:
         mock_response.message.get_text_content.return_value = "{'Your Output': 'Repaired Name'}"
         mock_model_instance.invoke_llm.return_value = mock_response
 
-        with patch("core.llm_generator.llm_generator.TraceQueueManager"):
+        with patch("core.llm_generator.llm_generator.create_message_trace"):
             name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
             assert name == "Repaired Name"
 
@@ -227,7 +231,7 @@ class TestLLMGenerator:
         mock_response = MagicMock()
         mock_response.message.get_text_content.return_value = '["not a dict"]'
         mock_model_instance.invoke_llm.return_value = mock_response
-        with patch("core.llm_generator.llm_generator.TraceQueueManager"):
+        with patch("core.llm_generator.llm_generator.create_message_trace"):
             name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
             assert name == "test query"
 
@@ -235,7 +239,7 @@ class TestLLMGenerator:
         mock_response = MagicMock()
         mock_response.message.get_text_content.return_value = '{"something": "else"}'
         mock_model_instance.invoke_llm.return_value = mock_response
-        with patch("core.llm_generator.llm_generator.TraceQueueManager"):
+        with patch("core.llm_generator.llm_generator.create_message_trace"):
             name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
             assert name == "test query"
 
@@ -245,7 +249,7 @@ class TestLLMGenerator:
         mock_response.message.get_text_content.return_value = json.dumps({"Your Output": long_output})
         mock_model_instance.invoke_llm.return_value = mock_response
 
-        with patch("core.llm_generator.llm_generator.TraceQueueManager"):
+        with patch("core.llm_generator.llm_generator.create_message_trace"):
             name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
             assert len(name) == 78  # 75 + "..."
             assert name.endswith("...")

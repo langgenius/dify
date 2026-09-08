@@ -196,9 +196,21 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
         )
 
+        trace_recorder = self.application_generate_entity.trace_recorder
+        workflow_trace = (
+            trace_recorder.create_workflow_trace(
+                workflow_id=self._workflow.id,
+                workflow_version=self._workflow.version,
+                workflow_run_id=self.application_generate_entity.workflow_execution_id,
+                inputs=self.application_generate_entity.inputs,
+                workflow_trace_state=self.application_generate_entity.workflow_trace_state,
+                resumed_without_state=self.application_generate_entity.extras.get("ops_resumed_without_state", False),
+            )
+            if trace_recorder is not None
+            else None
+        )
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
@@ -212,6 +224,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             workflow_tool_source_repository=self._workflow_tool_source_repository,
+            workflow_trace=workflow_trace,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
         )

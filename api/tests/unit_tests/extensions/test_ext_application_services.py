@@ -90,7 +90,7 @@ from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavaila
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_gateway import TraceProviderConfigChecks
 from services.app_tracing_config_service import AppTracingConfigService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
@@ -439,7 +439,7 @@ def test_build_application_services_wires_app_tracing_config_boundary(
     assert isinstance(services.app_tracing_configs, AppTracingConfigService)
     assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
     assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
-    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
+    assert isinstance(services.app_tracing_configs._provider, TraceProviderConfigChecks)
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(

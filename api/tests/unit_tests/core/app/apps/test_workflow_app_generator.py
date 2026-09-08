@@ -5,6 +5,7 @@ import contextvars
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from flask import Flask
@@ -18,7 +19,8 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
+from core.ops.trace_data import TraceSource
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
@@ -100,7 +102,9 @@ def _generate_entity(
         user_id=end_user.id,
         stream=stream,
         invoke_from=invoke_from,
-        trace_manager=MagicMock(spec=TraceQueueManager),
+        trace_recorder=MessageTraceRecorder(
+            TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4())), MagicMock(), ()
+        ),
         workflow_execution_id="run",
     )
 
@@ -257,8 +261,12 @@ def test_generate_includes_parent_trace_context_in_extras(
         "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.TraceQueueManager",
-        MagicMock(return_value=MagicMock(spec=TraceQueueManager)),
+        "core.app.apps.workflow.app_generator.create_message_trace",
+        MagicMock(
+            return_value=MessageTraceRecorder(
+                TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4())), MagicMock(), ()
+            )
+        ),
     )
     repository_tenant_ids: dict[str, str] = {}
     workflow_execution_factory = app_generator_module.DifyCoreRepositoryFactory.create_workflow_execution_repository

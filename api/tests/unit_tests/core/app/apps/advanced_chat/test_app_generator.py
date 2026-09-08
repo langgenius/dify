@@ -22,7 +22,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 )
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.message_trace import MessageTraceRecorder
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.enums import ConversationFromSource, EndUserType, MessageStatus
@@ -246,16 +246,16 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: kwargs["user_inputs"])
 
-        DummyTraceQueueManager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
+        DummyMessageTraceRecorder = type(
+            "_DummyMessageTraceRecorder",
+            (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
+                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id)
                 )
             },
         )
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.TraceQueueManager", DummyTraceQueueManager)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.create_message_trace", DummyMessageTraceRecorder)
 
         def _fake_generate(**kwargs):
             captured.update(kwargs)
@@ -293,7 +293,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
     def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-        existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
+        existing_trace_recorder = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -304,7 +304,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=True,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=existing_trace_manager,
+            trace_recorder=existing_trace_recorder,
             workflow_run_id="run-id",
         )
 
@@ -335,7 +335,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert result.resumed is True
         assert captured_entity is not None
-        assert captured_entity.trace_manager is existing_trace_manager
+        assert captured_entity.trace_recorder is existing_trace_recorder
         assert captured_graph_runtime_state is not None
 
     def test_single_iteration_generate_builds_debug_task(
@@ -481,7 +481,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -597,7 +597,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -701,7 +701,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -751,7 +751,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -803,7 +803,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -870,7 +870,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -959,7 +959,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 stream=False,
                 invoke_from=InvokeFrom.DEBUGGER,
                 extras={},
-                trace_manager=None,
+                trace_recorder=None,
                 workflow_run_id="run-id",
             )
 
@@ -1016,7 +1016,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -1066,7 +1066,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -1124,7 +1124,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
             extras={},
-            trace_manager=None,
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
 
@@ -1195,18 +1195,18 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        DummyTraceQueueManager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
+        DummyMessageTraceRecorder = type(
+            "_DummyMessageTraceRecorder",
+            (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
+                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id)
                 )
             },
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            "core.app.apps.advanced_chat.app_generator.create_message_trace",
+            DummyMessageTraceRecorder,
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
@@ -1270,18 +1270,18 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        DummyTraceQueueManager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
+        DummyMessageTraceRecorder = type(
+            "_DummyMessageTraceRecorder",
+            (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
+                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id)
                 )
             },
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            "core.app.apps.advanced_chat.app_generator.create_message_trace",
+            DummyMessageTraceRecorder,
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
@@ -1334,7 +1334,7 @@ class TestAdvancedChatAppGeneratorResume:
             workflow_id="workflow-id",
         )
 
-    def test_resume_restores_trace_manager_when_missing(
+    def test_resume_restores_trace_recorder_when_missing(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ):
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
@@ -1350,22 +1350,22 @@ class TestAdvancedChatAppGeneratorResume:
             user_id="user",
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
-            extras={},
-            trace_manager=None,
+            extras={"external_trace_id": "external-run", "trace_session_id": "external-session"},
+            trace_recorder=None,
             workflow_run_id="run-id",
         )
-        DummyTraceQueueManager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
+        DummyMessageTraceRecorder = type(
+            "_DummyMessageTraceRecorder",
+            (MessageTraceRecorder,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None, **_kwargs: setattr(
+                    self, "source", SimpleNamespace(app_id=app_id, actor_id=user_id, **_kwargs)
                 )
             },
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            "core.app.apps.advanced_chat.app_generator.create_message_trace",
+            DummyMessageTraceRecorder,
         )
         captured_entity: AdvancedChatAppGenerateEntity | None = None
 
@@ -1391,14 +1391,18 @@ class TestAdvancedChatAppGeneratorResume:
 
         assert result.ok is True
         assert captured_entity is not None
-        trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, DummyTraceQueueManager)
-        assert trace_manager.app_id == "app-id"
-        assert trace_manager.user_id == "session-id"
+        trace_recorder = captured_entity.trace_recorder
+        assert isinstance(trace_recorder, DummyMessageTraceRecorder)
+        assert trace_recorder.source.app_id == "app-id"
+        assert trace_recorder.user_id == "session-id"
+        assert trace_recorder.source.external_trace_id == "external-run"
+        assert trace_recorder.source.session_id == "external-session"
+        assert trace_recorder.source.message_id == _make_message().id
+        assert trace_recorder.source.conversation_id == _make_conversation().id
 
-    def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    def test_resume_preserves_existing_trace_recorder(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-        existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
+        existing_trace_recorder = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -1412,7 +1416,7 @@ class TestAdvancedChatAppGeneratorResume:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=existing_trace_manager,
+            trace_recorder=existing_trace_recorder,
             workflow_run_id="run-id",
         )
         captured_entity: AdvancedChatAppGenerateEntity | None = None
@@ -1439,4 +1443,4 @@ class TestAdvancedChatAppGeneratorResume:
 
         assert result.ok is True
         assert captured_entity is not None
-        assert captured_entity.trace_manager is existing_trace_manager
+        assert captured_entity.trace_recorder is existing_trace_recorder
