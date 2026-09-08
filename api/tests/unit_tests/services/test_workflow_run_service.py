@@ -1,7 +1,7 @@
 """Unit tests for the Console workflow-run application service."""
 
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
 
@@ -98,13 +98,17 @@ class TestWorkflowRunServiceQueries:
                 WORKFLOW_TOOL_ROOT_APP_ID_KEY: "app-1",
             }
         )
-        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", MagicMock(return_value=[trace]))
+        assemble = create_autospec(service_module.assemble_workflow_node_execution_traces, return_value=[trace])
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", assemble)
         result = service.get_workflow_tool_node_executions(
             context, app_id="app-1", run_id="run-1", node_execution_id="parent-1"
         )
         admitted_run.assert_called_with(context, app_id="app-1", run_id="run-1")
         node_executions.get_workflow_tool_executions.assert_called_once_with(
             tenant_id="tenant-1", workflow_run_id="run-1", parent_node_execution_id="parent-1"
+        )
+        assemble.assert_called_once_with(
+            node_executions.get_workflow_tool_executions.return_value, node_executions, session=ANY
         )
         assert result == [trace]
         assert trace.process_data == {"answer": "approved"}
