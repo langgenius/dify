@@ -16,7 +16,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { API_PREFIX } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const numberFormatter = new Intl.NumberFormat()
 const byteFormatter = new Intl.NumberFormat(undefined, {

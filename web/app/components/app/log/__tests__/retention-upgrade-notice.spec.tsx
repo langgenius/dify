@@ -3,7 +3,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { RetentionUpgradeNotice } from '../retention-upgrade-notice'

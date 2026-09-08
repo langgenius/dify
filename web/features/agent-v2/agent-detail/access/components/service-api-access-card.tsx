@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { useDocLink } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentApiKeyModal } from './agent-api-key-modal'
 
 export function ServiceApiAccessCard({ agentId }: { agentId: string }) {

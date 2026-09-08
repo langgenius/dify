@@ -43,7 +43,7 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceQuery: {
     searchAdvanced: {
       queryOptions: ({ input }: { input: unknown }) => ({

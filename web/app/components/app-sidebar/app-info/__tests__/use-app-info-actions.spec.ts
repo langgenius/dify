@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { useAppInfoActions } from '../use-app-info-actions'

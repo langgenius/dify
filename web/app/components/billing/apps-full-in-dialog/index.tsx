@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 

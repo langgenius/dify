@@ -34,7 +34,7 @@ import {
   updateAnnotationScore,
   updateAnnotationStatus,
 } from '@/service/annotation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
 import PageTitle from '../log-annotation/page-title'

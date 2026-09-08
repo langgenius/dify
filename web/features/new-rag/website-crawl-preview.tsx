@@ -21,7 +21,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { CrawlSelectionForm } from './crawl-selection-form'
 import { createRequestId } from './request-id'
 import {

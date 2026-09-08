@@ -719,6 +719,29 @@ class TestAppAnnotationServiceBatchImport:
             "uuid-3", [{"question": "q1", "answer": "a1"}], app.id, TENANT_ID, current_user.id
         )
 
+    @pytest.mark.parametrize("limit", [0, 2], ids=["unlimited", "exactly-at-limit"])
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_import_with_available_quota_enqueues_job(
+        self, sqlite_session: Session, current_user: Account, limit: int
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        features = SimpleNamespace(annotation_quota_limit=SimpleNamespace(limit=limit, size=1))
+        with (
+            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
+            patch.object(annotation_service_module, "batch_import_annotations_task") as task,
+            patch.object(annotation_service_module, "redis_client"),
+            config_overrides_context(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
+        ):
+            result = AppAnnotationService.batch_import_app_annotations(
+                app.id, _file(b"question,answer\nq,a\n"), sqlite_session
+            )
+
+        assert result["job_status"] == "waiting"
+        assert result["record_count"] == 1
+        task.delay.assert_called_once_with(
+            result["job_id"], [{"question": "q", "answer": "a"}], app.id, TENANT_ID, current_user.id
+        )
+
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_unexpected_error_cleans_active_job(
         self, sqlite_session: Session, current_user: Account, caplog: pytest.LogCaptureFixture

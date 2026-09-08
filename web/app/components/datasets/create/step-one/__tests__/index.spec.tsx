@@ -4,7 +4,7 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
 import { DataSourceType } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOne from '../index'
 

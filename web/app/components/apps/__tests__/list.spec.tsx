@@ -79,7 +79,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: {
       get: vi.fn(),

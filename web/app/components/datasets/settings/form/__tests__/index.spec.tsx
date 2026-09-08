@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { ReactElement } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -177,7 +179,6 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [], mutate: vi.fn(), isLoading: false }),
   useCurrentProviderAndModel: () => ({ currentProvider: undefined, currentModel: undefined }),
   useDefaultModel: () => ({ data: undefined, mutate: vi.fn(), isLoading: false }),
   useModelListAndDefaultModel: () => ({ modelList: [], defaultModel: undefined }),
@@ -201,23 +202,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useMarketplaceAllPlugins: () => ({ plugins: [], isLoading: false }),
   useRefreshModel: () => ({ handleRefreshModel: vi.fn() }),
   useModelModalHandler: () => vi.fn(),
-}))
-
-// Mock provider-context
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    textGenerationModelList: [],
-    embeddingsModelList: [],
-    rerankModelList: [],
-    agentThoughtModelList: [],
-    modelProviders: [],
-    textEmbeddingModelList: [],
-    speech2textModelList: [],
-    ttsModelList: [],
-    moderationModelList: [],
-    hasSettedApiKey: true,
-    plan: { type: 'free' },
-  }),
 }))
 
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
@@ -560,4 +544,20 @@ describe('Form', () => {
       expect(screen.getByRole('button', { name: /form\.save/i })).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [], refetch: vi.fn(), isPending: false }
+    },
+  }
 })

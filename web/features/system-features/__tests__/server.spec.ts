@@ -40,8 +40,8 @@ vi.mock('@/next/server', () => ({
   connection: mocks.connection,
 }))
 
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
     systemFeatures: {
       get: {
         queryOptions: (options?: { staleTime?: 'static' }) => ({

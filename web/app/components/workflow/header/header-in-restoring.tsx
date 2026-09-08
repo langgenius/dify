@@ -11,7 +11,7 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import useTheme from '@/hooks/use-theme'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   useInvalidAllLastRun,
   useResetWorkflowVersionHistory,
