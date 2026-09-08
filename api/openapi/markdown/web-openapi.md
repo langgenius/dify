@@ -781,7 +781,6 @@ Retrieve app site information and configuration.
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | App Not Found |  |
-| 409 | Site Configuration Invalid |  |
 | 500 | Internal Server Error |  |
 
 ### [GET] /system-features

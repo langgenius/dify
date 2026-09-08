@@ -1,21 +1,16 @@
-from datetime import UTC, datetime
-
 import pytest
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole, CustomizeTokenStrategy
-from models.model import App, AppMode, IconType, Site, UploadFile
+from models.enums import CustomizeTokenStrategy
+from models.model import App, AppMode, Site
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from services.app_site_service import AppSiteAppNotFoundError, AppSiteChanges, AppSiteNotFoundError
-from services.site_configuration_service import SiteConfigurationError
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
 _OTHER_WORKSPACE_ID = "33333333-3333-3333-3333-333333333333"
 _ACTOR_ID = "44444444-4444-4444-4444-444444444444"
-_FILE_ID = "55555555-5555-5555-5555-555555555555"
 
 
 def _persist_app(session: Session, *, with_site: bool = True) -> None:
@@ -132,43 +127,6 @@ def test_update_rolls_back_when_a_site_field_rejects_the_value(
         assert site is not None
         assert site.title == "Original"
         assert site.updated_by is None
-
-
-def test_update_rejects_cross_workspace_icon_reference(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    _persist_app(sqlite_session)
-    upload_file = UploadFile(
-        tenant_id=_OTHER_WORKSPACE_ID,
-        storage_type=StorageType.LOCAL,
-        key=f"upload_files/{_OTHER_WORKSPACE_ID}/icon.png",
-        name="icon.png",
-        size=10,
-        extension="png",
-        mime_type="image/png",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by=_ACTOR_ID,
-        created_at=datetime(2026, 1, 1, tzinfo=UTC),
-        used=True,
-    )
-    upload_file.id = _FILE_ID
-    sqlite_session.add(upload_file)
-    sqlite_session.commit()
-
-    with pytest.raises(SiteConfigurationError, match="missing or does not belong"):
-        _repository(sqlite_session_factory).update_site(
-            workspace_id=_WORKSPACE_ID,
-            app_id=_APP_ID,
-            actor_id=_ACTOR_ID,
-            changes=AppSiteChanges(icon_type=IconType.IMAGE.value, icon=_FILE_ID),
-        )
-
-    with sqlite_session_factory() as session:
-        site = session.scalar(select(Site).where(Site.app_id == _APP_ID))
-        assert site is not None
-        assert site.icon_type is None
-        assert site.icon is None
 
 
 def test_reset_access_token_uses_the_owned_transaction(

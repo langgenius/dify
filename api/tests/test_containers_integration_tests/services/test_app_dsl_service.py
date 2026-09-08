@@ -759,8 +759,8 @@ class TestAppDslService:
         )
         assert updated is app
         assert app.name == "override-name"
-        assert app.icon_type == IconType.IMAGE
-        assert app.icon == "X"
+        assert app.icon_type == app_dsl_service.DEFAULT_ICON_TYPE
+        assert app.icon == app_dsl_service.DEFAULT_ICON
         assert app.icon_background == "#222222"
         assert app.updated_at is fixed_now
 

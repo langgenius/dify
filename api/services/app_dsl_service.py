@@ -62,8 +62,12 @@ from services.entities.dsl_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.icon_configuration import (
+    DEFAULT_ICON,
+    DEFAULT_ICON_TYPE,
+    is_valid_image_icon,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.site_configuration_service import SiteConfigurationError, SiteConfigurationService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -518,16 +522,14 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
-        try:
-            SiteConfigurationService.validate_icon_reference(
-                session=self._session,
-                tenant_id=target_tenant_id,
-                icon_type=resolved_icon_type,
-                icon=icon,
-            )
-        except SiteConfigurationError:
-            resolved_icon_type = IconType.EMOJI
-            icon = "🤖"
+        if not is_valid_image_icon(
+            session=self._session,
+            tenant_id=target_tenant_id,
+            icon_type=resolved_icon_type,
+            icon=icon,
+        ):
+            resolved_icon_type = DEFAULT_ICON_TYPE
+            icon = DEFAULT_ICON
 
         if app:
             # Update existing app

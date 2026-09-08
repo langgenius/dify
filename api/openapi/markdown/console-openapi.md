@@ -2925,7 +2925,6 @@ Update application site configuration
 | 200 | Site configuration updated successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | App not found |  |
-| 409 | Site configuration invalid |  |
 
 ### [POST] /apps/{app_id}/site-enable
 Enable or disable app site
@@ -4612,7 +4611,6 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
-| 409 | Site configuration invalid |  |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a published workflow run.
