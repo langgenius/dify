@@ -225,11 +225,14 @@ def test_status_recording_exporter_remembers_last_http_status() -> None:
 def test_adapter_builds_exporter_resource_and_headers_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
     exporter_cls = MagicMock()
     monkeypatch.setattr("core.ops.unified_trace.otlp_adapter.StatusRecordingOTLPSpanExporter", exporter_cls)
+    # The platform's own telemetry settings must not leak into the tenant's resource
+    monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", "k8s.namespace.name=dify-platform")
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "dify-platform-api")
     config = OTelTracingConfig(
         endpoint=ENDPOINT,
         headers=json.dumps({"authorization": "Bearer tok"}),
         service_name="dify-app-a",
-        resource_attributes={"deployment.environment": "prod"},
+        resource_attributes={"deployment.environment": "prod", "team": ["a", "b"]},
     )
 
     adapter = UnifiedOTelAdapter(config)
@@ -242,7 +245,8 @@ def test_adapter_builds_exporter_resource_and_headers_from_config(monkeypatch: p
     resource = adapter.build_resource(config)
     assert resource.attributes["service.name"] == "dify-app-a"
     assert resource.attributes["deployment.environment"] == "prod"
-    assert resource.attributes["telemetry.sdk.language"] == "python"
+    assert resource.attributes["team"] == ("a", "b")
+    assert "k8s.namespace.name" not in resource.attributes
 
 
 def test_otel_config_defaults_and_coercion() -> None:
@@ -279,6 +283,56 @@ def test_otel_config_rejects_invalid_headers_json() -> None:
 def test_otel_config_rejects_non_object_resource_attributes(value: str) -> None:
     with pytest.raises(ValueError, match="resource_attributes must be a JSON object"):
         OTelTracingConfig(endpoint=ENDPOINT, resource_attributes=value)
+
+
+@pytest.mark.parametrize("value", ['{"a": {"b": 1}}', '{"a": null}', '{"a": [1, "x"]}', '{"a": [{"b": 1}]}'])
+def test_otel_config_rejects_resource_attribute_values_the_sdk_would_drop(value: str) -> None:
+    # Resource silently discards these with a log line, so the user would never learn why
+    with pytest.raises(ValueError, match="must be a string, number, boolean or a list"):
+        OTelTracingConfig(endpoint=ENDPOINT, resource_attributes=value)
+
+
+def test_otel_config_accepts_primitive_and_homogeneous_list_resource_attributes() -> None:
+    config = OTelTracingConfig(
+        endpoint=ENDPOINT,
+        resource_attributes='{"s": "x", "i": 1, "f": 1.5, "b": true, "l": ["a", "b"], "n": [1, null, 2]}',
+    )
+    assert config.parsed_resource_attributes()["l"] == ["a", "b"]
+
+
+def test_otel_config_rejects_service_name_in_resource_attributes() -> None:
+    # service_name is also the destination scope key; an attribute must not shadow it on the wire
+    with pytest.raises(ValueError, match="use the service_name field"):
+        OTelTracingConfig(endpoint=ENDPOINT, resource_attributes='{"service.name": "other"}')
+
+
+@pytest.mark.parametrize(
+    "headers",
+    ['{"x": "a\\nb"}', '{"x": " leading-space"}', '{"": "v"}', '{"bad name": "v"}', '{"x": "\\u4e2d\\u6587"}'],
+)
+def test_otel_config_rejects_headers_the_exporter_cannot_send(headers: str) -> None:
+    # requests refuses these before any request is made, so they must be reported at config time
+    with pytest.raises(ValueError, match="valid HTTP header name|cannot be sent in an HTTP header"):
+        OTelTracingConfig(endpoint=ENDPOINT, headers=headers)
+
+
+def test_otel_config_accepts_sendable_headers() -> None:
+    config = OTelTracingConfig(endpoint=ENDPOINT, headers='{"X-Api-Key": "k", "empty": "", "trailing": "v "}')
+    assert config.parsed_headers() == {"X-Api-Key": "k", "empty": "", "trailing": "v "}
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "expected"),
+    [
+        ("http://collector:4318", "http://collector:4318/v1/traces"),
+        ("http://collector:4318/", "http://collector:4318/v1/traces"),
+        ("http://collector:4318?tenant=a", "http://collector:4318/v1/traces?tenant=a"),
+        ("http://collector:4318/v1/traces", "http://collector:4318/v1/traces"),
+        ("https://gateway.example.com/otlp/traces", "https://gateway.example.com/otlp/traces"),
+    ],
+)
+def test_otel_config_appends_traces_path_to_bare_endpoint(endpoint: str, expected: str) -> None:
+    assert OTelTracingConfig(endpoint=endpoint).endpoint == expected
 
 
 def test_otel_config_header_values_may_contain_asterisks() -> None:

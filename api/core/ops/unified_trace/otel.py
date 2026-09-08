@@ -1,9 +1,11 @@
 """Generic OpenTelemetry tracing provider: export unified traces to a custom OTLP/HTTP collector."""
 
 import json
+import re
 from typing import Any, override
+from urllib.parse import urlparse, urlunparse
 
-from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.util.types import AttributeValue
 from pydantic import field_validator
 
@@ -16,6 +18,15 @@ from core.ops.utils import validate_project_name, validate_url_with_path
 
 DEFAULT_ENDPOINT = "http://localhost:4318/v1/traces"
 DEFAULT_SERVICE_NAME = "dify"
+# Path the OTLP/HTTP spec fixes for traces; appended to a bare origin like the SDK does for
+# OTEL_EXPORTER_OTLP_ENDPOINT.
+OTLP_TRACES_PATH = "/v1/traces"
+
+# HTTP header name token (RFC 9110) and the value shape ``requests`` accepts before sending.
+_HEADER_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_HEADER_VALUE_RE = re.compile(r"^\S[^\r\n]*$|^$")
+# OpenTelemetry attribute values: these primitives, or a homogeneous list of one of them.
+_ATTRIBUTE_VALUE_TYPES = (str, bool, int, float)
 
 # OpenTelemetry GenAI semantic-convention attributes emitted in addition to the shared
 # OpenInference dialect, so generic backends (Jaeger, Tempo, Langfuse, ...) get model and
@@ -44,15 +55,56 @@ def _load_json_object(value: str, field_name: str) -> dict[str, Any]:
 def _load_headers(value: str) -> dict[str, str]:
     """Parse the headers field, rejecting anything an OTLP exporter cannot send.
 
-    JSON that is not an object (``[]``, ``"x"``, ``1``, ``null``) and non-string values are
-    refused here rather than at export time, where they would surface as an AttributeError
-    while building the exporter.
+    JSON that is not an object (``[]``, ``"x"``, ``1``, ``null``), non-string values, names
+    that are not HTTP tokens and values ``requests`` refuses (leading whitespace, CR/LF) or
+    cannot encode (non latin-1) are refused here rather than at export time, where they
+    would surface as a "collector did not answer" failure the collector never saw.
     """
     headers = _load_json_object(value, "headers")
     for key, header_value in headers.items():
         if not isinstance(header_value, str):
             raise ValueError(f"headers value for {key!r} must be a string")
+        if not _HEADER_NAME_RE.match(key):
+            raise ValueError(f"headers name {key!r} is not a valid HTTP header name")
+        if not _HEADER_VALUE_RE.match(header_value) or not _is_latin_1(header_value):
+            raise ValueError(f"headers value for {key!r} contains characters that cannot be sent in an HTTP header")
     return headers
+
+
+def _is_latin_1(value: str) -> bool:
+    try:
+        value.encode("latin-1")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _is_attribute_value(value: object) -> bool:
+    if isinstance(value, _ATTRIBUTE_VALUE_TYPES):
+        return True
+    if not isinstance(value, list):
+        return False
+    element_types = {type(item) for item in value if item is not None}
+    return len(element_types) <= 1 and element_types <= set(_ATTRIBUTE_VALUE_TYPES)
+
+
+def _load_resource_attributes(value: str) -> dict[str, Any]:
+    """Parse the resource_attributes field, rejecting what the OTel SDK would silently drop.
+
+    ``Resource`` discards attributes whose values are not primitives or homogeneous lists of
+    primitives with nothing but a log line, so a nested object or ``null`` would vanish from
+    every exported trace without the user learning why. ``service.name`` belongs to the
+    service_name field, which is also the destination scope key for nested workflows.
+    """
+    attributes = _load_json_object(value, "resource_attributes")
+    for key, attribute_value in attributes.items():
+        if key == SERVICE_NAME:
+            raise ValueError(f"resource_attributes must not set {SERVICE_NAME!r}; use the service_name field")
+        if not _is_attribute_value(attribute_value):
+            raise ValueError(
+                f"resource_attributes value for {key!r} must be a string, number, boolean or a list of one of those"
+            )
+    return attributes
 
 
 def _is_json(value: str) -> bool:
@@ -105,7 +157,13 @@ class OTelTracingConfig(BaseTracingConfig):
     @classmethod
     def validate_endpoint(cls, v: str) -> str:
         # Keep the path: users provide the full OTLP/HTTP trace URL (e.g. http://host:4318/v1/traces)
-        return validate_url_with_path(v, default_url=DEFAULT_ENDPOINT)
+        # and gateways may route traces anywhere. A bare origin gets the standard traces path
+        # instead of a 404 from the collector at api_check time.
+        url = validate_url_with_path(v, default_url=DEFAULT_ENDPOINT)
+        parsed = urlparse(url)
+        if parsed.path in ("", "/"):
+            return urlunparse(parsed._replace(path=OTLP_TRACES_PATH))
+        return url
 
     @field_validator("project_url", mode="before")
     @classmethod
@@ -160,7 +218,7 @@ class OTelTracingConfig(BaseTracingConfig):
     @field_validator("resource_attributes")
     @classmethod
     def validate_resource_attributes(cls, v: str) -> str:
-        _load_json_object(v, "resource_attributes")
+        _load_resource_attributes(v)
         return v
 
     @classmethod
@@ -183,7 +241,7 @@ class OTelTracingConfig(BaseTracingConfig):
         return _load_headers(self.headers)
 
     def parsed_resource_attributes(self) -> dict[str, Any]:
-        return _load_json_object(self.resource_attributes, "resource_attributes")
+        return _load_resource_attributes(self.resource_attributes)
 
 
 class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
@@ -200,10 +258,11 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter[OTelTracingConfig]):
 
     @override
     def build_resource(self, config: OTelTracingConfig) -> Resource:
-        # Resource.create merges the SDK defaults (telemetry.sdk.*) and OTEL_RESOURCE_ATTRIBUTES
-        attributes: dict[str, Any] = {"service.name": config.service_name}
-        attributes.update(config.parsed_resource_attributes())
-        return Resource.create(attributes)
+        # Built from the provider config alone: Resource.create would also run the SDK's
+        # environment detector and merge the OTEL_RESOURCE_ATTRIBUTES / OTEL_SERVICE_NAME of
+        # the platform's own telemetry into every tenant trace. service_name is merged last so
+        # the exported service.name always equals the destination scope key.
+        return Resource(config.parsed_resource_attributes()).merge(Resource({SERVICE_NAME: config.service_name}))
 
     @override
     def attributes(
