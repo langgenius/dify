@@ -18,6 +18,7 @@ import {
   overviewAttentionDataAtom,
   overviewAttentionErrorAtom,
   overviewAttentionPendingAtom,
+  overviewFailedFirstSourceTaskAtom,
   overviewKnowledgeSpaceIdAtom,
   overviewShowEmptyModulesAtom,
 } from './state'
@@ -68,6 +69,7 @@ export function AttentionPanel() {
   const { t: tCommon } = useTranslation('common')
   const attention = useAtomValue(overviewAttentionDataAtom)
   const empty = useAtomValue(overviewShowEmptyModulesAtom)
+  const failedTask = useAtomValue(overviewFailedFirstSourceTaskAtom)
   const error = useAtomValue(overviewAttentionErrorAtom)
   const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
   const loading = useAtomValue(overviewAttentionPendingAtom)
@@ -75,6 +77,12 @@ export function AttentionPanel() {
   // Dify owns product authorization; ignore responses cached or served by an older backend that
   // still contain the retired KnowledgeFS-local permission readiness rule.
   const actionableAttention = attention.filter((issue) => issue.rule_id !== 'permission-readiness')
+  // A confirmed upload failure must not briefly become "all good" while attention is refreshing.
+  // Keep this as task evidence, not a synthetic server issue with invented lifecycle fields.
+  const failedUpload =
+    empty &&
+    failedTask &&
+    (failedTask.operation === 'document_upload' || failedTask.operation === 'document_processing')
   const issuePageCount = Math.max(1, Math.ceil(actionableAttention.length / ATTENTION_PAGE_SIZE))
   const activeIssuePage = Math.min(issuePage, issuePageCount - 1)
   const visibleIssues = actionableAttention.slice(
@@ -115,7 +123,7 @@ export function AttentionPanel() {
       </section>
     )
 
-  if (empty)
+  if (empty && !loading && !actionableAttention.length && !failedUpload)
     return (
       <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
         <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
@@ -230,6 +238,23 @@ export function AttentionPanel() {
               </div>
             </div>
           </>
+        ) : failedUpload ? (
+          <div className="flex flex-1 flex-col items-start justify-center gap-3 p-4">
+            <p className="system-sm-medium text-text-destructive">
+              {t(($) => $['overview.attention.failedDocument.title'])}
+            </p>
+            <p className="body-xs-regular text-text-tertiary">
+              {t(($) => $['overview.attention.failedDocument.description'])}
+            </p>
+            <Button
+              render={<Link href={newKnowledgeDocumentsPath(knowledgeSpaceId)} />}
+              nativeButton={false}
+              size="small"
+              variant="secondary"
+            >
+              {t(($) => $['overview.viewDocuments'])}
+            </Button>
+          </div>
         ) : (
           <EmptyInline
             icon="i-ri-checkbox-circle-line"

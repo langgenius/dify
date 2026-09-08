@@ -11,6 +11,7 @@ import type {
   DocumentChunkRepository,
   DocumentChunkStateService,
 } from "./document-chunk-repository";
+import { DocumentCompilationAttemptProfileConflictError } from "./document-compilation-attempt-repository";
 import type { DocumentCompilationJobStateMachine } from "./document-compilation-job";
 import {
   type DocumentProcessingTask,
@@ -670,6 +671,7 @@ export function registerLogicalDocumentHandlers({
     // biome-ignore lint/suspicious/noExplicitAny: bounded OpenAPI handler context
     context: any,
     requiredAccess: "read" | "write",
+    taskId?: string,
   ) => {
     if (!tasks || !logicalDocuments) return null;
     const params = context.req.valid("param") as { documentId: string; id: string; taskId: string };
@@ -677,7 +679,7 @@ export function registerLogicalDocumentHandlers({
     const task = await tasks.get({
       documentId: params.documentId,
       knowledgeSpaceId: params.id,
-      taskId: params.taskId,
+      taskId: taskId ?? params.taskId,
       tenantId: context.get("subject").tenantId,
     });
     if (!task) return null;
@@ -815,12 +817,18 @@ export function registerLogicalDocumentHandlers({
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
     try {
-      await compilationJobs.retry(task.id, {
+      const retried = await compilationJobs.retry(task.id, {
         permissionSnapshot,
         requestedBySubjectId: context.get("subject").subjectId,
       });
-      return context.json((await getVisibleTask(context, "read")) ?? task, 200);
-    } catch {
+      const updated = await getVisibleTask(context, "read", retried.id);
+      return updated
+        ? context.json(updated, 200)
+        : context.json({ error: "Processing task not found" }, 404);
+    } catch (error) {
+      if (error instanceof DocumentCompilationAttemptProfileConflictError) {
+        return context.json({ code: error.code, error: "Model configuration changed" }, 409);
+      }
       return context.json({ error: "Processing task cannot be retried" }, 409);
     }
   });

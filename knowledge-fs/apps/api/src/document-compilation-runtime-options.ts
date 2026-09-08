@@ -391,10 +391,20 @@ export function createApiDocumentCompilationRuntime({
   const sourceCompilationPublication = createSourceCompilationPublicationExecutor({
     compilationJobs,
   });
+  const logDocumentMutationTickFailure = (error: unknown) =>
+    console.error("Document mutation reconciliation tick failed", {
+      errorClass: error instanceof Error ? error.name : "UnknownError",
+    });
   const documentMutationReconciler = createDatabaseDocumentLogicalMutationReconciler({
     chunks: repositories.chunks,
     database: adapter.database,
     logicalDocuments: repositories.logicalDocuments,
+    onError: ({ table, documentId, error }) =>
+      console.error("Document mutation reconciliation failed", {
+        table,
+        documentId,
+        errorClass: error instanceof Error ? error.name : "UnknownError",
+      }),
     settings: repositories.settings,
   });
   const documentIndexOverrides = createDatabaseDocumentCompilationIndexOverrideResolver(
@@ -905,9 +915,9 @@ export function createApiDocumentCompilationRuntime({
       findabilityAsync?.runtime.start();
       pageIndexSummaryRepairRuntime?.start();
       semanticEnrichment?.runtime.start();
-      void documentMutationReconciler.tick().catch(() => undefined);
+      void documentMutationReconciler.tick().catch(logDocumentMutationTickFailure);
       documentMutationTimer = setInterval(
-        () => void documentMutationReconciler.tick().catch(() => undefined),
+        () => void documentMutationReconciler.tick().catch(logDocumentMutationTickFailure),
         config.tickMs,
       );
       documentMutationTimer.unref?.();

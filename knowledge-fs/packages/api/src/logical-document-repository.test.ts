@@ -25,6 +25,79 @@ const otherSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e02";
 const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f01";
 
 describe("logical document repository", () => {
+  it("fences stale attempt bindings and does not let an older failure overwrite a newer pending revision", async () => {
+    const repository = memoryRepository();
+    const first = await repository.createCandidateRevision(createRevisionInput());
+    await repository.bindCompilationAttempt({
+      documentId,
+      knowledgeSpaceId,
+      tenantId,
+      revision: 1,
+      attemptId: firstAssetId,
+    });
+    const second = await repository.createCandidateRevision(
+      createRevisionInput({
+        documentAssetId: secondAssetId,
+        documentId,
+        expectedActiveRevision: null,
+        expectedDocumentRowVersion: 0,
+      }),
+    );
+    const failure = {
+      documentId,
+      knowledgeSpaceId,
+      tenantId,
+      revision: first.revision.revision,
+      now: "2026-07-14T12:02:00.000Z",
+    };
+    await expect(
+      repository.failCandidate({ ...failure, expectedCompilationAttemptId: secondAssetId }),
+    ).rejects.toThrow("binding changed");
+    await repository.failCandidate({ ...failure, expectedCompilationAttemptId: firstAssetId });
+    await expect(repository.get({ documentId, knowledgeSpaceId, tenantId })).resolves.toMatchObject(
+      { status: "pending" },
+    );
+    await expect(
+      repository.getRevision({
+        documentId,
+        knowledgeSpaceId,
+        tenantId,
+        revision: second.revision.revision,
+      }),
+    ).resolves.toMatchObject({ state: "candidate" });
+  });
+
+  it("keeps the published revision usable when a replacement candidate fails", async () => {
+    const repository = memoryRepository();
+    await repository.createCandidateRevision(createRevisionInput());
+    const published = await repository.activateRevision({
+      documentId,
+      knowledgeSpaceId,
+      tenantId,
+      revision: 1,
+      expectedActiveRevision: null,
+      expectedRowVersion: 0,
+      now: "2026-07-14T12:01:00.000Z",
+    });
+    await repository.createCandidateRevision(
+      createRevisionInput({
+        documentAssetId: secondAssetId,
+        documentId,
+        expectedActiveRevision: 1,
+        expectedDocumentRowVersion: published.rowVersion,
+      }),
+    );
+    await repository.failCandidate({
+      documentId,
+      knowledgeSpaceId,
+      tenantId,
+      revision: 2,
+      now: "2026-07-14T12:02:00.000Z",
+    });
+    await expect(repository.get({ documentId, knowledgeSpaceId, tenantId })).resolves.toMatchObject(
+      { status: "ready", activeRevision: 1 },
+    );
+  });
   it("resolves a superseded revision by its immutable asset version", async () => {
     const repository = memoryRepository();
     const first = await repository.createCandidateRevision(

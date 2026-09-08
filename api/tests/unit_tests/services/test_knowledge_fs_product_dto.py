@@ -239,6 +239,29 @@ def test_workflow_failed_retrieval_capture_dto_is_bounded_and_alias_safe() -> No
             KnowledgeFSWorkflowFailedRetrievalCapturePayload.model_validate(invalid)
 
 
+@pytest.mark.parametrize(
+    "code",
+    [
+        "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+        "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+        "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+        "DOCUMENT_COMPILATION_PROFILE_CHANGED",
+    ],
+)
+def test_settings_failures_keep_specific_safe_messages(code: str) -> None:
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "code": code,
+            "category": "conflict",
+            "message": "secret database and provider diagnostics",
+            "retryPolicy": "manual",
+        }
+    )
+    assert failure.code == code
+    assert "secret" not in failure.message
+    assert "conflicts with the current resource state" not in failure.message
+
+
 def test_public_failure_accepts_only_allowlisted_bounded_parameters() -> None:
     failure = KnowledgeFSPublicFailureResponse.model_validate(
         {

@@ -2,6 +2,7 @@ import type { DatabaseAdapter } from "@knowledge/core";
 
 import { numberColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
+import { readableDocumentAssetPredicateSql } from "./document-asset-visibility-sql";
 import type { DocumentChunkRepository } from "./document-chunk-repository";
 import type { DocumentCompilationJobStateMachine } from "./document-compilation-job";
 import type { DocumentCompilationIndexOverrideResolver } from "./document-compilation-worker";
@@ -286,93 +287,151 @@ export function createDatabaseDocumentLogicalMutationReconciler({
   database,
   logicalDocuments,
   now = () => new Date().toISOString(),
+  onError,
   settings,
 }: {
   readonly chunks: DocumentChunkRepository;
   readonly database: DatabaseAdapter;
   readonly logicalDocuments: LogicalDocumentRepository;
   readonly now?: (() => string) | undefined;
+  readonly onError?:
+    | ((event: {
+        readonly table: string;
+        readonly documentId?: string;
+        readonly error: unknown;
+      }) => void)
+    | undefined;
   readonly settings: DocumentSettingsRepository;
 }): DocumentLogicalMutationReconciler {
-  return {
-    tick: async () => {
-      const timestamp = now();
-      const terminal = "('failed', 'canceled', 'superseded')";
-      // Successful product transitions are part of the publication/head-CAS transaction. This
-      // reconciler is intentionally failure-only so a late/stale candidate can never be activated
-      // merely because its compilation attempt already reports success.
-      const revisionsActivated = 0;
-      const settingsCompleted = 0;
-      const chunksActivated = 0;
+  const batchSize = 100;
+  type Cursor = readonly [string, string, string, string | number];
+  const cursors = new Map<string, Cursor>();
+  let pending: ReturnType<DocumentLogicalMutationReconciler["tick"]> | undefined;
+  const report = (table: string, error: unknown, documentId?: string) => {
+    try {
+      onError?.({ table, error, ...(documentId ? { documentId } : {}) });
+    } catch {
+      /* Diagnostics must not block reconciliation. */
+    }
+  };
 
-      const revisions = await database.execute({
-        maxRows: 100,
+  const reconcile = async (
+    table: "document_revisions" | "document_reindex_attempts" | "document_chunk_state_changes",
+    key: "revision" | "id",
+    states: string,
+    apply: (row: Readonly<Record<string, unknown>>) => Promise<unknown>,
+  ): Promise<number> => {
+    try {
+      // Stable keyset sweeps guarantee progress even if a full batch cannot be reconciled.
+      // Failed rows are retried on the next sweep; successful transitions leave this query.
+      const columns = ["tenant_id", "knowledge_space_id", "document_id", key];
+      const ordered = columns.map((column) => `intent.${q(database, column)}`);
+      const selected = [...ordered, `intent.${q(database, "compilation_attempt_id")}`];
+      if (table === "document_reindex_attempts")
+        selected.push(`intent.${q(database, "row_version")}`);
+      const cursor = cursors.get(table);
+      const params = cursor ? [...cursor] : [];
+      const after = cursor
+        ? ` AND (${ordered.join(", ")}) > (${columns.map((_, index) => p(database, index + 1)).join(", ")})`
+        : "";
+      const result = await database.execute({
+        maxRows: batchSize,
         operation: "select",
-        params: [],
-        sql: `SELECT revision.${q(database, "tenant_id")}, revision.${q(database, "knowledge_space_id")}, revision.${q(database, "document_id")}, revision.${q(database, "revision")} FROM ${q(database, "document_revisions")} revision JOIN ${q(database, "document_compilation_attempts")} attempt ON attempt.${q(database, "tenant_id")} = revision.${q(database, "tenant_id")} AND attempt.${q(database, "knowledge_space_id")} = revision.${q(database, "knowledge_space_id")} AND attempt.${q(database, "id")} = revision.${q(database, "compilation_attempt_id")} WHERE revision.${q(database, "state")} = 'candidate' AND attempt.${q(database, "run_state")} IN ${terminal} ORDER BY revision.${q(database, "created_at")} ASC LIMIT 100;`,
-        tableName: "document_revisions",
+        params,
+        sql: `SELECT ${selected.join(", ")}, attempt.${q(database, "run_state")}, attempt.${q(database, "last_error_code")}, attempt.${q(database, "last_error_message")} FROM ${q(database, table)} intent
+JOIN ${q(database, "document_compilation_attempts")} attempt ON attempt.${q(database, "tenant_id")} = intent.${q(database, "tenant_id")} AND attempt.${q(database, "knowledge_space_id")} = intent.${q(database, "knowledge_space_id")} AND attempt.${q(database, "id")} = intent.${q(database, "compilation_attempt_id")}
+JOIN ${q(database, "logical_documents")} document ON document.${q(database, "tenant_id")} = intent.${q(database, "tenant_id")} AND document.${q(database, "knowledge_space_id")} = intent.${q(database, "knowledge_space_id")} AND document.${q(database, "id")} = intent.${q(database, "document_id")}
+JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = intent.${q(database, "tenant_id")} AND space.${q(database, "id")} = intent.${q(database, "knowledge_space_id")}
+JOIN ${q(database, "document_assets")} asset ON asset.${q(database, "knowledge_space_id")} = attempt.${q(database, "knowledge_space_id")} AND asset.${q(database, "id")} = attempt.${q(database, "document_asset_id")} AND asset.${q(database, "version")} = attempt.${q(database, "document_version")}
+WHERE intent.${q(database, "state")} IN ${states} AND attempt.${q(database, "run_state")} IN ('failed', 'canceled', 'superseded')
+AND document.${q(database, "status")} <> 'deleting' AND document.${q(database, "deletion_job_id")} IS NULL AND space.${q(database, "lifecycle_state")} = 'active' AND space.${q(database, "deletion_job_id")} IS NULL AND ${readableDocumentAssetPredicateSql(database, "asset", "reconcile_parent_source")}${after}
+ORDER BY ${ordered.join(", ")} LIMIT ${batchSize};`,
+        tableName: table,
       });
-      let revisionsFailed = 0;
-      for (const row of revisions.rows) {
-        await logicalDocuments.failCandidate({
-          documentId: stringColumn(row, "document_id"),
-          knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
+      let nextCursor: Cursor | undefined;
+      let completed = 0;
+      for (const row of result.rows) {
+        try {
+          nextCursor = [
+            stringColumn(row, "tenant_id"),
+            stringColumn(row, "knowledge_space_id"),
+            stringColumn(row, "document_id"),
+            key === "revision" ? numberColumn(row, key) : stringColumn(row, key),
+          ];
+          await apply(row);
+          completed += 1;
+        } catch (error) {
+          report(table, error, optionalString(row, "document_id"));
+        }
+      }
+      if (result.rows.length === batchSize && nextCursor) cursors.set(table, nextCursor);
+      else cursors.delete(table);
+      return completed;
+    } catch (error) {
+      // A query failure in one product family must not starve the other two.
+      report(table, error);
+      return 0;
+    }
+  };
+
+  const tick = async () => {
+    const timestamp = now();
+    const scope = (row: Readonly<Record<string, unknown>>) => ({
+      documentId: stringColumn(row, "document_id"),
+      expectedCompilationAttemptId: stringColumn(row, "compilation_attempt_id"),
+      knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
+      tenantId: stringColumn(row, "tenant_id"),
+    });
+    // Publication owns success. This worker must never activate a stale candidate.
+    const revisionsFailed = await reconcile(
+      "document_revisions",
+      "revision",
+      "('candidate')",
+      (row) =>
+        logicalDocuments.failCandidate({
+          ...scope(row),
           now: timestamp,
           revision: numberColumn(row, "revision"),
-          tenantId: stringColumn(row, "tenant_id"),
-        });
-        revisionsFailed += 1;
-      }
-
-      const reindexes = await database.execute({
-        maxRows: 100,
-        operation: "select",
-        params: [],
-        sql: `SELECT reindex_attempt.${q(database, "tenant_id")}, reindex_attempt.${q(database, "knowledge_space_id")}, reindex_attempt.${q(database, "document_id")}, reindex_attempt.${q(database, "id")}, reindex_attempt.${q(database, "row_version")}, attempt.${q(database, "run_state")}, attempt.${q(database, "last_error_code")}, attempt.${q(database, "last_error_message")} FROM ${q(database, "document_reindex_attempts")} reindex_attempt JOIN ${q(database, "document_compilation_attempts")} attempt ON attempt.${q(database, "tenant_id")} = reindex_attempt.${q(database, "tenant_id")} AND attempt.${q(database, "knowledge_space_id")} = reindex_attempt.${q(database, "knowledge_space_id")} AND attempt.${q(database, "id")} = reindex_attempt.${q(database, "compilation_attempt_id")} WHERE reindex_attempt.${q(database, "state")} IN ('queued', 'running') AND attempt.${q(database, "run_state")} IN ${terminal} ORDER BY reindex_attempt.${q(database, "created_at")} ASC LIMIT 100;`,
-        tableName: "document_reindex_attempts",
-      });
-      let settingsFailed = 0;
-      for (const row of reindexes.rows) {
-        await settings.fail({
+        }),
+    );
+    const settingsFailed = await reconcile(
+      "document_reindex_attempts",
+      "id",
+      "('queued', 'running')",
+      (row) =>
+        settings.fail({
+          ...scope(row),
           attemptId: stringColumn(row, "id"),
-          documentId: stringColumn(row, "document_id"),
           errorCode: optionalString(row, "last_error_code") ?? "COMPILATION_TERMINATED",
           errorMessage:
             optionalString(row, "last_error_message") ??
             `Compilation ${stringColumn(row, "run_state")}`,
           expectedRowVersion: numberColumn(row, "row_version"),
-          knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
           now: timestamp,
-          tenantId: stringColumn(row, "tenant_id"),
-        });
-        settingsFailed += 1;
-      }
-
-      const chunkChanges = await database.execute({
-        maxRows: 100,
-        operation: "select",
-        params: [],
-        sql: `SELECT change.${q(database, "tenant_id")}, change.${q(database, "knowledge_space_id")}, change.${q(database, "document_id")}, change.${q(database, "id")} FROM ${q(database, "document_chunk_state_changes")} change JOIN ${q(database, "document_compilation_attempts")} attempt ON attempt.${q(database, "tenant_id")} = change.${q(database, "tenant_id")} AND attempt.${q(database, "knowledge_space_id")} = change.${q(database, "knowledge_space_id")} AND attempt.${q(database, "id")} = change.${q(database, "compilation_attempt_id")} WHERE change.${q(database, "state")} = 'candidate' AND attempt.${q(database, "run_state")} IN ${terminal} ORDER BY change.${q(database, "created_at")} ASC LIMIT 100;`,
-        tableName: "document_chunk_state_changes",
+        }),
+    );
+    const chunksFailed = await reconcile(
+      "document_chunk_state_changes",
+      "id",
+      "('candidate')",
+      (row) => chunks.failStateChange({ ...scope(row), changeId: stringColumn(row, "id") }),
+    );
+    return {
+      chunksActivated: 0,
+      chunksFailed,
+      revisionsActivated: 0,
+      revisionsFailed,
+      settingsCompleted: 0,
+      settingsFailed,
+    };
+  };
+  return {
+    // Coalesce timer ticks while a slow batch is still running.
+    tick: () => {
+      pending ??= tick().finally(() => {
+        pending = undefined;
       });
-      let chunksFailed = 0;
-      for (const row of chunkChanges.rows) {
-        await chunks.failStateChange({
-          changeId: stringColumn(row, "id"),
-          documentId: stringColumn(row, "document_id"),
-          knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
-          tenantId: stringColumn(row, "tenant_id"),
-        });
-        chunksFailed += 1;
-      }
-      return {
-        chunksActivated,
-        chunksFailed,
-        revisionsActivated,
-        revisionsFailed,
-        settingsCompleted,
-        settingsFailed,
-      };
+      return pending;
     },
   };
 }

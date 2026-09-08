@@ -77,12 +77,14 @@ export const retryKnowledgeSettingsAtom = atom(null, async (get) => {
   await Promise.all(requests)
 })
 
-export const invalidateKnowledgeSettingsAtom = atom(null, async (get) => {
-  const requests: Promise<unknown>[] = [
-    get(spaceQueryAtom).refetch(),
-    get(settingsQueryAtom).refetch(),
-  ]
-  if (get(knowledgeSettingsCanManageAccessAtom))
-    requests.push(get(permissionsQueryAtom).refetch(), get(externalAccessQueryAtom).refetch())
-  await Promise.all(requests)
-})
+export const invalidateKnowledgeSettingsAtom = atom(
+  null,
+  async (get, _set, requireFresh: boolean = false) => {
+    const settingsRequest = get(settingsQueryAtom).refetch({ throwOnError: requireFresh })
+    const requests: Promise<unknown>[] = [get(spaceQueryAtom).refetch(), settingsRequest]
+    if (get(knowledgeSettingsCanManageAccessAtom))
+      requests.push(get(permissionsQueryAtom).refetch(), get(externalAccessQueryAtom).refetch())
+    await Promise.all(requests)
+    return (await settingsRequest).data
+  },
+)

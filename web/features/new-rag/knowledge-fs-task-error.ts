@@ -2,6 +2,9 @@ import type { KnowledgeFsPublicFailureResponse } from '@dify/contracts/api/conso
 import type { TFunction } from 'i18next'
 
 export type KnowledgeFsTaskFailureMessageKey =
+  | 'settings.compilationInProgress'
+  | 'settings.revisionConflict'
+  | 'settings.migrationRequired'
   | 'taskFailure.access'
   | 'taskFailure.attemptsExhausted'
   | 'taskFailure.configuration'
@@ -57,6 +60,7 @@ type KnowledgeFsTaskFailureStageKey =
   | 'taskFailure.stage.upload'
 
 const failureMessageKeyByCode = {
+  DOCUMENT_COMPILATION_PROFILE_CHANGED: 'taskFailure.modelConfiguration',
   DOCUMENT_COMPILATION_FAILED: 'taskFailure.documentProcessing',
   DOCUMENT_COMPILATION_LEASE_LOST: 'taskFailure.leaseLost',
   DOCUMENT_COMPILATION_RETRYABLE: 'taskFailure.storageTemporary',
@@ -82,6 +86,9 @@ const failureMessageKeyByCode = {
   KNOWLEDGE_FS_UNAVAILABLE: 'taskFailure.temporary',
   KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND: 'taskFailure.modelConfiguration',
   KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED: 'taskFailure.modelConfiguration',
+  KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS: 'settings.compilationInProgress',
+  KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT: 'settings.revisionConflict',
+  KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED: 'settings.migrationRequired',
   MODEL_CAPABILITY_MISMATCH: 'taskFailure.modelConfiguration',
   MODEL_CONFIGURATION_STALE: 'taskFailure.conflict',
   MODEL_CREDENTIAL_INVALID: 'taskFailure.modelConfiguration',

@@ -9,6 +9,8 @@ import {
 import { countGraphemes } from "unicode-segmenter/grapheme";
 import { describe, expect, it } from "vitest";
 
+import { defaultDocumentCompilationErrorClassifier } from "./document-compilation-runtime";
+import { createDocumentModelBudget } from "./document-model-budget";
 import { createInMemoryDocumentSemanticWindowCheckpointRepository } from "./document-semantic-window-checkpoint-repository";
 
 import {
@@ -1170,7 +1172,7 @@ describe("LLM semantic chunker", () => {
     expect(nodes[0]?.metadata.semanticChunking).not.toHaveProperty("tableRecord");
   });
 
-  it("fails closed when model output violates atomic-record or special-element boundaries", async () => {
+  it("preserves the atomic-document contract and safely splits mixed special elements", async () => {
     const atomicArtifact = artifact([
       {
         id: "atomic-text",
@@ -1215,16 +1217,117 @@ describe("LLM semantic chunker", () => {
         type: "table",
       },
     ]);
-    await expect(
-      createLlmSemanticChunker({
-        reasoningProviderFactory: () => new ScriptedProvider([echoWholeWindow]),
-      }).chunk({
-        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
-        parseArtifact: ordinaryArtifact,
-        retrievalProfile: profile(),
-      }),
-    ).rejects.toThrow("must keep table and image elements in isolated chunks");
+    const provider = new ScriptedProvider([echoWholeWindow]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: ordinaryArtifact,
+      retrievalProfile: profile(),
+    });
+    expect(provider.calls).toHaveLength(1);
+    expect(nodes.map((node) => node.kind)).toEqual(["chunk", "table"]);
+    expect(nodes.map((node) => node.text)).toEqual(
+      ordinaryArtifact.elements.map((element) => element.text),
+    );
   });
+
+  it("corrects boundaries without losing source spans or leaking cross-boundary graph facts", async () => {
+    const elements = [
+      { id: "intro", text: "Alpha references Beta.", type: "paragraph" as const },
+      { id: "table", text: "Name | Value", type: "table" as const },
+      { id: "image-a", text: "Diagram A", type: "image" as const },
+      { id: "image-b", text: "Diagram B", type: "image" as const },
+      { id: "outro", text: "End of document.", type: "paragraph" as const },
+    ].map((element) => ({ ...element, metadata: {}, sectionPath: ["Document"] }));
+    const provider = new ScriptedProvider([
+      ({ units }) => ({
+        chunks: [
+          {
+            ...chunkRange(units[0]?.id, units.at(-1)?.id),
+            entities: [
+              { id: "alpha", text: "Alpha", type: "term", confidence: 1 },
+              { id: "beta", text: "Beta", type: "term", confidence: 1 },
+              { id: "name", text: "Name", type: "term", confidence: 1 },
+            ],
+            relations: [
+              {
+                subjectEntityId: "alpha",
+                objectEntityId: "beta",
+                type: "references",
+                confidence: 1,
+              },
+              {
+                subjectEntityId: "alpha",
+                objectEntityId: "name",
+                type: "references",
+                confidence: 1,
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact(elements),
+      retrievalProfile: profile(),
+    });
+    expect(provider.calls).toHaveLength(1);
+    expect(nodes.map((node) => node.kind)).toEqual(["chunk", "table", "image", "image", "chunk"]);
+    expect(nodes.map((node) => node.text)).toEqual(elements.map((element) => element.text));
+    nodes.forEach((node, index) =>
+      expect(node.metadata.semanticChunking).toMatchObject({
+        sourceSpans: [expect.objectContaining({ elementId: elements[index]?.id })],
+      }),
+    );
+    expect(nodes[0]?.metadata.extractedRelations).toEqual([
+      expect.objectContaining({ subject: "Alpha", object: "Beta" }),
+    ]);
+    expect(nodes[1]?.metadata.extractedRelations).toEqual([]);
+  });
+
+  it.each(["unknown", "gap", "overlap", "invalid-relation"])(
+    "never repairs %s by dropping input or invalid annotations",
+    async (failure) => {
+      const provider = new ScriptedProvider([
+        ({ units }) => {
+          const whole = chunkRange(units[0]?.id, units.at(-1)?.id);
+          if (failure === "unknown") return { chunks: [{ ...whole, startUnitId: "unknown" }] };
+          if (failure === "gap") return { chunks: [chunkRange(units[1]?.id, units.at(-1)?.id)] };
+          if (failure === "overlap") return { chunks: [whole, whole] };
+          return {
+            chunks: [
+              {
+                ...whole,
+                relations: [
+                  {
+                    subjectEntityId: "missing",
+                    objectEntityId: "missing",
+                    type: "references",
+                    confidence: 1,
+                  },
+                ],
+              },
+            ],
+          };
+        },
+      ]);
+      await expect(
+        createLlmSemanticChunker({ reasoningProviderFactory: () => provider }).chunk({
+          knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+          parseArtifact: artifact([
+            { id: "text", text: "Context.", type: "paragraph", metadata: {}, sectionPath: [] },
+            { id: "table", text: "Name | Value", type: "table", metadata: {}, sectionPath: [] },
+          ]),
+          retrievalProfile: profile(),
+        }),
+      ).rejects.toMatchObject({ code: "MODEL_RUNTIME_RESPONSE_INVALID", retryable: false });
+      expect(provider.calls).toHaveLength(2);
+    },
+  );
 
   it("budgets many parser section paths and tables by context instead of path count", async () => {
     const elements: Array<ParseArtifact["elements"][number]> = [];
@@ -2930,6 +3033,44 @@ describe("LLM semantic chunker", () => {
     ).rejects.toThrow("contiguously without gaps or overlap");
   });
 
+  it("replays corrected boundaries exactly and never replaces an invalid immutable checkpoint", async () => {
+    const checkpoints = createInMemoryDocumentSemanticWindowCheckpointRepository();
+    const provider = new ScriptedProvider([echoWholeWindow]);
+    const input = {
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      retrievalProfile: profile(),
+      tenantId: "tenant-1",
+      publicationGenerationId: GENERATION_A,
+      parseArtifact: artifact([
+        { id: "text", text: "Context.", type: "paragraph", metadata: {}, sectionPath: [] },
+        { id: "table", text: "Name | Value", type: "table", metadata: {}, sectionPath: [] },
+      ]),
+    };
+    const chunker = createLlmSemanticChunker({
+      checkpoints,
+      reasoningProviderFactory: () => provider,
+    });
+    const initial = await chunker.chunk(input);
+    const replayed = await chunker.chunk(input);
+    expect(replayed.map((node) => [node.kind, node.text])).toEqual(
+      initial.map((node) => [node.kind, node.text]),
+    );
+    expect(provider.calls).toHaveLength(1);
+    await expect(
+      createLlmSemanticChunker({
+        checkpoints: {
+          ...checkpoints,
+          get: async (input) => {
+            const checkpoint = await checkpoints.get(input);
+            return checkpoint ? { ...checkpoint, responseText: '{"chunks":[]}' } : null;
+          },
+        },
+        reasoningProviderFactory: () => provider,
+      }).chunk(input),
+    ).rejects.toThrow("checkpoint failed replay validation");
+    expect(provider.calls).toHaveLength(1);
+  });
+
   it("retries one invalid provider response before committing the window", async () => {
     const provider = new ScriptedProvider([() => ({ chunks: "invalid" }), echoWholeWindow]);
     const nodes = await createLlmSemanticChunker({
@@ -2951,12 +3092,109 @@ describe("LLM semantic chunker", () => {
 
     expect(nodes).toHaveLength(1);
     expect(provider.calls).toHaveLength(2);
-    expect(provider.calls[0]?.messages[0]?.content).not.toContain(
-      "previous response failed JSON schema validation",
+    expect(provider.calls[0]?.messages[0]?.content).not.toContain("previous response was invalid");
+    expect(provider.calls[1]?.messages[0]?.content).toContain("previous response was invalid");
+  });
+
+  it("retries only the invalid window and charges every attempt to the document budget", async () => {
+    const provider = new ScriptedProvider([echoEachUnit, () => ({ chunks: [] }), echoEachUnit]);
+    const modelBudget = createDocumentModelBudget({
+      maxEstimatedTokens: 1_000_000,
+      maxRequests: 3,
+    });
+    const nodes = await createLlmSemanticChunker({
+      maxConcurrentWindows: 1,
+      maxChunkChars: 100,
+      maxWindowChars: 1000,
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      retrievalProfile: profile(),
+      modelBudget,
+      parseArtifact: artifact(
+        Array.from({ length: 40 }, (_, index) => ({
+          id: `unit-${index}`,
+          metadata: {},
+          sectionPath: [],
+          type: "paragraph",
+          text: `Text ${index}.`,
+        })),
+      ),
+    });
+    expect(nodes).toHaveLength(40);
+    const windows = provider.calls.map(
+      (call) =>
+        (
+          JSON.parse(
+            call.messages.find((message) => message.role === "user")?.content ?? "{}",
+          ) as PromptPayload
+        ).windowId,
     );
-    expect(provider.calls[1]?.messages[0]?.content).toContain(
-      "previous response failed JSON schema validation",
+    expect(windows).toHaveLength(3);
+    expect(windows[0]).not.toBe(windows[1]);
+    expect(windows[1]).toBe(windows[2]);
+    expect(modelBudget.snapshot().requestsReserved).toBe(3);
+    expect(provider.calls[2]?.messages[0]?.content).toContain("did not cover any input units");
+  });
+
+  it.each(["budget", "abort", "transport"])(
+    "never retries %s failures as malformed model output",
+    async (reason) => {
+      const controller = new AbortController();
+      const provider = new ScriptedProvider([
+        () => {
+          if (reason === "abort") controller.abort(new Error("lease lost"));
+          if (reason === "transport") throw new Error("transport unavailable");
+          return { chunks: [] };
+        },
+      ]);
+      const modelBudget = createDocumentModelBudget({
+        maxEstimatedTokens: 1_000_000,
+        maxRequests: 1,
+      });
+      const result = createLlmSemanticChunker({
+        maxProviderOutputRetries: 3,
+        reasoningProviderFactory: () => provider,
+      }).chunk({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        retrievalProfile: profile(),
+        modelBudget,
+        signal: controller.signal,
+        parseArtifact: artifact([
+          { id: "unit", metadata: {}, sectionPath: [], type: "paragraph", text: "Text." },
+        ]),
+      });
+      await expect(result).rejects.toThrow(
+        reason === "abort"
+          ? "lease lost"
+          : reason === "transport"
+            ? "transport unavailable"
+            : "maxRequests=1",
+      );
+      expect(provider.calls).toHaveLength(1);
+    },
+  );
+
+  it("classifies exhausted semantic validation as invalid model output, not a generic parser failure", async () => {
+    const provider = new ScriptedProvider([() => ({ chunks: [] })]);
+    const result = createLlmSemanticChunker({ reasoningProviderFactory: () => provider }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      retrievalProfile: profile(),
+      parseArtifact: artifact([
+        { id: "unit", metadata: {}, sectionPath: [], type: "paragraph", text: "Text." },
+      ]),
+    });
+    const error = await result.then(
+      () => {
+        throw new Error("expected invalid response");
+      },
+      (error: unknown) => error,
     );
+    expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
+      code: "MODEL_RUNTIME_RESPONSE_INVALID",
+      retryable: false,
+    });
+    expect(provider.calls).toHaveLength(2);
   });
 
   it("accepts JSON wrapped in provider prose but strictly caps joint extraction arrays", async () => {

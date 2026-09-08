@@ -37,6 +37,7 @@ import {
   type DatabaseKnowledgeSpacePermissionFence,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
+import { assertKnowledgeSpaceCompilationsIdle } from "./knowledge-space-compilation-settings-fence";
 import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
 
 export interface KnowledgeSpaceManifestLookupInput {
@@ -57,6 +58,8 @@ export interface ListKnowledgeSpaceManifestsResult {
 
 export interface UpdateKnowledgeSpaceManifestInput extends KnowledgeSpaceManifestLookupInput {
   readonly expectedManifestVersion?: number | undefined;
+  /** User model selection only; initial activation by the worker must remain allowed. */
+  readonly requireIdleCompilations?: boolean | undefined;
   readonly permission?:
     | {
         readonly fence: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
@@ -427,7 +430,14 @@ export function createDatabaseKnowledgeSpaceManifestRepository({
         ...(nextCursor ? { nextCursor } : {}),
       };
     },
-    update: async ({ expectedManifestVersion, knowledgeSpaceId, patch, permission, tenantId }) =>
+    update: async ({
+      expectedManifestVersion,
+      knowledgeSpaceId,
+      patch,
+      permission,
+      requireIdleCompilations,
+      tenantId,
+    }) =>
       database.transaction(async (transaction) => {
         if (
           !(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, {
@@ -465,6 +475,12 @@ export function createDatabaseKnowledgeSpaceManifestRepository({
           return null;
         }
 
+        if (requireIdleCompilations) {
+          await assertKnowledgeSpaceCompilationsIdle(database, transaction, {
+            tenantId,
+            knowledgeSpaceId,
+          });
+        }
         const updated = KnowledgeSpaceManifestSchema.parse({
           ...existing,
           ...patch,

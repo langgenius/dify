@@ -15,6 +15,58 @@ const bootstrapId = "66666666-6666-4666-8666-666666666666";
 const lockToken = "88888888-8888-4888-8888-888888888888";
 
 describe("durable document compilation job control plane", () => {
+  it("returns a new execution identity when a terminal job's models have changed", async () => {
+    const oldProfile = {
+      kind: "retrieval" as const,
+      revision: 1,
+      revisionId: assetId,
+      snapshotDigest: "a".repeat(64),
+    };
+    const currentProfile = {
+      ...oldProfile,
+      revision: 2,
+      revisionId: spaceId,
+      snapshotDigest: "b".repeat(64),
+    };
+    const attempts = createInMemoryDocumentCompilationAttemptRepository({
+      getActiveProfiles: () => ({ retrievalProfile: currentProfile }),
+    });
+    const now = "2026-07-13T10:00:00.000Z";
+    await attempts.start({
+      id: attemptId,
+      outboxId,
+      publicationGenerationId: generationId,
+      tenantId: "tenant-1",
+      knowledgeSpaceId: spaceId,
+      documentAssetId: assetId,
+      documentVersion: 1,
+      baseHeadRevision: 0,
+      createdAt: now,
+      maxExecutionAttempts: 3,
+      retrievalProfile: oldProfile,
+    });
+    const canceled = await attempts.cancel({ attemptId, expectedRowVersion: 0, now });
+    const jobs = createDurableDocumentCompilationJobStateMachine({
+      attempts,
+      generateAttemptId: () => bootstrapId,
+      generateOutboxId: () => lockToken,
+      generatePublicationGenerationId: () => outboxId,
+      maxExecutionAttempts: 3,
+      now: () => now,
+      resolveBaseHeadRevision: async () => 0,
+    });
+    await expect(jobs.retry?.(attemptId)).resolves.toMatchObject({
+      id: bootstrapId,
+      stage: "queued",
+      publicationGenerationId: outboxId,
+    });
+    await expect(attempts.get(bootstrapId)).resolves.toMatchObject({
+      retrievalProfile: currentProfile,
+      checkpoint: "queued",
+    });
+    await expect(attempts.get(attemptId)).resolves.toEqual(canceled);
+  });
+
   it("starts with capability-only provenance and rejects mixed legacy binding", async () => {
     const attempts = createInMemoryDocumentCompilationAttemptRepository();
     const jobs = createDurableDocumentCompilationJobStateMachine({

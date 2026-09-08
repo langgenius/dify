@@ -1,4 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
+import { DocumentCompilationAttemptProfileConflictError } from "./document-compilation-attempt-repository";
 
 import {
   type BackgroundTask,
@@ -272,6 +273,9 @@ export function registerBackgroundTaskHandlers({
       if (error instanceof KnowledgeSpaceAuthorizationError) {
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
+      if (error instanceof DocumentCompilationAttemptProfileConflictError) {
+        return context.json({ code: error.code, error: "Model configuration changed" }, 409);
+      }
       return context.json(
         {
           error: `Background task cannot be ${action === "cancel" ? "canceled" : "retried"}`,
@@ -314,16 +318,17 @@ async function controlDocumentTask(input: {
     input.authorization,
     input.knowledgeSpaceId,
   );
+  let updatedTaskId = input.taskId;
   if (input.action === "cancel") {
     await input.documentCompilationJobs.cancel(input.taskId, "Canceled by request", permission);
   } else {
     if (!input.documentCompilationJobs.retry) throw new Error("Document retry is unavailable");
-    await input.documentCompilationJobs.retry(input.taskId, permission);
+    updatedTaskId = (await input.documentCompilationJobs.retry(input.taskId, permission)).id;
   }
   const updated = await input.documentTasks.getVisible({
     candidateGrants: input.grants,
     knowledgeSpaceId: input.knowledgeSpaceId,
-    taskId: input.taskId,
+    taskId: updatedTaskId,
     tenantId: subject.tenantId,
   });
   return updated ? documentBackgroundTask(updated) : null;
@@ -448,9 +453,13 @@ async function controlBulkTask(input: {
     }
   }
   if (changed === 0) throw new Error("Bulk task has no eligible items");
+  const refreshed = await input.bulkOperations?.get({
+    id: operation.id,
+    tenantId: operation.tenantId,
+  });
   return bulkBackgroundTask(
-    operation,
-    await summarizeBulkOperation(operation, input.documentCompilationJobs),
+    refreshed ?? operation,
+    await summarizeBulkOperation(refreshed ?? operation, input.documentCompilationJobs),
   );
 }
 

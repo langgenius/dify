@@ -1084,6 +1084,23 @@ describe.each(["postgres", "tidb"] as const)(
       expect(issues.find((issue) => issue.ruleId === "stale-source")).toMatchObject({
         status: "active",
       });
+      const failedDocumentQuery = calls.find((call) => call.tableName === "logical_documents");
+      if (!failedDocumentQuery) throw new Error("Missing document attention query");
+      const failureSql = failedDocumentQuery.sql.replace(/["`]/g, "");
+      // The document may still be pending, or ready with an older published revision. The
+      // latest bound compilation, not that aggregate status, decides whether attention is due.
+      expect(failureSql).toContain(
+        "attempt.run_state = 'failed' OR (attempt.id IS NULL AND document.status = 'failed')",
+      );
+      expect(failureSql).toContain("ORDER BY latest.created_at DESC, latest.id DESC LIMIT 1");
+      expect(failureSql).toContain("revision.compilation_attempt_id = latest.id");
+      expect(failureSql).toContain("reindex_intent.document_revision = revision.revision");
+      expect(failureSql).toContain("chunk_intent.document_revision = revision.revision");
+      expect(failureSql).toContain("COALESCE(attempt.updated_at, document.updated_at)");
+      expect(failureSql).toContain("document.status <> 'deleting'");
+      expect(failureSql).toContain("attention_parent_source.status <> 'deleting'");
+      expect(failureSql).toContain("asset.lifecycle_state = 'active'");
+      expect(failedDocumentQuery.params).toContain(JSON.stringify(["team:camera"]));
       expect(issues.find((issue) => issue.ruleId === "model-readiness")?.evidence).toEqual([
         { code: "MODEL_PROFILE_NOT_READY", observedAt: NOW },
         { code: "MODEL_EMBEDDING_PROFILE_MISSING", observedAt: NOW },

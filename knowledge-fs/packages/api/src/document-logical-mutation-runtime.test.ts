@@ -67,6 +67,7 @@ describe("document logical mutation runtime", () => {
           return {
             rows: [
               {
+                compilation_attempt_id: "compilation-revision",
                 document_id: documentId,
                 knowledge_space_id: knowledgeSpaceId,
                 revision: 2,
@@ -80,6 +81,7 @@ describe("document logical mutation runtime", () => {
           return {
             rows: [
               {
+                compilation_attempt_id: "compilation-settings",
                 document_id: documentId,
                 id: "failed-settings",
                 knowledge_space_id: knowledgeSpaceId,
@@ -97,6 +99,7 @@ describe("document logical mutation runtime", () => {
           return {
             rows: [
               {
+                compilation_attempt_id: "compilation-chunk",
                 document_id: documentId,
                 id: "failed-chunk",
                 knowledge_space_id: knowledgeSpaceId,
@@ -141,6 +144,94 @@ describe("document logical mutation runtime", () => {
     expect(logicalDocuments.activateRevision).not.toHaveBeenCalled();
     expect(settings.complete).not.toHaveBeenCalled();
     expect(chunks.activateStateChange).not.toHaveBeenCalled();
+    expect(logicalDocuments.failCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedCompilationAttemptId: "compilation-revision" }),
+    );
+  });
+
+  it.each(["postgres", "tidb"] as const)(
+    "isolates poison rows and sweeps past a full failed batch (%s)",
+    async (dialect) => {
+      const queries: Array<{ sql: string; params: readonly unknown[] }> = [];
+      const row = (index: number) => ({
+        tenant_id: tenantId,
+        knowledge_space_id: knowledgeSpaceId,
+        document_id: `document-${String(index).padStart(3, "0")}`,
+        revision: 1,
+        compilation_attempt_id: `compilation-${index}`,
+        id: `intent-${index}`,
+        row_version: 1,
+        run_state: "failed",
+      });
+      const database = createSchemaDatabaseAdapter({
+        kind: dialect,
+        executor: async (input) => {
+          queries.push(input);
+          return {
+            rows:
+              input.tableName === "document_revisions"
+                ? input.params.length
+                  ? [row(100)]
+                  : Array.from({ length: 100 }, (_, index) => row(index))
+                : [row(101)],
+            rowsAffected: 0,
+          };
+        },
+      });
+      const onError = vi.fn();
+      const failCandidate = vi.fn(async (input) => {
+        if (input.documentId !== "document-100") throw new Error("deletion fence");
+        return input;
+      });
+      const reconciler = createDatabaseDocumentLogicalMutationReconciler({
+        database,
+        logicalDocuments: { failCandidate } as never,
+        chunks: { failStateChange: vi.fn(async () => ({})) } as never,
+        settings: { fail: vi.fn(async () => ({})) } as never,
+        onError,
+      });
+      await expect(reconciler.tick()).resolves.toMatchObject({
+        revisionsFailed: 0,
+        chunksFailed: 1,
+        settingsFailed: 1,
+      });
+      await expect(reconciler.tick()).resolves.toMatchObject({ revisionsFailed: 1 });
+      expect(onError).toHaveBeenCalledTimes(100);
+      expect(queries[3]?.params).toEqual([tenantId, knowledgeSpaceId, "document-099", 1]);
+      expect(
+        queries.every(
+          ({ sql }) => sql.includes("deletion_job_id") && sql.includes("lifecycle_state"),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it("coalesces concurrent ticks and continues other product families after a query failure", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const execute = vi.fn(async (input) => {
+      await gate;
+      if (input.tableName === "document_revisions") throw new Error("query failed");
+      return { rows: [], rowsAffected: 0 };
+    });
+    const onError = vi.fn();
+    const reconciler = createDatabaseDocumentLogicalMutationReconciler({
+      database: createSchemaDatabaseAdapter({ kind: "postgres", executor: execute }),
+      logicalDocuments: {} as never,
+      chunks: {} as never,
+      settings: {} as never,
+      onError,
+    });
+    const first = reconciler.tick();
+    expect(reconciler.tick()).toBe(first);
+    release();
+    await first;
+    expect(execute).toHaveBeenCalledTimes(3);
+    expect(onError).toHaveBeenCalledOnce();
+    await reconciler.tick();
+    expect(execute).toHaveBeenCalledTimes(6);
   });
 
   for (const dialect of ["postgres", "tidb"] as const) {

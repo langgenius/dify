@@ -441,6 +441,63 @@ describe("KnowledgeSpaceManifest repositories", () => {
 });
 
 describe("DatabaseKnowledgeSpaceManifestRepository", () => {
+  it.each(["postgres", "tidb"] as const)(
+    "fences pending model selection while compiling on %s",
+    async (kind) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces")
+          return {
+            rows: [{ id: SPACE_ID_A, lifecycle_state: "active", deletion_job_id: null }],
+            rowsAffected: 0,
+          };
+        if (input.tableName === "document_compilation_attempts")
+          return { rows: [{ id: "compiling" }], rowsAffected: 0 };
+        if (input.tableName === "knowledge_space_manifests")
+          return {
+            rows: [manifestRow(manifest(), kind === "tidb")],
+            rowsAffected: input.operation === "update" ? 1 : 0,
+          };
+        return { rows: [], rowsAffected: 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind,
+        transaction: (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseKnowledgeSpaceManifestRepository({
+        database,
+        maxListLimit: 10,
+      });
+      const input = {
+        expectedManifestVersion: 1,
+        knowledgeSpaceId: SPACE_ID_A,
+        tenantId: TENANT_ID,
+        patch: { manifestVersion: 2 },
+      };
+      await expect(
+        repository.update({ ...input, requireIdleCompilations: true }),
+      ).rejects.toMatchObject({
+        code: "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+        httpStatus: 409,
+      });
+      expect(calls.some((call) => call.operation === "update")).toBe(false);
+      expect(
+        calls.find((call) => call.tableName === "document_compilation_attempts"),
+      ).toMatchObject({
+        params: [TENANT_ID, SPACE_ID_A],
+        sql: expect.stringContaining("FOR UPDATE"),
+      });
+      const before = calls.length;
+      // Worker-owned validation/activation bookkeeping must not block on its own active attempt.
+      await expect(repository.update(input)).resolves.not.toBeNull();
+      expect(
+        calls.slice(before).some((call) => call.tableName === "document_compilation_attempts"),
+      ).toBe(false);
+    },
+  );
+
   it("implements PostgreSQL create/get/list/update with parameters and RETURNING", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const embeddingProfile = await createKnowledgeSpaceEmbeddingProfile({

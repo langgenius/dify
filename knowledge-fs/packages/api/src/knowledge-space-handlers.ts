@@ -533,6 +533,7 @@ export function registerKnowledgeSpaceHandlers({
     const updatedAt = now();
     const updated = await manifests.update({
       expectedManifestVersion: manifest.manifestVersion,
+      requireIdleCompilations: true,
       knowledgeSpaceId,
       patch: {
         manifestVersion: manifest.manifestVersion + 1,
@@ -672,6 +673,7 @@ export function registerKnowledgeSpaceHandlers({
       }
       const updated = await manifests.update({
         expectedManifestVersion: manifest.manifestVersion,
+        requireIdleCompilations: true,
         knowledgeSpaceId,
         patch: {
           manifestVersion: manifest.manifestVersion + 1,
@@ -731,7 +733,13 @@ export function registerKnowledgeSpaceHandlers({
 
     if (selectionChanged && !publishedMigrationRequired) {
       if (manifest?.embeddingProfileFrozenAt) {
-        return context.json({ error: "Embedding profile change requires reindex workflow" }, 409);
+        return context.json(
+          {
+            code: "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+            error: "Embedding profile change requires reindex workflow",
+          },
+          409,
+        );
       }
 
       const [usage, nodePage] = await Promise.all([
@@ -740,7 +748,13 @@ export function registerKnowledgeSpaceHandlers({
       ]);
 
       if (usage.documentCount > 0 || nodePage.items.length > 0) {
-        return context.json({ error: "Embedding profile change requires reindex workflow" }, 409);
+        return context.json(
+          {
+            code: "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+            error: "Embedding profile change requires reindex workflow",
+          },
+          409,
+        );
       }
     }
 
@@ -1132,6 +1146,7 @@ export function registerKnowledgeSpaceHandlers({
       });
       const updated = await manifests.update({
         expectedManifestVersion: currentManifest.manifestVersion,
+        requireIdleCompilations: true,
         knowledgeSpaceId,
         patch: {
           manifestVersion: currentManifest.manifestVersion + 1,
@@ -1182,7 +1197,9 @@ export function registerKnowledgeSpaceHandlers({
         503,
       );
     }
-    if (reasoningChanged && !publishedMigrationRequired) {
+    // Raw uploads (including failed first imports) are not published indexes. The atomic
+    // unpublished activation port fences publication and in-flight compilations itself.
+    if (reasoningChanged && !publishedMigrationRequired && !unpublishedProfileActivations) {
       const [usage, nodePage] = await Promise.all([
         assets.getStorageUsage({ knowledgeSpaceId }),
         nodes.listBySpace({ knowledgeSpaceId, limit: 1 }),
@@ -1260,6 +1277,7 @@ export function registerKnowledgeSpaceHandlers({
       if (actualRevision !== body.expectedRevision) {
         return context.json(
           {
+            code: "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
             error: `Knowledge space retrieval profile revision conflict: expected=${body.expectedRevision} actual=${actualRevision}`,
           },
           409,

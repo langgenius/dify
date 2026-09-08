@@ -398,7 +398,7 @@ export function createLlmSemanticChunker({
   maxEntitiesPerChunk = DEFAULT_MAX_ENTITIES_PER_CHUNK,
   maxNodes = DEFAULT_MAX_NODES,
   maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
-  maxProviderOutputRetries = 0,
+  maxProviderOutputRetries = 1,
   maxRelationsPerChunk = DEFAULT_MAX_RELATIONS_PER_CHUNK,
   maxResponseChars = DEFAULT_MAX_RESPONSE_CHARS,
   maxWindowChars = DEFAULT_MAX_WINDOW_CHARS,
@@ -489,7 +489,11 @@ export function createLlmSemanticChunker({
       let nextUnitIndex = 0;
       let windowIndex = 0;
 
-      const processWindowAttempt = async (window: SemanticWindow, retryCount: number) => {
+      const processWindowAttempt = async (
+        window: SemanticWindow,
+        retryCount: number,
+        validationFeedback?: string,
+      ) => {
         input.signal?.throwIfAborted();
         const messages = semanticChunkingMessages({
           enableGraph: input.enableGraph !== false,
@@ -498,6 +502,7 @@ export function createLlmSemanticChunker({
           maxEntitiesPerChunk,
           maxRelationsPerChunk,
           retryCount,
+          validationFeedback,
           window,
         });
         const callStartedAt = Date.now();
@@ -555,8 +560,10 @@ export function createLlmSemanticChunker({
               : {}),
             ...(provider.kind ? { transportProvider: provider.kind } : {}),
           });
-          const output = normalizeTableRecordBoundaries({
+          const output = normalizeSemanticBoundaries({
             maxChunkChars: effectiveConfig.maxChunkChars,
+            maxEntitiesPerChunk,
+            maxRelationsPerChunk,
             output: parseSemanticChunkingOutput(resolvedCompletion.text),
             window,
           });
@@ -628,15 +635,23 @@ export function createLlmSemanticChunker({
               ? {}
               : ingestionModelUsageFromMetadata(completion.metadata)),
           });
+          // Checkpoints are immutable and were already validated before storage. Re-generating
+          // one cannot repair corrupted replay state and would violate its exact-output fence.
+          if (checkpointHit && error instanceof LlmSemanticChunkingOutputError) {
+            throw new Error("Semantic window checkpoint failed replay validation", {
+              cause: error,
+            });
+          }
           throw error;
         }
       };
 
       const processWindow = async (window: SemanticWindow) => {
         let retryCount = 0;
+        let validationFeedback: string | undefined;
         while (true) {
           try {
-            return await processWindowAttempt(window, retryCount);
+            return await processWindowAttempt(window, retryCount, validationFeedback);
           } catch (error) {
             if (
               retryCount >= maxProviderOutputRetries ||
@@ -644,6 +659,9 @@ export function createLlmSemanticChunker({
             ) {
               throw error;
             }
+            // Only locally generated validation messages are sent back, never raw provider
+            // errors, document text, credentials, or an untrusted previous response.
+            validationFeedback = (error as LlmSemanticChunkingOutputError).message;
             retryCount += 1;
           }
         }
@@ -2370,6 +2388,7 @@ function semanticChunkingMessages({
   maxEntitiesPerChunk,
   maxRelationsPerChunk,
   retryCount,
+  validationFeedback,
   window,
 }: {
   readonly enableGraph: boolean;
@@ -2378,6 +2397,7 @@ function semanticChunkingMessages({
   readonly maxEntitiesPerChunk: number;
   readonly maxRelationsPerChunk: number;
   readonly retryCount: number;
+  readonly validationFeedback?: string | undefined;
   readonly window: SemanticWindow;
 }): readonly SemanticChunkingLlmMessage[] {
   const carriesParserProvenance = window.planningVersion !== "v1";
@@ -2394,7 +2414,7 @@ function semanticChunkingMessages({
         "Return strict JSON only. Never return, rewrite, summarize, correct, or duplicate source text.",
         ...(retryCount > 0
           ? [
-              "Your previous response failed JSON schema validation. Correct the structure and return exactly one JSON object matching Output shape; do not include prose or Markdown fences.",
+              `Your previous response was invalid: ${validationFeedback ?? "invalid response schema"}. Correct the response and return exactly one JSON object matching Output shape and all boundary rules; do not include prose or Markdown fences.`,
             ]
           : []),
         "The units field is the core: cover every core unit exactly once, in order, by contiguous inclusive ranges.",
@@ -2690,7 +2710,7 @@ function parseSemanticChunkingOutput(text: string): LlmSemanticChunkingOutput {
 /**
  * The reasoning model answered, but not with usable chunking output. Carrying a public code keeps
  * the durable failure specific ("the model returned an unusable response") instead of the generic
- * document-processing bucket; the provider text itself is never persisted.
+ * document-processing bucket; provider text is never included in the public failure.
  */
 export class LlmSemanticChunkingOutputError extends Error {
   readonly code = "MODEL_RUNTIME_RESPONSE_INVALID";
@@ -2703,47 +2723,58 @@ export class LlmSemanticChunkingOutputError extends Error {
 }
 
 function isRetryableSemanticProviderOutputError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.message === "LLM semantic chunking provider returned invalid JSON" ||
-      error.message === "LLM semantic chunking provider returned an invalid response schema")
-  );
+  return error instanceof LlmSemanticChunkingOutputError;
 }
 
-function normalizeTableRecordBoundaries({
+function normalizeSemanticBoundaries({
   maxChunkChars,
+  maxEntitiesPerChunk,
+  maxRelationsPerChunk,
   output,
   window,
 }: {
   readonly maxChunkChars: number;
+  readonly maxEntitiesPerChunk: number;
+  readonly maxRelationsPerChunk: number;
   readonly output: LlmSemanticChunkingOutput;
   readonly window: SemanticWindow;
 }): LlmSemanticChunkingOutput {
-  if (
-    (window.planningVersion !== "v5" && window.planningVersion !== "v6") ||
-    window.atomicDocument
-  ) {
+  if (window.atomicDocument) {
     return output;
   }
 
   const eligibleUnits = [...window.units, ...window.lookAheadUnits];
   const unitIndex = new Map(eligibleUnits.map((unit, index) => [unit.id, index]));
   const normalized: LlmSemanticChunkingOutput["chunks"] = [];
+  let expectedStart = 0;
 
   for (const candidate of output.chunks) {
+    // Validate before filtering annotations so correction cannot hide malformed graph output
+    // or let the model evade per-response limits by spreading it over the corrected chunks.
+    validateSemanticAnnotations(candidate, maxEntitiesPerChunk, maxRelationsPerChunk);
     const start = unitIndex.get(candidate.startUnitId);
     const end = unitIndex.get(candidate.endUnitId);
-    if (start === undefined || end === undefined || end < start) {
-      normalized.push(candidate);
-      continue;
+    if (start === undefined || end === undefined) {
+      throw new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking response referenced an unknown unit ID",
+      );
     }
+    if (start !== expectedStart || end < start) {
+      throw new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking response must cover units contiguously without gaps or overlap",
+      );
+    }
+    if (usesFixedCoreBoundary(window.planningVersion) && end >= window.units.length) {
+      throw new LlmSemanticChunkingOutputError(
+        "LLM semantic chunking fixed-core response must not commit read-only look-ahead units",
+      );
+    }
+    expectedStart = end + 1;
     const candidateUnits = eligibleUnits.slice(start, end + 1);
-    if (
-      candidateUnits.length === 0 ||
-      !candidateUnits.every(
-        (unit) => unit.tableRecord?.mode === "record-list" || unit.tableRecord?.mode === "matrix",
-      )
-    ) {
+    const hasTableRecords = candidateUnits.some(
+      (unit) => unit.tableRecord?.mode === "record-list" || unit.tableRecord?.mode === "matrix",
+    );
+    if (respectsIsolatedElementBoundaries(candidateUnits) && !hasTableRecords) {
       normalized.push(candidate);
       continue;
     }
@@ -2751,7 +2782,7 @@ function normalizeTableRecordBoundaries({
     const recordGroups: AtomicUnit[][] = [];
     for (const unit of candidateUnits) {
       const current = recordGroups.at(-1);
-      if (current && current[0]?.tableRecord?.key === unit.tableRecord?.key) {
+      if (current && respectsIsolatedElementBoundaries([current[0] as AtomicUnit, unit])) {
         current.push(unit);
       } else {
         recordGroups.push([unit]);
@@ -2767,24 +2798,59 @@ function normalizeTableRecordBoundaries({
 
     for (const group of boundedGroups) {
       const groupText = semanticUnitsText(group);
+      const sectionPath = commonSectionPath(group.map((unit) => unit.sectionPath));
       const entities = candidate.entities.filter((entity) =>
         groupText.includes(entity.text.trim()),
       );
       const entityIds = new Set(entities.map((entity) => entity.id));
       normalized.push({
-        ...candidate,
         endUnitId: (group.at(-1) as AtomicUnit).id,
         entities,
         relations: candidate.relations.filter(
           (relation) =>
             entityIds.has(relation.subjectEntityId) && entityIds.has(relation.objectEntityId),
         ),
+        // A summary/path invented for the mixed range need not describe its children. Keep
+        // parser provenance; only grounded, within-child annotations survive the split.
+        ...(sectionPath.length ? { sectionPath } : {}),
         startUnitId: (group[0] as AtomicUnit).id,
       });
     }
   }
 
   return { chunks: normalized };
+}
+
+function validateSemanticAnnotations(
+  candidate: LlmSemanticChunkingOutput["chunks"][number],
+  maxEntitiesPerChunk: number,
+  maxRelationsPerChunk: number,
+): void {
+  if (candidate.entities.length > maxEntitiesPerChunk) {
+    throw new LlmSemanticChunkingOutputError(
+      `LLM semantic chunking response exceeded maxEntitiesPerChunk=${maxEntitiesPerChunk}`,
+    );
+  }
+  if (candidate.relations.length > maxRelationsPerChunk) {
+    throw new LlmSemanticChunkingOutputError(
+      `LLM semantic chunking response exceeded maxRelationsPerChunk=${maxRelationsPerChunk}`,
+    );
+  }
+  const ids = new Set(candidate.entities.map((entity) => entity.id));
+  if (ids.size !== candidate.entities.length) {
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking entity ids must be unique within the same chunk",
+    );
+  }
+  if (
+    candidate.relations.some(
+      (relation) => !ids.has(relation.subjectEntityId) || !ids.has(relation.objectEntityId),
+    )
+  ) {
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking relation endpoint ids must reference entities in the same chunk",
+    );
+  }
 }
 
 function splitTableRecordGroup(
@@ -2821,10 +2887,14 @@ function validateAndMaterializeWindowOutput({
   readonly window: SemanticWindow;
 }): WindowMaterializedChunk[] {
   if (output.chunks.length === 0) {
-    throw new Error("LLM semantic chunking response did not cover any input units");
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking response did not cover any input units",
+    );
   }
   if (window.atomicDocument && output.chunks.length !== 1) {
-    throw new Error("LLM semantic chunking atomic document must produce exactly one chunk");
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking atomic document must produce exactly one chunk",
+    );
   }
   const eligibleUnits = [...window.units, ...window.lookAheadUnits];
   const unitIndex = new Map(eligibleUnits.map((unit, index) => [unit.id, index]));
@@ -2841,12 +2911,12 @@ function validateAndMaterializeWindowOutput({
       );
     }
     if (start !== expectedStart || end < start) {
-      throw new Error(
+      throw new LlmSemanticChunkingOutputError(
         "LLM semantic chunking response must cover units contiguously without gaps or overlap",
       );
     }
     if (usesFixedCoreBoundary(window.planningVersion) && end > coreEnd) {
-      throw new Error(
+      throw new LlmSemanticChunkingOutputError(
         "LLM semantic chunking fixed-core response must not commit read-only look-ahead units",
       );
     }
@@ -2855,31 +2925,18 @@ function validateAndMaterializeWindowOutput({
     const last = chunkUnits.at(-1) as AtomicUnit;
     const chunkText = semanticUnitsText(chunkUnits);
     if (countUnicodeGraphemes(chunkText) > maxChunkChars) {
-      throw new Error(`LLM semantic chunking response exceeded maxChunkChars=${maxChunkChars}`);
+      throw new LlmSemanticChunkingOutputError(
+        `LLM semantic chunking response exceeded maxChunkChars=${maxChunkChars}`,
+      );
     }
     if (!window.atomicDocument && !respectsIsolatedElementBoundaries(chunkUnits)) {
-      throw new Error(
+      throw new LlmSemanticChunkingOutputError(
         "LLM semantic chunking response must keep table and image elements in isolated chunks",
       );
     }
-    if (candidate.entities.length > maxEntitiesPerChunk) {
-      throw new Error(
-        `LLM semantic chunking response exceeded maxEntitiesPerChunk=${maxEntitiesPerChunk}`,
-      );
-    }
-    if (candidate.relations.length > maxRelationsPerChunk) {
-      throw new Error(
-        `LLM semantic chunking response exceeded maxRelationsPerChunk=${maxRelationsPerChunk}`,
-      );
-    }
-
-    const declaredEntityIds = new Set<string>();
+    validateSemanticAnnotations(candidate, maxEntitiesPerChunk, maxRelationsPerChunk);
     const entitiesById = new Map<string, LlmSemanticEntity>();
     for (const entity of candidate.entities) {
-      if (declaredEntityIds.has(entity.id)) {
-        throw new Error("LLM semantic chunking entity ids must be unique within the same chunk");
-      }
-      declaredEntityIds.add(entity.id);
       const grounded = groundEntity(entity, chunkText);
       if (grounded) {
         entitiesById.set(grounded.id, grounded);
@@ -2887,14 +2944,6 @@ function validateAndMaterializeWindowOutput({
     }
     const relations: MaterializedSemanticRelation[] = [];
     for (const relation of candidate.relations) {
-      if (
-        !declaredEntityIds.has(relation.subjectEntityId) ||
-        !declaredEntityIds.has(relation.objectEntityId)
-      ) {
-        throw new Error(
-          "LLM semantic chunking relation endpoint ids must reference entities in the same chunk",
-        );
-      }
       const subject = entitiesById.get(relation.subjectEntityId);
       const object = entitiesById.get(relation.objectEntityId);
       if (!subject || !object) {
@@ -2933,19 +2982,25 @@ function validateAndMaterializeWindowOutput({
   const finalStart = finalChunk ? unitIndex.get(finalChunk.startUnitId) : undefined;
   const finalEnd = finalChunk ? unitIndex.get(finalChunk.endUnitId) : undefined;
   if (finalStart === undefined || finalEnd === undefined || finalEnd < coreEnd) {
-    throw new Error(
+    throw new LlmSemanticChunkingOutputError(
       "LLM semantic chunking response must cover units contiguously without gaps or overlap",
     );
   }
   if (finalStart > coreEnd) {
-    throw new Error("LLM semantic chunking final chunk must start in the core window");
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking final chunk must start in the core window",
+    );
   }
   if (usesFixedCoreBoundary(window.planningVersion) && finalEnd !== coreEnd) {
-    throw new Error("LLM semantic chunking fixed-core response must end at the core boundary");
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking fixed-core response must end at the core boundary",
+    );
   }
   const commitEndUnitId = eligibleUnits[finalEnd]?.id;
   if (!commitEndUnitId) {
-    throw new Error("LLM semantic chunking response has an invalid committed boundary");
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking response has an invalid committed boundary",
+    );
   }
   return chunks.map((chunk) => ({ ...chunk, windowCommitEndUnitId: commitEndUnitId }));
 }

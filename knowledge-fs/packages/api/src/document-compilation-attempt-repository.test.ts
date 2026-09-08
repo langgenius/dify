@@ -42,6 +42,67 @@ function activeDocumentAssetRow() {
 }
 
 describe("in-memory document compilation attempt repository", () => {
+  it("creates a fresh generation after a model switch and preserves the terminal attempt", async () => {
+    const oldProfiles = {
+      embeddingProfile: embeddingProfileReference(),
+      retrievalProfile: retrievalProfileReference(),
+    };
+    let profiles = oldProfiles;
+    const repository = createInMemoryDocumentCompilationAttemptRepository({
+      getActiveProfiles: () => profiles,
+    });
+    await repository.start(startInput(oldProfiles));
+    const canceled = await repository.cancel({ attemptId, expectedRowVersion: 0, now: createdAt });
+    profiles = {
+      ...oldProfiles,
+      retrievalProfile: {
+        ...oldProfiles.retrievalProfile,
+        revision: 3,
+        snapshotDigest: "c".repeat(64),
+      },
+    };
+    const replacement = {
+      id: otherAttemptId,
+      outboxId: otherOutboxId,
+      publicationGenerationId: otherLeaseToken,
+    };
+    const retry = {
+      attemptId,
+      expectedRowVersion: canceled?.rowVersion ?? -1,
+      now: createdAt,
+      replacement,
+    };
+    for (const invalid of [
+      undefined,
+      { ...replacement, id: attemptId.toUpperCase() },
+      { ...replacement, publicationGenerationId: generationId.toUpperCase() },
+    ]) {
+      await expect(
+        repository.retryTerminal({ ...retry, replacement: invalid }),
+      ).rejects.toMatchObject({ code: "DOCUMENT_COMPILATION_PROFILE_CHANGED" });
+      await expect(repository.get(attemptId)).resolves.toEqual(canceled);
+      await expect(repository.get(otherAttemptId)).resolves.toBeNull();
+    }
+    const next = await repository.retryTerminal(retry);
+    expect(next).toMatchObject({
+      id: otherAttemptId,
+      publicationGenerationId: otherLeaseToken,
+      checkpoint: "queued",
+      executionAttempts: 0,
+      retrievalProfile: profiles.retrievalProfile,
+    });
+    await expect(repository.get(attemptId)).resolves.toEqual(canceled);
+    await expect(repository.retryTerminal(retry)).resolves.toBeNull();
+    const events = await repository.claimOutbox({
+      limit: 2,
+      lockedUntil: "2026-07-13T12:01:00.000Z",
+      lockToken,
+      now: createdAt,
+      workerId: "dispatcher",
+    });
+    expect(events).toMatchObject([{ id: otherOutboxId, payload: { attemptId: otherAttemptId } }]);
+  });
+
   it("atomically creates one active attempt and an attempt-only outbox payload", async () => {
     const repository = createInMemoryDocumentCompilationAttemptRepository();
     const first = await repository.start(
@@ -2466,6 +2527,293 @@ describe("document compilation attempt repository defensive branches", () => {
     ).rejects.toThrow("outbox insert did not persist exactly one event");
   });
 });
+
+describe.each(["postgres", "tidb"] as const)("model-aware terminal retry on %s", (dialect) => {
+  it.each([
+    "document_revisions",
+    "document_reindex_attempts",
+    "document_chunk_state_changes",
+  ] as const)(
+    "atomically starts fresh work and rebinds %s plus its bulk task",
+    async (intentTable) => {
+      const harness = modelRetryHarness(dialect, intentTable);
+      const before = structuredClone(harness.state());
+      const repository = createDatabaseDocumentCompilationAttemptRepository({
+        database: harness.database,
+      });
+      const retried = await repository.retryTerminal(harness.input);
+      expect(retried).toMatchObject({
+        id: otherAttemptId,
+        publicationGenerationId: otherLeaseToken,
+        baseHeadRevision: 3,
+        checkpoint: "queued",
+        executionAttempts: 0,
+        rowVersion: 0,
+        documentAssetId,
+        documentVersion: 1,
+        embeddingProfile: embeddingProfileReference(),
+        retrievalProfile: retrievalProfileReference(),
+        requestedBySubjectId: "current-editor",
+        permissionSnapshot: harness.input.permissionSnapshot,
+      });
+      expect(retried).not.toHaveProperty("candidatePublicationId");
+      expect(retried).not.toHaveProperty("lastError");
+      expect(harness.state().attempts[0]).toEqual(before.attempts[0]);
+      expect(harness.state().outbox[0]).toEqual(before.outbox[0]);
+      expect(harness.state().outbox[1]).toMatchObject({
+        attempt_id: otherAttemptId,
+        status: "pending",
+      });
+      expect(harness.state().intent).toMatchObject({ compilation_attempt_id: otherAttemptId });
+      expect(harness.state().bulk.items).toEqual([
+        { ...before.bulk.items[0], compilationJobId: otherAttemptId },
+        before.bulk.items[1],
+      ]);
+      expect(
+        harness.calls.filter((call) => call.operation === "insert").map((call) => call.tableName),
+      ).toEqual(["document_compilation_attempts", "document_compilation_outbox"]);
+      expect(
+        harness.calls.find((call) => call.tableName === "knowledge_space_profile_heads")?.sql,
+      ).toContain("FOR UPDATE");
+      expect(
+        harness.calls.find((call) => call.tableName === "bulk_operations")?.params.slice(0, 2),
+      ).toEqual([tenantId, knowledgeSpaceId]);
+      await expect(repository.retryTerminal(harness.input)).resolves.toBeNull();
+      expect(harness.state().attempts).toHaveLength(2);
+    },
+  );
+
+  it.each(["document_compilation_outbox", "document_revisions", "bulk_operations"])(
+    "rolls back the attempt, outbox, restored intent and bulk reference if %s fails",
+    async (failTable) => {
+      const harness = modelRetryHarness(dialect, "document_revisions", failTable);
+      const before = structuredClone(harness.state());
+      const repository = createDatabaseDocumentCompilationAttemptRepository({
+        database: harness.database,
+      });
+      await expect(repository.retryTerminal(harness.input)).rejects.toThrow("injected failure");
+      expect(harness.state()).toEqual(before);
+    },
+  );
+
+  it.each(["deleted", "permission", "superseded"])("does not revive %s work", async (fence) => {
+    const harness = modelRetryHarness(dialect, "document_revisions", undefined, fence);
+    const before = structuredClone(harness.state());
+    const repository = createDatabaseDocumentCompilationAttemptRepository({
+      database: harness.database,
+    });
+    await expect(repository.retryTerminal(harness.input)).rejects.toThrow();
+    expect(harness.state()).toEqual(before);
+    expect(harness.calls.filter((call) => call.operation === "insert")).toEqual([]);
+  });
+});
+
+/** Transactional storage double: writes are visible to subsequent reads and roll back together. */
+function modelRetryHarness(
+  dialect: DatabaseAdapter["dialect"],
+  intentTable: string,
+  failTable?: string,
+  fence?: string,
+) {
+  const snapshotId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3401";
+  let state = {
+    attempts: [
+      attemptRow({
+        active_slot: null,
+        run_state: "failed",
+        row_version: 4,
+        checkpoint: "outline_built",
+        completed_at: "2026-07-13T12:05:00.000Z",
+        last_error_code: "MODEL_RUNTIME_RESPONSE_INVALID",
+        last_error_message: "Previous model failed",
+        embedding_profile_kind: "embedding",
+        embedding_profile_revision: 1,
+        embedding_profile_revision_id: embeddingProfileRevisionId,
+        embedding_profile_snapshot_digest: embeddingProfileDigest,
+        retrieval_profile_kind: "retrieval",
+        retrieval_profile_revision: 1,
+        retrieval_profile_revision_id: otherLockToken,
+        retrieval_profile_snapshot_digest: "c".repeat(64),
+        candidate_publication_id: otherLeaseToken,
+        candidate_fingerprint: `projection-set-sha256:${"d".repeat(64)}`,
+      }),
+    ],
+    outbox: [outboxRow({ status: "completed" })],
+    intent: {
+      compilation_attempt_id: attemptId,
+      document_id: logicalDocumentId,
+      document_revision: 1,
+      expected_active_revision: null,
+      expected_document_row_version: 0,
+      expected_settings_head_revision: 1,
+      knowledge_space_id: knowledgeSpaceId,
+      revision: 1,
+      settings_revision: 2,
+      state: "failed",
+      tenant_id: tenantId,
+    },
+    bulk: {
+      id: lockToken,
+      tenant_id: tenantId,
+      knowledge_space_id: knowledgeSpaceId,
+      operation_type: "document_reindex",
+      created_at: createdAt,
+      updated_at: createdAt,
+      items: [
+        {
+          compilationJobId: attemptId,
+          documentId: logicalDocumentId,
+          status: "queued",
+          requiredPermissionScope: ["scope:visible"],
+        },
+        {
+          compilationJobId: leaseToken,
+          documentId: otherLockToken,
+          status: "queued",
+          requiredPermissionScope: ["scope:other"],
+        },
+      ],
+    },
+  };
+  const calls: DatabaseExecuteInput[] = [];
+  const execute = async (
+    draft: typeof state,
+    input: DatabaseExecuteInput,
+  ): Promise<DatabaseExecuteResult> => {
+    calls.push(input);
+    const table = input.tableName;
+    if (input.operation === "select") {
+      if (table === "document_compilation_attempts")
+        return result(
+          draft.attempts.filter((row) =>
+            input.params.length === 1 ? row.id === input.params[0] : row.active_slot === 1,
+          ),
+          0,
+        );
+      if (table === "knowledge_spaces") return result([activeKnowledgeSpaceRow()], 0);
+      if (table === "deletion_jobs") return result([], 0);
+      if (table === "document_assets")
+        return result(fence === "deleted" ? [] : [activeDocumentAssetRow()], 0);
+      if (table === "knowledge_space_profile_heads") return result(activeProfileRows(), 0);
+      if (table === "projection_set_publication_heads") return result([{ head_revision: 3 }], 0);
+      if (table === "logical_documents")
+        return result(
+          [
+            input.sql.includes(" JOIN ")
+              ? { id: logicalDocumentId }
+              : {
+                  active_revision: intentTable === "document_revisions" ? null : 1,
+                  row_version: fence === "superseded" ? 1 : 0,
+                },
+          ],
+          0,
+        );
+      if (table === "knowledge_space_permission_snapshots")
+        return result(fence === "permission" ? [] : [permissionSnapshotRow(snapshotId)], 0);
+      if (
+        [
+          "knowledge_space_members",
+          "knowledge_space_access_policies",
+          "knowledge_space_api_access",
+        ].includes(table)
+      )
+        return result([{ id: `${table}-row` }], 0);
+      if (table === "document_settings_heads") return result([{ active_revision: 1 }], 0);
+      if (table === "document_settings_revisions") return result([{ state: "candidate" }], 0);
+      if (table === intentTable)
+        return result(
+          draft.intent.compilation_attempt_id === input.params[2] ? [draft.intent] : [],
+          0,
+        );
+      if (
+        [
+          "document_revisions",
+          "document_reindex_attempts",
+          "document_chunk_state_changes",
+        ].includes(table)
+      )
+        return result([], 0);
+      if (table === "bulk_operations") return result([draft.bulk], 0);
+      if (table === "document_compilation_outbox")
+        return result(
+          draft.outbox.filter((row) => row.attempt_id === input.params[0]),
+          0,
+        );
+    }
+    if (input.operation === "insert") {
+      if (table === failTable) throw new Error("injected failure");
+      const columns = input.sql
+        .slice(input.sql.indexOf("(") + 1, input.sql.indexOf(")"))
+        .split(",")
+        .map((column) => column.trim().replaceAll('"', "").replaceAll("`", ""));
+      const row = Object.fromEntries(columns.map((column, index) => [column, input.params[index]]));
+      if (table === "document_compilation_attempts") draft.attempts.push(row);
+      else if (table === "document_compilation_outbox") draft.outbox.push(row);
+      else throw new Error(`Unexpected insert ${table}`);
+      return result([], 1);
+    }
+    if (input.operation === "update") {
+      if (table === "bulk_operations") {
+        if (table === failTable) throw new Error("injected failure");
+        draft.bulk.items = JSON.parse(String(input.params[0]));
+        return result([], 1);
+      }
+      if (table === "logical_documents") return result([], 1);
+      if (table === intentTable) {
+        if (input.params[0] === otherAttemptId) {
+          if (table === failTable) throw new Error("injected failure");
+          draft.intent.compilation_attempt_id = otherAttemptId;
+        } else
+          draft.intent.state =
+            intentTable === "document_reindex_attempts" ? "running" : "candidate";
+        return result([], 1);
+      }
+      if (
+        [
+          "document_revisions",
+          "document_reindex_attempts",
+          "document_chunk_state_changes",
+        ].includes(table)
+      )
+        return result([], 0);
+    }
+    throw new Error(`Unexpected ${input.operation}: ${table}`);
+  };
+  const database = {
+    dialect,
+    kind: dialect,
+    execute: () => {
+      throw new Error("All retry queries must use one transaction");
+    },
+    transaction: async <T>(
+      callback: (executor: {
+        execute(input: DatabaseExecuteInput): Promise<DatabaseExecuteResult>;
+      }) => Promise<T>,
+    ) => {
+      const draft = structuredClone(state);
+      const value = await callback({ execute: (input) => execute(draft, input) });
+      state = draft;
+      return value;
+    },
+  } as unknown as DatabaseAdapter;
+  return {
+    database,
+    calls,
+    state: () => state,
+    input: {
+      attemptId,
+      expectedRowVersion: 4,
+      now: "2026-07-13T12:06:00.000Z",
+      permissionSnapshot: { accessChannel: "interactive" as const, id: snapshotId, revision: 7 },
+      requestedBySubjectId: "current-editor",
+      replacement: {
+        id: otherAttemptId,
+        outboxId: otherOutboxId,
+        publicationGenerationId: otherLeaseToken,
+      },
+    },
+  };
+}
 
 function startInput(overrides: Record<string, unknown> = {}) {
   return {

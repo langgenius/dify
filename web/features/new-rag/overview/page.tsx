@@ -12,6 +12,7 @@ import { AttentionPanel } from './overview-attention'
 import { InventoryPanel } from './overview-inventory'
 import { OverviewMetrics, QueryOutcomesChart } from './overview-metrics'
 import { FirstSourceTaskFailureBanner, OverviewOnboarding } from './overview-onboarding'
+import { OverviewTaskSync } from './overview-task-sync'
 import {
   OVERVIEW_WINDOWS,
   overviewEmptyAtom,
@@ -43,6 +44,7 @@ function KnowledgeOverviewContent() {
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="w-full px-6 pt-3 pb-6">
+        <OverviewTaskSync />
         <OverviewHeader />
         <FirstSourceTaskFailureBanner />
         <OverviewKnowledgeModelReadinessBanner />

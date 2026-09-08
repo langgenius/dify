@@ -1,4 +1,9 @@
-import type { DatabaseAdapter, DatabaseQueryValue, DatabaseRow } from "@knowledge/core";
+import type {
+  DatabaseAdapter,
+  DatabaseExecutor,
+  DatabaseQueryValue,
+  DatabaseRow,
+} from "@knowledge/core";
 
 import type {
   BulkOperation,
@@ -11,6 +16,56 @@ import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-uti
 import { jsonArrayColumn, jsonStringArrayColumn } from "./json-utils";
 
 const table = "bulk_operations";
+
+/** Shares the compilation retry transaction so bulk tasks never keep polling the retired job. */
+export async function rebindBulkOperationCompilationJob(
+  database: DatabaseAdapter,
+  transaction: DatabaseExecutor,
+  input: {
+    readonly tenantId: string;
+    readonly knowledgeSpaceId: string;
+    readonly previousJobId: string;
+    readonly nextJobId: string;
+    readonly now: string;
+  },
+): Promise<void> {
+  const result = await transaction.execute({
+    maxRows: 1001,
+    operation: "select",
+    params: [
+      input.tenantId,
+      input.knowledgeSpaceId,
+      JSON.stringify([{ compilationJobId: input.previousJobId }]),
+    ],
+    sql: `SELECT * FROM ${q(database, table)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${jsonContains(database, q(database, "items"), p(database, 3))} LIMIT 1001 FOR UPDATE;`,
+    tableName: table,
+  });
+  if (result.rows.length > 1000)
+    throw new Error("Too many bulk operations reference the compilation retry");
+  for (const row of result.rows) {
+    const operation = mapOperation(row);
+    const items = operation.items.map((item) =>
+      item.compilationJobId === input.previousJobId
+        ? { ...item, compilationJobId: input.nextJobId }
+        : item,
+    );
+    const updated = await transaction.execute({
+      maxRows: 0,
+      operation: "update",
+      params: [
+        JSON.stringify(items),
+        input.now,
+        input.tenantId,
+        input.knowledgeSpaceId,
+        operation.id,
+      ],
+      sql: `UPDATE ${q(database, table)} SET ${q(database, "items")} = ${jsonP(database, 1)}, ${q(database, "updated_at")} = ${p(database, 2)} WHERE ${q(database, "tenant_id")} = ${p(database, 3)} AND ${q(database, "knowledge_space_id")} = ${p(database, 4)} AND ${q(database, "id")} = ${p(database, 5)};`,
+      tableName: table,
+    });
+    if (updated.rowsAffected !== 1)
+      throw new Error("Bulk operation changed during compilation retry");
+  }
+}
 
 export function createDatabaseBulkOperationRepository(input: {
   readonly database: DatabaseAdapter;

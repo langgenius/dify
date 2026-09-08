@@ -27,6 +27,7 @@ const SUBJECT_ID = "user:atomic-profile-owner";
 const NOW = "2026-07-14T12:00:00.000Z";
 
 interface AtomicState {
+  activeCompilation?: boolean;
   activity?: Record<string, unknown> | undefined;
   heads: Record<string, Record<string, unknown>>;
   manifestVersion: number;
@@ -183,6 +184,12 @@ function createAtomicHarness(dialect: "postgres" | "tidb", options: AtomicHarnes
       };
     }
     if (input.tableName === "deletion_jobs") return { rows: [], rowsAffected: 0 };
+    if (input.tableName === "document_compilation_attempts") {
+      return {
+        rows: current.activeCompilation ? [{ id: "running-compilation" }] : [],
+        rowsAffected: 0,
+      };
+    }
     if (input.tableName === "capability_grants") {
       return {
         rows: [
@@ -423,6 +430,59 @@ function permissionRow(): DatabaseRow {
 }
 
 describe("unpublished knowledge-space profile atomic activation", () => {
+  it.each(["postgres", "tidb"] as const)(
+    "switches the model after a failed first import, but fences active processing on %s",
+    async (dialect) => {
+      const harness = createAtomicHarness(dialect);
+      const fixture = initialTupleFixture();
+      harness.state.metadata.__knowledgeFsPendingModelConfiguration = fixture.pending;
+      harness.state.activeCompilation = true;
+      const repository = createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository({
+        database: harness.database,
+      });
+      // First-import activation must work inside its own running compilation.
+      await repository.activateInitialTuple(fixture.input);
+      const next = {
+        ...activationInput(),
+        capabilitySnapshot: fixture.input.retrieval.capabilitySnapshot,
+        expectedManifestProfileRevision: 1,
+        expectedManifestVersion: 2,
+        kind: "retrieval" as const,
+        snapshot: {
+          ...fixture.input.retrieval.snapshot,
+          revision: 2,
+          reasoningModel: {
+            ...fixture.input.retrieval.snapshot.reasoningModel,
+            model: "new-reasoning",
+          },
+        },
+      };
+      const before = structuredClone(harness.state);
+      await expect(repository.activate(next)).rejects.toMatchObject({
+        code: "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+      });
+      expect(harness.state).toEqual(before);
+      harness.state.activeCompilation = false;
+      await expect(repository.activate(next)).resolves.toMatchObject({
+        manifestVersion: 3,
+        snapshot: next.snapshot,
+      });
+      expect(harness.state.revisions["retrieval:1"]?.state).toBe("superseded");
+      expect(harness.state.heads.retrieval?.active_revision).toBe(2);
+      expect(harness.state.heads.embedding?.active_revision).toBe(1);
+      harness.state.activeCompilation = true;
+      await expect(repository.activate(next)).resolves.toMatchObject({
+        replayed: true,
+        manifestVersion: 3,
+      });
+      const busyRead = harness.calls.find(
+        ({ input }) => input.tableName === "document_compilation_attempts",
+      );
+      expect(busyRead?.input.params).toEqual([TENANT_ID, SPACE_ID]);
+      expect(busyRead?.input.sql).toContain("FOR UPDATE");
+      expect(busyRead?.lane).toBe("transaction");
+    },
+  );
   it.each(["postgres", "tidb"] as const)(
     "installs the complete first profile tuple in one %s transaction",
     async (dialect) => {

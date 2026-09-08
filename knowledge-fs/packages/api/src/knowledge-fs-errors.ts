@@ -109,6 +109,34 @@ const internal = descriptor(
  * request headers, signed URLs, or other deployment details.
  */
 export const KNOWLEDGE_FS_ERROR_CATALOG = {
+  KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS: descriptor(
+    "conflict",
+    "Documents are being processed. Wait for processing to finish or cancel the tasks before changing models.",
+    "manual",
+    409,
+    "retry",
+  ),
+  KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT: descriptor(
+    "conflict",
+    "Knowledge space settings have changed. Reload the latest settings and review your changes before saving again.",
+    "manual",
+    409,
+    "retry",
+  ),
+  KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED: descriptor(
+    "conflict",
+    "This model change requires an index rebuild. Refresh settings and use the model migration workflow.",
+    "manual",
+    409,
+    "retry",
+  ),
+  DOCUMENT_COMPILATION_PROFILE_CHANGED: descriptor(
+    "configuration",
+    "The model configuration changed or is unavailable. Check the knowledge space models before retrying document processing.",
+    "after_configuration",
+    409,
+    "configure_model",
+  ),
   DOCUMENT_COMPILATION_FAILED: descriptor(
     "internal",
     "The document could not be processed. Try again, or contact an administrator with the error reference.",
@@ -932,6 +960,15 @@ function normalizeKnowledgeFsErrorCode(code: string): string {
     .toUpperCase()
     .slice(0, 128);
   const aliases: Readonly<Record<string, string>> = {
+    PRODUCT_SETTINGS_REVISION_CONFLICT: "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+    PENDING_MODEL_CONFIGURATION_CONFLICT: "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+    KNOWLEDGE_SPACE_PROFILE_MANIFEST_CONFLICT: "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+    KNOWLEDGE_SPACE_SETTINGS_CANDIDATE_CONFLICT: "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+    KNOWLEDGE_SPACE_PENDING_CONFIGURATION_STALE: "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+    KNOWLEDGE_SPACE_PROFILE_PUBLISHED: "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+    KNOWLEDGE_SPACE_EMBEDDING_PROFILE_FROZEN: "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+    PRODUCT_SETTINGS_PROFILE_MIGRATION_REQUIRED: "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+    RETRIEVAL_PROFILE_REBUILD_REQUIRED: "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
     DIFY_DATASOURCE_RUNTIME_ABORTED: "SOURCE_PROVIDER_UNAVAILABLE",
     DIFY_DATASOURCE_RUNTIME_INPUT: "SOURCE_PROVIDER_REJECTED",
     DIFY_DATASOURCE_RUNTIME_INVOCATION_FAILED: "SOURCE_PROVIDER_UNAVAILABLE",

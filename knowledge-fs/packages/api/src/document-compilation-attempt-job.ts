@@ -127,6 +127,13 @@ export function createDurableDocumentCompilationJobStateMachine({
         knowledgeSpaceId: current.knowledgeSpaceId,
         tenantId: current.tenantId,
       });
+      const replacement = {
+        id: UuidSchema.parse(generateAttemptId()),
+        outboxId: UuidSchema.parse(generateOutboxId()),
+        publicationGenerationId: PublicationGenerationIdSchema.parse(
+          generatePublicationGenerationId(),
+        ),
+      };
       for (let retry = 0; retry < maxHeadConflictRetries; retry += 1) {
         const baseHeadRevision =
           current.candidatePublicationId || current.candidateFingerprint
@@ -139,6 +146,7 @@ export function createDurableDocumentCompilationJobStateMachine({
             baseHeadRevision,
             expectedRowVersion: current.rowVersion,
             now: now(),
+            replacement,
             ...permissionBinding,
           });
           if (!retried) {

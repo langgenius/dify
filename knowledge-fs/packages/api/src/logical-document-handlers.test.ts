@@ -732,8 +732,8 @@ describe("logical document handlers", () => {
     expect(canceled.status, await canceled.clone().text()).toBe(200);
     await expect(canceled.json()).resolves.toMatchObject({ id: task.id });
     const retried = await accepted.request(`${path}/retry`, { method: "POST" });
-    expect(retried.status, await retried.clone().text()).toBe(200);
-    await expect(retried.json()).resolves.toMatchObject({ id: task.id });
+    expect(retried.status, await retried.clone().text()).toBe(404);
+    await expect(retried.json()).resolves.toMatchObject({ error: "Processing task not found" });
 
     const failing = handlerApp({
       compilationJobs: compilationJobs({
@@ -755,6 +755,29 @@ describe("logical document handlers", () => {
     });
     await expectStatus(missing.request(path, { method: "DELETE" }), 404);
     await expectStatus(missing.request(`${path}/retry`, { method: "POST" }), 404);
+  });
+
+  it("returns the replacement task after retrying with changed models", async () => {
+    const nextId = "018f0d60-7a49-7cc2-9c1b-5b36f18f35ff";
+    const previous = taskFixture();
+    const next = { ...previous, id: nextId, state: "queued" as const };
+    const get = vi
+      .fn<DocumentProcessingTaskRepository["get"]>()
+      .mockResolvedValueOnce(previous)
+      .mockResolvedValueOnce(next);
+    const app = handlerApp({
+      tasks: taskRepository({ get }),
+      compilationJobs: compilationJobs({
+        retry: vi.fn(async () => ({ ...compilationJobFixture(), id: nextId })),
+      }),
+    });
+    const response = await app.request(
+      `/knowledge-spaces/${knowledgeSpaceId}/documents/${documentId}/processing-tasks/${taskId}/retry`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ id: nextId, state: "queued" });
+    expect(get.mock.calls[1]?.[0]).toMatchObject({ taskId: nextId });
   });
 
   it("gets and changes settings across unavailable, hidden, denied, and conflict paths", async () => {

@@ -12,6 +12,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   NumberField,
   NumberFieldControls,
@@ -43,6 +44,7 @@ import {
   TOP_K_MAX,
   TOP_K_MIN,
 } from './model'
+import { settingsSaveErrorMessageKey } from './save-error'
 import {
   invalidateKnowledgeSettingsAtom,
   knowledgeSettingsSettingsAtom,
@@ -73,6 +75,8 @@ export function RetrievalSettingsSection() {
   const [pendingMigrationId, setPendingMigrationId] = useState<string>()
   const [pendingEmbeddingModel, setPendingEmbeddingModel] = useState<DefaultModel>()
   const [embeddingDialogOpen, setEmbeddingDialogOpen] = useState(false)
+  const [hasRevisionConflict, setHasRevisionConflict] = useState(false)
+  const [isReloading, setIsReloading] = useState(false)
   const liveDraftRef = useRef<RetrievalSettingsDraft | undefined>(undefined)
   const draftSessionActiveRef = useRef(false)
   const embeddingBaselineRef = useRef<string | undefined>(undefined)
@@ -112,12 +116,15 @@ export function RetrievalSettingsSection() {
     [tCommon],
   )
   const showSaveError = useCallback(
-    (error?: unknown) =>
-      toast.error(
-        error instanceof Response && error.status === 403
-          ? t(($) => $.permissionRestricted)
-          : t(($) => $['settings.saveFailed']),
-      ),
+    async (error?: unknown) => {
+      const key = await settingsSaveErrorMessageKey(error)
+      if (key === 'settings.revisionConflict') {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        queuedDraftRef.current = undefined
+        setHasRevisionConflict(true)
+      }
+      toast.error(t(($) => $[key]))
+    },
     [t],
   )
 
@@ -197,13 +204,14 @@ export function RetrievalSettingsSection() {
       await invalidateSettings()
       return 'saved' as const
     } catch (error) {
-      showSaveError(error)
+      await showSaveError(error)
       return 'failed' as const
     }
   }
 
   const performSave = async (nextDraft: RetrievalSettingsDraft) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    if (hasRevisionConflict || isReloading) return
     if (!space?.permission_keys.includes('knowledge_space_edit')) return
     if (activeMigrationIdRef.current || saveInFlightRef.current) {
       queuedDraftRef.current = nextDraft
@@ -249,6 +257,28 @@ export function RetrievalSettingsSection() {
   const scheduleSave = (nextDraft: RetrievalSettingsDraft) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => void performSave(nextDraft), 400)
+  }
+
+  const reloadSettings = async () => {
+    setIsReloading(true)
+    try {
+      const refreshed = await invalidateSettings(true)
+      if (!refreshed) throw new Error('Settings unavailable')
+      // Only an explicit reload discards the draft; never automatically rebase a conflicting PATCH.
+      settingsRevisionRef.current = refreshed.revision
+      embeddingBaselineRef.current = undefined
+      retrievalBaselineRef.current = undefined
+      liveDraftRef.current = undefined
+      queuedDraftRef.current = undefined
+      draftSessionActiveRef.current = false
+      setDraft(undefined)
+      setHasRevisionConflict(false)
+      setSavePending({ owner: 'retrieval', pending: false })
+    } catch (error) {
+      await showSaveError(error)
+    } finally {
+      setIsReloading(false)
+    }
   }
 
   useEffect(() => {
@@ -315,7 +345,8 @@ export function RetrievalSettingsSection() {
 
   if (!space || !settings) return null
   const current = draft ?? retrievalDraftFromSettings(settings)
-  const canEdit = space.permission_keys.includes('knowledge_space_edit')
+  const canEdit =
+    space.permission_keys.includes('knowledge_space_edit') && !hasRevisionConflict && !isReloading
   const initialModelSetup = !settings.active_profile_available
   const embeddingDirty = draft
     ? modelFingerprint(current.embeddingModel) !== embeddingBaselineRef.current
@@ -333,6 +364,24 @@ export function RetrievalSettingsSection() {
 
   return (
     <>
+      {hasRevisionConflict && (
+        <KnowledgeModelReadinessNotice
+          className="mb-3"
+          title={t(($) => $['settings.revisionConflict'])}
+          tone="warning"
+          action={
+            <Button
+              type="button"
+              variant="secondary"
+              size="small"
+              loading={isReloading}
+              onClick={() => void reloadSettings()}
+            >
+              {t(($) => $['settings.reloadLatest'])}
+            </Button>
+          }
+        />
+      )}
       {settings.configuration_state !== 'pending-validation' &&
         (settings.configuration_state !== 'active' || settings.issues.length > 0) && (
           <KnowledgeModelReadinessNotice

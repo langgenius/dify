@@ -8,6 +8,10 @@ import {
   assertDatabaseDocumentCandidateAdmission,
 } from "./document-candidate-admission";
 import type { DocumentCompilationJobStateMachine } from "./document-compilation-job";
+import {
+  type DocumentMutationCompilationFence,
+  lockTerminalDocumentMutationCompilation,
+} from "./document-mutation-compilation-fence";
 import { cloneJsonObject, jsonObjectColumn } from "./json-utils";
 import type { KnowledgeSpaceDurablePermissionReference } from "./knowledge-space-authorization";
 import {
@@ -96,7 +100,7 @@ export interface DocumentChunkRepository {
   ): Promise<DocumentChunkStateChange>;
   createMany(inputs: readonly CreateDocumentRevisionChunkInput[]): Promise<DocumentRevisionChunk[]>;
   failStateChange(
-    input: LogicalDocumentLookup & { readonly changeId: string },
+    input: LogicalDocumentLookup & DocumentMutationCompilationFence & { readonly changeId: string },
   ): Promise<DocumentChunkStateChange>;
   get(
     input: LogicalDocumentLookup & { readonly chunkId: string; readonly documentRevision: number },
@@ -294,6 +298,12 @@ export function createInMemoryDocumentChunkRepository({
       const change = changes.get(input.changeId);
       if (!change || !sameScope(change, input) || change.state !== "candidate") {
         throw new LogicalDocumentValidationError("Chunk state candidate not found");
+      }
+      if (
+        input.expectedCompilationAttemptId &&
+        change.compilationAttemptId !== input.expectedCompilationAttemptId
+      ) {
+        throw new LogicalDocumentValidationError("Chunk compilation binding changed");
       }
       const failed = { ...change, state: "failed" as const };
       changes.set(change.id, failed);
@@ -494,20 +504,29 @@ export function createDatabaseDocumentChunkRepository({
         return created;
       });
     },
-    failStateChange: async (input) => {
-      const result = await database.execute({
-        maxRows: 0,
-        operation: "update",
-        params: [input.tenantId, input.knowledgeSpaceId, input.documentId, input.changeId],
-        sql: `UPDATE ${q(database, "document_chunk_state_changes")} SET ${q(database, "state")} = 'failed' WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "document_id")} = ${p(database, 3)} AND ${q(database, "id")} = ${p(database, 4)} AND ${q(database, "state")} = 'candidate';`,
-        tableName: "document_chunk_state_changes",
-      });
-      if (result.rowsAffected !== 1)
-        throw new LogicalDocumentValidationError("Chunk state candidate not found");
-      const change = await readChange(database, input);
-      if (!change) throw new LogicalDocumentValidationError("Chunk state change disappeared");
-      return change;
-    },
+    failStateChange: (input) =>
+      database.transaction(async (transaction) => {
+        await lockTerminalDocumentMutationCompilation(database, transaction, input);
+        const change = await readChange(transaction, input, true);
+        if (
+          input.expectedCompilationAttemptId &&
+          change?.compilationAttemptId !== input.expectedCompilationAttemptId
+        ) {
+          throw new LogicalDocumentValidationError("Chunk compilation binding changed");
+        }
+        const result = await transaction.execute({
+          maxRows: 0,
+          operation: "update",
+          params: [input.tenantId, input.knowledgeSpaceId, input.documentId, input.changeId],
+          sql: `UPDATE ${q(database, "document_chunk_state_changes")} SET ${q(database, "state")} = 'failed' WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "document_id")} = ${p(database, 3)} AND ${q(database, "id")} = ${p(database, 4)} AND ${q(database, "state")} = 'candidate';`,
+          tableName: "document_chunk_state_changes",
+        });
+        if (result.rowsAffected !== 1)
+          throw new LogicalDocumentValidationError("Chunk state candidate not found");
+        const updated = await readChange(transaction, input);
+        if (!updated) throw new LogicalDocumentValidationError("Chunk state change disappeared");
+        return updated;
+      }),
     get: (input) => readChunk(database, input),
     list: async (input) => {
       validateChunkList(input.limit, input.query, maxListLimit);

@@ -6,6 +6,10 @@ import {
   DocumentCandidateAdmissionError,
   assertDatabaseDocumentCandidateAdmission,
 } from "./document-candidate-admission";
+import {
+  type DocumentMutationCompilationFence,
+  lockTerminalDocumentMutationCompilation,
+} from "./document-mutation-compilation-fence";
 import { cloneJsonObject, jsonObjectColumn } from "./json-utils";
 import {
   LogicalDocumentConflictError,
@@ -96,13 +100,14 @@ export interface DocumentSettingsRepository {
     input: CompleteDocumentReindexInput,
   ): Promise<{ readonly attempt: DocumentReindexAttempt; readonly head: DocumentSettingsHead }>;
   fail(
-    input: LogicalDocumentLookup & {
-      readonly attemptId: string;
-      readonly errorCode: string;
-      readonly errorMessage: string;
-      readonly expectedRowVersion: number;
-      readonly now: string;
-    },
+    input: LogicalDocumentLookup &
+      DocumentMutationCompilationFence & {
+        readonly attemptId: string;
+        readonly errorCode: string;
+        readonly errorMessage: string;
+        readonly expectedRowVersion: number;
+        readonly now: string;
+      },
   ): Promise<DocumentReindexAttempt>;
   getAttempt(
     input: LogicalDocumentLookup & { readonly attemptId: string },
@@ -306,6 +311,12 @@ export function createInMemoryDocumentSettingsRepository({
       return { attempt: completed, head: cloneHead(nextHead) };
     },
     fail: async (input) => {
+      if (
+        input.expectedCompilationAttemptId &&
+        attempts.get(input.attemptId)?.compilationAttemptId !== input.expectedCompilationAttemptId
+      ) {
+        throw new LogicalDocumentValidationError("Settings compilation binding changed");
+      }
       const attempt = transition(input, ["queued", "running"], {
         completedAt: input.now,
         errorCode: input.errorCode,
@@ -708,6 +719,13 @@ export function createDatabaseDocumentSettingsRepository({
       }),
     fail: (input) =>
       database.transaction(async (transaction) => {
+        await lockTerminalDocumentMutationCompilation(database, transaction, input);
+        if (input.expectedCompilationAttemptId) {
+          const candidate = await readAttempt(transaction, input, true);
+          if (candidate?.compilationAttemptId !== input.expectedCompilationAttemptId) {
+            throw new LogicalDocumentValidationError("Settings compilation binding changed");
+          }
+        }
         const attempt = await transitionAttempt(
           input,
           ["queued", "running"],

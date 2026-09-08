@@ -10,6 +10,24 @@ import {
 } from "./knowledge-fs-errors";
 
 describe("KnowledgeFS public errors", () => {
+  it.each([
+    ["RETRIEVAL_PROFILE_REBUILD_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"],
+    ["KNOWLEDGE_SPACE_PROFILE_PUBLISHED", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"],
+    ["PRODUCT_SETTINGS_REVISION_CONFLICT", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"],
+    ["KNOWLEDGE_SPACE_PROFILE_MANIFEST_CONFLICT", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"],
+    [
+      "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+      "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+    ],
+  ])("preserves the actionable settings failure %s", (code, expected) => {
+    const failure = knowledgeFsFailureFromError(
+      Object.assign(new Error("secret provider diagnostics"), { code }),
+    );
+    expect(failure).toMatchObject({ code: expected, category: "conflict", retryPolicy: "manual" });
+    expect(failure.message).not.toContain("secret");
+    expect(failure.message).not.toContain("conflicts with the current resource state");
+  });
+
   it("maps actionable model failures without exposing the internal exception message", () => {
     const failure = knowledgeFsFailureFromError(
       Object.assign(new Error("provider echoed Authorization: secret"), {

@@ -46,6 +46,10 @@ class KnowledgeFSMetadataFieldListResponse(ResponseModel):
 
 
 KnowledgeFSPublicErrorCode = Literal[
+    "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+    "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+    "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+    "DOCUMENT_COMPILATION_PROFILE_CHANGED",
     "DOCUMENT_COMPILATION_FAILED",
     "DOCUMENT_COMPILATION_RETRYABLE",
     "DOCUMENT_COMPILATION_LEASE_LOST",
@@ -154,6 +158,20 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
         "validation": "The KnowledgeFS request is invalid.",
     }
     _SAFE_MESSAGE_BY_CODE: ClassVar[dict[str, str]] = {
+        "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS": (
+            "Documents are being processed. Wait for processing to finish or cancel the tasks before changing models."
+        ),
+        "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT": (
+            "Knowledge space settings have changed. "
+            "Reload the latest settings and review your changes before saving again."
+        ),
+        "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED": (
+            "This model change requires an index rebuild. Refresh settings and use the model migration workflow."
+        ),
+        "DOCUMENT_COMPILATION_PROFILE_CHANGED": (
+            "The model configuration changed or is unavailable. "
+            "Check the knowledge space models before retrying document processing."
+        ),
         "RETRIEVAL_DELETION_IN_PROGRESS": "This knowledge space is being deleted and cannot be searched.",
         "RETRIEVAL_EXECUTION_LEASE_LOST": (
             "The retrieval execution expired before it could finish. Run the query again."

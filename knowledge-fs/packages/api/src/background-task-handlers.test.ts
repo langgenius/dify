@@ -320,6 +320,85 @@ describe("background task handlers", () => {
     expect(retry).toHaveBeenCalledOnce();
   });
 
+  it("returns the new visible job after a model-aware document retry", async () => {
+    const previous = documentTask(DOCUMENT_JOB_ID, "2026-07-23T12:01:00.000Z", "failed");
+    const next = documentTask(UNRELATED_DOCUMENT_JOB_ID, "2026-07-23T12:02:00.000Z", "queued");
+    const getVisible = vi.fn().mockResolvedValueOnce(previous).mockResolvedValueOnce(next);
+    const app = backgroundTaskApp({
+      compilationJobs: {
+        retry: vi.fn(async () => compilationJob(next.id, "queued")),
+      } as unknown as DocumentCompilationJobStateMachine,
+      documentTasks: { get: vi.fn(), getVisible, list: vi.fn(async () => ({ items: [] })) },
+    });
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/retry`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: next.id,
+      state: "queued",
+      canCancel: true,
+    });
+    expect(getVisible.mock.calls[1]?.[0]).toMatchObject({
+      taskId: next.id,
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: TENANT_ID,
+      candidateGrants: ["scope:visible"],
+    });
+  });
+
+  it("re-reads bulk item bindings before returning the retried summary", async () => {
+    const repository = createInMemoryBulkOperationRepository({ maxItems: 10, maxOperations: 10 });
+    let operation = await repository.create({
+      id: BULK_ID,
+      capabilityGrantId: GRANT_ID,
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: TENANT_ID,
+      type: "document_reindex",
+      items: [
+        {
+          compilationJobId: GROUPED_JOB_ID,
+          documentId: DOCUMENT_ID,
+          status: "queued",
+          requiredPermissionScope: ["scope:visible"],
+        },
+      ],
+    });
+    const jobs = new Map([[GROUPED_JOB_ID, compilationJob(GROUPED_JOB_ID, "failed")]]);
+    const getMany = vi.fn(async (ids: readonly string[]) =>
+      ids.flatMap((id) => jobs.get(id) ?? []),
+    );
+    const app = backgroundTaskApp({
+      bulkOperations: { ...repository, get: vi.fn(async () => operation) },
+      compilationJobs: {
+        get: vi.fn(async () => jobs.get(GROUPED_JOB_ID)),
+        getMany,
+        retry: vi.fn(async () => {
+          const next = compilationJob(UNRELATED_DOCUMENT_JOB_ID, "queued");
+          jobs.set(next.id, next);
+          operation = {
+            ...operation,
+            items: operation.items.map((item) => ({ ...item, compilationJobId: next.id })),
+          };
+          return next;
+        }),
+      } as unknown as DocumentCompilationJobStateMachine,
+    });
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/retry`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: BULK_ID,
+      state: "running",
+      canCancel: true,
+      canRetry: false,
+    });
+    expect(getMany.mock.calls.at(-1)?.[0]).toEqual([UNRELATED_DOCUMENT_JOB_ID]);
+  });
+
   it("delegates source cancel and retry and rejects unsupported task kinds", async () => {
     const cancel = vi.fn(async () =>
       sourceRun({

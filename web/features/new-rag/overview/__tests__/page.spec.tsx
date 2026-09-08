@@ -11,6 +11,9 @@ vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
 
+// Query-cache synchronization is exercised with real Query/Jotai in task-sync.spec.tsx.
+vi.mock('../overview-task-sync', () => ({ OverviewTaskSync: () => null }))
+
 const queryOptionsMocks = vi.hoisted(() => ({
   activity: vi.fn(),
   attention: vi.fn(),
@@ -420,6 +423,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.tasks[0]!.updated_at = '2026-07-29T08:05:00Z'
     queryData.stats.generated_at = '2026-07-29T09:00:00Z'
   })
+  afterEach(() => vi.useRealTimers())
 
   afterEach(() => {
     vi.restoreAllMocks()
@@ -833,6 +837,9 @@ describe('KnowledgeOverviewPage', () => {
   })
 
   it('shows safe activity details and relative times for today in the drawer', async () => {
+    // At midnight, "two hours ago" is yesterday and deliberately uses an absolute date.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 8, 12, 0, 0))
     const user = userEvent.setup()
     queryData.activity.data[0]!.action = 'source.failed'
     queryData.activity.data[0]!.details = { reasonCode: 'CREDENTIALS_EXPIRED' }
@@ -848,6 +855,7 @@ describe('KnowledgeOverviewPage', () => {
     expect(dialog).toHaveTextContent('Credentials expired')
     expect(dialog).toHaveTextContent('knowledgeSpace.overview.activityFailed')
     expect(within(dialog).getByText(/2h ago|2 hr\. ago|2 hours ago/)).toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   it('shows one initiated query activity with its question and retrieval mode', async () => {
@@ -962,6 +970,10 @@ describe('KnowledgeOverviewPage', () => {
     const onboarding = onboardingTitle.closest('section')
 
     expect(alert).toHaveTextContent('knowledgeSpace.documentUploadFailed')
+    expect(
+      screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.overview.noIssues')).not.toBeInTheDocument()
     expect(overviewTitle.compareDocumentPosition(alert)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(alert.compareDocumentPosition(onboardingTitle)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(onboarding).not.toBeNull()
@@ -981,42 +993,46 @@ describe('KnowledgeOverviewPage', () => {
     expect(tasksQueryState.refetch).toHaveBeenCalledOnce()
   })
 
-  it('keeps later document failures in Needs attention without showing the onboarding alert', () => {
-    queryData.stats.source_count = 0
-    queryData.stats.documents = 1
-    queryData.tasks[0]!.can_retry = true
-    queryData.tasks[0]!.operation = 'document_upload'
-    queryData.tasks[0]!.state = 'failed'
-    queryData.attention.data = [
-      {
-        action: {
-          kind: 'open-resource',
-          resource_id: 'document-1',
-          resource_type: 'document',
+  it.each([0, 1])(
+    'shows document failures in Needs attention with %i visible documents',
+    (documents) => {
+      queryData.stats.source_count = 0
+      queryData.stats.documents = documents
+      queryData.tasks[0]!.can_retry = true
+      queryData.tasks[0]!.operation = 'document_upload'
+      queryData.tasks[0]!.state = 'failed'
+      queryData.attention.data = [
+        {
+          action: {
+            kind: 'open-resource',
+            resource_id: 'document-1',
+            resource_type: 'document',
+          },
+          evidence: [{ code: 'DOCUMENT_PROCESSING_FAILED', observed_at: '2026-07-29T08:00:00Z' }],
+          issue_key: 'failed-document:document-1',
+          knowledge_space_id: 'knowledge-1',
+          resource: { id: 'document-1', type: 'document' },
+          revision: 1,
+          rule_id: 'failed-document',
+          severity: 'critical',
+          status: 'active',
+          title: 'Document processing failed',
+          updated_at: '2026-07-29T08:00:00Z',
         },
-        evidence: [{ code: 'DOCUMENT_PROCESSING_FAILED', observed_at: '2026-07-29T08:00:00Z' }],
-        issue_key: 'failed-document:document-1',
-        knowledge_space_id: 'knowledge-1',
-        resource: { id: 'document-1', type: 'document' },
-        revision: 1,
-        rule_id: 'failed-document',
-        severity: 'critical',
-        status: 'active',
-        title: 'Document processing failed',
-        updated_at: '2026-07-29T08:00:00Z',
-      },
-    ]
+      ]
 
-    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+      renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(
-      screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'knowledgeSpace.overview.viewDocuments' }),
-    ).toBeInTheDocument()
-  })
+      if (documents > 0) expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.queryByText('knowledgeSpace.overview.noIssues')).not.toBeInTheDocument()
+      expect(
+        screen.getByText('knowledgeSpace.overview.attention.failedDocument.title'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'knowledgeSpace.overview.viewDocuments' }),
+      ).toBeInTheDocument()
+    },
+  )
 
   it('hides write-only onboarding actions for a read-only user', () => {
     queryData.stats.source_count = 0

@@ -33,6 +33,7 @@ import {
   type DatabaseKnowledgeSpacePermissionFence,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
+import { assertKnowledgeSpaceCompilationsIdle } from "./knowledge-space-compilation-settings-fence";
 import { lockKnowledgeSpaceForWholeSpaceDeletionAdmission } from "./knowledge-space-deletion-admission";
 
 export const KnowledgeSpaceProfileKinds = ["embedding", "retrieval"] as const;
@@ -786,6 +787,10 @@ export function createDatabaseKnowledgeSpaceUnpublishedProfileActivationReposito
               "KNOWLEDGE_SPACE_EMBEDDING_PROFILE_FROZEN",
               "Embedding profile change requires the reindex workflow",
             );
+          }
+
+          if (!input.initialActivation) {
+            await assertKnowledgeSpaceCompilationsIdle(database, transaction, input);
           }
 
           const nextMetadata = { ...metadata, [profileMetadataKey]: input.snapshot };

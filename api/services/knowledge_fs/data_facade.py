@@ -93,6 +93,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSPresignedUploadResponse,
     KnowledgeFSProfileMigrationResponse,
+    KnowledgeFSPublicFailureResponse,
     KnowledgeFSQualityReplayListResponse,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSQualityReplayResponse,
@@ -616,7 +617,16 @@ class KnowledgeFSDataFacade:
         )
         if has_existing_profile:
             if current.revision != payload.expected_revision:
-                raise KnowledgeFSProductRequestRejectedError(status_code=409)
+                raise KnowledgeFSProductRequestRejectedError(
+                    status_code=409,
+                    failure=KnowledgeFSPublicFailureResponse(
+                        code="KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+                        category="conflict",
+                        message="Knowledge space settings have changed.",
+                        retryPolicy="manual",
+                        action="retry",
+                    ),
+                )
             if payload.embedding is not None and payload.retrieval is not None:
                 raise KnowledgeFSProductRequestRejectedError(status_code=422)
             if payload.embedding is not None:

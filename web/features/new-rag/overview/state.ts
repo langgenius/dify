@@ -1,7 +1,7 @@
 import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
-import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { atomWithLazy, selectAtom } from 'jotai/utils'
 import { parseAsStringLiteral } from 'nuqs'
 import { createQueryAtoms } from 'nuqs-jotai'
@@ -67,6 +67,15 @@ const backgroundTasksAtom = atom(
 )
 const overviewHasActiveTasksAtom = atom((get) =>
   get(backgroundTasksAtom).some((task) => ACTIVE_TASK_STATES.has(task.state)),
+)
+// A stable completion token, not a copy of task state. It changes when a terminal task is
+// observed (including retry completion) but not on each in-flight progress poll.
+export const overviewTerminalTasksVersionAtom = atom((get) =>
+  get(backgroundTasksAtom)
+    .filter((task) => !ACTIVE_TASK_STATES.has(task.state))
+    .map((task) => `${task.task_kind}:${task.id}:${task.state}:${task.updated_at}`)
+    .sort()
+    .join('|'),
 )
 const latestTaskUpdatedAtAtom = atom((get) =>
   get(backgroundTasksAtom).reduce<number | undefined>((latest, task) => {
@@ -260,6 +269,20 @@ export const retryOverviewSnapshotsAtom = atom(null, (get) => {
 export const refreshOverviewBackgroundTasksAtom = atom(null, (get) =>
   get(backgroundTasksRefetchAtom)(),
 )
+export const reconcileOverviewAfterTasksAtom = atom(null, async (get) => {
+  const queryClient = get(queryClientAtom)
+  const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
+  const overview = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview
+  const keys = [overview.attention.get.key({ input }), overview.activity.get.key({ input })]
+  await Promise.all(
+    keys.map(async (queryKey) => {
+      // A pre-completion request may finish late with a stale snapshot. Cancel it before the
+      // final fetch; dataUpdatedAt alone cannot tell when its server-side snapshot was taken.
+      await queryClient.cancelQueries({ queryKey })
+      await queryClient.invalidateQueries({ queryKey })
+    }),
+  )
+})
 export const retryOverviewActivityPreviewAtom = atom(null, (get) => {
   void get(activityPreviewRefetchAtom)()
 })

@@ -9,6 +9,7 @@ import {
   UuidSchema,
 } from "@knowledge/core";
 
+import { rebindBulkOperationCompilationJob } from "./bulk-operation-database-repository";
 import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import {
   numberColumn,
@@ -274,6 +275,14 @@ export interface RetryTerminalDocumentCompilationAttemptInput {
   /** Rebinds a user-requested retry to the current caller's immutable permission snapshot. */
   readonly permissionSnapshot?: KnowledgeSpaceDurablePermissionReference | undefined;
   readonly requestedBySubjectId?: string | undefined;
+  /** Fresh execution identity used only when the attempt's immutable model tuple is stale. */
+  readonly replacement?:
+    | {
+        readonly id: string;
+        readonly outboxId: string;
+        readonly publicationGenerationId: string;
+      }
+    | undefined;
 }
 
 export interface DeleteTerminalDocumentCompilationAttemptsInput {
@@ -361,6 +370,12 @@ export interface DocumentCompilationAttemptRepository {
 }
 
 export interface InMemoryDocumentCompilationAttemptRepositoryOptions {
+  readonly getActiveProfiles?:
+    | ((scope: {
+        readonly tenantId: string;
+        readonly knowledgeSpaceId: string;
+      }) => CompilationProfiles)
+    | undefined;
   readonly maxAttempts?: number | undefined;
   readonly maxOutboxClaimBatchSize?: number | undefined;
   readonly maxOutboxEvents?: number | undefined;
@@ -386,6 +401,15 @@ export class DocumentCompilationAttemptHeadConflictError extends Error {
 
 export class DocumentCompilationAttemptCapacityExceededError extends Error {}
 export class DocumentCompilationAttemptTransitionError extends Error {}
+
+type CompilationProfiles = Pick<
+  DocumentCompilationAttempt,
+  "embeddingProfile" | "retrievalProfile"
+>;
+
+export class DocumentCompilationAttemptProfileConflictError extends DocumentCompilationAttemptTransitionError {
+  readonly code = "DOCUMENT_COMPILATION_PROFILE_CHANGED";
+}
 
 const deferredDispatchAvailableAt = "9999-12-31T23:59:59.999Z";
 
@@ -756,6 +780,29 @@ export function createInMemoryDocumentCompilationAttemptRepository(
       );
       if (active) {
         return null;
+      }
+      const profiles = options.getActiveProfiles?.(current);
+      if (profiles && compilationProfilesChanged(current, profiles)) {
+        const parsed = replacementStartInput(
+          current,
+          profiles,
+          input,
+          input.baseHeadRevision ?? current.baseHeadRevision,
+        );
+        if (attempts.size >= maxAttempts || outbox.size >= maxOutboxEvents) {
+          throw new DocumentCompilationAttemptCapacityExceededError(
+            "Document compilation retry capacity exceeded",
+          );
+        }
+        if (attempts.has(parsed.id) || outbox.has(parsed.outboxId)) {
+          throw new DocumentCompilationAttemptTransitionError(
+            "Replacement compilation identity already exists",
+          );
+        }
+        const replacement = startAttempt(parsed);
+        writeAttempt(replacement);
+        writeOutbox(startOutboxEvent(parsed));
+        return cloneAttempt(replacement);
       }
       const baseHeadRevision = terminalRetryBaseHeadRevision(current, input);
       const event = requiredMemoryOutbox(outbox, current.id);
@@ -1388,6 +1435,47 @@ export function createDatabaseDocumentCompilationAttemptRepository({
         const active = await databaseGetActiveAttempt(database, transaction, current, true);
         if (active) {
           return null;
+        }
+        // A terminal retry must not resume model-derived checkpoints after settings activation.
+        // The space lock serializes this decision with profile changes and new admissions.
+        const profiles =
+          current.embeddingProfile || current.retrievalProfile
+            ? await databaseActiveCompilationProfiles(database, transaction, current)
+            : undefined;
+        if (profiles && compilationProfilesChanged(current, profiles)) {
+          await requireDatabaseCompilationControlResources(
+            database,
+            transaction,
+            current,
+            permissionBinding,
+            canonicalDateTime(input.now, "now"),
+            true,
+          );
+          await restoreDatabaseCompilationProductIntent(database, transaction, current);
+          const parsed = replacementStartInput(
+            current,
+            profiles,
+            input,
+            await databaseCurrentHeadRevision(database, transaction, current),
+          );
+          const replacement = await databaseStartAttemptInTransaction(
+            database,
+            transaction,
+            parsed,
+          );
+          await rebindDatabaseCompilationProductIntent(
+            database,
+            transaction,
+            current,
+            replacement.attempt,
+          );
+          await rebindBulkOperationCompilationJob(database, transaction, {
+            ...current,
+            previousJobId: current.id,
+            nextJobId: replacement.attempt.id,
+            now: input.now,
+          });
+          return replacement.attempt;
         }
         const baseHeadRevision = terminalRetryBaseHeadRevision(current, input);
         if (input.baseHeadRevision !== undefined && !hasBoundCompilationCandidate(current)) {
@@ -2495,117 +2583,199 @@ async function databaseStartAttempt(
 ): Promise<StartDocumentCompilationAttemptResult> {
   const parsed = parseStartInput(input);
 
-  return database.transaction(async (transaction) => {
-    await requireDatabaseCompilationScope(database, transaction, parsed);
-    const existing = await databaseGetActiveAttempt(database, transaction, parsed, true);
-    if (existing) {
-      const existingOutbox = await databaseGetAttemptOutbox(
-        database,
-        transaction,
-        existing.id,
-        true,
-      );
-      if (!existingOutbox) {
-        throw new Error("Active document compilation attempt has no durable outbox event");
-      }
-      return { attempt: existing, created: false, outbox: existingOutbox };
-    }
-    const actualHeadRevision = await databaseCurrentHeadRevision(database, transaction, parsed);
-    if (actualHeadRevision !== parsed.baseHeadRevision) {
-      throw new DocumentCompilationAttemptHeadConflictError(
-        parsed.baseHeadRevision,
-        actualHeadRevision,
-      );
-    }
-    const activeProfiles = await databaseActiveCompilationProfiles(database, transaction, parsed);
-    if (
-      (parsed.embeddingProfile &&
-        (!activeProfiles.embeddingProfile ||
-          !sameProfileReference(parsed.embeddingProfile, activeProfiles.embeddingProfile))) ||
-      (parsed.retrievalProfile &&
-        (!activeProfiles.retrievalProfile ||
-          !sameProfileReference(parsed.retrievalProfile, activeProfiles.retrievalProfile)))
-    ) {
-      throw new DocumentCompilationAttemptTransitionError(
-        "Document compilation requested profile snapshot is no longer active",
-      );
-    }
-    const frozenInput: ParsedStartDocumentCompilationAttemptInput = {
-      ...parsed,
-      ...activeProfiles,
-    };
-    const newAttempt = startAttempt(frozenInput);
-    const newOutbox = startOutboxEvent(frozenInput);
+  return database.transaction((transaction) =>
+    databaseStartAttemptInTransaction(database, transaction, parsed),
+  );
+}
 
-    const columns = attemptColumns;
-    const params = attemptColumnValues(newAttempt);
-    const insertKeyword = database.dialect === "postgres" ? "INSERT" : "INSERT IGNORE";
-    const conflictClause =
-      database.dialect === "postgres"
-        ? ` ON CONFLICT (${[
-            "tenant_id",
-            "knowledge_space_id",
-            "document_asset_id",
-            "document_version",
-            "active_slot",
-          ]
-            .map((column) => quoteDatabaseIdentifier(database, column))
-            .join(", ")}) DO NOTHING RETURNING *`
-        : "";
-    const inserted = await transaction.execute({
-      maxRows: 1,
-      operation: "insert",
-      params,
-      sql: `${insertKeyword} INTO ${quoteDatabaseIdentifier(database, attemptTableName)} (${columns
-        .map((column) => quoteDatabaseIdentifier(database, column))
-        .join(", ")}) VALUES (${params
-        .map((_, index) => databasePlaceholder(database, index + 1))
-        .join(", ")})${conflictClause};`,
-      tableName: attemptTableName,
-    });
-
-    if (inserted.rowsAffected !== 1) {
-      const existing = await databaseGetActiveAttempt(database, transaction, newAttempt, true);
-      if (!existing) {
-        throw new Error(
-          "Document compilation attempt insert conflicted without a readable active attempt",
-        );
-      }
-      const existingOutbox = await databaseGetAttemptOutbox(
-        database,
-        transaction,
-        existing.id,
-        true,
-      );
-      if (!existingOutbox) {
-        throw new Error("Active document compilation attempt has no durable outbox event");
-      }
-      return { attempt: existing, created: false, outbox: existingOutbox };
+async function databaseStartAttemptInTransaction(
+  database: DatabaseAdapter,
+  transaction: DatabaseExecutor,
+  parsed: ParsedStartDocumentCompilationAttemptInput,
+): Promise<StartDocumentCompilationAttemptResult> {
+  await requireDatabaseCompilationScope(database, transaction, parsed);
+  const existing = await databaseGetActiveAttempt(database, transaction, parsed, true);
+  if (existing) {
+    const existingOutbox = await databaseGetAttemptOutbox(database, transaction, existing.id, true);
+    if (!existingOutbox) {
+      throw new Error("Active document compilation attempt has no durable outbox event");
     }
+    return { attempt: existing, created: false, outbox: existingOutbox };
+  }
+  const actualHeadRevision = await databaseCurrentHeadRevision(database, transaction, parsed);
+  if (actualHeadRevision !== parsed.baseHeadRevision) {
+    throw new DocumentCompilationAttemptHeadConflictError(
+      parsed.baseHeadRevision,
+      actualHeadRevision,
+    );
+  }
+  const activeProfiles = await databaseActiveCompilationProfiles(database, transaction, parsed);
+  if (
+    (parsed.embeddingProfile &&
+      (!activeProfiles.embeddingProfile ||
+        !sameProfileReference(parsed.embeddingProfile, activeProfiles.embeddingProfile))) ||
+    (parsed.retrievalProfile &&
+      (!activeProfiles.retrievalProfile ||
+        !sameProfileReference(parsed.retrievalProfile, activeProfiles.retrievalProfile)))
+  ) {
+    throw new DocumentCompilationAttemptTransitionError(
+      "Document compilation requested profile snapshot is no longer active",
+    );
+  }
+  const frozenInput: ParsedStartDocumentCompilationAttemptInput = {
+    ...parsed,
+    ...activeProfiles,
+  };
+  const newAttempt = startAttempt(frozenInput);
+  const newOutbox = startOutboxEvent(frozenInput);
 
-    const persistedAttempt = inserted.rows[0] ? mapAttemptRow(inserted.rows[0]) : newAttempt;
-    const outboxParams = outboxColumnValues(newOutbox);
-    const outboxConflictClause = database.dialect === "postgres" ? " RETURNING *" : "";
-    const outboxInsert = await transaction.execute({
-      maxRows: 1,
-      operation: "insert",
-      params: outboxParams,
-      sql: `INSERT INTO ${quoteDatabaseIdentifier(database, outboxTableName)} (${outboxColumns
-        .map((column) => quoteDatabaseIdentifier(database, column))
-        .join(", ")}) VALUES (${outboxParams
-        .map((_, index) => outboxInsertPlaceholder(database, index + 1, outboxColumns[index]))
-        .join(", ")})${outboxConflictClause};`,
-      tableName: outboxTableName,
-    });
-    if (outboxInsert.rowsAffected !== 1) {
-      throw new Error("Document compilation outbox insert did not persist exactly one event");
-    }
-    return {
-      attempt: persistedAttempt,
-      created: true,
-      outbox: outboxInsert.rows[0] ? mapOutboxRow(outboxInsert.rows[0]) : newOutbox,
-    };
+  const columns = attemptColumns;
+  const params = attemptColumnValues(newAttempt);
+  const insertKeyword = database.dialect === "postgres" ? "INSERT" : "INSERT IGNORE";
+  const conflictClause =
+    database.dialect === "postgres"
+      ? ` ON CONFLICT (${[
+          "tenant_id",
+          "knowledge_space_id",
+          "document_asset_id",
+          "document_version",
+          "active_slot",
+        ]
+          .map((column) => quoteDatabaseIdentifier(database, column))
+          .join(", ")}) DO NOTHING RETURNING *`
+      : "";
+  const inserted = await transaction.execute({
+    maxRows: 1,
+    operation: "insert",
+    params,
+    sql: `${insertKeyword} INTO ${quoteDatabaseIdentifier(database, attemptTableName)} (${columns
+      .map((column) => quoteDatabaseIdentifier(database, column))
+      .join(", ")}) VALUES (${params
+      .map((_, index) => databasePlaceholder(database, index + 1))
+      .join(", ")})${conflictClause};`,
+    tableName: attemptTableName,
   });
+
+  if (inserted.rowsAffected !== 1) {
+    const existing = await databaseGetActiveAttempt(database, transaction, newAttempt, true);
+    if (!existing) {
+      throw new Error(
+        "Document compilation attempt insert conflicted without a readable active attempt",
+      );
+    }
+    const existingOutbox = await databaseGetAttemptOutbox(database, transaction, existing.id, true);
+    if (!existingOutbox) {
+      throw new Error("Active document compilation attempt has no durable outbox event");
+    }
+    return { attempt: existing, created: false, outbox: existingOutbox };
+  }
+
+  const persistedAttempt = inserted.rows[0] ? mapAttemptRow(inserted.rows[0]) : newAttempt;
+  const outboxParams = outboxColumnValues(newOutbox);
+  const outboxConflictClause = database.dialect === "postgres" ? " RETURNING *" : "";
+  const outboxInsert = await transaction.execute({
+    maxRows: 1,
+    operation: "insert",
+    params: outboxParams,
+    sql: `INSERT INTO ${quoteDatabaseIdentifier(database, outboxTableName)} (${outboxColumns
+      .map((column) => quoteDatabaseIdentifier(database, column))
+      .join(", ")}) VALUES (${outboxParams
+      .map((_, index) => outboxInsertPlaceholder(database, index + 1, outboxColumns[index]))
+      .join(", ")})${outboxConflictClause};`,
+    tableName: outboxTableName,
+  });
+  if (outboxInsert.rowsAffected !== 1) {
+    throw new Error("Document compilation outbox insert did not persist exactly one event");
+  }
+  return {
+    attempt: persistedAttempt,
+    created: true,
+    outbox: outboxInsert.rows[0] ? mapOutboxRow(outboxInsert.rows[0]) : newOutbox,
+  };
+}
+
+function compilationProfilesChanged(
+  attempt: DocumentCompilationAttempt,
+  profiles: CompilationProfiles,
+): boolean {
+  if (
+    (!profiles.embeddingProfile && attempt.embeddingProfile) ||
+    (!profiles.retrievalProfile && attempt.retrievalProfile)
+  ) {
+    throw new DocumentCompilationAttemptProfileConflictError(
+      "Active model configuration is unavailable. Configure the knowledge space before retrying.",
+    );
+  }
+  return Boolean(
+    (attempt.embeddingProfile &&
+      profiles.embeddingProfile &&
+      !sameProfileReference(attempt.embeddingProfile, profiles.embeddingProfile)) ||
+      (attempt.retrievalProfile &&
+        profiles.retrievalProfile &&
+        !sameProfileReference(attempt.retrievalProfile, profiles.retrievalProfile)),
+  );
+}
+
+function replacementStartInput(
+  current: DocumentCompilationAttempt,
+  profiles: CompilationProfiles,
+  input: RetryTerminalDocumentCompilationAttemptInput,
+  baseHeadRevision: number,
+): ParsedStartDocumentCompilationAttemptInput {
+  if (!input.replacement) {
+    throw new DocumentCompilationAttemptProfileConflictError(
+      "The model configuration changed. A new processing attempt is required.",
+    );
+  }
+  const parsed = parseStartInput({
+    ...input.replacement,
+    ...parseRetryPermissionBinding(input),
+    ...profiles,
+    availableAt: input.availableAt ?? input.now,
+    baseHeadRevision,
+    createdAt: input.now,
+    documentAssetId: current.documentAssetId,
+    documentVersion: current.documentVersion,
+    knowledgeSpaceId: current.knowledgeSpaceId,
+    maxExecutionAttempts: current.maxExecutionAttempts,
+    tenantId: current.tenantId,
+  });
+  if (
+    parsed.id === current.id ||
+    parsed.publicationGenerationId === current.publicationGenerationId
+  ) {
+    throw new DocumentCompilationAttemptProfileConflictError(
+      "Model changes require a fresh attempt and artifact generation.",
+    );
+  }
+  return parsed;
+}
+
+/** Retargets only the already-validated intent; history and old artifacts remain immutable. */
+async function rebindDatabaseCompilationProductIntent(
+  database: DatabaseAdapter,
+  transaction: DatabaseExecutor,
+  previous: DocumentCompilationAttempt,
+  next: DocumentCompilationAttempt,
+): Promise<void> {
+  let rebound = 0;
+  for (const table of [
+    "document_revisions",
+    "document_reindex_attempts",
+    "document_chunk_state_changes",
+  ] as const) {
+    const q = (name: string) => quoteDatabaseIdentifier(database, name);
+    const p = (position: number) => databasePlaceholder(database, position);
+    const result = await transaction.execute({
+      maxRows: 0,
+      operation: "update",
+      params: [next.id, previous.tenantId, previous.knowledgeSpaceId, previous.id],
+      sql: `UPDATE ${q(table)} SET ${q("compilation_attempt_id")} = ${p(1)} WHERE ${q("tenant_id")} = ${p(2)} AND ${q("knowledge_space_id")} = ${p(3)} AND ${q("compilation_attempt_id")} = ${p(4)} AND ${q("state")} IN ('candidate', 'running', 'queued');`,
+      tableName: table,
+    });
+    rebound += result.rowsAffected;
+  }
+  if (rebound !== 1) throw productIntentRestoreConflict();
 }
 
 async function databaseActiveCompilationProfiles(

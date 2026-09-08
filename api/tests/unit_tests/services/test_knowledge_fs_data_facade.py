@@ -1477,6 +1477,27 @@ def test_metadata_field_facade_uses_catalog_routes_and_row_version_cas() -> None
     assert {call["control_space_id"] for call in broker.calls} == {"control-1"}
 
 
+def test_active_settings_revision_conflict_is_actionable_without_remote_mutation() -> None:
+    remote = ActiveSettingsRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)  # type: ignore[arg-type]
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        facade.update_settings(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSSettingsPayload(
+                expected_revision=8,
+                embedding=KnowledgeFSProfileModelSelection(
+                    model="embed-v2", plugin_id="plugin-2", provider="provider-2"
+                ),
+            ),
+        )
+    assert error.value.status_code == 409
+    assert error.value.failure.code == "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"
+    assert "Reload" in error.value.failure.message
+    assert [request.operation_id for request in remote.requests] == ["getSettings"]
+
+
 def test_active_settings_use_durable_profile_migration_routes() -> None:
     embedding_remote = ActiveSettingsRemote()
     embedding_facade = KnowledgeFSDataFacade(

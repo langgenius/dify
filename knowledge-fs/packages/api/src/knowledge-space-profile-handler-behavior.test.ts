@@ -654,71 +654,88 @@ describe("knowledge-space profile handler behavior", () => {
     });
   });
 
-  it("atomically activates verified embedding and retrieval settings for an unpublished space", async () => {
-    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
-      maxListLimit: 10,
-      maxManifests: 10,
-    });
-    const activate = vi.fn(async () => ({}) as never);
-    const { preflight, verify } = modelPreflight();
-    const app = createKnowledgeGateway({
-      adapter: createNodePlatformAdapter({ env: {} }),
-      auth: auth(),
-      knowledgeSpaceManifests: manifests,
-      knowledgeSpaceUnpublishedProfileActivations: {
-        activate,
-        activateInitialTuple: async () => ({}) as never,
-      },
-      knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
-        generateId: () => SPACE_ID,
+  it.each([false, true])(
+    "allows unpublished reasoning changes with failed raw uploads: %s",
+    async (hasRawUpload) => {
+      const manifests = createInMemoryKnowledgeSpaceManifestRepository({
         maxListLimit: 10,
-        maxSpaces: 10,
-      }),
-      modelCapabilityPreflight: preflight,
-      now: () => NOW,
-    });
-    await createSpace(app);
-    await seedActiveManifest(manifests);
+        maxManifests: 10,
+      });
+      const activate = vi.fn(async () => ({}) as never);
+      const assets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
+      const { preflight, verify } = modelPreflight();
+      const app = createKnowledgeGateway({
+        adapter: createNodePlatformAdapter({ env: {} }),
+        auth: auth(),
+        documentAssets: assets,
+        knowledgeSpaceManifests: manifests,
+        knowledgeSpaceUnpublishedProfileActivations: {
+          activate,
+          activateInitialTuple: async () => ({}) as never,
+        },
+        knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
+          generateId: () => SPACE_ID,
+          maxListLimit: 10,
+          maxSpaces: 10,
+        }),
+        modelCapabilityPreflight: preflight,
+        now: () => NOW,
+      });
+      await createSpace(app);
+      await seedActiveManifest(manifests);
 
-    const embedding = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
-      body: JSON.stringify(EMBEDDING_V2),
-      headers: headers(),
-      method: "PUT",
-    });
-    expect(embedding.status).toBe(200);
-    await expect(embedding.json()).resolves.toMatchObject({
-      dimension: 1536,
-      model: "embed-v2",
-      revision: 2,
-    });
+      const embedding = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+        body: JSON.stringify(EMBEDDING_V2),
+        headers: headers(),
+        method: "PUT",
+      });
+      expect(embedding.status).toBe(200);
+      await expect(embedding.json()).resolves.toMatchObject({
+        dimension: 1536,
+        model: "embed-v2",
+        revision: 2,
+      });
 
-    const retrieval = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
-      body: JSON.stringify(retrievalUpdateBody()),
-      headers: headers(),
-      method: "PUT",
-    });
-    expect(retrieval.status).toBe(200);
-    await expect(retrieval.json()).resolves.toMatchObject({
-      reasoningModel: REASONING_V2,
-      revision: 2,
-      topK: 12,
-    });
+      if (hasRawUpload) {
+        await assets.create({
+          filename: "权责蓝图.html",
+          knowledgeSpaceId: SPACE_ID,
+          mimeType: "text/html",
+          objectKey: `tenant-1/spaces/${SPACE_ID}/raw/failed.html`,
+          sha256: "c".repeat(64),
+          sizeBytes: 100,
+          tenantId: "tenant-1",
+        });
+      }
 
-    expect(verify.mock.calls.map(([input]) => input.kind)).toEqual([
-      "embedding",
-      "reasoning",
-      "rerank",
-    ]);
-    expect(activate).toHaveBeenCalledTimes(2);
-    expect(activate).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ kind: "embedding", knowledgeSpaceId: SPACE_ID }),
-    );
-    expect(activate).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ kind: "retrieval", knowledgeSpaceId: SPACE_ID }),
-    );
-  });
+      const retrieval = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+        body: JSON.stringify(retrievalUpdateBody()),
+        headers: headers(),
+        method: "PUT",
+      });
+      expect(retrieval.status).toBe(200);
+      await expect(retrieval.json()).resolves.toMatchObject({
+        reasoningModel: REASONING_V2,
+        revision: 2,
+        topK: 12,
+      });
+
+      expect(verify.mock.calls.map(([input]) => input.kind)).toEqual([
+        "embedding",
+        "reasoning",
+        "rerank",
+      ]);
+      expect(activate).toHaveBeenCalledTimes(2);
+      expect(activate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ kind: "embedding", knowledgeSpaceId: SPACE_ID }),
+      );
+      expect(activate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ kind: "retrieval", knowledgeSpaceId: SPACE_ID }),
+      );
+    },
+  );
 
   it("uses the integrated settings Capability grant for unpublished profile updates", async () => {
     const manifests = createInMemoryKnowledgeSpaceManifestRepository({

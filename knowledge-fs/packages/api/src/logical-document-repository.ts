@@ -15,6 +15,10 @@ import {
 } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { readableDocumentAssetPredicateSql } from "./document-asset-visibility-sql";
+import {
+  type DocumentMutationCompilationFence,
+  lockTerminalDocumentMutationCompilation,
+} from "./document-mutation-compilation-fence";
 import { cloneJsonObject, jsonObjectColumn } from "./json-utils";
 import {
   KnowledgeSpaceAccessError,
@@ -224,7 +228,8 @@ export interface LogicalDocumentRepository {
     input: ActivateDocumentRevisionInput,
   ): Promise<LogicalDocumentWithActiveRevision>;
   failCandidate(
-    input: LogicalDocumentLookup & { readonly now: string; readonly revision: number },
+    input: LogicalDocumentLookup &
+      DocumentMutationCompilationFence & { readonly now: string; readonly revision: number },
   ): Promise<DocumentRevision>;
   /**
    * Removes an unpublished, unbound candidate created by a failed Source admission. This is an
@@ -523,6 +528,12 @@ export function createInMemoryLogicalDocumentRepository({
       if (!target || target.state !== "candidate") {
         throw new LogicalDocumentValidationError("Target document revision is not a candidate");
       }
+      if (
+        input.expectedCompilationAttemptId &&
+        target.compilationAttemptId !== input.expectedCompilationAttemptId
+      ) {
+        throw new LogicalDocumentValidationError("Document revision compilation binding changed");
+      }
       const failed = { ...target, state: "failed" as const };
       revisions.set(
         document.id,
@@ -530,7 +541,10 @@ export function createInMemoryLogicalDocumentRepository({
           revision.revision === failed.revision ? cloneRevision(failed) : revision,
         ),
       );
-      if (document.activeRevision === undefined) {
+      if (
+        document.activeRevision === undefined &&
+        !history.some((revision) => revision.revision > input.revision)
+      ) {
         documents.set(
           document.id,
           cloneDocument({ ...document, status: "failed", updatedAt: input.now }),
@@ -1334,9 +1348,18 @@ export function createDatabaseLogicalDocumentRepository({
     activateRevision: activate,
     failCandidate: (input) =>
       database.transaction(async (transaction) => {
+        await lockTerminalDocumentMutationCompilation(database, transaction, input);
         await requireWritableSpace(database, transaction, input);
         const document = await readDocument(transaction, input, true);
         if (!document) throw new LogicalDocumentNotFoundError("Logical document not found");
+        if (input.expectedCompilationAttemptId) {
+          const candidate = await readRevision(transaction, input, true);
+          if (candidate?.compilationAttemptId !== input.expectedCompilationAttemptId) {
+            throw new LogicalDocumentValidationError(
+              "Document revision compilation binding changed",
+            );
+          }
+        }
         const updated = await transaction.execute({
           maxRows: 0,
           operation: "update",
@@ -1351,8 +1374,14 @@ export function createDatabaseLogicalDocumentRepository({
           await transaction.execute({
             maxRows: 0,
             operation: "update",
-            params: [input.now, input.tenantId, input.knowledgeSpaceId, input.documentId],
-            sql: `UPDATE ${q(database, "logical_documents")} SET ${q(database, "status")} = 'failed', ${q(database, "updated_at")} = ${p(database, 1)} WHERE ${q(database, "tenant_id")} = ${p(database, 2)} AND ${q(database, "knowledge_space_id")} = ${p(database, 3)} AND ${q(database, "id")} = ${p(database, 4)};`,
+            params: [
+              input.now,
+              input.tenantId,
+              input.knowledgeSpaceId,
+              input.documentId,
+              input.revision,
+            ],
+            sql: `UPDATE ${q(database, "logical_documents")} SET ${q(database, "status")} = 'failed', ${q(database, "updated_at")} = ${p(database, 1)} WHERE ${q(database, "tenant_id")} = ${p(database, 2)} AND ${q(database, "knowledge_space_id")} = ${p(database, 3)} AND ${q(database, "id")} = ${p(database, 4)} AND NOT EXISTS (SELECT 1 FROM ${q(database, "document_revisions")} newer WHERE newer.${q(database, "tenant_id")} = ${q(database, "logical_documents")}.${q(database, "tenant_id")} AND newer.${q(database, "knowledge_space_id")} = ${q(database, "logical_documents")}.${q(database, "knowledge_space_id")} AND newer.${q(database, "document_id")} = ${q(database, "logical_documents")}.${q(database, "id")} AND newer.${q(database, "revision")} > ${p(database, 5)});`,
             tableName: "logical_documents",
           });
         }

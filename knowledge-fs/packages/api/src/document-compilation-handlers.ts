@@ -3,6 +3,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { isAuthenticatedApiKeyBoundToKnowledgeSpace } from "./auth";
 import { candidatePermissionAllowsAsset } from "./candidate-content-authorization";
 import type { DocumentAssetRepository } from "./document-asset-repository";
+import { DocumentCompilationAttemptProfileConflictError } from "./document-compilation-attempt-repository";
 import type {
   DocumentCompilationJob,
   DocumentCompilationJobStateMachine,
@@ -233,7 +234,10 @@ export function registerDocumentCompilationHandlers({
         toPublicCompilationJob(await documentCompilationJobs.retry(params.id, controlPermission)),
         200,
       );
-    } catch {
+    } catch (error) {
+      if (error instanceof DocumentCompilationAttemptProfileConflictError) {
+        return context.json({ code: error.code, error: "Model configuration changed" }, 409);
+      }
       return context.json({ error: "Document compilation job cannot be retried" }, 409);
     }
   });

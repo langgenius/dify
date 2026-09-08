@@ -969,6 +969,81 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
+  it('shows a specific busy message without discarding the selected model', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSettings.mockRejectedValueOnce(
+      new Response(
+        JSON.stringify({
+          failure: {
+            code: 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+            category: 'conflict',
+            retryPolicy: 'manual',
+            message: 'internal details',
+          },
+        }),
+        { status: 409 },
+      ),
+    )
+    renderForm()
+    const selector = screen.getByRole('button', {
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+    })
+    await user.click(selector)
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.settings.compilationInProgress'),
+    )
+    expect(selector).toHaveTextContent('openrouter/auto')
+    expect(selector).toBeEnabled()
+    expect(serviceMock.patchSettings).toHaveBeenCalledTimes(1)
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+  })
+
+  it('requires an explicit reload on revision conflict before saving against the latest settings', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSettings.mockRejectedValueOnce(
+      new Response(
+        JSON.stringify({
+          failure: {
+            code: 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+            category: 'conflict',
+            retryPolicy: 'manual',
+            message: 'private conflict details',
+          },
+        }),
+        { status: 409 },
+      ),
+    )
+    renderForm()
+    const selector = screen.getByRole('button', {
+      name: 'knowledgeSpace.settings.systemReasoningModelLabel',
+    })
+    await user.click(selector)
+    const reload = await screen.findByRole('button', {
+      name: 'knowledgeSpace.settings.reloadLatest',
+    })
+    expect(selector).toBeDisabled()
+    expect(selector).toHaveTextContent('openrouter/auto')
+    await user.click(selector)
+    expect(serviceMock.patchSettings).toHaveBeenCalledTimes(1)
+
+    knowledgeQueryMock.settings = {
+      ...settings,
+      revision: 8,
+      retrieval: { ...settings.retrieval, top_k: 7 },
+    }
+    await user.click(reload)
+    await waitFor(() => expect(selector).toBeEnabled())
+    expect(selector).not.toHaveTextContent('openrouter/auto')
+    expect(serviceMock.patchSettings).toHaveBeenCalledTimes(1)
+    await user.click(selector)
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchSettings.mock.calls[1]?.[0].body).toMatchObject({
+      expectedRevision: 8,
+      retrieval: { topK: 7 },
+    })
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+  })
+
   it('reuses the legacy permission picker for modes, search, and member selection', async () => {
     const user = userEvent.setup()
     const owner = {
