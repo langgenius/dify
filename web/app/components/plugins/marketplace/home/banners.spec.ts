@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { marketplaceClient } from '@/service/marketplace'
 import { fetchPluginBanners } from './banners'
 
