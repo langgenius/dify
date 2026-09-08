@@ -441,7 +441,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
 
 
-def test_export_includes_published_workspace_skill(
+def test_export_uses_current_workspace_skill_bindings(
     sqlite_session: Session,
 ) -> None:
     workspace_payload = _skill_archive("workspace-research")
@@ -535,6 +535,24 @@ def test_export_includes_published_workspace_skill(
         assert exported.manifest.soul.config_skills[0].is_missing is True
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
+
+    draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id=snapshot.id,
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "current draft"}}),
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    sqlite_session.add(draft)
+    sqlite_session.commit()
+
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+        assert exported.manifest.soul.prompt.system_prompt == "current draft"
+        assert exported.manifest.skills == []
 
 
 def test_manifest_json_is_strict() -> None:
