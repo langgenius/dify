@@ -49,7 +49,7 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
     started = datetime.now(UTC)
 
     def node(execution_id: str, tenant_id: str = source.tenant_id) -> Node[BaseNodeData]:
-        return create_autospec(
+        node_mock = create_autospec(
             Node,
             instance=True,
             execution_id=execution_id,
@@ -57,7 +57,6 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
             title="Node",
             node_type="llm",
             workflow_id=workflow_id,
-            version=lambda: "1",
             run_context={
                 DIFY_RUN_CONTEXT_KEY: DifyRunContext(
                     tenant_id=tenant_id,
@@ -68,6 +67,8 @@ def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
                 )
             },
         )
+        node_mock.version.return_value = "1"
+        return node_mock
 
     parent_id, child_id = str(uuid4()), str(uuid4())
     with recorder.node_run_context(node(parent_id)):
@@ -333,7 +334,7 @@ def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt
     started = datetime.now(UTC)
 
     def node(execution_id: str, invocation_id: str | None = None) -> Node[BaseNodeData]:
-        return create_autospec(
+        node_mock = create_autospec(
             Node,
             instance=True,
             execution_id=execution_id,
@@ -341,7 +342,6 @@ def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt
             title="Tool" if invocation_id is None else "Child node",
             node_type="tool" if invocation_id is None else "code",
             workflow_id="outer-workflow" if invocation_id is None else child_workflow_id,
-            version=lambda: "1",
             run_context={
                 DIFY_RUN_CONTEXT_KEY: DifyRunContext(
                     tenant_id=source.tenant_id,
@@ -353,6 +353,8 @@ def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt
                 )
             },
         )
+        node_mock.version.return_value = "1"
+        return node_mock
 
     with recorder.node_run_context(node(tool_execution_id)):
         recorder.record_workflow_event(
