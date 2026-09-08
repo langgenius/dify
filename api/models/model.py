@@ -703,10 +703,6 @@ class App(Base):
 
         return tags or []
 
-    @property
-    def author_name(self) -> str | None:
-        return self.author_name_with_session(session=db.session())
-
     def author_name_with_session(self, *, session: Session) -> str | None:
         if self.created_by:
             account = session.scalar(select(Account).where(Account.id == self.created_by))
