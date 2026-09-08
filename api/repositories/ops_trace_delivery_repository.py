@@ -92,21 +92,18 @@ class OpsTraceDeliveryRepository:
                 )
                 if existing is None:
                     raise
-                if any(
-                    getattr(existing, field) != getattr(delivery, field)
-                    for field in (
-                        "trace_sha256",
-                        "trace_size_bytes",
-                        "app_id",
-                        "pipeline_id",
-                        "source_type",
-                        "trace_id",
-                        "destination_type",
-                        "provider_name",
-                        "config_id",
-                        "config_revision",
-                        "destination_settings_hash",
-                    )
+                if (
+                    existing.trace_sha256 != delivery.trace_sha256
+                    or existing.trace_size_bytes != delivery.trace_size_bytes
+                    or existing.app_id != delivery.app_id
+                    or existing.pipeline_id != delivery.pipeline_id
+                    or existing.source_type != delivery.source_type
+                    or existing.trace_id != delivery.trace_id
+                    or existing.destination_type != delivery.destination_type
+                    or existing.provider_name != delivery.provider_name
+                    or existing.config_id != delivery.config_id
+                    or existing.config_revision != delivery.config_revision
+                    or existing.destination_settings_hash != delivery.destination_settings_hash
                 ):
                     raise ValueError("conflicting_export") from None
                 session.expunge(existing)
@@ -256,18 +253,13 @@ class OpsTraceDeliveryRepository:
     def validate_trace_owner(self, delivery: OpsTraceDelivery, completed_trace: CompletedTrace) -> None:
         source = completed_trace.source
         if (
-            any(
-                str(getattr(source, field) or "") != str(getattr(delivery, field) or "")
-                for field in (
-                    "tenant_id",
-                    "app_id",
-                    "pipeline_id",
-                    "operation_id",
-                    "message_id",
-                    "conversation_id",
-                    "workflow_run_id",
-                )
-            )
+            source.tenant_id != delivery.tenant_id
+            or source.app_id != delivery.app_id
+            or source.pipeline_id != delivery.pipeline_id
+            or source.operation_id != delivery.operation_id
+            or source.message_id != delivery.message_id
+            or source.conversation_id != delivery.conversation_id
+            or source.workflow_run_id != delivery.workflow_run_id
             or str(completed_trace.trace_id) != delivery.trace_id
             or str(completed_trace.root_span_id) != delivery.root_span_id
         ):
@@ -500,18 +492,15 @@ class OpsTraceDeliveryRepository:
             error_code = None
             receipt = None
             if parent_delivery:
-                if any(
-                    getattr(parent_delivery, field) != getattr(delivery, field)
-                    for field in (
-                        "app_id",
-                        "pipeline_id",
-                        "source_type",
-                        "destination_type",
-                        "provider_name",
-                        "config_id",
-                        "config_revision",
-                        "destination_settings_hash",
-                    )
+                if (
+                    parent_delivery.app_id != delivery.app_id
+                    or parent_delivery.pipeline_id != delivery.pipeline_id
+                    or parent_delivery.source_type != delivery.source_type
+                    or parent_delivery.destination_type != delivery.destination_type
+                    or parent_delivery.provider_name != delivery.provider_name
+                    or parent_delivery.config_id != delivery.config_id
+                    or parent_delivery.config_revision != delivery.config_revision
+                    or parent_delivery.destination_settings_hash != delivery.destination_settings_hash
                 ):
                     error_code = "parent_owner_mismatch"
                 elif parent_delivery.status == "succeeded":

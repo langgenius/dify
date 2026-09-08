@@ -38,6 +38,7 @@ from core.helper.trace_id_helper import (
     extract_parent_trace_context_from_args,
     extract_trace_session_id_from_args,
 )
+from core.ops.trace_source import create_message_trace
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
@@ -55,7 +56,6 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
-from services.ops_trace_service import create_message_trace
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:

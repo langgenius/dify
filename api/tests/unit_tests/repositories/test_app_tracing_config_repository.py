@@ -152,15 +152,20 @@ def test_record_mapping_does_not_expose_the_orm_model_or_its_config_dict(
     assert config.tracing_config == {"public_key": "original"}
 
 
-def test_config_update_rejects_stale_revision_after_verification(sqlite_session, sqlite_session_factory):
+def test_config_update_rejects_stale_revision_after_verification(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     _persist_app(sqlite_session)
     repository = _repository(sqlite_session_factory)
     arguments = {"workspace_id": _WORKSPACE_ID, "app_id": _APP_ID, "tracing_provider": _PROVIDER}
     assert repository.create(**arguments, tracing_config={"public_key": "first"})
     original = repository.get(**arguments)
+    assert original is not None
     assert original.revision == 1
     assert repository.update(**arguments, expected_revision=original.revision, tracing_config={"public_key": "second"})
     with pytest.raises(AppTracingConfigChangedError):
         repository.update(**arguments, expected_revision=original.revision, tracing_config={"public_key": "stale"})
-    assert repository.get(**arguments).tracing_config == {"public_key": "second"}
-    assert repository.get(**arguments).revision == 2
+    updated = repository.get(**arguments)
+    assert updated is not None
+    assert updated.tracing_config == {"public_key": "second"}
+    assert updated.revision == 2

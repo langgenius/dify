@@ -17,6 +17,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
+from core.ops.trace_source import create_message_trace
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
@@ -33,7 +34,6 @@ from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
 from services.dataset_ref_service import DatasetRefService, DocumentRef
-from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 

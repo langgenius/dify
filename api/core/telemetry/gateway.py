@@ -78,7 +78,7 @@ def emit(event: TelemetryEvent) -> None:
 
 
 def _emit_trace(event: TelemetryEvent) -> None:
-    from services.ops_trace_service import record_enterprise_operation
+    from core.ops.trace_source import record_enterprise_operation
 
     try:
         record_enterprise_operation(event)
