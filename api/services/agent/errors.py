@@ -53,6 +53,24 @@ class AgentHomeSnapshotTooLargeError(BaseHTTPException):
     code = 413
 
 
+class InvalidRosterAgentPackageError(BaseHTTPException):
+    error_code = "invalid_roster_agent_package"
+    description = "The Roster Agent package is invalid."
+    code = 400
+
+
+class RosterAgentPackageTooLargeError(BaseHTTPException):
+    error_code = "roster_agent_package_too_large"
+    description = "The Roster Agent package exceeds the size limit."
+    code = 413
+
+
+class RosterAgentPackageExportFailedError(BaseHTTPException):
+    error_code = "roster_agent_package_export_failed"
+    description = "The Roster Agent package could not be exported."
+    code = 500
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 
