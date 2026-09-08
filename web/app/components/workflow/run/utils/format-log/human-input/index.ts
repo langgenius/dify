@@ -1,53 +1,29 @@
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-/**
- * Format human-input nodes to ensure only the latest status is kept for each node.
- * Human-input nodes can have multiple log entries as their status changes
- * (e.g., running -> paused -> succeeded/failed).
- * This function keeps only the entry with the latest index for each unique node_id.
- */
+/** Keep the latest status of each approval without merging separate container executions. */
 const formatHumanInputNode = (list: NodeTracing[]): NodeTracing[] => {
-  // Group human-input nodes by node_id
-  const humanInputNodeMap = new Map<string, NodeTracing>()
-
-  // Track which node_ids are human-input type
-  const humanInputNodeIds = new Set<string>()
-
-  // First pass: identify human-input nodes and keep the one with the highest index
-  list.forEach((item) => {
-    if (item.node_type === BlockEnum.HumanInput) {
-      humanInputNodeIds.add(item.node_id)
-
-      const existingNode = humanInputNodeMap.get(item.node_id)
-      if (!existingNode || item.index > existingNode.index) {
-        humanInputNodeMap.set(item.node_id, item)
-      }
-    }
-  })
-
-  // If no human-input nodes, return the list as is
-  if (humanInputNodeIds.size === 0) return list
-
-  // Second pass: filter the list to remove duplicate human-input nodes
-  // and keep only the latest one for each node_id
   const result: NodeTracing[] = []
-  const addedHumanInputNodeIds = new Set<string>()
+  const humanInputIndices = new Map<string, number>()
 
   list.forEach((item) => {
-    if (item.node_type === BlockEnum.HumanInput) {
-      // Only add the human-input node with the highest index
-      if (!addedHumanInputNodeIds.has(item.node_id)) {
-        const latestNode = humanInputNodeMap.get(item.node_id)
-        if (latestNode) {
-          result.push(latestNode)
-          addedHumanInputNodeIds.add(item.node_id)
-        }
-      }
-      // Skip duplicate human-input nodes
-    } else {
-      // Keep all non-human-input nodes
+    if (item.node_type !== BlockEnum.HumanInput) {
       result.push(item)
+      return
+    }
+
+    const metadata = item.execution_metadata
+    const inContainer =
+      item.iteration_id || item.loop_id || metadata?.iteration_id || metadata?.loop_id
+    // Legacy top-level traces may use different row IDs for successive statuses.
+    // Container execution IDs survive pause/resume and distinguish repeated approvals.
+    const key = item.node_execution_id ?? (inContainer ? item.id : item.node_id)
+    const index = humanInputIndices.get(key)
+    if (index === undefined) {
+      humanInputIndices.set(key, result.length)
+      result.push(item)
+    } else if (item.index > result[index]!.index) {
+      result[index] = item
     }
   })
 

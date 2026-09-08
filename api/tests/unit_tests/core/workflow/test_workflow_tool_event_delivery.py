@@ -18,10 +18,15 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
 )
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.agent_v2.session_store import StoredWorkflowAgentSession
-from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
+from core.workflow.workflow_tool_container_handler import (
+    WorkflowToolContainerHandler,
+    WorkflowToolNestedContainerHandler,
+)
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
+from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.event.processor import NodeEventProcessor
 from graphon.engine.event.stream import EventStream
 from graphon.engine.worker import NodeEventTask
@@ -32,8 +37,10 @@ from graphon.engine_events import (
     NodeRunSucceededEvent,
 )
 from graphon.engine_events.base import NodeEvent
+from graphon.entities import WorkflowNodeExecution
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from graphon.runtime import RuntimeState
 from models import Account, WorkflowRun
@@ -46,6 +53,125 @@ from tests.unit_tests.core.workflow.test_workflow_tool_container import (
     _outer_graph,
     _workflow_tool_node,
 )
+from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def test_workflow_tool_loop_break_does_not_escape_into_enclosing_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    def node(node_id: str, node_type: str, **data: object) -> dict[str, object]:
+        return {"id": node_id, "data": {"type": node_type, "title": node_id, **data}}
+
+    def edge(source: str, target: str, handle: str = "source") -> dict[str, str]:
+        return {"id": f"{source}-{target}", "source": source, "target": target, "sourceHandle": handle}
+
+    tool_node, runtime, _ = _workflow_tool_node()
+    monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _: runtime)
+    outer_graph = {
+        "nodes": [
+            node("start", "start", variables=[]),
+            node(
+                "outer-loop",
+                "loop",
+                loop_count=3,
+                start_node_id="outer-loop-start",
+                break_conditions=[],
+                logical_operator="and",
+                loop_variables=[
+                    {"id": "guard", "label": "guard", "var_type": "number", "value_type": "constant", "value": 0}
+                ],
+            ),
+            node("outer-loop-start", "loop-start", loop_id="outer-loop"),
+            node(
+                "condition",
+                "if-else",
+                loop_id="outer-loop",
+                cases=[
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {"comparison_operator": "=", "variable_selector": ["outer-loop", "guard"], "value": "1"}
+                        ],
+                    }
+                ],
+            ),
+            {"id": "tool", "data": {**tool_node.node_data.model_dump(), "loop_id": "outer-loop"}},
+            node("shared-loop-end", "loop-end", loop_id="outer-loop"),
+            node(
+                "end",
+                "end",
+                outputs=[
+                    {"variable": "rounds", "value_selector": ["outer-loop", "loop_round"], "value_type": "number"}
+                ],
+            ),
+        ],
+        "edges": [
+            edge("start", "outer-loop"),
+            edge("outer-loop", "end"),
+            edge("outer-loop-start", "condition"),
+            edge("condition", "tool", "false"),
+            edge("condition", "shared-loop-end", "true"),
+        ],
+    }
+    _, _, _, _, repository = _container_handler()
+    assert isinstance(repository, MagicMock)
+    repository.get_source.return_value = replace(
+        repository.get_source.return_value,
+        graph_config={
+            "nodes": [
+                node("source-start", "start", variables=[]),
+                node(
+                    "source-loop",
+                    "loop",
+                    loop_count=3,
+                    start_node_id="source-loop-start",
+                    break_conditions=[],
+                    logical_operator="and",
+                ),
+                node("source-loop-start", "loop-start", loop_id="source-loop"),
+                node("shared-loop-end", "loop-end", loop_id="source-loop"),
+                node("source-end", "end", outputs=[]),
+            ],
+            "edges": [
+                edge("source-start", "source-loop"),
+                edge("source-loop", "source-end"),
+                edge("source-loop-start", "shared-loop-end"),
+            ],
+        },
+    )
+    state = tool_node.runtime_state
+    graph = Graph.init(
+        graph_config=outer_graph,
+        node_factory=DifyNodeFactory(
+            init_params=build_test_graph_init_params(workflow_id="outer-workflow", graph_config=outer_graph),
+            runtime_state=state,
+        ),
+        root_node_id="start",
+    )
+    persisted: list[NodeEvent] = []
+    events = list(
+        Engine(
+            graph=graph,
+            runtime_state=state,
+            workers=1,
+            container_handler_factories=(
+                partial(WorkflowToolNestedContainerHandler, handler_factory=LoopContainerHandler),
+                partial(
+                    WorkflowToolContainerHandler,
+                    source_repository=repository,
+                    event_listener_factory=lambda _: persisted.append,
+                ),
+            ),
+        ).run()
+    )
+
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+    assert state.outputs == {"rounds": 3}
+    assert repository.get_source.call_count == 3
+    assert [
+        event.node_run_result.outputs["loop_round"]
+        for event in persisted
+        if isinstance(event, NodeRunSucceededEvent) and event.node_id == "source-loop"
+    ] == [1, 1, 1]
 
 
 def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> None:
@@ -101,7 +227,10 @@ def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> 
     assert persisted[0].container_id == ""
 
 
-def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_them() -> None:
+@pytest.mark.parametrize("listener_fails", [False, True])
+def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_them(
+    listener_fails: bool, caplog: pytest.LogCaptureFixture
+) -> None:
     node, _, payload = _workflow_tool_node()
     source = WorkflowToolSource(
         app_id=payload.source_app_id,
@@ -120,7 +249,13 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
     repository = MagicMock(spec=WorkflowToolSourceRepository)
     repository.get_source.return_value = source
     persisted: list[NodeEvent] = []
-    listener_factory = MagicMock(return_value=persisted.append)
+
+    def persist_event(event: NodeEvent) -> None:
+        persisted.append(event)
+        if listener_fails:
+            raise RuntimeError("Trace store unavailable")
+
+    listener_factory = MagicMock(return_value=persist_event)
 
     events = list(
         Engine(
@@ -155,12 +290,29 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
     }
     assert len({event.node_run_result.process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] for event in persisted}) == 1
     assert all(event.node_id not in {"source-start", "source-end"} for event in events if isinstance(event, NodeEvent))
+    if listener_fails:
+        assert "Failed to persist Workflow Tool event" in caplog.text
 
 
+@pytest.mark.parametrize("caller_save_fails", [False, True])
 def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
+    caller_save_fails: bool,
 ) -> None:
+    binding_resolver = MagicMock()
+    if caller_save_fails:
+        monkeypatch.setattr("core.workflow.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver)
+        save = SQLAlchemyWorkflowNodeExecutionRepository.save
+
+        def fail_caller_save(
+            repository: SQLAlchemyWorkflowNodeExecutionRepository, execution: WorkflowNodeExecution
+        ) -> None:
+            if execution.node_id == "source-agent" and execution.status == WorkflowNodeExecutionStatus.RUNNING:
+                raise RuntimeError("Caller store unavailable")
+            save(repository, execution)
+
+        monkeypatch.setattr(SQLAlchemyWorkflowNodeExecutionRepository, "save", fail_caller_save)
     monkeypatch.setattr(
         "clients.agent_backend.factory.create_agent_backend_run_client", lambda **_kwargs: FakeAgentBackendRunClient()
     )
@@ -253,11 +405,16 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
             "outer-run",
         )
         assert execution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
-        # The real workspace store must see the caller synchronously before the
-        # real binding resolver can report this deliberately unconfigured Agent.
-        assert execution.error == "Workflow Agent binding not found for node source-agent."
         assert execution.status == "exception"
-        assert execution.outputs_dict["error_type"] == "agent_binding_not_found"
+        if caller_save_fails:
+            binding_resolver.resolve.assert_not_called()
+            assert execution.error == "Workflow node execution caller is unavailable"
+            assert execution.outputs_dict["error_type"] == "agent_workflow_node_runtime_error"
+        else:
+            # The real workspace store must see the caller synchronously before
+            # the binding resolver reports this deliberately unconfigured Agent.
+            assert execution.error == "Workflow Agent binding not found for node source-agent."
+            assert execution.outputs_dict["error_type"] == "agent_binding_not_found"
         run = session.scalars(select(WorkflowRun)).one()
         assert (run.app_id, run.workflow_id, run.status) == ("outer-app", "outer-workflow", "succeeded")
     assert not any(isinstance(event, NodeEvent) and event.node_id == "source-agent" for event in events)

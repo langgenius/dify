@@ -30,6 +30,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_langfuse.config import LangfuseConfig
@@ -187,8 +188,9 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         # Get all executions for this workflow run
         workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
         )
+        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
 
         for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
@@ -271,7 +273,8 @@ class LangFuseDataTrace(BaseTraceInstance):
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
                     status_message=trace_info.error or "",
-                    parent_observation_id=trace_info.workflow_run_id if trace_info.message_id else None,
+                    parent_observation_id=tool_parents.get(node_execution_id)
+                    or (trace_info.workflow_run_id if trace_info.message_id else None),
                     usage=generation_usage,
                 )
 
@@ -290,7 +293,8 @@ class LangFuseDataTrace(BaseTraceInstance):
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
                     status_message=trace_info.error or "",
-                    parent_observation_id=trace_info.workflow_run_id if trace_info.message_id else None,
+                    parent_observation_id=tool_parents.get(node_execution_id)
+                    or (trace_info.workflow_run_id if trace_info.message_id else None),
                 )
 
                 self.add_span(langfuse_span_data=span_data)

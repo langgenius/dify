@@ -1,12 +1,21 @@
 """Deterministically reconstruct provider-neutral workflow execution hierarchy."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY,
+)
 from graphon.entities import WorkflowNodeExecution
+
+if TYPE_CHECKING:
+    from models.workflow import WorkflowNodeExecutionModel
 
 _WRAPPER_INDEX_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
 _WRAPPER_FIELDS: tuple[tuple[Literal["iteration", "loop"], str, str], ...] = (
@@ -48,7 +57,7 @@ class WorkflowHierarchy:
     wrappers: tuple[WrapperSpec, ...]
 
 
-def execution_id(execution: WorkflowExecutionLike) -> str:
+def execution_id(execution: WorkflowNodeExecution | WorkflowNodeExecutionModel) -> str:
     """Return the persisted execution identifier used as a canonical span ID."""
     return str(_read_attribute(execution, "id") or execution.node_execution_id)
 
@@ -63,20 +72,55 @@ def execution_metadata(execution: object) -> Mapping[str, Any]:
     return {str(key): item for key, item in value.items()}
 
 
-def _unique_execution_by_node_id(executions: Sequence[WorkflowExecutionLike]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    ambiguous: set[str] = set()
+def _node_key(execution: WorkflowExecutionLike, node_id: str) -> tuple[str, str, str]:
+    process_data = _read_attribute(execution, "process_data") or {}
+    invocation_id = process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY)
+    return (
+        _read_attribute(execution, "workflow_id", ""),
+        invocation_id if isinstance(invocation_id, str) else "",
+        node_id,
+    )
+
+
+def workflow_tool_parent_ids(
+    executions: Sequence[WorkflowNodeExecution | WorkflowNodeExecutionModel],
+) -> dict[str, str]:
+    """Resolve Tool parent references only against executions in the admitted trace."""
+    execution_ids = {execution_id(item): execution_id(item) for item in executions}
+    execution_ids.update(
+        (node_execution_id, execution_id(item))
+        for item in executions
+        if isinstance(node_execution_id := _read_attribute(item, "node_execution_id"), str) and node_execution_id
+    )
+    parents: dict[str, str] = {}
+    for item in executions:
+        process_data = _read_attribute(item, "process_data")
+        if not isinstance(process_data, Mapping):
+            process_data = _read_attribute(item, "process_data_dict") or {}
+        parent_id = process_data.get(WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY)
+        if isinstance(parent_id, str) and parent_id in execution_ids:
+            parents[execution_id(item)] = execution_ids[parent_id]
+    _remove_cycles(parents)
+    return parents
+
+
+def _unique_execution_by_node_id(executions: Sequence[WorkflowExecutionLike]) -> dict[tuple[str, str, str], str]:
+    result: dict[tuple[str, str, str], str] = {}
+    ambiguous: set[tuple[str, str, str]] = set()
     for item in executions:
         node_id = item.node_id
-        if not isinstance(node_id, str) or node_id in ambiguous:
+        if not isinstance(node_id, str):
+            continue
+        key = _node_key(item, node_id)
+        if key in ambiguous:
             continue
         item_execution_id = execution_id(item)
-        previous = result.get(node_id)
+        previous = result.get(key)
         if previous is None:
-            result[node_id] = item_execution_id
+            result[key] = item_execution_id
         elif previous != item_execution_id:
-            result.pop(node_id, None)
-            ambiguous.add(node_id)
+            result.pop(key, None)
+            ambiguous.add(key)
     return result
 
 
@@ -132,22 +176,26 @@ def build_workflow_hierarchy(executions: Sequence[WorkflowExecutionLike]) -> Wor
     rather than guessed. Their spans consequently fall back to the workflow root.
     """
     execution_by_node_id = _unique_execution_by_node_id(executions)
+    tool_parents = workflow_tool_parent_ids(executions)
     parent_by_execution_id: dict[str, str] = {}
 
     for item in executions:
         item_execution_id = execution_id(item)
         predecessor_node_id = item.predecessor_node_id
         parent_execution_id = (
-            execution_by_node_id.get(predecessor_node_id) if isinstance(predecessor_node_id, str) else None
+            execution_by_node_id.get(_node_key(item, predecessor_node_id))
+            if isinstance(predecessor_node_id, str)
+            else None
         )
         if parent_execution_id is None:
             metadata = execution_metadata(item)
             for structured_key in ("iteration_id", "loop_id"):
                 container_node_id = _metadata_or_attr(item, metadata, structured_key)
                 if isinstance(container_node_id, str):
-                    parent_execution_id = execution_by_node_id.get(container_node_id)
+                    parent_execution_id = execution_by_node_id.get(_node_key(item, container_node_id))
                 if parent_execution_id is not None:
                     break
+        parent_execution_id = parent_execution_id or tool_parents.get(item_execution_id)
         if parent_execution_id and parent_execution_id != item_execution_id:
             parent_by_execution_id[item_execution_id] = parent_execution_id
 
@@ -161,7 +209,7 @@ def build_workflow_hierarchy(executions: Sequence[WorkflowExecutionLike]) -> Wor
             index = _normalize_index(_metadata_or_attr(item, metadata, index_key))
             if not isinstance(container_node_id, str) or index is None:
                 continue
-            container_execution_id = execution_by_node_id.get(container_node_id)
+            container_execution_id = execution_by_node_id.get(_node_key(item, container_node_id))
             if container_execution_id is None or container_execution_id == execution_id(item):
                 continue
             wrapper_key = WrapperKey(kind=kind, container_execution_id=container_execution_id, index=index)

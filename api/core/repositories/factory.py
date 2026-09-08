@@ -47,7 +47,11 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
-    ) -> Sequence[WorkflowNodeExecution]: ...
+        *,
+        include_workflow_tools: bool = False,
+    ) -> Sequence[WorkflowNodeExecution]:
+        """Optionally include owned Workflow Tool nodes for trace export from a root-app scope."""
+        ...
 
 
 class RepositoryImportError(Exception):

@@ -124,7 +124,10 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
-def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session) -> None:
+@pytest.mark.parametrize("workflow_tool_child", [False, True])
+def test_workflow_trace(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session, workflow_tool_child: bool
+) -> None:
     # Setup trace info
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
@@ -200,6 +203,9 @@ def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3
     node_retrieval.elapsed_time = 0.2
     node_retrieval.metadata = {}
 
+    if workflow_tool_child:
+        node_llm.process_data["workflow_tool_parent_execution_id"] = node_other.id
+
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = [node_llm, node_other, node_retrieval]
 
@@ -213,6 +219,7 @@ def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3
 
     trace_instance.workflow_trace(trace_info)
 
+    repo.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1", include_workflow_tools=True)
     # Verify add_run calls
     # 1. message run (id="msg-1")
     # 2. workflow run (id="run-1")
@@ -233,15 +240,14 @@ def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3
     assert call_args[1].parent_run_id == "msg-1"
     assert call_args[1].trace_id == "msg-1"
 
-    assert call_args[2].id == "node-llm"
-    assert call_args[2].run_type == LangSmithRunType.llm
-    assert call_args[2].trace_id == "msg-1"
-
-    assert call_args[3].id == "node-other"
-    assert call_args[3].run_type == LangSmithRunType.tool
-
-    assert call_args[4].id == "node-retrieval"
-    assert call_args[4].run_type == LangSmithRunType.retriever
+    nodes = {run.id: run for run in call_args[2:]}
+    assert nodes["node-llm"].run_type == LangSmithRunType.llm
+    assert nodes["node-llm"].trace_id == "msg-1"
+    assert nodes["node-other"].run_type == LangSmithRunType.tool
+    assert nodes["node-retrieval"].run_type == LangSmithRunType.retriever
+    assert nodes["node-llm"].parent_run_id == ("node-other" if workflow_tool_child else "run-1")
+    if workflow_tool_child:
+        assert nodes["node-llm"].dotted_order.startswith(nodes["node-other"].dotted_order + ".")
 
 
 @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)

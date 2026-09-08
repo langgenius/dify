@@ -357,7 +357,9 @@ def test_repository_loader_scopes_repository_to_trace(monkeypatch: pytest.Monkey
     call = factory.create_workflow_node_execution_repository.call_args.kwargs
     assert call["tenant_id"] == "tenant-1"
     assert call["app_id"] == "app-1"
-    repository.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1")
+    repository.get_by_workflow_execution.assert_called_once_with(
+        workflow_execution_id="run-1", include_workflow_tools=True
+    )
 
 
 def test_message_trace_does_not_load_workflow_executions() -> None:
