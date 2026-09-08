@@ -22,6 +22,27 @@ class _ManagedStringIO(io.StringIO):
 
 
 class TestCSVExtractor:
+    @pytest.mark.parametrize("value", ["00123", "1.00", "1e3", "NA", "NULL", "N/A", "", "hello"])
+    def test_extract_preserves_cell_text(self, tmp_path: Path, value: str) -> None:
+        file_path = tmp_path / "data.csv"
+        file_path.write_text(f"value,body\n{value},reference\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", source_column="value").extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == f"value: {value};body: reference"
+        assert docs[0].metadata["source"] == value
+
+    def test_extract_honors_explicit_csv_args(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "data.csv"
+        file_path.write_text("value;body\n00123;NA\n", encoding="utf-8")
+        csv_args = {"sep": ";", "dtype": {"value": int}, "keep_default_na": True}
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", csv_args=csv_args).extract()
+
+        assert docs[0].page_content == "value: 123.0;body: nan"
+        assert csv_args == {"sep": ";", "dtype": {"value": int}, "keep_default_na": True}
+
     def test_extract_success_with_source_column(self, tmp_path: Path):
         file_path = tmp_path / "data.csv"
         file_path.write_text("id,body\nsource-1,hello\n", encoding="utf-8")

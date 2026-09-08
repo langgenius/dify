@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
@@ -30,7 +31,12 @@ from repositories.account_oauth_repository import (
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import account_forgot_password_service, recommended_app_catalog_gateway
@@ -58,6 +64,8 @@ from services.account_oauth_adapters import (
     RedisOAuthAccountClaimLock,
 )
 from services.app_site_service import AppSiteService
+from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_service import AppTracingConfigService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
@@ -65,11 +73,17 @@ from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.file_service import FileService
+from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.message_file_preview_service import MessageFilePreviewService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
+from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
+from services.tool_file_download_service import ToolFileDownloadService
+from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
@@ -229,6 +243,68 @@ def test_build_application_services_reuses_file_service(
     assert services.web_app_runtime._file_service is services.files
 
 
+def test_build_application_services_wires_message_file_previews(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.message_file_previews, MessageFilePreviewService)
+    assert isinstance(services.message_file_previews._files, MessageFilePreviewQueryRepository)
+    assert services.message_file_previews._files._session_factory is sqlite_session_factory
+    assert services.message_file_previews._storage is ext_application_services.storage
+
+
+def test_build_application_services_wires_plugin_file_upload_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.plugin_file_uploads, PluginFileUploadService)
+    assert isinstance(services.plugin_file_uploads._owners, SQLAlchemyPluginFileUploadOwnerRepository)
+    assert services.plugin_file_uploads._owners._session_factory is sqlite_session_factory
+    assert isinstance(services.plugin_file_uploads._files, ToolFilePluginUploadGateway)
+
+
+def test_build_application_services_wires_tool_file_downloads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.tool_file_downloads, ToolFileDownloadService)
+    assert isinstance(services.tool_file_downloads._tool_files, ToolFileManager)
+
+
+def test_build_application_services_wires_upload_file_delivery(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.upload_file_delivery, UploadFileDeliveryService)
+    assert isinstance(services.upload_file_delivery._files, UploadFileDeliveryQueryRepository)
+    assert services.upload_file_delivery._files._session_factory is sqlite_session_factory
+    assert services.upload_file_delivery._storage is ext_application_services.storage
+
+
 def test_build_application_services_wires_workflow_run_archives(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -251,6 +327,25 @@ def test_build_application_services_wires_workflow_run_archives(
     assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
 
 
+def test_build_application_services_wires_human_input_file_uploads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    human_input_file_uploads = services.human_input_file_uploads
+    assert isinstance(human_input_file_uploads, HumanInputFileUploadService)
+    assert isinstance(human_input_file_uploads._uploads, SQLAlchemyHumanInputFileUploadRepository)
+    assert human_input_file_uploads._uploads._session_factory is sqlite_session_factory
+    assert human_input_file_uploads._remote_files is services.remote_files
+    assert human_input_file_uploads._files is services.files
+    assert services.remote_files._files is services.files
+
+
 def test_build_application_services_wires_app_site_boundary(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -264,6 +359,22 @@ def test_build_application_services_wires_app_site_boundary(
     assert isinstance(services.app_sites, AppSiteService)
     assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
     assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_app_tracing_config_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_tracing_configs, AppTracingConfigService)
+    assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
+    assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
+    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(

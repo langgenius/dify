@@ -13,7 +13,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function useAgentConfigureData(agentId: string, selectedVersionId: string | null) {
   const agentQuery = useQuery(

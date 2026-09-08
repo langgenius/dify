@@ -1,4 +1,5 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -6,9 +7,9 @@ import {
   MultimodalRetrievalGuidanceLearnMore,
 } from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import { consoleQuery } from '@/service/console'
 
 type EmbeddingModelProps = {
   embeddingModel?: string
@@ -28,7 +29,12 @@ const EmbeddingModel = ({
   readonly = false,
 }: EmbeddingModelProps) => {
   const { t } = useTranslation()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
   const embeddingModelConfig = useMemo(() => {
     if (!embeddingModel || !embeddingModelProvider) return undefined
 

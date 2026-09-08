@@ -4,9 +4,10 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import ResizeHandle from '@/app/components/base/resize-handle'
 import { useStore } from '@/app/components/workflow/store'
 import { useEdgesInteractionsWithoutSync } from '../../hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '../../hooks/use-nodes-interactions-without-sync'
@@ -14,6 +15,7 @@ import { useWorkflowInteractions } from '../../hooks/use-workflow-panel-interact
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
+import { getPreviewPanelMaxWidth } from '../panel-width'
 import ChatWrapper from './chat-wrapper'
 
 export type ChatWrapperRefType = {
@@ -21,6 +23,7 @@ export type ChatWrapperRefType = {
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
+  const panelId = useId()
   const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
@@ -44,7 +47,6 @@ const DebugAndPreview = () => {
   }
 
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
-  const nodePanelWidth = useStore((s) => s.nodePanelWidth)
   const panelWidth = useStore((s) => s.previewPanelWidth)
   const setPanelWidth = useStore((s) => s.setPreviewPanelWidth)
   const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
@@ -55,13 +57,7 @@ const DebugAndPreview = () => {
     },
     [setPanelWidth, setPanelWidthStorage],
   )
-  const maxPanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth) return 720
-
-    if (!selectedNode) return workflowCanvasWidth - 400
-
-    return workflowCanvasWidth - 400 - 400
-  }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
+  const maxPanelWidth = getPreviewPanelMaxWidth(workflowCanvasWidth, !!selectedNode, 720)
   const { triggerRef, containerRef } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',
@@ -74,13 +70,21 @@ const DebugAndPreview = () => {
 
   return (
     <div className="relative h-full">
-      <div
+      <ResizeHandle
         ref={triggerRef}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        side="left"
+        value={panelWidth}
+        min={400}
+        max={maxPanelWidth}
+        controls={panelId}
+        label={t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
+        onResize={(width) => handleResize(width, 'user')}
+        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
-        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
-      </div>
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+      </ResizeHandle>
       <div
+        id={panelId}
         ref={containerRef}
         className={cn(
           'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',

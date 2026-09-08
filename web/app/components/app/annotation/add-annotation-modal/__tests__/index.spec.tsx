@@ -1,12 +1,8 @@
-import type { Mock } from 'vite-plus/test'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AddAnnotationModal from '../index'
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
 
 const mockToastNotify = vi.fn()
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -25,15 +21,14 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-const mockUseProviderContext = useProviderContext as Mock
+let annotationQuota = { size: 0, limit: 10 }
 
-const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {}) => ({
-  plan: {
-    usage: { annotatedResponse: usage },
-    total: { annotatedResponse: total },
-  },
-  enableBilling,
-})
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: annotationQuota },
+  })
+}
 
 describe('AddAnnotationModal', () => {
   const baseProps = {
@@ -44,7 +39,7 @@ describe('AddAnnotationModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseProviderContext.mockReturnValue(getProviderContext())
+    annotationQuota = { size: 0, limit: 10 }
   })
 
   const typeQuestion = (value: string) => {
@@ -82,9 +77,7 @@ describe('AddAnnotationModal', () => {
   })
 
   it('should show annotation full notice and disable submit when quota exceeded', () => {
-    mockUseProviderContext.mockReturnValue(
-      getProviderContext({ usage: 10, total: 10, enableBilling: true }),
-    )
+    annotationQuota = { size: 10, limit: 10 }
     render(<AddAnnotationModal {...baseProps} />)
 
     expect(screen.getByTestId('annotation-full')).toBeInTheDocument()
