@@ -19,14 +19,13 @@ import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/con
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueries, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
@@ -277,8 +276,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     inlineAgentIssueTools,
     inlineAgentToolProviderCatalog,
   )
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const knowledgeBaseEmbeddingProviders = useMemo(() => {
     const providers = new Set<string>()
 
@@ -614,8 +623,18 @@ export const useChecklistBeforePublish = () => {
   const updateTimeRef = useRef(0)
   const workflowStore = useWorkflowStore()
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()

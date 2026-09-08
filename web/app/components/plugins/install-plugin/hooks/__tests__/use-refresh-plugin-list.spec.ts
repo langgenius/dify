@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
@@ -36,16 +38,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (type: string) => {
-    const map: Record<string, { mutate: ReturnType<typeof vi.fn> }> = {
-      llm: { mutate: mockRefetchLLMModelList },
-      'text-embedding': { mutate: mockRefetchEmbeddingModelList },
-      rerank: { mutate: mockRefetchRerankModelList },
-      speech2text: { mutate: mockRefetchSpeech2textModelList },
-      tts: { mutate: mockRefetchTTSModelList },
-    }
-    return map[type] ?? { mutate: vi.fn() }
-  },
   useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
 }))
 
@@ -193,4 +185,30 @@ describe('useRefreshPluginList', () => {
     expect(mockInvalidateAllTriggerPlugins).not.toHaveBeenCalled()
     expect(mockInvalidateStrategyProviders).not.toHaveBeenCalled()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const type = options.queryKey[1].input?.params?.model_type
+      if (!type) throw new Error('Missing model type in query')
+      const map: Record<string, { refetch: ReturnType<typeof vi.fn> }> = {
+        llm: { refetch: mockRefetchLLMModelList },
+        'text-embedding': { refetch: mockRefetchEmbeddingModelList },
+        rerank: { refetch: mockRefetchRerankModelList },
+        speech2text: { refetch: mockRefetchSpeech2textModelList },
+        tts: { refetch: mockRefetchTTSModelList },
+      }
+      return map[type] ?? { refetch: vi.fn() }
+    },
+  }
 })

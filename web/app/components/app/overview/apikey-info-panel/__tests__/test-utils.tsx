@@ -1,9 +1,9 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { AvailableModelListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RenderOptions } from '@testing-library/react'
-import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen } from '@testing-library/react'
-import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import APIKeyInfoPanel from '../index'
 
 const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
@@ -12,9 +12,6 @@ const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
 }))
 
 // Mock the modules before importing the functions
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
@@ -30,24 +27,7 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-// Type casting for mocks
-const mockUseProviderContext = actualUseProviderContext as MockedFunction<
-  typeof actualUseProviderContext
->
-// Default mock data
-const defaultProviderContext = {
-  modelProviders: [],
-  modelProviderPlugins: {},
-  refreshModelProviders: async () => {},
-  isLoadingModelProviders: false,
-  isSuccessModelProviders: false,
-  textGenerationModelList: [],
-  isAPIKeySet: false,
-}
-
-type MockOverrides = {
-  providerContext?: Partial<typeof defaultProviderContext>
-}
+type MockOverrides = { hasActiveProvider?: boolean }
 
 type APIKeyInfoPanelRenderOptions = {
   mockOverrides?: MockOverrides
@@ -56,22 +36,33 @@ type APIKeyInfoPanelRenderOptions = {
 const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
 let deploymentEdition: DeploymentEdition = 'COMMUNITY'
 
-// Setup function to configure mocks
-function setupMocks(overrides: MockOverrides = {}) {
-  mockUseProviderContext.mockReturnValue({
-    ...defaultProviderContext,
-    ...overrides.providerContext,
-  })
-}
-
 // Custom render function
 function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
   const { mockOverrides, ...renderOptions } = options
 
-  setupMocks(mockOverrides)
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    }),
+    {
+      data: mockOverrides?.hasActiveProvider
+        ? [
+            {
+              provider: 'openai',
+              tenant_id: 'test-workspace',
+              label: { en_US: 'OpenAI' },
+              status: 'active',
+              models: [],
+            },
+          ]
+        : [],
+    } satisfies AvailableModelListResponse,
+  )
 
   return renderWithConsoleQuery(<APIKeyInfoPanel />, {
     ...renderOptions,
+    queryClient,
     systemFeatures: { deployment_edition: deploymentEdition },
   })
 }
@@ -82,7 +73,7 @@ export const scenarios = {
   withAPIKeyNotSet: (overrides: MockOverrides = {}) =>
     renderAPIKeyInfoPanel({
       mockOverrides: {
-        providerContext: { isAPIKeySet: false },
+        hasActiveProvider: false,
         ...overrides,
       },
     }),
@@ -91,7 +82,7 @@ export const scenarios = {
   withAPIKeySet: (overrides: MockOverrides = {}) =>
     renderAPIKeyInfoPanel({
       mockOverrides: {
-        providerContext: { isAPIKeySet: true },
+        hasActiveProvider: true,
         ...overrides,
       },
     }),

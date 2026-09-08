@@ -1,8 +1,10 @@
 import type {
+  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
   SkillDetailResponse,
   SkillReferenceResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { detectPlatform } from '@tanstack/react-hotkeys'
@@ -113,10 +115,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({
     data: mocks.defaultTextGenerationModel,
   }),
-  useModelList: () => ({
-    data: mocks.textGenerationModelList,
-    isLoading: false,
-  }),
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     currentProvider: mocks.textGenerationModelList[0],
     currentModel: mocks.textGenerationModelList[0]?.models[0],
@@ -186,98 +184,102 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    workspaces: {
-      current: {
-        skills: {
-          bySkillId: {
-            get: mocks.skillDetailGetFn,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    consoleClient: {
+      workspaces: {
+        current: {
+          skills: {
+            bySkillId: {
+              get: mocks.skillDetailGetFn,
+            },
           },
         },
       },
     },
-  },
-  consoleQuery: {
-    workspaces: {
-      current: {
-        agents: {
-          byAgentId: {
-            skills: {
-              get: {
-                key: mocks.agentSkillBindingsKey,
-              },
-            },
-          },
-        },
-        skills: {
-          get: {
-            key: mocks.skillListKey,
-          },
-          tags: {
-            get: {
-              key: mocks.skillTagsKey,
-              queryOptions: mocks.skillTagsQueryOptions,
-            },
-          },
-          bySkillId: {
-            delete: {
-              mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
-            },
-            duplicate: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
-              },
-            },
-            get: {
-              key: mocks.skillDetailKey,
-              queryOptions: mocks.skillDetailQueryOptions,
-            },
-            patch: {
-              mutationOptions: () => ({ mutationFn: mocks.skillMetadataMutationFn }),
-            },
-            publish: {
-              post: {
-                mutationOptions: (options?: unknown) => {
-                  mocks.publishSkillMutationOptions(options)
-                  return { mutationFn: mocks.publishSkillMutationFn }
+    consoleQuery: {
+      workspaces: {
+        current: {
+          models: actual.consoleQuery.workspaces.current.models,
+          agents: {
+            byAgentId: {
+              skills: {
+                get: {
+                  key: mocks.agentSkillBindingsKey,
                 },
               },
             },
-            references: {
+          },
+          skills: {
+            get: {
+              key: mocks.skillListKey,
+            },
+            tags: {
               get: {
-                queryOptions: mocks.skillReferencesQueryOptions,
+                key: mocks.skillTagsKey,
+                queryOptions: mocks.skillTagsQueryOptions,
               },
             },
-            restore: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.restoreSkillMutationFn }),
+            bySkillId: {
+              delete: {
+                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
               },
-            },
-            files: {
-              check: {
+              duplicate: {
                 post: {
-                  mutationOptions: () => ({ mutationFn: mocks.checkDraftFilesMutationFn }),
+                  mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
                 },
+              },
+              get: {
+                key: mocks.skillDetailKey,
+                queryOptions: mocks.skillDetailQueryOptions,
               },
               patch: {
-                mutationOptions: () => ({ mutationFn: mocks.saveDraftFileMutationFn }),
+                mutationOptions: () => ({ mutationFn: mocks.skillMetadataMutationFn }),
               },
-            },
-            versions: {
-              get: {
-                key: mocks.skillVersionsKey,
-                queryOptions: mocks.skillVersionsQueryOptions,
+              publish: {
+                post: {
+                  mutationOptions: (options?: unknown) => {
+                    mocks.publishSkillMutationOptions(options)
+                    return { mutationFn: mocks.publishSkillMutationFn }
+                  },
+                },
               },
-              byVersionId: {
+              references: {
                 get: {
-                  queryOptions: mocks.skillVersionDetailQueryOptions,
+                  queryOptions: mocks.skillReferencesQueryOptions,
+                },
+              },
+              restore: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.restoreSkillMutationFn }),
+                },
+              },
+              files: {
+                check: {
+                  post: {
+                    mutationOptions: () => ({ mutationFn: mocks.checkDraftFilesMutationFn }),
+                  },
                 },
                 patch: {
-                  mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
+                  mutationOptions: () => ({ mutationFn: mocks.saveDraftFileMutationFn }),
                 },
-                delete: {
-                  mutationOptions: () => ({ mutationFn: mocks.versionDeleteMutationFn }),
+              },
+              versions: {
+                get: {
+                  key: mocks.skillVersionsKey,
+                  queryOptions: mocks.skillVersionsQueryOptions,
+                },
+                byVersionId: {
+                  get: {
+                    queryOptions: mocks.skillVersionDetailQueryOptions,
+                  },
+                  patch: {
+                    mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
+                  },
+                  delete: {
+                    mutationOptions: () => ({ mutationFn: mocks.versionDeleteMutationFn }),
+                  },
                 },
               },
             },
@@ -285,8 +287,8 @@ vi.mock('@/service/console', () => ({
         },
       },
     },
-  },
-}))
+  }
+})
 
 vi.mock('../permissions', () => ({
   useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
@@ -846,3 +848,19 @@ export function resetDetailPageFixture() {
     size: 10,
   })
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) =>
+      options.queryKey[0].includes('modelTypes')
+        ? { data: mocks.textGenerationModelList, isPending: false }
+        : actual.useQuery(options),
+  }
+})

@@ -4,7 +4,6 @@ import type {
   ModelProviderPluginSummaryResponse,
   ModelProviderSummaryResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 
 export type ProviderContextState = {
@@ -13,8 +12,6 @@ export type ProviderContextState = {
   isLoadingModelProviders: boolean
   isSuccessModelProviders: boolean
   refreshModelProviders: () => Promise<void>
-  textGenerationModelList: Model[]
-  isAPIKeySet: boolean
 }
 
 const baseProviderContextValue: ProviderContextState = {
@@ -23,8 +20,6 @@ const baseProviderContextValue: ProviderContextState = {
   isLoadingModelProviders: false,
   isSuccessModelProviders: false,
   refreshModelProviders: async () => {},
-  textGenerationModelList: [],
-  isAPIKeySet: true,
 }
 
 export const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)

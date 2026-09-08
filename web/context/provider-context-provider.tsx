@@ -2,12 +2,8 @@
 
 import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys, useModelListByType } from '@/service/use-common'
+import { commonQueryKeys } from '@/service/use-common'
 import { ProviderContext } from './provider-context'
 
 type ProviderContextProviderProps = {
@@ -21,7 +17,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
     isLoading: isLoadingModelProviders,
     isSuccess: isSuccessModelProviders,
   } = useQuery(consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions())
-  const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
 
   const refreshModelProviders = () =>
     Promise.all([
@@ -39,10 +34,6 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
         isLoadingModelProviders,
         isSuccessModelProviders,
         refreshModelProviders,
-        textGenerationModelList: textGenerationModelList?.data || [],
-        isAPIKeySet: !!textGenerationModelList?.data?.some(
-          (model) => model.status === ModelStatusEnum.active,
-        ),
       }}
     >
       {children}

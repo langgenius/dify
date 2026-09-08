@@ -9,8 +9,6 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshModelProviders: async () => {},
   isLoadingModelProviders: false,
   isSuccessModelProviders: false,
-  textGenerationModelList: [],
-  isAPIKeySet: true,
 }
 
 export const createMockProviderContextValue = (
