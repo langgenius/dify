@@ -20,6 +20,7 @@ from controllers.console.human_input_form import (
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
+from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
@@ -28,6 +29,8 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from services.enterprise.rbac_service import RBACService
+from services.rbac_resource_service import RBACResourceService
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -381,9 +384,38 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     assert "data" in response.get_data(as_text=True)
 
 
-def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("rbac_enabled", "has_permission", "is_maintainer", "agent_backed", "include_node_details"),
+    [
+        (True, False, False, False, False),
+        (True, True, False, False, True),
+        (True, False, True, False, True),
+        (True, True, False, True, False),
+        (False, False, False, False, True),
+    ],
+    ids=["run-only", "app-manager", "maintainer", "agent-app", "rbac-disabled"],
+)
+def test_workflow_events_snapshot_can_continue_across_pauses(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    rbac_enabled: bool,
+    has_permission: bool,
+    is_maintainer: bool,
+    agent_backed: bool,
+    include_node_details: bool,
+) -> None:
     workflow_run = _workflow_run()
+    workflow_run.triggered_from = WorkflowRunTriggeredFrom.APP_RUN
     app_model = _app()
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
+    check_access = Mock(return_value=has_permission)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
+    monkeypatch.setattr(
+        RBACResourceService, "get_app_agent_binding", Mock(return_value=SimpleNamespace() if agent_backed else None)
+    )
+    monkeypatch.setattr(
+        RBACResourceService, "get_app_maintainer", Mock(return_value="user-1" if is_maintainer else None)
+    )
 
     class _RepoStub:
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
@@ -432,6 +464,16 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         app_id="app-1",
         session_maker=ANY,
         human_input_surface=HumanInputSurface.CONSOLE,
-        include_node_details=True,
+        include_node_details=include_node_details,
         close_on_pause=False,
     )
+    if rbac_enabled and not is_maintainer and not agent_backed:
+        check_access.assert_called_once_with(
+            "t1",
+            "user-1",
+            scene=RBACPermission.APP_CREATE_AND_MANAGEMENT,
+            resource_type=RBACResourceScope.APP,
+            resource_id="app-1",
+        )
+    else:
+        check_access.assert_not_called()
