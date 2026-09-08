@@ -61,10 +61,10 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import ApiToken, UploadFile
-from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.knowledge.resource_scope import DatasetRef
 
 
 def _document_data_source_info() -> dict[str, str]:

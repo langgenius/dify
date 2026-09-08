@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import create_autospec, patch
 from uuid import UUID
 
@@ -46,8 +46,18 @@ def _request_context() -> RequestContext:
     )
 
 
-def _application_services(service: DataSourceApiKeyAuthService) -> SimpleNamespace:
-    return SimpleNamespace(data_source_api_key_auth=service)
+@dataclass(frozen=True)
+class _DataSources:
+    api_key_auth: DataSourceApiKeyAuthService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    data_sources: _DataSources
+
+
+def _application_services(service: DataSourceApiKeyAuthService) -> _ApplicationServices:
+    return _ApplicationServices(data_sources=_DataSources(api_key_auth=service))
 
 
 def test_list_data_source_auth_passes_context_and_serializes_application_result() -> None:

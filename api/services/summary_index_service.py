@@ -3,6 +3,7 @@
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
@@ -167,6 +168,9 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         session: Session | None = None,
+        *,
+        new_session: Callable[[], Session] | None = None,
+        vector_factory: Callable[[], Vector] | None = None,
     ) -> None:
         """
         Vectorize summary and store in vector database.
@@ -176,7 +180,7 @@ class SummaryIndexService:
             segment: Original DocumentSegment
             dataset: Dataset containing the segment
             session: Optional SQLAlchemy session. If provided, uses this session instead of creating a new one.
-                    If not provided, creates a new session and commits automatically.
+                    If not provided, each persistence attempt creates and commits its own session.
         """
         if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             logger.warning(
@@ -185,15 +189,20 @@ class SummaryIndexService:
             )
             return
 
+        create_session = new_session or session_factory.create_session
+
         # Get summary_record_id for later session queries
         summary_record_id = summary_record.id
         # Save the original session parameter for use in error handling
         original_session = session
+        use_provided_session = original_session is not None
 
         def create_vector() -> Vector:
+            if vector_factory is not None:
+                return vector_factory()
             if original_session is not None:
                 return Vector(dataset, session=original_session)
-            with session_factory.create_session() as vector_session:
+            with create_session() as vector_session:
                 return Vector(dataset, session=vector_session)
 
         logger.debug(
@@ -297,11 +306,10 @@ class SummaryIndexService:
                     )
 
                 # Success - update summary record with index node info
-                # Use provided session if available, otherwise create a new one
-                use_provided_session = session is not None
+                # Ownership stays fixed across retries; each owned session covers one attempt.
                 if not use_provided_session:
                     logger.debug("Creating new session for vectorization of segment %s", segment.id)
-                    session_context = session_factory.create_session()
+                    session_context = create_session()
                     session = session_context.__enter__()
                 else:
                     logger.debug("Using provided session for vectorization of segment %s", segment.id)
@@ -463,6 +471,7 @@ class SummaryIndexService:
                     # Only close session if we created it ourselves
                     if not use_provided_session and session_context:
                         session_context.__exit__(None, None, None)
+                        session = None
                 # Success, exit function
                 return
 
@@ -506,7 +515,7 @@ class SummaryIndexService:
                         str(e),
                         summary_record_id,
                         summary_index_node_id,
-                        session is not None,
+                        use_provided_session,
                         exc_info=True,
                     )
                     # Update error status in session
@@ -519,7 +528,7 @@ class SummaryIndexService:
                     )
                     # Always create a new session for error handling to avoid issues with closed sessions
                     # Even if original_session was provided, we create a new one for safety
-                    with session_factory.create_session() as error_session:
+                    with create_session() as error_session:
                         # Try to find the record by id first
                         # Note: Using assignment only (no type annotation) to avoid redeclaration error
                         summary_record_in_session = error_session.scalar(

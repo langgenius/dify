@@ -1,7 +1,6 @@
 """Tests for application-service dependency wiring."""
 
 import json
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
@@ -62,10 +61,19 @@ from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthS
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.data_source.binding_application_service import DataSourceBindingApplicationService
+from services.data_source.notion_import_adapters import PluginNotionSourceGateway
+from services.data_source.notion_import_application_service import NotionImportApplicationService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.document_sync import DocumentSyncApplicationService
+from services.knowledge.indexing.adapters.estimate import IndexingRunnerEstimateAdapter, SQLAlchemyProcessRuleReader
+from services.knowledge.indexing.adapters.sources import NotionSourceResolver
+from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
+from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
@@ -105,7 +113,7 @@ def test_build_application_services_configures_init_validation(
         database_client=sqlite_session_factory,
         deployment_edition=deployment_edition,
         initialization_password=initialization_password,
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=cast(RedisClientWrapper, object()),
     )
 
     assert services.init_validation.is_validated(session_validated=session_validated) is expected
@@ -561,7 +569,41 @@ def test_build_application_services_wires_data_source_api_key_auth(
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
-    assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+    assert isinstance(services.data_sources.api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_groups_dataset_services_and_reuses_repositories(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=cast(RedisClientWrapper, object()),
+    )
+
+    assert isinstance(services.data_sources.bindings, DataSourceBindingApplicationService)
+    assert isinstance(services.data_sources.notion_imports, NotionImportApplicationService)
+    assert isinstance(services.knowledge.document_sync, DocumentSyncApplicationService)
+    assert isinstance(services.knowledge.indexing_estimates, IndexingEstimateApplicationService)
+    assert isinstance(services.knowledge.segments, DatasetSegmentApplicationService)
+    assert services.data_sources.bindings._bindings is services.data_sources.oauth["notion"]._bindings
+    assert services.data_sources.notion_imports._dataset_access is services.knowledge.document_sync._dataset_access
+    assert services.data_sources.notion_imports._dataset_access is services.knowledge.indexing_estimates._dataset_access
+    assert services.data_sources.notion_imports._documents is services.knowledge.document_sync._documents
+    assert services.data_sources.notion_imports._documents is services.knowledge.indexing_estimates._documents
+    notion_source = services.data_sources.notion_imports._source
+    estimate_service = services.knowledge.indexing_estimates
+    dataset_access = services.data_sources.notion_imports._dataset_access
+    assert isinstance(notion_source, PluginNotionSourceGateway)
+    assert isinstance(estimate_service._runner, IndexingRunnerEstimateAdapter)
+    assert isinstance(estimate_service._process_rules, SQLAlchemyProcessRuleReader)
+    assert isinstance(dataset_access, DatasetAccessService)
+    notion_resolver = estimate_service._notion
+    assert isinstance(notion_resolver, NotionSourceResolver)
+    assert notion_source._credentials is notion_resolver._actor_credentials
+    assert notion_resolver._stored_credentials is not notion_resolver._actor_credentials
+    assert services.workspace_member_queries._members is dataset_access._workspace_roles
 
 
 def test_build_application_services_wires_trial_app_usage(
@@ -596,7 +638,7 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
         patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
-            return_value=SimpleNamespace(access_mode="private_all"),
+            return_value=WebAppSettings(accessMode="private_all"),
         ) as get_access_mode,
     ):
         services = ext_application_services.build_application_services(
@@ -656,7 +698,7 @@ def test_build_application_services_maps_invalid_access_mode_to_unavailable(
         patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
-            return_value=SimpleNamespace(access_mode="invalid"),
+            return_value=WebAppSettings(accessMode="invalid"),
         ),
     ):
         services = ext_application_services.build_application_services(
@@ -705,7 +747,7 @@ def test_build_application_services_wires_webapp_permission(
         ) as enabled,
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
-            return_value=SimpleNamespace(access_mode="private"),
+            return_value=WebAppSettings(accessMode="private"),
         ) as get_access_mode,
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",

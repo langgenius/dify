@@ -56,6 +56,7 @@ def test_file_access_grants_ignore_empty_inputs_and_missing_scope() -> None:
 @pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
 def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope(sqlite_session: Session) -> None:
     tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
     upload_file_id = str(uuid4())
     segment_id = str(uuid4())
     user_id = str(uuid4())
@@ -75,7 +76,7 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
     upload_file.id = upload_file_id
     binding = SegmentAttachmentBinding(
         tenant_id=tenant_id,
-        dataset_id=str(uuid4()),
+        dataset_id=dataset_id,
         document_id=str(uuid4()),
         segment_id=segment_id,
         attachment_id=upload_file_id,
@@ -90,7 +91,11 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
     )
 
     with bind_file_access_scope(scope):
-        result = RetrievalService.get_segment_attachment_infos([upload_file_id], sqlite_session)
+        result = RetrievalService.get_segment_attachment_infos(
+            [upload_file_id],
+            dataset_refs=((tenant_id, dataset_id),),
+            session=sqlite_session,
+        )
         scoped_stmt = DatabaseFileAccessController().apply_upload_file_filters(
             select(UploadFile).where(UploadFile.id == upload_file_id)
         )
@@ -99,6 +104,59 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
     whereclause = str(scoped_stmt.whereclause)
     assert "upload_files.created_by_role" in whereclause
     assert "upload_files.id IN" in whereclause
+
+
+@pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
+def test_segment_attachment_lookup_rejects_another_tenants_upload(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    foreign_tenant_id = str(uuid4())
+    upload_file_id = str(uuid4())
+    foreign_dataset_id = str(uuid4())
+    upload_file = UploadFile(
+        tenant_id=foreign_tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="uploads/foreign.png",
+        name="foreign.png",
+        size=1024,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=str(uuid4()),
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    upload_file.id = upload_file_id
+    sqlite_session.add_all(
+        [
+            upload_file,
+            SegmentAttachmentBinding(
+                tenant_id=foreign_tenant_id,
+                dataset_id=foreign_dataset_id,
+                document_id=str(uuid4()),
+                segment_id=str(uuid4()),
+                attachment_id=upload_file_id,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    scope = FileAccessScope(
+        tenant_id=tenant_id,
+        user_id=str(uuid4()),
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        result = RetrievalService.get_segment_attachment_infos(
+            [upload_file_id],
+            dataset_refs=((tenant_id, str(uuid4())),),
+            session=sqlite_session,
+        )
+        current_scope = get_current_file_access_scope()
+
+    assert result == []
+    assert current_scope is not None
+    assert current_scope.granted_upload_file_ids == frozenset()
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetDocument, DocumentSegment)], indirect=True)

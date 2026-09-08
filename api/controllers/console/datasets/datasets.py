@@ -5,20 +5,28 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+)
+from controllers.console.datasets.indexing_estimate_payloads import NotionEstimateWorkspacePayload
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -33,21 +41,19 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.entities.knowledge_entities import IndexingEstimate
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from libs.url_utils import normalize_api_base_url
-from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, UploadFile
+from machinery.context import RequestContext
+from models import Account, ApiToken, App, Dataset, Document, DocumentSegment
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
@@ -57,6 +63,22 @@ from services.app_service import AppService
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.entities.knowledge_entities.indexing_estimate import (
+    NewEstimateSource,
+    NewSourcesEstimateCommand,
+    NotionEstimateSource,
+    UploadFileEstimateSource,
+    WebsiteEstimateSource,
+)
+from services.entities.knowledge_entities.knowledge_entities import FileInfo, WebsiteInfo
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.indexing.estimate import (
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -163,6 +185,44 @@ class IndexingEstimatePayload(BaseModel):
         if result is None:
             return "text_model"
         return result
+
+
+_NOTION_SELECTIONS = TypeAdapter(list[NotionEstimateWorkspacePayload])
+
+
+def _new_estimate_sources(info_list: dict[str, Any]) -> tuple[NewEstimateSource, ...]:
+    match info_list.get("data_source_type"):
+        case "upload_file":
+            files = FileInfo.model_validate(info_list.get("file_info_list"))
+            return tuple(UploadFileEstimateSource(file_id=file_id) for file_id in dict.fromkeys(files.file_ids))
+        case "notion_import":
+            workspaces = _NOTION_SELECTIONS.validate_python(info_list.get("notion_info_list"))
+            return tuple(
+                NotionEstimateSource(
+                    workspace_id=workspace.workspace_id,
+                    credential_id=workspace.credential_id,
+                    page_id=page.page_id,
+                    page_type=page.page_type,
+                )
+                for workspace in workspaces
+                for page in workspace.pages
+            )
+        case "website_crawl":
+            values = info_list.get("website_info_list")
+            if not isinstance(values, dict):
+                raise ValueError("Website info list is required")
+            website = WebsiteInfo.model_validate({"only_main_content": False, **values})
+            return tuple(
+                WebsiteEstimateSource(
+                    provider=website.provider,
+                    job_id=website.job_id,
+                    url=url,
+                    only_main_content=website.only_main_content,
+                )
+                for url in website.urls
+            )
+        case _:
+            raise ValueError("Data source type not support")
 
 
 class DatasetApiKeyCreatePayload(BaseModel):
@@ -892,95 +952,37 @@ class DatasetIndexingEstimateApi(Resource):
         "Indexing estimate calculated successfully",
         console_ns.models[IndexingEstimateResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
-    @with_current_tenant_id
-    @with_session
+    @console_account_admission()
     @model_validate(IndexingEstimatePayload)
-    def post(self, req_data: IndexingEstimatePayload, session: Session, current_tenant_id: str):
-        args = req_data.model_dump()
-        # validate args
-        DocumentService.estimate_args_validate(args)
-        extract_settings = []
-        match args["info_list"]["data_source_type"]:
-            case "upload_file":
-                file_ids = args["info_list"]["file_info_list"]["file_ids"]
-                file_details = session.scalars(
-                    select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
-                ).all()
-                if not file_details:
-                    raise NotFound("File not found.")
-
-                if file_details:
-                    for file_detail in file_details:
-                        extract_setting = ExtractSetting(
-                            datasource_type=DatasourceType.FILE,
-                            upload_file=file_detail,
-                            document_model=args["doc_form"],
-                        )
-                        extract_settings.append(extract_setting)
-            case "notion_import":
-                notion_info_list = args["info_list"]["notion_info_list"]
-                for notion_info in notion_info_list:
-                    workspace_id = notion_info["workspace_id"]
-                    credential_id = notion_info.get("credential_id")
-                    for page in notion_info["pages"]:
-                        extract_setting = ExtractSetting(
-                            datasource_type=DatasourceType.NOTION,
-                            notion_info=NotionInfo.model_validate(
-                                {
-                                    "credential_id": credential_id,
-                                    "notion_workspace_id": workspace_id,
-                                    "notion_obj_id": page["page_id"],
-                                    "notion_page_type": page["type"],
-                                    "tenant_id": current_tenant_id,
-                                }
-                            ),
-                            document_model=args["doc_form"],
-                        )
-                        extract_settings.append(extract_setting)
-            case "website_crawl":
-                website_info_list = args["info_list"]["website_info_list"]
-                for url in website_info_list["urls"]:
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.WEBSITE,
-                        website_info=WebsiteInfo.model_validate(
-                            {
-                                "provider": website_info_list["provider"],
-                                "job_id": website_info_list["job_id"],
-                                "url": url,
-                                "tenant_id": current_tenant_id,
-                                "mode": "crawl",
-                                "only_main_content": website_info_list["only_main_content"],
-                            }
-                        ),
-                        document_model=args["doc_form"],
-                    )
-                    extract_settings.append(extract_setting)
-            case _:
-                raise ValueError("Data source type not support")
-        indexing_runner = IndexingRunner()
+    def post(self, req_data: IndexingEstimatePayload, request_context: RequestContext):
+        command = NewSourcesEstimateCommand(
+            sources=_new_estimate_sources(req_data.info_list),
+            process_rule=req_data.process_rule,
+            doc_form=req_data.doc_form,
+            doc_language=req_data.doc_language,
+            dataset_id=req_data.dataset_id,
+            indexing_technique=req_data.indexing_technique,
+        )
         try:
-            response = indexing_runner.indexing_estimate(
-                tenant_id=current_tenant_id,
-                extract_settings=extract_settings,
-                tmp_processing_rule=args["process_rule"],
-                doc_form=args["doc_form"],
-                doc_language=args["doc_language"],
-                dataset_id=args["dataset_id"],
-                indexing_technique=args["indexing_technique"],
-                session=session,
+            response = application_services().knowledge.indexing_estimates.estimate_new_sources(
+                request_context,
+                command,
             )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except Exception as e:
-            raise IndexingEstimateError(str(e))
+        except (
+            IndexingEstimateCredentialUnavailableError,
+            EstimateSourceNotFoundError,
+            DatasetNotFoundError,
+        ) as error:
+            raise NotFoundError(description=str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise DatasetAccessDeniedRequestError(description=str(error)) from error
+        except UnsupportedEstimateSourceError as error:
+            raise InvalidArgumentError(description=str(error)) from error
+        except IndexingEstimateProviderUnavailableError as error:
+            raise ProviderNotInitializeError(str(error)) from error
+        except IndexingEstimateExecutionError as error:
+            raise IndexingEstimateError(str(error)) from error
 
         return (
             IndexingEstimateResponse(

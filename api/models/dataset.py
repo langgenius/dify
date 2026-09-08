@@ -18,7 +18,7 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 
 from configs import dify_config
-from core.rag.entities import ParentMode, Rule
+from core.rag.entities import ParentMode, PreProcessingRuleKey, Rule
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 class PreProcessingRuleItem(TypedDict):
-    id: str
+    id: PreProcessingRuleKey
     enabled: bool
 
 
@@ -490,7 +490,6 @@ class DatasetProcessRule(TypeBase):
     )
 
     MODES = ["automatic", "custom", "hierarchical"]
-    PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
     AUTOMATIC_RULES: ClassVar[AutomaticRulesConfig] = {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},
@@ -968,7 +967,14 @@ class DocumentSegment(TypeBase):
                 rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode and (include_full_doc or rules.parent_mode != ParentMode.FULL_DOC):
                     child_chunks = session.scalars(
-                        select(ChildChunk).where(ChildChunk.segment_id == self.id).order_by(ChildChunk.position.asc())
+                        select(ChildChunk)
+                        .where(
+                            ChildChunk.segment_id == self.id,
+                            ChildChunk.tenant_id == self.tenant_id,
+                            ChildChunk.dataset_id == self.dataset_id,
+                            ChildChunk.document_id == self.document_id,
+                        )
+                        .order_by(ChildChunk.position.asc())
                     ).all()
                     return child_chunks or []
         return []
@@ -1057,6 +1063,7 @@ class DocumentSegment(TypeBase):
                 SegmentAttachmentBinding.dataset_id == self.dataset_id,
                 SegmentAttachmentBinding.document_id == self.document_id,
                 SegmentAttachmentBinding.segment_id == self.id,
+                UploadFile.tenant_id == self.tenant_id,
             )
         ).all()
         if not attachments_with_bindings:

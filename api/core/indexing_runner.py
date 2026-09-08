@@ -24,8 +24,8 @@ from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
+from core.rag.entities.extraction import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -48,6 +48,7 @@ from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetPro
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
+from repositories.knowledge.upload_file_repository import query_upload_extraction_inputs
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 logger = logging.getLogger(__name__)
@@ -415,7 +416,10 @@ class IndexingRunner:
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
-                    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+                    stmt = select(UploadFile).where(
+                        UploadFile.id == upload_file_id,
+                        UploadFile.tenant_id == tenant_id,
+                    )
                     image_file = session.scalar(stmt)
                     if image_file is None:
                         continue
@@ -458,8 +462,10 @@ class IndexingRunner:
             case DataSourceType.UPLOAD_FILE:
                 if not data_source_info or "upload_file_id" not in data_source_info:
                     raise ValueError("no upload file found")
-                stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
-                file_detail = session.scalars(stmt).one_or_none()
+                upload_file_id = data_source_info["upload_file_id"]
+                file_detail = query_upload_extraction_inputs(
+                    session, workspace_id=dataset_document.tenant_id, file_ids=(upload_file_id,)
+                ).get(upload_file_id)
 
                 if file_detail:
                     extract_setting = ExtractSetting(

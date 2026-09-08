@@ -17,7 +17,7 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 
 def _services(service: MagicMock) -> MagicMock:
     services = create_autospec(ApplicationServices, instance=True, spec_set=True)
-    services.resolve_data_source_oauth.return_value = service
+    services.data_sources.resolve_oauth.return_value = service
     return services
 
 
@@ -54,7 +54,7 @@ def test_get_oauth_url_invalid_provider(
 
     service = MagicMock()
     services = _services(service)
-    services.resolve_data_source_oauth.side_effect = InvalidDataSourceOAuthProviderError
+    services.data_sources.resolve_oauth.side_effect = InvalidDataSourceOAuthProviderError
     with patch(
         "controllers.console.auth.data_source_oauth.application_services",
         return_value=services,
@@ -99,7 +99,7 @@ def test_oauth_callback_missing_code(test_client_with_containers: FlaskClient) -
 def test_oauth_callback_invalid_provider(test_client_with_containers: FlaskClient) -> None:
     service = MagicMock()
     services = _services(service)
-    services.resolve_data_source_oauth.side_effect = InvalidDataSourceOAuthProviderError
+    services.data_sources.resolve_oauth.side_effect = InvalidDataSourceOAuthProviderError
     with patch(
         "controllers.console.auth.data_source_oauth.application_services",
         return_value=services,
