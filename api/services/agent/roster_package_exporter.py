@@ -39,6 +39,8 @@ from services.agent.errors import (
     RosterAgentPackageTooLargeError,
 )
 from services.agent.roster_package_entities import (
+    ROSTER_AGENT_PACKAGE_FORMAT,
+    ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
     ROSTER_AGENT_PACKAGE_MAX_BYTES,
     ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageAudit,
@@ -209,6 +211,8 @@ class RosterAgentPackageExporter:
                     member_metadata[payload.path] = member
 
                 manifest = RosterAgentPackageManifest(
+                    format=ROSTER_AGENT_PACKAGE_FORMAT,
+                    format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
                     metadata=metadata,
                     soul=soul,
                     skills=[

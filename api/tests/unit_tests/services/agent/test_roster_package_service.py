@@ -33,6 +33,8 @@ from services.agent.errors import (
     RosterAgentPackageTooLargeError,
 )
 from services.agent.roster_package_entities import (
+    ROSTER_AGENT_PACKAGE_FORMAT,
+    ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
     ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
@@ -88,6 +90,8 @@ def _manifest(*, skill_payload: bytes, file_payload: bytes) -> RosterAgentPackag
         }
     )
     return RosterAgentPackageManifest(
+        format=ROSTER_AGENT_PACKAGE_FORMAT,
+        format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
         metadata=RosterAgentPackageMetadata(name="Research Agent"),
         soul=soul,
         skills=[
@@ -153,9 +157,29 @@ def _package_bytes(
 def test_manifest_rejects_dangling_resource_references() -> None:
     with pytest.raises(ValidationError, match="config skill reference must resolve"):
         RosterAgentPackageManifest(
+            format=ROSTER_AGENT_PACKAGE_FORMAT,
+            format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
             metadata=RosterAgentPackageMetadata(name="Research Agent"),
             soul=AgentSoulConfig.model_validate({"config_skills": [{"name": "research", "file_id": "s_000001"}]}),
         )
+
+
+@pytest.mark.parametrize("missing_field", ["format", "format_version"])
+def test_reader_rejects_manifest_without_format_discriminator(missing_field: str) -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    manifest.pop(missing_field)
+    package = _zip(
+        {
+            "manifest.json": json.dumps(manifest).encode(),
+            "s_000001.zip": skill_payload,
+            "f_000001.pdf": file_payload,
+        }
+    )
+
+    with pytest.raises(InvalidRosterAgentPackageError, match="manifest is invalid"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
 def test_binary_dependency_requires_platform_and_arch_together() -> None:

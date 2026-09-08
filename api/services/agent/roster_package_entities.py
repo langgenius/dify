@@ -115,8 +115,8 @@ class RosterAgentPackageManifest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    format: Literal["dify.roster-agent"] = ROSTER_AGENT_PACKAGE_FORMAT
-    format_version: Literal[1] = ROSTER_AGENT_PACKAGE_FORMAT_VERSION
+    format: Literal["dify.roster-agent"]
+    format_version: Literal[1]
     metadata: RosterAgentPackageMetadata
     soul: AgentSoulConfig
     skills: list[RosterAgentPackageSkill] = Field(default_factory=list)
