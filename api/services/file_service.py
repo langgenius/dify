@@ -68,7 +68,12 @@ class FileService:
             raise ValueError("Filename contains invalid characters")
 
         if len(filename) > 200:
-            filename = filename.split(".")[0][:200] + "." + extension
+            # Truncate the stem (everything before the final extension), not
+            # just the text before the first dot, and don't append a bare
+            # "." when the name has no extension.
+            stem = os.path.splitext(filename)[0]
+            suffix = f".{extension}" if extension else ""
+            filename = stem[:200] + suffix
 
         # check if extension is in blacklist
         if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:

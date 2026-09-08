@@ -174,6 +174,45 @@ class TestFileService:
             assert result.name.endswith(".txt")
             assert db_session.get(UploadFile, result.id) is not None
 
+    def test_upload_file_long_multidot_filename_preserves_stem(self, file_service: FileService):
+        # A long name with several dots must keep everything up to the final
+        # extension (truncated to 200 chars), not just the text before the
+        # first dot.
+        stem = "quarterly.report." + "x" * 180 + ".final"
+        long_name = stem + ".pdf"
+        user = Account(name="Test Account", email="test@example.com")
+        user.id = "user_id"
+
+        with (
+            patch("services.file_service.storage"),
+            patch("services.file_service.extract_tenant_id") as mock_tenant,
+            patch("services.file_service.file_helpers.get_signed_file_url"),
+        ):
+            mock_tenant.return_value = "tenant"
+            result = file_service.upload_file(
+                filename=long_name, content=b"test", mimetype="application/pdf", user=user
+            )
+            assert result.name == stem[:200] + ".pdf"
+            assert len(result.name) == 204
+
+    def test_upload_file_long_filename_without_extension_has_no_trailing_dot(self, file_service: FileService):
+        # A long name with no extension must not gain a spurious trailing dot.
+        long_name = "y" * 250
+        user = Account(name="Test Account", email="test@example.com")
+        user.id = "user_id"
+
+        with (
+            patch("services.file_service.storage"),
+            patch("services.file_service.extract_tenant_id") as mock_tenant,
+            patch("services.file_service.file_helpers.get_signed_file_url"),
+        ):
+            mock_tenant.return_value = "tenant"
+            result = file_service.upload_file(
+                filename=long_name, content=b"test", mimetype="application/octet-stream", user=user
+            )
+            assert result.name == "y" * 200
+            assert not result.name.endswith(".")
+
     def test_upload_file_blocked_extension(self, file_service, config_overrides: Callable[..., None]):
         config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
         with pytest.raises(BlockedFileExtensionError):
