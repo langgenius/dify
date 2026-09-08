@@ -300,3 +300,36 @@ def test_verify_plugin_file_signature_rejects_invalid_signatures(
         )
         is False
     )
+
+
+@pytest.mark.parametrize("sign", ["é", "🙂", "Ы", "sign with nbsp"])
+def test_verify_tool_file_signature_rejects_non_ascii_sign(sign: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-ASCII sign is a rejected signature, not a crash.
+
+    ``sign`` is taken straight from the query string, so it can hold anything.
+    ``hmac.compare_digest`` refuses ``str`` carrying non-ASCII characters, which
+    turns a 403 into a 500 unless the comparison runs on bytes.
+    """
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+
+    assert verify_tool_file_signature("tool-file-id", "1700000000", "nonce", sign) is False
+
+
+@pytest.mark.parametrize("sign", ["é", "🙂"])
+def test_verify_plugin_file_signature_rejects_non_ascii_sign(sign: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+
+    assert (
+        verify_plugin_file_signature(
+            filename="report.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-id",
+            user_id="user-id",
+            timestamp="1700000000",
+            nonce="nonce",
+            sign=sign,
+        )
+        is False
+    )

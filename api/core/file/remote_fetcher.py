@@ -229,7 +229,7 @@ def _verify_signed_file_url(
     payload = f"{signed_file_url.preview_kind}|{signed_file_url.file_id}|{timestamp}|{nonce}"
     recalculated = hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
     expected = base64.urlsafe_b64encode(recalculated).decode()
-    return hmac.compare_digest(sign, expected)
+    return hmac.compare_digest(sign.encode(), expected.encode())
 
 
 def _build_upload_file_response(*, method: Literal["GET", "HEAD"], url: str, file_id: str) -> httpx.Response:
