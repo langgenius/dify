@@ -1,12 +1,14 @@
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
+from werkzeug.exceptions import NotFound
 
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
 from services.file_service import FileService
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
+    WebAppRuntimeAssetUnavailableError,
     WebAppRuntimeQuery,
     WebAppRuntimeQueryService,
     WebAppRuntimeRecord,
@@ -142,3 +144,13 @@ def test_get_bootstrap_skips_legacy_custom_config_when_branding_is_not_allowed(
     assert result.site == {**record.site._asdict(), "icon_url": None}
     assert result.can_replace_logo is False
     assert result.custom_config is None
+
+
+def test_get_bootstrap_maps_missing_site_icon_to_runtime_asset_error() -> None:
+    runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
+    runtime.get_runtime_record.return_value = _runtime_record()
+    file_service = MagicMock(spec=FileService)
+    file_service.get_icon_url.side_effect = NotFound("File not found")
+
+    with pytest.raises(WebAppRuntimeAssetUnavailableError, match="Site icon is unavailable"):
+        _service(runtime, file_service=file_service).get_bootstrap("app-1")

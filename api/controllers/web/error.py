@@ -137,6 +137,12 @@ class WebAppNotFoundError(BaseHTTPException):
     code = 404
 
 
+class SiteConfigurationInvalidError(BaseHTTPException):
+    error_code = "site_configuration_invalid"
+    description = "The app's site icon is unavailable. Please contact the app owner to upload it again."
+    code = 409
+
+
 class WebAppAccessServiceUnavailableError(BaseHTTPException):
     error_code = "web_app_access_unavailable"
     description = "Web app access service is unavailable."
