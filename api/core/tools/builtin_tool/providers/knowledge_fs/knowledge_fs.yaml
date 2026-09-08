@@ -3,10 +3,10 @@ identity:
   name: knowledge_fs
   label:
     en_US: Agentic Knowledge
-    zh_Hans: 智能体知识库
+    zh_Hans: Agentic Knowledge
   description:
     en_US: Run explicitly bound Agentic Knowledge operations from an Agent or Workflow.
-    zh_Hans: 从智能体或工作流对明确绑定的智能体知识库执行操作。
+    zh_Hans: 从 Agent 或 Workflow 执行显式绑定的 Agentic Knowledge 操作。
   icon: icon.svg
   tags:
     - rag

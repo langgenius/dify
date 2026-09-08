@@ -3,11 +3,11 @@ identity:
   author: Dify
   label:
     en_US: Create Agentic Knowledge Research Task
-    zh_Hans: 创建智能体知识库研究任务
+    zh_Hans: 创建 Agentic Knowledge Research 任务
 description:
   human:
     en_US: Create a Research task in an explicitly bound Agentic Knowledge space.
-    zh_Hans: 在明确绑定的智能体知识空间中创建研究任务。
+    zh_Hans: 在显式绑定的 Agentic Knowledge 空间中创建 Research 任务。
   llm: Create a durable research task using an explicitly configured KnowledgeFS resource.
 parameters:
   - name: resource
@@ -15,10 +15,10 @@ parameters:
     required: true
     label:
       en_US: Agentic Knowledge resource
-      zh_Hans: 智能体知识资源
+      zh_Hans: Agentic Knowledge 资源
     human_description:
       en_US: A reference to an Agentic Knowledge space configured by the app author.
-      zh_Hans: 由应用作者配置的智能体知识空间引用。
+      zh_Hans: 由应用作者配置的 Agentic Knowledge 空间引用。
     form: form
     input_schema:
       type: object
@@ -38,10 +38,10 @@ parameters:
     required: true
     label:
       en_US: Research query
-      zh_Hans: 研究问题
+      zh_Hans: Research 查询
     human_description:
       en_US: The question the Research task should investigate.
-      zh_Hans: 研究任务需要调查的问题。
+      zh_Hans: Research 任务需要调查的问题。
     llm_description: The question to investigate with KnowledgeFS.
     form: llm
   - name: mode
@@ -52,7 +52,7 @@ parameters:
       zh_Hans: 模式
     human_description:
       en_US: Optional Agentic Knowledge retrieval mode.
-      zh_Hans: 可选的智能体知识检索模式。
+      zh_Hans: 可选的 Agentic Knowledge 检索模式。
     llm_description: Optional retrieval mode. Use auto unless the task needs a specific mode.
     form: llm
     options:
@@ -71,4 +71,4 @@ parameters:
       - value: research
         label:
           en_US: Research
-          zh_Hans: 研究
+          zh_Hans: Research
