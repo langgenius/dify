@@ -6,14 +6,25 @@ import type {
   AccessControlScopeAvailability,
 } from './draft'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
+import { getInServiceCoverage } from './chip-status'
 import { isProtectableAccessPoint, splitPolicySummary } from './draft'
 
 const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
@@ -28,6 +39,7 @@ type AccessControlStatusPanelProps = {
   enabled: boolean
   availability: AccessControlScopeAvailability
   onEdit: () => void
+  onEnabledChange: (enabled: boolean) => void
 }
 
 export function AccessControlStatusPanel({
@@ -36,23 +48,35 @@ export function AccessControlStatusPanel({
   enabled,
   availability,
   onEdit,
+  onEnabledChange,
 }: AccessControlStatusPanelProps) {
   const { t } = useTranslation()
   const appInfo = useAppStore((state) => state.appDetail)
+  const [confirmPause, setConfirmPause] = useState(false)
   const selectedPolicy = policies.find((policy) => policy.id === draft.selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.addresses) : undefined
+  const coverage = getInServiceCoverage(draft.scopes, availability)
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
     serviceApi: t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' }),
     mcp: t(($) => $['mcp.server.title'], { ns: 'tools' }),
     trigger: t(($) => $['settings.trigger'], { ns: 'common' }),
   }
+  const exposedNames = ACCESS_POINT_ORDER.filter(
+    (scope) => availability[scope] && draft.scopes[scope],
+  ).map((scope) => labels[scope])
+  const policyName = selectedPolicy?.name
 
   return (
     <div className="flex w-100 flex-col">
       <div className="flex items-center justify-between gap-2 overflow-hidden px-4 pt-4 pb-3">
         <PopoverTitle className="min-w-0 flex-1 system-md-semibold text-text-primary">
-          {t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })}
+          {policyName
+            ? t(($) => $['studio.accessControl.restrictedTo'], {
+                ns: 'deployments',
+                name: policyName,
+              })
+            : t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })}
         </PopoverTitle>
         <Button type="button" variant="ghost" size="small" onClick={onEdit}>
           {t(($) => $['operation.edit'], { ns: 'common' })}
@@ -61,13 +85,33 @@ export function AccessControlStatusPanel({
 
       <div className="flex flex-col gap-5 overflow-hidden px-4 pt-2 pb-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="system-md-medium text-text-primary">
-            {t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
-          </p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="system-md-medium text-text-primary">
+              {t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
+            </p>
+            <p className="system-xs-regular text-text-tertiary">
+              {coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
+                ? t(($) => $['studio.accessControl.protectingAll'], {
+                    ns: 'deployments',
+                    count: coverage.inServiceCount,
+                  })
+                : t(($) => $['studio.accessControl.protectingPartial'], {
+                    ns: 'deployments',
+                    n: coverage.coveredCount,
+                    m: coverage.inServiceCount,
+                  })}
+            </p>
+          </div>
           <Switch
             checked={enabled}
-            readOnly
             aria-label={t(($) => $['studio.accessControl.restrictByIp'], { ns: 'deployments' })}
+            onCheckedChange={(next) => {
+              if (next) {
+                onEnabledChange(true)
+                return
+              }
+              setConfirmPause(true)
+            }}
           />
         </div>
 
@@ -159,6 +203,35 @@ export function AccessControlStatusPanel({
           })}
         </div>
       </div>
+
+      <AlertDialog open={confirmPause} onOpenChange={setConfirmPause}>
+        <AlertDialogContent className="w-100">
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {t(($) => $['studio.accessControl.turnOffTitle'], { ns: 'deployments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-sm-regular text-text-secondary">
+              {t(($) => $['studio.accessControl.turnOffDescription'], {
+                ns: 'deployments',
+                points: exposedNames.join(', '),
+              })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton variant="secondary">
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                onEnabledChange(false)
+                setConfirmPause(false)
+              }}
+            >
+              {t(($) => $['studio.accessControl.turnOffConfirm'], { ns: 'deployments' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

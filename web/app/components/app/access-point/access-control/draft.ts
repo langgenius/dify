@@ -15,13 +15,15 @@ export type AccessControlDraft = {
   scopes: Record<AccessPoint, boolean>
 }
 
-export const createDefaultAccessControlDraft = (): AccessControlDraft => ({
+export const createDefaultAccessControlDraft = (
+  availability?: AccessControlScopeAvailability,
+): AccessControlDraft => ({
   selectedPolicyId: null,
   scopes: {
-    webApp: true,
-    serviceApi: true,
-    mcp: false,
-    trigger: false,
+    webApp: availability?.webApp ?? true,
+    serviceApi: availability?.serviceApi ?? true,
+    mcp: availability?.mcp ?? true,
+    trigger: availability?.trigger ?? false,
   },
 })
 

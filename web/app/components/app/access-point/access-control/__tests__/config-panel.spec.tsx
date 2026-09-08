@@ -132,6 +132,7 @@ describe('AccessControlConfigPanel', () => {
     await user.click(await screen.findByRole('option', { name: /Internal Network/ }))
     await user.click(screen.getByRole('switch', { name: 'Web App' }))
     await user.click(screen.getByRole('switch', { name: 'Backend Service API' }))
+    await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
 
     expect(screen.getByText('Select at least one access point to protect.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()

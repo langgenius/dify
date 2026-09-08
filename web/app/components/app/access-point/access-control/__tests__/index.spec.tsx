@@ -20,6 +20,9 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.emptyPoliciesDescription':
     'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
   'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
+  'studio.accessControl.chipOff': 'Off',
+  'studio.accessControl.chipOn': 'ON',
+  'studio.accessControl.chipPartial': '{{n}} of {{m}}',
   'studio.accessControl.entryLabel': 'Access Control',
   'studio.accessControl.ipPolicy': 'IP Policy',
   'studio.accessControl.notEnabled': 'Not enabled',
@@ -29,6 +32,8 @@ const accessControlTranslations = vi.hoisted(() => ({
   'studio.accessControl.previewCaption':
     "This app is only available on your organization's network.",
   'studio.accessControl.proBadge': 'PRO',
+  'studio.accessControl.tooltipOff': 'Not set up',
+  'studio.accessControl.tooltipPro': 'Access control requires the Pro plan',
   'studio.accessControl.turnOn': 'Turn on Access Control',
 }))
 
@@ -106,12 +111,13 @@ describe('AccessControlEntry', () => {
   })
 
   it.each(['professional', 'team'] as const)(
-    'renders the Access Control chip without a PRO badge on Cloud %s',
+    'renders the unpaid-config Off chip on Cloud %s',
     (plan) => {
       renderEntry({ plan })
 
       const chip = getChip()
       expect(chip).toBeInTheDocument()
+      expect(within(chip).getByText('Off')).toBeInTheDocument()
       expect(within(chip).queryByText('PRO')).not.toBeInTheDocument()
     },
   )
