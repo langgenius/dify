@@ -1330,6 +1330,7 @@ export function FileTree({
             {!readonly && (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
+                  aria-label={tCommon(($) => $['operation.add'])}
                   className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
