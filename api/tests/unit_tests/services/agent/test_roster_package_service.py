@@ -205,6 +205,19 @@ def test_preflight_validates_resources_and_accepts_ignored_signature() -> None:
         assert prepared.members["f_000001.pdf"].size == len(file_payload)
 
 
+def test_reader_accepts_manifest_larger_than_legacy_limit() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    manifest_data = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    manifest_data["soul"]["prompt"]["system_prompt"] = "x" * (1024 * 1024)
+    manifest = RosterAgentPackageManifest.model_validate(manifest_data)
+    package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
+
+    assert len(manifest.model_dump_json().encode()) > 1024 * 1024
+    with RosterAgentPackageReader().read(io.BytesIO(package)) as prepared:
+        assert prepared.manifest.soul.prompt.system_prompt == manifest.soul.prompt.system_prompt
+
+
 def test_preflight_rejects_tampered_payload() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
