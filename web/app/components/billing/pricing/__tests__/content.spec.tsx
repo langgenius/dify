@@ -11,6 +11,9 @@ import {
 import { render } from '@/test/console/render'
 import { PricingContent } from '../content'
 
+const openBillingWindow = vi.hoisted(() => vi.fn())
+vi.mock('@/hooks/use-async-window-open', () => ({ useAsyncWindowOpen: () => openBillingWindow }))
+
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en-US', useLocale: () => 'en-US' }))
 vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
@@ -157,7 +160,51 @@ it('keeps plan information visible after a request failure and restores billing 
   ).toBeEnabled()
 })
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  openBillingWindow.mockReset()
+})
+
+it('keeps the current paid plan billing action available while education loads or fails', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  queryClient.setDefaultOptions({
+    queries: { retry: false, retryOnMount: false, staleTime: Infinity },
+  })
+  seedFeatures(queryClient, {
+    billing: { subscription: { plan: 'professional' } },
+    education: { enabled: true },
+  })
+  let rejectEducation!: (error: Error) => void
+  const request = queryClient
+    .query({
+      ...consoleQuery.account.education.get.queryOptions(),
+      queryFn: () =>
+        new Promise<never>((_, reject) => {
+          rejectEducation = reject
+        }),
+    })
+    .catch(() => {})
+  vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async () =>
+      new Response(JSON.stringify({ url: 'https://billing.example.com' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+  )
+  openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
+  show()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+  await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+  await act(async () => {
+    rejectEducation(new Error('Unavailable'))
+    await request
+  })
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
+})
 
 it('uses the visible billing label to name and toggle the switch', async () => {
   const user = userEvent.setup()

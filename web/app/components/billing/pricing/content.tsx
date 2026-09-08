@@ -33,9 +33,8 @@ export function PricingContent() {
     }),
   )
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const isEducationDiscountEligible = educationEnabled && educationQuery.data === true
-  const isBillingReady =
-    features !== undefined && (!educationEnabled || educationQuery.data !== undefined)
+  const isEducationDiscountEligible = educationEnabled ? educationQuery.data : false
+  const isCheckoutReady = features !== undefined && isEducationDiscountEligible !== undefined
   const pricingError =
     (!features && featuresQuery.isError) ||
     (educationEnabled && educationQuery.data === undefined && educationQuery.isError)
@@ -46,10 +45,12 @@ export function PricingContent() {
   const billingInterval = selectedBillingInterval ?? defaultBillingInterval
   const isCloud = activeCategory === 'cloud'
   const currentCloudPlan = features?.billing.subscription.plan
-  const billing =
-    isBillingReady && currentCloudPlan
-      ? { currentPlan: currentCloudPlan, isEducationDiscountEligible }
-      : undefined
+  const billing = currentCloudPlan
+    ? {
+        currentPlan: currentCloudPlan,
+        isEducationDiscountEligible,
+      }
+    : undefined
 
   return (
     <Tabs
@@ -125,7 +126,7 @@ export function PricingContent() {
               </Button>
             </div>
           ) : (
-            !isBillingReady && (
+            !isCheckoutReady && (
               <span role="status" className="sr-only">
                 {t(($) => $.loading, { ns: 'appApi' })}
               </span>
