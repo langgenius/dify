@@ -162,110 +162,26 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         workflow_id: str,
         node_id: str,
     ) -> WorkflowNodeExecutionModel | None:
-        """
-        Get the most recent execution for a specific node.
-
-        Uses query syntax to get raw logs and selects the one with max log_version.
-        Returns the most recent execution ordered by created_at.
-        """
-        logger.debug(
-            "get_node_last_execution: tenant_id=%s, app_id=%s, workflow_id=%s, node_id=%s",
-            tenant_id,
-            app_id,
-            workflow_id,
-            node_id,
+        """Return the most recent visible, non-paused execution after selecting each latest version."""
+        scope = {"tenant_id": tenant_id, "app_id": app_id, "workflow_id": workflow_id, "node_id": node_id}
+        filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in scope.items())
+        search = " and ".join(f"{key}: {escape_logstore_query_value(value)}" for key, value in scope.items())
+        results = self.logstore_client.execute_sql(
+            sql=f"""
+                SELECT * FROM (
+                    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
+                    FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                    WHERE {filters} AND __time__ > 0
+                ) AS executions WHERE rn = 1
+                  AND (triggered_from IS NULL
+                       OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}')
+                  AND (status IS NULL OR status != '{WorkflowNodeExecutionStatus.PAUSED.value}')
+                ORDER BY created_at DESC LIMIT 1
+            """,
+            logstore=AliyunLogStore.workflow_node_execution_logstore,
+            query=search,
         )
-        try:
-            # Escape parameters to prevent SQL injection
-            escaped_tenant_id = escape_identifier(tenant_id)
-            escaped_app_id = escape_identifier(app_id)
-            escaped_workflow_id = escape_identifier(workflow_id)
-            escaped_node_id = escape_identifier(node_id)
-
-            # Check if PG protocol is supported
-            if self.logstore_client.supports_pg_protocol:
-                # Use PG protocol with SQL query (get latest version of each record)
-                sql_query = f"""
-                    SELECT * FROM (
-                        SELECT *,
-                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
-                        FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE tenant_id = '{escaped_tenant_id}'
-                          AND app_id = '{escaped_app_id}'
-                          AND workflow_id = '{escaped_workflow_id}'
-                          AND node_id = '{escaped_node_id}'
-                          AND (triggered_from IS NULL
-                               OR triggered_from != '{WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value}')
-                          AND __time__ > 0
-                    ) AS subquery WHERE rn = 1
-                    LIMIT 100
-                """
-                results = self.logstore_client.execute_sql(
-                    sql=sql_query,
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                )
-            else:
-                # Use SDK with LogStore query syntax
-                query = (
-                    f"tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id} "
-                    f"and workflow_id: {escaped_workflow_id} and node_id: {escaped_node_id}"
-                    " and not triggered_from: "
-                    f"{escape_logstore_query_value(WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL.value)}"
-                )
-                from_time = 0
-                to_time = int(time.time())  # now
-
-                results = self.logstore_client.get_logs(
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                    from_time=from_time,
-                    to_time=to_time,
-                    query=query,
-                    line=100,
-                    reverse=False,
-                )
-
-            if not results:
-                return None
-
-            # For SDK mode, group by id and select the one with max log_version for each group
-            # For PG mode, this is already done by the SQL query
-            if not self.logstore_client.supports_pg_protocol:
-                id_to_results: dict[str, list[dict[str, Any]]] = {}
-                for row in results:
-                    row_id = row.get("id")
-                    if row_id:
-                        if row_id not in id_to_results:
-                            id_to_results[row_id] = []
-                        id_to_results[row_id].append(row)
-
-                # For each id, select the row with max log_version
-                deduplicated_results = []
-                for rows in id_to_results.values():
-                    if len(rows) > 1:
-                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                    else:
-                        max_row = rows[0]
-                    deduplicated_results.append(max_row)
-            else:
-                # For PG mode, results are already deduplicated by the SQL query
-                deduplicated_results = results
-
-            # Sort by created_at DESC and return the most recent one
-            deduplicated_results.sort(
-                key=lambda x: x.get("created_at", 0) if isinstance(x.get("created_at"), (int, float)) else 0,
-                reverse=True,
-            )
-
-            for row in deduplicated_results:
-                model = _dict_to_workflow_node_execution_model(row)
-                if model.status != WorkflowNodeExecutionStatus.PAUSED:
-                    return model
-
-            return None
-
-        except Exception:
-            logger.exception("Failed to get node last execution from LogStore")
-            raise
+        return _dict_to_workflow_node_execution_model(results[0]) if results else None
 
     @override
     def get_executions_by_workflow_run(
@@ -404,71 +320,19 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         execution_id: str,
         tenant_id: str | None = None,
     ) -> WorkflowNodeExecutionModel | None:
-        """
-        Get a workflow node execution by its ID.
-        Uses query syntax to get raw logs and selects the one with max log_version.
-        """
-        logger.debug("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
-        try:
-            # Escape parameters to prevent SQL injection
-            escaped_execution_id = escape_identifier(execution_id)
-
-            # Check if PG protocol is supported
-            if self.logstore_client.supports_pg_protocol:
-                # Use PG protocol with SQL query (get latest version of record)
-                if tenant_id:
-                    escaped_tenant_id = escape_identifier(tenant_id)
-                    tenant_filter = f"AND tenant_id = '{escaped_tenant_id}'"
-                else:
-                    tenant_filter = ""
-
-                sql_query = f"""
-                    SELECT * FROM (
-                        SELECT *,
-                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
-                        FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE id = '{escaped_execution_id}' {tenant_filter} AND __time__ > 0
-                    ) AS subquery WHERE rn = 1
-                    LIMIT 1
-                """
-                results = self.logstore_client.execute_sql(
-                    sql=sql_query,
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                )
-            else:
-                # Use SDK with LogStore query syntax
-                # Note: Values must be quoted in LogStore query syntax to prevent injection
-                if tenant_id:
-                    query = (
-                        f"id:{escape_logstore_query_value(execution_id)} "
-                        f"and tenant_id:{escape_logstore_query_value(tenant_id)}"
-                    )
-                else:
-                    query = f"id:{escape_logstore_query_value(execution_id)}"
-
-                from_time = 0
-                to_time = int(time.time())  # now
-
-                results = self.logstore_client.get_logs(
-                    logstore=AliyunLogStore.workflow_node_execution_logstore,
-                    from_time=from_time,
-                    to_time=to_time,
-                    query=query,
-                    line=100,
-                    reverse=False,
-                )
-
-            if not results:
-                return None
-
-            # For PG mode, result is already the latest version
-            # For SDK mode, if multiple results, select the one with max log_version
-            if self.logstore_client.supports_pg_protocol or len(results) == 1:
-                return _dict_to_workflow_node_execution_model(results[0])
-            else:
-                max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
-                return _dict_to_workflow_node_execution_model(max_result)
-
-        except Exception:
-            logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)
-            raise
+        """Return the latest version of an execution, optionally scoped to its tenant."""
+        scope = {"id": execution_id}
+        if tenant_id:
+            scope["tenant_id"] = tenant_id
+        filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in scope.items())
+        search = " and ".join(f"{key}: {escape_logstore_query_value(value)}" for key, value in scope.items())
+        results = self.logstore_client.execute_sql(
+            sql=f"""
+                SELECT * FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                WHERE {filters} AND __time__ > 0
+                ORDER BY log_version DESC LIMIT 1
+            """,
+            logstore=AliyunLogStore.workflow_node_execution_logstore,
+            query=search,
+        )
+        return _dict_to_workflow_node_execution_model(results[0]) if results else None
