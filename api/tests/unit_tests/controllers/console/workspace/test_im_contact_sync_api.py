@@ -74,14 +74,14 @@ _NOW = datetime(2026, 8, 11, 8)
 _CONTACT_CREATED_AT = datetime(2025, 7, 10, 6)
 _RUN = IMSyncRun.create(
     sync_run_id=IMSyncRunId("run-1"),
-    channel_revision=IMChannelRevision("integration-1", 3),
+    channel_revision=IMChannelRevision("channel-1", 3),
     provider=IMProvider.FEISHU,
     started_by_account_id=AccountId("account-1"),
     now=_NOW,
 )
 _RESULT = SyncResultFact(
     id=IMSyncResultId("result-1"),
-    integration_id=IntegrationId("integration-1"),
+    integration_id=IntegrationId("channel-1"),
     sync_run_id=IMSyncRunId("run-1"),
     operation_key="result:not-matched:provider-user-1",
     result_type=IMSyncResultType.NOT_MATCHED,
@@ -244,7 +244,7 @@ def test_sync_command_and_queries_map_transport_neutral_results(
                 "error_message": None,
                 "result_counts": {"added": 0, "not_matched": 0, "failed": 0, "removed": 0, "skipped": 0},
                 "provider": "feishu",
-                "integration_id": "integration-1",
+                "channel_id": "channel-1",
                 "integration_config_version": 3,
             }
         }

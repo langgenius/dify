@@ -236,8 +236,7 @@ def _sync_run_payload(run: IMSyncRun) -> dict[str, object]:
             "skipped": run.skipped_count,
         },
         "provider": run.provider,
-        # TODO(QuantumGhost): rename to channel_id
-        "integration_id": run.channel_revision.channel_id,
+        "channel_id": run.channel_revision.channel_id,
         "integration_config_version": run.channel_revision.config_version,
     }
 

@@ -271,7 +271,7 @@ def test_sync_command_and_identity_queries_use_real_postgresql(
     assert len(identity_page["data"]) == 1
     assert identity_page["data"][0]["provider"] == IMProvider.FEISHU.value
     assert identity_page["data"][0]["binding_status"] == "unbound"
-    assert created_run["integration_id"] == str(channel.id)
+    assert created_run["channel_id"] == str(channel.id)
 
 
 def test_latest_result_http_projection_reads_every_persisted_bucket(

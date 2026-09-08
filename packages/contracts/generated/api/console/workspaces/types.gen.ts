@@ -1565,11 +1565,11 @@ export type ImIdentity = {
 }
 
 export type ImSyncRun = {
+  channel_id: string
   error_message?: string | null
   finished_at?: number | null
   id: string
   integration_config_version: number
-  integration_id: string
   provider: ImProvider
   result_counts: ImSyncRunResultCounts
   started_at?: number | null

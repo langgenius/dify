@@ -280,7 +280,7 @@ class IMSyncRun(ResponseModel):
         description="Aggregate reconciliation counts for the current run snapshot.",
     )
     provider: IMProvider = Field(description="IM provider associated with the sync run.")
-    integration_id: str = Field(description="Integration identifier captured when the sync run was created.")
+    channel_id: str = Field(description="Channel identifier captured when the sync run was created.")
     integration_config_version: int = Field(
         ge=1,
         description="Integration configuration revision captured when the sync run was created.",
