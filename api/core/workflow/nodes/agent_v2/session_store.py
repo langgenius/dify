@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from core.db.session_factory import session_factory
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
-    workflow_agent_workspace_scope_key,
+    build_workflow_agent_workspace_key,
 )
 from models.agent import (
     AgentConfigVersionKind,
@@ -49,7 +49,7 @@ def resolve_workflow_agent_workspace_owner_scope(
     their invocation scope and the owning run's lifetime, even inside Chatflows.
     """
 
-    owner_scope_key = workflow_agent_workspace_scope_key(
+    owner_scope_key = build_workflow_agent_workspace_key(
         node_id, workflow_agent_binding_id, workflow_tool_invocation_id
     )
     if conversation_id and workflow_tool_invocation_id is None:

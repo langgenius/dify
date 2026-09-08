@@ -1,4 +1,4 @@
-import type { WorkflowRunScope } from './workflow-tool-tracing-context'
+import type { WorkflowRunInfo } from './workflow-tool-tracing-context'
 import type { NodeTracing } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { noop, useQuery } from '@tanstack/react-query'
@@ -14,7 +14,7 @@ export default function WorkflowToolTracing({
   onBack,
 }: {
   node: NodeTracing
-  workflowRun: WorkflowRunScope
+  workflowRun: WorkflowRunInfo
   onBack: () => void
 }) {
   const { t } = useTranslation()

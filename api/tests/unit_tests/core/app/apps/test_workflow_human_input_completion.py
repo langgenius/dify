@@ -58,7 +58,7 @@ from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_huma
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
-def _persist_form(
+def _save_form(
     session: Session,
     *,
     status: HumanInputFormStatus,
@@ -95,7 +95,7 @@ def _persist_form(
     return form
 
 
-def _resuming_entry(
+def _make_paused_workflow(
     runner: WorkflowBasedAppRunner, forms: list[HumanInputForm], *, human_input_form: HumanInputForm | None = None
 ) -> WorkflowEntry:
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=perf_counter())
@@ -165,16 +165,16 @@ def _resuming_entry(
 def test_resume_publishes_only_the_completed_form_among_repeated_node_invocations(
     sqlite_session: Session, status: HumanInputFormStatus
 ) -> None:
-    selected = _persist_form(sqlite_session, status=status)
-    waiting = _persist_form(sqlite_session, status=HumanInputFormStatus.WAITING)
-    expired = _persist_form(sqlite_session, status=HumanInputFormStatus.EXPIRED)
-    _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    selected = _save_form(sqlite_session, status=status)
+    waiting = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
+    expired = _save_form(sqlite_session, status=HumanInputFormStatus.EXPIRED)
+    _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     queue = MagicMock(spec=AppQueueManager)
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-    entry = _resuming_entry(runner, [selected, waiting, selected, expired])
+    entry = _make_paused_workflow(runner, [selected, waiting, selected, expired])
     original_reasons = tuple(entry.graph_engine.runtime_state.graph_execution.pause_reasons)
 
-    for event in runner._iter_workflow_events(entry):
+    for event in runner._run_workflow(entry):
         runner._handle_event(entry, event)
 
     published = [call.args[0] for call in queue.publish.call_args_list]
@@ -204,15 +204,15 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
 
 @pytest.mark.parametrize("owner_field", ["tenant_id", "app_id", "workflow_run_id"])
 def test_resume_rejects_form_outside_the_trusted_execution_owner(sqlite_session: Session, owner_field: str) -> None:
-    form = _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    form = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     setattr(form, owner_field, "another-owner")
     sqlite_session.commit()
     queue = MagicMock(spec=AppQueueManager)
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-    entry = _resuming_entry(runner, [form])
+    entry = _make_paused_workflow(runner, [form])
 
     with pytest.raises(ValueError, match="does not belong"):
-        list(runner._iter_workflow_events(entry))
+        list(runner._run_workflow(entry))
 
     assert not any(isinstance(call.args[0], QueueHumanInputFormFilledEvent) for call in queue.publish.call_args_list)
 
@@ -224,7 +224,7 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
     submitted_at = 1_700_000_000
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: submitted_at)
     factory = DifyFileReferenceFactory(build_test_run_context())
-    persisted_files = []
+    saved_files = []
     for name in ("first.txt", "second.txt"):
         upload = UploadFile(
             tenant_id="tenant",
@@ -241,7 +241,7 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
         )
         sqlite_session.add(upload)
         sqlite_session.commit()
-        persisted_files.append(
+        saved_files.append(
             factory.build_from_mapping(mapping={"transfer_method": "local_file", "upload_file_id": upload.id}).to_dict()
         )
 
@@ -257,26 +257,24 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
             sign=query["sign"][0],
         )
 
-    assert all(url_is_valid(file) for file in persisted_files)
-    form = _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    assert all(url_is_valid(file) for file in saved_files)
+    form = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     definition = FormDefinition.model_validate_json(form.form_definition)
     definition.inputs.extend(
         [FileInputConfig(output_variable_name="attachment"), FileListInputConfig(output_variable_name="attachments")]
     )
     form.form_definition = definition.model_dump_json()
-    form.submitted_data = json.dumps(
-        {"answer": "approved", "attachment": persisted_files[0], "attachments": persisted_files}
-    )
+    form.submitted_data = json.dumps({"answer": "approved", "attachment": saved_files[0], "attachments": saved_files})
     sqlite_session.commit()
 
     monkeypatch.setattr(
         "core.app.workflow.file_runtime.time.time", lambda: submitted_at + dify_config.FILES_ACCESS_TIMEOUT + 1
     )
-    assert not any(url_is_valid(file) for file in persisted_files)
+    assert not any(url_is_valid(file) for file in saved_files)
     queue = MagicMock(spec=AppQueueManager)
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-    entry = _resuming_entry(runner, [form])
-    for event in runner._iter_workflow_events(entry):
+    entry = _make_paused_workflow(runner, [form])
+    for event in runner._run_workflow(entry):
         runner._handle_event(entry, event)
 
     completions = [
@@ -295,8 +293,8 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
     assert data["answer"] == "approved"
     assert response.data.rendered_content == "Decision: approved"
     restored_files = [data["attachment"], *data["attachments"]]
-    for restored, persisted in zip(restored_files, [persisted_files[0], *persisted_files], strict=True):
-        assert (restored["related_id"], restored["filename"]) == (persisted["related_id"], persisted["filename"])
+    for restored, saved in zip(restored_files, [saved_files[0], *saved_files], strict=True):
+        assert (restored["related_id"], restored["filename"]) == (saved["related_id"], saved["filename"])
         assert url_is_valid(restored)
 
 
@@ -304,11 +302,11 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
 def test_form_completed_during_resume_is_published_once_before_the_terminal_event(
     sqlite_session: Session, late_status: HumanInputFormStatus
 ) -> None:
-    first = _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
-    second = _persist_form(sqlite_session, status=HumanInputFormStatus.WAITING)
+    first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    second = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     queue = MagicMock(spec=AppQueueManager)
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-    entry = _resuming_entry(runner, [first, second])
+    entry = _make_paused_workflow(runner, [first, second])
 
     def complete_second_form_during_execution(event: AppQueueEvent, _publish_from: PublishFrom) -> None:
         # The second submission arrives after the initial completion query,
@@ -329,7 +327,7 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
             repository.mark_timeout(form_id=second.id, timeout_status=late_status)
 
     queue.publish.side_effect = complete_second_form_during_execution
-    for event in runner._iter_workflow_events(entry):
+    for event in runner._run_workflow(entry):
         runner._handle_event(entry, event)
 
     published = [call.args[0] for call in queue.publish.call_args_list]
@@ -345,14 +343,14 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
 
 
 def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(sqlite_session: Session) -> None:
-    form = _persist_form(sqlite_session, status=HumanInputFormStatus.WAITING)
+    form = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     form.expiration_time = datetime.now(UTC) - timedelta(seconds=1)
     sqlite_session.commit()
     queue = MagicMock(spec=AppQueueManager)
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-    entry = _resuming_entry(runner, [form], human_input_form=form)
+    entry = _make_paused_workflow(runner, [form], human_input_form=form)
 
-    for event in runner._iter_workflow_events(entry):
+    for event in runner._run_workflow(entry):
         runner._handle_event(entry, event)
 
     published = [call.args[0] for call in queue.publish.call_args_list]
@@ -366,8 +364,8 @@ def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(sq
 
 
 def test_chat_history_keeps_repeated_forms_by_form_id(sqlite_session: Session) -> None:
-    first = _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
-    second = _persist_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    second = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     pipeline = _build_pipeline()
     pipeline._workflow_tenant_id = "tenant"
     pipeline._application_generate_entity = MagicMock(task_id="task")

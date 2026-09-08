@@ -29,11 +29,11 @@ it('highlights the owning Tool when its internal Human Input form is required', 
       }),
     },
   })
-  const envelope = { event: 'human_input_required', workflow_run_id: 'run', task_id: 'task' }
+  const eventInfo = { event: 'human_input_required', workflow_run_id: 'run', task_id: 'task' }
   const first = createForm('first')
 
   act(() => {
-    result.current.handleWorkflowNodeHumanInputRequired({ ...envelope, data: first })
+    result.current.handleWorkflowNodeHumanInputRequired({ ...eventInfo, data: first })
   })
 
   expect(store.getState().workflowRunningData!.humanInputFormDataList).toEqual([first])

@@ -15,9 +15,9 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import {
-  applyHumanInputFilled,
-  applyHumanInputRequired,
-  applyHumanInputTimeout,
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
 } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import {
   getProcessedFiles,
@@ -958,7 +958,7 @@ export const useChat = (
             options: otherOptions,
           }
           updateChatTreeNode(messageId, (responseItem) => {
-            applyHumanInputRequired(responseItem, humanInputRequiredData)
+            updatePendingHumanInputForm(responseItem, humanInputRequiredData)
             if (responseItem.workflowProcess?.tracing) {
               const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(
                 (item) => item.node_id === humanInputRequiredData.node_id,
@@ -973,12 +973,12 @@ export const useChat = (
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
           updateChatTreeNode(messageId, (responseItem) => {
-            applyHumanInputFilled(responseItem, humanInputFilledFormData)
+            updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            applyHumanInputTimeout(responseItem, humanInputFormTimeoutData)
+            updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           })
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
@@ -1661,7 +1661,7 @@ export const useChat = (
             workflowRunId: pausedWorkflowRunId || currentWorkflowRunId,
             options: otherOptions,
           }
-          applyHumanInputRequired(responseItem, humanInputRequiredData)
+          updatePendingHumanInputForm(responseItem, humanInputRequiredData)
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(
             (item) => item.node_id === humanInputRequiredData.node_id,
           )
@@ -1679,7 +1679,7 @@ export const useChat = (
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
-          applyHumanInputFilled(responseItem, humanInputFilledFormData)
+          updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1688,7 +1688,7 @@ export const useChat = (
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
-          applyHumanInputTimeout(responseItem, humanInputFormTimeoutData)
+          updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

@@ -40,34 +40,34 @@ export const getIterationDurationMap = (nodeInfo: NodeTracing) => {
 }
 
 export const getIterationResultList = (nodeInfo: NodeTracing, allExecutions?: NodeTracing[]) => {
-  const iterationNodeMeta = nodeInfo.execution_metadata
+  const iterationMetadata = nodeInfo.execution_metadata
 
-  if (!iterationNodeMeta?.iteration_duration_map) return nodeInfo.details || []
+  if (!iterationMetadata?.iteration_duration_map) return nodeInfo.details || []
 
-  const structuredList = Object.keys(iterationNodeMeta.iteration_duration_map)
+  const iterations = Object.keys(iterationMetadata.iteration_duration_map)
     .map((key) => getContainerExecutions(key, nodeInfo, 'iteration', allExecutions))
     .filter((branchNodes) => branchNodes.length > 0)
 
-  if (!allExecutions || !nodeInfo.details?.length) return structuredList
+  if (!allExecutions || !nodeInfo.details?.length) return iterations
 
-  const existingIterationIndices = new Set<number>()
-  structuredList.forEach((iteration) => {
+  const listedIterationIndexes = new Set<number>()
+  iterations.forEach((iteration) => {
     iteration.forEach((node) => {
       if (node.execution_metadata?.iteration_index !== undefined)
-        existingIterationIndices.add(node.execution_metadata.iteration_index)
+        listedIterationIndexes.add(node.execution_metadata.iteration_index)
     })
   })
 
   nodeInfo.details.forEach((iteration, index) => {
     if (
-      !existingIterationIndices.has(index) &&
+      !listedIterationIndexes.has(index) &&
       iteration.some((node) => node.status === NodeRunningStatus.Failed)
     ) {
-      structuredList.push(iteration)
+      iterations.push(iteration)
     }
   })
 
-  return structuredList.sort((a, b) => {
+  return iterations.sort((a, b) => {
     const aIndex = a[0]?.execution_metadata?.iteration_index ?? 0
     const bIndex = b[0]?.execution_metadata?.iteration_index ?? 0
     return aIndex - bIndex

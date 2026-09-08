@@ -1,11 +1,11 @@
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import {
-  applyHumanInputFilled,
-  applyHumanInputRequired,
-  applyHumanInputTimeout,
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
 } from '../form-state'
 
-const required = (form_id: string): HumanInputFormData => ({
+const createPendingForm = (form_id: string): HumanInputFormData => ({
   form_id,
   node_id: 'tool',
   node_title: 'Workflow Tool',
@@ -17,7 +17,7 @@ const required = (form_id: string): HumanInputFormData => ({
   expiration_time: 100,
   resolved_default_values: {},
 })
-const filled: HumanInputFilledFormData = {
+const filledForm: HumanInputFilledFormData = {
   form_id: 'second',
   node_id: 'tool',
   node_title: 'Workflow Tool',
@@ -27,34 +27,34 @@ const filled: HumanInputFilledFormData = {
 }
 
 it('updates only the addressed form when several forms share a Tool node', () => {
-  const state: Parameters<typeof applyHumanInputRequired>[0] = {}
-  const first = required('first')
-  const second = required('second')
-  applyHumanInputRequired(state, first)
-  applyHumanInputRequired(state, second)
-  applyHumanInputRequired(state, { ...second, form_token: 'refreshed' })
-  applyHumanInputTimeout(state, { ...second, expiration_time: 200 })
-  applyHumanInputTimeout(state, { ...required('missing'), expiration_time: 300 })
+  const state: Parameters<typeof updatePendingHumanInputForm>[0] = {}
+  const first = createPendingForm('first')
+  const second = createPendingForm('second')
+  updatePendingHumanInputForm(state, first)
+  updatePendingHumanInputForm(state, second)
+  updatePendingHumanInputForm(state, { ...second, form_token: 'refreshed' })
+  updateHumanInputFormTimeout(state, { ...second, expiration_time: 200 })
+  updateHumanInputFormTimeout(state, { ...createPendingForm('missing'), expiration_time: 300 })
 
   expect(state.humanInputFormDataList).toEqual([
     first,
     { ...second, form_token: 'refreshed', expiration_time: 200 },
   ])
 
-  applyHumanInputFilled(state, filled)
-  applyHumanInputFilled(state, { ...filled, rendered_content: 'Replayed approval' })
-  applyHumanInputTimeout(state, { ...second, expiration_time: 300 })
+  updateFilledHumanInputForm(state, filledForm)
+  updateFilledHumanInputForm(state, { ...filledForm, rendered_content: 'Replayed approval' })
+  updateHumanInputFormTimeout(state, { ...second, expiration_time: 300 })
 
   expect(state.humanInputFormDataList).toEqual([first])
   expect(state.humanInputFilledFormDataList).toEqual([
     {
-      ...filled,
+      ...filledForm,
       rendered_content: 'Replayed approval',
       form_content: second.form_content,
       inputs: [],
     },
   ])
-  applyHumanInputFilled(state, { ...filled, form_id: 'first' })
+  updateFilledHumanInputForm(state, { ...filledForm, form_id: 'first' })
   expect(state.humanInputFormDataList).toEqual([])
   expect(state.humanInputFilledFormDataList?.map((form) => form.form_id)).toEqual([
     'second',
@@ -63,9 +63,9 @@ it('updates only the addressed form when several forms share a Tool node', () =>
 })
 
 it('accepts submitted replay without a pending form and ignores its later timeout', () => {
-  const state: Parameters<typeof applyHumanInputFilled>[0] = {}
-  applyHumanInputFilled(state, filled)
-  applyHumanInputFilled(state, filled)
-  applyHumanInputTimeout(state, { ...filled, expiration_time: 200 })
-  expect(state).toEqual({ humanInputFilledFormDataList: [filled] })
+  const state: Parameters<typeof updateFilledHumanInputForm>[0] = {}
+  updateFilledHumanInputForm(state, filledForm)
+  updateFilledHumanInputForm(state, filledForm)
+  updateHumanInputFormTimeout(state, { ...filledForm, expiration_time: 200 })
+  expect(state).toEqual({ humanInputFilledFormDataList: [filledForm] })
 })

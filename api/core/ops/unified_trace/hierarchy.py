@@ -72,7 +72,7 @@ def execution_metadata(execution: object) -> Mapping[str, Any]:
     return {str(key): item for key, item in value.items()}
 
 
-def _node_key(execution: WorkflowExecutionLike, node_id: str) -> tuple[str, str, str]:
+def _node_lookup_key(execution: WorkflowExecutionLike, node_id: str) -> tuple[str, str, str]:
     process_data = _read_attribute(execution, "process_data") or {}
     invocation_id = process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY)
     return (
@@ -106,13 +106,13 @@ def workflow_tool_parent_ids(
 
 def _unique_execution_by_node_id(executions: Sequence[WorkflowExecutionLike]) -> dict[tuple[str, str, str], str]:
     result: dict[tuple[str, str, str], str] = {}
-    ambiguous: set[tuple[str, str, str]] = set()
+    repeated_node_keys: set[tuple[str, str, str]] = set()
     for item in executions:
         node_id = item.node_id
         if not isinstance(node_id, str):
             continue
-        key = _node_key(item, node_id)
-        if key in ambiguous:
+        key = _node_lookup_key(item, node_id)
+        if key in repeated_node_keys:
             continue
         item_execution_id = execution_id(item)
         previous = result.get(key)
@@ -120,7 +120,7 @@ def _unique_execution_by_node_id(executions: Sequence[WorkflowExecutionLike]) ->
             result[key] = item_execution_id
         elif previous != item_execution_id:
             result.pop(key, None)
-            ambiguous.add(key)
+            repeated_node_keys.add(key)
     return result
 
 
@@ -183,7 +183,7 @@ def build_workflow_hierarchy(executions: Sequence[WorkflowExecutionLike]) -> Wor
         item_execution_id = execution_id(item)
         predecessor_node_id = item.predecessor_node_id
         parent_execution_id = (
-            execution_by_node_id.get(_node_key(item, predecessor_node_id))
+            execution_by_node_id.get(_node_lookup_key(item, predecessor_node_id))
             if isinstance(predecessor_node_id, str)
             else None
         )
@@ -192,7 +192,7 @@ def build_workflow_hierarchy(executions: Sequence[WorkflowExecutionLike]) -> Wor
             for structured_key in ("iteration_id", "loop_id"):
                 container_node_id = _metadata_or_attr(item, metadata, structured_key)
                 if isinstance(container_node_id, str):
-                    parent_execution_id = execution_by_node_id.get(_node_key(item, container_node_id))
+                    parent_execution_id = execution_by_node_id.get(_node_lookup_key(item, container_node_id))
                 if parent_execution_id is not None:
                     break
         parent_execution_id = parent_execution_id or tool_parents.get(item_execution_id)
@@ -209,7 +209,7 @@ def build_workflow_hierarchy(executions: Sequence[WorkflowExecutionLike]) -> Wor
             index = _normalize_index(_metadata_or_attr(item, metadata, index_key))
             if not isinstance(container_node_id, str) or index is None:
                 continue
-            container_execution_id = execution_by_node_id.get(_node_key(item, container_node_id))
+            container_execution_id = execution_by_node_id.get(_node_lookup_key(item, container_node_id))
             if container_execution_id is None or container_execution_id == execution_id(item):
                 continue
             wrapper_key = WrapperKey(kind=kind, container_execution_id=container_execution_id, index=index)

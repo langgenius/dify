@@ -297,12 +297,10 @@ class WorkflowBasedAppRunner:
         container_ids = {node["id"]: resolve_container_id(node, nodes_by_id=nodes_by_id) for node in all_node_configs}
         node_ids = {node_id}
         while (
-            descendant_node_ids := {
-                node.get("id") for node in all_node_configs if container_ids[node["id"]] in node_ids
-            }
+            child_node_ids := {node.get("id") for node in all_node_configs if container_ids[node["id"]] in node_ids}
             - node_ids
         ):
-            node_ids.update(descendant_node_ids)
+            node_ids.update(child_node_ids)
         # Preserve ownership resolved with the complete ancestry before removing it
         # from the debug subtree. Nested legacy IDs can otherwise become ambiguous.
         node_configs = [
@@ -430,10 +428,10 @@ class WorkflowBasedAppRunner:
             logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
             return None
 
-    def _iter_workflow_events(self, workflow_entry: WorkflowEntry) -> Generator[EngineEvent, None, None]:
+    def _run_workflow(self, workflow_entry: WorkflowEntry) -> Generator[EngineEvent, None, None]:
         # Engine.run clears pause reasons during resume. Form completion belongs
         # to this response boundary, including forms inside hidden Tool frames.
-        reasons = tuple(workflow_entry.graph_engine.runtime_state.graph_execution.pause_reasons)
+        pause_reasons = tuple(workflow_entry.graph_engine.runtime_state.graph_execution.pause_reasons)
         published_form_ids: set[str] = set()
         for event in workflow_entry.run():
             if isinstance(
@@ -446,17 +444,17 @@ class WorkflowBasedAppRunner:
             ):
                 # Another form may complete while this resumed attempt runs.
                 # Flush it before the terminal event closes the response stream.
-                self._publish_human_input_results(workflow_entry, reasons, published_form_ids)
+                self._publish_human_input_results(workflow_entry, pause_reasons, published_form_ids)
             yield event
             if isinstance(event, GraphRunStartedEvent):
-                self._publish_human_input_results(workflow_entry, reasons, published_form_ids)
+                self._publish_human_input_results(workflow_entry, pause_reasons, published_form_ids)
 
     def _publish_human_input_results(
-        self, workflow_entry: WorkflowEntry, reasons: Sequence[object], published_form_ids: set[str]
+        self, workflow_entry: WorkflowEntry, pause_reasons: Sequence[object], published_form_ids: set[str]
     ) -> None:
         pending_forms = {
             default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id): reason
-            for reason in reasons
+            for reason in pause_reasons
             if isinstance(reason, HitlRequired)
         }
         if not pending_forms:
@@ -464,7 +462,7 @@ class WorkflowBasedAppRunner:
 
         engine = workflow_entry.graph_engine
         variable_pool = engine.runtime_state.variable_pool
-        context = resolve_dify_run_context(engine.graph.root_node.run_context)
+        run_context = resolve_dify_run_context(engine.graph.root_node.run_context)
         run_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
         repository = HumanInputFormSubmissionRepository()
         for form_id, reason in pending_forms.items():
@@ -474,7 +472,7 @@ class WorkflowBasedAppRunner:
             if form is None:
                 raise ValueError(f"Human input form not found: {form_id}")
             if not run_id or (form.tenant_id, form.app_id, form.workflow_run_id) != (
-                context.tenant_id,
+                run_context.tenant_id,
                 self._app_id,
                 run_id,
             ):
@@ -498,7 +496,7 @@ class WorkflowBasedAppRunner:
                 )
                 if action is None:
                     raise ValueError(f"Submitted human input form has no matching action: {form_id}")
-                restored_data = DifyHumanInputNodeRuntime(context).restore_submitted_data(
+                restored_data = DifyHumanInputNodeRuntime(run_context).restore_submitted_data(
                     inputs=form.definition.inputs, submitted_data=form.submitted_data or {}
                 )
                 submitted_data = {name: build_segment(value) for name, value in restored_data.items()}

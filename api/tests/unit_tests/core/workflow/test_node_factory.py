@@ -324,41 +324,41 @@ class TestDifyNodeFactoryInit:
             init_params=sentinel.init_params,
             runtime_state=sentinel.runtime_state,
             human_input_run_context=None,
-            containerize_workflow_tools=True,
+            use_workflow_tool_containers=True,
         )
 
-    def test_with_runtime_state_rebinds_factory(self):
+    def test_with_runtime_state_creates_factory_with_new_state(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.init_params = sentinel.init_params
         factory._human_input_run_context = None
-        factory._containerize_workflow_tools = True
+        factory._use_workflow_tool_containers = True
 
         with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
-            rebound = factory.with_runtime_state(sentinel.runtime_state)
+            new_factory = factory.with_runtime_state(sentinel.runtime_state)
 
-        assert rebound is sentinel.factory
+        assert new_factory is sentinel.factory
         factory_cls.assert_called_once_with(
             init_params=sentinel.init_params,
             runtime_state=sentinel.runtime_state,
             human_input_run_context=None,
-            containerize_workflow_tools=True,
+            use_workflow_tool_containers=True,
         )
 
     def test_with_graph_config_copies_factory_and_init_params(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.init_params = MagicMock()
-        factory.init_params.model_copy.return_value = sentinel.scoped_init_params
+        factory.init_params.model_copy.return_value = sentinel.copied_init_params
         factory._human_input_run_context = sentinel.human_input_run_context
-        factory._containerize_workflow_tools = True
+        factory._use_workflow_tool_containers = True
         graph_config = {"nodes": [], "edges": []}
 
-        scoped_factory = factory.with_graph_config(graph_config)
+        copied_factory = factory.with_graph_config(graph_config)
 
-        assert scoped_factory is not factory
-        assert scoped_factory.init_params is sentinel.scoped_init_params
-        assert factory.init_params is not sentinel.scoped_init_params
-        assert scoped_factory._human_input_run_context is sentinel.human_input_run_context
-        assert scoped_factory._containerize_workflow_tools is True
+        assert copied_factory is not factory
+        assert copied_factory.init_params is sentinel.copied_init_params
+        assert factory.init_params is not sentinel.copied_init_params
+        assert copied_factory._human_input_run_context is sentinel.human_input_run_context
+        assert copied_factory._use_workflow_tool_containers is True
         factory.init_params.model_copy.assert_called_once_with(update={"graph_config": graph_config})
 
     def test_init_builds_default_dependencies(self):
@@ -507,7 +507,7 @@ class TestDifyNodeFactoryCreateNode:
             app_type=None,
             created_by=None,
         )
-        factory._containerize_workflow_tools = True
+        factory._use_workflow_tool_containers = True
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer

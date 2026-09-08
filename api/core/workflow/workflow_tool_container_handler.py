@@ -75,15 +75,15 @@ _CONTAINER_METADATA_KEYS = frozenset(
 type WorkflowToolEventListenerFactory = Callable[[WorkflowToolSource], Callable[[NodeEvent], None]]
 
 
-def _persist_workflow_tool_event(event: NodeEvent, listeners: Mapping[str, Callable[[NodeEvent], None]]) -> None:
-    source_boundary = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
-    source_frame_id = source_boundary.get("frame_id") if isinstance(source_boundary, Mapping) else None
-    if isinstance(source_frame_id, str) and (listener := listeners.get(source_frame_id)) is not None:
+def _save_workflow_tool_event(event: NodeEvent, listeners: Mapping[str, Callable[[NodeEvent], None]]) -> None:
+    child_event_data = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
+    child_frame_id = child_event_data.get("frame_id") if isinstance(child_event_data, Mapping) else None
+    if isinstance(child_frame_id, str) and (listener := listeners.get(child_frame_id)) is not None:
         try:
             listener(event)
         except Exception:
             logger.exception(
-                "Failed to persist Workflow Tool event: frame_id=%s, node_id=%s", source_frame_id, event.node_id
+                "Failed to persist Workflow Tool event: frame_id=%s, node_id=%s", child_frame_id, event.node_id
             )
 
 
@@ -118,7 +118,7 @@ class WorkflowToolNestedContainerHandler:
     def should_emit(self, *, event: NodeEvent) -> bool:
         should_emit = self._handler.should_emit(event=event)
         if should_emit and _HIDDEN_CHILD_EVENT_KEY in event.node_run_result.process_data:
-            _persist_workflow_tool_event(event, self._event_listeners)
+            _save_workflow_tool_event(event, self._event_listeners)
             if self._hidden_event_listener is not None:
                 self._hidden_event_listener(event)
             return False
@@ -159,7 +159,7 @@ class WorkflowToolContainerHandler:
         if isinstance(variable_pool, str):
             raise TypeError(f"Workflow Tool frame {frame_state.frame_id} requires a local variable pool")
 
-        run_state = self._custom_run(frame_state.parent_invocation_id)
+        run_state = self._get_tool_run_state(frame_state.parent_invocation_id)
         payload = WorkflowToolContainerPayload.model_validate_json(run_state.payload)
         self._create_frame(
             run_state=run_state,
@@ -178,7 +178,7 @@ class WorkflowToolContainerHandler:
         if not isinstance(request, CustomContainerRequest):
             raise TypeError(f"Workflow Tool handler cannot handle {type(request).__name__}")
 
-        run_state = self._custom_run(invocation_id)
+        run_state = self._get_tool_run_state(invocation_id)
         payload = WorkflowToolContainerPayload.model_validate_json(request.payload)
         frame_id = f"{invocation_id}:workflow-tool"
         try:
@@ -214,8 +214,8 @@ class WorkflowToolContainerHandler:
         child_frame.scheduler.enqueue_node(child_frame.graph.root_node.id)
 
     def prepare_frame_event(self, *, frame: ExecutionFrame, event: NodeEvent) -> None:
-        source_boundary = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
-        is_direct_workflow_tool_child = source_boundary is None
+        child_event_data = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
+        is_direct_workflow_tool_child = child_event_data is None
         if is_direct_workflow_tool_child and isinstance(event, NodeRunFailedEvent):
             # Graphon increments immediately after container preparation; only the outer Tool failure belongs here.
             frame.state.graph_execution.exceptions_count -= 1
@@ -226,7 +226,7 @@ class WorkflowToolContainerHandler:
         # Preserve source ownership before outer containers add their own metadata.
         event.node_run_result.process_data = {
             **event.node_run_result.process_data,
-            _HIDDEN_CHILD_EVENT_KEY: source_boundary
+            _HIDDEN_CHILD_EVENT_KEY: child_event_data
             or {
                 "frame_id": frame.frame_id,
                 "container_metadata": {
@@ -238,7 +238,7 @@ class WorkflowToolContainerHandler:
         }
 
     def should_emit(self, *, event: NodeEvent) -> bool:
-        _persist_workflow_tool_event(event, self._event_listeners)
+        _save_workflow_tool_event(event, self._event_listeners)
         if self._hidden_event_listener is not None:
             self._hidden_event_listener(event)
         return False
@@ -254,8 +254,8 @@ class WorkflowToolContainerHandler:
         if not frame.scheduler.is_execution_complete():
             return
 
-        frame_state = self._custom_frame(frame.frame_id)
-        run_state = self._custom_run(frame_state.parent_invocation_id)
+        frame_state = self._get_tool_frame_state(frame.frame_id)
+        run_state = self._get_tool_run_state(frame_state.parent_invocation_id)
         payload = WorkflowToolContainerPayload.model_validate_json(run_state.payload)
         parent_frame = self._frame_registry[run_state.frame_id]
         failure_variable = frame.state.variable_pool.get(self._failure_selector(frame.frame_id))
@@ -366,28 +366,28 @@ class WorkflowToolContainerHandler:
                 node_id=run_state.node_id,
             ).execution_id
 
-            def persist_child_event(event: NodeEvent) -> None:
+            def save_child_event(event: NodeEvent) -> None:
                 # Delivery runs after Graphon normalizes results and suppresses retry starts.
-                persisted_event = event.model_copy(deep=True)
-                source_boundary = persisted_event.node_run_result.process_data[_HIDDEN_CHILD_EVENT_KEY]
-                persisted_event.node_run_result.metadata = {
+                event_to_save = event.model_copy(deep=True)
+                child_event_data = event_to_save.node_run_result.process_data[_HIDDEN_CHILD_EVENT_KEY]
+                event_to_save.node_run_result.metadata = {
                     key: value
-                    for key, value in persisted_event.node_run_result.metadata.items()
+                    for key, value in event_to_save.node_run_result.metadata.items()
                     if key not in _CONTAINER_METADATA_KEYS
-                } | source_boundary["container_metadata"]
-                persisted_event.node_run_result.process_data = {
+                } | child_event_data["container_metadata"]
+                event_to_save.node_run_result.process_data = {
                     key: value
-                    for key, value in persisted_event.node_run_result.process_data.items()
+                    for key, value in event_to_save.node_run_result.process_data.items()
                     if key != _HIDDEN_CHILD_EVENT_KEY
                 } | {
                     WORKFLOW_TOOL_INVOCATION_ID_KEY: run_state.invocation_id,
                     WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY: parent_execution_id,
                 }
-                if persisted_event.container_id == run_state.node_id:
-                    persisted_event.container_id = ""
-                listener(persisted_event)
+                if event_to_save.container_id == run_state.node_id:
+                    event_to_save.container_id = ""
+                listener(event_to_save)
 
-            self._event_listeners[frame_id] = persist_child_event
+            self._event_listeners[frame_id] = save_child_event
         return self._frame_registry.create(
             frame_id=frame_id,
             container_id=run_state.node_id,
@@ -489,17 +489,17 @@ class WorkflowToolContainerHandler:
     def _collect_files(values: Mapping[str, object]) -> list[File]:
         files: list[File] = []
 
-        def visit(value: object) -> None:
+        def collect_files(value: object) -> None:
             if isinstance(value, File):
                 files.append(value)
             elif isinstance(value, Mapping):
                 for item in value.values():
-                    visit(item)
+                    collect_files(item)
             elif isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
                 for item in value:
-                    visit(item)
+                    collect_files(item)
 
-        visit(values)
+        collect_files(values)
         return files
 
     def _root_runtime_state(self) -> RuntimeState:
@@ -509,13 +509,13 @@ class WorkflowToolContainerHandler:
     def _failure_selector(frame_id: str) -> tuple[str, str]:
         return (f"{_FAILURE_SELECTOR_PREFIX}:{frame_id}", "failure")
 
-    def _custom_run(self, invocation_id: str) -> CustomContainerRunState:
+    def _get_tool_run_state(self, invocation_id: str) -> CustomContainerRunState:
         run_state = self._root_runtime_state().get_container_run(invocation_id)
         if not isinstance(run_state, CustomContainerRunState):
             raise TypeError(f"Workflow Tool handler cannot use {run_state.kind} run")
         return run_state
 
-    def _custom_frame(self, frame_id: str) -> CustomContainerFrameState:
+    def _get_tool_frame_state(self, frame_id: str) -> CustomContainerFrameState:
         frame_state = self._root_runtime_state().get_container_frame(frame_id)
         if not isinstance(frame_state, CustomContainerFrameState):
             raise TypeError(f"Workflow Tool handler cannot use {frame_state.kind} frame")

@@ -60,7 +60,7 @@ class DifyWorkflowToolNode(ToolNode):
                 node_execution_id=self.execution_id,
             )
         except ToolNodeError as error:
-            yield self._failed_result(
+            yield self._build_failure_event(
                 error=error,
                 message="Failed to get tool runtime",
                 inputs={},
@@ -89,7 +89,7 @@ class DifyWorkflowToolNode(ToolNode):
                 workflow_call_depth=self.workflow_call_depth,
             )
         except ToolNodeError as error:
-            yield self._failed_result(
+            yield self._build_failure_event(
                 error=error,
                 message="Failed to prepare Workflow Tool",
                 inputs=parameters_for_log,
@@ -138,7 +138,7 @@ class DifyWorkflowToolNode(ToolNode):
         }
 
     @staticmethod
-    def _failed_result(
+    def _build_failure_event(
         *,
         error: Exception,
         message: str,
