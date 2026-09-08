@@ -1,12 +1,14 @@
 # @langgenius/dify-ui
 
-This file owns the package boundary and routes detailed contracts. Start from the [package index],
-then read only the guide for the contract being changed.
+This file owns the package boundary. Read the matching contract guide below directly; use the
+[package index] when discovering available primitives or usage examples.
 
 ## Package boundary
 
 - Keep this an independent primitive package. Do not import from application packages or depend on
   routing, i18n, application state, schemas, data fetching, or business APIs.
+- Keep package contracts and contributor guidance self-contained here. Application docs and agent
+  skills may reference these guides; these guides must not require Web docs or skills to define package behavior.
 - Prefer `@base-ui/react` when it owns the required headless behavior. Style primitives with `cva`,
   `cn`, and Dify design tokens. Keep one primitive per `src/<name>/` folder with optional colocated
   stories and tests.

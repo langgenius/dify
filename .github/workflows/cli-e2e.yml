@@ -87,10 +87,9 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
-          package_json_field: packageManager
-          run_install: false
+          install: false
 
       - name: Install CLI dependencies
         working-directory: cli
@@ -131,11 +130,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run framework + output + error-handling
@@ -181,11 +175,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run discovery suite
@@ -247,11 +236,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: 'Run run/${{ matrix.name }}'
@@ -312,11 +296,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run auth/login + status + whoami
@@ -371,11 +350,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          package_json_field: packageManager
-          run_install: false
-      - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
       - name: Run use / devices / logout / agent (serial)

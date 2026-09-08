@@ -90,7 +90,6 @@ export default function CheckCode() {
           <div className="mt-3">
             <Button
               loading={loading}
-              disabled={loading}
               variant="primary"
               className="w-full"
               onClick={handleGetEMailVerificationCode}

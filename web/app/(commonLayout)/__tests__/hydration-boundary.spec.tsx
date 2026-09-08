@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
   workspaceQueryOptions: vi.fn(),
   permissionQueryFn: vi.fn(),
   permissionQueryOptions: vi.fn(),
-  getServerConsoleClientContext: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
@@ -48,10 +47,12 @@ vi.mock('@/features/account-profile/server', () => ({
   }),
 }))
 
-vi.mock('@/service/server', () => ({
-  getServerConsoleClientContext: () => mocks.getServerConsoleClientContext(),
+vi.mock('@/service/console/server', () => ({
   resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
-  serverConsoleQuery: {
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
     workspaces: {
       current: {
         summary: {
@@ -107,13 +108,9 @@ describe('CommonLayoutHydrationBoundary', () => {
       credits: 200,
     })
     mocks.permissionQueryFn.mockResolvedValue({
-      workspace: { permission_keys: ['agent.manage'] },
+      workspace: { permission_keys: ['agent.acl.preview'] },
       app: { default_permission_keys: [], overrides: [] },
       dataset: { default_permission_keys: [], overrides: [] },
-    })
-    mocks.getServerConsoleClientContext.mockResolvedValue({
-      cookie: 'session=abc',
-      csrfToken: 'csrf-token',
     })
     mocks.workspaceQueryOptions.mockReturnValue({
       queryKey: ['console', 'workspaces', 'current', 'summary', 'get'],
@@ -144,20 +141,11 @@ describe('CommonLayoutHydrationBoundary', () => {
     )
     expect(screen.getByText('Common shell')).toBeInTheDocument()
     expect(mocks.profileQueryFn).toHaveBeenCalledTimes(1)
-    expect(mocks.getServerConsoleClientContext).toHaveBeenCalledTimes(1)
     expect(mocks.workspaceQueryOptions).toHaveBeenCalledWith({
-      context: {
-        cookie: 'session=abc',
-        csrfToken: 'csrf-token',
-      },
       retry: false,
     })
     expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
     expect(mocks.permissionQueryOptions).toHaveBeenCalledWith({
-      context: {
-        cookie: 'session=abc',
-        csrfToken: 'csrf-token',
-      },
       retry: false,
     })
     expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)

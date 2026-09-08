@@ -151,7 +151,6 @@ export const EnvironmentTable = memo(
               size="small"
               variant="secondary"
               loading={latestVersionIsRetrying}
-              disabled={latestVersionIsRetrying}
               onClick={() => void refetchLatestVersion()}
               className="gap-1 px-2"
             >

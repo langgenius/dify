@@ -1,7 +1,8 @@
 import uuid
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.openapi.auth.composition import account_pipeline, auth_router, external_sso_pipeline
-from controllers.openapi.auth.data import RBACRequirement, RequestContext
+from controllers.openapi.auth.data import RequestContext
 from controllers.openapi.auth.flow import When
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from controllers.openapi.auth.verify import (
@@ -12,7 +13,7 @@ from controllers.openapi.auth.verify import (
     check_workspace_mismatch,
     check_workspace_role,
 )
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACPermission
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
@@ -206,7 +207,7 @@ def _selected_auth_steps_with_rbac(rbac):
 
 
 def test_account_pipeline_selects_rbac_step_when_required():
-    rbac = RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
+    rbac = RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())
     assert check_rbac_permission in _selected_auth_steps_with_rbac(rbac)
 
 

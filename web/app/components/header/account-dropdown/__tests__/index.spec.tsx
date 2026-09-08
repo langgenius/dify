@@ -1,10 +1,8 @@
-import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import AccountSection from '@/app/components/main-nav/components/account-section'
-import { useProviderContext } from '@/context/provider-context'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -19,10 +17,6 @@ const { mockPush, mockResetUser, mockSetSettingsDestination, mockUseRouter } = v
 
 vi.mock('@/app/components/base/amplitude/utils', () => ({
   resetUser: mockResetUser,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
 }))
 
 vi.mock('@/service/use-common', async (importOriginal) => ({
@@ -69,7 +63,7 @@ const renderAccountDropdown = () => {
         </button>
       )}
     />,
-    { queryClient },
+    { queryClient, features: { education: { enabled: false } } },
   )
 }
 
@@ -79,9 +73,6 @@ describe('AccountDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ push: mockPush })
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
@@ -90,7 +81,10 @@ describe('AccountDropdown', () => {
   it('includes the visible account name in the main navigation trigger accessible name', () => {
     const queryClient = createAccountProfileQueryClient(userProfile)
 
-    renderWithConsoleQuery(<AccountSection />, { queryClient })
+    renderWithConsoleQuery(<AccountSection />, {
+      queryClient,
+      features: { education: { enabled: false } },
+    })
 
     expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
   })
@@ -98,7 +92,10 @@ describe('AccountDropdown', () => {
   it('keeps the account identity in the compact trigger accessible name', () => {
     const queryClient = createAccountProfileQueryClient(userProfile)
 
-    renderWithConsoleQuery(<AccountSection compact />, { queryClient })
+    renderWithConsoleQuery(<AccountSection compact />, {
+      queryClient,
+      features: { education: { enabled: false } },
+    })
 
     expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
     expect(screen.queryByText('Current User')).not.toBeInTheDocument()
@@ -108,7 +105,10 @@ describe('AccountDropdown', () => {
     const user = userEvent.setup()
     const queryClient = createAccountProfileQueryClient(userProfile)
 
-    renderWithConsoleQuery(<AccountSection />, { queryClient })
+    renderWithConsoleQuery(<AccountSection />, {
+      queryClient,
+      features: { education: { enabled: false } },
+    })
 
     expect(screen.getByText('Current User')).toBeInTheDocument()
 
