@@ -73,13 +73,13 @@ class MarkdownExtractor(BaseExtractor):
                 current_header = line
                 current_text = ""
             else:
-                current_text += line + "\n"
+                # Strip HTML tags from prose lines only. Fenced code blocks are
+                # accumulated verbatim above, so `<...>` sequences in code (e.g.
+                # comparisons or generics) are preserved.
+                current_text += re.sub(r"<.*?>", "", line) + "\n"
         markdown_tups.append((current_header, current_text))
 
-        markdown_tups = [
-            (re.sub(r"#", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
-            for key, value in markdown_tups
-        ]
+        markdown_tups = [(re.sub(r"#", "", key).strip() if key else None, value) for key, value in markdown_tups]
 
         return markdown_tups
 

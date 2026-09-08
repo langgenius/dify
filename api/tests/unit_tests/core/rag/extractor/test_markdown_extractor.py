@@ -47,6 +47,36 @@ after
         assert tups[1][0] == "Header"
         assert "# this is not a heading" in tups[1][1]
 
+    def test_markdown_to_tups_preserves_angle_brackets_in_code_blocks(self):
+        markdown = """# Comparison
+before
+```python
+if a < b > c:
+    process(List<String>, Map<String, Integer>)
+```
+after
+"""
+        extractor = MarkdownExtractor(file_path="dummy_path")
+
+        tups = extractor.markdown_to_tups(markdown)
+
+        assert len(tups) == 2
+        assert tups[1][0] == "Comparison"
+        assert "if a < b > c:" in tups[1][1]
+        assert "process(List<String>, Map<String, Integer>)" in tups[1][1]
+
+    def test_markdown_to_tups_still_strips_html_tags_from_prose(self):
+        markdown = """# Header
+Text with <b>bold</b> and <span class="x">inline</span> tags.
+"""
+        extractor = MarkdownExtractor(file_path="dummy_path")
+
+        tups = extractor.markdown_to_tups(markdown)
+
+        assert len(tups) == 2
+        assert tups[1][0] == "Header"
+        assert tups[1][1].strip() == "Text with bold and inline tags."
+
     def test_remove_images_and_hyperlinks(self):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
