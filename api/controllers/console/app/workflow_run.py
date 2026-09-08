@@ -327,8 +327,7 @@ class WorkflowToolNodeExecutionListApi(Resource):
     )
     @console_ns.response(404, "Workflow run not found")
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_CREATE_AND_MANAGEMENT,
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
     )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, request_context: RequestContext, app_model: App, run_id: UUID, node_execution_id: str):

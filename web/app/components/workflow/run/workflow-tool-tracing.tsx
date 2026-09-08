@@ -5,7 +5,7 @@ import { noop, useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import TracingPanel from './tracing-panel'
 
 export default function WorkflowToolTracing({
