@@ -549,6 +549,7 @@
   "settings.dataSource": "แหล่งข้อมูล",
   "settings.extension": "Extension",
   "settings.integrations": "บูรณาการ",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "สมาชิก",
   "settings.permissionSet": "ชุดสิทธิ์",
   "settings.permissionSetDescription": "กำหนดค่าชุดสิทธิ์สำหรับใช้กับแอปและฐานความรู้ ชุดสิทธิ์คือชุดสิทธิ์การดำเนินการกับทรัพยากรที่นำกลับมาใช้ซ้ำได้ และสามารถกำหนดให้สมาชิกสำหรับทรัพยากรเฉพาะได้",

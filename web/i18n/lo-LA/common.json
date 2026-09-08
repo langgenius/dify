@@ -549,6 +549,7 @@
   "settings.dataSource": "ແຫຼ່ງຂໍ້ມູນ",
   "settings.extension": "ສ່ວນຂະຫຍາຍ",
   "settings.integrations": "ການເຊື່ອມຕໍ່",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "ສະມາຊິກ",
   "settings.permissionSet": "ຊຸດການອະນຸຍາດ",
   "settings.permissionSetDescription": "ຕັ້ງຄ່າຊຸດການອະນຸຍາດສຳລັບໃຊ້ກັບແອັບ ແລະ ຖານຄວາມຮູ້. ຊຸດການອະນຸຍາດແມ່ນການລວມເອົາສິດການດຳເນີນການຊັບພະຍາກອນທີ່ສາມາດນຳມາໃຊ້ຄືນໄດ້ ເຊິ່ງສາມາດມອບໝາຍໃຫ້ສະມາຊິກສຳລັບຊັບພະຍາກອນສະເພາະ.",

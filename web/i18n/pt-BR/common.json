@@ -549,6 +549,7 @@
   "settings.dataSource": "Fonte de dados",
   "settings.extension": "Extension",
   "settings.integrations": "Integrações",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "Membros",
   "settings.permissionSet": "Conjunto de permissões",
   "settings.permissionSetDescription": "Configure conjuntos de permissões para uso com apps e bases de conhecimento. Um conjunto de permissões é uma coleção reutilizável de permissões de operações de recursos que pode ser atribuída a membros para recursos específicos.",

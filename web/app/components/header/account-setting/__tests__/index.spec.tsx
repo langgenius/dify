@@ -552,6 +552,15 @@ describe('AccountSetting', () => {
   })
 
   describe('Tab Navigation', () => {
+    it('should open the IP Policies settings page', () => {
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IP_POLICIES })
+
+      expect(screen.getByRole('button', { name: 'common.settings.ipPolicies' })).toBeInTheDocument()
+      expect(
+        screen.getByText('deployments.studio.accessControl.emptyPoliciesTitle'),
+      ).toBeInTheDocument()
+    })
+
     it('should change active tab when clicking on menu item', () => {
       // Arrange
       renderAccountSetting({ onTabChange: mockOnTabChange })

@@ -549,6 +549,7 @@
   "settings.dataSource": "数据来源",
   "settings.extension": "扩展",
   "settings.integrations": "集成",
+  "settings.ipPolicies": "IP 策略",
   "settings.members": "成员",
   "settings.permissionSet": "权限集",
   "settings.permissionSetDescription": "配置可供应用和知识库使用的权限集。权限集是一组可复用的资源操作权限，可针对特定资源分配给成员。",

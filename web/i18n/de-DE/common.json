@@ -549,6 +549,7 @@
   "settings.dataSource": "Datenquelle",
   "settings.extension": "Extension",
   "settings.integrations": "Integrationen",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "Mitglieder",
   "settings.permissionSet": "Berechtigungssatz",
   "settings.permissionSetDescription": "Konfigurieren Sie Berechtigungssätze zur Verwendung mit Apps und Wissensdatenbanken. Ein Berechtigungssatz ist eine wiederverwendbare Sammlung von Berechtigungen für Ressourcenoperationen, die Mitgliedern für bestimmte Ressourcen zugewiesen werden kann.",

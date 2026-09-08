@@ -549,6 +549,7 @@
   "settings.dataSource": "データソース",
   "settings.extension": "拡張機能",
   "settings.integrations": "統合",
+  "settings.ipPolicies": "IP ポリシー",
   "settings.members": "メンバー",
   "settings.permissionSet": "権限セット",
   "settings.permissionSetDescription": "アプリとナレッジベースで使用する権限セットを設定します。権限セットは、特定のリソースに対してメンバーに割り当てられる、リソース操作権限の再利用可能なコレクションです。",

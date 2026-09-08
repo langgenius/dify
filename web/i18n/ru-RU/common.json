@@ -549,6 +549,7 @@
   "settings.dataSource": "Источник данных",
   "settings.extension": "Extension",
   "settings.integrations": "Интеграции",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "Участники",
   "settings.permissionSet": "Набор разрешений",
   "settings.permissionSetDescription": "Настройте наборы разрешений для использования с приложениями и базами знаний. Набор разрешений — это многократно используемая коллекция разрешений на операции с ресурсами, которую можно назначать участникам для конкретных ресурсов.",

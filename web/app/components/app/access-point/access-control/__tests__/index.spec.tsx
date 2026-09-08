@@ -6,8 +6,23 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AccessControlEntry } from '..'
 
 const mockSetShowPricingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const accessControlTranslations = vi.hoisted(() => ({
+  'operation.cancel': 'Cancel',
+  'operation.save': 'Save',
+  'overview.apiInfo.title': 'Backend Service API',
+  'overview.appInfo.title': 'Web App',
+  'mcp.server.title': 'MCP Server',
+  'settings.trigger': 'Trigger',
+  'studio.accessControl.applyTo': 'Apply to',
+  'studio.accessControl.applyToHelp': 'Choose which access points to protect.',
+  'studio.accessControl.createIpPolicy': 'Create an IP policy',
+  'studio.accessControl.emptyPoliciesDescription':
+    'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
+  'studio.accessControl.emptyPoliciesTitle': 'No IP policies in this workspace yet',
   'studio.accessControl.entryLabel': 'Access Control',
+  'studio.accessControl.ipPolicy': 'IP Policy',
+  'studio.accessControl.notEnabled': 'Not enabled',
   'studio.accessControl.paywallDescription': 'Restrict this app to IP addresses you trust.',
   'studio.accessControl.paywallTitle': 'Access Control',
   'studio.accessControl.previewAppName': 'Code Companion',
@@ -21,6 +36,11 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
   useModalContextSelector: vi.fn(),
 }))
+
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -76,12 +96,6 @@ describe('AccessControlEntry', () => {
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 
-  it.each(['professional', 'team'] as const)('does not render on Cloud %s', (plan) => {
-    renderEntry({ plan })
-
-    expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
-  })
-
   it('renders a single chip with a non-interactive PRO badge for Cloud sandbox', () => {
     renderEntry({ plan: 'sandbox' })
 
@@ -90,6 +104,17 @@ describe('AccessControlEntry', () => {
     expect(within(chip).getByText('PRO')).toBeInTheDocument()
     expect(within(chip).queryByRole('button')).not.toBeInTheDocument()
   })
+
+  it.each(['professional', 'team'] as const)(
+    'renders the Access Control chip without a PRO badge on Cloud %s',
+    (plan) => {
+      renderEntry({ plan })
+
+      const chip = getChip()
+      expect(chip).toBeInTheDocument()
+      expect(within(chip).queryByText('PRO')).not.toBeInTheDocument()
+    },
+  )
 
   it('opens the paywall popover from the chip and sends the user to pricing', async () => {
     const user = userEvent.setup()
@@ -124,6 +149,60 @@ describe('AccessControlEntry', () => {
         screen.queryByText('Restrict this app to IP addresses you trust.'),
       ).not.toBeInTheDocument()
     })
+    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+  })
+
+  it('opens the first-time config popover for paid workspaces without a back control', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+
+    expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'A policy is the list of IP addresses allowed in. Create one, then come back to apply it here.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: 'Backend Service API' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'MCP Server' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('switch', { name: 'Trigger' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Not enabled')).toBeInTheDocument()
+  })
+
+  it('sends paid users to Settings IP Policies from the empty-state exit', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
+
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
+    await waitFor(() => {
+      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+    })
+  })
+
+  it('closes the first-time config on Cancel without opening settings', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional' })
+
+    await user.click(getChip())
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
+    })
+    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
     expect(mockSetShowPricingModal).not.toHaveBeenCalled()
   })
 })

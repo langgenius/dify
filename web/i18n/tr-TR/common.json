@@ -549,6 +549,7 @@
   "settings.dataSource": "Veri Kaynağı",
   "settings.extension": "Extension",
   "settings.integrations": "Entegrasyonlar",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "Üyeler",
   "settings.permissionSet": "İzin Seti",
   "settings.permissionSetDescription": "Uygulamalar ve bilgi tabanlarıyla kullanılacak izin setlerini yapılandırın. İzin seti, belirli kaynaklar için üyelere atanabilen yeniden kullanılabilir kaynak işlem izinleri koleksiyonudur.",

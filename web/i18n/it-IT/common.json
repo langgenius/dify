@@ -549,6 +549,7 @@
   "settings.dataSource": "Fonte Dati",
   "settings.extension": "Extension",
   "settings.integrations": "Integrazioni",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "Membri",
   "settings.permissionSet": "Set di autorizzazioni",
   "settings.permissionSetDescription": "Configura set di autorizzazioni da usare con app e basi di conoscenza. Un set di autorizzazioni è una raccolta riutilizzabile di autorizzazioni per operazioni sulle risorse che può essere assegnata ai membri per risorse specifiche.",

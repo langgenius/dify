@@ -549,6 +549,7 @@
   "settings.dataSource": "Nguồn dữ liệu",
   "settings.extension": "Extension",
   "settings.integrations": "Tích hợp",
+  "settings.ipPolicies": "IP Policies",
   "settings.members": "Thành viên",
   "settings.permissionSet": "Bộ quyền",
   "settings.permissionSetDescription": "Định cấu hình các bộ quyền để sử dụng với ứng dụng và cơ sở kiến thức. Bộ quyền là tập hợp có thể tái sử dụng các quyền thao tác trên tài nguyên, có thể được gán cho thành viên đối với các tài nguyên cụ thể.",
