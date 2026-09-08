@@ -9,6 +9,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from models.dataset import Dataset, Document, SegmentAttachmentBinding
 from models.model import UploadFile
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ def delete_segment_from_index_task(
     """
     logger.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()
+    vector_cleanup_succeeded = False
+    dataset_tenant_id = None
     with session_factory.create_session() as session:
         try:
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
@@ -34,6 +37,7 @@ def delete_segment_from_index_task(
                 logging.warning("Dataset %s not found, skipping index cleanup", dataset_id)
                 return
 
+            dataset_tenant_id = dataset.tenant_id
             dataset_document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not dataset_document:
                 return
@@ -82,8 +86,12 @@ def delete_segment_from_index_task(
                     session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
                     session.commit()
 
+            vector_cleanup_succeeded = True
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
         except Exception:
             session.rollback()
             logger.exception("delete segment from index failed")
+
+    if vector_cleanup_succeeded and dataset_tenant_id:
+        schedule_billing_vector_space_refresh(dataset_tenant_id)
