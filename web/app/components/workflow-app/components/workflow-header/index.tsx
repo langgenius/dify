@@ -1,10 +1,11 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Header from '@/app/components/workflow/header'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks/use-is-chat-mode'
 import { difyBuilderHasSessionAtom } from '../dify-builder/store'
@@ -21,7 +22,11 @@ const WorkflowHeader = () => {
   )
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const isChatMode = useIsChatMode()
-  const difyBuilderEnabled = useProviderContextSelector((context) => context.difyBuilderEnabled)
+  const { data: difyBuilderEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.dify_builder_enabled,
+    }),
+  )
   const hasDifyBuilderSession = useAtomValue(difyBuilderHasSessionAtom)
 
   const handleClearLogAndMessageModal = useCallback(() => {

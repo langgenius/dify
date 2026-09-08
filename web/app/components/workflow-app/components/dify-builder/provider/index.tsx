@@ -2,11 +2,12 @@
 
 import type { ReactNode } from 'react'
 import type { DifyBuilderCanvasNode } from '../utils'
+import { useQuery } from '@tanstack/react-query'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
 import { useMemo } from 'react'
 import { useStore } from '@/app/components/workflow/store'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
@@ -37,7 +38,11 @@ const DifyBuilderProviderContent = ({
   tenantId,
   userId,
 }: DifyBuilderProviderProps) => {
-  const enabled = useProviderContextSelector((context) => context.difyBuilderEnabled)
+  const { data: enabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.dify_builder_enabled,
+    }),
+  )
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const session = useDifyBuilderSessionController()
   const runtime = useMemo(

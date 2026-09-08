@@ -2,13 +2,13 @@ import { dehydrate } from '@tanstack/react-query'
 import { cache } from 'react'
 import { getQueryClient } from '@/app/get-query-client'
 import { connection } from '@/next/server'
-import { serverConsoleQuery } from '@/service/server'
+import { consoleQuery } from '@/service/console'
 import 'server-only'
 
 const getRequestQueryClient = cache(getQueryClient)
 
 const systemFeaturesServerQueryOptions = () =>
-  serverConsoleQuery.systemFeatures.get.queryOptions({ staleTime: 'static' })
+  consoleQuery.systemFeatures.get.queryOptions({ staleTime: 'static' })
 
 export const getOptionalSystemFeatures = async () => {
   await connection()

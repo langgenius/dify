@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { ReactNode } from 'react'
 import type { DataSet, HitTesting, HitTestingRecord, HitTestingResponse } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -154,11 +156,11 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 vi.mock('@/service/knowledge/use-hit-testing', () => ({
   useHitTesting: vi.fn(() => ({
     mutateAsync: mockHitTestingMutateAsync,
-    isPending: false,
+    isLoading: false,
   })),
   useExternalKnowledgeBaseHitTesting: vi.fn(() => ({
     mutateAsync: mockExternalHitTestingMutateAsync,
-    isPending: false,
+    isLoading: false,
   })),
 }))
 
@@ -263,10 +265,6 @@ vi.mock('@/context/i18n', () => ({
 
 // Mock model list hook - include all exports used by child components
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(() => ({
     modelList: [],
     defaultModel: undefined,
@@ -400,11 +398,11 @@ describe('HitTestingPage', () => {
       await import('@/service/knowledge/use-hit-testing')
     vi.mocked(useHitTesting).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
-      isPending: false,
+      isLoading: false,
     } as unknown as ReturnType<typeof useHitTesting>)
     vi.mocked(useExternalKnowledgeBaseHitTesting).mockReturnValue({
       mutateAsync: mockExternalHitTestingMutateAsync,
-      isPending: false,
+      isLoading: false,
     } as unknown as ReturnType<typeof useExternalKnowledgeBaseHitTesting>)
 
     const useBreakpoints = await import('@/hooks/use-breakpoints')
@@ -577,4 +575,20 @@ describe('HitTestingPage', () => {
     expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('External content')).toBeInTheDocument()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) =>
+      options.queryKey[0].includes('modelTypes')
+        ? { data: [], isPending: false }
+        : actual.useQuery(options),
+  }
 })

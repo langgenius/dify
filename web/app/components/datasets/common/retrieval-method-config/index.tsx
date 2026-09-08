@@ -13,7 +13,7 @@ import {
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'

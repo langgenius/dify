@@ -1,10 +1,10 @@
 import dataclasses
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.common.rbac import PlainApp, RBACPermission
 from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import Action, Actor
 from models import TenantAccountRole
@@ -70,17 +70,19 @@ def test_authorize_app_legacy_requires_tenant_editor_role(monkeypatch: pytest.Mo
     monkeypatch.setattr(wiring.db.session, "scalar", scalar)
     monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", False)
     enforce = MagicMock()
-    monkeypatch.setattr(wiring, "enforce_rbac_access", enforce)
+    monkeypatch.setattr(wiring, "enforce_rbac_checks", enforce)
 
     wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.EDIT)
 
     enforce.assert_called_once_with(
         tenant_id="ten-1",
         account_id="acc-1",
-        resource_type=RBACResourceScope.APP,
-        scene=RBACPermission.APP_EDIT,
+        checks=enforce.call_args.kwargs["checks"],
         path_args={"app_id": "app-1"},
     )
+    check = enforce.call_args.kwargs["checks"][0]
+    assert check.scene is RBACPermission.APP_EDIT
+    assert isinstance(check.locator, PlainApp)
 
 
 def test_authorize_app_legacy_rejects_non_editor(monkeypatch: pytest.MonkeyPatch):
@@ -113,20 +115,18 @@ def test_authorize_app_rbac_enforces_base_and_operation_permission(
     )
     monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", True)
     enforce = MagicMock()
-    monkeypatch.setattr(wiring, "enforce_rbac_access", enforce)
+    monkeypatch.setattr(wiring, "enforce_rbac_checks", enforce)
 
     wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", access)
 
-    assert enforce.call_args_list == [
-        call(
-            tenant_id="ten-1",
-            account_id="acc-1",
-            resource_type=RBACResourceScope.APP,
-            scene=scene,
-            path_args={"app_id": "app-1"},
-        )
-        for scene in scenes
-    ]
+    assert [item.kwargs["checks"][0].scene for item in enforce.call_args_list] == scenes
+    assert all(isinstance(item.kwargs["checks"][0].locator, PlainApp) for item in enforce.call_args_list)
+    assert all(
+        item.kwargs["tenant_id"] == "ten-1"
+        and item.kwargs["account_id"] == "acc-1"
+        and item.kwargs["path_args"] == {"app_id": "app-1"}
+        for item in enforce.call_args_list
+    )
 
 
 def test_authorize_app_rejects_missing_or_foreign_app(monkeypatch: pytest.MonkeyPatch):

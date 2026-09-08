@@ -1,5 +1,5 @@
 import type { ChecklistErrorPayload, SessionModel } from '../types'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 export const createFixSession = (
   appId: string,

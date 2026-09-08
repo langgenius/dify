@@ -2172,7 +2172,7 @@ Update annotation settings for an app
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Annotations deleted successfully |
+| 200 | Success |
 
 ### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
@@ -2294,7 +2294,7 @@ Export all annotations for an app with CSV injection protection
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Annotation deleted successfully |
+| 200 | Success |
 
 ### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
@@ -3324,9 +3324,9 @@ Create a new tracing configuration for an application
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /apps/{app_id}/triggers
 **Get app triggers list**
@@ -4713,7 +4713,7 @@ Full value for one declared output of a published run.
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Workflow deleted successfully |
+| 200 | Success |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
 **Update workflow attributes**
@@ -4861,9 +4861,9 @@ Restore a published workflow version into the draft workflow
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -5047,16 +5047,16 @@ Get compliance document download link
 ### [GET] /data-source/integrates
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PATCH] /data-source/integrates
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5068,9 +5068,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PATCH] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5082,9 +5082,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /datasets
 Get list of datasets
@@ -6446,6 +6446,117 @@ Check if dataset is in use
 | ---- | ----------- |
 | 204 | API key deleted successfully |
 
+### [POST] /dify-builder/agent/ping
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /dify-builder/sessions
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DifyBuilderCreateSessionPayload](#difybuildercreatesessionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dify Builder event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+
+### [GET] /dify-builder/sessions/{session_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dify Builder session state | **application/json**: [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse)<br> |
+| 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/actions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DifyBuilderSubmitActionPayload](#difybuildersubmitactionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dify Builder event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+| 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+| 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+
+### [GET] /dify-builder/sessions/{session_id}/conversation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| after_seq | query | Load groups after this sequence | No | integer |
+| before_seq | query | Load groups before this sequence | No | integer |
+| limit | query | Number of conversation groups to return | No | integer, <br>**Default:** 20 |
+| session_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dify Builder conversation page | **application/json**: [DifyBuilderConversationPageResponse](#difybuilderconversationpageresponse)<br> |
+| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+| 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DifyBuilderSubmitMessagePayload](#difybuildersubmitmessagepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dify Builder event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+| 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+| 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+
+### [GET] /dify-builder/sessions/{session_id}/stream
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dify Builder reconnect event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br> |
+
 ### [POST] /email-code-login
 #### Request Body
 
@@ -6552,7 +6663,9 @@ Check if dataset is in use
 | 404 | Recommended app not found |  |
 
 ### [GET] /features
-**Get feature configuration for current tenant**
+**Get current workspace features**
+
+Get feature availability and limits for the current workspace
 
 #### Responses
 
@@ -7869,17 +7982,11 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [DraftWorkflowSyncPayload](#draftworkflowsyncpayload)<br> |
-
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -8179,12 +8286,6 @@ Update account-level Step-by-step Tour state
 | pipeline_id | path |  | Yes | string (uuid) |
 | variable_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
@@ -8358,12 +8459,6 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WorkflowUpdatePayload](#workflowupdatepayload)<br> |
 
 #### Responses
 
@@ -11159,16 +11254,16 @@ Returns permission flags that control workspace features like member invitations
 ### [GET] /workspaces/current/rbac/access-policies
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [_AccessPolicyList](#_accesspolicylist)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/access-policies
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Policy created | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [DELETE] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11179,9 +11274,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11192,9 +11287,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11205,9 +11300,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/access-policies/{policy_id}/copy
 #### Parameters
@@ -11218,9 +11313,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Policy copied | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
 #### Parameters
@@ -11231,9 +11326,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
 #### Parameters
@@ -11244,9 +11339,153 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [DELETE] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_DeleteMemberBindingsRequest](#_deletememberbindingsrequest)<br> |
+
+#### Responses
+
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AgentAccessMatrix](#agentaccessmatrix)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/user-access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/agents/{agent_id}/users/{target_account_id}/access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [PUT] /workspaces/current/rbac/agents/{agent_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ResourceAccessScopeRequest](#_resourceaccessscoperequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/whitelist_config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
 
 ### [DELETE] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11582,6 +11821,13 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
 
+### [GET] /workspaces/current/rbac/role-permissions/catalog/agent
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
 ### [GET] /workspaces/current/rbac/role-permissions/catalog/app
 #### Responses
 
@@ -11599,16 +11845,16 @@ Returns permission flags that control workspace features like member invitations
 ### [GET] /workspaces/current/rbac/roles
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [_RBACRoleList](#_rbacrolelist)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/roles
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Role created | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [DELETE] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11619,9 +11865,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11632,9 +11878,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11645,9 +11891,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/roles/{role_id}/copy
 #### Parameters
@@ -11658,9 +11904,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Role copied | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}/members
 #### Parameters
@@ -11674,6 +11920,58 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [_MembersInRoleList](#_membersinrolelist)<br> |
+
+### [PUT] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ReplaceBindingsRequest](#_replacebindingsrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/agents/access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 
 ### [PUT] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings
 #### Parameters
@@ -13307,6 +13605,28 @@ Model class for AI model.
 | roles | [ object ] |  | No |
 | status | string |  | Yes |
 
+#### Action
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canvas_event | string |  | No |
+| id | string |  | Yes |
+| kind | [ActionKind](#actionkind) |  | Yes |
+| label | string |  | Yes |
+| next_state | string |  | No |
+
+#### ActionKind
+
+Action button styling / semantics (spec §2, §5).
+
+``automatic`` actions are not buttons — the client must not render
+them; the server auto-advances. They exist in the stream only so the
+FE can show "auto-continuing...".
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ActionKind | string | Action button styling / semantics (spec §2, §5).  ``automatic`` actions are not buttons — the client must not render them; the server auto-advances. They exist in the stream only so the FE can show "auto-continuing...". |  |
+
 #### ActivateCheckQuery
 
 | Name | Type | Description | Required |
@@ -13400,6 +13720,13 @@ Model class for AI model.
 | ---- | ---- | ----------- | -------- |
 | chat_prompt_config | object |  | No |
 | completion_prompt_config | object |  | No |
+
+#### AgentAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | No |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 
 #### AgentApiAccessResponse
 
@@ -14580,6 +14907,20 @@ section may be empty, which is how callers express "no knowledge layer".
 | type | string |  | No |
 | url | string |  | No |
 
+#### AgentMessageEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| at_version | integer |  | Yes |
+| id | string |  | Yes |
+| kind | string, <br>**Default:** agent_message |  | No |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| seq | integer |  | Yes |
+| session_id | string |  | Yes |
+| stage_id | string |  | Yes |
+
 #### AgentModelResponseFormatConfig
 
 | Name | Type | Description | Required |
@@ -15735,6 +16076,14 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppRevision
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conflicted | boolean |  | Yes |
+| current | string |  | Yes |
+| observed | string |  | Yes |
+
 #### AppSelectorScope
 
 | Name | Type | Description | Required |
@@ -15812,6 +16161,18 @@ AppMCPServer Status Enum
 | name | string |  | Yes |
 | required | boolean |  | No |
 | type | string |  | Yes |
+
+#### AssistantTurnItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| card_state | string |  | No |
+| cards | [ string ] |  | No |
+| execution | [ExecutionProgress](#executionprogress) |  | Yes |
+| reasoning_text | string |  | No |
+| reply_text | string |  | No |
+| stage_id | string |  | Yes |
+| turn_id | string |  | Yes |
 
 #### AudioBinaryResponse
 
@@ -15926,7 +16287,6 @@ ExporleBanner status
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean | Deprecated. Use system features deployment_edition to determine the product edition. | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
 #### BillingOperationFailedErrorResponse
@@ -15981,6 +16341,21 @@ ExporleBanner status
 | login_page_logo | string |  | Yes |
 | workspace_logo | string |  | Yes |
 
+#### BuildLearningCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| policy | string |  | Yes |
+| state | string |  | Yes |
+
+#### BuilderErrorCode
+
+Stable HTTP error codes returned by the Builder console routes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BuilderErrorCode | string | Stable HTTP error codes returned by the Builder console routes. |  |
+
 #### BuiltinCredentialListQuery
 
 | Name | Type | Description | Required |
@@ -16034,6 +16409,47 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | ButtonStyle | string | Button styles for user actions. |  |
 
+#### CanvasEdge
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| source | string |  | Yes |
+| target | string |  | Yes |
+
+#### CanvasEvent
+
+Granular canvas-mutation signals (spec §6).
+
+Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent``
+union. Presentation of committed backend state: replaying these from a
+snapshot must reconstruct the same canvas.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CanvasEvent | string | Granular canvas-mutation signals (spec §6).  Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent`` union. Presentation of committed backend state: replaying these from a snapshot must reconstruct the same canvas. |  |
+
+#### CanvasEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| edge | [CanvasEdge](#canvasedge) |  | No |
+| event | [CanvasEvent](#canvasevent) |  | Yes |
+| kind | string, <br>**Default:** canvas |  | No |
+| node_id | string |  | No |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+| stage_id | string |  | Yes |
+
+#### ChallengeCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| title | string |  | Yes |
+| tone | string, <br>**Default:** warning |  | No |
+
 #### ChangeEmailResetPayload
 
 | Name | Type | Description | Required |
@@ -16057,6 +16473,22 @@ Button styles for user actions.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | token | string |  | Yes |
+
+#### ChangeSetCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| changes | [ string ] |  | Yes |
+| count | integer |  | Yes |
+| nodes | [ [ChangedNode](#changednode) ] |  | No |
+| scope | string |  | Yes |
+
+#### ChangedNode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| title | string |  | No |
 
 #### ChatConversationQuery
 
@@ -16123,6 +16555,22 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | passed | boolean |  | Yes |
 | reason | string |  | No |
+
+#### CheckpointCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkpoint_id | string |  | Yes |
+| created_at | string |  | Yes |
+| label | string |  | Yes |
+
+#### CheckpointRef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkpoint_id | string |  | Yes |
+| created_at | string |  | Yes |
+| label | string |  | Yes |
 
 #### ChildChunkBatchUpdatePayload
 
@@ -16373,6 +16821,14 @@ Enum class for configurate method of provider model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
+
+#### ConflictPolicyOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | Yes |
+| recommended | boolean |  | No |
 
 #### ConsoleDatasetListQuery
 
@@ -17347,6 +17803,12 @@ Enum class for datasource provider
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
 
+#### DecisionItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
 #### DeclaredArrayItem
 
 Per-item shape for an ``array``-typed declared output.
@@ -17482,6 +17944,415 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
+#### DifyBuilderActiveInteractionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action_id | string |  | Yes |
+| card | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderChallengeConversationItemResponse](#difybuilderchallengeconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderCheckpointConversationItemResponse](#difybuildercheckpointconversationitemresponse)<br>[DifyBuilderChangeSetConversationItemResponse](#difybuilderchangesetconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse)<br>[DifyBuilderErrorConversationItemResponse](#difybuildererrorconversationitemresponse)<br>[DifyBuilderSummaryConversationItemResponse](#difybuildersummaryconversationitemresponse)<br>[DifyBuilderPublishConversationItemResponse](#difybuilderpublishconversationitemresponse)<br>[DifyBuilderBuildLearningConversationItemResponse](#difybuilderbuildlearningconversationitemresponse) |  | Yes |
+| valid_at_version | integer |  | Yes |
+
+#### DifyBuilderAgentMessageEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [AgentMessageEventData](#agentmessageeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderAssistantTurnConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [AssistantTurnItem](#assistantturnitem) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderBuildLearningConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [BuildLearningCard](#buildlearningcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderCanvasEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [CanvasEventData](#canvaseventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderChallengeConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ChallengeCard](#challengecard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderChangeSetConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ChangeSetCard](#changesetcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderChecklistErrorPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| messages | [ string ] |  | Yes |
+| node_id | string |  | Yes |
+| node_type | string |  | Yes |
+| plugin_missing | boolean |  | Yes |
+| title | string |  | Yes |
+| unconnected | boolean |  | Yes |
+
+#### DifyBuilderCheckpointConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [CheckpointCard](#checkpointcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderCommandStartedEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [Action](#action) ] |  | No |
+| active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
+| app_id | string |  | Yes |
+| app_revision | [AppRevision](#apprevision) |  | No |
+| canvas_read_only | boolean |  | Yes |
+| checkpoint | [CheckpointRef](#checkpointref) |  | No |
+| conversation_last_seq | integer |  | Yes |
+| entry_mode | [EntryMode](#entrymode) |  | No |
+| interrupted | boolean |  | Yes |
+| kind | string, <br>**Default:** command_started |  | No |
+| model | [SessionModel](#sessionmodel) |  | No |
+| phase | [Phase](#phase) |  | No |
+| recovery | [RecoveryRef](#recoveryref) |  | No |
+| run_status | [RunStatus](#runstatus) |  | Yes |
+| session_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderCommandStartedEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderCommandStartedEventData](#difybuildercommandstartedeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderCommitEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| items | [ [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderChallengeConversationItemResponse](#difybuilderchallengeconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderCheckpointConversationItemResponse](#difybuildercheckpointconversationitemresponse)<br>[DifyBuilderChangeSetConversationItemResponse](#difybuilderchangesetconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse)<br>[DifyBuilderErrorConversationItemResponse](#difybuildererrorconversationitemresponse)<br>[DifyBuilderSummaryConversationItemResponse](#difybuildersummaryconversationitemresponse)<br>[DifyBuilderPublishConversationItemResponse](#difybuilderpublishconversationitemresponse)<br>[DifyBuilderBuildLearningConversationItemResponse](#difybuilderbuildlearningconversationitemresponse) ] |  | Yes |
+| kind | string, <br>**Default:** commit |  | No |
+| operation_id | string |  | Yes |
+| session_id | string |  | Yes |
+| settled | boolean |  | Yes |
+| stage_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderCommitEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderCommitEventData](#difybuildercommiteventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderConversationListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| after_seq | integer | Load groups after this sequence | No |
+| before_seq | integer | Load groups before this sequence | No |
+| limit | integer, <br>**Default:** 20 | Number of conversation groups to return | No |
+
+#### DifyBuilderConversationPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderChallengeConversationItemResponse](#difybuilderchallengeconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderCheckpointConversationItemResponse](#difybuildercheckpointconversationitemresponse)<br>[DifyBuilderChangeSetConversationItemResponse](#difybuilderchangesetconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse)<br>[DifyBuilderErrorConversationItemResponse](#difybuildererrorconversationitemresponse)<br>[DifyBuilderSummaryConversationItemResponse](#difybuildersummaryconversationitemresponse)<br>[DifyBuilderPublishConversationItemResponse](#difybuilderpublishconversationitemresponse)<br>[DifyBuilderBuildLearningConversationItemResponse](#difybuilderbuildlearningconversationitemresponse) ] |  | Yes |
+| first_seq | integer |  | Yes |
+| has_more | boolean |  | Yes |
+| last_seq | integer |  | Yes |
+
+#### DifyBuilderCreateBuildSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| goal_text | string |  | Yes |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateChecklistFixSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| checklist_errors | [ [DifyBuilderChecklistErrorPayload](#difybuilderchecklisterrorpayload) ] |  | Yes |
+| failed_run_id | string |  | No |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateEditSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| goal_text | string |  | Yes |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateFixSessionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| failed_run_id | string |  | Yes |
+| model_config | [SessionModel](#sessionmodel) |  | No |
+| scenario | string |  | Yes |
+
+#### DifyBuilderCreateSessionPayload
+
+Create a Build, Edit, failed-run Fix, or checklist Fix session.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DifyBuilderCreateSessionPayload | [DifyBuilderCreateBuildSessionPayload](#difybuildercreatebuildsessionpayload)<br>[DifyBuilderCreateEditSessionPayload](#difybuildercreateeditsessionpayload)<br>[DifyBuilderCreateFixSessionPayload](#difybuildercreatefixsessionpayload)<br>[DifyBuilderCreateChecklistFixSessionPayload](#difybuildercreatechecklistfixsessionpayload) | Create a Build, Edit, failed-run Fix, or checklist Fix session. |  |
+
+#### DifyBuilderDecisionConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [DecisionItem](#decisionitem) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderErrorConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ErrorCard](#errorcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderErrorEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ErrorEventData](#erroreventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | [BuilderErrorCode](#buildererrorcode) |  | Yes |
+| message | string |  | No |
+| recoverable | boolean |  | No |
+
+#### DifyBuilderFormConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [FormCard](#formcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderNodeEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [NodeEventData](#nodeeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderNoticeConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [NoticeItem](#noticeitem) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderPlanConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [PlanCard](#plancard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderPreflightContextConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [PreflightContextCard](#preflightcontextcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderProgressEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ProgressEventData](#progresseventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderPublishConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [PublishCard](#publishcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderReasoningEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ReasoningEventData](#reasoningeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderResourceSelectConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [ResourceSelectCard](#resourceselectcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderRunContextConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [RunContextCard](#runcontextcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderSessionViewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [Action](#action) ] |  | No |
+| active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
+| app_id | string |  | Yes |
+| app_revision | [AppRevision](#apprevision) |  | No |
+| canvas_read_only | boolean |  | Yes |
+| checkpoint | [CheckpointRef](#checkpointref) |  | No |
+| conversation_last_seq | integer |  | Yes |
+| entry_mode | [EntryMode](#entrymode) |  | No |
+| interrupted | boolean |  | Yes |
+| model | [SessionModel](#sessionmodel) |  | No |
+| phase | [Phase](#phase) |  | No |
+| recovery | [RecoveryRef](#recoveryref) |  | No |
+| run_status | [RunStatus](#runstatus) |  | Yes |
+| session_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderStateEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [Action](#action) ] |  | No |
+| active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
+| app_id | string |  | Yes |
+| app_revision | [AppRevision](#apprevision) |  | No |
+| canvas_read_only | boolean |  | Yes |
+| checkpoint | [CheckpointRef](#checkpointref) |  | No |
+| conversation_last_seq | integer |  | Yes |
+| entry_mode | [EntryMode](#entrymode) |  | No |
+| interrupted | boolean |  | Yes |
+| kind | string, <br>**Default:** state |  | No |
+| model | [SessionModel](#sessionmodel) |  | No |
+| phase | [Phase](#phase) |  | No |
+| recovery | [RecoveryRef](#recoveryref) |  | No |
+| run_status | [RunStatus](#runstatus) |  | Yes |
+| session_id | string |  | Yes |
+| state | string |  | Yes |
+| version | integer |  | Yes |
+
+#### DifyBuilderStateEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderStateEventData](#difybuilderstateeventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderStreamEventResponse
+
+One JSON object carried by an SSE ``data:`` frame.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderNodeEventResponse](#difybuildernodeeventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderCommitEventResponse](#difybuildercommiteventresponse)<br>[DifyBuilderStateEventResponse](#difybuilderstateeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
+
+#### DifyBuilderSubmitActionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action_id | string |  | Yes |
+| base_app_revision | string |  | Yes |
+| base_version | integer |  | Yes |
+| payload | object |  | No |
+
+#### DifyBuilderSubmitMessagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_version | integer |  | Yes |
+| client_turn_id | string |  | Yes |
+| text | string |  | Yes |
+
+#### DifyBuilderSummaryConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [SummaryCard](#summarycard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderTestResultConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [TestResultCard](#testresultcard) |  | Yes |
+| seq | integer |  | Yes |
+
+#### DifyBuilderUserConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| kind | string |  | Yes |
+| payload | [UserItem](#useritem) |  | Yes |
+| seq | integer |  | Yes |
 
 #### DismissNotificationPayload
 
@@ -18005,6 +18876,12 @@ declaration of an endpoint group
 | name | string |  | Yes |
 | settings | object |  | Yes |
 
+#### EntryMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EntryMode | string |  |  |
+
 #### EnvironmentVariableItemPayload
 
 | Name | Type | Description | Required |
@@ -18044,12 +18921,31 @@ declaration of an endpoint group
 | environment_variables | [ [EnvironmentVariableItemPayload](#environmentvariableitempayload) ] | Environment variables for the draft workflow | Yes |
 | patch | boolean | Treat environment_variables as per-ID upserts instead of replacing the full collection | No |
 
+#### ErrorCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| node_id | string |  | No |
+| title | string |  | Yes |
+| tone | string, <br>**Default:** danger |  | No |
+
 #### ErrorDocsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
+
+#### ErrorEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | No |
+| error | string |  | Yes |
+| kind | string, <br>**Default:** error |  | No |
+| message | string |  | No |
+| recoverable | boolean |  | No |
 
 #### EventApiEntity
 
@@ -18118,11 +19014,28 @@ The type of the parameter
 | ---- | ---- | ----------- | -------- |
 | EventStreamResponse | string |  |  |
 
+#### ExecutionActivity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "node", "stage", <br>**Default:** stage | *Enum:* `"node"`, `"stage"` | No |
+| label | string |  | Yes |
+| parent_id | string |  | No |
+| state | string, <br>**Available values:** "active", "done", "failed", "stopped" | *Enum:* `"active"`, `"done"`, `"failed"`, `"stopped"` | Yes |
+
 #### ExecutionContentType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ExecutionContentType | string |  |  |
+
+#### ExecutionProgress
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activities | [ [ExecutionActivity](#executionactivity) ] |  | No |
+| status | string, <br>**Available values:** "completed", "error", "running", "stopped" | *Enum:* `"completed"`, `"error"`, `"running"`, `"stopped"` | Yes |
 
 #### ExploreAppMetaResponse
 
@@ -18262,6 +19175,8 @@ Flask blueprint initialization.
 
 #### FeatureModel
 
+Effective feature availability and limits for the current workspace.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
@@ -18269,20 +19184,16 @@ Flask blueprint initialization.
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
 | billing | [BillingModel](#billingmodel) |  | Yes |
 | can_replace_logo | boolean |  | Yes |
-| dataset_operator_enabled | boolean |  | Yes |
-| docs_processing | string, <br>**Default:** standard |  | Yes |
+| dify_builder_enabled | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
-| knowledge_rate_limit | integer, <br>**Default:** 10 |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
-| next_credit_reset_date | integer |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
-| vector_space | [LimitationModel](#limitationmodel) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
@@ -18444,6 +19355,35 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+
+#### FormCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| fields | [ [FormField](#formfield) ] |  | No |
+| frozen | boolean |  | No |
+| values | object |  | No |
+| variant | string |  | Yes |
+
+#### FormField
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| default | string<br>integer<br>number<br>boolean |  | No |
+| hint | string |  | No |
+| json_schema | string<br>object |  | No |
+| key | string |  | Yes |
+| label | string |  | Yes |
+| max_length | integer |  | No |
+| number_limits | integer |  | No |
+| options | [ string ] |  | No |
+| placeholder | string |  | No |
+| required | boolean |  | No |
+| type | string |  | Yes |
+| unit | string |  | No |
 
 #### FormInputConfig
 
@@ -19598,6 +20538,7 @@ Model with provider entity.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | app | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
@@ -19614,6 +20555,21 @@ Model with provider entity.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
+
+#### NodeEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| error | string |  | Yes |
+| kind | string, <br>**Default:** node |  | No |
+| node_id | string |  | Yes |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+| stage_id | string |  | Yes |
+| status | string |  | Yes |
+| title | string |  | Yes |
 
 #### NodeIdQuery
 
@@ -19672,6 +20628,13 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NodeStatus | string | Coarse node-level status used by Inspector to pick a banner. |  |
+
+#### NoticeItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| tone | string, <br>**Default:** neutral |  | No |
 
 #### NotificationItemResponse
 
@@ -20370,6 +21333,14 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
+#### Phase
+
+Coarse UX phase shown in the panel header (spec §2).
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| Phase | string | Coarse UX phase shown in the panel header (spec §2). |  |
+
 #### PipelineTemplateDetailQuery
 
 | Name | Type | Description | Required |
@@ -20433,6 +21404,15 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | type | string |  | Yes |
 | unit | string |  | No |
 | variable | string |  | Yes |
+
+#### PlanCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ string ] |  | No |
+| subtitle | string |  | No |
+| title | string |  | Yes |
+| version_tag | string |  | Yes |
 
 #### PluginAutoUpgradeChangeResponse
 
@@ -20889,6 +21869,22 @@ Verification of the plugin.
 | enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
 | id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
 
+#### PreflightContextCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| issue_count | integer |  | Yes |
+| issues | [ [PreflightIssue](#preflightissue) ] |  | No |
+| node_count | integer |  | Yes |
+
+#### PreflightIssue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string |  | Yes |
+| label | string |  | Yes |
+| node_id | string |  | Yes |
+
 #### PreviewDetail
 
 | Name | Type | Description | Required |
@@ -20941,6 +21937,18 @@ Dataset Process Rule Mode
 | limits | object |  | Yes |
 | mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
+
+#### ProgressEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| execution | [ExecutionProgress](#executionprogress) |  | Yes |
+| kind | string, <br>**Default:** progress |  | No |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+| stage_id | string |  | Yes |
 
 #### ProviderConfig
 
@@ -21118,6 +22126,13 @@ Model class for provider with models response.
 | status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
 | tenant_id | string |  | Yes |
 
+#### PublishCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| badge | string, <br>**Default:** live |  | No |
+| version | string |  | Yes |
+
 #### PublishWorkflowPayload
 
 Payload for publishing snippet workflow.
@@ -21151,8 +22166,8 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| reset_date | integer, <br>**Default:** -1 |  | Yes |
+| limit | integer | Quota limit; -1 means unlimited and 0 means no quota | Yes |
+| reset_date | integer, <br>**Default:** -1 | Next quota reset as a Unix timestamp in seconds; -1 means no reset | Yes |
 | usage | integer |  | Yes |
 
 #### QuotaConfiguration
@@ -21268,6 +22283,19 @@ Model class for provider quota configuration.
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
 
+#### ReasoningEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| delta | string |  | Yes |
+| kind | string, <br>**Default:** reasoning |  | No |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+| span_id | string |  | Yes |
+| stage_id | string |  | Yes |
+
 #### RecentAppListResponse
 
 | Name | Type | Description | Required |
@@ -21341,6 +22369,15 @@ Model class for provider quota configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string, <br>**Default:** en-US | Language code for recommended app localization | No |
+
+#### RecoveryRef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_continue | boolean |  | Yes |
+| can_restart | boolean |  | Yes |
+| message | string |  | Yes |
+| recovery_class | string |  | Yes |
 
 #### RedirectResponse
 
@@ -21417,6 +22454,16 @@ Model class for provider quota configuration.
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
 
+#### ResourceOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| label | string |  | Yes |
+| meta | string |  | Yes |
+| readiness | string |  | Yes |
+
 #### ResourcePermissionKeys
 
 | Name | Type | Description | Required |
@@ -21430,6 +22477,13 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | default_permission_keys | [ string ] |  | No |
 | overrides | [ [ResourcePermissionKeys](#resourcepermissionkeys) ] |  | No |
+
+#### ResourceSelectCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conflict_policy_options | [ [ConflictPolicyOption](#conflictpolicyoption) ] |  | No |
+| recommended | [ [ResourceOption](#resourceoption) ] |  | No |
 
 #### ResourceUserAccessPolicies
 
@@ -21566,6 +22620,28 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+
+#### RunContextCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_code | string |  | Yes |
+| message | string |  | Yes |
+| run_id | string |  | Yes |
+| title | string |  | Yes |
+| trace_ref | string |  | No |
+
+#### RunStatus
+
+Widened run-status vocabulary (spec §2).
+
+``processing`` => ``canvas_read_only = true`` (WORKING).
+``waiting_*``/``paused`` => editable (WAITING).
+``complete``/``failed`` => terminal.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RunStatus | string | Widened run-status vocabulary (spec §2).  ``processing`` => ``canvas_read_only = true`` (WORKING). ``waiting_*``/``paused`` => editable (WAITING). ``complete``/``failed`` => terminal. |  |
 
 #### SSOProtocol
 
@@ -21769,6 +22845,15 @@ Model class for provider quota configuration.
 | option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### SessionModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
 
 #### SimpleAccount
 
@@ -22614,6 +23699,15 @@ The subscription constructor of the trigger provider
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
 
+#### SummaryCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ string ] |  | No |
+| rows | [ [SummaryRow](#summaryrow) ] |  | No |
+| title | string |  | No |
+| variant | string |  | Yes |
+
 #### SummaryEntryResponse
 
 | Name | Type | Description | Required |
@@ -22625,6 +23719,13 @@ The subscription constructor of the trigger provider
 | status | string |  | Yes |
 | summary_preview | string |  | No |
 | updated_at | integer |  | No |
+
+#### SummaryRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| value | string |  | Yes |
 
 #### SummaryStatusResponse
 
@@ -22862,6 +23963,23 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
+
+#### TestResultCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| run_ids | [ string ] |  | No |
+| stats | [ [TestStat](#teststat) ] |  | No |
+| subtitle | string |  | Yes |
+| title | string |  | Yes |
+| tone | string |  | Yes |
+
+#### TestStat
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| value | string |  | Yes |
 
 #### TextContentResponse
 
@@ -23628,6 +24746,13 @@ User action configuration.
 | button_style | [ButtonStyle](#buttonstyle) |  | No |
 | id | string |  | Yes |
 | title | string |  | Yes |
+
+#### UserItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| turn_id | string |  | Yes |
 
 #### UserSatisfactionRateStatisticItem
 

@@ -15,8 +15,8 @@ def _swagger_config(config_overrides) -> None:
 
 USER_PROPERTY_SCHEMA = {
     "description": (
-        "User identifier, unique within the application. This identifier scopes data access; resources created with "
-        "one `user` value are only visible when queried with the same `user` value."
+        "End-user identifier, defined by your app and unique within it. Identifies the end user for this request. "
+        "See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules."
     ),
     "type": "string",
 }
@@ -298,6 +298,11 @@ def test_service_openapi_documents_decorator_user_contracts():
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
 
+    for path in ("/workflows/run", "/workflows/{workflow_id}/run"):
+        rate_limit_description = paths[path]["post"]["responses"]["429"]["description"]
+        assert "upstream model provider rate limit" in rate_limit_description
+        assert "Dify Cloud workflow execution quota" in rate_limit_description
+
     task_stop_user_descriptions = {
         "/completion-messages/{task_id}/stop": "Send the same",
         "/chat-messages/{task_id}/stop": "Send the same",
@@ -477,8 +482,73 @@ def test_service_openapi_documents_conditional_payload_schemas():
     with_text_branch, without_text_branch = document_update_schema["anyOf"]
     assert with_text_branch["properties"]["text"]["type"] == "string"
     assert with_text_branch["properties"]["name"]["type"] == "string"
+    assert "default" not in with_text_branch["properties"]["text"]
+    assert "default" not in with_text_branch["properties"]["name"]
     assert with_text_branch["required"] == ["name", "text"]
     assert without_text_branch["properties"]["text"]["type"] == "null"
+
+
+def test_service_dataset_response_schemas_omit_console_permission_metadata():
+    from controllers.console import bp as console_bp
+    from controllers.service_api import bp as service_api_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+    app.register_blueprint(service_api_bp)
+
+    service_payload = app.test_client().get("/v1/openapi.json").get_json()
+    service_schemas = service_payload["components"]["schemas"]
+    for name in ("DatasetDetailResponse", "DatasetDetailWithPartialMembersResponse"):
+        assert "permission_keys" not in service_schemas[name]["properties"]
+    assert service_schemas["DatasetListResponse"]["properties"]["data"]["items"] == {
+        "$ref": "#/components/schemas/DatasetDetailResponse"
+    }
+
+    console_payload = app.test_client().get("/console/api/openapi.json").get_json()
+    console_schema = console_payload["components"]["schemas"]["DatasetDetailResponse"]
+    assert "permission_keys" in console_schema["properties"]
+
+
+def test_service_delete_schemas_omit_unenforced_state_constraints():
+    from controllers.service_api import bp as service_api_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(service_api_bp)
+    paths = app.test_client().get("/v1/openapi.json").get_json()["paths"]
+
+    delete_dataset = paths["/datasets/{dataset_id}"]["delete"]
+    assert "409" not in delete_dataset["responses"]
+    assert "must not be in use" not in delete_dataset["description"]
+
+    delete_document = paths["/datasets/{dataset_id}/documents/{document_id}"]["delete"]
+    assert "document_indexing" not in json.dumps(delete_document["responses"])
+    assert "archived_document_immutable" in delete_document["responses"]["403"]["description"]
+
+
+def test_service_schemas_only_document_reachable_not_found_responses():
+    from controllers.service_api import bp as service_api_bp
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(service_api_bp)
+    paths = app.test_client().get("/v1/openapi.json").get_json()["paths"]
+
+    for path, method in (
+        ("/apps/annotation-reply/{action}/status/{job_id}", "get"),
+        ("/info", "get"),
+        ("/meta", "get"),
+        ("/parameters", "get"),
+        ("/workflows/run", "post"),
+        ("/completion-messages", "post"),
+    ):
+        assert "404" not in paths[path][method]["responses"]
+        assert "400" in paths[path][method]["responses"]
+
+    assert "404" in paths["/workflows/{workflow_id}/run"]["post"]["responses"]
+    assert "404" in paths["/chat-messages"]["post"]["responses"]
 
 
 def test_service_openapi_does_not_encode_docs_coverage_boundaries():

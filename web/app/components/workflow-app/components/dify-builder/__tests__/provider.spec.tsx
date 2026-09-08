@@ -1,7 +1,7 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DifyBuilderProvider } from '../provider'
 import {
   difyBuilderActiveSessionIdAtom,
@@ -192,22 +192,20 @@ const Probe = () => {
 }
 
 const renderProvider = (edgeCount = 0, difyBuilderEnabled = true, userId = 'user-1') =>
-  render(
-    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its special provider.
-    <ProviderContext.Provider value={{ ...baseProviderContextValue, difyBuilderEnabled }}>
-      <DifyBuilderProvider
-        appId="app-1"
-        canEdit
-        getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
-        onFocusCanvas={mocks.focusCanvas}
-        onRefreshCanvas={mocks.refreshCanvas}
-        onSyncDraft={mocks.syncDraft}
-        tenantId="workspace-1"
-        userId={userId}
-      >
-        <Probe />
-      </DifyBuilderProvider>
-    </ProviderContext.Provider>,
+  renderWithConsoleQuery(
+    <DifyBuilderProvider
+      appId="app-1"
+      canEdit
+      getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
+      onFocusCanvas={mocks.focusCanvas}
+      onRefreshCanvas={mocks.refreshCanvas}
+      onSyncDraft={mocks.syncDraft}
+      tenantId="workspace-1"
+      userId={userId}
+    >
+      <Probe />
+    </DifyBuilderProvider>,
+    { features: { dify_builder_enabled: difyBuilderEnabled } },
   )
 
 describe('DifyBuilderProvider', () => {

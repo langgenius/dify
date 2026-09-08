@@ -10,22 +10,16 @@ export type FeatureModel = {
   apps: LimitationModel
   billing: BillingModel
   can_replace_logo: boolean
-  dataset_operator_enabled: boolean
   dify_builder_enabled: boolean
-  docs_processing: string
   documents_upload_quota: LimitationModel
   education: EducationModel
   enable_skill: boolean
   human_input_email_delivery_enabled: boolean
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
-  knowledge_rate_limit: number
   members: LimitationModel
   model_load_balancing_enabled: boolean
-  next_credit_reset_date: number
-  skill_learning_policy: string
   trigger_event: Quota
-  vector_space: LimitationModel | null
   webapp_copyright_enabled: boolean
   workspace_members: LicenseLimitationModel
 }
@@ -48,7 +42,6 @@ export type Quota = {
 }
 
 export type BillingModel = {
-  enabled: boolean
   subscription: SubscriptionModel
 }
 

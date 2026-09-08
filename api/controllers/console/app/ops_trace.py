@@ -4,6 +4,7 @@ from uuid import UUID
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -18,7 +19,6 @@ from controllers.console.app.error import (
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     model_validate,
 )
 from extensions.ext_application_services import application_services
@@ -106,8 +106,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.response(404, "Application not found")
     @console_ns.response(500, "Tracing configuration processing failed")
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_TRACING_CONFIG,
+        rbac_checks=[RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp())],
     )
     @model_validate(TraceProviderQuery)
     def get(
@@ -155,8 +154,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.response(500, "Tracing configuration processing failed")
     @console_account_admission(
         allowed_roles=_APP_TRACING_CONFIG_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_TRACING_CONFIG,
+        rbac_checks=[RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp())],
     )
     @model_validate(TraceConfigPayload)
     def post(
@@ -205,8 +203,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.response(500, "Tracing configuration processing failed")
     @console_account_admission(
         allowed_roles=_APP_TRACING_CONFIG_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_TRACING_CONFIG,
+        rbac_checks=[RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp())],
     )
     @model_validate(TraceConfigPayload)
     def patch(
@@ -251,8 +248,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.response(500, "Tracing configuration processing failed")
     @console_account_admission(
         allowed_roles=_APP_TRACING_CONFIG_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_TRACING_CONFIG,
+        rbac_checks=[RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp())],
     )
     @model_validate(TraceProviderQuery)
     def delete(

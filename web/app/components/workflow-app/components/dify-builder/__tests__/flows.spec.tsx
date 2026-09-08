@@ -1,9 +1,9 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSetAtom } from 'jotai'
-import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import DifyBuilderPanel from '../panel'
 import { DifyBuilderProvider } from '../provider'
 import { difyBuilderStartRunFixAtom } from '../store'
@@ -22,22 +22,27 @@ const mocks = vi.hoisted(() => ({
   syncDraft: vi.fn(async () => undefined),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    difyBuilder: {
-      sessions: {
-        post: mocks.create,
-        bySessionId: {
-          get: mocks.get,
-          conversation: { get: mocks.conversation },
-          stream: { get: mocks.stream },
-          actions: { post: mocks.action },
-          messages: { post: mocks.message },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+
+  return {
+    ...actual,
+    consoleClient: {
+      difyBuilder: {
+        sessions: {
+          post: mocks.create,
+          bySessionId: {
+            get: mocks.get,
+            conversation: { get: mocks.conversation },
+            stream: { get: mocks.stream },
+            actions: { post: mocks.action },
+            messages: { post: mocks.message },
+          },
         },
       },
     },
-  },
-}))
+  }
+})
 
 vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,
@@ -146,23 +151,21 @@ const FixEntry = () => {
 }
 
 const renderFlow = (edgeCount = 0) =>
-  render(
-    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its special provider.
-    <ProviderContext.Provider value={{ ...baseProviderContextValue, difyBuilderEnabled: true }}>
-      <DifyBuilderProvider
-        appId="app-1"
-        canEdit
-        getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
-        onFocusCanvas={mocks.focusCanvas}
-        onRefreshCanvas={mocks.refreshCanvas}
-        onSyncDraft={mocks.syncDraft}
-        tenantId="workspace-1"
-        userId="user-1"
-      >
-        <FixEntry />
-        <DifyBuilderPanel />
-      </DifyBuilderProvider>
-    </ProviderContext.Provider>,
+  renderWithConsoleQuery(
+    <DifyBuilderProvider
+      appId="app-1"
+      canEdit
+      getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
+      onFocusCanvas={mocks.focusCanvas}
+      onRefreshCanvas={mocks.refreshCanvas}
+      onSyncDraft={mocks.syncDraft}
+      tenantId="workspace-1"
+      userId="user-1"
+    >
+      <FixEntry />
+      <DifyBuilderPanel />
+    </DifyBuilderProvider>,
+    { features: { dify_builder_enabled: true } },
   )
 
 const getComposer = () =>

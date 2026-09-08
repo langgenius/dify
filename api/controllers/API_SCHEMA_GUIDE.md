@@ -239,12 +239,12 @@ to the legacy area and avoid importing RESTX model objects from controllers.
 
 ## Verifying Swagger
 
-For schema and documentation changes, run focused tests and generate Swagger JSON:
+For schema and documentation changes, run focused tests and generate Swagger JSON from the repository root:
 
 ```bash
-uv run --project . pytest tests/unit_tests/controllers/common/test_schema.py
-uv run --project . pytest tests/unit_tests/commands/test_generate_swagger_specs.py tests/unit_tests/controllers/test_swagger.py
-uv run --project . dev/generate_swagger_specs.py --output-dir /tmp/dify-openapi-check
+uv run --project api pytest api/tests/unit_tests/controllers/common/test_schema.py
+uv run --project api pytest api/tests/unit_tests/commands/test_generate_swagger_specs.py api/tests/unit_tests/controllers/test_swagger.py
+uv run --project api python api/dev/generate_swagger_specs.py --output-dir /tmp/dify-openapi-check
 ```
 
 Inspect affected endpoints with `jq`. Check that:
@@ -253,3 +253,17 @@ Inspect affected endpoints with `jq`. Check that:
 - Request bodies appear only where the endpoint has a body.
 - Responses reference the expected `*Response` schema.
 - Response schemas use public serialized names, not internal validation aliases like `inputs_dict`.
+
+## Service API Documentation Handoff
+
+The `dify-docs` repository imports `service-openapi.json` for the `/v1` API. It keeps a pinned export and adds
+descriptions, examples, translations, and existing page URLs through documentation annotations. Fields, constraints,
+references, response statuses, and security come from this repository's export.
+
+Verify the public schema against request validation and response serialization, including intentional schema overrides
+and excluded fields. Fix an inaccurate contract here and regenerate it before updating the documentation snapshot.
+Record the full source commit SHA when handing off the export. For coordinated changes that are not committed yet,
+also provide the source patch used to produce it; replace that patch with a clean committed export after merging.
+
+The manual import, annotation review, build, and validation commands live in `tools/api-pipeline/README.md` in
+`dify-docs`. Regenerate this repository's OpenAPI Markdown and TypeScript/Zod contracts whenever their inputs change.

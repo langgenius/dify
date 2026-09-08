@@ -28,7 +28,7 @@ const clientMocks = vi.hoisted(() => ({
   message: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     difyBuilder: {
       sessions: {

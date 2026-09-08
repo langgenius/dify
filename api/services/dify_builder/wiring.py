@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.wraps import RBACPermission, RBACResourceScope, enforce_rbac_access
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import Action, Actor
 from extensions.ext_database import db
@@ -72,11 +72,10 @@ def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
     elif access == AppAccess.RELEASE:
         scenes.append(RBACPermission.APP_RELEASE_AND_VERSION)
     for scene in scenes:
-        enforce_rbac_access(
+        enforce_rbac_checks(
             tenant_id=actor.tenant_id,
             account_id=actor.account_id,
-            resource_type=RBACResourceScope.APP,
-            scene=scene,
+            checks=[RBACCheck(scene, PlainApp())],
             path_args={"app_id": str(trusted_app_id)},
         )
 

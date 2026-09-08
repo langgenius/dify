@@ -11,6 +11,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.rbac import PlainApp
 from controllers.console import flask_admission
 from controllers.console.app import ops_trace as ops_trace_module
 from controllers.console.app.error import (
@@ -138,19 +139,19 @@ def test_trace_config_mutations_require_app_tracing_permission_when_rbac_is_enab
         lambda: AccountWithTenant(account=account, tenant_id=WORKSPACE_ID),
     )
     denied = MagicMock(side_effect=Forbidden())
-    monkeypatch.setattr(flask_admission, "enforce_rbac_access", denied)
+    monkeypatch.setattr(flask_admission, "enforce_rbac_checks", denied)
 
     with app.test_request_context(), pytest.raises(Forbidden):
         _admission_injector(method)(None, app_id=UUID(APP_ID))
 
-    denied.assert_called_once_with(
-        tenant_id=WORKSPACE_ID,
-        account_id=ACCOUNT_ID,
-        resource_type=ops_trace_module.RBACResourceScope.APP,
-        scene=ops_trace_module.RBACPermission.APP_TRACING_CONFIG,
-        resource_required=True,
-        path_args={"app_id": UUID(APP_ID)},
-    )
+    denied.assert_called_once()
+    call = denied.call_args.kwargs
+    assert call["tenant_id"] == WORKSPACE_ID
+    assert call["account_id"] == ACCOUNT_ID
+    assert call["path_args"] == {"app_id": UUID(APP_ID)}
+    (check,) = call["checks"]
+    assert check.scene == ops_trace_module.RBACPermission.APP_TRACING_CONFIG
+    assert isinstance(check.locator, PlainApp)
 
 
 def test_trace_config_get_preserves_read_access_for_normal_member() -> None:

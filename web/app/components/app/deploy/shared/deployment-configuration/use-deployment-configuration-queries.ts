@@ -2,7 +2,7 @@
 
 import type { QueryFunction } from '@tanstack/react-query'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { normalizeDeploymentError } from './utils/deployment-error'
 
 function withNormalizedDeploymentError<TData>(queryFn: QueryFunction<TData>): QueryFunction<TData> {

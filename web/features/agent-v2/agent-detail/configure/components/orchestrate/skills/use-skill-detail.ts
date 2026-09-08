@@ -10,7 +10,7 @@ import Cookies from 'js-cookie'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { getDriveFileIconType } from '../files/file-icon'
 

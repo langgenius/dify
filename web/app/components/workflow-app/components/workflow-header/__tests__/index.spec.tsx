@@ -1,8 +1,8 @@
 import type { SessionView } from '../../dify-builder/types'
 import type { HeaderProps } from '@/app/components/workflow/header'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
-import { baseProviderContextValue, ProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { difyBuilderSessionViewAtom } from '../../dify-builder/session/state'
 import WorkflowHeader from '../index'
 
@@ -57,13 +57,11 @@ const renderHeader = (difyBuilderEnabled: boolean, sessionView: SessionView | nu
   const store = createStore()
   store.set(difyBuilderSessionViewAtom, sessionView)
 
-  return render(
+  return renderWithConsoleQuery(
     <Provider store={store}>
-      {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its special provider. */}
-      <ProviderContext.Provider value={{ ...baseProviderContextValue, difyBuilderEnabled }}>
-        <WorkflowHeader />
-      </ProviderContext.Provider>
+      <WorkflowHeader />
     </Provider>,
+    { features: { dify_builder_enabled: difyBuilderEnabled } },
   )
 }
 
