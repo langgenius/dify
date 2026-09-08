@@ -1,14 +1,13 @@
+"""Manage workspace installations and paginate apps visible to an account."""
+
+from collections.abc import Sequence, Set
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 from pydantic import BaseModel
-from sqlalchemy import and_, exists, or_, select
-from sqlalchemy.orm import Session, scoped_session
 
-from libs.helper import escape_like_pattern
-from models import App, AppModelConfig, InstalledApp, Workflow
-from models.model import AppMode
-from services.enterprise.enterprise_service import EnterpriseService
-from services.system_feature_service import SystemFeatureService
+from services.installed_app_access_service import InstalledAppRef
 
 
 class InstalledAppCursor(BaseModel):
@@ -17,86 +16,96 @@ class InstalledAppCursor(BaseModel):
     installed_app_id: str
 
 
-def _published_app_filter():
-    """Return the SQL predicate for installed-app web API availability.
-
-    The installed-app parameters endpoint reads the published workflow for
-    workflow-style apps and the published app model config for easy UI apps.
-    Keep the list endpoint aligned in SQL so it does not return entries that
-    will immediately fail with app_unavailable when opened.
-    """
-    workflow_app_modes = (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
-    has_published_workflow = exists(select(Workflow.id).where(Workflow.id == App.workflow_id))
-    has_published_model_config = exists(select(AppModelConfig.id).where(AppModelConfig.id == App.app_model_config_id))
-
-    return and_(
-        App.mode != AppMode.AGENT,
-        or_(
-            and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
-            and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
-        ),
-    )
+@dataclass(frozen=True, slots=True)
+class InstalledAppInfo:
+    id: str
+    name: str
+    description: str
+    mode: str
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    use_icon_as_answer_icon: bool
 
 
-def _installed_app_cursor_filter(cursor: InstalledAppCursor):
-    same_pin_group = InstalledApp.is_pinned == cursor.is_pinned
-    if cursor.last_used_at is None:
-        later_in_pin_group = and_(
-            InstalledApp.last_used_at.is_(None),
-            InstalledApp.id > cursor.installed_app_id,
-        )
-    else:
-        later_in_pin_group = or_(
-            InstalledApp.last_used_at < cursor.last_used_at,
-            InstalledApp.last_used_at.is_(None),
-            and_(
-                InstalledApp.last_used_at == cursor.last_used_at,
-                InstalledApp.id > cursor.installed_app_id,
-            ),
+@dataclass(frozen=True, slots=True)
+class InstalledAppRecord:
+    id: str
+    app: InstalledAppInfo
+    app_owner_tenant_id: str
+    is_pinned: bool
+    last_used_at: datetime | None
+
+    def cursor(self) -> InstalledAppCursor:
+        return InstalledAppCursor(
+            is_pinned=self.is_pinned,
+            last_used_at=self.last_used_at,
+            installed_app_id=self.id,
         )
 
-    if cursor.is_pinned:
-        return or_(
-            InstalledApp.is_pinned.is_(False),
-            and_(same_pin_group, later_in_pin_group),
-        )
-    return and_(same_pin_group, later_in_pin_group)
+
+@dataclass(frozen=True, slots=True)
+class InstalledAppPage:
+    data: tuple[InstalledAppRecord, ...]
+    has_more: bool
+    next_cursor: InstalledAppCursor | None
+    editable: bool
 
 
-def _installed_app_order_by():
-    return (
-        InstalledApp.is_pinned.desc(),
-        InstalledApp.last_used_at.desc().nulls_last(),
-        InstalledApp.id.asc(),
-    )
+@dataclass(frozen=True, slots=True)
+class InstalledAppDetail:
+    installation: InstalledAppRecord
+    editable: bool
 
 
-def _filter_rows_by_webapp_auth(
-    rows: list[tuple[InstalledApp, App]],
-    *,
-    user_id: str,
-) -> list[tuple[InstalledApp, App]]:
-    if not rows:
-        return []
+class InstalledAppUnavailableError(RuntimeError):
+    """The admitted installation cannot be returned as a published library app."""
 
-    app_ids = [app.id for _, app in rows]
-    webapp_settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids)
-    candidates = [
-        (installed_app, app)
-        for installed_app, app in rows
-        if (setting := webapp_settings.get(app.id)) is not None and setting.access_mode != "sso_verified"
-    ]
-    permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
-        user_id=user_id,
-        app_ids=[app.id for _, app in candidates],
-    )
-    return [(installed_app, app) for installed_app, app in candidates if permissions.get(app.id)]
+
+class InstalledAppOwnedByWorkspaceError(PermissionError):
+    """A workspace cannot uninstall an app it owns."""
+
+
+class InstalledAppStore(Protocol):
+    def get_candidates(
+        self,
+        *,
+        tenant_id: str,
+        cursor: InstalledAppCursor | None,
+        limit: int,
+        app_id: str | None,
+        name: str | None,
+    ) -> tuple[InstalledAppRecord, ...]: ...
+
+    def get_published(self, *, installed_app: InstalledAppRef) -> InstalledAppRecord | None: ...
+
+    def uninstall(self, *, installed_app: InstalledAppRef) -> None: ...
+
+    def set_pinned(self, *, installed_app: InstalledAppRef, is_pinned: bool) -> None: ...
+
+
+class InstalledAppVisibilityQuery(Protocol):
+    def __call__(self, *, user_id: str, app_ids: Sequence[str]) -> Set[str]: ...
+
+
+class WorkspaceRoleLookup(Protocol):
+    def __call__(self, *, account_id: str, tenant_id: str) -> str | None: ...
 
 
 class InstalledAppService:
-    @classmethod
+    def __init__(
+        self,
+        *,
+        installed_apps: InstalledAppStore,
+        get_workspace_role: WorkspaceRoleLookup,
+        get_visible_app_ids: InstalledAppVisibilityQuery | None,
+    ) -> None:
+        self._installed_apps: InstalledAppStore = installed_apps
+        self._get_workspace_role: WorkspaceRoleLookup = get_workspace_role
+        self._get_visible_app_ids: InstalledAppVisibilityQuery | None = get_visible_app_ids
+
     def get_visible_page(
-        cls,
+        self,
         *,
         tenant_id: str,
         user_id: str,
@@ -104,74 +113,65 @@ class InstalledAppService:
         limit: int,
         app_id: str | None,
         name: str | None,
-        session: Session | scoped_session,
-    ) -> tuple[list[tuple[InstalledApp, App]], bool, InstalledAppCursor | None]:
+    ) -> InstalledAppPage:
         """Scan ordered candidates until one page of authorized apps is complete."""
-        stmt = (
-            select(InstalledApp, App)
-            .join(App, App.id == InstalledApp.app_id)
-            .where(InstalledApp.tenant_id == tenant_id, _published_app_filter())
-        )
-        if app_id:
-            stmt = stmt.where(InstalledApp.app_id == app_id)
-        if name and (normalized_name := name.strip()):
-            escaped_name = escape_like_pattern(normalized_name)
-            stmt = stmt.where(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-
-        webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
-        scan_size = limit * 2 if webapp_auth_enabled else limit + 1
-        visible_rows: list[tuple[InstalledApp, App]] = []
+        scan_size = limit * 2 if self._get_visible_app_ids is not None else limit + 1
+        visible_rows: list[InstalledAppRecord] = []
         scan_cursor = cursor
         has_more = False
-        last_consumed_app: InstalledApp | None = None
+        last_consumed_app: InstalledAppRecord | None = None
 
         while True:
-            page_stmt = stmt
-            if scan_cursor is not None:
-                page_stmt = page_stmt.where(_installed_app_cursor_filter(scan_cursor))
-            candidate_result = session.execute(page_stmt.order_by(*_installed_app_order_by()).limit(scan_size)).all()
-            candidate_rows = [(installed_app, app) for installed_app, app in candidate_result]
+            # Candidate records are detached and the repository Session is closed
+            # before the optional Enterprise request.
+            candidate_rows = self._installed_apps.get_candidates(
+                tenant_id=tenant_id,
+                cursor=scan_cursor,
+                limit=scan_size,
+                app_id=app_id,
+                name=name,
+            )
             if not candidate_rows:
                 break
 
-            authorized_rows = candidate_rows
-            if webapp_auth_enabled:
-                authorized_rows = _filter_rows_by_webapp_auth(candidate_rows, user_id=user_id)
+            authorized_app_ids: Set[str] = {row.app.id for row in candidate_rows}
+            if self._get_visible_app_ids is not None:
+                authorized_app_ids = self._get_visible_app_ids(
+                    user_id=user_id, app_ids=[row.app.id for row in candidate_rows]
+                )
 
-            authorized_installed_app_ids = {installed_app.id for installed_app, _ in authorized_rows}
             for row in candidate_rows:
-                installed_app = row[0]
-                if installed_app.id not in authorized_installed_app_ids:
-                    last_consumed_app = installed_app
+                if row.app.id not in authorized_app_ids:
+                    last_consumed_app = row
                     continue
                 if len(visible_rows) == limit:
                     has_more = True
                     break
                 visible_rows.append(row)
-                last_consumed_app = installed_app
+                last_consumed_app = row
             if has_more:
                 break
 
             if len(candidate_rows) < scan_size:
                 break
-            last_scanned_app = candidate_rows[-1][0]
-            scan_cursor = InstalledAppCursor(
-                is_pinned=last_scanned_app.is_pinned,
-                last_used_at=last_scanned_app.last_used_at,
-                installed_app_id=last_scanned_app.id,
-            )
+            scan_cursor = candidate_rows[-1].cursor()
 
-        next_cursor = (
-            InstalledAppCursor(
-                is_pinned=last_consumed_app.is_pinned,
-                last_used_at=last_consumed_app.last_used_at,
-                installed_app_id=last_consumed_app.id,
-            )
-            if has_more and last_consumed_app
-            else None
+        next_cursor = last_consumed_app.cursor() if has_more and last_consumed_app is not None else None
+        role = self._get_workspace_role(account_id=user_id, tenant_id=tenant_id)
+        return InstalledAppPage(
+            data=tuple(visible_rows), has_more=has_more, next_cursor=next_cursor, editable=role in {"owner", "admin"}
         )
-        return visible_rows, has_more, next_cursor
 
-    @staticmethod
-    def get_published_app(app_id: str, *, session: Session | scoped_session) -> App | None:
-        return session.scalar(select(App).where(App.id == app_id, _published_app_filter()).limit(1))
+    def get_detail(self, *, installed_app: InstalledAppRef, account_id: str) -> InstalledAppDetail:
+        installation = self._installed_apps.get_published(installed_app=installed_app)
+        if installation is None:
+            raise InstalledAppUnavailableError(f"Installed app {installed_app.id} is not available as a published app")
+        role = self._get_workspace_role(account_id=account_id, tenant_id=installed_app.tenant_id)
+        return InstalledAppDetail(installation=installation, editable=role in {"owner", "admin"})
+
+    def uninstall(self, *, installed_app: InstalledAppRef) -> None:
+        self._installed_apps.uninstall(installed_app=installed_app)
+
+    def set_pinned(self, *, installed_app: InstalledAppRef, is_pinned: bool | None) -> None:
+        if is_pinned is not None:
+            self._installed_apps.set_pinned(installed_app=installed_app, is_pinned=is_pinned)

@@ -659,6 +659,10 @@ def with_current_user_id[T, **P, R](
 def validate_request[M: BaseModel](model: type[M]) -> M:
     """Parse and validate the current request without exposing submitted values."""
 
+    # TODO: Standardize request parsing and structured validation errors after
+    # auditing callers. Malformed or falsy JSON currently becomes {}, allowing
+    # optional payloads to succeed as no-ops; validation details currently travel
+    # as a JSON string in the error message.
     if request.method == "GET":
         raw = request.args.to_dict(flat=True)
     elif request.method == "DELETE":

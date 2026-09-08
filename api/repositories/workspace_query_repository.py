@@ -21,6 +21,17 @@ class WorkspaceQueryRepository(
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
+        """Read the current membership role without loading or mutating an Account."""
+        stmt = (
+            select(TenantAccountJoin.role)
+            .where(TenantAccountJoin.account_id == account_id, TenantAccountJoin.tenant_id == tenant_id)
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            role = session.scalar(stmt)
+            return role.value if role is not None else None
+
     @override
     def list_for_account(self, account_id: str) -> tuple[WorkspaceRecord, ...]:
         stmt = (

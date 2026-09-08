@@ -348,7 +348,14 @@ def test_completion_requires_installed_app_admission_before_payload_validation(
         )
     else:
         _assert_json_response(
-            response, status=404, body={"code": "not_found", "message": "Installed app not found", "status": 404}
+            response,
+            status=404,
+            body={
+                "code": "installed_app_not_found",
+                "message": "The app was not found in this workspace.",
+                "status": 404,
+                "details": {"request_id": "request-1"},
+            },
         )
     assert runtime.calls == []
     if rejection != "missing":
@@ -388,6 +395,8 @@ def test_resource_removed_after_admission_does_not_start_runtime(
         assert _last_used_at(harness, sqlite_session_factory) is None
     else:
         _assert_json_response(
-            response, status=404, body={"code": "not_found", "message": "Installed app not found", "status": 404}
+            response,
+            status=404,
+            body={"code": "not_found", "message": "Installed app not found", "status": 404},
         )
     assert runtime.calls == []

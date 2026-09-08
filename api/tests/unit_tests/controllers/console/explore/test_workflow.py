@@ -342,7 +342,14 @@ def test_workflow_handlers_require_admission_before_payload_or_task_actions(
         )
     else:
         _assert_json_response(
-            response, status=404, body={"code": "not_found", "message": "Installed app not found", "status": 404}
+            response,
+            status=404,
+            body={
+                "code": "installed_app_not_found",
+                "message": "The app was not found in this workspace.",
+                "status": 404,
+                "details": {"request_id": "request-1"},
+            },
         )
     assert runtime.calls == []
     assert stop_redis.operations == []
