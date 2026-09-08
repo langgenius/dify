@@ -20,7 +20,6 @@ type Props = Readonly<{
   extraInfo?: ReactNode
   show: boolean
   onClose: () => void
-  onUpgrade?: () => void
 }>
 
 export function PlanUpgradeModal({
@@ -30,16 +29,14 @@ export function PlanUpgradeModal({
   extraInfo,
   show,
   onClose,
-  onUpgrade,
 }: Props) {
   const { t } = useTranslation()
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   const handleUpgrade = useCallback(() => {
     onClose()
-    if (onUpgrade) onUpgrade()
-    else setPricing('open')
-  }, [onClose, onUpgrade, setPricing])
+    setPricing('open')
+  }, [onClose, setPricing])
 
   return (
     <UpgradeModal

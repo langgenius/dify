@@ -431,30 +431,6 @@ describe('Upgrade Flow Integration', () => {
       )
     })
 
-    it('should call onClose and custom onUpgrade when provided', async () => {
-      const user = userEvent.setup()
-      const onClose = vi.fn()
-      const onUpgrade = vi.fn()
-
-      render(
-        <PlanUpgradeModal
-          show={true}
-          onClose={onClose}
-          onUpgrade={onUpgrade}
-          title="Test"
-          description="Test"
-        />,
-      )
-
-      const upgradeText = screen.getByText(/triggerLimitModal\.upgrade/i)
-      await user.click(upgradeText)
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-      expect(onUpgrade).toHaveBeenCalledTimes(1)
-      // Custom onUpgrade replaces the default pricing action
-      expect(onPricingUrlUpdate).not.toHaveBeenCalled()
-    })
-
     it('should call onClose when clicking dismiss button', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
