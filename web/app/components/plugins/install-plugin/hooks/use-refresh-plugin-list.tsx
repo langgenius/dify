@@ -1,9 +1,9 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
@@ -60,7 +60,7 @@ const useRefreshPluginList = () => {
     }),
   )
   const invalidateDefaultModel = useInvalidateDefaultModel()
-  const { refreshModelProviders } = useProviderContext()
+  const queryClient = useQueryClient()
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
@@ -104,7 +104,10 @@ const useRefreshPluginList = () => {
 
       // model select
       if ((manifest && PluginCategoryEnum.model.includes(manifest.category)) || refreshAllType) {
-        refreshModelProviders()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+        })
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
         refetchLLMModelList()
         refetchEmbeddingModelList()
         refetchRerankModelList()

@@ -1,4 +1,5 @@
 import type {
+  ModelProviderSummaryResponse,
   ProviderModelWithStatusEntity,
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -8,6 +9,7 @@ import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
@@ -19,6 +21,23 @@ import {
   PreferredProviderTypeEnum,
 } from '../../declarations'
 import PopupItem from '../popup-item'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockUpdateModelProviders = vi.hoisted(() => vi.fn())
@@ -88,10 +107,7 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
-}))
+const mockProviderSummary = vi.hoisted(() => vi.fn())
 
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
@@ -137,7 +153,12 @@ const makeModel = (
   ...overrides,
 })
 
-const makeProvider = (overrides: Record<string, unknown> = {}) => ({
+const makeProvider = (
+  overrides: Partial<Omit<ModelProviderSummaryResponse, 'custom_configuration'>> & {
+    custom_configuration?: Partial<ModelProviderSummaryResponse['custom_configuration']>
+  } = {},
+) => ({
+  ...providerSummaryFixture,
   provider: 'openai',
   preferred_provider_type: PreferredProviderTypeEnum.custom,
   custom_configuration: {
@@ -160,6 +181,10 @@ const renderPopupItem = (node: ReactElement) => {
   queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
     data: [makeProvider()],
   })
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    ...mockProviderSummary(),
+    plugins: {},
+  })
   return renderWithConsoleQuery(createPopupItemNode(node), { queryClient })
 }
 
@@ -168,8 +193,8 @@ describe('PopupItem', () => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
     mockUseLanguage.mockReturnValue('en_US')
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [makeProvider()],
+    mockProviderSummary.mockReturnValue({
+      data: [makeProvider()],
     })
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
@@ -187,8 +212,8 @@ describe('PopupItem', () => {
   })
 
   it('should render nothing when provider is not found in modelProviders', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [],
+    mockProviderSummary.mockReturnValue({
+      data: [],
     })
 
     const { container } = renderPopupItem(
@@ -423,8 +448,8 @@ describe('PopupItem', () => {
   })
 
   it('should show configure required when no credential name', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
+    mockProviderSummary.mockReturnValue({
+      data: [
         makeProvider({
           custom_configuration: {
             status: CustomConfigurationStatusEnum.noConfigure,
@@ -450,8 +475,8 @@ describe('PopupItem', () => {
   })
 
   it('should show credits info when using system provider with remaining credits', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
+    mockProviderSummary.mockReturnValue({
+      data: [
         makeProvider({
           preferred_provider_type: PreferredProviderTypeEnum.system,
         }),
@@ -474,8 +499,8 @@ describe('PopupItem', () => {
   })
 
   it('should show credits exhausted when system provider has no credits', () => {
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
+    mockProviderSummary.mockReturnValue({
+      data: [
         makeProvider({
           preferred_provider_type: PreferredProviderTypeEnum.system,
         }),

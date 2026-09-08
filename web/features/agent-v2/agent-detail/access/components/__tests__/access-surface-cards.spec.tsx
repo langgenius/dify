@@ -8,6 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
@@ -268,13 +269,24 @@ function createAgentApiAccessResponse(
   }
 }
 
+function createAccessCardWrapper(queryClient: QueryClient) {
+  const QueryWrapper = createQueryClientWrapper(queryClient)
+  return function AccessCardWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    )
+  }
+}
+
 function renderWithQueryClient(
   ui: React.ReactElement,
   { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
 ) {
   const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
-  render(ui, { wrapper: createQueryClientWrapper(queryClient) })
+  render(ui, { wrapper: createAccessCardWrapper(queryClient) })
 
   return queryClient
 }
@@ -743,7 +755,7 @@ describe('Agent access surface cards', () => {
       const queryClient = createConsoleQueryClient()
       const { rerender } = render(
         <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />,
-        { wrapper: createQueryClientWrapper(queryClient) },
+        { wrapper: createAccessCardWrapper(queryClient) },
       )
 
       expect(

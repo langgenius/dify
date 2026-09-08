@@ -11,7 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import {
@@ -298,6 +298,7 @@ export function SkillBuilderPanel({
 }) {
   const { t } = useTranslation('skill')
   const queryClient = useQueryClient()
+  const titleId = useId()
   const [prompt, setPrompt] = useState('')
   const initialBuilderModeRef = useRef({
     isEditMode: !isDefaultSkillBuilderDraft(detail),
@@ -803,7 +804,10 @@ export function SkillBuilderPanel({
   }
 
   return (
-    <aside className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle">
+    <section
+      aria-labelledby={titleId}
+      className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0 bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2"
@@ -817,7 +821,7 @@ export function SkillBuilderPanel({
         className="pointer-events-none absolute bottom-0 left-0 z-1 origin-center scale-y-[-1]"
       />
       <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 pr-3 pl-4">
-        <h2 className="system-xs-semibold-uppercase text-text-secondary">
+        <h2 id={titleId} className="system-xs-semibold-uppercase text-text-secondary">
           {t(($) => $['skillManagement.detail.builder.title'])}
         </h2>
         <div className="flex h-8 items-center gap-1">
@@ -1119,6 +1123,6 @@ export function SkillBuilderPanel({
           </div>
         </div>
       </div>
-    </aside>
+    </section>
   )
 }

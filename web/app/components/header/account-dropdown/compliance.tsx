@@ -15,10 +15,13 @@ import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useModalContext } from '@/context/modal-context'
 import { getDocDownloadUrl } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
@@ -107,7 +110,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
       select: (data) => data.billing.subscription.plan,
     }),
   )
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isFreePlan = plan === 'sandbox'
 
@@ -142,7 +145,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
       return
     }
 
-    if (isFreePlan) setShowPricingModal()
+    if (isFreePlan) setPricing('open')
     else setSettingsDestination('billing')
   }, [
     downloadCompliance,
@@ -150,7 +153,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     isFreePlan,
     isPending,
     setSettingsDestination,
-    setShowPricingModal,
+    setPricing,
   ])
 
   const upgradeTooltip: Record<CloudPlan, string> = {

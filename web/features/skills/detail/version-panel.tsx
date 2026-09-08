@@ -33,7 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
@@ -506,6 +506,7 @@ export function VersionPanel({
   const { t } = useTranslation('skill')
   const { t: tWorkflow } = useTranslation('workflow')
   const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
+  const titleId = useId()
   const filteredVersions = versions.filter((version) => {
     if (filterValue === 'onlyNamed') return !!version.version_name
 
@@ -513,10 +514,10 @@ export function VersionPanel({
   })
 
   return (
-    <aside className="flex w-67 shrink-0 flex-col py-1">
+    <section aria-labelledby={titleId} className="flex w-67 shrink-0 flex-col py-1">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-lg bg-components-panel-bg">
         <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
-          <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
+          <h2 id={titleId} className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
             {t(($) => $['skillManagement.detail.versions'])}
           </h2>
           <VersionFilter value={filterValue} onChange={setFilterValue} />
@@ -574,6 +575,6 @@ export function VersionPanel({
           </div>
         </div>
       </div>
-    </aside>
+    </section>
   )
 }

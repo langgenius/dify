@@ -118,7 +118,10 @@ export function MainNav({ className }: MainNavProps) {
         <div className="p-2">
           <WorkspaceCard />
         </div>
-        <nav className="isolate flex flex-col gap-px p-2">
+        <nav
+          aria-label={t(($) => $['navigation.primary'], { ns: 'common' })}
+          className="isolate flex flex-col gap-px p-2"
+        >
           {navItems.map((item) => (
             <MainNavLink key={item.href} item={item} pathname={pathname}>
               {item.href === '/agents' && (

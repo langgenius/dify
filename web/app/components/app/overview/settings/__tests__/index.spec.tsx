@@ -1,12 +1,17 @@
 import type { ReactElement, ReactNode } from 'react'
-import type { ModalContextState } from '@/context/modal-context'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 let copyrightEnabled = true
@@ -60,23 +65,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetShowPricingModal = vi.fn()
-
-const buildModalContext = (): ModalContextState => ({
-  hasBlockingModalOpen: false,
-  setShowModerationSettingModal: vi.fn(),
-  setShowExternalDataToolModal: vi.fn(),
-  setShowPricingModal: mockSetShowPricingModal,
-  setShowAnnotationFullModal: vi.fn(),
-  setShowModelModal: vi.fn(),
-  setShowExternalKnowledgeAPIModal: vi.fn(),
-  setShowOpeningModal: vi.fn(),
-  setShowUpdatePluginModal: vi.fn(),
-})
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => buildModalContext(),
-}))
 
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')
@@ -122,12 +110,21 @@ const renderSettingsModal = (appInfo = mockAppInfo, canDeploy = false) =>
 
 const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
 
+function render(...args: Parameters<typeof renderWithData>) {
+  const wrap = (ui: ReactElement) => (
+    <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{ui}</NuqsTestingAdapter>
+  )
+  args[0] = wrap(args[0])
+  const result = renderWithData(...args)
+  return { ...result, rerender: (ui: ReactElement) => result.rerender(wrap(ui)) }
+}
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     toastMocks.call.mockClear()
     mockOnClose.mockClear()
     mockOnSave.mockClear()
-    mockSetShowPricingModal.mockClear()
+    onPricingUrlUpdate.mockClear()
     deploymentEdition = 'CLOUD'
     copyrightEnabled = true
   })
@@ -400,7 +397,9 @@ describe('SettingsModal', () => {
     renderSettingsModal()
     fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('should hide the upgrade badge for non-sandbox plans', async () => {
@@ -460,10 +459,14 @@ describe('SettingsModal', () => {
   })
 })
 
-function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
+function renderWithData(
+  ui: ReactElement,
+  options: Parameters<typeof renderWithoutPricing>[1] = {},
+) {
+  return renderWithoutPricing(ui, {
     systemFeatures: { deployment_edition: deploymentEdition },
     features: { webapp_copyright_enabled: copyrightEnabled },
+    ...options,
   })
 }
 
@@ -474,10 +477,11 @@ it('saves unrelated settings while entitlements are pending without clearing pro
     queryFn: () => new Promise(() => {}),
   })
   const onSave = vi.fn().mockResolvedValue(undefined)
-  renderWithConsoleQuery(
-    <SettingsModal isChat isShow appInfo={mockAppInfo} onClose={vi.fn()} onSave={onSave} />,
-    { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
-  )
+  render(<SettingsModal isChat isShow appInfo={mockAppInfo} onClose={vi.fn()} onSave={onSave} />, {
+    queryClient,
+    features: undefined,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
   expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
   expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))

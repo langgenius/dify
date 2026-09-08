@@ -26,6 +26,14 @@ Flag:
 
 Prefer semantic HTML before ARIA.
 
+## Page Landmarks
+
+When reviewing Web page layouts, navigation, or landmark changes, read [Page landmarks].
+Inspect the composed page with its parent layouts for missing or duplicate main regions,
+inappropriate nesting or roles, and ambiguous or broken landmark names. Check affected
+unit and E2E locators when semantic elements change. Web owns these composition rules;
+use the existing naming contract for label-source decisions.
+
 ## Accessible Names And Descriptions
 
 Read [Accessible names and descriptions] when a change affects labels, ARIA naming, help/error relationships, or hidden text. That document owns the shared implementation and review contract.
@@ -123,4 +131,5 @@ Flag:
 - Hardcoded dates, times, numbers, or currency formats instead of `Intl.*`.
 
 [Accessible names and descriptions]: ../../../../packages/dify-ui/docs/accessible-names-and-descriptions.md
+[Page landmarks]: ../../../../web/docs/landmarks.md
 [Web Interface Guidelines]: https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md

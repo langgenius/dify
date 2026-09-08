@@ -204,22 +204,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelModalHandler: () => vi.fn(),
 }))
 
-// Mock provider-context
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    embeddingsModelList: [],
-    rerankModelList: [],
-    agentThoughtModelList: [],
-    modelProviders: [],
-    textEmbeddingModelList: [],
-    speech2textModelList: [],
-    ttsModelList: [],
-    moderationModelList: [],
-    hasSettedApiKey: true,
-    plan: { type: 'free' },
-  }),
-}))
-
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))

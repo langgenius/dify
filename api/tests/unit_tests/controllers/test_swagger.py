@@ -298,9 +298,10 @@ def test_service_openapi_documents_decorator_user_contracts():
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
 
-    for path in ("/workflows/run", "/workflows/{workflow_id}/run"):
+    for path in ("/chat-messages", "/workflows/run", "/workflows/{workflow_id}/run"):
         rate_limit_description = paths[path]["post"]["responses"]["429"]["description"]
-        assert "upstream model provider rate limit" in rate_limit_description
+        assert "upstream model provider rate limit" not in rate_limit_description
+        assert "too_many_requests" in rate_limit_description
         assert "Dify Cloud workflow execution quota" in rate_limit_description
 
     task_stop_user_descriptions = {

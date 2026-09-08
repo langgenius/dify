@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.app.error import (
+    CompletionRequestError,
     NotWorkflowAppError,
     TriggerWorkflowServiceModeUnavailableError,
     WorkflowVersionExecutionNotAllowedError,
@@ -49,6 +50,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
@@ -556,21 +558,51 @@ class TestWorkflowRunApi:
                 handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_rate_limit(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    @pytest.mark.parametrize("api_class", [WorkflowRunApi, WorkflowRunByIdApi])
+    @pytest.mark.parametrize(
+        ("source_error", "http_error", "status_code", "error_code"),
+        [
+            pytest.param(InvokeRateLimitError, InvokeRateLimitHttpError, 429, "rate_limit_error", id="cloud-quota"),
+            pytest.param(
+                ProviderInvokeRateLimitError, CompletionRequestError, 400, "completion_request_error", id="provider"
+            ),
+        ],
+    )
+    def test_maps_rate_limits_by_source(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        api_class: type[WorkflowRunApi | WorkflowRunByIdApi],
+        source_error: type[InvokeRateLimitError | ProviderInvokeRateLimitError],
+        http_error: type[InvokeRateLimitHttpError | CompletionRequestError],
+        status_code: int,
+        error_code: str,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         monkeypatch.setattr(
-            AppGenerateService,
-            "generate",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(InvokeRateLimitError("slow")),
+            BillingService, "get_info", Mock(return_value={"subscription": {"plan": CloudPlan.PROFESSIONAL}})
         )
+        generate = Mock(side_effect=source_error("rate limit reached"))
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
 
-        api = WorkflowRunApi()
+        api = api_class()
         handler = unwrap(api.post)
         app_model = _make_app_model()
         end_user = _make_end_user()
+        kwargs: dict[str, str] = {"workflow_id": str(uuid.uuid4())} if isinstance(api, WorkflowRunByIdApi) else {}
 
-        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(InvokeRateLimitHttpError):
-                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
+        with app.test_request_context(
+            "/workflows/run", method="POST", json={"inputs": {}, "response_mode": "blocking"}
+        ):
+            with pytest.raises(http_error) as exc_info:
+                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, **kwargs)
+
+        generate.assert_called_once()
+        assert exc_info.value.code == status_code
+        assert exc_info.value.error_code == error_code
+        assert exc_info.value.description == "rate limit reached"
 
     def test_trigger_workflow_returns_stable_unavailable_error(
         self,

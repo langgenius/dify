@@ -72,6 +72,7 @@ import HelpLine from './help-line'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
+import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from './hooks/use-panel-interactions'
@@ -559,6 +560,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleNodeEnter,
       handleNodeLeave,
       handleNodeClick,
+      handleNodeSelect,
       handleNodeConnect,
       handleNodeConnectStart,
       handleNodeConnectEnd,
@@ -566,6 +568,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleHistoryBack,
       handleHistoryForward,
     } = useNodesInteractions()
+    const handleNodeKeyDown = useNodeKeyboardInteractions(handleNodeSelect)
     const { handleEdgeEnter, handleEdgeLeave, handleEdgesChange, handleEdgeContextMenu } =
       useEdgesInteractions()
     const {
@@ -767,6 +770,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             edgeTypes={edgeTypes}
             nodes={nodes}
             edges={edges}
+            onKeyDownCapture={handleNodeKeyDown}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}

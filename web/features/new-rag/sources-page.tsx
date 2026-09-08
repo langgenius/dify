@@ -544,7 +544,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   ])
 
   return (
-    <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
+    <div className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
       <header>
         <div>
           <h2 className="title-xl-semi-bold text-text-primary">
@@ -749,6 +749,6 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           ) : null}
         </>
       )}
-    </main>
+    </div>
   )
 }
