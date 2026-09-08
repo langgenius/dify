@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "Konuşmada metinden konuşmaya giriş için varsayılan modeli ayarlayın.",
   "modelProvider.upgradeForLoadBalancing": "Yük Dengelemeyi etkinleştirmek için planınızı yükseltin.",
   "modelProvider.used": "kullanıldı",
+  "navigation.primary": "Ana menü",
   "navigation.skipToMain": "Ana içeriğe geç",
   "noData": "Veri yok",
   "operation.add": "Ekle",

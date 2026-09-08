@@ -11,7 +11,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { marketplaceQuery } from '@/service/client'
+import { marketplaceQuery } from '@/service/marketplace'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 

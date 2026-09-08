@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { AccessControlForm } from '@/app/components/app/app-access-control/access-control-form'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const EMPTY_SUBJECTS: AccessControlSubjects = {
   groups: [],
