@@ -12,11 +12,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -189,18 +189,22 @@ const SettingBuiltInTool: FC<Props> = ({
                   {/* header */}
                   <div className="relative border-b border-divider-subtle p-4 pb-3">
                     <div className="absolute top-3 right-3">
-                      <ActionButton onClick={onHide}>
-                        <RiCloseLine className="size-4" />
-                      </ActionButton>
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        onClick={onHide}
+                      >
+                        <RiCloseLine aria-hidden="true" className="size-4" />
+                      </IconButton>
                     </div>
                     {showBackButton && (
-                      <div
-                        className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                      <button
+                        type="button"
+                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent-secondary"
                         onClick={onHide}
                       >
                         <RiArrowLeftLine className="size-4" />
                         {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
-                      </div>
+                      </button>
                     )}
                     <div className="flex items-center gap-1">
                       <Icon size="tiny" className="size-6" src={collection.icon} />

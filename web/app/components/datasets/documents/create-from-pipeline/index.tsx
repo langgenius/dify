@@ -11,17 +11,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -43,8 +42,13 @@ import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const plan = useProviderContextSelector((state) => state.plan)
-  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const pipelineId = dataset?.pipeline_id
   const { data: currentUserId } = useSuspenseQuery({
@@ -120,7 +124,7 @@ const CreateFormPipeline = () => {
 
   // Computed values
   const shouldCheckVectorSpace =
-    enableBilling &&
+    deploymentEdition === 'CLOUD' &&
     (allFileLoaded ||
       onlineDocuments.length > 0 ||
       websitePages.length > 0 ||
@@ -134,13 +138,16 @@ const CreateFormPipeline = () => {
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceUnavailable =
-    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
+    shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
+    deploymentEdition === 'CLOUD' &&
     !!vectorSpace &&
     !vectorSpace.usage_unknown &&
     vectorSpace.limit > 0 &&
     vectorSpace.size >= vectorSpace.limit
-  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
+  const supportBatchUpload =
+    deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'
 
   // UI state
   const {
@@ -161,7 +168,6 @@ const CreateFormPipeline = () => {
     onlineDriveFileList,
     isVectorSpaceFull,
     isCheckingVectorSpace: isCheckingVectorSpace || isVectorSpaceUnavailable,
-    enableBilling,
     currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
     fileUploadConfig,
   })
@@ -174,6 +180,7 @@ const CreateFormPipeline = () => {
 
   // Next step with batch upload check
   const handleNextStep = useCallback(() => {
+    if (isPlanUnavailable) return
     if (!supportBatchUpload) {
       const multipleCheckMap: Record<string, number> = {
         [DatasourceType.localFile]: localFileList.length,
@@ -195,6 +202,7 @@ const CreateFormPipeline = () => {
     onlineDocuments.length,
     selectedFileIds.length,
     showPlanUpgradeModal,
+    isPlanUnavailable,
     supportBatchUpload,
     websitePages.length,
   ])
@@ -223,7 +231,7 @@ const CreateFormPipeline = () => {
     setEstimateData,
     setBatchId,
     setDocuments,
-    handleNextStep,
+    handleNextStep: doHandleNextStep,
     PagesMapAndSelectedPagesId,
     currentWorkspacePages: currentWorkspace?.pages,
     clearOnlineDocumentData,
@@ -258,6 +266,7 @@ const CreateFormPipeline = () => {
                 datasourceType={datasourceType}
                 pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
+                showBatchUploadUpgrade={deploymentEdition === 'CLOUD' && plan === 'sandbox'}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}
                 isShowVectorSpaceUnavailable={isVectorSpaceUnavailable}
                 isRetryingVectorSpace={isFetchingVectorSpacePlan}
@@ -265,7 +274,7 @@ const CreateFormPipeline = () => {
                 totalOptions={totalOptions}
                 selectedOptions={selectedOptions}
                 tip={tip}
-                nextBtnDisabled={nextBtnDisabled}
+                nextBtnDisabled={isPlanUnavailable || nextBtnDisabled}
                 onSelectDataSource={handleSwitchDataSource}
                 onCredentialChange={handleCredentialChange}
                 onSelectAll={handleSelectAll}

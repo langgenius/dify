@@ -69,7 +69,7 @@ def test_export_template_command_prints_scripted_json_template():
     }
 
 
-def test_export_template_command_writes_output_file(tmp_path):
+def test_export_template_command_writes_output_file(tmp_path: Path):
     output_file = tmp_path / "export-template.json"
 
     result = CliRunner().invoke(export_migration_data_template, ["--output", str(output_file)])
@@ -79,7 +79,7 @@ def test_export_template_command_writes_output_file(tmp_path):
     assert json.loads(output_file.read_text())["apps"]["all"] is True
 
 
-def test_export_template_command_requires_overwrite_for_existing_output(tmp_path):
+def test_export_template_command_requires_overwrite_for_existing_output(tmp_path: Path):
     output_file = tmp_path / "export-template.json"
     output_file.write_text("{}")
 
@@ -108,7 +108,6 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
             captured["path"] = path
             captured["overwrite"] = overwrite
 
-    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: Session(sqlite_engine))
     monkeypatch.setattr(data_migration, "MigrationExportService", FakeMigrationExportService)
     monkeypatch.setattr(data_migration, "MigrationPackageService", FakeMigrationPackageService)
 
@@ -153,7 +152,6 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
             captured["path"] = path
             return package
 
-    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: Session(sqlite_engine))
     monkeypatch.setattr(data_migration, "MigrationImportService", FakeMigrationImportService)
     monkeypatch.setattr(data_migration, "MigrationPackageService", FakeMigrationPackageService)
 

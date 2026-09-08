@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -11,7 +11,6 @@ import MainNavLayout from '../layout'
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     isCurrentWorkspaceDatasetOperator: false,
-    isCurrentWorkspaceEditor: true,
   },
 }))
 
@@ -65,7 +64,6 @@ describe('MainNavLayout', () => {
     ;(usePathname as Mock).mockReturnValue('/apps')
     mockConsoleState.current = {
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: true,
     }
     ;(useSuspenseQuery as Mock).mockReturnValue({
       data: {
@@ -196,6 +194,31 @@ describe('MainNavLayout', () => {
     expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
   })
 
+  it('hides the global main nav on a skill detail route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
+
+    render(
+      <MainNavLayout>
+        <div>skill detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('skill detail')
+  })
+
+  it('keeps the global main nav on the skills collection route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills')
+
+    render(
+      <MainNavLayout>
+        <div>skills collection</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+  })
+
   it.each([
     '/datasets/create',
     '/datasets/new/create',
@@ -220,7 +243,6 @@ describe('MainNavLayout', () => {
       pathname: '/agents/agent-1/configure',
       consoleState: {
         isCurrentWorkspaceDatasetOperator: true,
-        isCurrentWorkspaceEditor: true,
       },
       systemFeatures: {
         enable_app_deploy: true,
@@ -231,7 +253,6 @@ describe('MainNavLayout', () => {
       pathname: '/deployments/app-instance-1/overview',
       consoleState: {
         isCurrentWorkspaceDatasetOperator: false,
-        isCurrentWorkspaceEditor: false,
       },
       systemFeatures: {
         enable_app_deploy: true,
@@ -242,7 +263,6 @@ describe('MainNavLayout', () => {
       pathname: '/deployments/app-instance-1/overview',
       consoleState: {
         isCurrentWorkspaceDatasetOperator: false,
-        isCurrentWorkspaceEditor: true,
       },
       systemFeatures: {
         enable_app_deploy: false,

@@ -1,14 +1,13 @@
 import type { StartNodeType } from '../../nodes/start/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import ResizeHandle from '@/app/components/base/resize-handle'
 import { useStore } from '@/app/components/workflow/store'
 import { useEdgesInteractionsWithoutSync } from '../../hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '../../hooks/use-nodes-interactions-without-sync'
@@ -16,6 +15,7 @@ import { useWorkflowInteractions } from '../../hooks/use-workflow-panel-interact
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
+import { getPreviewPanelMaxWidth } from '../panel-width'
 import ChatWrapper from './chat-wrapper'
 
 export type ChatWrapperRefType = {
@@ -23,6 +23,7 @@ export type ChatWrapperRefType = {
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
+  const panelId = useId()
   const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
@@ -46,7 +47,6 @@ const DebugAndPreview = () => {
   }
 
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
-  const nodePanelWidth = useStore((s) => s.nodePanelWidth)
   const panelWidth = useStore((s) => s.previewPanelWidth)
   const setPanelWidth = useStore((s) => s.setPreviewPanelWidth)
   const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
@@ -57,13 +57,7 @@ const DebugAndPreview = () => {
     },
     [setPanelWidth, setPanelWidthStorage],
   )
-  const maxPanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth) return 720
-
-    if (!selectedNode) return workflowCanvasWidth - 400
-
-    return workflowCanvasWidth - 400 - 400
-  }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
+  const maxPanelWidth = getPreviewPanelMaxWidth(workflowCanvasWidth, !!selectedNode, 720)
   const { triggerRef, containerRef } = useResizePanel({
     direction: 'horizontal',
     triggerDirection: 'left',
@@ -76,13 +70,21 @@ const DebugAndPreview = () => {
 
   return (
     <div className="relative h-full">
-      <div
+      <ResizeHandle
         ref={triggerRef}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        side="left"
+        value={panelWidth}
+        min={400}
+        max={maxPanelWidth}
+        controls={panelId}
+        label={t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
+        onResize={(width) => handleResize(width, 'user')}
+        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
-        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
-      </div>
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+      </ResizeHandle>
       <div
+        id={panelId}
         ref={containerRef}
         className={cn(
           'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
@@ -97,9 +99,12 @@ const DebugAndPreview = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 aria-hidden="true" className="size-4" />
-                  </ActionButton>
+                  <IconButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-arrows-refresh-ccw-01 size-4"
+                    />
+                  </IconButton>
                 }
               />
               <TooltipContent>{restartLabel}</TooltipContent>
@@ -109,14 +114,14 @@ const DebugAndPreview = () => {
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <ActionButton
+                      <IconButton
                         aria-label={userInputFieldLabel}
-                        aria-pressed={expanded}
-                        state={expanded ? ActionButtonState.Active : undefined}
+                        aria-expanded={expanded}
+                        className="aria-expanded:bg-state-accent-active aria-expanded:text-text-accent aria-expanded:hover:bg-state-accent-active-alt"
                         onClick={() => setExpanded(!expanded)}
                       >
-                        <RiEqualizer2Line aria-hidden="true" className="size-4" />
-                      </ActionButton>
+                        <span aria-hidden="true" className="i-ri-equalizer-2-line size-4" />
+                      </IconButton>
                     }
                   />
                   <TooltipContent>{userInputFieldLabel}</TooltipContent>
@@ -127,14 +132,9 @@ const DebugAndPreview = () => {
               </div>
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
-            <button
-              type="button"
-              aria-label={closeLabel}
-              className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={handleCancelDebugAndPreviewPanel}
-            >
-              <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
-            </button>
+            <IconButton aria-label={closeLabel} onClick={handleCancelDebugAndPreviewPanel}>
+              <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
+            </IconButton>
           </div>
         </div>
         <div className="grow overflow-y-auto rounded-b-2xl">

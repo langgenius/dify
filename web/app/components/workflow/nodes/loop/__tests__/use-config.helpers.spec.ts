@@ -103,7 +103,7 @@ describe('loop use-config helpers', () => {
         id: 'condition-1',
         varType: VarType.boolean,
         comparison_operator: ComparisonOperator.is,
-        value: 'false',
+        value: false,
       }),
     ])
     expect(withFileCondition.break_conditions?.[1]).toEqual(

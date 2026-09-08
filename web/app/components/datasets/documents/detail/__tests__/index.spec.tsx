@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 
@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
     invalidDocumentList: vi.fn(),
     invalidSegmentList: vi.fn(),
     invalidChildSegmentList: vi.fn(),
+    useDocumentTitle: vi.fn(),
     toastNotify: vi.fn(),
   }
 })
@@ -45,6 +46,10 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => mocks.state.media,
   MediaType: { mobile: 'mobile', tablet: 'tablet', pc: 'desktop' },
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: mocks.useDocumentTitle,
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
@@ -282,6 +287,7 @@ describe('DocumentDetail', () => {
     vi.useFakeTimers()
     mocks.state.dataset = {
       embedding_available: true,
+      name: 'Dataset 1',
       permission_keys: [DatasetACLPermission.Edit],
     }
     mocks.state.documentDetail = createDocumentDetail()
@@ -313,6 +319,12 @@ describe('DocumentDetail', () => {
   })
 
   describe('Content Rendering', () => {
+    it('uses the document and knowledge names in the document title', () => {
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+
+      expect(mocks.useDocumentTitle).toHaveBeenLastCalledWith('test-doc.txt · Dataset 1')
+    })
+
     it('should render Completed when status is available', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('completed')).toBeInTheDocument()
@@ -405,10 +417,10 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       const toggle = screen.getByRole('button', { name: /metadata\.title/ })
       expect(toggle).toHaveAttribute('aria-label')
-      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
       fireEvent.click(toggle)
-      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('should pass correct props to Metadata', () => {

@@ -16,7 +16,10 @@ from werkzeug.exceptions import UnprocessableEntity
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi.auth.data import AuthData
 from libs.oauth_bearer import Scope, TokenType
+from models.account import Account
+from models.enums import EndUserType
 from models.human_input import RecipientType
+from models.model import App, AppMode, EndUser
 
 
 def _make_auth_data(app_model, caller, caller_kind):
@@ -28,6 +31,33 @@ def _make_auth_data(app_model, caller, caller_kind):
         app=app_model,
         caller=caller,
         caller_kind=caller_kind,
+    )
+
+
+def _make_app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Human input app",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+    )
+
+
+def _make_account(account_id: str = "acct-1") -> Account:
+    account = Account(name="Human Input User", email=f"{account_id}@example.com")
+    account.id = account_id
+    return account
+
+
+def _make_end_user(end_user_id: str = "eu-1") -> EndUser:
+    return EndUser(
+        id=end_user_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.OPENAPI,
+        session_id=f"session-{end_user_id}",
     )
 
 
@@ -59,8 +89,8 @@ class TestOpenApiHumanInputFormGet:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
             resp = api.get.__wrapped__(
@@ -86,8 +116,8 @@ class TestOpenApiHumanInputFormGet:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/bad"):
             with pytest.raises(HumanInputFormNotFound):
@@ -114,8 +144,8 @@ class TestOpenApiHumanInputFormGet:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
             with pytest.raises(HumanInputFormNotFound):
@@ -142,8 +172,8 @@ class TestOpenApiHumanInputFormGet:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
             with pytest.raises(RecipientSurfaceMismatch):
@@ -176,8 +206,8 @@ class TestOpenApiHumanInputFormPost:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-42")
+        app_model = _make_app()
+        caller = _make_account("acct-42")
 
         with app.test_request_context(
             "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
@@ -213,8 +243,8 @@ class TestOpenApiHumanInputFormPost:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="eu-7")
+        app_model = _make_app()
+        caller = _make_end_user("eu-7")
 
         with app.test_request_context(
             "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
@@ -252,8 +282,8 @@ class TestOpenApiHumanInputFormPost:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="anyone")
+        app_model = _make_app()
+        caller = _make_end_user("anyone")
 
         with app.test_request_context(
             "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
@@ -275,8 +305,8 @@ class TestOpenApiHumanInputFormPost:
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
 
         api = OpenApiWorkflowHumanInputFormSubmitApi()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-42")
+        app_model = _make_app()
+        caller = _make_account("acct-42")
 
         with app.test_request_context(
             "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",

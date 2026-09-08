@@ -7,16 +7,20 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { copyApp, deleteApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from '@/service/app-deletion'
+import { fetchAppDetail, updateAppInfo } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -30,13 +34,11 @@ export type AppInfoModalType =
   | null
 
 type UseAppInfoActionsParams = {
-  onDetailExpand?: (expand: boolean) => void
   resetKey?: string
 }
 
 type AppInfoUiState = {
   resetKey?: string
-  panelOpen: boolean
   activeModal: AppInfoModalType
   secretEnvList: EnvironmentVariableItemResponse[]
 }
@@ -75,7 +77,6 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
 
 const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
   resetKey,
-  panelOpen: false,
   activeModal: null,
   secretEnvList: [],
 })
@@ -88,11 +89,14 @@ const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
   return state.resetKey === resetKey ? state : createInitialUiState(resetKey)
 }
 
-export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoActionsParams) {
+export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const { t } = useTranslation()
   const { replace } = useRouter()
   const queryClient = useQueryClient()
-  const { onPlanInfoChanged } = useProviderContext()
+  const { mutateAsync: copyApp } = useMutation(
+    consoleQuery.apps.byAppId.copy.post.mutationOptions(),
+  )
+  const { mutateAsync: deleteApp } = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
@@ -103,22 +107,8 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
 
   const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
   const uiStateMatchesResetKey = uiState.resetKey === resetKey
-  const panelOpen = uiStateMatchesResetKey ? uiState.panelOpen : false
   const activeModal = uiStateMatchesResetKey ? uiState.activeModal : null
   const secretEnvList = uiStateMatchesResetKey ? uiState.secretEnvList : emptySecretEnvList
-
-  const setPanelOpen = useCallback<Dispatch<SetStateAction<boolean>>>(
-    (value) => {
-      setUiState((state) => {
-        const current = getCurrentUiState(state, resetKey)
-        return {
-          ...current,
-          panelOpen: resolveStateAction(value, current.panelOpen),
-        }
-      })
-    },
-    [resetKey],
-  )
 
   const setActiveModal = useCallback<Dispatch<SetStateAction<AppInfoModalType>>>(
     (value) => {
@@ -146,17 +136,11 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     [resetKey],
   )
 
-  const closePanel = useCallback(() => {
-    setPanelOpen(false)
-    onDetailExpand?.(false)
-  }, [onDetailExpand, setPanelOpen])
-
   const openModal = useCallback(
     (modal: Exclude<AppInfoModalType, null>) => {
-      closePanel()
       setActiveModal(modal)
     },
-    [closePanel, setActiveModal],
+    [setActiveModal],
   )
 
   const closeModal = useCallback(() => {
@@ -269,22 +253,21 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       if (!appDetail) return
       try {
         const newApp = await copyApp({
-          appID: appDetail.id,
-          name,
-          icon_type,
-          icon,
-          icon_background,
-          mode: appDetail.mode,
+          params: { app_id: appDetail.id },
+          body: { name, icon_type, icon, icon_background },
         })
+        if (!('mode' in newApp)) {
+          toast(
+            t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+            { type: 'error' },
+          )
+          return
+        }
         closeModal()
         toast(
           t(($) => $['newApp.appCreated'], { ns: 'app' }),
           { type: 'success' },
         )
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-        onPlanInfoChanged()
         getRedirection(newApp, replace, { isRbacEnabled })
       } catch {
         toast(
@@ -293,7 +276,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         )
       }
     },
-    [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, queryClient, replace, t],
+    [appDetail, closeModal, copyApp, isRbacEnabled, replace, t],
   )
 
   const onExport = useCallback(
@@ -329,32 +312,28 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail) return
+    markAppDeletionStarted(appDetail.id)
     try {
-      await deleteApp(appDetail.id)
+      await deleteApp({ params: { app_id: appDetail.id } })
+      markAppDeletionSucceeded(appDetail.id)
       toast(
         t(($) => $.appDeleted, { ns: 'app' }),
         { type: 'success' },
       )
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-      onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     } catch (e: unknown) {
+      markAppDeletionFailed(appDetail.id)
       toast(
         `${t(($) => $.appDeleteFailed, { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
         { type: 'error' },
       )
     }
     closeModal()
-  }, [appDetail, closeModal, onPlanInfoChanged, queryClient, replace, setAppDetail, t])
+  }, [appDetail, closeModal, deleteApp, replace, setAppDetail, t])
 
   return {
     appDetail,
-    panelOpen,
-    setPanelOpen,
-    closePanel,
     activeModal,
     openModal,
     closeModal,

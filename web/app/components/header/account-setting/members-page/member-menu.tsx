@@ -17,11 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
@@ -114,27 +114,23 @@ const MemberMenu = ({
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
-    <div role="presentation">
+    <div>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
-            <ActionButton
-              size="l"
-              className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+            <IconButton
+              size="lg"
               aria-label={t(($) => $['members.memberActions'], {
                 ns: 'common',
                 defaultValue: 'Member actions',
               })}
-            />
+              className="data-popup-open:bg-state-base-hover"
+            >
+              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={4}
-          popupClassName="min-w-[180px] rounded-xl"
-        >
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-45 rounded-xl">
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"

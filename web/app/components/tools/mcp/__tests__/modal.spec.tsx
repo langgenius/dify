@@ -2,7 +2,7 @@ import type { SsoProtocol } from '@dify/contracts/api/console/system-features/ty
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import MCPModal from '../modal'
 

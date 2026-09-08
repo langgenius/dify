@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 from inspect import unwrap
 from typing import Never
 from unittest.mock import MagicMock
@@ -139,9 +140,13 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", fail_signal)
 
     method = model_config_module.ModelConfigResource.post
-    while not method.__code__.co_filename.endswith("controllers/common/session.py"):
+    while not os.path.normpath(method.__code__.co_filename).endswith(
+        os.path.join("controllers", "common", "session.py")
+    ):
         method = method.__wrapped__
-    assert method.__wrapped__.__code__.co_filename.endswith("controllers/console/app/wraps.py")
+    assert os.path.normpath(method.__wrapped__.__code__.co_filename).endswith(
+        os.path.join("controllers", "console", "app", "wraps.py")
+    )
 
     api = model_config_module.ModelConfigResource()
     with (

@@ -196,7 +196,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // ReplayLine is inside ActionButton (a <button>) with data-icon attribute
+    // ReplayLine is inside an icon button with a data-icon attribute.
     const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
     const replayBtn = replayIcon!.closest('button')
     fireEvent.click(replayBtn!)

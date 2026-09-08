@@ -1,6 +1,7 @@
 import type { Edge, Node } from '../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { useStoreApi } from 'reactflow'
 import { WorkflowContextProvider } from '../context'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
@@ -68,6 +69,45 @@ const ContextConsumer = () => {
   )
 }
 
+const HistoryAtMountConsumer = () => {
+  const { store } = useWorkflowHistoryStore()
+  const [nodeIds] = useState(() =>
+    store
+      .getState()
+      .nodes.map((node) => node.id)
+      .join(','),
+  )
+
+  return <div>{`history-at-mount:${nodeIds}`}</div>
+}
+
+const WorkflowRemountHarness = () => {
+  const [useReplacementHistory, setUseReplacementHistory] = useState(false)
+  const replacementNodes = useReplacementHistory
+    ? [
+        {
+          ...nodes[0]!,
+          id: 'node-replacement',
+        },
+      ]
+    : nodes
+
+  return (
+    <>
+      <button type="button" onClick={() => setUseReplacementHistory(true)}>
+        Remount workflow
+      </button>
+      <WorkflowWithDefaultContext
+        key={useReplacementHistory ? 'replacement' : 'initial'}
+        nodes={replacementNodes}
+        edges={edges}
+      >
+        <HistoryAtMountConsumer />
+      </WorkflowWithDefaultContext>
+    </>
+  )
+}
+
 describe('WorkflowWithDefaultContext', () => {
   it('wires the ReactFlow, workflow history, and datasets detail providers around its children', () => {
     render(
@@ -83,6 +123,7 @@ describe('WorkflowWithDefaultContext', () => {
 
   it('keeps its children mounted when workflow history advances after initialization', async () => {
     const user = userEvent.setup()
+
     render(
       <WorkflowContextProvider>
         <WorkflowWithDefaultContext nodes={nodes} edges={edges}>
@@ -94,5 +135,21 @@ describe('WorkflowWithDefaultContext', () => {
     await user.click(screen.getByRole('button', { name: 'Advance workflow history' }))
 
     expect(screen.getByText('history:2 datasets:0 reactflow:true')).toBeInTheDocument()
+  })
+
+  it('initializes new history before mounting children again in the same workflow store', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <WorkflowContextProvider>
+        <WorkflowRemountHarness />
+      </WorkflowContextProvider>,
+    )
+
+    expect(screen.getByText('history-at-mount:node-start')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Remount workflow' }))
+
+    expect(screen.getByText('history-at-mount:node-replacement')).toBeInTheDocument()
   })
 })

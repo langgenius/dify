@@ -48,7 +48,7 @@ const SortDropdown = () => {
         <span className="mr-1 system-sm-medium text-text-primary">{selectedOption.text}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="p-1">
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="p-1">
         {options.map((option) => (
           <DropdownMenuItem
             key={`${option.value}-${option.order}`}

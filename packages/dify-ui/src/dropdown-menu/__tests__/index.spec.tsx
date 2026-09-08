@@ -1,10 +1,13 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -21,20 +24,14 @@ describe('dropdown-menu wrapper', () => {
       const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent
-            positionerProps={{ role: 'group', 'aria-label': 'content positioner' }}
-          >
+          <DropdownMenuContent>
             <DropdownMenuItem>Content action</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>,
       )
 
-      await expect
-        .element(screen.getByRole('group', { name: 'content positioner' }))
-        .toHaveAttribute('data-side', 'bottom')
-      await expect
-        .element(screen.getByRole('group', { name: 'content positioner' }))
-        .toHaveAttribute('data-align', 'end')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'end')
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
         .toBeInTheDocument()
@@ -44,62 +41,57 @@ describe('dropdown-menu wrapper', () => {
       const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent
-            placement="top-start"
-            sideOffset={12}
-            alignOffset={-3}
-            positionerProps={{ role: 'group', 'aria-label': 'custom content positioner' }}
-          >
+          <DropdownMenuContent placement="top-start" sideOffset={12} alignOffset={-3}>
             <DropdownMenuItem>Custom content</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>,
       )
 
-      await expect
-        .element(screen.getByRole('group', { name: 'custom content positioner' }))
-        .toHaveAttribute('data-side', 'top')
-      await expect
-        .element(screen.getByRole('group', { name: 'custom content positioner' }))
-        .toHaveAttribute('data-align', 'start')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
       await expect
         .element(screen.getByRole('menuitem', { name: 'Custom content' }))
         .toBeInTheDocument()
     })
 
-    it('should forward passthrough attributes and handlers when positionerProps and popupProps are provided', async () => {
-      const handlePositionerMouseEnter = vi.fn()
+    it('should forward popup attributes and handlers directly', async () => {
       const handlePopupClick = vi.fn()
 
       const screen = await render(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent
-            positionerProps={{
-              role: 'group',
-              'aria-label': 'dropdown content positioner',
-              id: 'dropdown-content-positioner',
-              onMouseEnter: handlePositionerMouseEnter,
-            }}
-            popupProps={{
-              role: 'menu',
-              id: 'dropdown-content-popup',
-              onClick: handlePopupClick,
-            }}
-          >
+          <DropdownMenuContent id="dropdown-content-popup" onClick={handlePopupClick}>
             <DropdownMenuItem>Passthrough content</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>,
       )
 
-      await screen.getByRole('group', { name: 'dropdown content positioner' }).hover()
       await screen.getByRole('menu').click()
 
-      await expect
-        .element(screen.getByRole('group', { name: 'dropdown content positioner' }))
-        .toHaveAttribute('id', 'dropdown-content-positioner')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'dropdown-content-popup')
-      expect(handlePositionerMouseEnter).toHaveBeenCalledTimes(1)
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should support explicit anatomy when the positioner needs custom props', async () => {
+      const screen = await renderWithSafeViewport(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuPositioner data-testid="custom-positioner" placement="top-start">
+              <DropdownMenuPopup>
+                <DropdownMenuItem>Anatomy action</DropdownMenuItem>
+              </DropdownMenuPopup>
+            </DropdownMenuPositioner>
+          </DropdownMenuPortal>
+        </DropdownMenu>,
+      )
+
+      await expect
+        .element(screen.getByTestId('custom-positioner'))
+        .toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Anatomy action' }))
+        .toBeInTheDocument()
     })
   })
 
@@ -111,9 +103,7 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuContent>
             <DropdownMenuSub open>
               <DropdownMenuSubTrigger>More actions</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent
-                positionerProps={{ role: 'group', 'aria-label': 'sub positioner' }}
-              >
+              <DropdownMenuSubContent>
                 <DropdownMenuItem>Sub action</DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
@@ -122,16 +112,15 @@ describe('dropdown-menu wrapper', () => {
       )
 
       await expect
-        .element(screen.getByRole('group', { name: 'sub positioner' }))
+        .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('data-side', 'left')
       await expect
-        .element(screen.getByRole('group', { name: 'sub positioner' }))
+        .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('data-align', 'start')
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })
 
-    it('should apply custom placement and forward passthrough props for sub-content when custom props are provided', async () => {
-      const handlePositionerFocus = vi.fn()
+    it('should apply custom placement and forward popup props for sub-content', async () => {
       const handlePopupClick = vi.fn()
 
       const screen = await render(
@@ -144,17 +133,8 @@ describe('dropdown-menu wrapper', () => {
                 placement="right-end"
                 sideOffset={6}
                 alignOffset={2}
-                positionerProps={{
-                  role: 'group',
-                  'aria-label': 'dropdown sub positioner',
-                  id: 'dropdown-sub-positioner',
-                  onFocus: handlePositionerFocus,
-                }}
-                popupProps={{
-                  role: 'menu',
-                  id: 'dropdown-sub-popup',
-                  onClick: handlePopupClick,
-                }}
+                id="dropdown-sub-popup"
+                onClick={handlePopupClick}
               >
                 <DropdownMenuItem>Custom sub action</DropdownMenuItem>
               </DropdownMenuSubContent>
@@ -163,29 +143,17 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      screen
-        .getByRole('group', { name: 'dropdown sub positioner' })
-        .element()
-        .dispatchEvent(
-          new FocusEvent('focus', {
-            bubbles: true,
-          }),
-        )
       await screen.getByRole('menu', { name: 'More actions' }).click()
 
       await expect
-        .element(screen.getByRole('group', { name: 'dropdown sub positioner' }))
+        .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('data-side', 'right')
       await expect
-        .element(screen.getByRole('group', { name: 'dropdown sub positioner' }))
+        .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('data-align', 'end')
-      await expect
-        .element(screen.getByRole('group', { name: 'dropdown sub positioner' }))
-        .toHaveAttribute('id', 'dropdown-sub-positioner')
       await expect
         .element(screen.getByRole('menu', { name: 'More actions' }))
         .toHaveAttribute('id', 'dropdown-sub-popup')
-      expect(handlePositionerFocus).toHaveBeenCalledTimes(1)
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
   })

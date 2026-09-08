@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '../../types'
 import DowngradeWarningModal from '../downgrade-warning'
@@ -1054,14 +1054,6 @@ describe('update-plugin', () => {
     })
 
     describe('Props', () => {
-      it('should support custom placement', () => {
-        // Act
-        render(<PluginVersionPicker {...defaultProps} isShow={true} placement="top-end" />)
-
-        // Assert
-        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-      })
-
       it('should support custom offset', () => {
         // Act
         render(

@@ -1,9 +1,8 @@
 """Normalize uploaded config skills into one canonical ToolFile reference.
 
-Config skills are Agent Soul-backed assets, not drive rows. This service keeps
-the existing skill package validation rules, enforces the requested stable name,
-stores the normalized archive as one ToolFile, and returns the persisted Soul
-reference metadata used by ``AgentConfigService``.
+This service keeps the existing skill package validation rules, enforces the
+requested stable name, stores the normalized archive as one ToolFile, and
+returns the persisted Soul reference metadata used by ``AgentConfigService``.
 """
 
 from __future__ import annotations

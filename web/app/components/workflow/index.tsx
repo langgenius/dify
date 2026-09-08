@@ -72,6 +72,7 @@ import HelpLine from './help-line'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
+import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from './hooks/use-panel-interactions'
@@ -283,7 +284,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [edges, nodes, setEdges, setNodes, store])
 
     useEffect(() => {
-      return collaborationManager.onHistoryAction((_) => {
+      return collaborationManager.onHistoryAction(() => {
         toast.info(t(($) => $['collaboration.historyAction.generic'], { ns: 'workflow' }))
       })
     }, [t])
@@ -374,7 +375,10 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [])
 
     const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
-      if (!workflowStore.getState().isWorkflowDataLoaded) return
+      const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = workflowStore.getState()
+      if (!isWorkflowDataLoaded) return
+
+      debouncedSyncWorkflowDraft.cancel?.()
 
       if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
         syncWorkflowDraftWhenPageClose()
@@ -556,6 +560,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleNodeEnter,
       handleNodeLeave,
       handleNodeClick,
+      handleNodeSelect,
       handleNodeConnect,
       handleNodeConnectStart,
       handleNodeConnectEnd,
@@ -563,6 +568,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleHistoryBack,
       handleHistoryForward,
     } = useNodesInteractions()
+    const handleNodeKeyDown = useNodeKeyboardInteractions(handleNodeSelect)
     const { handleEdgeEnter, handleEdgeLeave, handleEdgesChange, handleEdgeContextMenu } =
       useEdgesInteractions()
     const {
@@ -764,6 +770,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             edgeTypes={edgeTypes}
             nodes={nodes}
             edges={edges}
+            onKeyDownCapture={handleNodeKeyDown}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
@@ -850,6 +857,7 @@ const WorkflowHistoryStoreInitializer = ({
   children,
 }: WorkflowWithDefaultContextProps) => {
   const workflowStore = useWorkflowStore()
+  const initializedWorkflowHistory = useStore((state) => state.initializedWorkflowHistory)
   const [initialWorkflowHistory] = useState<WorkflowHistoryState>(() => ({
     nodes,
     edges,
@@ -860,10 +868,12 @@ const WorkflowHistoryStoreInitializer = ({
   useLayoutEffect(() => {
     const temporalStore = workflowStore.temporal.getState()
     temporalStore.pause()
-    workflowStore.getState().setWorkflowHistory(initialWorkflowHistory)
+    workflowStore.getState().initializeWorkflowHistory(initialWorkflowHistory)
     temporalStore.clear()
     temporalStore.resume()
   }, [initialWorkflowHistory, workflowStore])
+
+  if (initializedWorkflowHistory !== initialWorkflowHistory) return null
 
   return children
 }

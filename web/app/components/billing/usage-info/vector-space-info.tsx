@@ -1,13 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { BasicPlan } from '../type'
 import { RiHardDrive3Line } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQueries } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
-import { Plan } from '../type'
+import { consoleQuery } from '@/service/console'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
 
@@ -16,36 +13,18 @@ type Props = Readonly<{
 }>
 
 // Storage threshold in MB - usage below this shows as "< 50 MB"
-const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
+const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB('sandbox')
 
 const VectorSpaceInfo: FC<Props> = ({ className }) => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const { data: vectorSpace } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions())
-  const displayPlan = vectorSpace
-    ? {
-        ...plan,
-        usage: {
-          ...plan.usage,
-          vectorSpace: vectorSpace.size,
-        },
-        total: {
-          ...plan.total,
-          vectorSpace: vectorSpace.limit,
-        },
-      }
-    : plan
-  const { type, usage, total } = displayPlan
-
-  // Determine total based on plan type (in MB), derived from ALL_PLANS config
-  const getTotalInMB = () => {
-    const planLimit = getPlanVectorSpaceLimitMB(type as BasicPlan)
-    // For known plans, use the config value; otherwise fall back to API response
-    return planLimit > 0 ? planLimit : total.vectorSpace
-  }
-
-  const totalInMB = getTotalInMB()
-  const isSandbox = type === Plan.sandbox
+  const [{ data: plan }, { data: vectorSpace }] = useSuspenseQueries({
+    queries: [
+      consoleQuery.features.get.queryOptions({
+        select: (features) => features.billing.subscription.plan,
+      }),
+      consoleQuery.features.vectorSpace.get.queryOptions(),
+    ],
+  })
 
   return (
     <UsageInfo
@@ -53,15 +32,15 @@ const VectorSpaceInfo: FC<Props> = ({ className }) => {
       Icon={RiHardDrive3Line}
       name={t(($) => $['usagePage.vectorSpace'], { ns: 'billing' })}
       tooltip={t(($) => $['usagePage.vectorSpaceTooltip'], { ns: 'billing' }) as string}
-      usage={usage.vectorSpace}
-      total={totalInMB}
+      usage={vectorSpace.size}
+      total={vectorSpace.limit}
       unit="MB"
       unitPosition="inline"
       storageMode
       storageThreshold={STORAGE_THRESHOLD_MB}
       storageTooltip={t(($) => $['usagePage.storageThresholdTooltip'], { ns: 'billing' }) as string}
-      isSandboxPlan={isSandbox}
-      usageUnknown={vectorSpace?.usage_unknown}
+      isSandboxPlan={plan === 'sandbox'}
+      usageUnknown={vectorSpace.usage_unknown}
     />
   )
 }

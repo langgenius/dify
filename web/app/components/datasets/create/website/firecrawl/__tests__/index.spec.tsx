@@ -1,7 +1,7 @@
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Component Import (after mocks)
 import FireCrawl from '../index'
 
@@ -414,9 +414,10 @@ describe('FireCrawl', () => {
       const runButton = screen.getByRole('button', { name: /run/i })
       await user.click(runButton)
 
-      // Button should show loading state (no longer show "run" text)
       await waitFor(() => {
-        expect(runButton).not.toHaveTextContent(/run/i)
+        expect(runButton).toHaveAccessibleName(/run/i)
+        expect(runButton).toHaveAttribute('aria-disabled', 'true')
+        expect(runButton).toHaveFocus()
       })
 
       await act(async () => {

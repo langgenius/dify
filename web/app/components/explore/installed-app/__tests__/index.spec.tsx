@@ -2,7 +2,7 @@ import type {
   AppMode,
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { screen, waitFor } from '@testing-library/react'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   getInstalledAppParameters: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

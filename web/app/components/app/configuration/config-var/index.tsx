@@ -280,6 +280,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       }),
     [promptVariables],
   )
+  const handlePromptVariablesReorder = useCallback(
+    (list: typeof promptVariablesWithIds) => {
+      const hasOrderChanged =
+        list.length !== promptVariables.length ||
+        list.some((item, index) => item.id !== promptVariables[index]?.key)
+      if (!hasOrderChanged) return
+
+      onPromptVariablesChange?.(list.map((item) => item.variable))
+    },
+    [onPromptVariablesChange, promptVariables],
+  )
 
   const canDrag = !readonly && promptVariables.length > 1
 
@@ -314,9 +325,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           <ReactSortable
             className={cn('grid-col-1 grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
             list={promptVariablesWithIds}
-            setList={(list) => {
-              onPromptVariablesChange?.(list.map((item) => item.variable))
-            }}
+            setList={handlePromptVariablesReorder}
             handle=".handle"
             ghostClass="opacity-50"
             animation={150}

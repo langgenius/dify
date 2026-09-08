@@ -86,7 +86,7 @@ const WebhookMethodSelector = ({
       <SelectTrigger aria-label={label} className="h-8 pr-8 text-sm">
         {selectedMethod?.name}
       </SelectTrigger>
-      <SelectContent popupClassName="w-26 min-w-26">
+      <SelectContent className="w-26 min-w-26">
         {HTTP_METHODS.map((item) => (
           <SelectItem key={item.value} value={item.value}>
             <SelectItemText>{item.name}</SelectItemText>

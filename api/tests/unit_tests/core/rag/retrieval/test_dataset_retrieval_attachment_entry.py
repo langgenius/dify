@@ -1,14 +1,22 @@
 """Focused tests for attachment-aware dataset retrieval entry behavior."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+
+from sqlalchemy.orm import Session
 
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from models.dataset import Dataset
 
 
-def test_knowledge_retrieval_allows_attachment_only_requests() -> None:
+def test_knowledge_retrieval_allows_attachment_only_requests(unbound_session: Session) -> None:
     retrieval = DatasetRetrieval()
-    available_dataset = MagicMock(id="dataset-1")
+    available_dataset = Dataset(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        created_by="user-1",
+    )
 
     request = KnowledgeRetrievalRequest(
         tenant_id="tenant-1",
@@ -30,7 +38,7 @@ def test_knowledge_retrieval_allows_attachment_only_requests() -> None:
         patch.object(retrieval, "_get_available_datasets", return_value=[available_dataset]),
         patch.object(retrieval, "multiple_retrieve", return_value=[]) as mock_multiple,
     ):
-        result = retrieval.knowledge_retrieval(MagicMock(), request)
+        result = retrieval.knowledge_retrieval(unbound_session, request)
 
     assert result == []
     mock_multiple.assert_called_once()

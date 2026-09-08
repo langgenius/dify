@@ -1,7 +1,7 @@
 import type { MetadataItemInBatchEdit, MetadataItemWithEdit } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType, UpdateType } from '../../types'
 import EditMetadataBatchModal from '../modal'
 

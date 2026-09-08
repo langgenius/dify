@@ -155,7 +155,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
         placement="bottom-end"
         sideOffset={4}
         alignOffset={crossAxisOffset ?? 0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (
           <PromptEditor

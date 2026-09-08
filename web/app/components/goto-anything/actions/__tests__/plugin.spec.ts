@@ -2,7 +2,7 @@ import { pluginAction, pluginSearchQueryOptions } from '../plugin'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceQuery: { searchAdvanced: { queryOptions: serviceMocks.queryOptions } },
 }))
 

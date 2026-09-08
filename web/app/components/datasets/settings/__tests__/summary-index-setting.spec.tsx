@@ -1,38 +1,27 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SummaryIndexSetting from '../summary-index-setting'
 
-// Mock useModelList to return a list of text generation models
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({
-    data: [
-      {
-        provider: 'openai',
-        label: { en_US: 'OpenAI' },
-        models: [
-          { model: 'gpt-4', label: { en_US: 'GPT-4' }, model_type: 'llm', status: 'active' },
-        ],
-      },
-    ],
-  }),
-}))
+// Mock the model list query.
 
 // Mock ModelSelector (external component from header module)
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    onSelect,
-    readonly,
-    defaultModel,
+  ModelSelector: ({
+    onValueChange,
+    disabled,
+    value,
   }: {
-    onSelect?: (val: Record<string, string>) => void
-    readonly?: boolean
-    defaultModel?: { model?: string }
+    onValueChange?: (val: Record<string, string>) => void
+    disabled?: boolean
+    value?: { model?: string }
   }) => (
-    <div data-testid="model-selector" data-readonly={readonly}>
-      <span data-testid="current-model">{defaultModel?.model || 'none'}</span>
+    <div data-testid="model-selector" data-disabled={disabled}>
+      <span data-testid="current-model">{value?.model || 'none'}</span>
       <button
         data-testid="select-model-btn"
-        onClick={() => onSelect?.({ provider: 'openai', model: 'gpt-4' })}
+        onClick={() => onValueChange?.({ provider: 'openai', model: 'gpt-4' })}
       >
         Select
       </button>
@@ -177,7 +166,7 @@ describe('SummaryIndexSetting', () => {
   })
 
   describe('readonly mode', () => {
-    it('should pass readonly to model selector in knowledge-base entry', () => {
+    it('should disable model selector in knowledge-base entry', () => {
       render(
         <SummaryIndexSetting
           entry="knowledge-base"
@@ -185,7 +174,7 @@ describe('SummaryIndexSetting', () => {
           readonly
         />,
       )
-      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-readonly', 'true')
+      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-disabled', 'true')
     })
 
     it('should disable textarea in readonly mode', () => {
@@ -202,7 +191,7 @@ describe('SummaryIndexSetting', () => {
   })
 
   describe('model config derivation', () => {
-    it('should pass correct defaultModel when provider and model are set', () => {
+    it('should pass the selected value when provider and model are set', () => {
       render(
         <SummaryIndexSetting
           entry="knowledge-base"
@@ -216,9 +205,36 @@ describe('SummaryIndexSetting', () => {
       expect(screen.getByTestId('current-model')).toHaveTextContent('claude-3')
     })
 
-    it('should pass undefined defaultModel when provider is missing', () => {
+    it('should pass an undefined value when provider is missing', () => {
       render(<SummaryIndexSetting entry="knowledge-base" summaryIndexSetting={{ enable: true }} />)
       expect(screen.getByTestId('current-model')).toHaveTextContent('none')
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return {
+        data: [
+          {
+            tenant_id: 'test-workspace',
+            provider: 'openai',
+            label: { en_US: 'OpenAI' },
+            models: [
+              { model: 'gpt-4', label: { en_US: 'GPT-4' }, model_type: 'llm', status: 'active' },
+            ],
+          },
+        ],
+      }
+    },
+  }
 })

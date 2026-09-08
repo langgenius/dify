@@ -34,10 +34,35 @@ history_layer = RunLayerSpec(
 Include this layer in the same composition as your prompt, plugin, and LLM
 layers.
 
+## Compaction and persistence
+
+When the LLM layer supplies `context_window_tokens`, Dify Agent sets the Harness
+target to `min(floor(window * 0.8), window - max_tokens)` for a positive
+`model_settings.max_tokens`; otherwise it uses `floor(window * 0.8)`. A target
+that is not positive rejects the run before model invocation.
+
+Harness estimates and, when needed, rewrites history immediately before model
+requests. It clears older tool results first, retaining the latest three
+tool-call/result pairs and their inputs. If the history is still over target, the
+same current model incrementally summarizes older messages while retaining the
+latest twenty messages and the first user message.
+
+With a history layer, once pydantic-ai binds and builds messages in the run
+capture, the captured, possibly rewritten history replaces the stored messages
+in the terminal session snapshot. This applies to successful, failed, and
+cancelled runs. A failure or cancellation before the capture contains any
+messages preserves the previously restored history. An interrupted capture can
+include a partial response or tool-return request marked `state="interrupted"`;
+pydantic-ai repairs that state when the snapshot is used by a later independent
+run. Without this layer, compaction and interrupted messages affect only the
+current run.
+
 ## Resume a conversation
 
 Successful runs return a terminal event with both final output and a resumable
-session snapshot:
+session snapshot. Failed and cancelled terminal events can also carry a session
+snapshot that checkpoints current history, but they do not change the interrupted
+run's terminal status into success.
 
 ```python {test="skip" lint="skip"}
 accepted = await client.create_run(request)
@@ -65,13 +90,20 @@ terminal snapshot resumable. Keep that default for normal memory flows.
 
 Dify Agent handles memory conservatively:
 
-1. Current system prompts are rendered into temporary `message_history` before
-   stored history.
-2. Stored history is then sent to the model.
-3. Current user prompts are sent after the stored history.
-4. Only newly produced pydantic-ai messages are appended after a successful run.
-5. Current system prompts are not persisted into the history layer.
-6. Failed runs emit `run_failed` and do not return a success snapshot to resume.
+1. Current system prompts are passed as run-level pydantic-ai instructions.
+2. Stored history is sent to the model before the current user prompt.
+3. When the LLM layer includes `context_window_tokens`, Harness may rewrite
+   over-target history immediately before a model request as described above.
+4. Once pydantic-ai binds and builds messages in the run capture, the complete
+   captured and possibly compacted history is written back to the layer on
+   success, failure, timeout, or cancellation.
+5. If failure or cancellation occurs before the capture contains any messages,
+   the previously restored history remains unchanged.
+6. Run-level system instructions are removed before history is persisted.
+7. Interrupted partial messages retain pydantic-ai's `state="interrupted"` marker
+   so a later independent run can repair and continue from the checkpoint.
+8. Failed and cancelled runs keep their terminal status; their snapshot is a
+   checkpoint, not a successful continuation of the interrupted run.
 
 ## Persist snapshots outside the client process
 
@@ -99,5 +131,5 @@ Always restore snapshots with the same layer names and order that produced them.
 | --- | --- |
 | `must use reserved layer name 'history'` | Rename the layer to `history`. |
 | `does not support dependencies` | Remove `deps` from the history layer. |
-| Resume fails with snapshot lifecycle errors | Use the success snapshot from `run_succeeded` and keep layer names/order unchanged. |
+| Resume fails with snapshot lifecycle errors | Use a terminal snapshot whose layers were suspended, and keep layer names/order unchanged. |
 | System prompts appear missing from saved memory | This is expected; current system prompts are temporary and are not persisted. |

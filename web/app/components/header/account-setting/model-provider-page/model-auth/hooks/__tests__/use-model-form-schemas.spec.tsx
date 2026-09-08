@@ -1,6 +1,6 @@
 import type { Credential, CustomModelCredential, ModelProvider } from '../../../declarations'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useModelFormSchemas } from '../use-model-form-schemas'
 

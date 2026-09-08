@@ -51,9 +51,7 @@ export const matchesNameOrLabel = (value: string, name: string, label?: unknown)
 export const hasNamedOrKeyedEntry = (items: unknown[], expectedName: string) =>
   items.some((item) => {
     const record = asRecord(item)
-    const values = [record.name, record.drive_key, record.reference, record.file_id, record.id].map(
-      asString,
-    )
+    const values = [record.name, record.reference, record.file_id, record.id].map(asString)
 
     return values.some((value) => value === expectedName || value.endsWith(`/${expectedName}`))
   })

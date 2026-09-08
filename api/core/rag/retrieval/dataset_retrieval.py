@@ -19,13 +19,20 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import (
+    CreditUsageCreatedBy,
+    EasyUIBasedAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    get_credit_usage_app_type,
+)
 from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -102,9 +109,19 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetRetrieval:
-    def __init__(self, application_generate_entity=None):
+    def __init__(self, application_generate_entity: EasyUIBasedAppGenerateEntity | None = None):
         self.application_generate_entity = application_generate_entity
         self._llm_usage = LLMUsage.empty_usage()
+        self._request_metadata: dict[str, object] | None = None
+        if application_generate_entity is not None:
+            app_config = application_generate_entity.app_config
+            self._request_metadata = {
+                "app_type": get_credit_usage_app_type(app_config.app_mode),
+                "app_id": app_config.app_id,
+            }
+
+    def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None:
+        self._request_metadata = dict(request_metadata) if request_metadata else None
 
     @property
     def llm_usage(self) -> LLMUsage:
@@ -119,6 +136,8 @@ class DatasetRetrieval:
             self._llm_usage = self._llm_usage.plus(usage)
 
     @trace_span()
+    @with_credit_usage_metadata
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def knowledge_retrieval(self, session: Session, request: KnowledgeRetrievalRequest) -> list[Source]:
         self._check_knowledge_rate_limit(request.tenant_id)
         available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
@@ -354,6 +373,8 @@ class DatasetRetrieval:
                 item.metadata.position = position  # type: ignore[index]
         return retrieval_resource_list
 
+    @with_credit_usage_metadata
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def retrieve(
         self,
         session: Session,
@@ -651,16 +672,19 @@ class DatasetRetrieval:
         self._record_usage(router_usage)
         timer = None
         if dataset_id:
-            # get retrieval model config
-            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            selected_dataset = session.scalar(dataset_stmt)
+            allowed_dataset = next((dataset for dataset in available_datasets if dataset.id == dataset_id), None)
+            selected_dataset = (
+                session.scalar(select(Dataset).where(Dataset.id == allowed_dataset.id, Dataset.tenant_id == tenant_id))
+                if allowed_dataset
+                else None
+            )
             if selected_dataset:
                 results = []
                 if selected_dataset.provider == "external":
                     external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                         session=session,
                         tenant_id=selected_dataset.tenant_id,
-                        dataset_id=dataset_id,
+                        dataset_id=selected_dataset.id,
                         query=query,
                         external_retrieval_parameters=selected_dataset.retrieval_model,
                         metadata_condition=metadata_condition,
@@ -674,7 +698,7 @@ class DatasetRetrieval:
                         if document.metadata is not None:
                             document.metadata["score"] = external_document.get("score")
                             document.metadata["title"] = external_document.get("title")
-                            document.metadata["dataset_id"] = dataset_id
+                            document.metadata["dataset_id"] = selected_dataset.id
                             document.metadata["dataset_name"] = selected_dataset.name
                         results.append(document)
                 else:
@@ -724,7 +748,7 @@ class DatasetRetrieval:
                             weights=retrieval_model_config.get("weights", None),
                             document_ids_filter=document_ids_filter,
                         )
-                self._on_query(query, None, [dataset_id], app_id, user_from, user_id)
+                self._on_query(query, None, [selected_dataset.id], app_id, user_from, user_id)
 
                 if results:
                     thread = threading.Thread(
@@ -1444,6 +1468,7 @@ class DatasetRetrieval:
         )
         return filter_documents[:top_k] if top_k else filter_documents
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def get_metadata_filter_condition(
         self,
         session: Session,

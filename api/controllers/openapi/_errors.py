@@ -67,6 +67,7 @@ class OpenApiErrorCode(StrEnum):
     MEMBER_LICENSE_EXCEEDED = "member_license_exceeded"
     HUMAN_INPUT_FORM_NOT_FOUND = "form_not_found"
     RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
 
 
 class ErrorDetail(BaseModel):

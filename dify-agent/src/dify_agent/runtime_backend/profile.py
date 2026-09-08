@@ -20,9 +20,9 @@ from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, Local
 from dify_agent.runtime_backend.protocols import RuntimeBackendProfile
 
 DEFAULT_E2B_TEMPLATE = "difys-default-team/dify-agent-local-sandbox"
-DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT = "/home/dify/.dify-agent-materialized-homes"
-DEFAULT_LOCAL_WORKSPACE_ROOT = "/home/dify/.dify-agent-workspaces"
-DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT = "/home/dify/.dify-agent-home-snapshots"
+DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT = "/home/dify"
+DEFAULT_LOCAL_WORKSPACE_ROOT = "/workspace"
+DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT = "/home/dify/.snapshots"
 
 
 class RuntimeBackendSettings(BaseSettings):
@@ -52,6 +52,7 @@ class RuntimeBackendSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
 
     e2b_api_key: str | None = None
     e2b_template: str = DEFAULT_E2B_TEMPLATE
@@ -60,7 +61,6 @@ class RuntimeBackendSettings(BaseSettings):
         ge=1,
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
-    e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
@@ -128,12 +128,17 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
             endpoint = settings.enterprise_sandbox_gateway_endpoint or ""
             token = settings.enterprise_sandbox_gateway_auth_token or ""
             return RuntimeBackendProfile(
-                home_snapshots=EnterpriseHomeSnapshotBackend(),
+                home_snapshots=EnterpriseHomeSnapshotBackend(
+                    gateway_endpoint=endpoint,
+                    auth_token=token,
+                    snapshot_timeout=settings.enterprise_sandbox_snapshot_timeout,
+                ),
                 execution_bindings=EnterpriseExecutionBindingBackend(
                     gateway_endpoint=endpoint,
                     auth_token=token,
                     gateway_timeout=settings.enterprise_sandbox_gateway_timeout,
                     proxy_timeout=settings.enterprise_sandbox_proxy_timeout,
+                    snapshot_timeout=settings.enterprise_sandbox_snapshot_timeout,
                 ),
             )
         case "e2b":
@@ -146,7 +151,6 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
                     control_plane=control_plane,
                     template=settings.e2b_template,
                     active_timeout_seconds=settings.e2b_active_timeout_seconds,
-                    shellctl_auth_token=settings.e2b_shellctl_auth_token,
                     shellctl_port=settings.e2b_shellctl_port,
                 ),
             )

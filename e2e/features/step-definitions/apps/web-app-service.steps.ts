@@ -23,15 +23,6 @@ Given('a new runnable workflow app has been published', async function (this: Di
   this.shareURL = getAppSiteURL(appDetail)
 })
 
-When('I open the app information panel', async function (this: DifyWorld) {
-  const appName = this.lastCreatedAppName
-  if (!appName) {
-    throw new Error('No app name available. Create an app before opening its information panel.')
-  }
-
-  await this.getPage().getByRole('button', { name: appName }).click()
-})
-
 const getWebAppSwitch = (world: DifyWorld) => {
   const webAppCard = world.getPage().getByRole('region', { name: 'Web App' })
   return webAppCard.getByRole('switch', { name: 'Web App' })
@@ -73,7 +64,7 @@ When('I enable the Web App', async function (this: DifyWorld) {
 
 Then('the Web App should be in service', async function (this: DifyWorld) {
   const webAppCard = this.getPage().getByRole('region', { name: 'Web App' })
-  await expect(webAppCard.getByText('In Service', { exact: true })).toBeVisible({
+  await expect(webAppCard.getByText(/^In service$/i)).toBeVisible({
     timeout: 10_000,
   })
 })

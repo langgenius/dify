@@ -1,5 +1,6 @@
 import type { FileEntity } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import FileImageItem from '../file-image-item'
 
@@ -121,6 +122,17 @@ describe('FileImageItem', () => {
     render(<FileImageItem file={createFile()} showDownloadAction />)
 
     expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
+  })
+
+  it('should keep image actions keyboard reachable', async () => {
+    const user = userEvent.setup()
+    render(<FileImageItem file={createFile()} showDeleteAction showDownloadAction />)
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toHaveFocus()
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.download' })).toHaveFocus()
   })
 
   it('should call downloadUrl when download button is clicked', async () => {

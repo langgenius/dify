@@ -1,6 +1,6 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import { renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSnippetInit } from '../use-snippet-init'
 
 const mockWorkflowStoreSetState = vi.fn()
@@ -176,6 +176,16 @@ describe('useSnippetInit', () => {
     expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(1_712_345_678)
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('fetched-draft-hash')
     expect(result.current.data?.draft.graph.viewport).toEqual({ x: 10, y: 20, zoom: 1.2 })
+  })
+
+  it('should mark workflow data as loaded after the draft request completes', async () => {
+    const { result } = renderHook(() => useSnippetInit('snippet-1'))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
   })
 
   it('should not return stale draft data while the draft workflow request is pending', () => {
