@@ -181,7 +181,6 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | 400 | `invalid_param` : The specified job does not exist. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Job not found |  |
 
 ### [GET] /apps/annotations
 **List Annotations**
@@ -560,7 +559,6 @@ Send a request to the text generation application.
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Conversation not found |  |
 | 429 | `too_many_requests` : Too many concurrent requests for this app. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
@@ -798,7 +796,7 @@ Create a new empty knowledge base. After creation, use [Create Document by Text]
 ### [DELETE] /datasets/{dataset_id}
 **Delete Knowledge Base**
 
-Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.
+Permanently delete a knowledge base and all its documents.
 
 #### Parameters
 
@@ -814,7 +812,6 @@ Permanently delete a knowledge base and all its documents. The knowledge base mu
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | `not_found` : Dataset not found. |
-| 409 | `dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the apps before deleting. |
 
 ### [GET] /datasets/{dataset_id}
 **Get Knowledge Base**
@@ -1370,7 +1367,6 @@ Permanently delete a document and all its chunks from the knowledge base.
 | Code | Description |
 | ---- | ----------- |
 | 204 | Success. |
-| 400 | `document_indexing` : Cannot delete document during indexing. |
 | 401 | Unauthorized - invalid API token |
 | 403 | `archived_document_immutable` : The archived document is not editable. |
 | 404 | `not_found` : Document Not Exists. |
@@ -1386,7 +1382,7 @@ Retrieve detailed information about a specific document, including its indexing 
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 | document_id | path | Document ID. | Yes | string (uuid) |
-| metadata | query | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_metadata`. | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
+| metadata | query | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_type` and `doc_metadata`. | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
 
 #### Responses
 
@@ -2093,9 +2089,9 @@ Retrieve basic information about this application, including name, description, 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Basic information of the application. | **application/json**: [AppInfoResponse](#appinforesponse)<br> |
+| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Application not found |  |
 
 ### [GET] /meta
 **Get App Meta**
@@ -2107,9 +2103,9 @@ Retrieve metadata about this application, including tool icons and other configu
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved application meta information. | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
+| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Application not found |  |
 
 ### [GET] /parameters
 **Get App Parameters**
@@ -2124,7 +2120,6 @@ Retrieve the application's input form configuration, including feature switches,
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Application not found |  |
 
 ### [GET] /site
 **Get App WebApp Settings**
@@ -2212,8 +2207,7 @@ Execute a workflow. Cannot be executed without a published workflow.
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
-| 404 | Workflow not found |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit or the Dify Cloud workflow execution quota was exceeded. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ### [GET] /workflows/run/{workflow_run_id}
@@ -2289,7 +2283,7 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | 401 | Unauthorized - invalid API token |  |
 | 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
 | 404 | `not_found` : Workflow not found. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit or the Dify Cloud workflow execution quota was exceeded. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ---
@@ -2600,7 +2594,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
 | workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChildChunkCreatePayload
@@ -2682,7 +2676,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
 
 #### Condition
 
@@ -2723,7 +2717,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 
 #### ConversationVariableInfiniteScrollPaginationResponse
 
@@ -2755,7 +2749,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 | value |  | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariablesQuery
@@ -2833,7 +2827,6 @@ Enum class for custom configuration status.
 | maintainer | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | Yes |
-| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
@@ -2876,7 +2869,6 @@ Enum class for custom configuration status.
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
 | permission | string |  | Yes |
-| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
@@ -3158,7 +3150,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_metadata`.<br>*Enum:* `"all"`, `"only"`, `"without"` | No |
+| metadata | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_type` and `doc_metadata`.<br>*Enum:* `"all"`, `"only"`, `"without"` | No |
 
 #### DocumentListQuery
 
@@ -3546,7 +3538,7 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
 
 #### HumanInputFormSubmitResponse
 
@@ -3622,7 +3614,7 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
 | rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
 
 #### MessageFile
 
@@ -3753,7 +3745,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 
 #### ParagraphInputConfig
 
@@ -4253,7 +4245,7 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
 | text | string | Speech content to convert. | No |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### ToolIcon
@@ -4461,7 +4453,7 @@ Public pause reason emitted by a blocking Workflow execution.
 | files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
 
 #### WorkflowRunResponse
 

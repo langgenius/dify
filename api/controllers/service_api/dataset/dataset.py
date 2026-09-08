@@ -35,7 +35,8 @@ from controllers.service_api.wraps import (
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
+from fields.dataset_fields import dataset_detail_response_source
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_user
@@ -86,6 +87,11 @@ PartialMemberList = Annotated[
         }
     ),
 ]
+
+
+class DatasetDetailResponse(BaseDatasetDetailResponse):
+    # The Service API dump helpers exclude Console permission metadata.
+    permission_keys: list[str] = Field(default_factory=list, exclude=True)
 
 
 _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
@@ -738,18 +744,11 @@ class DatasetApi(DatasetApiResource):
 
     @service_api_ns.doc(
         summary="Delete Knowledge Base",
-        description=(
-            "Permanently delete a knowledge base and all its documents. The knowledge base must not be "
-            "in use by any application."
-        ),
+        description="Permanently delete a knowledge base and all its documents.",
         tags=["Knowledge Bases"],
         responses={
             204: "Success.",
             404: "`not_found` : Dataset not found.",
-            409: (
-                "`dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the "
-                "apps before deleting."
-            ),
         },
     )
     @service_api_ns.doc("delete_dataset")
@@ -760,7 +759,6 @@ class DatasetApi(DatasetApiResource):
             204: "Dataset deleted successfully",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
-            409: "Conflict - dataset is in use",
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
