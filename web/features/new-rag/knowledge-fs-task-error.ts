@@ -15,6 +15,8 @@ export type KnowledgeFsTaskFailureMessageKey =
   | 'taskFailure.invalid'
   | 'taskFailure.leaseLost'
   | 'taskFailure.modelConfiguration'
+  | 'taskFailure.modelContextLimit'
+  | 'taskFailure.modelOutputLimit'
   | 'taskFailure.modelFailed'
   | 'taskFailure.modelResponseInvalid'
   | 'taskFailure.modelService'
@@ -101,6 +103,8 @@ const failureMessageKeyByCode = {
   MODEL_PROFILE_ACTIVATION_INCOMPLETE: 'taskFailure.modelConfiguration',
   MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED: 'taskFailure.access',
   MODEL_RUNTIME_FAILED: 'taskFailure.modelFailed',
+  MODEL_RUNTIME_CONTEXT_LIMIT: 'taskFailure.modelContextLimit',
+  MODEL_RUNTIME_OUTPUT_LIMIT: 'taskFailure.modelOutputLimit',
   MODEL_RUNTIME_RESPONSE_INVALID: 'taskFailure.modelResponseInvalid',
   MODEL_RUNTIME_TIMEOUT: 'taskFailure.modelTimeout',
   MODEL_RUNTIME_UNAVAILABLE: 'taskFailure.modelUnavailable',

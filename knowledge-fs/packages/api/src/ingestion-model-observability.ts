@@ -18,6 +18,13 @@ export type IngestionModelStage = (typeof IngestionModelStages)[number];
  * callers must not turn an estimate into provider-reported usage.
  */
 export interface IngestionModelCallOperationalMetric {
+  readonly windowId?: string | undefined;
+  readonly documentAssetId?: string | undefined;
+  readonly publicationGenerationId?: string | undefined;
+  readonly requestedOutputTokens?: number | undefined;
+  readonly finishReason?: string | undefined;
+  readonly outputTruncated?: boolean | undefined;
+  readonly budgetSource?: "model" | "partial-model" | "fallback" | undefined;
   readonly cacheHits: number;
   readonly durationMs: number;
   readonly inputTokens?: number | undefined;

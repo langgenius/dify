@@ -2,6 +2,7 @@ import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator, Mapping
 from enum import Enum
+from operator import itemgetter
 from typing import Any
 
 from pydantic import BaseModel
@@ -15,6 +16,7 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
     InvokableModelCatalogItem,
     InvokableModelCatalogPage,
+    InvokableModelTokenLimits,
     RequestInvokeLLM,
     RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
@@ -61,6 +63,45 @@ def _json_compatible(value: Any) -> Any:
 
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
+    @classmethod
+    def _model_token_limits(
+        cls, *, tenant_id: str, user_id: str, provider: str, model: str
+    ) -> InvokableModelTokenLimits | None:
+        """Resolve the selected model only; listing a catalog must not cause N schema RPCs.
+
+        Custom-model settings (including the configured max-token rule) are resolved by the same
+        tenant-bound runtime as invocation. Never infer an output maximum from a rule's default.
+        """
+        instance = cls._get_bound_model_instance(
+            tenant_id=tenant_id, user_id=user_id, provider=provider, model_type=ModelType.LLM, model=model
+        )
+        schema = instance.get_model_schema()
+        if schema is None:
+            return None
+
+        def positive_limit(value: Any) -> int | None:
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                return None
+            if not 0 < value <= 1_000_000_000 or value != int(value):
+                return None
+            return int(value)
+
+        output_rules = [
+            rule
+            for rule in schema.parameter_rules
+            if rule.name in {"max_tokens", "max_output_tokens", "max_completion_tokens", "maxtoken"}
+            or rule.use_template == "max_tokens"
+        ]
+        bounded_rules = [(rule, positive_limit(rule.max)) for rule in output_rules]
+        bounded_rules = [(rule, limit) for rule, limit in bounded_rules if limit is not None]
+        # Multiple declared aliases must not let the caller bypass the tighter bound.
+        selected = min(bounded_rules, key=itemgetter(1)) if bounded_rules else None
+        return InvokableModelTokenLimits(
+            context_tokens=positive_limit(schema.model_properties.get("context_size")),
+            max_output_tokens=selected[1] if selected else None,
+            output_parameter=selected[0].name if selected else None,
+        )
+
     @staticmethod
     @with_credit_usage_created_by(CreditUsageCreatedBy.PLUGIN_API)
     def _get_bound_model_instance(
@@ -303,6 +344,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
                         "modelType": model.model_type.value,
                         "status": _json_compatible(model.status),
                     },
+                    token_limits=cls._model_token_limits(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        provider=model.provider.provider,
+                        model=model.model,
+                    )
+                    if payload.model and model.model_type == ModelType.LLM
+                    else None,
                 )
             )
 

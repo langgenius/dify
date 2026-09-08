@@ -479,6 +479,17 @@ const documentOutlineSummaryEnhancer = createKnowledgeSpaceOutlineSummaryEnhance
   providerFactory: profileReasoningCapability.providerFactory,
 });
 const documentSemanticChunker = createLlmSemanticChunker({
+  resolveModelTokenLimits: async (input) => {
+    const entry = await modelCapabilityCatalog.resolve({ ...input, kind: "reasoning" });
+    if (
+      !entry ||
+      entry.model !== input.selection.model ||
+      entry.pluginId !== input.selection.pluginId ||
+      entry.provider !== input.selection.provider
+    )
+      throw new Error("Semantic model capability identity mismatch");
+    return entry.tokenLimits;
+  },
   ...(databaseRepositories.documentSemanticWindowCheckpoints
     ? { checkpoints: databaseRepositories.documentSemanticWindowCheckpoints }
     : {}),

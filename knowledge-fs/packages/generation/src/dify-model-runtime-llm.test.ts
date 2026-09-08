@@ -36,6 +36,41 @@ function deltaChunk(content: string): unknown {
 }
 
 describe("Dify model runtime LLM provider", () => {
+  it("uses the schema-declared output-token parameter instead of silently using max_tokens", async () => {
+    let captured: DifyLlmInput | undefined;
+    const provider = createDifyModelRuntimeLlmProvider({
+      ...BASE,
+      client: fakeClient(
+        () => [
+          {
+            delta: {
+              finish_reason: "length",
+              usage: { completion_tokens: 8000 },
+              message: { content: '{"chunks":[' },
+            },
+          },
+        ],
+        (input) => {
+          captured = input;
+        },
+      ),
+    });
+    const events = [];
+    for await (const event of provider.stream({
+      model: BASE.model,
+      tenantId: "tenant-1",
+      messages: [{ role: "user", content: "chunk" }],
+      maxOutputTokens: 8000,
+      outputTokenParameter: "max_completion_tokens",
+    }))
+      events.push(event);
+    expect(captured?.completionParams).toEqual({ max_completion_tokens: 8000 });
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      finishReason: "length",
+      metadata: { usage: { completionTokens: 8000 } },
+    });
+  });
   it("streams deltas and preserves the selected route across upstream model aliases", async () => {
     let captured: DifyLlmInput | undefined;
     const provider = createDifyModelRuntimeLlmProvider({

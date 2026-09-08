@@ -220,6 +220,14 @@ class RequestListModels(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class InvokableModelTokenLimits(BaseModel):
+    """Provider-declared limits, not completion defaults or credentials."""
+
+    context_tokens: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    max_output_tokens: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    output_parameter: str | None = Field(default=None, min_length=1, max_length=128)
+
+
 class InvokableModelCatalogItem(BaseModel):
     """Installed identity and active Dify capability metadata for one model."""
 
@@ -229,6 +237,7 @@ class InvokableModelCatalogItem(BaseModel):
     model: str
     model_type: ModelType
     capabilities: dict[str, Any] = Field(default_factory=dict)
+    token_limits: InvokableModelTokenLimits | None = None
 
     model_config = ConfigDict(protected_namespaces=())
 

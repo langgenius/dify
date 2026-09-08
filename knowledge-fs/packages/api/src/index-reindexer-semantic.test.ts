@@ -2,6 +2,7 @@ import type { ComputeRuntime } from "@knowledge/compute";
 import { KnowledgeNodeSchema, ParseArtifactSchema } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
+import { createInMemoryDocumentSemanticWindowCheckpointRepository } from "./document-semantic-window-checkpoint-repository";
 import { createIncrementalReindexer } from "./index-reindexer";
 import { createInMemoryKnowledgeNodeRepository } from "./knowledge-node-repository";
 import { createLlmSemanticChunker } from "./llm-semantic-chunker";
@@ -34,6 +35,78 @@ function parseArtifact() {
     version: 1,
   });
 }
+
+describe("model-budget generation receipts", () => {
+  it.each([false, true])(
+    "persists and replays dynamic budgets with all chunks excluded=%s",
+    async (excluded) => {
+      let providerCalls = 0;
+      let metadataCalls = 0;
+      const nodes = createInMemoryKnowledgeNodeRepository({
+        maxNodes: 100,
+        maxBatchSize: 100,
+        maxListLimit: 100,
+      });
+      const semantic = createLlmSemanticChunker({
+        checkpoints: createInMemoryDocumentSemanticWindowCheckpointRepository(),
+        resolveModelTokenLimits: async () => {
+          metadataCalls += 1;
+          return { contextTokens: 32_768, maxOutputTokens: 16_384 };
+        },
+        reasoningProviderFactory: () => ({
+          async *stream(input) {
+            providerCalls += 1;
+            const payload = JSON.parse(input.messages[1]?.content ?? "{}") as {
+              units: { id: string }[];
+            };
+            yield {
+              type: "delta",
+              delta: JSON.stringify({
+                chunks: payload.units.map((unit) => ({
+                  startUnitId: unit.id,
+                  endUnitId: unit.id,
+                  entities: [],
+                  relations: [],
+                })),
+              }),
+            };
+            yield { type: "done", finishReason: "stop" };
+          },
+        }),
+      });
+      const reindexer = createIncrementalReindexer({
+        nodes,
+        maxNodes: 100,
+        semanticChunker: semantic,
+        compute: computeRuntime(),
+        artifacts: createInMemoryParseArtifactRepository({ maxArtifacts: 10 }),
+        ftsBuilder: { build: async () => [] },
+      });
+      const input = {
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        tenantId: "tenant-1",
+        parseArtifact: parseArtifact(),
+        publicationGenerationId: GENERATION_A,
+        projectionVersion: 1,
+        retrievalProfile: retrievalProfile(),
+        ...(excluded ? { excludedNodeOrdinals: [0] } : {}),
+      };
+      await reindexer.reindex(input);
+      const receipt = await nodes.getGenerationReceipt?.({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        parseArtifactId: PARSE_ARTIFACT_ID,
+        publicationGenerationId: GENERATION_A,
+      });
+      expect(receipt?.semanticConfig.tokenBudget).toMatchObject({
+        contextTokens: 32_768,
+        maxOutputTokens: 16_384,
+      });
+      await reindexer.reindex(input);
+      expect(providerCalls).toBe(1);
+      expect(metadataCalls).toBe(1);
+    },
+  );
+});
 
 function computeRuntime(onChunk?: () => void): ComputeRuntime {
   return {

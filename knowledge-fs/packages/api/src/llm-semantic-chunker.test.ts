@@ -7,7 +7,10 @@ import {
   ParseArtifactSchema,
 } from "@knowledge/core";
 import { countGraphemes } from "unicode-segmenter/grapheme";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createConcurrencyGate } from "./bounded-concurrency";
+import { estimateDocumentModelTokens } from "./document-model-budget";
+import type { IngestionModelCallOperationalMetric } from "./ingestion-model-observability";
 
 import { defaultDocumentCompilationErrorClassifier } from "./document-compilation-runtime";
 import { createDocumentModelBudget } from "./document-model-budget";
@@ -3271,6 +3274,408 @@ describe("LLM semantic chunker", () => {
         reasoningProviderFactory: () => tooManyRelations,
       }).chunk(input),
     ).rejects.toThrow("exceeded maxRelationsPerChunk=1");
+  });
+});
+
+describe("model-aware semantic budgeting and bounded recovery", () => {
+  const inputFor = (count = 40) => ({
+    knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+    tenantId: "tenant-1",
+    publicationGenerationId: GENERATION_A,
+    retrievalProfile: profile(),
+    parseArtifact: artifact(
+      Array.from({ length: count }, (_, index) => ({
+        id: `item-${index}`,
+        type: "paragraph" as const,
+        text: `Record ${index} contains useful knowledge`,
+        sectionPath: ["Manual"],
+        metadata: {},
+      })),
+    ),
+  });
+  const limits = {
+    contextTokens: 131_072,
+    maxOutputTokens: 32_768,
+    outputParameter: "max_completion_tokens",
+  };
+  const payloadFor = (input: SemanticChunkingLlmStreamInput) =>
+    JSON.parse(input.messages[1]?.content ?? "{}") as PromptPayload;
+
+  it("uses model limits to exceed the legacy 32-unit/4800-character windows and 6000-output cap", async () => {
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const resolveLimits = vi.fn(async () => limits);
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: resolveLimits,
+      checkpoints: createInMemoryDocumentSemanticWindowCheckpointRepository(),
+    });
+    const input = inputFor(60);
+    input.parseArtifact.elements = input.parseArtifact.elements.map((element) => ({
+      ...element,
+      text: (element.text ?? "").repeat(3),
+    }));
+    const config = await chunker.resolveConfig?.(input);
+    const nodes = await chunker.chunk({ ...input, config });
+    expect(provider.calls).toHaveLength(1);
+    expect(payloadFor(provider.calls[0] as SemanticChunkingLlmStreamInput).units).toHaveLength(60);
+    expect(provider.calls[0]?.maxOutputTokens).toBeGreaterThan(6_000);
+    expect(provider.calls[0]?.outputTokenParameter).toBe("max_completion_tokens");
+    expect(resolveLimits).toHaveBeenCalledTimes(1);
+    expect(resolveLimits).toHaveBeenCalledWith({
+      selection: profile().reasoningModel,
+      tenantId: "tenant-1",
+    });
+    assertValidLlmSemanticGenerationReplay({
+      config,
+      nodes,
+      parseArtifact: input.parseArtifact,
+      modelSelection: profile().reasoningModel,
+      publicationGenerationId: GENERATION_A,
+    });
+    assertValidLlmSemanticWindowManifestReplay({
+      config,
+      ...compactWindowManifest(nodes),
+      documentChunkCount: nodes.length,
+      parseArtifact: input.parseArtifact,
+      modelSelection: profile().reasoningModel,
+    });
+  });
+
+  it("accounts for full prompt metadata and keeps input plus output within the model context", async () => {
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => ({ contextTokens: 8_192, maxOutputTokens: 2_048 }),
+    });
+    const input = inputFor(40);
+    const nodes = await chunker.chunk(input);
+    expect(nodes).toHaveLength(40);
+    expect(provider.calls.length).toBeGreaterThan(2);
+    for (const call of provider.calls) {
+      expect(call.maxOutputTokens).toBeLessThanOrEqual(2_048);
+      expect(
+        estimateDocumentModelTokens(JSON.stringify(call.messages)) + Number(call.maxOutputTokens),
+      ).toBeLessThan(8_192);
+    }
+  });
+
+  it("keeps exact Unicode grapheme boundaries when enforcing the adaptive character guard", async () => {
+    const input = inputFor(8);
+    input.parseArtifact.elements = input.parseArtifact.elements.map((element) => ({
+      ...element,
+      text: "a\u0308👩‍👩‍👧‍👧🇨🇳中文。".repeat(3),
+    }));
+    const legacy = new ScriptedProvider([echoEachUnit]);
+    const adaptive = new ScriptedProvider([echoEachUnit]);
+    const options = { maxChunkChars: 8, maxWindowChars: 15 };
+    const previous = await createLlmSemanticChunker({
+      ...options,
+      reasoningProviderFactory: () => legacy,
+    }).chunk(input);
+    const current = await createLlmSemanticChunker({
+      ...options,
+      reasoningProviderFactory: () => adaptive,
+      resolveModelTokenLimits: async () => limits,
+    }).chunk({ ...input, config: options });
+    const spans = (nodes: KnowledgeNode[]) =>
+      nodes.map((node) => ({
+        text: node.text,
+        sourceLocation: node.sourceLocation,
+        startOffset: node.startOffset,
+        endOffset: node.endOffset,
+      }));
+    expect(spans(current)).toEqual(spans(previous));
+    expect(adaptive.calls.map((call) => payloadFor(call).units.map((unit) => unit.id))).toEqual(
+      legacy.calls.map((call) => payloadFor(call).units.map((unit) => unit.id)),
+    );
+  });
+
+  it("freezes budgets across retries and tenants without another model catalog lookup", async () => {
+    const checkpoints = createInMemoryDocumentSemanticWindowCheckpointRepository();
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const resolveLimits = vi.fn(async () => limits);
+    const chunker = createLlmSemanticChunker({
+      checkpoints,
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: resolveLimits,
+    });
+    const input = inputFor();
+    const first = await chunker.resolveConfig?.(input);
+    resolveLimits.mockResolvedValue({ ...limits, maxOutputTokens: 1_024 });
+    expect(await chunker.resolveConfig?.(input)).toEqual(first);
+    expect(resolveLimits).toHaveBeenCalledTimes(1);
+    const otherTenant = await chunker.resolveConfig?.({ ...input, tenantId: "tenant-2" });
+    expect(otherTenant?.tokenBudget?.maxOutputTokens).toBe(1_024);
+    expect(resolveLimits).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves successful pre-budget windows and their exact replay fingerprints", async () => {
+    const checkpoints = createInMemoryDocumentSemanticWindowCheckpointRepository();
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const legacy = createLlmSemanticChunker({
+      checkpoints,
+      reasoningProviderFactory: () => provider,
+    });
+    const input = inputFor();
+    const previous = await legacy.chunk(input);
+    const calls = provider.calls.length;
+    const upgraded = createLlmSemanticChunker({
+      checkpoints,
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => limits,
+    });
+    const config = await upgraded.resolveConfig?.(input);
+    expect(config?.tokenBudget?.legacyWindowLayout).toBe(true);
+    const replayed = await upgraded.chunk({ ...input, config });
+    expect(provider.calls).toHaveLength(calls);
+    expect(replayed.map((node) => node.id)).toEqual(previous.map((node) => node.id));
+    assertValidLlmSemanticGenerationReplay({
+      config,
+      nodes: replayed,
+      parseArtifact: input.parseArtifact,
+      modelSelection: profile().reasoningModel,
+      publicationGenerationId: GENERATION_A,
+    });
+  });
+
+  it.each(["length", "max_tokens", "MAX_OUTPUT_TOKENS"])(
+    "raises the budget on %s before retrying",
+    async (reason) => {
+      const calls: SemanticChunkingLlmStreamInput[] = [];
+      const metrics: IngestionModelCallOperationalMetric[] = [];
+      const provider: SemanticChunkingLlmProvider = {
+        async *stream(input) {
+          calls.push(input);
+          yield {
+            type: "delta",
+            delta:
+              calls.length === 1 ? '{"chunks":[' : JSON.stringify(echoEachUnit(payloadFor(input))),
+          };
+          yield {
+            type: "done",
+            finishReason: calls.length === 1 ? reason : "stop",
+            metadata: { usage: { completionTokens: input.maxOutputTokens } },
+          };
+        },
+      };
+      const chunker = createLlmSemanticChunker({
+        reasoningProviderFactory: () => provider,
+        resolveModelTokenLimits: async () => limits,
+        maxProviderOutputRetries: 3,
+        metrics: {
+          record: (metric) => {
+            metrics.push(metric);
+          },
+        },
+      });
+      expect(await chunker.chunk(inputFor(2))).toHaveLength(2);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]?.maxOutputTokens).toBe(Number(calls[0]?.maxOutputTokens) * 2);
+      expect(metrics[0]).toMatchObject({
+        outputTruncated: true,
+        finishReason: reason,
+        windowId: "window-000000",
+      });
+    },
+  );
+
+  it("splits only a saturated window and resumes successful children after a transport failure", async () => {
+    const calls: string[] = [];
+    let failRight = true;
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream(input) {
+        const payload = payloadFor(input);
+        calls.push(payload.windowId);
+        if (payload.windowId === "window-000000~1" && failRight)
+          throw new Error("transport failed");
+        if (payload.windowId === "window-000000") {
+          yield { type: "delta", delta: '{"chunks":[' };
+          yield { type: "done", finishReason: "length" };
+        } else {
+          yield { type: "delta", delta: JSON.stringify(echoEachUnit(payload)) };
+          yield { type: "done", finishReason: "stop" };
+        }
+      },
+    };
+    const chunker = createLlmSemanticChunker({
+      checkpoints: createInMemoryDocumentSemanticWindowCheckpointRepository(),
+      reasoningProviderFactory: () => provider,
+      maxConcurrentWindows: 1,
+    });
+    const input = inputFor(4);
+    await expect(chunker.chunk(input)).rejects.toThrow("transport failed");
+    failRight = false;
+    const nodes = await chunker.chunk(input);
+    expect(calls).toEqual([
+      "window-000000",
+      "window-000000~0",
+      "window-000000~1",
+      "window-000000~1",
+    ]);
+    expect(nodes).toHaveLength(4);
+    assertValidLlmSemanticGenerationReplay({
+      nodes,
+      parseArtifact: input.parseArtifact,
+      modelSelection: profile().reasoningModel,
+      publicationGenerationId: GENERATION_A,
+    });
+    expect(await chunker.chunk(input)).toHaveLength(4);
+    expect(calls).toHaveLength(4);
+  });
+
+  it("tries remaining safe output capacity before splitting a reasoning-heavy small window", async () => {
+    const calls: SemanticChunkingLlmStreamInput[] = [];
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream(input) {
+        calls.push(input);
+        const enough = input.maxOutputTokens === limits.maxOutputTokens;
+        if (enough) yield { type: "delta", delta: JSON.stringify(echoEachUnit(payloadFor(input))) };
+        yield { type: "done", finishReason: enough ? "stop" : "length" };
+      },
+    };
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => limits,
+      maxProviderOutputRetries: 3,
+    });
+    expect(await chunker.chunk(inputFor(2))).toHaveLength(2);
+    expect(calls).toHaveLength(4);
+    expect(calls.at(-1)?.maxOutputTokens).toBe(limits.maxOutputTokens);
+    expect(new Set(calls.map((call) => payloadFor(call).windowId))).toEqual(
+      new Set(["window-000000"]),
+    );
+  });
+
+  it("does not publish partial results or loop indefinitely when even small outputs truncate", async () => {
+    let calls = 0;
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream() {
+        calls += 1;
+        yield { type: "done", finishReason: "length" };
+      },
+    };
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => limits,
+      maxProviderOutputRetries: 3,
+    });
+    await expect(chunker.chunk(inputFor(16))).rejects.toMatchObject({
+      code: "MODEL_RUNTIME_OUTPUT_LIMIT",
+      retryable: false,
+    });
+    expect(calls).toBeLessThanOrEqual(16);
+  });
+
+  it("shrinks a timed-out model-aware window without repeating it or changing the deadline", async () => {
+    const calls: string[] = [];
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream(input) {
+        const payload = payloadFor(input);
+        calls.push(payload.windowId);
+        if (payload.windowId === "window-000000")
+          throw Object.assign(new Error("model deadline exceeded"), {
+            code: "dify_model_runtime_timeout",
+          });
+        yield { type: "delta", delta: JSON.stringify(echoEachUnit(payload)) };
+        yield { type: "done", finishReason: "stop" };
+      },
+    };
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => limits,
+    });
+    expect(await chunker.chunk(inputFor(4))).toHaveLength(4);
+    expect(calls).toEqual(["window-000000", "window-000000~0", "window-000000~1"]);
+  });
+
+  it("bounds persistent timeouts and preserves their classification", async () => {
+    let calls = 0;
+    const timeout = Object.assign(new Error("model deadline exceeded"), {
+      code: "dify_model_runtime_timeout",
+    });
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream() {
+        calls += 1;
+        yield { type: "delta", delta: "" };
+        throw timeout;
+      },
+    };
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => limits,
+    });
+    await expect(chunker.chunk(inputFor(16))).rejects.toBe(timeout);
+    expect(calls).toBe(4);
+  });
+
+  it("infers truncation from saturated usage only when the response is unusable", async () => {
+    const calls: SemanticChunkingLlmStreamInput[] = [];
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream(input) {
+        calls.push(input);
+        yield {
+          type: "delta",
+          delta: calls.length === 1 ? "" : JSON.stringify(echoEachUnit(payloadFor(input))),
+        };
+        yield { type: "done", metadata: { usage: { completionTokens: input.maxOutputTokens } } };
+      },
+    };
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => limits,
+    });
+    expect(await chunker.chunk(inputFor(2))).toHaveLength(2);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.maxOutputTokens).toBeGreaterThan(Number(calls[0]?.maxOutputTokens));
+  });
+
+  it("uses explicit conservative fallbacks without declaring missing capacity unlimited", async () => {
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => new ScriptedProvider([echoEachUnit]),
+      resolveModelTokenLimits: async () => undefined,
+    });
+    const config = await chunker.resolveConfig?.(inputFor(1));
+    expect(config?.tokenBudget).toMatchObject({
+      source: "fallback",
+      contextTokens: 16_384,
+      maxOutputTokens: 6_000,
+    });
+  });
+
+  it("rejects an undersized model context before paying for a provider call", async () => {
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const chunker = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+      resolveModelTokenLimits: async () => ({ contextTokens: 512, maxOutputTokens: 256 }),
+    });
+    await expect(chunker.chunk(inputFor(1))).rejects.toMatchObject({
+      code: "MODEL_RUNTIME_CONTEXT_LIMIT",
+    });
+    expect(provider.calls).toHaveLength(0);
+  });
+
+  it("cancels while waiting for a shared model slot without starting recovery", async () => {
+    const gate = createConcurrencyGate(1);
+    let release!: () => void;
+    const blocker = gate.run(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    await Promise.resolve();
+    const controller = new AbortController();
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const chunker = createLlmSemanticChunker({
+      modelRequestGate: gate,
+      reasoningProviderFactory: () => provider,
+    });
+    const pending = chunker.chunk({ ...inputFor(1), signal: controller.signal });
+    controller.abort(new Error("lease lost"));
+    await expect(pending).rejects.toThrow("lease lost");
+    release();
+    await blocker;
+    expect(provider.calls).toHaveLength(0);
   });
 });
 

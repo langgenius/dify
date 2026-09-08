@@ -372,6 +372,20 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
     502,
     "retry",
   ),
+  MODEL_RUNTIME_OUTPUT_LIMIT: descriptor(
+    "dependency",
+    "Document processing exceeded the model output limit after bounded automatic recovery.",
+    "manual",
+    502,
+    "retry",
+  ),
+  MODEL_RUNTIME_CONTEXT_LIMIT: descriptor(
+    "configuration",
+    "The selected model context is too small for an atomic document element and its processing instructions.",
+    "after_configuration",
+    422,
+    "configure_model",
+  ),
   MODEL_RUNTIME_TIMEOUT: descriptor(
     "timeout",
     "The model service timed out while processing the document.",

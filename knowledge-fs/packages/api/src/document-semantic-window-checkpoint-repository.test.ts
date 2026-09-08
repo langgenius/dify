@@ -18,6 +18,14 @@ const checkpoint = {
 };
 
 describe("document semantic window checkpoint repository", () => {
+  it("detects later legacy windows without mixing tenants or budget-only records", async () => {
+    const repository = createInMemoryDocumentSemanticWindowCheckpointRepository();
+    await repository.put({ scope, checkpoint: { ...checkpoint, windowId: "semantic-budget-v1" } });
+    expect(await repository.hasWindowCheckpoints?.(scope)).toBe(false);
+    await repository.put({ scope, checkpoint });
+    expect(await repository.hasWindowCheckpoints?.(scope)).toBe(true);
+    expect(await repository.hasWindowCheckpoints?.({ ...scope, tenantId: "tenant-2" })).toBe(false);
+  });
   it("replays exact immutable model output and returns defensive copies", async () => {
     const repository = createInMemoryDocumentSemanticWindowCheckpointRepository();
     const stored = await repository.put({ checkpoint, scope });

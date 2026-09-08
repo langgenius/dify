@@ -52,6 +52,14 @@ import {
   MAX_LLM_SEMANTIC_WINDOW_ID_CODE_POINTS as MAX_SEMANTIC_WINDOW_ID_CHARS,
   llmSemanticCompletionFingerprint,
 } from "./semantic-generation-receipt";
+import {
+  type ModelTokenLimits,
+  type SemanticTokenBudget,
+  SemanticTokenBudgetSchema,
+  createSemanticTokenBudget,
+  estimateSemanticOutputTokens,
+  semanticOutputCeiling,
+} from "./semantic-token-budget";
 
 export { llmSemanticCompletionFingerprint } from "./semantic-generation-receipt";
 
@@ -72,6 +80,11 @@ const V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW = 8;
 const DEFAULT_MAX_CONCURRENT_WINDOWS = 4;
 const MAX_CONCURRENT_WINDOWS = 32;
 const MAX_PROVIDER_OUTPUT_RETRIES = 3;
+// Operational bounds are independent of model capacity and apply to the entire recovery tree.
+const MAX_RECOVERY_MODEL_CALLS = 16;
+const MAX_RECOVERY_SPLIT_DEPTH = 3;
+const MAX_ADAPTIVE_WINDOW_CHARS = 200_000;
+const MAX_ADAPTIVE_CORE_UNITS = 256;
 const SEMANTIC_CHUNKING_STRATEGY = "llm-semantic-v1";
 const SEMANTIC_CHUNKING_SCHEMA_VERSION = 1;
 /**
@@ -90,6 +103,7 @@ export interface SemanticChunkingLlmMessage {
 }
 
 export interface SemanticChunkingLlmStreamInput {
+  readonly outputTokenParameter?: string | undefined;
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly SemanticChunkingLlmMessage[];
   readonly model: string;
@@ -117,6 +131,7 @@ export interface SemanticChunkerInput {
         readonly maxChunkChars?: number | undefined;
         readonly maxNodes?: number | undefined;
         readonly maxWindowChars?: number | undefined;
+        readonly tokenBudget?: SemanticTokenBudget | undefined;
         /** Legacy document setting retained as provenance; semantic output never overlaps. */
         readonly overlapChars?: number | undefined;
       }
@@ -137,6 +152,8 @@ export interface SemanticChunkerInput {
 }
 
 export interface SemanticChunker {
+  /** Resolve and freeze model-aware budgeting before receipt admission or provider work. */
+  resolveConfig?(input: SemanticChunkerInput): Promise<SemanticChunkerInput["config"]>;
   readonly replayDefaults?:
     | {
         readonly maxChunkChars: number;
@@ -148,6 +165,13 @@ export interface SemanticChunker {
 }
 
 export interface LlmSemanticChunkerOptions {
+  readonly resolveModelTokenLimits?:
+    | ((input: {
+        readonly selection: KnowledgeSpaceModelSelection;
+        readonly tenantId: string;
+        readonly signal?: AbortSignal | undefined;
+      }) => Promise<ModelTokenLimits | undefined>)
+    | undefined;
   readonly checkpoints?: DocumentSemanticWindowCheckpointRepository | undefined;
   readonly maxChunkChars?: number | undefined;
   readonly maxConcurrentWindows?: number | undefined;
@@ -174,6 +198,7 @@ export interface LlmSemanticGenerationReplayAssertionInput {
         readonly maxChunkChars?: number | undefined;
         readonly maxNodes?: number | undefined;
         readonly maxWindowChars?: number | undefined;
+        readonly tokenBudget?: SemanticTokenBudget | undefined;
         readonly overlapChars?: number | undefined;
       }
     | undefined;
@@ -217,6 +242,7 @@ export interface LlmSemanticWindowManifestReplayAssertionInput {
         readonly maxChunkChars?: number | undefined;
         readonly maxNodes?: number | undefined;
         readonly maxWindowChars?: number | undefined;
+        readonly tokenBudget?: SemanticTokenBudget | undefined;
         readonly overlapChars?: number | undefined;
       }
     | undefined;
@@ -239,6 +265,7 @@ export interface LlmSemanticWindowPreflightResult {
 }
 
 interface EffectiveChunkConfig {
+  readonly tokenBudget?: SemanticTokenBudget | undefined;
   readonly maxChunkChars: number;
   readonly maxNodes: number;
   readonly maxWindowChars: number;
@@ -316,6 +343,7 @@ interface SemanticWindowTableSchema {
 type SemanticWindowPlanningVersion = "v1" | "v2" | "v3" | "v4" | "v5" | "v6";
 
 interface SemanticWindowPlanningPolicy {
+  readonly tokenBudget?: SemanticTokenBudget | undefined;
   readonly atomicDocument: boolean;
   readonly version: SemanticWindowPlanningVersion;
 }
@@ -374,6 +402,7 @@ export function preflightLlmSemanticWindows({
   const { canonicalText, elements } = materializeElements(parseArtifact);
   const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
   const planningPolicy = resolveSemanticWindowPlanningPolicy({
+    tokenBudget: effectiveConfig.tokenBudget,
     canonicalText,
     maxChunkChars: effectiveConfig.maxChunkChars,
     promptVersion,
@@ -407,6 +436,7 @@ export function createLlmSemanticChunker({
   now = () => new Date().toISOString(),
   promptVersion = DEFAULT_PROMPT_VERSION,
   reasoningProviderFactory,
+  resolveModelTokenLimits,
   temperature = 0,
 }: LlmSemanticChunkerOptions): SemanticChunker {
   validatePositiveInteger("maxChunkChars", maxChunkChars);
@@ -438,11 +468,121 @@ export function createLlmSemanticChunker({
     throw new Error("LLM semantic chunking temperature must be non-negative");
   }
 
+  const resolveGenerationConfig = async (
+    input: SemanticChunkerInput,
+  ): Promise<SemanticChunkerInput["config"]> => {
+    input.signal?.throwIfAborted();
+    if (input.config?.tokenBudget || !resolveModelTokenLimits) return input.config;
+    const base = resolveConfig(input.config, {
+      maxChunkChars,
+      maxNodes,
+      maxWindowChars,
+      requestedOverlapChars: 0,
+    });
+    const scope = semanticWindowCheckpointScope(input, checkpoints);
+    const key = {
+      windowId: "semantic-budget-v1",
+      inputFingerprint: semanticWindowModelFingerprint({
+        artifactHash: input.parseArtifact.artifactHash,
+        config: base,
+        enableGraph: input.enableGraph !== false,
+        enablePageIndex: input.enablePageIndex !== false,
+        promptVersion,
+        selection: input.retrievalProfile.reasoningModel,
+      }),
+    };
+    const readBudget = (checkpoint: DocumentSemanticWindowCheckpoint) => {
+      if (checkpoint.modelFingerprint !== key.inputFingerprint)
+        throw new Error("Semantic budget checkpoint identity changed");
+      return SemanticTokenBudgetSchema.parse(JSON.parse(checkpoint.responseText));
+    };
+    let budget: SemanticTokenBudget | undefined;
+    const stored = scope && checkpoints ? await checkpoints.get({ key, scope }) : null;
+    if (stored) budget = readBudget(stored);
+    if (!budget) {
+      // Preserve pre-upgrade successful windows. Their output budget can still adapt without
+      // changing the canonical core/look-ahead input or invalidating the immutable checkpoints.
+      let legacy = false;
+      if (scope && checkpoints) {
+        if (checkpoints.hasWindowCheckpoints) {
+          legacy = await checkpoints.hasWindowCheckpoints(scope);
+        } else {
+          const { canonicalText, elements } = materializeElements(input.parseArtifact);
+          const units = materializeAtomicUnits(elements, base.maxChunkChars, promptVersion);
+          if (units.length) {
+            const policy = resolveSemanticWindowPlanningPolicy({
+              canonicalText,
+              maxChunkChars: base.maxChunkChars,
+              promptVersion,
+              units,
+            });
+            const first = materializeSemanticWindow({
+              canonicalText,
+              maxChunkChars: base.maxChunkChars,
+              maxWindowChars: base.maxWindowChars,
+              planningPolicy: policy,
+              startUnitIndex: 0,
+              units,
+              windowIndex: 0,
+            });
+            legacy = Boolean(
+              await checkpoints.get({
+                key: { windowId: first.id, inputFingerprint: first.inputFingerprint },
+                scope,
+              }),
+            );
+          }
+        }
+      }
+      const limits = input.tenantId
+        ? await resolveModelTokenLimits({
+            selection: input.retrievalProfile.reasoningModel,
+            tenantId: input.tenantId,
+            ...(input.signal ? { signal: input.signal } : {}),
+          })
+        : undefined;
+      input.signal?.throwIfAborted();
+      budget = createSemanticTokenBudget({
+        limits,
+        enableGraph: input.enableGraph !== false,
+        enablePageIndex: input.enablePageIndex !== false,
+        legacyWindowLayout: Boolean(legacy),
+      });
+      if (scope && checkpoints) {
+        try {
+          await checkpoints.put({
+            scope,
+            checkpoint: {
+              ...key,
+              completion: {},
+              modelFingerprint: key.inputFingerprint,
+              responseText: JSON.stringify(budget),
+            },
+          });
+        } catch (error) {
+          // Concurrent redelivery may have frozen the same generation first. Read the winner;
+          // never overwrite it or continue with a different plan.
+          const winner = await checkpoints.get({ key, scope });
+          if (!winner) throw error;
+          budget = readBudget(winner);
+        }
+      }
+    }
+    return {
+      ...input.config,
+      tokenBudget: budget,
+      maxWindowChars: budget.legacyWindowLayout
+        ? base.maxWindowChars
+        : (input.config?.maxWindowChars ?? MAX_ADAPTIVE_WINDOW_CHARS),
+    };
+  };
+
   return {
+    resolveConfig: resolveGenerationConfig,
     replayDefaults: { maxChunkChars, maxWindowChars, promptVersion },
     chunk: async (input) => {
       input.signal?.throwIfAborted();
-      const effectiveConfig = resolveConfig(input.config, {
+      const effectiveConfig = resolveConfig(await resolveGenerationConfig(input), {
         maxChunkChars,
         maxNodes,
         maxWindowChars,
@@ -457,6 +597,7 @@ export function createLlmSemanticChunker({
 
       const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
       const planningPolicy = resolveSemanticWindowPlanningPolicy({
+        tokenBudget: effectiveConfig.tokenBudget,
         canonicalText,
         maxChunkChars: effectiveConfig.maxChunkChars,
         promptVersion,
@@ -488,11 +629,22 @@ export function createLlmSemanticChunker({
       const globalUnitIndex = new Map(units.map((unit, index) => [unit.id, index]));
       let nextUnitIndex = 0;
       let windowIndex = 0;
+      const tokenBudget = effectiveConfig.tokenBudget;
+      if (
+        tokenBudget &&
+        (tokenBudget.enableGraph !== (input.enableGraph !== false) ||
+          tokenBudget.enablePageIndex !== (input.enablePageIndex !== false))
+      ) {
+        throw new Error("Semantic token budget does not match the frozen extraction features");
+      }
 
       const processWindowAttempt = async (
         window: SemanticWindow,
         retryCount: number,
         validationFeedback?: string,
+        requestedOutputTokens = maxOutputTokens,
+        recovery = { calls: 0 },
+        preparedCompletion?: CollectedProviderCompletion,
       ) => {
         input.signal?.throwIfAborted();
         const messages = semanticChunkingMessages({
@@ -508,6 +660,7 @@ export function createLlmSemanticChunker({
         const callStartedAt = Date.now();
         let completion: CollectedProviderCompletion | undefined;
         let checkpointHit = false;
+        let providerCalls = 0;
         try {
           const stored = checkpointScope
             ? await checkpoints?.get({
@@ -521,16 +674,33 @@ export function createLlmSemanticChunker({
             }
             completion = semanticCompletionFromCheckpoint(stored);
             checkpointHit = true;
+          } else if (preparedCompletion) {
+            completion = preparedCompletion;
           } else {
+            const estimatedInputTokens =
+              estimateDocumentModelTokens(JSON.stringify(messages)) + 256;
+            if (
+              tokenBudget &&
+              requestedOutputTokens > semanticOutputCeiling(tokenBudget, estimatedInputTokens)
+            ) {
+              throw new LlmSemanticChunkingContextLimitError();
+            }
+            if (recovery.calls >= MAX_RECOVERY_MODEL_CALLS)
+              throw new LlmSemanticChunkingTruncatedError();
             input.modelBudget?.reserve({
-              estimatedTokens:
-                estimateDocumentModelTokens(JSON.stringify(messages)) + maxOutputTokens,
+              estimatedTokens: estimatedInputTokens + requestedOutputTokens,
               itemCount: window.units.length,
               stage: "semantic-chunking",
             });
-            const request = () =>
-              collectProviderCompletion({
-                maxOutputTokens,
+            const request = () => {
+              input.signal?.throwIfAborted();
+              recovery.calls += 1;
+              providerCalls = 1;
+              return collectProviderCompletion({
+                maxOutputTokens: requestedOutputTokens,
+                ...(tokenBudget?.outputParameter
+                  ? { outputTokenParameter: tokenBudget.outputParameter }
+                  : {}),
                 maxResponseChars,
                 messages,
                 model: reasoningSelection.model,
@@ -539,7 +709,10 @@ export function createLlmSemanticChunker({
                 temperature,
                 tenantId: input.tenantId,
               });
-            completion = modelRequestGate ? await modelRequestGate.run(request) : await request();
+            };
+            completion = modelRequestGate
+              ? await modelRequestGate.run(request, { signal: input.signal })
+              : await request();
           }
           input.signal?.throwIfAborted();
           if (!completion) {
@@ -548,6 +721,9 @@ export function createLlmSemanticChunker({
             );
           }
           const resolvedCompletion = completion;
+          if (isOutputTruncationReason(resolvedCompletion.finishReason)) {
+            throw new LlmSemanticChunkingTruncatedError();
+          }
           const completionFingerprint = llmSemanticCompletionFingerprint({
             ...(resolvedCompletion.actualModel
               ? { actualModel: resolvedCompletion.actualModel }
@@ -560,11 +736,28 @@ export function createLlmSemanticChunker({
               : {}),
             ...(provider.kind ? { transportProvider: provider.kind } : {}),
           });
+          let parsedOutput: LlmSemanticChunkingOutput;
+          try {
+            parsedOutput = parseSemanticChunkingOutput(resolvedCompletion.text);
+          } catch (error) {
+            const usage = ingestionModelUsageFromMetadata(resolvedCompletion.metadata);
+            // Some adapters omit finish_reason. Only infer saturation for unusable JSON, never
+            // reject a valid response merely because reported usage happens to reach the cap.
+            if (
+              !checkpointHit &&
+              error instanceof LlmSemanticChunkingOutputError &&
+              usage.outputTokens !== undefined &&
+              usage.outputTokens >= requestedOutputTokens
+            ) {
+              throw new LlmSemanticChunkingTruncatedError();
+            }
+            throw error;
+          }
           const output = normalizeSemanticBoundaries({
             maxChunkChars: effectiveConfig.maxChunkChars,
             maxEntitiesPerChunk,
             maxRelationsPerChunk,
-            output: parseSemanticChunkingOutput(resolvedCompletion.text),
+            output: parsedOutput,
             window,
           });
           const windowChunks = validateAndMaterializeWindowOutput({
@@ -600,6 +793,7 @@ export function createLlmSemanticChunker({
             throw new Error("LLM semantic chunking response did not advance the document cursor");
           }
           if (!checkpointHit && checkpointScope && checkpoints) {
+            input.signal?.throwIfAborted();
             await checkpoints.put({
               checkpoint: {
                 completion: semanticCompletionCheckpointMetadata(resolvedCompletion),
@@ -611,24 +805,47 @@ export function createLlmSemanticChunker({
               scope: checkpointScope,
             });
           }
-          recordIngestionModelCallMetric(metrics, {
-            cacheHits: checkpointHit ? 1 : 0,
-            durationMs: Math.max(0, Date.now() - callStartedAt),
-            itemCount: window.units.length,
-            outcome: "succeeded",
-            providerCalls: checkpointHit ? 0 : 1,
-            retries: retryCount,
-            stage: "semantic-chunking",
-            ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(resolvedCompletion.metadata)),
-          });
-          return { committedEndIndex, completionFingerprint, window, windowChunks };
+          if (!preparedCompletion)
+            recordIngestionModelCallMetric(metrics, {
+              windowId: window.id,
+              documentAssetId: input.parseArtifact.documentAssetId,
+              publicationGenerationId: input.publicationGenerationId,
+              requestedOutputTokens,
+              finishReason: resolvedCompletion.finishReason,
+              budgetSource: tokenBudget?.source,
+              cacheHits: checkpointHit ? 1 : 0,
+              durationMs: Math.max(0, Date.now() - callStartedAt),
+              itemCount: window.units.length,
+              outcome: "succeeded",
+              providerCalls,
+              retries: retryCount,
+              stage: "semantic-chunking",
+              ...(checkpointHit
+                ? {}
+                : ingestionModelUsageFromMetadata(resolvedCompletion.metadata)),
+            });
+          return {
+            committedEndIndex,
+            completionFingerprint,
+            window,
+            windowChunks,
+            output,
+            completion: resolvedCompletion,
+          };
         } catch (error) {
           recordIngestionModelCallMetric(metrics, {
+            windowId: window.id,
+            documentAssetId: input.parseArtifact.documentAssetId,
+            publicationGenerationId: input.publicationGenerationId,
+            requestedOutputTokens,
+            finishReason: completion?.finishReason,
+            outputTruncated: error instanceof LlmSemanticChunkingTruncatedError,
+            budgetSource: tokenBudget?.source,
             cacheHits: checkpointHit ? 1 : 0,
             durationMs: Math.max(0, Date.now() - callStartedAt),
             itemCount: window.units.length,
             outcome: "failed",
-            providerCalls: checkpointHit ? 0 : 1,
+            providerCalls,
             retries: retryCount,
             stage: "semantic-chunking",
             ...(checkpointHit || !completion
@@ -637,7 +854,11 @@ export function createLlmSemanticChunker({
           });
           // Checkpoints are immutable and were already validated before storage. Re-generating
           // one cannot repair corrupted replay state and would violate its exact-output fence.
-          if (checkpointHit && error instanceof LlmSemanticChunkingOutputError) {
+          if (
+            checkpointHit &&
+            (error instanceof LlmSemanticChunkingOutputError ||
+              error instanceof LlmSemanticChunkingTruncatedError)
+          ) {
             throw new Error("Semantic window checkpoint failed replay validation", {
               cause: error,
             });
@@ -646,13 +867,107 @@ export function createLlmSemanticChunker({
         }
       };
 
-      const processWindow = async (window: SemanticWindow) => {
+      type ProcessedWindow = Awaited<ReturnType<typeof processWindowAttempt>>;
+      const processWindow = async (
+        window: SemanticWindow,
+        depth = 0,
+        recovery = { calls: 0 },
+      ): Promise<ProcessedWindow> => {
         let retryCount = 0;
         let validationFeedback: string | undefined;
+        const estimated = tokenBudget
+          ? estimateWindowTokens(window, tokenBudget, effectiveConfig.maxChunkChars)
+          : undefined;
+        const ceiling =
+          tokenBudget && estimated
+            ? semanticOutputCeiling(tokenBudget, estimated.inputTokens)
+            : maxOutputTokens;
+        let outputTokens = estimated
+          ? Math.max(1, Math.min(ceiling, estimated.outputTokens))
+          : maxOutputTokens;
+        const splitKey = {
+          windowId: `${window.id}~split`,
+          inputFingerprint: window.inputFingerprint,
+        };
+        const splitMarker =
+          checkpointScope && checkpoints
+            ? await checkpoints.get({ key: splitKey, scope: checkpointScope })
+            : null;
+        if (
+          splitMarker &&
+          checkpointScope &&
+          checkpoints &&
+          (await checkpoints.get({
+            scope: checkpointScope,
+            key: { windowId: window.id, inputFingerprint: window.inputFingerprint },
+          }))
+        ) {
+          return processWindowAttempt(window, 0, undefined, outputTokens, recovery);
+        }
+        if (
+          splitMarker &&
+          (splitMarker.modelFingerprint !== modelFingerprint ||
+            splitMarker.responseText !== '{"version":1}')
+        ) {
+          throw new Error("Semantic recovery checkpoint is invalid");
+        }
+        let split = Boolean(splitMarker);
         while (true) {
           try {
-            return await processWindowAttempt(window, retryCount, validationFeedback);
+            if (split) break;
+            return await processWindowAttempt(
+              window,
+              retryCount,
+              validationFeedback,
+              outputTokens,
+              recovery,
+            );
           } catch (error) {
+            input.signal?.throwIfAborted();
+            if (
+              error instanceof LlmSemanticChunkingTruncatedError ||
+              error instanceof LlmSemanticChunkingContextLimitError ||
+              (tokenBudget && isSemanticProviderTimeout(error))
+            ) {
+              // Capacity failures require a materially different request. Never replay the same
+              // saturated limit three times. Schema/grounding failures retain their own retries.
+              if (
+                error instanceof LlmSemanticChunkingTruncatedError &&
+                outputTokens < ceiling &&
+                retryCount < maxProviderOutputRetries &&
+                recovery.calls < MAX_RECOVERY_MODEL_CALLS
+              ) {
+                // A small JSON estimate can hide a reasoning model's fixed thinking cost.
+                // Use the remaining safe capacity on the last growth retry before splitting.
+                outputTokens =
+                  retryCount + 1 >= maxProviderOutputRetries
+                    ? ceiling
+                    : Math.min(ceiling, outputTokens * 2);
+                retryCount += 1;
+                continue;
+              }
+              if (
+                !usesFixedCoreBoundary(window.planningVersion) ||
+                window.atomicDocument ||
+                window.units.length < 2 ||
+                depth >= MAX_RECOVERY_SPLIT_DEPTH ||
+                recovery.calls >= MAX_RECOVERY_MODEL_CALLS
+              )
+                throw error;
+              split = true;
+              if (checkpointScope && checkpoints) {
+                await checkpoints.put({
+                  scope: checkpointScope,
+                  checkpoint: {
+                    ...splitKey,
+                    modelFingerprint,
+                    completion: {},
+                    responseText: '{"version":1}',
+                  },
+                });
+              }
+              break;
+            }
             if (
               retryCount >= maxProviderOutputRetries ||
               !isRetryableSemanticProviderOutputError(error)
@@ -665,6 +980,49 @@ export function createLlmSemanticChunker({
             retryCount += 1;
           }
         }
+        if (depth >= MAX_RECOVERY_SPLIT_DEPTH || window.atomicDocument || window.units.length < 2)
+          throw new LlmSemanticChunkingTruncatedError();
+        const midpoint = Math.floor(window.units.length / 2);
+        const parts = [window.units.slice(0, midpoint), window.units.slice(midpoint)];
+        const completed: ProcessedWindow[] = [];
+        for (const [partIndex, coreUnits] of parts.entries()) {
+          input.signal?.throwIfAborted();
+          // Split at canonical atomic boundaries. Context is read-only; it is never duplicated
+          // into output. The logical parent keeps its stable receipt and checkpoint identity.
+          const child = assembleSemanticWindow({
+            id: `${window.id}~${partIndex}`,
+            coreUnits,
+            lookAheadUnits: [],
+            planningPolicy: { ...planningPolicy, atomicDocument: false },
+          });
+          completed.push(await processWindow(child, depth + 1, recovery));
+        }
+        const firstCompletion = completed[0]?.completion as CollectedProviderCompletion;
+        if (
+          completed.some(
+            (part) =>
+              part.completion.actualModel !== firstCompletion.actualModel ||
+              part.completion.actualProvider !== firstCompletion.actualProvider,
+          )
+        ) {
+          throw new Error("Semantic recovery completions changed model identity");
+        }
+        const recoveredCompletion: CollectedProviderCompletion = {
+          ...semanticCompletionCheckpointMetadata(firstCompletion),
+          // This is a locally assembled, fully validated result, not a provider terminal event.
+          finishReason: "recovered",
+          text: JSON.stringify({ chunks: completed.flatMap((part) => part.output.chunks) }),
+        };
+        if (recoveredCompletion.text.length > maxResponseChars)
+          throw new LlmSemanticChunkingTruncatedError();
+        return processWindowAttempt(
+          window,
+          retryCount,
+          undefined,
+          outputTokens,
+          recovery,
+          recoveredCompletion,
+        );
       };
 
       const appendProcessedWindow = (
@@ -765,6 +1123,7 @@ export function assertValidLlmSemanticGenerationReplay({
   const { canonicalText, elements, layoutRecomposition } = materializeElements(parseArtifact);
   const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
   const planningPolicy = resolveSemanticWindowPlanningPolicy({
+    tokenBudget: effectiveConfig.tokenBudget,
     canonicalText,
     maxChunkChars: effectiveConfig.maxChunkChars,
     promptVersion,
@@ -1185,6 +1544,7 @@ export function assertValidLlmSemanticWindowManifestReplay({
   const { canonicalText, elements } = materializeElements(parseArtifact);
   const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
   const planningPolicy = resolveSemanticWindowPlanningPolicy({
+    tokenBudget: effectiveConfig.tokenBudget,
     canonicalText,
     maxChunkChars: effectiveConfig.maxChunkChars,
     promptVersion,
@@ -1730,6 +2090,9 @@ function resolveConfig(
 ): EffectiveChunkConfig {
   const maxChunkChars = requested?.maxChunkChars ?? defaults.maxChunkChars;
   const resolved = {
+    ...(requested?.tokenBudget
+      ? { tokenBudget: SemanticTokenBudgetSchema.parse(requested.tokenBudget) }
+      : {}),
     maxChunkChars,
     maxNodes: requested?.maxNodes ?? defaults.maxNodes,
     maxWindowChars: requested?.maxWindowChars ?? Math.max(defaults.maxWindowChars, maxChunkChars),
@@ -2118,11 +2481,13 @@ function materializeDeterministicSemanticWindows({
 }
 
 function resolveSemanticWindowPlanningPolicy({
+  tokenBudget,
   canonicalText,
   maxChunkChars,
   promptVersion,
   units,
 }: {
+  readonly tokenBudget?: SemanticTokenBudget | undefined;
   readonly canonicalText: string;
   readonly maxChunkChars: number;
   readonly promptVersion: string;
@@ -2156,7 +2521,7 @@ function resolveSemanticWindowPlanningPolicy({
     hasCompletePageProvenance &&
     pageNumbers.size === 1 &&
     countUnicodeGraphemes(canonicalText) <= maxChunkChars;
-  return { atomicDocument, version };
+  return { atomicDocument, version, ...(tokenBudget ? { tokenBudget } : {}) };
 }
 
 function semanticWindowPlanningVersion(promptVersion: string): SemanticWindowPlanningVersion {
@@ -2177,6 +2542,9 @@ function usesFixedCoreBoundary(version: SemanticWindowPlanningVersion): boolean 
 }
 
 function materializeSemanticWindow({
+  adaptiveCoreEndCodeUnit,
+  maximumCoreUnits,
+  skipTokenSizing = false,
   canonicalText,
   maxChunkChars,
   maxWindowChars,
@@ -2185,6 +2553,9 @@ function materializeSemanticWindow({
   units,
   windowIndex,
 }: {
+  readonly adaptiveCoreEndCodeUnit?: number | undefined;
+  readonly maximumCoreUnits?: number | undefined;
+  readonly skipTokenSizing?: boolean | undefined;
   readonly canonicalText: string;
   readonly maxChunkChars: number;
   readonly maxWindowChars: number;
@@ -2198,24 +2569,53 @@ function materializeSemanticWindow({
     throw new Error("LLM semantic chunking cannot materialize an empty semantic window");
   }
 
+  // Expanded windows must not rescan every growing prefix (quadratic in core text). Compute
+  // their exact grapheme boundary once and reuse it throughout token-budget binary search.
+  const coreEndCodeUnit =
+    planningPolicy.tokenBudget && !planningPolicy.tokenBudget.legacyWindowLayout
+      ? (adaptiveCoreEndCodeUnit ??
+        boundedGraphemeEndCodeUnit(
+          canonicalText,
+          first.startCodeUnit,
+          (
+            units[
+              Math.min(units.length - 1, startUnitIndex + MAX_ADAPTIVE_CORE_UNITS - 1)
+            ] as AtomicUnit
+          ).endCodeUnit,
+          maxWindowChars,
+        ))
+      : undefined;
+
   const coreUnits: AtomicUnit[] = [];
   let cursor = startUnitIndex;
   while (cursor < units.length) {
     const candidate = units[cursor] as AtomicUnit;
     if (
-      usesBoundedCoreUnits(planningPolicy.version) &&
-      coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW &&
-      !(planningPolicy.version === "v6" && continuesNumberedList(coreUnits.at(-1), candidate))
+      (maximumCoreUnits !== undefined && coreUnits.length >= maximumCoreUnits) ||
+      (usesBoundedCoreUnits(planningPolicy.version) &&
+        coreUnits.length >=
+          (planningPolicy.tokenBudget && !planningPolicy.tokenBudget.legacyWindowLayout
+            ? MAX_ADAPTIVE_CORE_UNITS
+            : V3_MAX_CORE_UNITS_PER_WINDOW) &&
+        !(
+          (!planningPolicy.tokenBudget || planningPolicy.tokenBudget.legacyWindowLayout) &&
+          planningPolicy.version === "v6" &&
+          continuesNumberedList(coreUnits.at(-1), candidate)
+        ))
     ) {
       break;
     }
     if (planningPolicy.version === "v1" && !isLegacyWindowCompatible(first, candidate)) {
       break;
     }
-    const prospectiveLength = countUnicodeGraphemes(
-      canonicalText.slice(first.startCodeUnit, candidate.endCodeUnit),
-    );
-    if (coreUnits.length > 0 && prospectiveLength > maxWindowChars) break;
+    if (
+      coreUnits.length > 0 &&
+      (coreEndCodeUnit === undefined
+        ? countUnicodeGraphemes(canonicalText.slice(first.startCodeUnit, candidate.endCodeUnit)) >
+          maxWindowChars
+        : candidate.endCodeUnit > coreEndCodeUnit)
+    )
+      break;
     coreUnits.push(candidate);
     cursor += 1;
   }
@@ -2248,6 +2648,92 @@ function materializeSemanticWindow({
   }
 
   const id = `window-${windowIndex.toString().padStart(6, "0")}`;
+  const window = assembleSemanticWindow({ id, coreUnits, lookAheadUnits, planningPolicy });
+  const budget = planningPolicy.tokenBudget;
+  if (!budget || budget.legacyWindowLayout || skipTokenSizing || planningPolicy.atomicDocument)
+    return window;
+  const fits = (candidate: SemanticWindow) => {
+    const { inputTokens, outputTokens } = estimateWindowTokens(candidate, budget, maxChunkChars);
+    return (
+      inputTokens <= budget.targetInputTokens &&
+      outputTokens <= semanticOutputCeiling(budget, inputTokens)
+    );
+  };
+  if (fits(window)) return window;
+  let lower = 1;
+  let upper = coreUnits.length - 1;
+  let best = materializeSemanticWindow({
+    adaptiveCoreEndCodeUnit: coreEndCodeUnit,
+    canonicalText,
+    maxChunkChars,
+    maxWindowChars,
+    planningPolicy,
+    startUnitIndex,
+    units,
+    windowIndex,
+    maximumCoreUnits: 1,
+    skipTokenSizing: true,
+  });
+  while (lower <= upper) {
+    const count = Math.floor((lower + upper) / 2);
+    const candidate = materializeSemanticWindow({
+      adaptiveCoreEndCodeUnit: coreEndCodeUnit,
+      canonicalText,
+      maxChunkChars,
+      maxWindowChars,
+      planningPolicy,
+      startUnitIndex,
+      units,
+      windowIndex,
+      maximumCoreUnits: count,
+      skipTokenSizing: true,
+    });
+    if (fits(candidate)) {
+      best = candidate;
+      lower = count + 1;
+    } else {
+      upper = count - 1;
+    }
+  }
+  // A single atomic unit cannot be discarded. Context-only look-ahead may be removed safely;
+  // invocation admission still rejects a unit whose complete prompt cannot fit the model.
+  if (!fits(best) && best.units.length === 1) {
+    best = assembleSemanticWindow({
+      id,
+      coreUnits: [...best.units],
+      lookAheadUnits: [],
+      planningPolicy,
+    });
+  }
+  return best;
+}
+
+function boundedGraphemeEndCodeUnit(
+  text: string,
+  start: number,
+  end: number,
+  maxGraphemes: number,
+): number {
+  let count = 0;
+  for (const segment of graphemeSegments(text.slice(start, end))) {
+    if (count === maxGraphemes) return start + segment.index;
+    count += 1;
+  }
+  return end;
+}
+
+function assembleSemanticWindow({
+  id,
+  coreUnits,
+  lookAheadUnits,
+  planningPolicy,
+}: {
+  readonly id: string;
+  readonly coreUnits: readonly AtomicUnit[];
+  readonly lookAheadUnits: readonly AtomicUnit[];
+  readonly planningPolicy: SemanticWindowPlanningPolicy;
+}): SemanticWindow {
+  const first = coreUnits[0] as AtomicUnit;
   const sectionPath = commonSectionPath(coreUnits.map((unit) => unit.sectionPath));
   const fingerprintSource =
     planningPolicy.version === "v1"
@@ -2258,6 +2744,9 @@ function materializeSemanticWindow({
           windowId: id,
         }
       : {
+          ...(planningPolicy.tokenBudget && !planningPolicy.tokenBudget.legacyWindowLayout
+            ? { tokenBudget: planningPolicy.tokenBudget }
+            : {}),
           atomicDocument: planningPolicy.atomicDocument,
           lookAheadUnits: lookAheadUnits.map((unit) =>
             semanticPromptUnit(unit, planningPolicy.version),
@@ -2278,6 +2767,31 @@ function materializeSemanticWindow({
     planningVersion: planningPolicy.version,
     sectionPath: planningPolicy.version === "v1" ? [...first.sectionPath] : sectionPath,
     units: coreUnits,
+  };
+}
+
+function estimateWindowTokens(
+  window: SemanticWindow,
+  budget: SemanticTokenBudget,
+  maxChunkChars: number,
+) {
+  const messages = semanticChunkingMessages({
+    enableGraph: budget.enableGraph,
+    enablePageIndex: budget.enablePageIndex,
+    maxChunkChars,
+    maxEntitiesPerChunk: DEFAULT_MAX_ENTITIES_PER_CHUNK,
+    maxRelationsPerChunk: DEFAULT_MAX_RELATIONS_PER_CHUNK,
+    retryCount: 0,
+    window,
+  });
+  return {
+    // Include the complete serialized prompt and bounded retry feedback/framing headroom.
+    inputTokens: estimateDocumentModelTokens(JSON.stringify(messages)) + 256,
+    outputTokens: estimateSemanticOutputTokens({
+      budget,
+      unitCount: window.units.length,
+      textTokens: estimateDocumentModelTokens(window.units.map((unit) => unit.text).join("\n")),
+    }),
   };
 }
 
@@ -2497,6 +3011,7 @@ function semanticChunkingMessages({
 }
 
 async function collectProviderCompletion({
+  outputTokenParameter,
   maxOutputTokens,
   maxResponseChars,
   messages,
@@ -2506,6 +3021,7 @@ async function collectProviderCompletion({
   temperature,
   tenantId,
 }: {
+  readonly outputTokenParameter?: string | undefined;
   readonly maxOutputTokens: number;
   readonly maxResponseChars: number;
   readonly messages: readonly SemanticChunkingLlmMessage[];
@@ -2523,6 +3039,7 @@ async function collectProviderCompletion({
       }
     | undefined;
   for await (const event of provider.stream({
+    ...(outputTokenParameter ? { outputTokenParameter } : {}),
     maxOutputTokens,
     messages,
     model,
@@ -2547,11 +3064,6 @@ async function collectProviderCompletion({
   }
   if (!terminal) {
     throw new Error("LLM semantic chunking provider ended without a terminal event");
-  }
-  if (!text.trim()) {
-    throw new LlmSemanticChunkingOutputError(
-      "LLM semantic chunking provider returned an empty response",
-    );
   }
   const finishReason = terminalStringField(terminal.finishReason, "finishReason");
   const actualModel = terminalMetadataStringField(terminal.metadata, "model");
@@ -2593,6 +3105,8 @@ function semanticWindowCheckpointScope(
 }
 
 function semanticWindowModelFingerprint(input: {
+  readonly artifactHash?: string | undefined;
+  readonly config?: EffectiveChunkConfig | undefined;
   readonly enableGraph: boolean;
   readonly enablePageIndex: boolean;
   readonly promptVersion: string;
@@ -2677,6 +3191,10 @@ function terminalStringField(value: unknown, field: "finishReason"): string | un
 
 function parseSemanticChunkingOutput(text: string): LlmSemanticChunkingOutput {
   const trimmed = text.trim();
+  if (!trimmed)
+    throw new LlmSemanticChunkingOutputError(
+      "LLM semantic chunking provider returned an empty response",
+    );
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
@@ -2720,6 +3238,48 @@ export class LlmSemanticChunkingOutputError extends Error {
     super(message, options);
     this.name = "LlmSemanticChunkingOutputError";
   }
+}
+
+export class LlmSemanticChunkingTruncatedError extends Error {
+  readonly code = "MODEL_RUNTIME_OUTPUT_LIMIT";
+  readonly retryable = false;
+  constructor() {
+    super("Semantic chunking exceeded the output token budget; bounded recovery was exhausted");
+    this.name = "LlmSemanticChunkingTruncatedError";
+  }
+}
+
+export class LlmSemanticChunkingContextLimitError extends Error {
+  readonly code = "MODEL_RUNTIME_CONTEXT_LIMIT";
+  readonly retryable = false;
+  constructor() {
+    super("The semantic request cannot fit the selected model context with its reserved output");
+    this.name = "LlmSemanticChunkingContextLimitError";
+  }
+}
+
+function isSemanticProviderTimeout(error: unknown): boolean {
+  // Do not broaden recovery to cancellation, rate limits, authentication, or arbitrary network
+  // failures. A larger model-aware window may need subdivision under the operator's deadline.
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error.code === "dify_model_runtime_timeout" || error.code === "MODEL_RUNTIME_TIMEOUT")
+  );
+}
+
+function isOutputTruncationReason(reason: string | undefined): boolean {
+  return (
+    reason !== undefined &&
+    [
+      "length",
+      "max_tokens",
+      "max_output_tokens",
+      "max_completion_tokens",
+      "token_limit",
+      "model_length",
+    ].includes(reason.trim().toLowerCase())
+  );
 }
 
 function isRetryableSemanticProviderOutputError(error: unknown): boolean {

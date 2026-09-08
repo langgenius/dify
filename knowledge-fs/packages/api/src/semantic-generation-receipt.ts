@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { KnowledgeSpaceModelSelection } from "@knowledge/core";
 import { stableJson } from "@knowledge/core";
+import type { SemanticTokenBudget } from "./semantic-token-budget";
 
 export const MAX_KNOWLEDGE_NODE_GENERATION_RECEIPT_BYTES = 4 * 1024 * 1024;
 export const MAX_KNOWLEDGE_NODE_GENERATION_RECEIPT_DATABASE_TEXT_BYTES = 8 * 1024 * 1024;
@@ -21,6 +22,7 @@ const MAX_TERMINAL_IDENTITY = "\u{1f600}".repeat(MAX_LLM_SEMANTIC_TERMINAL_IDENT
 const MAX_FINISH_REASON = "\u{1f600}".repeat(MAX_LLM_SEMANTIC_FINISH_REASON_CODE_POINTS);
 
 export interface KnowledgeNodeSemanticGenerationConfig {
+  readonly tokenBudget?: SemanticTokenBudget | undefined;
   readonly maxChunkChars: number;
   readonly maxNodes: number;
   readonly maxWindowChars: number;

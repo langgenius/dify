@@ -30,6 +30,8 @@ export interface DocumentSemanticWindowCheckpoint extends DocumentSemanticWindow
 }
 
 export interface DocumentSemanticWindowCheckpointRepository {
+  /** Detect pre-budget generations even when their first window failed. */
+  hasWindowCheckpoints?(scope: DocumentSemanticWindowCheckpointScope): Promise<boolean>;
   get(input: {
     readonly key: DocumentSemanticWindowCheckpointKey;
     readonly scope: DocumentSemanticWindowCheckpointScope;
@@ -43,6 +45,11 @@ export interface DocumentSemanticWindowCheckpointRepository {
 export function createInMemoryDocumentSemanticWindowCheckpointRepository(): DocumentSemanticWindowCheckpointRepository {
   const records = new Map<string, DocumentSemanticWindowCheckpoint>();
   return {
+    hasWindowCheckpoints: async (scope) => {
+      const normalized = normalizeScope(scope);
+      const prefix = `${normalized.tenantId}\u001f${normalized.knowledgeSpaceId}\u001f${normalized.publicationGenerationId}\u001fwindow-`;
+      return [...records.keys()].some((key) => key.startsWith(prefix));
+    },
     get: async ({ key, scope }) => {
       const stored = records.get(storageKey(normalizeScope(scope), normalizeKey(key)));
       return stored ? cloneCheckpoint(stored) : null;
@@ -70,6 +77,23 @@ export function createDatabaseDocumentSemanticWindowCheckpointRepository({
   readonly now?: (() => string) | undefined;
 }): DocumentSemanticWindowCheckpointRepository {
   return {
+    hasWindowCheckpoints: async (scope) => {
+      const normalized = normalizeScope(scope);
+      const q = (name: string) => quoteDatabaseIdentifier(database, name);
+      const p = (index: number) => databasePlaceholder(database, index);
+      const result = await database.execute({
+        maxRows: 1,
+        operation: "select",
+        tableName: table,
+        params: [
+          normalized.tenantId,
+          normalized.knowledgeSpaceId,
+          normalized.publicationGenerationId,
+        ],
+        sql: `SELECT ${q("window_id")} FROM ${q(table)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("publication_generation_id")} = ${p(3)} AND ${q("window_id")} LIKE 'window-%' LIMIT 1;`,
+      });
+      return result.rows.length > 0;
+    },
     get: async ({ key, scope }) =>
       selectCheckpoint(database, database, normalizeScope(scope), normalizeKey(key)),
     put: async ({ checkpoint, scope }) => {

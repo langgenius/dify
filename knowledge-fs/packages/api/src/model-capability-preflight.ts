@@ -9,6 +9,7 @@ import type { EmbeddingProvider, RerankerProvider } from "@knowledge/embeddings"
 import { z } from "zod";
 
 import type { ImageBytesVisualEmbeddingProvider } from "./index-projection-builders";
+import { ModelTokenLimitsSchema } from "./semantic-token-budget";
 import { resolveVectorIndexCapability } from "./vector-index-capability";
 
 export const ModelCapabilityKindSchema = z.enum(["embedding", "reasoning", "rerank"]);
@@ -30,6 +31,8 @@ const ModelInputModalitiesSchema = z
 
 export const ModelCatalogEntrySchema = z
   .object({
+    /** Runtime budgeting metadata is separate from published semantic capability identity. */
+    tokenLimits: ModelTokenLimitsSchema.optional(),
     capabilities: z.record(z.unknown()).default({}),
     kinds: z.array(ModelCapabilityKindSchema).min(1),
     model: z.string().trim().min(1).max(256),

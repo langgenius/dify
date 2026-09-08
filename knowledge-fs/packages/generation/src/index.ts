@@ -23,6 +23,8 @@ export interface LlmMessage {
 }
 
 export interface GenerateTextInput {
+  /** Trusted model-schema parameter name resolved by the ingestion budget owner. */
+  readonly outputTokenParameter?: string;
   readonly maxOutputTokens?: number;
   readonly messages: readonly LlmMessage[];
   readonly model: string;
@@ -795,6 +797,10 @@ export function createDifyModelRuntimeLlmProvider(
     }
 
     const maxTokens = input.maxOutputTokens ?? options.maxOutputTokens;
+    const outputTokenParameter = input.outputTokenParameter ?? "max_tokens";
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{0,127}$/.test(outputTokenParameter)) {
+      throw new ProviderInputError("Invalid output token parameter name");
+    }
     let finishReason = "stop";
     let structuredOutput: unknown;
     let structuredOutputFallbackText = "";
@@ -802,7 +808,7 @@ export function createDifyModelRuntimeLlmProvider(
 
     for await (const chunk of options.client.invokeLlm({
       completionParams: {
-        ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
+        ...(maxTokens === undefined ? {} : { [outputTokenParameter]: maxTokens }),
         ...(input.reasoningEffort === undefined ? {} : { reasoning_effort: input.reasoningEffort }),
         ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
       },

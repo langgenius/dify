@@ -107,6 +107,21 @@ function modelCatalogEntry(item: DifyModelCatalogItem): ModelCatalogEntry {
   };
   const version = pluginVersion(item.plugin_unique_identifier);
   return ModelCatalogEntrySchema.parse({
+    ...(item.token_limits
+      ? {
+          tokenLimits: {
+            ...(item.token_limits.context_tokens
+              ? { contextTokens: item.token_limits.context_tokens }
+              : {}),
+            ...(item.token_limits.max_output_tokens
+              ? { maxOutputTokens: item.token_limits.max_output_tokens }
+              : {}),
+            ...(item.token_limits.output_parameter
+              ? { outputParameter: item.token_limits.output_parameter }
+              : {}),
+          },
+        }
+      : {}),
     capabilities: {
       ...item.capabilities,
       modelType: item.model_type,

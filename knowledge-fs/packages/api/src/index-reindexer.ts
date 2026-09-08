@@ -36,6 +36,7 @@ import {
 } from "./knowledge-node-repository";
 import {
   type SemanticChunker,
+  type SemanticChunkerInput,
   assertValidLlmSemanticGenerationReplay,
   assertValidLlmSemanticWindowManifestReplay,
   preflightLlmSemanticWindows,
@@ -295,9 +296,33 @@ export function createIncrementalReindexer({
         const storedArtifact = await artifacts.create(parseArtifact);
         input.signal?.throwIfAborted();
         const excludedNodeOrdinals = new Set(input.excludedNodeOrdinals ?? []);
+        const generationReceipt =
+          publicationGenerationId && semanticChunker && retrievalProfile
+            ? await nodes.getGenerationReceipt?.({
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                parseArtifactId: storedArtifact.id,
+                publicationGenerationId,
+              })
+            : null;
+        const resolvedSemanticConfig =
+          generationReceipt?.semanticConfig ??
+          (semanticChunker?.resolveConfig && retrievalProfile
+            ? await semanticChunker.resolveConfig({
+                config: { ...input.chunkConfig, maxNodes: input.chunkConfig?.maxNodes ?? maxNodes },
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                parseArtifact: storedArtifact,
+                retrievalProfile,
+                enableGraph: input.enableGraph !== false,
+                enablePageIndex: input.enablePageIndex !== false,
+                ...(publicationGenerationId ? { publicationGenerationId } : {}),
+                ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+                ...(input.signal ? { signal: input.signal } : {}),
+              })
+            : undefined);
         const semanticReceiptRequest =
           publicationGenerationId && semanticChunker && retrievalProfile
             ? semanticGenerationReceiptRequest({
+                resolvedSemanticConfig,
                 chunkConfig: input.chunkConfig,
                 excludedNodeOrdinals,
                 knowledgeSpaceId: input.knowledgeSpaceId,
@@ -310,13 +335,6 @@ export function createIncrementalReindexer({
                 semanticChunker,
               })
             : undefined;
-        const generationReceipt = semanticReceiptRequest
-          ? await nodes.getGenerationReceipt?.({
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              parseArtifactId: storedArtifact.id,
-              publicationGenerationId: semanticReceiptRequest.publicationGenerationId,
-            })
-          : null;
         // Durable candidate retries must not call a non-deterministic semantic model again after
         // generation-scoped nodes have been persisted. Those rows are immutable and already carry
         // the exact chunk boundaries and joint extraction response used by the candidate.
@@ -383,10 +401,16 @@ export function createIncrementalReindexer({
               : undefined;
             assertValidLlmSemanticGenerationReplay({
               config: {
+                ...(resolvedSemanticConfig?.tokenBudget
+                  ? {
+                      tokenBudget: resolvedSemanticConfig.tokenBudget,
+                      maxWindowChars: resolvedSemanticConfig.maxWindowChars,
+                    }
+                  : {}),
                 ...(replayMaxChunkChars === undefined
                   ? {}
                   : { maxChunkChars: replayMaxChunkChars }),
-                ...(replayMaxWindowChars === undefined
+                ...(replayMaxWindowChars === undefined || resolvedSemanticConfig?.tokenBudget
                   ? {}
                   : { maxWindowChars: replayMaxWindowChars }),
                 maxNodes: input.chunkConfig?.maxNodes ?? maxNodes,
@@ -413,6 +437,9 @@ export function createIncrementalReindexer({
         ) {
           const preflight = preflightLlmSemanticWindows({
             config: {
+              ...(semanticReceiptRequest.semanticConfig.tokenBudget
+                ? { tokenBudget: semanticReceiptRequest.semanticConfig.tokenBudget }
+                : {}),
               maxChunkChars: semanticReceiptRequest.semanticConfig.maxChunkChars,
               maxNodes: semanticReceiptRequest.semanticConfig.maxNodes,
               maxWindowChars: semanticReceiptRequest.semanticConfig.maxWindowChars,
@@ -436,6 +463,7 @@ export function createIncrementalReindexer({
             : semanticChunker && retrievalProfile
               ? await semanticChunker.chunk({
                   config: {
+                    ...resolvedSemanticConfig,
                     ...(input.chunkConfig?.maxChunkChars !== undefined
                       ? { maxChunkChars: input.chunkConfig.maxChunkChars }
                       : {}),
@@ -705,6 +733,7 @@ interface SemanticGenerationReceiptRequest {
 }
 
 function semanticGenerationReceiptRequest({
+  resolvedSemanticConfig,
   chunkConfig,
   excludedNodeOrdinals,
   knowledgeSpaceId,
@@ -716,6 +745,7 @@ function semanticGenerationReceiptRequest({
   publicationGenerationId,
   semanticChunker,
 }: {
+  readonly resolvedSemanticConfig?: SemanticChunkerInput["config"] | undefined;
   readonly chunkConfig?: ChunkConfig | undefined;
   readonly excludedNodeOrdinals: ReadonlySet<number>;
   readonly knowledgeSpaceId: string;
@@ -734,9 +764,14 @@ function semanticGenerationReceiptRequest({
   }
   const maxChunkChars = chunkConfig?.maxChunkChars ?? semanticChunker.replayDefaults.maxChunkChars;
   const semanticConfig: KnowledgeNodeSemanticGenerationConfig = {
+    ...(resolvedSemanticConfig?.tokenBudget
+      ? { tokenBudget: resolvedSemanticConfig.tokenBudget }
+      : {}),
     maxChunkChars,
     maxNodes: chunkConfig?.maxNodes ?? maxNodes,
-    maxWindowChars: Math.max(semanticChunker.replayDefaults.maxWindowChars, maxChunkChars),
+    maxWindowChars:
+      resolvedSemanticConfig?.maxWindowChars ??
+      Math.max(semanticChunker.replayDefaults.maxWindowChars, maxChunkChars),
     overlapChars: chunkConfig?.overlapChars ?? 0,
     promptVersion: semanticChunker.replayDefaults.promptVersion,
   };
@@ -909,6 +944,9 @@ function assertSemanticGenerationReceiptReplay({
   assertValidLlmSemanticWindowManifestReplay({
     completionCatalog: receipt.completionCatalog,
     config: {
+      ...(receipt.semanticConfig.tokenBudget
+        ? { tokenBudget: receipt.semanticConfig.tokenBudget }
+        : {}),
       maxChunkChars: receipt.semanticConfig.maxChunkChars,
       maxNodes: receipt.semanticConfig.maxNodes,
       maxWindowChars: receipt.semanticConfig.maxWindowChars,

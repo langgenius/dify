@@ -16,6 +16,26 @@ const failure = (
 })
 
 describe('KnowledgeFS task error presentation', () => {
+  it('distinguishes exhausted token recovery from invalid model output', () => {
+    expect(
+      knowledgeFsTaskFailureMessageKey(
+        failure({
+          category: 'dependency',
+          code: 'MODEL_RUNTIME_OUTPUT_LIMIT',
+        }),
+      ),
+    ).toBe('taskFailure.modelOutputLimit')
+    const contextFailure = failure({
+      category: 'configuration',
+      code: 'MODEL_RUNTIME_CONTEXT_LIMIT',
+      action: 'configure_model',
+      retryPolicy: 'after_configuration',
+    })
+    expect(knowledgeFsTaskFailureMessageKey(contextFailure)).toBe('taskFailure.modelContextLimit')
+    expect(knowledgeFsTaskRecoveryPath(contextFailure, 'space-1')).toBe(
+      '/datasets/new/space-1/settings',
+    )
+  })
   it('routes model configuration failures to settings', () => {
     const modelFailure = failure({
       action: 'configure_model',

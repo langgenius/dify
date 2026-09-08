@@ -55,6 +55,14 @@ export interface DifyLlmInput extends DifyModelRequestContext {
 }
 
 export interface DifyModelCatalogItem {
+  readonly token_limits?:
+    | {
+        readonly context_tokens?: number | null | undefined;
+        readonly max_output_tokens?: number | null | undefined;
+        readonly output_parameter?: string | null | undefined;
+      }
+    | null
+    | undefined;
   readonly capabilities: Readonly<Record<string, unknown>>;
   readonly model: string;
   readonly model_type: DifyModelRuntimeModelType;
@@ -134,6 +142,14 @@ const EnvelopeSchema = z.object({
 
 const ModelCatalogItemSchema = z
   .object({
+    token_limits: z
+      .object({
+        context_tokens: z.number().int().positive().max(1_000_000_000).nullish(),
+        max_output_tokens: z.number().int().positive().max(1_000_000_000).nullish(),
+        output_parameter: z.string().min(1).max(128).nullish(),
+      })
+      .strict()
+      .nullish(),
     capabilities: z.record(z.unknown()),
     model: z.string().min(1).max(256),
     model_type: z.enum(["llm", "rerank", "text-embedding"]),

@@ -48,6 +48,7 @@ import {
   knowledgeNodeGenerationReceiptSerializedBytes,
   llmSemanticCompletionFingerprint,
 } from "./semantic-generation-receipt";
+import { SemanticTokenBudgetSchema } from "./semantic-token-budget";
 
 export type {
   KnowledgeNodeGenerationCompletionReceipt,
@@ -1109,6 +1110,9 @@ function validateKnowledgeNodeGenerationReceipt(
     responseFingerprint: input.responseFingerprint,
     schemaVersion: 1,
     semanticConfig: {
+      ...(semanticConfig.tokenBudget
+        ? { tokenBudget: SemanticTokenBudgetSchema.parse(semanticConfig.tokenBudget) }
+        : {}),
       maxChunkChars: semanticConfig.maxChunkChars,
       maxNodes: semanticConfig.maxNodes,
       maxWindowChars: semanticConfig.maxWindowChars,

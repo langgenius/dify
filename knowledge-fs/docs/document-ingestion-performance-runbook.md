@@ -4,6 +4,10 @@ This runbook covers the bounded-concurrency, batched, resumable document-compila
 KnowledgeFS remains a Dify-dependent service: every model request is routed through Dify's model
 runtime and plugin-daemon; KnowledgeFS does not own provider credentials.
 
+For v6 joint semantic compilation, model-capacity window sizing, and truncation recovery, see
+[Model-aware semantic budgeting](semantic-token-budget.md). The legacy pipeline settings below
+remain relevant to the compatibility paths and other ingestion stages.
+
 ## Runtime shape
 
 The searchable publication path is:

@@ -8,6 +8,7 @@ from core.entities.embedding_type import EmbeddingInputType
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from core.plugin.entities.request import (
+    InvokableModelTokenLimits,
     RequestInvokeMultimodalEmbedding,
     RequestInvokeRerank,
     RequestInvokeSummary,
@@ -175,17 +176,22 @@ def test_invoke_rerank_accepts_omitted_threshold_and_top_n():
     )
 
 
-def test_list_models_returns_only_active_tenant_models_with_installed_identity():
-    payload = RequestListModels(model_type=ModelType.TEXT_EMBEDDING, limit=10)
+@pytest.mark.parametrize(
+    ("model_type", "selected"),
+    [(ModelType.TEXT_EMBEDDING, False), (ModelType.LLM, False), (ModelType.LLM, True)],
+)
+def test_list_models_returns_only_active_tenant_models_with_installed_identity(model_type, selected):
+    model_name = "selected-model"
+    payload = RequestListModels(model_type=model_type, model=model_name if selected else None, limit=10)
     provider = SimpleNamespace(provider="langgenius/openai/openai")
     active_model = SimpleNamespace(
         deprecated=False,
         features=[ModelFeature.VISION],
         fetch_from="predefined-model",
         label={"en_US": "Embedding"},
-        model="text-embedding-3-small",
+        model=model_name,
         model_properties={"context_size": 8191},
-        model_type=ModelType.TEXT_EMBEDDING,
+        model_type=model_type,
         provider=provider,
         status="active",
     )
@@ -202,19 +208,99 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity()
             return_value=provider_manager,
         ),
         patch("core.plugin.backwards_invocation.model.PluginService.list", return_value=[installed_plugin]),
+        patch.object(
+            PluginModelBackwardsInvocation,
+            "_model_token_limits",
+            return_value=InvokableModelTokenLimits(
+                context_tokens=32768, max_output_tokens=8192, output_parameter="maxtoken"
+            ),
+        ) as resolve_limits,
     ):
         result = PluginModelBackwardsInvocation.list_models("tenant-1", "user-1", payload)
 
     assert result.next_offset is None
-    assert [item.model for item in result.items] == ["text-embedding-3-small"]
+    assert [item.model for item in result.items] == [model_name]
     assert result.items[0].plugin_id == "langgenius/openai"
     assert result.items[0].provider == "openai"
     assert result.items[0].plugin_unique_identifier == installed_plugin.plugin_unique_identifier
     assert result.items[0].capabilities["features"] == ["vision"]
     configurations.get_models.assert_called_once_with(
-        model_type=ModelType.TEXT_EMBEDDING,
+        model_type=model_type,
         only_active=True,
     )
+    if selected:
+        resolve_limits.assert_called_once_with(
+            tenant_id="tenant-1", user_id="user-1", provider=provider.provider, model=model_name
+        )
+        assert result.items[0].model_dump()["token_limits"] == {
+            "context_tokens": 32768,
+            "max_output_tokens": 8192,
+            "output_parameter": "maxtoken",
+        }
+    else:
+        resolve_limits.assert_not_called()
+        assert result.items[0].token_limits is None
+
+
+@pytest.mark.parametrize("parameter", ["max_tokens", "max_completion_tokens", "maxtoken", "custom_limit"])
+def test_model_token_limits_use_schema_maximum_not_default(parameter):
+    schema = SimpleNamespace(
+        model_properties={"context_size": 131072},
+        parameter_rules=[SimpleNamespace(name=parameter, use_template="max_tokens", max=32768.0, default=1024)],
+    )
+    instance = SimpleNamespace(get_model_schema=lambda: schema)
+    with patch.object(PluginModelBackwardsInvocation, "_get_bound_model_instance", return_value=instance) as bound:
+        limits = PluginModelBackwardsInvocation._model_token_limits(
+            tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
+        )
+    assert limits.context_tokens == 131072
+    assert limits.max_output_tokens == 32768
+    assert limits.output_parameter == parameter
+    bound.assert_called_once_with(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        provider="plugin/provider",
+        model_type=ModelType.LLM,
+        model="selected-model",
+    )
+
+
+@pytest.mark.parametrize("maximum", [None, 0, -1, True, float("inf"), float("nan"), 10**400, 12.5, "32768"])
+def test_model_token_limits_do_not_invent_unknown_output_capacity(maximum):
+    schema = SimpleNamespace(
+        model_properties={"context_size": 8192},
+        parameter_rules=[SimpleNamespace(name="max_tokens", use_template=None, max=maximum, default=4096)],
+    )
+    with patch.object(
+        PluginModelBackwardsInvocation,
+        "_get_bound_model_instance",
+        return_value=SimpleNamespace(get_model_schema=lambda: schema),
+    ):
+        limits = PluginModelBackwardsInvocation._model_token_limits(
+            tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
+        )
+    assert limits.context_tokens == 8192
+    assert limits.max_output_tokens is None
+
+
+def test_model_token_limits_respect_the_tighter_declared_alias():
+    schema = SimpleNamespace(
+        model_properties={},
+        parameter_rules=[
+            SimpleNamespace(name="max_tokens", use_template=None, max=32768),
+            SimpleNamespace(name="max_output_tokens", use_template=None, max=8192),
+        ],
+    )
+    with patch.object(
+        PluginModelBackwardsInvocation,
+        "_get_bound_model_instance",
+        return_value=SimpleNamespace(get_model_schema=lambda: schema),
+    ):
+        limits = PluginModelBackwardsInvocation._model_token_limits(
+            tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
+        )
+    assert limits.max_output_tokens == 8192
+    assert limits.output_parameter == "max_output_tokens"
 
 
 def test_invoke_tts_emits_the_verified_mime_type_for_backwards_invocation():

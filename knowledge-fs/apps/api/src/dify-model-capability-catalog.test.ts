@@ -19,6 +19,40 @@ const embeddingItem: DifyModelCatalogItem = {
 };
 
 describe("createDifyModelCapabilityCatalog", () => {
+  it("passes token limits without invalidating existing capability fingerprints", async () => {
+    let item = { ...embeddingItem, model_type: "llm" as const };
+    const catalog = createDifyModelCapabilityCatalog({
+      client: client({ listModels: async () => ({ items: [item] }) }),
+    });
+    const request = {
+      kind: "reasoning" as const,
+      tenantId: "tenant-1",
+      selection: {
+        model: item.model,
+        provider: item.provider,
+        pluginId: item.plugin_id,
+      },
+    };
+    const before = await catalog.resolve(request);
+    item = {
+      ...item,
+      ...{
+        token_limits: {
+          context_tokens: 131072,
+          max_output_tokens: 32768,
+          output_parameter: "max_completion_tokens",
+        },
+      },
+    };
+    const after = await catalog.resolve(request);
+    expect(after?.tokenLimits).toEqual({
+      contextTokens: 131072,
+      maxOutputTokens: 32768,
+      outputParameter: "max_completion_tokens",
+    });
+    expect(after?.schemaFingerprint).toBe(before?.schemaFingerprint);
+    expect(after?.capabilities).toEqual(before?.capabilities);
+  });
   it("lists tenant-active Dify models across capability types with an opaque cursor", async () => {
     const listModels = vi.fn(async (input: Parameters<DifyModelRuntimeClient["listModels"]>[0]) => {
       if (input.modelType === "text-embedding") return { items: [embeddingItem] };
