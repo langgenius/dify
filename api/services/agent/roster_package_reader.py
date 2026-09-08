@@ -84,11 +84,12 @@ class RosterAgentPackageReader:
                     raise InvalidRosterAgentPackageError("Roster Agent package is missing manifest.json")
                 if manifest_info.file_size > ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
-                manifest_bytes, _ = self._read_member(
+                manifest_bytes, _, manifest_size = self._read_member(
                     archive,
                     manifest_info,
                     collect=True,
                     max_bytes=ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+                    expected_size=manifest_info.file_size,
                 )
                 try:
                     manifest_data = json.loads(manifest_bytes, object_pairs_hook=self._reject_duplicate_json_keys)
@@ -110,24 +111,48 @@ class RosterAgentPackageReader:
                     raise InvalidRosterAgentPackageError("Roster Agent package members do not match the manifest")
 
                 members: dict[str, RosterAgentPackageMember] = {}
+                streamed_size = manifest_size
+                nested_uncompressed_size = 0
+                signature_info = info_by_path.get("signature.sig")
+                if signature_info is not None:
+                    _, _, signature_size = self._read_member(
+                        archive,
+                        signature_info,
+                        collect=False,
+                        max_bytes=min(
+                            ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
+                            ROSTER_AGENT_PACKAGE_MAX_BYTES - streamed_size,
+                        ),
+                        expected_size=signature_info.file_size,
+                    )
+                    streamed_size += signature_size
                 for resource in [*manifest.skills, *manifest.files]:
                     info = info_by_path[resource.path]
                     payload = b""
+                    remaining_package_bytes = ROSTER_AGENT_PACKAGE_MAX_BYTES - streamed_size
                     if isinstance(resource, RosterAgentPackageSkill):
                         max_skill_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
                         if info.file_size > max_skill_bytes:
                             raise RosterAgentPackageTooLargeError(
                                 f"Roster Agent package Skill {resource.name!r} exceeds the size limit"
                             )
-                        payload, digest = self._read_member(
+                        payload, digest, actual_size = self._read_member(
                             archive,
                             info,
                             collect=True,
-                            max_bytes=max_skill_bytes,
+                            max_bytes=min(max_skill_bytes, remaining_package_bytes),
+                            expected_size=resource.size,
                         )
                     else:
-                        _, digest = self._read_member(archive, info, collect=False)
-                    if info.file_size != resource.size or digest != resource.sha256:
+                        _, digest, actual_size = self._read_member(
+                            archive,
+                            info,
+                            collect=False,
+                            max_bytes=remaining_package_bytes,
+                            expected_size=resource.size,
+                        )
+                    streamed_size += actual_size
+                    if digest != resource.sha256:
                         raise InvalidRosterAgentPackageError(
                             f"Roster Agent package resource {resource.path!r} failed integrity checks",
                         )
@@ -138,14 +163,17 @@ class RosterAgentPackageReader:
                     )
                     if isinstance(resource, RosterAgentPackageSkill):
                         try:
-                            normalized = self._skill_packages.validate_and_normalize(
-                                content=payload, filename=resource.path
-                            )
+                            inspection = self._skill_packages.inspect(content=payload, filename=resource.path)
                         except SkillPackageError as exc:
                             raise InvalidRosterAgentPackageError(
                                 f"Roster Agent package Skill {resource.name!r} is invalid"
                             ) from exc
-                        if normalized.manifest.name != resource.name:
+                        nested_uncompressed_size += inspection.uncompressed_size
+                        if nested_uncompressed_size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+                            raise RosterAgentPackageTooLargeError(
+                                "Roster Agent package nested Skill contents exceed the size limit"
+                            )
+                        if inspection.name != resource.name:
                             raise InvalidRosterAgentPackageError(
                                 f"Roster Agent package Skill {resource.name!r} does not match SKILL.md",
                             )
@@ -200,7 +228,8 @@ class RosterAgentPackageReader:
         *,
         collect: bool,
         max_bytes: int | None = None,
-    ) -> tuple[bytes, str]:
+        expected_size: int | None = None,
+    ) -> tuple[bytes, str, int]:
         digest = hashlib.sha256()
         output = io.BytesIO() if collect else None
         size = 0
@@ -209,10 +238,14 @@ class RosterAgentPackageReader:
                 size += len(chunk)
                 if max_bytes is not None and size > max_bytes:
                     raise RosterAgentPackageTooLargeError("Roster Agent package member exceeds the size limit")
+                if expected_size is not None and size > expected_size:
+                    raise InvalidRosterAgentPackageError("Roster Agent package member failed integrity checks")
                 digest.update(chunk)
                 if output is not None:
                     output.write(chunk)
-        return output.getvalue() if output is not None else b"", digest.hexdigest()
+        if expected_size is not None and size != expected_size:
+            raise InvalidRosterAgentPackageError("Roster Agent package member failed integrity checks")
+        return output.getvalue() if output is not None else b"", digest.hexdigest(), size
 
     @staticmethod
     def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
