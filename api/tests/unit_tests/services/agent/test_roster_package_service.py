@@ -355,7 +355,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     skill_payload = _skill_archive()
-    file_payload = b"guide"
+    file_payload = b"0" * (1024 * 1024)
     read_sessions: list[Session] = []
 
     def create_read_session() -> Session:
@@ -481,6 +481,7 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
             assert set(archive.namelist()) == {"manifest.json", "s_000001.zip", "f_000001.pdf"}
             assert archive.read("s_000001.zip") == skill_payload
+            assert all(info.compress_type == zipfile.ZIP_STORED for info in archive.infolist())
             assert "signature.sig" not in archive.namelist()
 
         with RosterAgentPackageReader().read(io.BytesIO(archive_bytes)) as prepared:

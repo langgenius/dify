@@ -198,7 +198,7 @@ class RosterAgentPackageExporter:
         )
         try:
             member_metadata: dict[str, RosterAgentPackageMember] = {}
-            with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
+            with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
                 total_size = 0
                 for payload in [
                     *(item.payload for item in skill_sources),
