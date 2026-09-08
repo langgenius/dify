@@ -922,6 +922,22 @@ class AgentRosterService:
         ).all()
         return {agent.app_id: agent for agent in agents if agent.app_id and agent.id}
 
+    def load_app_ids_for_agents(self, *, tenant_id: str, agent_ids: Sequence[str]) -> list[str]:
+        """Return active Agent App ids for the requested roster Agents."""
+        if not agent_ids:
+            return []
+        app_ids = self._session.scalars(
+            select(Agent.app_id).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id.in_(agent_ids),
+                Agent.app_id.is_not(None),
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        return sorted({str(app_id) for app_id in app_ids if app_id})
+
     def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
         """Return the roster Agent that backs the given Agent App, if any."""
         return self._session.scalar(

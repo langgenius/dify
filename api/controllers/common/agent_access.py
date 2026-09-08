@@ -4,10 +4,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
+from services.agent.roster_service import AgentRosterService
 from services.enterprise import rbac_service as enterprise_rbac_service
 
 if TYPE_CHECKING:
@@ -45,17 +44,10 @@ class AgentAccessFilter:
             params.accessible_app_ids = []
             return
 
-        app_ids = session.scalars(
-            select(Agent.app_id).where(
-                Agent.tenant_id == tenant_id,
-                Agent.id.in_(self.accessible_agent_ids),
-                Agent.app_id.is_not(None),
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        ).all()
-        params.accessible_app_ids = sorted({str(app_id) for app_id in app_ids if app_id})
+        params.accessible_app_ids = AgentRosterService(session).load_app_ids_for_agents(
+            tenant_id=tenant_id,
+            agent_ids=sorted(self.accessible_agent_ids),
+        )
 
 
 def resolve_agent_access_filter(
