@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from typing import Literal, Self
+from dataclasses import dataclass
+from typing import BinaryIO, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -12,9 +13,22 @@ from models.agent_config_entities import AgentSoulConfig
 
 ROSTER_AGENT_PACKAGE_FORMAT = "dify.roster-agent"
 ROSTER_AGENT_PACKAGE_FORMAT_VERSION = 1
+ROSTER_AGENT_PACKAGE_MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
+ROSTER_AGENT_PACKAGE_MAX_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
+ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES = 1024 * 1024
+ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES = 64 * 1024
+ROSTER_AGENT_PACKAGE_MAX_ENTRIES = 5000
+ROSTER_AGENT_PACKAGE_MAX_COMPRESSION_RATIO = 1000
 
 _RESOURCE_ID_PATTERN = re.compile(r"^[sf]_[0-9]{6}$")
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
+@dataclass(frozen=True)
+class RosterAgentPackageMember:
+    path: str
+    size: int
+    sha256: str
 
 
 class RosterAgentPackageAudit(BaseModel):
@@ -128,8 +142,8 @@ class RosterAgentPackageManifest(BaseModel):
         skill_by_id = {item.id: item for item in self.skills}
         referenced_skill_ids: set[str] = set()
         for ref in self.soul.config_skills:
-            if ref.is_missing or not ref.file_id:
-                raise ValueError("package config skills must reference included payloads")
+            if ref.is_missing:
+                continue
             resource = skill_by_id.get(ref.file_id)
             if resource is None or resource.scope != "agent_config":
                 raise ValueError("config skill reference must resolve to an agent_config skill")
@@ -145,8 +159,8 @@ class RosterAgentPackageManifest(BaseModel):
         file_by_id = {item.id: item for item in self.files}
         referenced_file_ids: set[str] = set()
         for ref in self.soul.config_files:
-            if ref.is_missing or not ref.file_id:
-                raise ValueError("package config files must reference included payloads")
+            if ref.is_missing:
+                continue
             resource = file_by_id.get(ref.file_id)
             if resource is None or resource.role != "agent_config_file":
                 raise ValueError("config file reference must resolve to an agent_config_file resource")
@@ -161,12 +175,56 @@ class RosterAgentPackageManifest(BaseModel):
         return self
 
 
+@dataclass
+class PreparedRosterAgentPackage:
+    """Validated archive retained in a bounded spool for later materialization."""
+
+    archive: BinaryIO
+    manifest: RosterAgentPackageManifest
+    members: dict[str, RosterAgentPackageMember]
+
+    def close(self) -> None:
+        self.archive.close()
+
+    def __enter__(self) -> PreparedRosterAgentPackage:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self.close()
+
+
+@dataclass
+class RosterAgentPackageExport:
+    archive: BinaryIO
+    filename: str
+    size: int
+    manifest: RosterAgentPackageManifest
+
+    def close(self) -> None:
+        self.archive.close()
+
+    def __enter__(self) -> RosterAgentPackageExport:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self.close()
+
+
 __all__ = [
     "ROSTER_AGENT_PACKAGE_FORMAT",
     "ROSTER_AGENT_PACKAGE_FORMAT_VERSION",
+    "ROSTER_AGENT_PACKAGE_MAX_ARCHIVE_BYTES",
+    "ROSTER_AGENT_PACKAGE_MAX_COMPRESSION_RATIO",
+    "ROSTER_AGENT_PACKAGE_MAX_ENTRIES",
+    "ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES",
+    "ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES",
+    "ROSTER_AGENT_PACKAGE_MAX_UNCOMPRESSED_BYTES",
+    "PreparedRosterAgentPackage",
     "RosterAgentPackageAudit",
+    "RosterAgentPackageExport",
     "RosterAgentPackageFile",
     "RosterAgentPackageManifest",
+    "RosterAgentPackageMember",
     "RosterAgentPackageMetadata",
     "RosterAgentPackageSkill",
 ]

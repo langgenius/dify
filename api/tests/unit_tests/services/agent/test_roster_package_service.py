@@ -4,11 +4,11 @@ import hashlib
 import io
 import json
 import zipfile
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.agent import (
     Agent,
@@ -25,24 +25,31 @@ from models.enums import AppStatus
 from models.model import App, AppMode, IconType
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
+from services.agent import roster_package_exporter as roster_package_exporter_module
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageExportFailedError,
+    RosterAgentPackageTooLargeError,
+)
 from services.agent.roster_package_entities import (
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
     RosterAgentPackageMetadata,
     RosterAgentPackageSkill,
 )
-from services.agent.roster_package_service import RosterAgentPackageError, RosterAgentPackageService
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent.roster_package_reader import RosterAgentPackageReader
 from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _MemoryStorage:
-    def __init__(self, files: dict[str, bytes], *, session: Session | None = None) -> None:
+    def __init__(self, files: dict[str, bytes], *, before_read: Callable[[], None] | None = None) -> None:
         self.files = files
-        self.session = session
+        self.before_read = before_read
 
     def load_stream(self, filename: str) -> Generator[bytes, None, None]:
-        if self.session is not None:
-            assert not self.session.in_transaction()
+        if self.before_read is not None:
+            self.before_read()
         content = self.files[filename]
         for offset in range(0, len(content), 7):
             yield content[offset : offset + 7]
@@ -163,7 +170,25 @@ def test_binary_dependency_requires_platform_and_arch_together() -> None:
         )
 
 
-def test_preflight_validates_resources_and_accepts_ignored_signature(sqlite_session: Session) -> None:
+@pytest.mark.parametrize(
+    ("error", "error_code", "status"),
+    [
+        (InvalidRosterAgentPackageError(), "invalid_roster_agent_package", 400),
+        (RosterAgentPackageTooLargeError(), "roster_agent_package_too_large", 413),
+        (RosterAgentPackageExportFailedError(), "roster_agent_package_export_failed", 500),
+    ],
+)
+def test_roster_package_errors_use_standard_http_payload(
+    error: InvalidRosterAgentPackageError | RosterAgentPackageTooLargeError | RosterAgentPackageExportFailedError,
+    error_code: str,
+    status: int,
+) -> None:
+    assert error.error_code == error_code
+    assert error.code == status
+    assert error.data == {"code": error_code, "message": error.description, "status": status}
+
+
+def test_preflight_validates_resources_and_accepts_ignored_signature() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
@@ -174,13 +199,13 @@ def test_preflight_validates_resources_and_accepts_ignored_signature(sqlite_sess
         extra_members={"signature.sig": b"not-verified-in-v1"},
     )
 
-    with RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package)) as prepared:
+    with RosterAgentPackageReader().read(io.BytesIO(package)) as prepared:
         assert prepared.manifest == manifest
         assert prepared.members["s_000001.zip"].sha256 == hashlib.sha256(skill_payload).hexdigest()
         assert prepared.members["f_000001.pdf"].size == len(file_payload)
 
 
-def test_preflight_rejects_tampered_payload(sqlite_session: Session) -> None:
+def test_preflight_rejects_tampered_payload() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
@@ -190,11 +215,11 @@ def test_preflight_rejects_tampered_payload(sqlite_session: Session) -> None:
         file_payload=b"tampered",
     )
 
-    with pytest.raises(RosterAgentPackageError, match="failed integrity checks"):
-        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+    with pytest.raises(InvalidRosterAgentPackageError, match="failed integrity checks"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_members_not_declared_by_manifest(sqlite_session: Session) -> None:
+def test_preflight_rejects_members_not_declared_by_manifest() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
@@ -205,70 +230,86 @@ def test_preflight_rejects_members_not_declared_by_manifest(sqlite_session: Sess
         extra_members={"undeclared.txt": b"unexpected"},
     )
 
-    with pytest.raises(RosterAgentPackageError, match="members do not match"):
-        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+    with pytest.raises(InvalidRosterAgentPackageError, match="members do not match"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_unsafe_member_path(sqlite_session: Session) -> None:
+def test_preflight_rejects_unsafe_member_path() -> None:
     package = _zip({"../manifest.json": b"{}"})
 
-    with pytest.raises(RosterAgentPackageError, match="unsafe path"):
-        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+    with pytest.raises(InvalidRosterAgentPackageError, match="unsafe path"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_duplicate_manifest_keys(sqlite_session: Session) -> None:
+def test_preflight_rejects_duplicate_manifest_keys() -> None:
     package = _zip({"manifest.json": b'{"format":"dify.roster-agent","format":"dify.roster-agent"}'})
 
-    with pytest.raises(RosterAgentPackageError, match="manifest is invalid"):
-        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+    with pytest.raises(InvalidRosterAgentPackageError, match="manifest is invalid"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_invalid_skill_payload(sqlite_session: Session) -> None:
+def test_preflight_rejects_invalid_skill_payload() -> None:
     skill_payload = _zip({"README.md": b"missing skill manifest"})
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
     package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
 
-    with pytest.raises(RosterAgentPackageError, match="package Skill 'research' is invalid"):
-        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+    with pytest.raises(InvalidRosterAgentPackageError, match="package Skill 'research' is invalid"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
 
-def test_preflight_rejects_oversized_skill_before_materializing(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_preflight_rejects_oversized_skill_before_materializing(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
     package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
 
-    with pytest.raises(RosterAgentPackageError) as exc_info:
-        RosterAgentPackageService(sqlite_session).preflight(io.BytesIO(package))
+    with pytest.raises(RosterAgentPackageTooLargeError) as exc_info:
+        RosterAgentPackageReader().read(io.BytesIO(package))
 
-    assert exc_info.value.code == "package_too_large"
-    assert exc_info.value.status_code == 413
+    assert exc_info.value.error_code == "roster_agent_package_too_large"
+    assert exc_info.value.code == 413
 
 
 def test_read_member_enforces_actual_output_limit() -> None:
     package = _zip({"payload.bin": b"x" * 32})
 
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
-        with pytest.raises(RosterAgentPackageError) as exc_info:
-            RosterAgentPackageService._read_member(
+        with pytest.raises(RosterAgentPackageTooLargeError) as exc_info:
+            RosterAgentPackageReader._read_member(
                 archive,
                 archive.getinfo("payload.bin"),
                 collect=True,
                 max_bytes=8,
             )
 
-    assert exc_info.value.code == "package_too_large"
+    assert exc_info.value.error_code == "roster_agent_package_too_large"
 
 
-def test_export_uses_draft_and_round_trips_through_preflight(sqlite_session: Session) -> None:
+def test_export_uses_dedicated_read_session_and_preserves_caller_transaction(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     skill_payload = _skill_archive()
     file_payload = b"guide"
+    read_sessions: list[Session] = []
+
+    def create_read_session() -> Session:
+        session = sqlite_session_factory()
+        read_sessions.append(session)
+        return session
+
+    def assert_read_session_closed() -> None:
+        assert read_sessions
+        assert not read_sessions[-1].in_transaction()
+
+    monkeypatch.setattr(roster_package_exporter_module.session_factory, "create_session", create_read_session)
+
     storage = _MemoryStorage(
-        {"tools/skill.zip": skill_payload, "tools/guide.pdf": file_payload}, session=sqlite_session
+        {"tools/skill.zip": skill_payload, "tools/guide.pdf": file_payload},
+        before_read=assert_read_session_closed,
     )
     skill_file = ToolFile(
         user_id="account-1",
@@ -296,8 +337,14 @@ def test_export_uses_draft_and_round_trips_through_preflight(sqlite_session: Ses
     draft_soul = AgentSoulConfig.model_validate(
         {
             "prompt": {"system_prompt": "draft"},
-            "config_skills": [{"name": "research", "file_id": skill_file.id}],
-            "config_files": [{"name": "guide.pdf", "file_kind": "tool_file", "file_id": config_file.id}],
+            "config_skills": [
+                {"name": "research", "file_id": skill_file.id},
+                {"name": "missing-skill", "file_id": "", "is_missing": True},
+            ],
+            "config_files": [
+                {"name": "guide.pdf", "file_kind": "tool_file", "file_id": config_file.id},
+                {"name": "missing.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True},
+            ],
         }
     )
     agent = Agent(
@@ -340,27 +387,50 @@ def test_export_uses_draft_and_round_trips_through_preflight(sqlite_session: Ses
     )
     sqlite_session.commit()
 
-    service = RosterAgentPackageService(
-        sqlite_session,
+    caller_owned_file = ToolFile(
+        user_id="account-1",
+        tenant_id="tenant-1",
+        conversation_id=None,
+        file_key="tools/caller-owned.txt",
+        mimetype="text/plain",
+        name="caller-owned.txt",
+        size=1,
+        original_url=None,
+    )
+    caller_owned_file.id = "77777777-7777-4777-8777-777777777777"
+    sqlite_session.add(caller_owned_file)
+    sqlite_session.flush()
+    assert caller_owned_file not in sqlite_session.new
+
+    exporter = RosterAgentPackageExporter(
         storage_backend=storage,
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
-    with service.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         archive_bytes = exported.archive.read()
         assert exported.filename == "research-agent.ifpkg"
         assert exported.manifest.soul.prompt.system_prompt == "draft"
         assert exported.manifest.soul.config_skills[0].file_id == "s_000001"
         assert exported.manifest.soul.config_files[0].file_id == "f_000001"
+        assert exported.manifest.soul.config_skills[1].is_missing is True
+        assert exported.manifest.soul.config_skills[1].file_id == ""
+        assert exported.manifest.soul.config_files[1].is_missing is True
+        assert exported.manifest.soul.config_files[1].file_id == ""
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
             assert set(archive.namelist()) == {"manifest.json", "s_000001.zip", "f_000001.pdf"}
             assert archive.read("s_000001.zip") == skill_payload
             assert "signature.sig" not in archive.namelist()
 
-        with service.preflight(io.BytesIO(archive_bytes)) as prepared:
+        with RosterAgentPackageReader().read(io.BytesIO(archive_bytes)) as prepared:
             assert prepared.manifest.soul.prompt.system_prompt == "draft"
 
+    assert sqlite_session.in_transaction()
+    assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
 
-def test_export_includes_published_workspace_skill(sqlite_session: Session) -> None:
+
+def test_export_includes_published_workspace_skill(
+    sqlite_session: Session,
+) -> None:
     workspace_payload = _skill_archive("workspace-research")
     storage = _MemoryStorage({"tools/workspace.zip": workspace_payload})
     archive_file = ToolFile(
@@ -420,7 +490,9 @@ def test_export_includes_published_workspace_skill(sqlite_session: Session) -> N
         tenant_id="tenant-1",
         agent_id=agent.id,
         version=1,
-        config_snapshot=AgentSoulConfig(),
+        config_snapshot=AgentSoulConfig.model_validate(
+            {"config_skills": [{"name": "workspace-research", "file_id": "", "is_missing": True}]}
+        ),
         created_by="account-1",
     )
     snapshot.id = "66666666-6666-4666-8666-666666666666"
@@ -438,18 +510,17 @@ def test_export_includes_published_workspace_skill(sqlite_session: Session) -> N
     )
     sqlite_session.commit()
 
-    service = RosterAgentPackageService(
-        sqlite_session,
+    exporter = RosterAgentPackageExporter(
         storage_backend=storage,
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
-    with service.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         assert len(exported.manifest.skills) == 1
         assert exported.manifest.skills[0].scope == "workspace"
         assert exported.manifest.skills[0].priority == 0
         assert exported.manifest.skills[0].name == "workspace-research"
-        assert exported.manifest.soul.config_skills == []
-        with service.preflight(exported.archive) as prepared:
+        assert exported.manifest.soul.config_skills[0].is_missing is True
+        with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
 
 
