@@ -263,6 +263,55 @@ class TestCacheEmbeddingMultimodalDocuments:
 
         assert any(record.levelno == logging.WARNING for record in caplog.records)
 
+    def test_embed_multimodal_documents_nan_vector_does_not_shift_following_embeddings(
+        self,
+        mock_model_instance,
+        embedding_session: Session,
+    ):
+        """A skipped NaN vector must not shift later embeddings onto the wrong documents."""
+        cache_embedding = CacheEmbedding(mock_model_instance)
+        documents = [{"file_id": "first"}, {"file_id": "nan"}, {"file_id": "third"}]
+
+        first_vector = np.random.randn(1536).tolist()
+        nan_vector = [0.0] * 1536  # zero vector normalizes to NaN
+        third_vector = np.random.randn(1536).tolist()
+
+        usage = EmbeddingUsage(
+            tokens=30,
+            total_tokens=30,
+            unit_price=Decimal("0.0001"),
+            price_unit=Decimal(1000),
+            total_price=Decimal("0.000003"),
+            currency="USD",
+            latency=0.5,
+        )
+
+        embedding_result = EmbeddingResult(
+            model="vision-embedding-model",
+            embeddings=[first_vector, nan_vector, third_vector],
+            usage=usage,
+        )
+
+        mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
+
+        result = cache_embedding.embed_multimodal_documents(documents)
+
+        expected_first = (np.array(first_vector) / np.linalg.norm(first_vector)).tolist()
+        expected_third = (np.array(third_vector) / np.linalg.norm(third_vector)).tolist()
+        assert result[0] == expected_first
+        assert result[1] is None
+        assert result[2] == expected_third
+
+        # The cache must not persist an embedding under the skipped document's id.
+        assert embedding_session.scalar(select(func.count()).select_from(Embedding)) == 2
+        persisted_first = embedding_session.scalar(select(Embedding).where(Embedding.hash == "first"))
+        persisted_third = embedding_session.scalar(select(Embedding).where(Embedding.hash == "third"))
+        assert persisted_first is not None
+        assert persisted_first.get_embedding() == expected_first
+        assert persisted_third is not None
+        assert persisted_third.get_embedding() == expected_third
+        assert embedding_session.scalar(select(Embedding).where(Embedding.hash == "nan")) is None
+
     def test_embed_multimodal_documents_large_batch(self, mock_model_instance, embedding_session: Session):
         """Test embedding large batch of multimodal documents respecting MAX_CHUNKS."""
         cache_embedding = CacheEmbedding(mock_model_instance)
@@ -351,6 +400,80 @@ class TestCacheEmbeddingMultimodalDocuments:
         assert len(result) == 1
         assert not embedding_session.in_transaction()
         assert embedding_session.scalar(select(func.count()).select_from(Embedding)) == 0
+
+
+class TestCacheEmbeddingDocuments:
+    """Test suite for CacheEmbedding.embed_documents (text path)."""
+
+    @pytest.fixture
+    def mock_model_instance(self):
+        model_instance = Mock()
+        model_instance.model = "text-embedding-model"
+        model_instance.model_name = "text-embedding-model"
+        model_instance.provider = "openai"
+        model_instance.credentials = {"api_key": "test-key"}
+
+        model_type_instance = Mock()
+        model_instance.model_type_instance = model_type_instance
+
+        model_schema = Mock()
+        model_schema.model_properties = {ModelPropertyKey.MAX_CHUNKS: 10}
+        model_type_instance.get_model_schema.return_value = model_schema
+
+        return model_instance
+
+    def test_embed_documents_nan_vector_does_not_shift_following_embeddings(
+        self,
+        mock_model_instance,
+        embedding_session: Session,
+    ):
+        """A skipped NaN vector must not shift later embeddings onto the wrong texts or cache keys."""
+        from libs import helper
+
+        cache_embedding = CacheEmbedding(mock_model_instance)
+        texts = ["alpha", "beta", "gamma"]
+
+        alpha_vector = np.random.randn(1536).tolist()
+        zero_vector = [0.0] * 1536  # zero vector normalizes to NaN
+        gamma_vector = np.random.randn(1536).tolist()
+
+        usage = EmbeddingUsage(
+            tokens=30,
+            total_tokens=30,
+            unit_price=Decimal("0.0001"),
+            price_unit=Decimal(1000),
+            total_price=Decimal("0.000003"),
+            currency="USD",
+            latency=0.5,
+        )
+
+        embedding_result = EmbeddingResult(
+            model="text-embedding-model",
+            embeddings=[alpha_vector, zero_vector, gamma_vector],
+            usage=usage,
+        )
+
+        mock_model_instance.invoke_text_embedding.return_value = embedding_result
+
+        result = cache_embedding.embed_documents(texts)
+
+        expected_alpha = (np.array(alpha_vector) / np.linalg.norm(alpha_vector)).tolist()
+        expected_gamma = (np.array(gamma_vector) / np.linalg.norm(gamma_vector)).tolist()
+        assert result[0] == expected_alpha
+        assert result[1] is None
+        assert result[2] == expected_gamma
+
+        # The cache must not persist gamma's vector under beta's text hash.
+        assert embedding_session.scalar(select(func.count()).select_from(Embedding)) == 2
+        persisted_beta = embedding_session.scalar(
+            select(Embedding).where(Embedding.hash == helper.generate_text_hash("beta"))
+        )
+        assert persisted_beta is None
+        persisted_gamma = embedding_session.scalar(
+            select(Embedding).where(Embedding.hash == helper.generate_text_hash("gamma"))
+        )
+        assert persisted_gamma is not None
+        assert persisted_gamma.get_embedding() == expected_gamma
 
 
 class TestCacheEmbeddingMultimodalQuery:

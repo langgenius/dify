@@ -62,14 +62,14 @@ class CacheEmbedding(Embeddings):
                     if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties
                     else 1
                 )
-                for i in range(0, len(embedding_queue_texts), max_chunks):
-                    batch_texts = embedding_queue_texts[i : i + max_chunks]
+                for batch_start in range(0, len(embedding_queue_texts), max_chunks):
+                    batch_texts = embedding_queue_texts[batch_start : batch_start + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
                         texts=batch_texts, input_type=EmbeddingInputType.DOCUMENT
                     )
 
-                    for vector in embedding_result.embeddings:
+                    for batch_offset, vector in enumerate(embedding_result.embeddings):
                         try:
                             # FIXME: type ignore for numpy here
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
@@ -78,14 +78,17 @@ class CacheEmbedding(Embeddings):
                                 # for issue #11827  float values are not json compliant
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
-                            embedding_queue_embeddings.append(normalized_embedding)
+                            # Keep the queue position attached so a skipped NaN vector
+                            # cannot shift later embeddings onto the wrong texts.
+                            embedding_queue_embeddings.append((batch_start + batch_offset, normalized_embedding))
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                    for queue_position, n_embedding in embedding_queue_embeddings:
+                        i = embedding_queue_indices[queue_position]
                         text_embeddings[i] = n_embedding
                         hash = helper.generate_text_hash(texts[i])
                         if hash not in cache_embeddings:
@@ -144,15 +147,17 @@ class CacheEmbedding(Embeddings):
                     if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties
                     else 1
                 )
-                for i in range(0, len(embedding_queue_multimodel_documents), max_chunks):
-                    batch_multimodel_documents = embedding_queue_multimodel_documents[i : i + max_chunks]
+                for batch_start in range(0, len(embedding_queue_multimodel_documents), max_chunks):
+                    batch_multimodel_documents = embedding_queue_multimodel_documents[
+                        batch_start : batch_start + max_chunks
+                    ]
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
                         multimodel_documents=batch_multimodel_documents,
                         input_type=EmbeddingInputType.DOCUMENT,
                     )
 
-                    for vector in embedding_result.embeddings:
+                    for batch_offset, vector in enumerate(embedding_result.embeddings):
                         try:
                             # FIXME: type ignore for numpy here
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
@@ -161,14 +166,17 @@ class CacheEmbedding(Embeddings):
                                 # for issue #11827  float values are not json compliant
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
-                            embedding_queue_embeddings.append(normalized_embedding)
+                            # Keep the queue position attached so a skipped NaN vector
+                            # cannot shift later embeddings onto the wrong documents.
+                            embedding_queue_embeddings.append((batch_start + batch_offset, normalized_embedding))
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                    for queue_position, n_embedding in embedding_queue_embeddings:
+                        i = embedding_queue_indices[queue_position]
                         multimodel_embeddings[i] = n_embedding
                         file_id = multimodel_documents[i]["file_id"]
                         if file_id not in cache_embeddings:
