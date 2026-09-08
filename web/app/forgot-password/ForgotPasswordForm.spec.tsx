@@ -1,5 +1,6 @@
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import {
   fetchInitValidateStatus,
@@ -47,27 +48,45 @@ describe('ForgotPasswordForm', () => {
   })
 
   it('should show validation error when email is empty', async () => {
+    const user = userEvent.setup()
     render(<ForgotPasswordForm />)
 
-    await screen.findByLabelText('login.email')
+    const emailInput = await screen.findByLabelText('login.email')
 
-    fireEvent.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
+    await user.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
 
-    await waitFor(() => {
-      expect(screen.getByText('login.error.emailInValid')).toBeInTheDocument()
-    })
+    const error = await screen.findByText('login.error.emailInValid')
+    expect(error).toHaveTextContent('login.error.emailInValid')
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveAccessibleDescription('login.error.emailInValid')
+    expect(emailInput).toHaveFocus()
+    expect(mockSendForgotPasswordEmail).not.toHaveBeenCalled()
+  })
+
+  it('should reject an email that only passes native validation', async () => {
+    const user = userEvent.setup()
+    render(<ForgotPasswordForm />)
+
+    const emailInput = await screen.findByLabelText('login.email')
+    await user.type(emailInput, 'test@example')
+    await user.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
+
+    await screen.findByText('login.error.emailInValid')
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveFocus()
     expect(mockSendForgotPasswordEmail).not.toHaveBeenCalled()
   })
 
   it('should send the reset email and show a sign-in link after confirmation', async () => {
+    const user = userEvent.setup()
     mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
 
     render(<ForgotPasswordForm />)
 
     const emailInput = await screen.findByLabelText('login.email')
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    await user.type(emailInput, 'test@example.com')
 
-    fireEvent.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
+    await user.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
@@ -86,18 +105,13 @@ describe('ForgotPasswordForm', () => {
   })
 
   it('should submit when form is submitted', async () => {
+    const user = userEvent.setup()
     mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), {
-      target: { value: 'test@example.com' },
-    })
-
-    const form = screen.getByRole('button', { name: /login\.sendResetLink/ }).closest('form')
-    expect(form).not.toBeNull()
-
-    fireEvent.submit(form as HTMLFormElement)
+    await user.type(await screen.findByLabelText('login.email'), 'test@example.com')
+    await user.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
@@ -108,6 +122,7 @@ describe('ForgotPasswordForm', () => {
   })
 
   it('should disable submit while request is in flight', async () => {
+    const user = userEvent.setup()
     let resolveRequest: ((value: any) => void) | undefined
     const requestPromise = new Promise((resolve) => {
       resolveRequest = resolve
@@ -116,18 +131,16 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), {
-      target: { value: 'test@example.com' },
-    })
+    await user.type(await screen.findByLabelText('login.email'), 'test@example.com')
 
     const button = screen.getByRole('button', { name: /login\.sendResetLink/ })
-    fireEvent.click(button)
+    await user.click(button)
 
     await waitFor(() => {
-      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('aria-disabled', 'true')
     })
 
-    fireEvent.click(button)
+    await user.click(button)
     expect(mockSendForgotPasswordEmail).toHaveBeenCalledTimes(1)
 
     resolveRequest?.({ result: 'success', data: 'ok' })
@@ -138,15 +151,14 @@ describe('ForgotPasswordForm', () => {
   })
 
   it('should keep form state when request fails', async () => {
+    const user = userEvent.setup()
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockSendForgotPasswordEmail.mockResolvedValue({ result: 'fail', data: 'error' } as any)
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), {
-      target: { value: 'test@example.com' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
+    await user.type(await screen.findByLabelText('login.email'), 'test@example.com')
+    await user.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledTimes(1)

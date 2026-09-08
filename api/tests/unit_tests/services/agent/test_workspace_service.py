@@ -49,6 +49,7 @@ def _workspace(
     app_id: str = "app-1",
     owner_type: AgentWorkspaceOwnerType = AgentWorkspaceOwnerType.CONVERSATION,
     owner_id: str = "conversation-1",
+    owner_scope_key: str = "root",
     status: AgentWorkingResourceStatus = AgentWorkingResourceStatus.ACTIVE,
     updated_at: datetime | None = None,
     backend_workspace_ref: str = "workspace-ref",
@@ -59,7 +60,7 @@ def _workspace(
         app_id=app_id,
         owner_type=owner_type,
         owner_id=owner_id,
-        owner_scope_key="root",
+        owner_scope_key=owner_scope_key,
         backend_workspace_ref=backend_workspace_ref,
         status=status,
         active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
@@ -105,11 +106,6 @@ def test_workspace_client_honors_the_configured_snapshot_timeout(monkeypatch: py
     assert client._timeout == 123.5
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_binding_success_persists_new_workspace_and_binding(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -148,11 +144,6 @@ def test_create_binding_success_persists_new_workspace_and_binding(
     assert request.home_snapshot_ref == "home-ref"
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_binding_without_home_snapshot_uses_backend_default(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -176,11 +167,6 @@ def test_create_binding_without_home_snapshot_uses_backend_default(
     assert request.home_snapshot_ref is None
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_binding_rejects_missing_explicit_home_snapshot_before_backend_call(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -200,11 +186,6 @@ def test_create_binding_rejects_missing_explicit_home_snapshot_before_backend_ca
     client.create_execution_binding_sync.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentHomeSnapshot, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
 def test_create_second_binding_reuses_existing_workspace(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -243,7 +224,6 @@ def test_create_second_binding_reuses_existing_workspace(
     assert request.workspace_id == workspace.id
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_get_active_binding_resolves_exact_participant(sqlite_session: Session) -> None:
     conversation_workspace = _workspace(workspace_id="workspace-conversation")
     build_workspace = _workspace(
@@ -274,7 +254,6 @@ def test_get_active_binding_resolves_exact_participant(sqlite_session: Session) 
     assert resolved.id == conversation_binding.id
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_get_active_binding_rejects_wrong_owner(sqlite_session: Session) -> None:
     build_workspace = _workspace(
         workspace_id="workspace-build",
@@ -299,7 +278,6 @@ def test_get_active_binding_rejects_wrong_owner(sqlite_session: Session) -> None
     assert resolved is None
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_retire_non_final_binding_keeps_workspace_active(sqlite_session: Session) -> None:
     binding = _binding()
     other_binding = _binding(binding_id="binding-2", agent_id="agent-2")
@@ -320,7 +298,6 @@ def test_retire_non_final_binding_keeps_workspace_active(sqlite_session: Session
     assert other_binding.status is AgentWorkingResourceStatus.ACTIVE
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_retire_final_binding_retires_workspace(sqlite_session: Session) -> None:
     binding = _binding()
     workspace = _workspace()
@@ -335,15 +312,14 @@ def test_retire_final_binding_retires_workspace(sqlite_session: Session) -> None
     assert workspace.retired_at == binding.retired_at
 
 
-def test_retire_workspace_retires_all_active_bindings() -> None:
+def test_retire_workspace_retires_all_active_bindings(sqlite_session: Session) -> None:
     workspace = _workspace()
     bindings = [_binding(), _binding(binding_id="binding-2", agent_id="agent-2")]
-    session = MagicMock()
-    session.scalar.return_value = workspace
-    session.scalars.return_value.all.return_value = bindings
+    sqlite_session.add_all([workspace, *bindings])
+    sqlite_session.flush()
 
     retired_id = AgentWorkspaceService.retire_workspace(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         workspace_id=workspace.id,
     )
@@ -354,7 +330,62 @@ def test_retire_workspace_retires_all_active_bindings() -> None:
     assert all(binding.retired_at == workspace.retired_at for binding in bindings)
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
+def test_resolve_active_binding_for_scope_returns_matching_participant(sqlite_session: Session) -> None:
+    workspace = _workspace(owner_scope_key="node-1:workflow-binding-1")
+    binding = _binding(binding_id="binding-chatflow", workspace_id=workspace.id)
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+
+    resolved = AgentWorkspaceService.resolve_active_binding_for_scope(
+        session=sqlite_session,
+        scope=WorkspaceOwnerScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+            owner_id="conversation-1",
+            owner_scope_key="node-1:workflow-binding-1",
+        ),
+        agent_id="agent-1",
+    )
+
+    assert resolved is not None
+    assert resolved.id == binding.id
+
+
+def test_retire_all_for_conversation_retires_only_matching_conversation_workspaces(
+    sqlite_session: Session,
+) -> None:
+    matching = _workspace(
+        workspace_id="workspace-chatflow",
+        owner_scope_key="node-1:workflow-binding-1",
+    )
+    other_conversation = _workspace(
+        workspace_id="workspace-other-conversation",
+        owner_id="conversation-2",
+        owner_scope_key="node-2:workflow-binding-2",
+    )
+    workflow_run = _workspace(
+        workspace_id="workspace-workflow-run",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="run-1",
+        owner_scope_key="node-1:workflow-binding-1",
+    )
+    sqlite_session.add_all([matching, other_conversation, workflow_run])
+    sqlite_session.commit()
+
+    retired_ids = AgentWorkspaceService.retire_all_for_conversation(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id="conversation-1",
+    )
+
+    assert retired_ids == [matching.id]
+    assert matching.status is AgentWorkingResourceStatus.RETIRED
+    assert other_conversation.status is AgentWorkingResourceStatus.ACTIVE
+    assert workflow_run.status is AgentWorkingResourceStatus.ACTIVE
+
+
 def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_session: Session) -> None:
     active = _workspace(workspace_id="workspace-active", owner_id="conversation-active")
     already_retired = _workspace(
@@ -390,7 +421,6 @@ def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_s
     assert other_binding.status is AgentWorkingResourceStatus.ACTIVE
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_collect_binding_without_retired_workspace_destroys_binding_only(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -414,7 +444,6 @@ def test_collect_binding_without_retired_workspace_destroys_binding_only(
     assert sqlite_session.get(AgentWorkspace, workspace.id) is not None
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_collect_workspace_destroys_workspace_then_remaining_bindings(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:

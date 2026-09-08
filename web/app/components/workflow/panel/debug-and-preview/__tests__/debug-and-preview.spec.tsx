@@ -1,5 +1,5 @@
 import type { Ref } from 'react'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useImperativeHandle } from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -47,10 +47,6 @@ vi.mock('../../../nodes/_base/hooks/use-resize-panel', () => ({
   }),
 }))
 
-vi.mock('../../../persistence/local-storage-options', () => ({
-  useSetDebugPreviewPanelWidth: () => vi.fn(),
-}))
-
 vi.mock('../chat-wrapper', () => ({
   default: function MockChatWrapper({ ref }: { ref: Ref<{ handleRestart: () => void }> }) {
     useImperativeHandle(ref, () => ({ handleRestart: mockHandleRestart }))
@@ -61,6 +57,23 @@ vi.mock('../chat-wrapper', () => ({
 describe('DebugAndPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('resizes from the left edge with the keyboard and persists the width', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(<DebugAndPreview />, {
+      initialStoreState: { previewPanelWidth: 480, workflowCanvasWidth: 1000 },
+    })
+    await user.tab()
+    const handle = screen.getByRole('separator', { name: 'workflow.common.debugAndPreview' })
+    expect(handle).toHaveFocus()
+    await user.keyboard('{ArrowLeft}')
+    expect(handle).toHaveAttribute('aria-valuenow', '488')
+    await waitFor(() => expect(localStorage.getItem('debug-and-preview-panel-width')).toBe('488'))
+    await user.keyboard('{End}{ArrowLeft}')
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+    await user.keyboard('{Home}')
+    expect(handle).toHaveAttribute('aria-valuenow', '400')
   })
 
   it('exposes and invokes the restart action by name', async () => {

@@ -1,32 +1,26 @@
 import type { ReactElement } from 'react'
+import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import WrappedDatePicker from '../date-picker'
 
-type TriggerArgs = {
-  handleClickTrigger: () => void
-}
-
-type DatePickerProps = {
-  onChange: (value: Date | null) => void
-  onClear: () => void
-  renderTrigger: (
-    props: React.HTMLAttributes<HTMLDivElement>,
-    state: { open: boolean },
-    args: TriggerArgs,
-  ) => React.ReactNode
-  value?: Date
-}
-
 // Mock the base date picker component
 vi.mock('@/app/components/base/date-and-time-picker/date-picker', () => ({
   default: ({ onChange, onClear, renderTrigger, value }: DatePickerProps) => {
-    const trigger = renderTrigger({}, { open: false }, { handleClickTrigger: () => {} })
+    const trigger = renderTrigger?.(
+      {},
+      { open: false, disabled: false },
+      {
+        value,
+        selectedDate: value,
+        handleClear: onClear,
+      },
+    )
     return (
       <div role="group" aria-label="Date picker">
         {trigger}
-        <button onClick={() => onChange(value || null)}>Select Date</button>
+        <button onClick={() => onChange(value)}>Select Date</button>
         <button onClick={() => onClear()}>Clear Date</button>
       </div>
     )

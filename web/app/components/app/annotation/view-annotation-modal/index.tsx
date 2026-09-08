@@ -294,13 +294,16 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                 </div>
                 {id && (
                   <div className="flex h-16 shrink-0 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                    <div
-                      className="flex cursor-pointer items-center space-x-2 pl-3"
+                    <button
+                      type="button"
+                      className="flex cursor-pointer appearance-none items-center space-x-2 border-0 bg-transparent py-0 pr-0 pl-3 text-left"
                       onClick={() => setShowModal(true)}
                     >
                       <MessageCheckRemove />
-                      <div>{t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
-                    </div>
+                      <span>
+                        {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
+                      </span>
+                    </button>
                     <div>
                       {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
                       &nbsp;

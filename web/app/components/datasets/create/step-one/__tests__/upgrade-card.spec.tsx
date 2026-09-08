@@ -1,16 +1,13 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import UpgradeCard from '../upgrade-card'
 
-const mockSetShowPricingModal = vi.fn()
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-const render = (ui: React.ReactElement) =>
+const renderWithoutPricing = (ui: React.ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowPricingModal: mockSetShowPricingModal }),
-}))
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
   default: ({ onClick }: { onClick?: () => void }) => (
@@ -20,6 +17,11 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
   ),
 }))
 
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('UpgradeCard', () => {
   it('opens pricing from the upgrade action', async () => {
     const user = userEvent.setup()
@@ -27,6 +29,8 @@ describe('UpgradeCard', () => {
 
     await user.click(screen.getByRole('button', { name: 'upgrade' }))
 
-    expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 })

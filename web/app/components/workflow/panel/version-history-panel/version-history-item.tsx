@@ -100,7 +100,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           className="pointer-events-none absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle"
         />
       )}
-      <div className="pointer-events-none relative z-[1] flex h-5 w-4.5 shrink-0 items-center justify-center">
+      <div className="pointer-events-none relative z-1 flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div
           aria-hidden
           className={cn(
@@ -109,7 +109,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           )}
         />
       </div>
-      <div className="pointer-events-none relative z-[1] flex grow flex-col gap-y-0.5 overflow-hidden">
+      <div className="pointer-events-none relative z-1 flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div
             id={titleId}

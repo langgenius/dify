@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,50 +18,22 @@ import { DuplicateAgentDialog } from '@/features/agent-v2/roster/components/dupl
 import { EditAgentDialog } from '@/features/agent-v2/roster/components/edit-agent-dialog'
 import { useRouter } from '@/next/navigation'
 
-type AgentDetailSidebarActionAgent = Pick<
-  AgentAppPartial,
-  | 'app_id'
-  | 'description'
-  | 'icon'
-  | 'icon_background'
-  | 'icon_type'
-  | 'icon_url'
-  | 'id'
-  | 'mode'
-  | 'name'
-  | 'role'
->
+type AgentDetailSidebarActionAgent = AgentFormSource & Pick<AgentAppPartial, 'app_id'>
 
 export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tApp } = useTranslation('app')
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [editSessionKey, setEditSessionKey] = useState(0)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
-  const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const router = useRouter()
-  const dialogAgent: AgentAppPartial = {
-    description: agent.description,
-    icon: agent.icon,
-    icon_background: agent.icon_background,
-    icon_type: agent.icon_type,
-    icon_url: agent.icon_url,
-    id: agent.id,
-    mode: agent.mode,
-    name: agent.name,
-    role: agent.role,
-  }
-
   const handleEditOpen = () => {
-    setEditSessionKey((key) => key + 1)
     setIsEditOpen(true)
   }
 
   const handleDuplicateOpen = () => {
-    setDuplicateSessionKey((key) => key + 1)
     setIsDuplicateOpen(true)
   }
 
@@ -112,15 +85,9 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <EditAgentDialog
-        key={editSessionKey}
-        agent={dialogAgent}
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-      />
+      <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
       <DuplicateAgentDialog
-        key={duplicateSessionKey}
-        agent={dialogAgent}
+        agent={agent}
         open={isDuplicateOpen}
         onOpenChange={setIsDuplicateOpen}
       />

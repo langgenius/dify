@@ -5,14 +5,13 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
-from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     model_validate,
 )
 from extensions.ext_application_services import application_services
@@ -106,10 +105,11 @@ class AppSite(Resource):
     @console_ns.response(404, "App not found")
     @console_account_admission(
         allowed_roles=_APP_SITE_EDIT_ROLES,
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_RELEASE_AND_VERSION,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ],
     )
-    @agent_manage_required_for_agent_app
     @model_validate(AppSiteUpdatePayload)
     def post(
         self,
@@ -137,10 +137,11 @@ class AppSiteAccessTokenReset(Resource):
     @console_ns.response(404, "App or site not found")
     @console_account_admission(
         allowed_roles=_APP_SITE_TOKEN_RESET_ROLES,
-        rbac_resource_scope=RBACResourceScope.APP,
-        rbac_permission=RBACPermission.APP_RELEASE_AND_VERSION,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ],
     )
-    @agent_manage_required_for_agent_app
     def post(self, request_context: RequestContext, app_id: UUID):
         try:
             site = application_services().app_sites.reset_access_token(request_context, str(app_id))

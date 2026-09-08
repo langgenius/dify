@@ -187,7 +187,7 @@ function AddAccessSubjectPopover({
           <Button
             variant="primary"
             size="medium"
-            disabled={disabled || existingAccountIds === undefined}
+            disabled={disabled}
             loading={!disabled && existingAccountIds === undefined}
           >
             <span className="i-ri-add-line size-3.5" aria-hidden />

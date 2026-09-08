@@ -8,6 +8,7 @@ import services
 from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -181,14 +182,13 @@ class TextApi(Resource):
     # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @service_api_ns.response(200, "Text successfully converted to audio")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def post(self, app_model: App, end_user: EndUser):
+    @model_validate(TextToAudioPayload)
+    def post(self, payload: TextToAudioPayload, app_model: App, end_user: EndUser):
         """Convert text to audio using text-to-speech.
 
         Converts the provided text to audio using the specified voice.
         """
         try:
-            payload = TextToAudioPayload.model_validate(service_api_ns.payload or {})
-
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice

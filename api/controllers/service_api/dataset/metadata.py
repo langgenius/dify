@@ -316,14 +316,13 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id, dataset_id: UUID):
+    @model_validate(MetadataOperationData)
+    def post(self, metadata_args: MetadataOperationData, session: Session, tenant_id, dataset_id: UUID):
         """Update metadata for multiple documents."""
         dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), str(tenant_id), session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
-
-        metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
         try:
             MetadataService.update_documents_metadata(

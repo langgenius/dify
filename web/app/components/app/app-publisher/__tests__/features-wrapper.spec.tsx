@@ -39,6 +39,12 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         <button type="button" onClick={() => props.onPublish?.({ id: 'model-1' })}>
           publish-through-wrapper
         </button>
+        <button
+          type="button"
+          onClick={() => props.onPublish?.(undefined, { showSuccessToast: false })}
+        >
+          publish-silently-through-wrapper
+        </button>
         <button type="button" onClick={() => props.onRestore?.()}>
           restore-through-wrapper
         </button>
@@ -104,6 +110,23 @@ describe('FeaturesWrappedAppPublisher', () => {
 
     await waitFor(() => {
       expect(mockOnPublish).toHaveBeenCalledWith({ id: 'model-1' }, mockFeatures)
+    })
+  })
+
+  it('should pass publish notification options through to onPublish', async () => {
+    render(
+      <FeaturesWrappedAppPublisher
+        publishedConfig={publishedConfig as any}
+        onPublish={mockOnPublish}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('publish-silently-through-wrapper'))
+
+    await waitFor(() => {
+      expect(mockOnPublish).toHaveBeenCalledWith(undefined, mockFeatures, {
+        showSuccessToast: false,
+      })
     })
   })
 

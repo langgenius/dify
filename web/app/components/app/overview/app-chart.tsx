@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -96,7 +96,10 @@ const Chart: React.FC<IChartProps> = ({
     >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
-          <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
+          <div
+            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
+            title={title}
+          >
             {title}
           </div>
           {explanation && (

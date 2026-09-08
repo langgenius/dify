@@ -1,7 +1,6 @@
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field, TypeAdapter
@@ -151,7 +150,6 @@ class AnnotationReplyActionStatusApi(Resource):
         responses={
             200: "Job status retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Job not found",
         }
     )
     @service_api_ns.response(
@@ -207,9 +205,9 @@ class AnnotationListApi(Resource):
     )
     @validate_app_token
     @with_session(write=False)
-    def get(self, session: Session, app_model: App):
+    @model_validate(AnnotationListQuery)
+    def get(self, query: AnnotationListQuery, session: Session, app_model: App):
         """List annotations for the application."""
-        query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
             app_model.id, query.page, query.limit, query.keyword, session

@@ -45,6 +45,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.common.session import with_session
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -210,7 +211,11 @@ def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
         ]
         if len(non_null_candidates) == 1:
             return {
-                **{key: value for key, value in property_schema.items() if key != "anyOf"},
+                **{
+                    key: value
+                    for key, value in property_schema.items()
+                    if key != "anyOf" and not (key == "default" and value is None)
+                },
                 **deepcopy(non_null_candidates[0]),
             }
 
@@ -245,7 +250,7 @@ class DocumentGetQuery(BaseModel):
         default="all",
         description=(
             "`all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and "
-            "`doc_metadata`. `without` returns all fields except `doc_metadata`."
+            "`doc_metadata`. `without` returns all fields except `doc_type` and `doc_metadata`."
         ),
     )
 
@@ -304,39 +309,53 @@ def _document_and_batch_response(document: Document, batch: str, *, session: Ses
     )
 
 
-# Use SkipJsonSchema to support 3 metadata modes
+def _omit_schema_default(schema: dict[str, Any]) -> None:
+    """Keep omission placeholders out of the public non-null field contract."""
+    schema.pop("default", None)
+
+
+# These fields are absent in metadata=only responses. None is an internal
+# validation default, not a value returned for these fields when present.
 class DocumentDetailResponse(ResponseModel):
     id: str
-    position: int | SkipJsonSchema[None] = None
-    data_source_type: str | SkipJsonSchema[None] = None
-    data_source_info: dict[str, Any] | SkipJsonSchema[None] = None
+    position: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    data_source_type: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    data_source_info: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: dict[str, Any] | SkipJsonSchema[None] = None
-    document_process_rule: dict[str, Any] | SkipJsonSchema[None] = None
-    name: str | SkipJsonSchema[None] = None
-    created_from: str | SkipJsonSchema[None] = None
-    created_by: str | SkipJsonSchema[None] = None
-    created_at: int | SkipJsonSchema[None] = None
+    dataset_process_rule: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    document_process_rule: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    name: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_from: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_by: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_at: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     tokens: int | None = None
-    indexing_status: str | SkipJsonSchema[None] = None
+    indexing_status: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     completed_at: int | None = None
     updated_at: int | None = None
     indexing_latency: float | None = None
     error: str | None = None
-    enabled: bool | SkipJsonSchema[None] = None
+    enabled: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     disabled_at: int | None = None
     disabled_by: str | None = None
-    archived: bool | SkipJsonSchema[None] = None
+    archived: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     doc_type: str | None = None
     doc_metadata: list[DocumentMetadataResponse] | dict[str, Any] | None = None
-    segment_count: int | SkipJsonSchema[None] = None
-    average_segment_length: int | float | SkipJsonSchema[None] = None
-    hit_count: int | SkipJsonSchema[None] = None
+    segment_count: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    average_segment_length: int | float | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    hit_count: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     display_status: str | None = None
-    doc_form: str | SkipJsonSchema[None] = None
+    doc_form: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     doc_language: str | None = None
     summary_index_status: str | None = None
-    need_summary: bool | SkipJsonSchema[None] = None
+    need_summary: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
 
     @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
     @classmethod
@@ -1014,8 +1033,9 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
+        effective_limit = min(query_params.limit, 100)
         paginated_documents = paginate_query(
-            query, session=session, page=query_params.page, per_page=query_params.limit, max_per_page=100
+            query, session=session, page=query_params.page, per_page=effective_limit, max_per_page=100
         )
         documents = paginated_documents.items
 
@@ -1028,8 +1048,8 @@ class DocumentListApi(DatasetApiResource):
 
         response = {
             "data": document_responses(documents, session=session),
-            "has_more": len(documents) == query_params.limit,
-            "limit": query_params.limit,
+            "has_more": query_params.page * effective_limit < paginated_documents.total,
+            "limit": effective_limit,
             "total": paginated_documents.total,
             "page": query_params.page,
         }
@@ -1069,9 +1089,8 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
     @service_api_ns.response(200, "ZIP archive generated successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session(write=False)
-    def post(self, session: Session, tenant_id, dataset_id: UUID):
-        payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
-
+    @model_validate(DocumentBatchDownloadZipPayload)
+    def post(self, payload: DocumentBatchDownloadZipPayload, session: Session, tenant_id, dataset_id: UUID):
         upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
             dataset_id=str(dataset_id),
             document_ids=[str(document_id) for document_id in payload.document_ids],
@@ -1451,7 +1470,6 @@ class DocumentApi(DatasetApiResource):
         tags=["Documents"],
         responses={
             204: "Success.",
-            400: "`document_indexing` : Cannot delete document during indexing.",
             403: "`archived_document_immutable` : The archived document is not editable.",
             404: "`not_found` : Document Not Exists.",
         },

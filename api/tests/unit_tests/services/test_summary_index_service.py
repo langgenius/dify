@@ -281,6 +281,45 @@ def test_vectorize_summary_final_failure_updates_error_status(monkeypatch: pytes
     error_session.commit.assert_called_once()
 
 
+def test_vectorize_summary_failure_with_provided_session_does_not_open_error_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dataset = _dataset()
+    segment = _segment()
+    summary = _summary_record(summary_content="sum", node_id=None)
+
+    monkeypatch.setattr(summary_module.uuid, "uuid4", MagicMock(return_value="uuid-1"))
+    monkeypatch.setattr(summary_module.helper, "generate_text_hash", MagicMock(return_value="hash-1"))
+    monkeypatch.setattr(
+        summary_module,
+        "Vector",
+        MagicMock(return_value=MagicMock(add_texts=MagicMock(side_effect=RuntimeError("boom")))),
+    )
+    monkeypatch.setattr(
+        summary_module.ModelManager,
+        "for_tenant",
+        MagicMock(return_value=MagicMock(get_model_instance=MagicMock(return_value=None))),
+    )
+
+    session = MagicMock(name="provided_session")
+    create_session_mock = MagicMock()
+    monkeypatch.setattr(
+        summary_module,
+        "session_factory",
+        SimpleNamespace(create_session=create_session_mock),
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=session)
+
+    create_session_mock.assert_not_called()
+    session.add.assert_called_once_with(summary)
+    session.commit.assert_not_called()
+    session.flush.assert_not_called()
+    assert summary.status == SummaryStatus.ERROR
+    assert summary.error == "Vectorization failed: boom"
+
+
 def test_batch_create_summary_records_no_segments_noop(monkeypatch: pytest.MonkeyPatch) -> None:
     create_session_mock = MagicMock()
     monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))

@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest import mock
 from uuid import uuid4
 
@@ -90,9 +89,9 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
         mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
         mock.patch.object(wraps, "PassportService") as mock_passport_service,
         mock.patch.object(
-            wraps,
-            "FeatureService",
-            get_system_features=mock.Mock(return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
+            wraps.SystemFeatureService,
+            "is_webapp_auth_enabled",
+            return_value=False,
         ),
     ):
         mock_passport_service.return_value.verify.return_value = {

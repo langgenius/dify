@@ -1,12 +1,17 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelProviderPluginSummaryResponse,
+  ModelProviderSummaryResponse,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { Model, ModelItem } from '../../declarations'
 import type { PopupProps } from '../popup'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -14,6 +19,23 @@ import {
   ModelTypeEnum,
 } from '../../declarations'
 import Popup from '../popup'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 let mockLanguage = 'en_US'
 
@@ -29,7 +51,7 @@ vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
 }))
 
-type MockContextProvider = Pick<
+type MockSummaryProvider = Pick<
   ModelProviderSummaryResponse,
   | 'provider'
   | 'label'
@@ -39,10 +61,10 @@ type MockContextProvider = Pick<
   | 'system_configuration'
 >
 
-const mockContextModelProviders = vi.hoisted(() => ({
-  current: [] as MockContextProvider[],
+const mockModelProviders = vi.hoisted(() => ({
+  current: [] as MockSummaryProvider[],
 }))
-const mockContextModelProviderPlugins = vi.hoisted(() => ({
+const mockModelProviderPlugins = vi.hoisted(() => ({
   current: {} as Record<string, { plugin_id: string }>,
 }))
 const mockTrialModels = vi.hoisted(() => ({
@@ -57,7 +79,7 @@ vi.mock('../../hooks', async () => {
 })
 
 vi.mock('../popup-item', () => ({
-  default: ({ model }: { model: Model }) => (
+  default: ({ model }: { model: ProviderWithModelsResponse }) => (
     <div>
       <span>{model.provider}</span>
       {model.models.map((modelItem) => (
@@ -65,13 +87,6 @@ vi.mock('../popup-item', () => ({
       ))}
     </div>
   ),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: mockContextModelProviders.current,
-    modelProviderPlugins: mockContextModelProviderPlugins.current,
-  }),
 }))
 
 type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange' | 'onSelect'>
@@ -111,8 +126,36 @@ function PopupContentHarness(props: PopupTestProps) {
 const renderPopup = (
   ui: ReactElement<PopupTestProps>,
   options: Parameters<typeof renderWithConsoleQuery>[1] = {},
-) =>
-  renderWithConsoleQuery(ui, {
+) => {
+  const queryClient = options.queryClient ?? createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: mockModelProviders.current.map(
+      (provider) =>
+        ({
+          ...providerSummaryFixture,
+          ...provider,
+          custom_configuration: {
+            ...providerSummaryFixture.custom_configuration,
+            ...provider.custom_configuration,
+          },
+        }) satisfies ModelProviderSummaryResponse,
+    ),
+    plugins: Object.fromEntries(
+      Object.entries(mockModelProviderPlugins.current).map(([id, plugin]) => [
+        id,
+        {
+          installation_id: 'installation',
+          plugin_unique_identifier: 'plugin:1.0.0',
+          runtime_type: 'local',
+          source: 'marketplace',
+          version: '1.0.0',
+          ...plugin,
+        } satisfies ModelProviderPluginSummaryResponse,
+      ]),
+    ),
+  })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     ...options,
     systemFeatures:
       options.systemFeatures === null
@@ -124,6 +167,7 @@ const renderPopup = (
           },
     trialModels: options.trialModels ?? mockTrialModels.current,
   })
+}
 
 const mockTrialCredits = vi.hoisted(() => ({
   credits: 200,
@@ -199,7 +243,9 @@ vi.mock('../../utils', async () => {
   }
 })
 
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const makeModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -210,7 +256,10 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
+const makeModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -219,19 +268,19 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
-const makeContextProvider = (
-  overrides: Partial<MockContextProvider> = {},
-): MockContextProvider => ({
+const makeSummaryProvider = (
+  overrides: Partial<MockSummaryProvider> = {},
+): MockSummaryProvider => ({
   provider: 'test-openai',
   label: { en_US: 'Test OpenAI', zh_Hans: 'Test OpenAI' },
   icon_small: { en_US: '', zh_Hans: '' },
   icon_small_dark: { en_US: '', zh_Hans: '' },
   custom_configuration: {
     status: 'no-configure',
-  } as MockContextProvider['custom_configuration'],
+  } as MockSummaryProvider['custom_configuration'],
   system_configuration: {
     enabled: false,
-  } as MockContextProvider['system_configuration'],
+  } as MockSummaryProvider['system_configuration'],
   ...overrides,
 })
 
@@ -247,8 +296,8 @@ describe('Popup', () => {
         },
       },
     })
-    mockContextModelProviders.current = []
-    mockContextModelProviderPlugins.current = {}
+    mockModelProviders.current = []
+    mockModelProviderPlugins.current = {}
     mockTrialModels.current = ['test-openai', 'test-anthropic']
     Object.assign(mockTrialCredits, {
       credits: 200,
@@ -523,7 +572,10 @@ describe('Popup', () => {
             models: [
               makeModelItem({
                 model: 'openrouter-model',
-                label: { en_US: 'OpenRouter Model', zh_Hans: 'OpenRouter Model' },
+                label: {
+                  en_US: 'OpenRouter Model',
+                  zh_Hans: 'OpenRouter Model',
+                },
               }),
             ],
           }),
@@ -533,7 +585,10 @@ describe('Popup', () => {
             models: [
               makeModelItem({
                 model: 'compatible-model',
-                label: { en_US: 'Compatible Model', zh_Hans: 'Compatible Model' },
+                label: {
+                  en_US: 'Compatible Model',
+                  zh_Hans: 'Compatible Model',
+                },
               }),
             ],
           }),
@@ -990,12 +1045,12 @@ describe('Popup', () => {
       totalCredits: 200,
       isExhausted: true,
     })
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-openai',
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
 
@@ -1007,49 +1062,66 @@ describe('Popup', () => {
     )
   })
 
-  it('should only mark API key fallback when the current credential is usable', () => {
+  it('should only mark API key fallback when the current credential is usable', async () => {
     Object.assign(mockTrialCredits, {
       credits: 0,
       totalCredits: 200,
       isExhausted: true,
     })
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-openai',
         custom_configuration: {
           status: 'active',
           current_credential_usable: false,
-        } as MockContextProvider['custom_configuration'],
+        } as MockSummaryProvider['custom_configuration'],
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
 
-    const { rerender } = renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
+    const { queryClient } = renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
     expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
       'data-has-api-key-fallback',
       'false',
     )
 
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-openai',
         custom_configuration: {
           status: 'active',
           current_credential_usable: true,
-        } as MockContextProvider['custom_configuration'],
+        } as MockSummaryProvider['custom_configuration'],
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
-    rerender(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
+    act(() => {
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+        {
+          data: mockModelProviders.current.map((provider) => ({
+            ...providerSummaryFixture,
+            ...provider,
+            custom_configuration: {
+              ...providerSummaryFixture.custom_configuration,
+              ...provider.custom_configuration,
+            },
+          })),
+          plugins: {},
+        },
+      )
+    })
 
-    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
-      'data-has-api-key-fallback',
-      'true',
+    await waitFor(() =>
+      expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
+        'data-has-api-key-fallback',
+        'true',
+      ),
     )
   })
 
@@ -1060,12 +1132,12 @@ describe('Popup', () => {
       isExhausted: true,
     })
     mockTrialModels.current = ['test-anthropic']
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-openai',
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
 
@@ -1081,15 +1153,15 @@ describe('Popup', () => {
       isExhausted: true,
     })
     mockTrialModels.current = ['test-anthropic']
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-openai',
         custom_configuration: {
           status: 'active',
-        } as MockContextProvider['custom_configuration'],
+        } as MockSummaryProvider['custom_configuration'],
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
 
@@ -1165,8 +1237,8 @@ describe('Popup', () => {
   })
 
   it('should render marketplace providers that are not installed', () => {
-    mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
-    mockContextModelProviderPlugins.current = {
+    mockModelProviders.current = [makeSummaryProvider({ provider: 'test-openai' })]
+    mockModelProviderPlugins.current = {
       'langgenius/openai': { plugin_id: 'langgenius/openai' },
     }
 
@@ -1185,7 +1257,7 @@ describe('Popup', () => {
   })
 
   it('should hide marketplace providers when marketplace is disabled', () => {
-    mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
+    mockModelProviders.current = [makeSummaryProvider({ provider: 'test-openai' })]
 
     renderPopup(
       <PopupHarness modelList={[makeModel({ provider: 'test-openai' })]} onHide={vi.fn()} />,
@@ -1204,15 +1276,15 @@ describe('Popup', () => {
   })
 
   it('should show installed marketplace providers without models when AI credits are available', () => {
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-anthropic',
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
-    mockContextModelProviderPlugins.current = {
+    mockModelProviderPlugins.current = {
       'langgenius/anthropic': { plugin_id: 'langgenius/anthropic' },
     }
 
@@ -1228,15 +1300,15 @@ describe('Popup', () => {
       totalCredits: 200,
       isExhausted: true,
     })
-    mockContextModelProviders.current = [
-      makeContextProvider({
+    mockModelProviders.current = [
+      makeSummaryProvider({
         provider: 'test-anthropic',
         system_configuration: {
           enabled: true,
-        } as MockContextProvider['system_configuration'],
+        } as MockSummaryProvider['system_configuration'],
       }),
     ]
-    mockContextModelProviderPlugins.current = {
+    mockModelProviderPlugins.current = {
       'langgenius/anthropic': { plugin_id: 'langgenius/anthropic' },
     }
 
@@ -1262,7 +1334,7 @@ describe('Popup', () => {
   })
 
   it('should hide a marketplace provider when its plugin is already installed', () => {
-    mockContextModelProviderPlugins.current = {
+    mockModelProviderPlugins.current = {
       'langgenius/openai': { plugin_id: 'langgenius/openai' },
     }
 

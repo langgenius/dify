@@ -20,7 +20,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const EDUCATION_AUTOCOMPLETE_PAGE_SIZE = 40
 

@@ -55,7 +55,7 @@ from controllers.console.agent.roster import (
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
-from controllers.console.app.error import CompletionRequestError
+from controllers.console.app.error import AgentSessionConfigurationChangedError, CompletionRequestError
 from controllers.console.app.message import (
     AgentChatMessageListApi,
     AgentMessageApi,
@@ -409,9 +409,9 @@ def test_agent_app_list_and_create_use_agent_route(
         get_or_create_debug_conversation,
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     with app.test_request_context(
         "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
@@ -565,9 +565,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 2
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     monkeypatch.setattr(
         roster_controller,
@@ -1025,9 +1025,9 @@ def test_agent_app_update_allows_empty_role(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
 
     class FakeAppService:
@@ -1633,6 +1633,38 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
     assert stream.closed is True
 
 
+def test_agent_chat_stream_preflight_preserves_session_configuration_error() -> None:
+    class ClosableStream:
+        def __init__(self) -> None:
+            self.closed = False
+            self._chunks = iter(
+                [
+                    "event: ping\n\n",
+                    (
+                        'data: {"event":"error","message":"Start a new conversation to continue.",'
+                        '"code":"agent_session_configuration_changed","status":409}\n\n'
+                    ),
+                ]
+            )
+
+        def __iter__(self):
+            return self
+
+        def __next__(self) -> str:
+            return next(self._chunks)
+
+        def close(self) -> None:
+            self.closed = True
+
+    stream = ClosableStream()
+    with pytest.raises(AgentSessionConfigurationChangedError) as exc_info:
+        completion_controller._raise_agent_stream_error_before_response(stream)
+    assert exc_info.value.code == 409
+    assert exc_info.value.error_code == "agent_session_configuration_changed"
+    assert "Start a new conversation" in exc_info.value.description
+    assert stream.closed is True
+
+
 def test_agent_chat_stream_preflight_preserves_first_normal_event() -> None:
     stream = iter(
         ["event: ping\n\n", 'data: {"event":"message","answer":"hello"}\n\n', 'data: {"event":"message_end"}\n\n']
@@ -2109,14 +2141,24 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(
     monkeypatch.setattr(message_controller, "_get_message_suggested_questions", get_message_suggested_questions)
     monkeypatch.setattr(message_controller, "_get_message_detail", get_message_detail)
     assert unwrap(AgentChatMessageListApi.get)(
-        AgentChatMessageListApi(), unbound_session, "tenant-1", current_user, agent_id
+        AgentChatMessageListApi(),
+        message_controller.ChatMessagesQuery(conversation_id="00000000-0000-0000-0000-000000000010"),
+        unbound_session,
+        "tenant-1",
+        current_user,
+        agent_id,
     ) == {"data": []}
     list_call = cast(dict[str, object], captured["list"])
     assert list_call["session"] is unbound_session
     assert list_call["app_model"] is app_model
     with app.test_request_context(json={"message_id": message_id, "rating": "like"}):
         assert unwrap(AgentMessageFeedbackApi.post)(
-            AgentMessageFeedbackApi(), unbound_session, "tenant-1", current_user, agent_id
+            AgentMessageFeedbackApi(),
+            message_controller.MessageFeedbackPayload(message_id=message_id, rating="like"),
+            unbound_session,
+            "tenant-1",
+            current_user,
+            agent_id,
         ) == {"result": "success"}
     feedback_call = cast(dict[str, object], captured["feedback"])
     assert feedback_call["session"] is unbound_session
@@ -2189,7 +2231,13 @@ def test_list_chat_messages_supports_first_id_pagination(
         f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}&first_id={first_message_id}&limit=1"
     ):
         result = message_controller._list_chat_messages(
-            session=sqlite_session, app_model=_app_detail_obj(id=app_id, mode=AppMode.CHAT)
+            args=message_controller.ChatMessagesQuery(
+                conversation_id=conversation_id,
+                first_id=first_message_id,
+                limit=1,
+            ),
+            session=sqlite_session,
+            app_model=_app_detail_obj(id=app_id, mode=AppMode.CHAT),
         )
     assert result == {"data": [older_message_id], "limit": 1, "has_more": True}
 
@@ -2231,7 +2279,10 @@ def test_list_agent_chat_messages_uses_current_user_conversation(
     monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
         result = message_controller._list_chat_messages(
-            session=sqlite_session, app_model=app_model, current_user=current_user
+            args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
+            session=sqlite_session,
+            app_model=app_model,
+            current_user=current_user,
         )
     assert result == {"data": [message_id], "limit": 20, "has_more": False}
     assert captured.pop("session") is sqlite_session
@@ -2250,6 +2301,7 @@ def test_list_agent_chat_messages_rejects_foreign_conversation(
     with app.test_request_context(f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}"):
         with pytest.raises(NotFound):
             message_controller._list_chat_messages(
+                args=message_controller.ChatMessagesQuery(conversation_id=conversation_id),
                 session=unbound_session,
                 app_model=_app_detail_obj(id="app-1", mode=AppMode.AGENT),
                 current_user=_account(),
@@ -2271,6 +2323,7 @@ def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
     with app.test_request_context(json={"message_id": message_id, "rating": None}):
         with pytest.raises(ValueError, match="rating cannot be None"):
             message_controller._update_message_feedback(
+                args=message_controller.MessageFeedbackPayload(message_id=message_id, rating=None),
                 session=sqlite_session,
                 current_user=_account(),
                 app_model=_app_detail_obj(id=app_id),

@@ -4,17 +4,23 @@ from unittest.mock import MagicMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 
 from controllers.console.auth.error import InvalidTokenError
 from controllers.console.error import EducationActivateLimitError, EducationVerifyLimitError, EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
+    AccountDeletionFeedbackPayload,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
+    ChangeEmailResetPayload,
     ChangeEmailSendEmailApi,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
     CheckEmailUnique,
+    CheckEmailUniquePayload,
+    EducationActivatePayload,
     EducationApi,
     EducationVerifyApi,
 )
@@ -127,7 +133,7 @@ class TestEducationApi:
         ):
             api = EducationApi()
             method = inspect.unwrap(api.post)
-            result = method(api, request_context)
+            result = method(api, EducationActivatePayload.model_validate(request.get_json() or {}), request_context)
 
         assert result == {"message": "success"}
         education.activate.assert_called_once_with(
@@ -181,7 +187,9 @@ class TestEducationApi:
         ):
             api = EducationApi()
             with pytest.raises(EducationActivateLimitError):
-                inspect.unwrap(api.post)(api, request_context)
+                inspect.unwrap(api.post)(
+                    api, EducationActivatePayload.model_validate(request.get_json() or {}), request_context
+                )
 
 
 def _change_email_context(account_id: str = "acc") -> RequestContext:
@@ -218,7 +226,9 @@ class TestChangeEmailControllers:
             ),
         ):
             api = ChangeEmailSendEmailApi()
-            response = inspect.unwrap(api.post)(api, context)
+            response = inspect.unwrap(api.post)(
+                api, ChangeEmailSendPayload.model_validate(request.get_json() or {}), context
+            )
 
         assert response == {"result": "success", "data": "change-token"}
         change_email.send_code.assert_called_once_with(
@@ -248,7 +258,7 @@ class TestChangeEmailControllers:
             api = ChangeEmailSendEmailApi()
             method = inspect.unwrap(api.post)
             with pytest.raises(InvalidTokenError):
-                method(api, _change_email_context())
+                method(api, ChangeEmailSendPayload.model_validate(request.get_json() or {}), _change_email_context())
 
     def test_validity_serializes_promoted_token(self, app: Flask):
         change_email = MagicMock()
@@ -270,7 +280,9 @@ class TestChangeEmailControllers:
             ),
         ):
             api = ChangeEmailCheckApi()
-            response = inspect.unwrap(api.post)(api, context)
+            response = inspect.unwrap(api.post)(
+                api, ChangeEmailValidityPayload.model_validate(request.get_json() or {}), context
+            )
 
         assert response == {"is_valid": True, "email": "new@example.com", "token": "verified-token"}
         change_email.verify_code.assert_called_once_with(
@@ -298,7 +310,9 @@ class TestChangeEmailControllers:
             ),
         ):
             api = ChangeEmailResetApi()
-            response = inspect.unwrap(api.post)(api, context)
+            response = inspect.unwrap(api.post)(
+                api, ChangeEmailResetPayload.model_validate(request.get_json() or {}), context
+            )
 
         assert response["email"] == "new@example.com"
         change_email.reset.assert_called_once_with(
@@ -324,7 +338,9 @@ class TestChangeEmailControllers:
         ):
             api = ChangeEmailResetApi()
             with pytest.raises(EmailDomainSuspendedError):
-                inspect.unwrap(api.post)(api, _change_email_context())
+                inspect.unwrap(api.post)(
+                    api, ChangeEmailResetPayload.model_validate(request.get_json() or {}), _change_email_context()
+                )
 
 
 class TestAccountServiceSendChangeEmailEmail:
@@ -433,7 +449,7 @@ class TestAccountDeletionFeedback:
         ):
             api = AccountDeleteUpdateFeedbackApi()
             method = inspect.unwrap(api.post)
-            response = method(api)
+            response = method(api, AccountDeletionFeedbackPayload.model_validate(request.get_json() or {}))
 
         assert response == {"result": "success"}
         deletion_feedback.submit.assert_called_once_with(email="User@Example.com", feedback="test")
@@ -455,7 +471,7 @@ class TestCheckEmailUnique:
             ),
         ):
             api = CheckEmailUnique()
-            response = inspect.unwrap(api.post)(api)
+            response = inspect.unwrap(api.post)(api, CheckEmailUniquePayload.model_validate(request.get_json() or {}))
 
         assert response == {"result": "success"}
         change_email.ensure_available.assert_called_once_with("Case@Test.com")
@@ -477,7 +493,7 @@ class TestCheckEmailUnique:
         ):
             api = CheckEmailUnique()
             with pytest.raises(EmailDomainSuspendedError):
-                inspect.unwrap(api.post)(api)
+                inspect.unwrap(api.post)(api, CheckEmailUniquePayload.model_validate(request.get_json() or {}))
 
 
 @pytest.mark.parametrize(

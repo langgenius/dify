@@ -28,6 +28,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
@@ -47,6 +48,7 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -61,9 +63,15 @@ from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
-from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
 
@@ -300,9 +308,14 @@ class WorkflowRunApi(Resource):
                 "- `completion_request_error` : Workflow execution request failed.\n"
                 "- `invalid_param` : Invalid parameter value."
             ),
+            403: (
+                "- `forbidden` : Token scope, app, or workspace access denied.\n"
+                "- `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through "
+                "Web App, Service API, OpenAPI, or MCP."
+            ),
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
-                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+                "- `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached."
             ),
             500: "`internal_server_error` : Internal server error.",
         },
@@ -316,7 +329,6 @@ class WorkflowRunApi(Resource):
             200: "Workflow executed successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
-            404: "Workflow not found",
             429: "Rate limit exceeded",
             500: "Internal server error",
         }
@@ -360,6 +372,8 @@ class WorkflowRunApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -406,13 +420,16 @@ class WorkflowRunByIdApi(Resource):
                 "- `invalid_param` : Required parameter missing or invalid."
             ),
             403: (
-                "`workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
-                "current plan. Upgrade to a paid plan."
+                "- `forbidden` : Token scope, app, or workspace access denied.\n"
+                "- `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
+                "current plan. Upgrade to a paid plan.\n"
+                "- `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry "
+                "and cannot be invoked through Web App, Service API, OpenAPI, or MCP."
             ),
             404: "`not_found` : Workflow not found.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
-                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+                "- `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached."
             ),
             500: "`internal_server_error` : Internal server error.",
         },
@@ -458,7 +475,7 @@ class WorkflowRunByIdApi(Resource):
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         payload = WorkflowRunPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
@@ -487,6 +504,8 @@ class WorkflowRunByIdApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
         except IsDraftWorkflowError as ex:
@@ -594,20 +613,16 @@ class WorkflowAppLogApi(Resource):
         created_at_before = isoparse(args.created_at__before) if args.created_at__before else None
         created_at_after = isoparse(args.created_at__after) if args.created_at__after else None
 
-        # get paginate workflow app logs
-        workflow_app_service = WorkflowAppService()
-        with sessionmaker(db.engine).begin() as session:
-            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-                session=session,
-                app_model=app_model,
-                keyword=args.keyword,
-                status=status,
-                created_at_before=created_at_before,
-                created_at_after=created_at_after,
-                page=args.page,
-                limit=args.limit,
-                created_by_end_user_session_id=args.created_by_end_user_session_id,
-                created_by_account=args.created_by_account,
-            )
-
-            return dump_response(WorkflowAppLogPaginationResponse, workflow_app_log_pagination)
+        result = application_services().workflow_app_logs.list_logs(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=args.keyword,
+            status=status,
+            created_at_before=created_at_before,
+            created_at_after=created_at_after,
+            page=args.page,
+            limit=args.limit,
+            created_by_end_user_session_id=args.created_by_end_user_session_id,
+            created_by_account=args.created_by_account,
+        )
+        return dump_response(WorkflowAppLogPaginationResponse, result)

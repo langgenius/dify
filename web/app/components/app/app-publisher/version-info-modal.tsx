@@ -113,10 +113,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">
-            <Button nativeButton={false} onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button nativeButton={false} variant="primary" onClick={handlePublish}>
+            <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button variant="primary" onClick={handlePublish}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
