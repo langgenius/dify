@@ -17,3 +17,12 @@ class ServiceApiRequestContext:
 
     tenant_id: str
     app_id: str
+
+
+class AccountRequestContext(NamedTuple):
+    """Stable identity for account-scoped use cases that do not require a workspace."""
+
+    request_id: str
+    trace_id: str | None
+    account_id: str
+    access_token_id: str | None = None

@@ -426,6 +426,7 @@ class TestCloudEditionBillingResourceCheck:
         app.config["TESTING"] = True
         return app
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
     def test_allows_when_under_limit(self, mock_get_features, mock_validate_token, app: Flask):
@@ -434,7 +435,6 @@ class TestCloudEditionBillingResourceCheck:
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.billing.enabled = True
         mock_features.members.limit = 10
         mock_features.members.size = 5
         mock_get_features.return_value = mock_features
@@ -493,7 +493,6 @@ class TestCloudEditionBillingResourceCheck:
         mock_get_vector_space.return_value = Mock(size=0, limit=50, usage_unknown=True)
         mock_get_features.return_value = SimpleNamespace(
             billing=SimpleNamespace(
-                enabled=True,
                 subscription=SimpleNamespace(plan=CloudPlan.SANDBOX),
             )
         )
@@ -523,7 +522,6 @@ class TestCloudEditionBillingResourceCheck:
         mock_get_vector_space.return_value = Mock(size=0, limit=50, usage_unknown=True)
         mock_get_features.return_value = SimpleNamespace(
             billing=SimpleNamespace(
-                enabled=True,
                 subscription=SimpleNamespace(plan=plan),
             )
         )
@@ -541,6 +539,7 @@ class TestCloudEditionBillingResourceCheck:
         assert result == "document_uploaded"
         mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
     def test_loads_features_when_checking_non_vector_space_limit(
@@ -551,7 +550,6 @@ class TestCloudEditionBillingResourceCheck:
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.billing.enabled = True
         mock_features.documents_upload_quota.limit = 10
         mock_features.documents_upload_quota.size = 5
         mock_get_features.return_value = mock_features
@@ -568,6 +566,7 @@ class TestCloudEditionBillingResourceCheck:
         assert result == "document_uploaded"
         mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
     def test_rejects_when_at_limit(self, mock_get_features, mock_validate_token, app: Flask):
@@ -576,7 +575,6 @@ class TestCloudEditionBillingResourceCheck:
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.billing.enabled = True
         mock_features.members.limit = 10
         mock_features.members.size = 10
         mock_get_features.return_value = mock_features
@@ -591,15 +589,15 @@ class TestCloudEditionBillingResourceCheck:
                 add_member()
             assert "members has reached the limit" in str(exc_info.value)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
     def test_allows_when_billing_disabled(self, mock_get_features, mock_validate_token, app: Flask):
-        """Test that request is allowed when billing is disabled."""
+        """Test that request is allowed outside Cloud."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_get_features.return_value = mock_features
 
         @cloud_edition_billing_resource_check("members", "app")
@@ -624,6 +622,7 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
         app.config["TESTING"] = True
         return app
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
     def test_rejects_add_segment_in_sandbox(self, mock_get_features, mock_validate_token, app: Flask):
@@ -632,7 +631,6 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.billing.enabled = True
         mock_features.billing.subscription.plan = CloudPlan.SANDBOX
         mock_get_features.return_value = mock_features
 
@@ -646,6 +644,7 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
                 add_segment()
             assert "upgrade to a paid plan" in str(exc_info.value)
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
     def test_allows_other_operations_in_sandbox(self, mock_get_features, mock_validate_token, app: Flask):
@@ -654,7 +653,6 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.billing.enabled = True
         mock_features.billing.subscription.plan = CloudPlan.SANDBOX
         mock_get_features.return_value = mock_features
 

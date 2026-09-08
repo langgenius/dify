@@ -278,18 +278,38 @@ class WeaviateVector(BaseVector):
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
     @override
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
         """
-        Generates deterministic UUIDs for documents based on their content.
+        Generate canonical Weaviate object ids for each document.
 
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
+        Issue #41714: insert and the cleanup path
+        (``batch_clean_document_task`` → ``index_processor.clean`` →
+        ``vector.delete_by_ids``) must agree on the object id, otherwise
+        ``delete_by_id`` silently no-ops and the cleanup task reports
+        success while the objects stay behind as orphans.
+
+        Use the same source the rest of the VDB stack uses
+        (``VectorBase._get_uuids``): the ``doc_id`` stored in each
+        document's metadata. ``doc_id`` is the segment's
+        ``index_node_id`` that ``delete_by_ids`` already passes in.
+
+        Preserve the parent caller's positional alignment: a missing
+        ``doc_id`` is replaced with a freshly generated ``uuid4`` rather
+        than dropping the slot, so the parallel ``objs`` list in
+        ``add_texts`` keeps matching the input documents one-for-one.
         """
-        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-
-        uuids = []
-        for doc in documents:
-            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
-            uuids.append(str(uuid_val))
+        uuids: list[str] = []
+        for doc in texts:
+            doc_id = (doc.metadata or {}).get("doc_id")
+            if isinstance(doc_id, str) and doc_id:
+                uuids.append(doc_id)
+            else:
+                # Fallback only when the caller didn't supply a doc_id.
+                # Random uuid4 keeps the object uniquely addressable; the
+                # cleanup path can't find it without doc_id, but that's
+                # only acceptable for tests / fixtures that don't exercise
+                # cleanup.
+                uuids.append(str(_uuid.uuid4()))
 
         return uuids
 
@@ -380,17 +400,40 @@ class WeaviateVector(BaseVector):
         Deletes objects by their UUID identifiers.
 
         Silently ignores 404 errors for non-existent IDs.
+
+        Issue #41714: cleanup task (and any other caller) passes
+        ``index_node_id`` (a UUID) here. New objects inserted after this
+        fix use the segment's ``index_node_id`` as their Weaviate UUID, so
+        the call lands cleanly. **Pre-existing** objects written by the
+        old UUID5 path still don't match — fall through to a
+        backward-compatible ``doc_id``-metadata filter so they are
+        cleaned up too, and a legacy object whose Weaviate UUID differs
+        from its ``doc_id`` is still reaped.
         """
         if not self._client.collections.exists(self._collection_name):
             return
 
         col = self._client.collections.use(self._collection_name)
 
+        # 1. Best-effort direct delete by UUID for the fresh-write path.
+        #    404s mean the object was never written (or was written under
+        #    a different UUID), which is expected for legacy rows.
         for uid in ids:
             try:
                 col.data.delete_by_id(uid)
             except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
+                if e.status_code != 404:
+                    raise
+
+        # 2. Backward-compatible catch-up: the legacy UUID5 path (or any
+        #    other source) wrote rows whose Weaviate UUID no longer
+        #    matches ``index_node_id``. Reap them by the ``doc_id``
+        #    metadata so a delete pass never leaves orphans behind.
+        if ids:
+            try:
+                col.data.delete_many(where=Filter.by_property("doc_id").contains_any(ids))
+            except UnexpectedStatusCodeError as e:
+                if e.status_code != 404:
                     raise
 
     @override

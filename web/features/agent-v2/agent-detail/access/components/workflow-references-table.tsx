@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type WorkflowReferencesTableProps = {
   agentId: string
