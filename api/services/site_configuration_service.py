@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,14 +25,19 @@ class SiteConfigurationService:
 
         upload_file_id = None
         if icon:
-            upload_file_id = session.scalar(
-                select(UploadFile.id)
-                .where(
-                    UploadFile.id == icon,
-                    UploadFile.tenant_id == tenant_id,
+            try:
+                UUID(icon)
+            except ValueError:
+                pass
+            else:
+                upload_file_id = session.scalar(
+                    select(UploadFile.id)
+                    .where(
+                        UploadFile.id == icon,
+                        UploadFile.tenant_id == tenant_id,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
         if upload_file_id is None:
             raise SiteConfigurationError(
                 "The site icon is missing or does not belong to this workspace. Please upload it again."
