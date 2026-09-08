@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from opentelemetry.exporter.otlp.proto.http import Compression
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SpanExportResult
 
@@ -222,6 +223,35 @@ def test_status_recording_exporter_remembers_last_http_status() -> None:
     assert exporter.last_status_code == 200
 
 
+def test_status_recording_exporter_ignores_process_wide_otlp_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    # OTLPSpanExporter substitutes OTEL_EXPORTER_OTLP_* for every falsy argument, so a tenant
+    # collector configured without headers would be sent the platform's own collector settings.
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "authorization=Bearer platform-secret")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "x-scope-orgid=platform-tenant")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_COMPRESSION", "gzip")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_CERTIFICATE", "/etc/platform/ca.pem")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_CLIENT_KEY", "/etc/platform/client.key")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE", "/etc/platform/client.pem")
+
+    exporter = StatusRecordingOTLPSpanExporter(endpoint=ENDPOINT, headers={}, timeout=1)
+
+    sent = {key.lower(): value for key, value in exporter._session.headers.items()}
+    assert "authorization" not in sent
+    assert "x-scope-orgid" not in sent
+    assert "content-encoding" not in sent
+    assert sent["content-type"] == "application/x-protobuf"
+    assert str(sent["user-agent"]).startswith("OTel-OTLP-Exporter-Python/")
+    assert exporter._compression is Compression.NoCompression
+    assert exporter._certificate_file is True
+    assert exporter._client_cert is None
+
+    exporter = StatusRecordingOTLPSpanExporter(endpoint=ENDPOINT, headers={"x-api-key": "tenant"}, timeout=1)
+
+    sent = {key.lower(): value for key, value in exporter._session.headers.items()}
+    assert sent["x-api-key"] == "tenant"
+    assert "authorization" not in sent
+
+
 def test_adapter_builds_exporter_resource_and_headers_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
     exporter_cls = MagicMock()
     monkeypatch.setattr("core.ops.unified_trace.otlp_adapter.StatusRecordingOTLPSpanExporter", exporter_cls)
@@ -364,7 +394,7 @@ def test_api_check_success_and_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     assert instance.api_check() is True
 
     exporter.export.return_value = SpanExportResult.FAILURE
-    with pytest.raises(ValueError, match="rejected the api_check span"):
+    with pytest.raises(ValueError, match="did not answer the api_check span"):
         instance.api_check()
 
     exporter.last_status_code = 401

@@ -17,7 +17,9 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any, NoReturn, cast, override
 
+import requests
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY, Context, attach, detach, set_value
+from opentelemetry.exporter.otlp.proto.http import _OTLP_HTTP_HEADERS, Compression
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
@@ -85,15 +87,43 @@ def is_terminal_http_status(status_code: object) -> bool:
 
 
 class StatusRecordingOTLPSpanExporter(OTLPSpanExporter):
-    """OTLP/HTTP span exporter that remembers the HTTP status of the last request.
+    """OTLP/HTTP span exporter bound to one provider config that remembers the last HTTP status.
 
     ``OTLPSpanExporter.export`` runs its own retry loop for transient failures and
     then collapses every outcome into ``SpanExportResult.FAILURE``. Keeping the last
     status lets the adapter tell a terminal rejection (wrong endpoint or credentials)
     from a transport failure that is worth a Celery retry.
+
+    The constructor also pins every transport setting to the provider config. The parent
+    substitutes the process-wide ``OTEL_EXPORTER_OTLP_*`` variables for any argument that
+    is falsy, so a tenant collector configured without headers would otherwise be sent the
+    credentials, client certificate, CA bundle and compression of the platform's own
+    telemetry pipeline.
     """
 
     last_status_code: int | None = None
+
+    def __init__(self, *, endpoint: str, headers: dict[str, str] | None = None, timeout: float) -> None:
+        headers = dict(headers or {})
+        super().__init__(
+            endpoint=endpoint,
+            headers=headers,
+            timeout=timeout,
+            compression=Compression.NoCompression,
+            session=requests.Session(),
+        )
+        # Undo the env fallbacks the parent applied to the falsy arguments. These are the
+        # attributes its ``_export`` reads; header precedence mirrors the parent, so user
+        # headers still override the OTLP defaults.
+        self._headers = headers
+        self._session.headers.clear()
+        self._session.headers.update(requests.utils.default_headers())
+        self._session.headers.update(_OTLP_HTTP_HEADERS)
+        self._session.headers.update(headers)
+        self._certificate_file = True
+        self._client_key_file = None
+        self._client_certificate_file = None
+        self._client_cert = None
 
     @override
     def _export(self, serialized_data: bytes, timeout_sec: float | None = None):
@@ -280,6 +310,10 @@ class OTLPUnifiedTrace(UnifiedTraceInstance):
             raise ValueError(f"[{adapter.provider_name}] API check failed: {e}") from e
         if result is not SpanExportResult.SUCCESS:
             status_code = adapter.last_export_status_code
-            detail = f" (HTTP {status_code})" if status_code is not None else ""
-            raise ValueError(f"OTLP collector rejected the api_check span{detail}")
+            if status_code is None:
+                # No HTTP response at all: DNS, connection or a request the client refused to send
+                raise ValueError(
+                    "OTLP collector did not answer the api_check span; check the endpoint, network access and headers"
+                )
+            raise ValueError(f"OTLP collector rejected the api_check span (HTTP {status_code})")
         return True
