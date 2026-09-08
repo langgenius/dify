@@ -59,8 +59,12 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/service/apps', () => ({
-  exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: { export: { get: (...args: unknown[]) => mockExportAppConfig(...args) } },
+    },
+  },
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -103,9 +107,8 @@ describe('useDSLByCanEdit', () => {
     expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockExportAppConfig).toHaveBeenCalledWith({
-      appID: 'app-1',
-      include: false,
-      workflowID: undefined,
+      params: { app_id: 'app-1' },
+      query: { include_secret: false, include_workflow_tools: true, workflow_id: undefined },
     })
     expect(mockDownloadBlob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -152,9 +155,8 @@ workflow:
     })
 
     expect(mockExportAppConfig).toHaveBeenCalledWith({
-      appID: 'app-1',
-      include: true,
-      workflowID: 'workflow-1',
+      params: { app_id: 'app-1' },
+      query: { include_secret: true, include_workflow_tools: true, workflow_id: 'workflow-1' },
     })
   })
 
