@@ -21343,7 +21343,7 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer | Quota limit; -1 means unlimited and 0 means no quota | Yes |
-| reset_date | integer, <br>**Default:** -1 | Billing-provided reset date; non-positive means unknown | Yes |
+| reset_date | integer, <br>**Default:** -1 | Next quota reset as a Unix timestamp in seconds; -1 means no reset | Yes |
 | usage | integer |  | Yes |
 
 #### QuotaConfiguration

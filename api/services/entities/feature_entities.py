@@ -67,7 +67,9 @@ class LicenseLimitationModel(FeatureResponseModel):
 class Quota(FeatureResponseModel):
     usage: int = 0
     limit: int = Field(default=0, description="Quota limit; -1 means unlimited and 0 means no quota")
-    reset_date: int = Field(default=-1, description="Billing-provided reset date; non-positive means unknown")
+    reset_date: int = Field(
+        default=-1, description="Next quota reset as a Unix timestamp in seconds; -1 means no reset"
+    )
 
 
 class LicenseStatus(StrEnum):
