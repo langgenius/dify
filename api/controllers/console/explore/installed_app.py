@@ -2,14 +2,19 @@ import base64
 import binascii
 import logging
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field
-from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.fields import SimpleResultMessageResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.explore.error import (
+    InstalledAppInvalidCursorError,
+    InstalledAppNotFoundHTTPError,
+    InstalledAppUnavailableHTTPError,
+    InstalledAppUninstallForbiddenError,
+    WebAppAccessUnavailableHTTPError,
+)
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
@@ -24,7 +29,9 @@ from services.installed_app_service import (
     InstalledAppCursor,
     InstalledAppOwnedByWorkspaceError,
     InstalledAppRecord,
+    InstalledAppUnavailableError,
 )
+from services.webapp_access_query_service import WebAppAccessUnavailableError
 
 
 class InstalledAppUpdatePayload(BaseModel):
@@ -67,8 +74,8 @@ def _decode_installed_app_cursor(cursor: str | None) -> InstalledAppCursor | Non
         padded_cursor = cursor + "=" * (-len(cursor) % 4)
         payload = base64.b64decode(padded_cursor, altchars=b"-_", validate=True)
         return InstalledAppCursor.model_validate_json(payload)
-    except (binascii.Error, UnicodeDecodeError, ValueError):
-        raise BadRequest("Invalid cursor") from None
+    except (binascii.Error, UnicodeDecodeError, ValueError) as error:
+        raise InstalledAppInvalidCursorError() from error
 
 
 class InstalledAppInfoResponse(ResponseModel):
@@ -139,17 +146,26 @@ class InstalledAppsListApi(Resource):
     @console_ns.doc(params=query_params_from_model(InstalledAppsListQuery))
     @console_ns.response(200, "Success", console_ns.models[InstalledAppListResponse.__name__])
     @console_account_admission()
-    def get(self, request_context: RequestContext) -> dict[str, object]:
-        query = InstalledAppsListQuery.model_validate(request.args.to_dict())
+    @model_validate(InstalledAppsListQuery)
+    def get(self, query: InstalledAppsListQuery, request_context: RequestContext) -> dict[str, object]:
         cursor = _decode_installed_app_cursor(query.cursor)
-        page = application_services().installed_apps.get_visible_page(
-            tenant_id=request_context.active_workspace_id,
-            user_id=request_context.account_id,
-            cursor=cursor,
-            limit=query.limit,
-            app_id=query.app_id,
-            name=query.name,
-        )
+        try:
+            page = application_services().installed_apps.get_visible_page(
+                tenant_id=request_context.active_workspace_id,
+                user_id=request_context.account_id,
+                cursor=cursor,
+                limit=query.limit,
+                app_id=query.app_id,
+                name=query.name,
+            )
+        except WebAppAccessUnavailableError as error:
+            logger.exception(
+                "Installed app list access check failed: workspace_id=%s account_id=%s request_id=%s",
+                request_context.active_workspace_id,
+                request_context.account_id,
+                request_context.request_id,
+            )
+            raise WebAppAccessUnavailableHTTPError() from error
         installed_app_list = [
             _installed_app_response_data(
                 installed_app,
@@ -186,8 +202,10 @@ class InstalledAppApi(Resource):
             detail = application_services().installed_apps.get_detail(
                 installed_app=installed_app, account_id=request_context.account_id
             )
-        except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+        except InstalledAppUnavailableError as error:
+            raise InstalledAppUnavailableHTTPError() from error
+        except InstalledAppNotFoundError as error:
+            raise InstalledAppNotFoundHTTPError() from error
         return dump_response(
             InstalledAppResponse,
             _installed_app_response_data(
@@ -203,10 +221,10 @@ class InstalledAppApi(Resource):
     def delete(self, request_context: RequestContext, installed_app: InstalledAppRef) -> tuple[str, int]:
         try:
             application_services().installed_apps.uninstall(installed_app=installed_app)
-        except InstalledAppOwnedByWorkspaceError:
-            raise BadRequest("You can't uninstall an app owned by the current tenant") from None
-        except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+        except InstalledAppOwnedByWorkspaceError as error:
+            raise InstalledAppUninstallForbiddenError() from error
+        except InstalledAppNotFoundError as error:
+            raise InstalledAppNotFoundHTTPError() from error
 
         return "", 204
 
@@ -220,7 +238,7 @@ class InstalledAppApi(Resource):
     ) -> dict[str, str]:
         try:
             application_services().installed_apps.set_pinned(installed_app=installed_app, is_pinned=req_data.is_pinned)
-        except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+        except InstalledAppNotFoundError as error:
+            raise InstalledAppNotFoundHTTPError() from error
 
         return {"result": "success", "message": "App info updated successfully"}

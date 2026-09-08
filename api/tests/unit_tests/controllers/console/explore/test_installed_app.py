@@ -1,11 +1,13 @@
 """HTTP contracts for InstalledApp management with real admission and persistence."""
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
+from flask import Flask, got_request_exception
 from flask.testing import FlaskClient
 from sqlalchemy import Connection, delete, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -20,6 +22,7 @@ from repositories.installed_app_repository import SQLAlchemyInstalledAppReposito
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_service import InstalledAppService
+from services.webapp_access_query_service import WebAppAccessUnavailableError
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -45,6 +48,7 @@ class _Management:
     denied_app_ids: set[str] = field(default_factory=set)
     visibility_calls: list[tuple[str, tuple[str, ...]]] = field(default_factory=list)
     signed_files: list[str] = field(default_factory=list)
+    visibility_error: WebAppAccessUnavailableError | None = None
 
     @property
     def client(self) -> FlaskClient:
@@ -58,6 +62,8 @@ class _Management:
 
     def get_access_modes(self, *, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
         self.assert_sessions_closed()
+        if self.visibility_error is not None:
+            raise self.visibility_error
         return dict.fromkeys(app_ids, WebAppAccessMode.PUBLIC)
 
     def get_user_permissions(self, *, user_id: str, app_ids: Sequence[str]) -> Mapping[str, bool]:
@@ -466,24 +472,148 @@ def test_list_empty_result_has_no_cursor(management: _Management, empty: str) ->
 
 
 @pytest.mark.parametrize("cursor", ["not-a-cursor", "!!!", "e30", ""])
-def test_list_invalid_cursor_preserves_bad_request(management: _Management, cursor: str) -> None:
+def test_list_invalid_cursor_returns_specific_error(management: _Management, cursor: str) -> None:
     response = management.client.get("/installed-apps", query_string={"cursor": cursor})
     _assert_json_response(
-        response, status=400, body={"code": "bad_request", "message": "Invalid cursor", "status": 400}
+        response,
+        status=400,
+        body={
+            "code": "invalid_cursor",
+            "message": "The app list cursor is invalid. Refresh the list and try again.",
+            "status": 400,
+            "details": {"request_id": "request-1"},
+        },
     )
     assert management.sessions == []
 
 
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.WORKFLOW])
-def test_unpublished_installation_rejects_detail_but_can_be_pinned_and_removed(
-    management: _Management, mode: AppMode
+@pytest.mark.parametrize(
+    ("query", "error"),
+    [
+        (
+            {"limit": "private-input"},
+            {
+                "type": "int_parsing",
+                "loc": ["limit"],
+                "msg": "Input should be a valid integer, unable to parse string as an integer",
+            },
+        ),
+        (
+            {"limit": "0"},
+            {"type": "greater_than_equal", "loc": ["limit"], "msg": "Input should be greater than or equal to 1"},
+        ),
+        (
+            {"limit": "101"},
+            {"type": "less_than_equal", "loc": ["limit"], "msg": "Input should be less than or equal to 100"},
+        ),
+        (
+            {"name": "private-input" * 10},
+            {"type": "string_too_long", "loc": ["name"], "msg": "String should have at most 100 characters"},
+        ),
+    ],
+)
+def test_list_validation_identifies_query_field_without_echoing_input(
+    management: _Management, query: dict[str, str], error: dict[str, object]
 ) -> None:
-    installed, _ = _installation(management, mode=mode, published=False)
+    response = management.client.get("/installed-apps", query_string=query)
+
+    _assert_json_response(
+        response,
+        status=422,
+        body={"code": "unprocessable_entity", "message": json.dumps([error]), "status": 422},
+    )
+    assert "private-input" not in response.get_data(as_text=True)
+    assert management.sessions == []
+
+
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    [
+        (
+            {"is_pinned": "private-input"},
+            {
+                "type": "bool_parsing",
+                "loc": ["is_pinned"],
+                "msg": "Input should be a valid boolean, unable to interpret input",
+            },
+        ),
+        (
+            ["private-input"],
+            {
+                "type": "model_type",
+                "loc": [],
+                "msg": "Input should be a valid dictionary or instance of InstalledAppUpdatePayload",
+            },
+        ),
+    ],
+)
+def test_patch_validation_identifies_body_field_without_echoing_input(
+    management: _Management, payload: object, error: dict[str, object]
+) -> None:
+    response = management.client.patch(management.url(), data=json.dumps(payload), content_type="application/json")
+
+    _assert_json_response(
+        response,
+        status=422,
+        body={"code": "unprocessable_entity", "message": json.dumps([error]), "status": 422},
+    )
+    assert "private-input" not in response.get_data(as_text=True)
+    assert management.sessions == []
+    with management.session_factory() as session:
+        installed = session.get(InstalledApp, management.harness.installed_app.id)
+        assert installed is not None
+        assert installed.is_pinned is False
+
+
+@pytest.mark.parametrize(
+    ("body", "content_type"),
+    [
+        pytest.param('{"is_pinned": private-input}', "application/json", id="malformed-json"),
+        pytest.param("null", "application/json", id="null"),
+        pytest.param("false", "application/json", id="false"),
+        pytest.param("[]", "application/json", id="empty-list"),
+        pytest.param("", "application/json", id="empty-body"),
+        pytest.param('{"is_pinned": false}', "text/plain", id="non-json-media"),
+    ],
+)
+def test_patch_shared_parser_normalizes_empty_or_unreadable_body_to_noop(
+    management: _Management, body: str, content_type: str
+) -> None:
+    installed, _ = _installation(management, pinned=True)
+    management.sessions.clear()
+
+    response = management.client.patch(management.url(installed.id), data=body, content_type=content_type)
+
+    _assert_json_response(
+        response,
+        status=200,
+        body={"result": "success", "message": "App info updated successfully"},
+    )
+    assert management.sessions == []
+    with management.session_factory() as session:
+        persisted = session.get(InstalledApp, installed.id)
+        assert persisted is not None
+        assert persisted.is_pinned is True
+        assert persisted.last_used_at == _USED_AT
+
+
+@pytest.mark.parametrize(
+    ("mode", "published"), [(AppMode.CHAT, False), (AppMode.WORKFLOW, False), (AppMode.AGENT, True)]
+)
+def test_unavailable_installation_rejects_detail_but_can_be_pinned_and_removed(
+    management: _Management, mode: AppMode, published: bool
+) -> None:
+    installed, _ = _installation(management, mode=mode, published=published)
     url = management.url(installed.id)
     _assert_json_response(
         management.client.get(url),
         status=404,
-        body={"code": "not_found", "message": "Installed app not found", "status": 404},
+        body={
+            "code": "installed_app_unavailable",
+            "message": "The app is not available in this app library.",
+            "status": 404,
+            "details": {"request_id": "request-1"},
+        },
     )
     _assert_json_response(
         management.client.patch(url, json={"is_pinned": True}),
@@ -509,11 +639,12 @@ def test_owned_installation_preserves_uninstallable_field_but_rejects_delete(man
     assert response.get_json()["uninstallable"] is True
     _assert_json_response(
         management.client.delete(management.url(installed.id)),
-        status=400,
+        status=403,
         body={
-            "code": "bad_request",
-            "message": "You can't uninstall an app owned by the current tenant",
-            "status": 400,
+            "code": "installed_app_uninstall_forbidden",
+            "message": "An app owned by this workspace cannot be removed from its app library.",
+            "status": 403,
+            "details": {"request_id": "request-1"},
         },
     )
     with management.session_factory() as session:
@@ -557,14 +688,21 @@ def test_item_admission_precedes_management_actions_and_preserves_errors(
                 assert app is not None
                 session.delete(app)
     management.sessions.clear()
-    response = management.client.open(url, method=method, json={"is_pinned": True})
+    response = management.client.open(url, method=method, json={"is_pinned": "invalid"})
     if failure == "permission":
         _assert_json_response(
             response, status=403, body={"code": "access_denied", "message": "App access denied.", "status": 403}
         )
     else:
         _assert_json_response(
-            response, status=404, body={"code": "not_found", "message": "Installed app not found", "status": 404}
+            response,
+            status=404,
+            body={
+                "code": "installed_app_not_found",
+                "message": "The app was not found in this workspace.",
+                "status": 404,
+                "details": {"request_id": "request-1"},
+            },
         )
     assert management.sessions == []
     with management.session_factory() as session:
@@ -572,6 +710,57 @@ def test_item_admission_precedes_management_actions_and_preserves_errors(
         assert (installed is None) is (failure == "orphan")
         if installed is not None:
             assert installed.is_pinned is False
+
+
+@pytest.mark.parametrize(("method", "item"), [("GET", False), ("GET", True), ("PATCH", True), ("DELETE", True)])
+def test_management_dependency_failure_preserves_cause_and_request_context(
+    management: _Management,
+    caplog: pytest.LogCaptureFixture,
+    method: str,
+    item: bool,
+) -> None:
+    failure = WebAppAccessUnavailableError("private upstream response containing credentials")
+    if item:
+        management.harness.state.permission_error = failure
+    else:
+        _enable_visibility(management)
+        management.visibility_error = failure
+    exceptions: list[Exception] = []
+
+    def capture_exception(_sender: Flask, exception: Exception) -> None:
+        exceptions.append(exception)
+
+    with got_request_exception.connected_to(capture_exception):
+        response = management.client.open(
+            management.url() if item else "/installed-apps", method=method, json={"is_pinned": True}
+        )
+
+    _assert_json_response(
+        response,
+        status=503,
+        body={
+            "code": "web_app_access_unavailable",
+            "message": "The app access service is unavailable. Try again later.",
+            "status": 503,
+            "details": {"request_id": "request-1"},
+        },
+    )
+    assert "WWW-Authenticate" not in response.headers
+    assert "private upstream" not in response.get_data(as_text=True)
+    assert len(exceptions) == 1
+    assert exceptions[0].__cause__ is failure
+    management.assert_sessions_closed()
+    records = [record for record in caplog.records if record.name.startswith("controllers.console.explore.")]
+    assert len(records) == 1
+    assert records[0].exc_info is not None
+    assert records[0].exc_info[1] is failure
+    assert management.harness.installed_app.tenant_id in records[0].getMessage()
+    assert management.harness.account.id in records[0].getMessage()
+    assert "request-1" in records[0].getMessage()
+    with management.session_factory() as session:
+        installed = session.get(InstalledApp, management.harness.installed_app.id)
+        assert installed is not None
+        assert installed.is_pinned is False
 
 
 @pytest.mark.parametrize(("method", "item"), [("GET", False), ("GET", True), ("PATCH", True), ("DELETE", True)])

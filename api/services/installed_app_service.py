@@ -7,7 +7,7 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.installed_app_access_service import InstalledAppRef
 
 
 class InstalledAppCursor(BaseModel):
@@ -58,7 +58,11 @@ class InstalledAppDetail:
     editable: bool
 
 
-class InstalledAppOwnedByWorkspaceError(ValueError):
+class InstalledAppUnavailableError(RuntimeError):
+    """The admitted installation cannot be returned as a published library app."""
+
+
+class InstalledAppOwnedByWorkspaceError(PermissionError):
     """A workspace cannot uninstall an app it owns."""
 
 
@@ -161,7 +165,7 @@ class InstalledAppService:
     def get_detail(self, *, installed_app: InstalledAppRef, account_id: str) -> InstalledAppDetail:
         installation = self._installed_apps.get_published(installed_app=installed_app)
         if installation is None:
-            raise InstalledAppNotFoundError(f"Installed app {installed_app.id} is not published or no longer exists")
+            raise InstalledAppUnavailableError(f"Installed app {installed_app.id} is not available as a published app")
         role = self._get_workspace_role(account_id=account_id, tenant_id=installed_app.tenant_id)
         return InstalledAppDetail(installation=installation, editable=role in {"owner", "admin"})
 

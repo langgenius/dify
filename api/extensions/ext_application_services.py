@@ -194,10 +194,7 @@ from services.web_passport_gateways import (
     PassportTokenGateway,
 )
 from services.web_passport_service import WebPassportService
-from services.webapp_access_query_service import (
-    WebAppAccessQueryService,
-    WebAppAccessUnavailableError,
-)
+from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -212,9 +209,15 @@ logger = logging.getLogger(__name__)
 _EXTENSION_KEY = "application_services"
 
 
-# TODO: Move response normalization and error translation into EnterpriseService.WebAppAuth
-# after migrating its callers to typed result/error contracts, then inject its methods
-# directly and remove these adapters.
+# TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
+# migrate its callers, then inject its methods directly and remove these adapters.
+# Define SDK errors for timeouts, transport failures, upstream status and invalid
+# responses before adding finer HTTP mappings; these adapters report unavailability.
+# Validate required fields and real booleans there, replacing legacy permission
+# truthiness conversion. Missing fields currently become False, {} or a default mode.
+# Replace response-shape ValueError/KeyError/AttributeError with typed SDK errors;
+# ordinary ValueError can still reach the global 400 invalid_param handler. The
+# lost field information cannot be recovered by translating exceptions here.
 def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
     try:
         settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
@@ -234,7 +237,10 @@ def _is_enterprise_webapp_user_allowed(user_id: str, app_id: str) -> bool:
 
 
 def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
-    settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
+    try:
+        settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
+        raise WebAppAccessUnavailableError from e
     access_modes: dict[str, WebAppAccessMode] = {}
     for app_id, setting in settings.items():
         try:
@@ -247,9 +253,12 @@ def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapp
 
 
 def _batch_get_enterprise_webapp_user_permissions(*, user_id: str, app_ids: Sequence[str]) -> Mapping[str, bool]:
-    permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
-        user_id=user_id, app_ids=list(app_ids)
-    )
+    try:
+        permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
+            user_id=user_id, app_ids=list(app_ids)
+        )
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise WebAppAccessUnavailableError from e
     return {app_id: bool(allowed) for app_id, allowed in permissions.items()}
 
 

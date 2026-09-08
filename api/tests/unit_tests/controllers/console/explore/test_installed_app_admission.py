@@ -14,6 +14,7 @@ from werkzeug.exceptions import Unauthorized
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.completion as completion_module
+import controllers.console.explore.error as explore_error_module
 import controllers.console.explore.installed_app_admission as admission_module
 import controllers.console.explore.parameter as parameter_module
 import controllers.console.explore.saved_message as saved_message_module
@@ -152,6 +153,7 @@ def harness(
     monkeypatch.setattr(login_module, "check_csrf_token", check_csrf)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
     monkeypatch.setattr(console_admission, "get_request_id", lambda: "request-1")
+    monkeypatch.setattr(explore_error_module, "get_request_id", lambda: "request-1")
     monkeypatch.setattr(console_admission, "get_trace_id", lambda: None)
 
     app = Flask(__name__)
@@ -245,7 +247,12 @@ def test_missing_or_foreign_installation_returns_404_before_permission(
     _assert_json_response(
         response,
         status=404,
-        body={"code": "not_found", "message": "Installed app not found", "status": 404},
+        body={
+            "code": "installed_app_not_found",
+            "message": "The app was not found in this workspace.",
+            "status": 404,
+            "details": {"request_id": "request-1"},
+        },
     )
     assert harness.state.permission_calls == []
     assert harness.state.events == ["setup", "csrf"]
@@ -318,20 +325,42 @@ def test_account_admission_precedes_installed_app_lookup(
         assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
 
 
-def test_permission_dependency_unavailable_returns_503_without_calling_handler(harness: _Harness) -> None:
-    harness.state.permission_error = WebAppAccessUnavailableError()
+def test_permission_dependency_failure_preserves_cause_without_leaking_details(
+    harness: _Harness,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    failure = WebAppAccessUnavailableError("private upstream response containing credentials")
+    harness.state.permission_error = failure
+    exceptions: list[Exception] = []
 
-    response = harness.app.test_client().get(harness.url())
+    def capture_exception(_sender: Flask, exception: Exception) -> None:
+        exceptions.append(exception)
+
+    with got_request_exception.connected_to(capture_exception):
+        response = harness.app.test_client().get(harness.url())
 
     _assert_json_response(
         response,
         status=503,
         body={
             "code": "web_app_access_unavailable",
-            "message": "Web app access service is unavailable.",
+            "message": "The app access service is unavailable. Try again later.",
             "status": 503,
+            "details": {"request_id": "request-1"},
         },
     )
+    assert "private upstream" not in response.get_data(as_text=True)
+    assert len(exceptions) == 1
+    assert exceptions[0].__cause__ is failure
+    records = [record for record in caplog.records if record.name == admission_module.__name__]
+    assert len(records) == 1
+    assert records[0].exc_info is not None
+    assert records[0].exc_info[1] is failure
+    assert harness.installed_app.id in records[0].getMessage()
+    assert harness.installed_app.tenant_id in records[0].getMessage()
+    assert harness.account.id in records[0].getMessage()
+    assert "request-1" in records[0].getMessage()
+    assert "WWW-Authenticate" not in response.headers
     assert harness.state.events == ["setup", "csrf", "permission"]
     assert harness.state.permission_calls == [(harness.account.id, harness.target_app.id)]
 
