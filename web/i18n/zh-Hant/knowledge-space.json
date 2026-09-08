@@ -728,6 +728,8 @@
   "uploadFilesDescription": "從電腦新增檔案，建立 Agent 知識庫後會立即建立索引。",
   "uploadingFiles": "正在上傳…",
   "usingDefaults": "使用預設設定",
+  "view.agent": "Agent",
+  "view.classic": "經典",
   "viewLabel": "知識庫檢視",
   "viewTask": "查看任務",
   "websiteCrawl": "網站抓取",

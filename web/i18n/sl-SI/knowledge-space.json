@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Dodajte datoteke iz računalnika — indeksirane bodo takoj, ko ustvarite zbirko znanja Agent.",
   "uploadingFiles": "Nalaganje…",
   "usingDefaults": "Uporabljene so privzete nastavitve",
+  "view.agent": "Agent",
+  "view.classic": "Klasična",
   "viewLabel": "Prikaz znanja",
   "viewTask": "Prikaži opravilo",
   "websiteCrawl": "Iskanje po vsebini spletne strani",

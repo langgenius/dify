@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Ajoutez des fichiers depuis votre ordinateur : ils seront indexés dès la création de la base de connaissances Agent.",
   "uploadingFiles": "Téléversement…",
   "usingDefaults": "Valeurs par défaut utilisées",
+  "view.agent": "Agent",
+  "view.classic": "Classique",
   "viewLabel": "Vue des connaissances",
   "viewTask": "Voir la tâche",
   "websiteCrawl": "Exploration du site Web",

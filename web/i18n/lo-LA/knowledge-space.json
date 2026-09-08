@@ -728,6 +728,8 @@
   "uploadFilesDescription": "ເພີ່ມໄຟລ໌ຈາກຄອມພິວເຕີຂອງທ່ານ — ລະບົບຈະສ້າງດັດຊະນີໃຫ້ທັນທີທີ່ທ່ານສ້າງຖານຄວາມຮູ້ Agent.",
   "uploadingFiles": "ກຳລັງອັບໂຫລດ...",
   "usingDefaults": "ໃຊ້ຄ່າເລີ່ມຕົ້ນ",
+  "view.agent": "Agent",
+  "view.classic": "ແບບດັ້ງເດີມ",
   "viewLabel": "ມຸມມອງຄວາມຮູ້",
   "viewTask": "ເບິ່ງໜ້າວຽກ",
   "websiteCrawl": "ການລວບລວມຂໍ້ມູນເວັບໄຊທ໌",

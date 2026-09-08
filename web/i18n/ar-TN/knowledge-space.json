@@ -728,6 +728,8 @@
   "uploadFilesDescription": "أضف ملفات من جهاز الكمبيوتر — ستتم فهرستها بمجرد إنشاء قاعدة معرفة Agent.",
   "uploadingFiles": "جارٍ الرفع…",
   "usingDefaults": "استخدام الإعدادات الافتراضية",
+  "view.agent": "Agent",
+  "view.classic": "كلاسيكية",
   "viewLabel": "عرض المعرفة",
   "viewTask": "عرض المهمة",
   "websiteCrawl": "الزحف إلى موقع الويب",

@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Fügen Sie Dateien von Ihrem Computer hinzu — sie werden direkt nach dem Erstellen der Agent-Wissensdatenbank indexiert.",
   "uploadingFiles": "Wird hochgeladen…",
   "usingDefaults": "Standardeinstellungen werden verwendet",
+  "view.agent": "Agent",
+  "view.classic": "Klassisch",
   "viewLabel": "Wissensansicht",
   "viewTask": "Aufgabe anzeigen",
   "websiteCrawl": "Website-Crawling",

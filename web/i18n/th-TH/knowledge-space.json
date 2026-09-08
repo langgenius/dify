@@ -728,6 +728,8 @@
   "uploadFilesDescription": "เพิ่มไฟล์จากคอมพิวเตอร์ ระบบจะจัดทำดัชนีทันทีที่คุณสร้างฐานความรู้ Agent",
   "uploadingFiles": "กำลังอัปโหลด…",
   "usingDefaults": "ใช้ค่าเริ่มต้น",
+  "view.agent": "Agent",
+  "view.classic": "แบบดั้งเดิม",
   "viewLabel": "มุมมองความรู้",
   "viewTask": "ดูงาน",
   "websiteCrawl": "การรวบรวมข้อมูลเว็บไซต์",

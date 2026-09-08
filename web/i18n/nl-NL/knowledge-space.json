@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Voeg bestanden toe vanaf uw computer — ze worden geïndexeerd zodra u de Agent-kennisbank maakt.",
   "uploadingFiles": "Uploaden…",
   "usingDefaults": "Standaardinstellingen gebruikt",
+  "view.agent": "Agent",
+  "view.classic": "Klassiek",
   "viewLabel": "Kennisweergave",
   "viewTask": "Taak bekijken",
   "websiteCrawl": "Websitecrawl",

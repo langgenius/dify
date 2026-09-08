@@ -728,6 +728,8 @@
   "uploadFilesDescription": "从电脑添加文件，创建 Agent 知识库后会立即建立索引。",
   "uploadingFiles": "正在上传…",
   "usingDefaults": "使用默认设置",
+  "view.agent": "Agent",
+  "view.classic": "经典",
   "viewLabel": "知识库视图",
   "viewTask": "查看任务",
   "websiteCrawl": "网站抓取",

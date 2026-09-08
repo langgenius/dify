@@ -47,13 +47,13 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           className="h-5.5 rounded-md px-1 py-px system-xs-medium"
           value="legacy"
         >
-          {t(($) => $.legacy)}
+          {t(($) => $['view.classic'])}
         </SegmentedControlItem>
         <SegmentedControlItem
           className="h-5.5 rounded-md py-px pr-5 pl-1 system-xs-medium"
           value="new"
         >
-          {t(($) => $.new)}
+          {t(($) => $['view.agent'])}
         </SegmentedControlItem>
       </SegmentedControl>
       <Popover open={guideOpen} onOpenChange={setGuideOpenOverride}>

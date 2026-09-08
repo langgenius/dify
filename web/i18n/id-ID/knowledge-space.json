@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Tambahkan file dari komputer Anda — file akan langsung diindeks setelah basis pengetahuan Agent dibuat.",
   "uploadingFiles": "Mengunggah…",
   "usingDefaults": "Menggunakan pengaturan default",
+  "view.agent": "Agent",
+  "view.classic": "Klasik",
   "viewLabel": "Tampilan pengetahuan",
   "viewTask": "Lihat tugas",
   "websiteCrawl": "Perayapan situs web",

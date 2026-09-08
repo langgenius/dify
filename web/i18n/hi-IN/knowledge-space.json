@@ -728,6 +728,8 @@
   "uploadFilesDescription": "अपने कंप्यूटर से फ़ाइलें जोड़ें — Agent ज्ञान आधार बनाते ही वे इंडेक्स हो जाएँगी।",
   "uploadingFiles": "अपलोड हो रहा है…",
   "usingDefaults": "डिफ़ॉल्ट सेटिंग का उपयोग हो रहा है",
+  "view.agent": "Agent",
+  "view.classic": "पारंपरिक",
   "viewLabel": "नॉलेज दृश्य",
   "viewTask": "टास्क देखें",
   "websiteCrawl": "वेबसाइट क्रॉल",

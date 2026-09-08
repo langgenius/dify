@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Добавьте файлы с компьютера — они будут проиндексированы сразу после создания базы знаний Agent.",
   "uploadingFiles": "Загрузка…",
   "usingDefaults": "Используются настройки по умолчанию",
+  "view.agent": "Agent",
+  "view.classic": "Классическая",
   "viewLabel": "Вид базы знаний",
   "viewTask": "Просмотреть задачу",
   "websiteCrawl": "Сканирование веб-сайта",

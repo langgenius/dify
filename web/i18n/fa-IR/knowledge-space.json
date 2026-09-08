@@ -728,6 +728,8 @@
   "uploadFilesDescription": "فایل‌ها را از رایانه‌تان اضافه کنید — به‌محض ایجاد پایگاه دانش Agent نمایه‌سازی می‌شوند.",
   "uploadingFiles": "در حال بارگذاری…",
   "usingDefaults": "استفاده از تنظیمات پیش‌فرض",
+  "view.agent": "Agent",
+  "view.classic": "کلاسیک",
   "viewLabel": "نمای دانش",
   "viewTask": "مشاهده وظیفه",
   "websiteCrawl": "خزیدن وب سایت",

@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Add files from your computer — they're indexed as soon as you create the Agent Knowledge Base.",
   "uploadingFiles": "Uploading…",
   "usingDefaults": "Using defaults",
+  "view.agent": "Agent",
+  "view.classic": "Classic",
   "viewLabel": "Knowledge view",
   "viewTask": "View task",
   "websiteCrawl": "Website crawl",

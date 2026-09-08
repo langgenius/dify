@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Dodaj pliki z komputera — zostaną zindeksowane od razu po utworzeniu bazy wiedzy Agent.",
   "uploadingFiles": "Przesyłanie…",
   "usingDefaults": "Używane są ustawienia domyślne",
+  "view.agent": "Agent",
+  "view.classic": "Klasyczna",
   "viewLabel": "Widok wiedzy",
   "viewTask": "Wyświetl zadanie",
   "websiteCrawl": "Indeksowanie witryny",

@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Bilgisayarınızdan dosya ekleyin; Agent bilgi tabanını oluşturduğunuz anda dizine eklenir.",
   "uploadingFiles": "Yükleniyor…",
   "usingDefaults": "Varsayılanlar kullanılıyor",
+  "view.agent": "Agent",
+  "view.classic": "Klasik",
   "viewLabel": "Bilgi görünümü",
   "viewTask": "Görevi görüntüle",
   "websiteCrawl": "Web sitesi taraması",

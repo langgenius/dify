@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Thêm tệp từ máy tính — chúng sẽ được lập chỉ mục ngay khi bạn tạo cơ sở tri thức Agent.",
   "uploadingFiles": "Đang tải lên…",
   "usingDefaults": "Đang dùng giá trị mặc định",
+  "view.agent": "Agent",
+  "view.classic": "Truyền thống",
   "viewLabel": "Chế độ xem kiến thức",
   "viewTask": "Xem tác vụ",
   "websiteCrawl": "Thu thập thông tin trang web",

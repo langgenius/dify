@@ -728,6 +728,8 @@
   "uploadFilesDescription": "컴퓨터에서 파일을 추가하면 Agent 지식 베이스 생성 즉시 인덱싱됩니다.",
   "uploadingFiles": "업로드 중…",
   "usingDefaults": "기본값 사용 중",
+  "view.agent": "Agent",
+  "view.classic": "클래식",
   "viewLabel": "지식 보기",
   "viewTask": "작업 보기",
   "websiteCrawl": "웹사이트 크롤링",

@@ -327,14 +327,16 @@ describe('List', () => {
 
       renderWithNuqs(<List />)
 
-      expect(screen.getByRole('radio', { name: 'knowledgeSpace.legacy' })).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' })).toBeInTheDocument()
     })
 
     it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
-      expect(screen.queryByRole('radio', { name: 'knowledgeSpace.new' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('radio', { name: 'knowledgeSpace.view.agent' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'knowledgeSpace.new' })).not.toBeInTheDocument()
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
       expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
@@ -349,7 +351,7 @@ describe('List', () => {
       mockConsoleState.knowledgeFsEnabled = true
       const { onUrlUpdate } = renderWithNuqs(<List />)
 
-      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.new' }))
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' }))
 
       expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
@@ -365,13 +367,13 @@ describe('List', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.new' }))
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' }))
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.legacy' }))
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' }))
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
 
@@ -381,7 +383,7 @@ describe('List', () => {
       renderWithNuqs(<List />, { searchParams: '?view=new' })
 
       expect(screen.getByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: 'knowledgeSpace.new' })).toHaveAttribute(
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' })).toHaveAttribute(
         'aria-checked',
         'true',
       )

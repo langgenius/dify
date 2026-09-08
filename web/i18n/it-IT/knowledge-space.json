@@ -728,6 +728,8 @@
   "uploadFilesDescription": "Aggiungi file dal computer: verranno indicizzati non appena crei la base di conoscenza Agent.",
   "uploadingFiles": "Caricamento…",
   "usingDefaults": "Impostazioni predefinite in uso",
+  "view.agent": "Agent",
+  "view.classic": "Classica",
   "viewLabel": "Vista conoscenza",
   "viewTask": "Visualizza attività",
   "websiteCrawl": "Scansione del sito web",
