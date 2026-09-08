@@ -4671,6 +4671,7 @@ export type PostAppsByAppIdSiteData = {
 export type PostAppsByAppIdSiteErrors = {
   403: unknown
   404: unknown
+  409: unknown
 }
 
 export type PostAppsByAppIdSiteResponses = {
@@ -6381,6 +6382,10 @@ export type PostAppsByAppIdWorkflowsPublishData = {
   }
   query?: never
   url: '/apps/{app_id}/workflows/publish'
+}
+
+export type PostAppsByAppIdWorkflowsPublishErrors = {
+  409: unknown
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponses = {

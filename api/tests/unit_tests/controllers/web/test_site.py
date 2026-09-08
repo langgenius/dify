@@ -5,8 +5,13 @@ import pytest
 from werkzeug.exceptions import Forbidden
 
 from controllers.web import site as site_module
+from controllers.web.error import SiteConfigurationInvalidError
 from services.app_definition_query_service import AppSiteConfiguration
-from services.web_app_runtime_query_service import WebAppBootstrap, WebAppRuntimeUnavailableError
+from services.web_app_runtime_query_service import (
+    WebAppBootstrap,
+    WebAppRuntimeAssetUnavailableError,
+    WebAppRuntimeUnavailableError,
+)
 
 
 def _bootstrap() -> WebAppBootstrap:
@@ -78,5 +83,20 @@ def test_app_site_api_maps_unavailable_runtime_to_forbidden() -> None:
             return_value=SimpleNamespace(web_app_runtime=web_app_runtime),
         ),
         pytest.raises(Forbidden),
+    ):
+        site_module.AppSiteApi().get(MagicMock(id="app-id"), MagicMock(id="end-user-id"))
+
+
+def test_app_site_api_maps_unavailable_icon_to_configuration_error() -> None:
+    web_app_runtime = MagicMock()
+    web_app_runtime.get_bootstrap.side_effect = WebAppRuntimeAssetUnavailableError
+
+    with (
+        patch.object(
+            site_module,
+            "application_services",
+            return_value=SimpleNamespace(web_app_runtime=web_app_runtime),
+        ),
+        pytest.raises(SiteConfigurationInvalidError),
     ):
         site_module.AppSiteApi().get(MagicMock(id="app-id"), MagicMock(id="end-user-id"))

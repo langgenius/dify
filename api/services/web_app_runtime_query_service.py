@@ -1,13 +1,17 @@
 """Application service for building the public Web app runtime bootstrap."""
 
 import json
+import logging
 from collections.abc import Callable, Mapping
 from typing import NamedTuple, Protocol, cast
 
 from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
+from services.errors.file import FileNotExistsError
 from services.file_service import FileService
+
+logger = logging.getLogger(__name__)
 
 
 class WebAppRuntimeRecord(NamedTuple):
@@ -40,6 +44,10 @@ class WebAppRuntimeUnavailableError(ValueError):
     """Raised when the admitted Web app can no longer be bootstrapped."""
 
 
+class WebAppRuntimeAssetUnavailableError(ValueError):
+    """Raised when an optional site asset has an invalid persisted reference."""
+
+
 _ARCHIVED_TENANT_STATUS = "archive"
 
 
@@ -65,11 +73,20 @@ class WebAppRuntimeQueryService:
             raise WebAppRuntimeUnavailableError("Site not found")
 
         features = self._workspace_features(record.tenant_id)
-        site_icon_url = (
-            self._file_service.get_icon_url(record.site.icon, record.tenant_id)
-            if record.site.icon_type == "image" and record.site.icon
-            else None
-        )
+        try:
+            site_icon_url = (
+                self._file_service.get_icon_url(record.site.icon, record.tenant_id)
+                if record.site.icon_type == "image" and record.site.icon
+                else None
+            )
+        except FileNotExistsError as exc:
+            logger.warning(
+                "Web app site icon is unavailable: app_id=%s tenant_id=%s file_id=%s",
+                record.app_id,
+                record.tenant_id,
+                record.site.icon,
+            )
+            raise WebAppRuntimeAssetUnavailableError("Site icon is unavailable") from exc
 
         site = cast(dict[str, str | bool | None], record.site._asdict())
         site["icon_url"] = site_icon_url

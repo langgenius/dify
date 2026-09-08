@@ -8,7 +8,7 @@ from constants.languages import supported_language
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, SiteConfigurationInvalidError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -25,6 +25,7 @@ from services.app_site_service import (
     AppSiteNotFoundError,
     AppSiteTokenStrategy,
 )
+from services.site_configuration_service import SiteConfigurationError
 
 _APP_SITE_EDIT_ROLES = frozenset(
     {
@@ -103,6 +104,7 @@ class AppSite(Resource):
     @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")
+    @console_ns.response(409, "Site configuration invalid")
     @console_account_admission(
         allowed_roles=_APP_SITE_EDIT_ROLES,
         rbac_checks=[
@@ -123,6 +125,8 @@ class AppSite(Resource):
             raise AppNotFoundError() from error
         except AppSiteNotFoundError as error:
             raise NotFound from error
+        except SiteConfigurationError as exc:
+            raise SiteConfigurationInvalidError(description=str(exc)) from None
 
         return dump_response(AppSiteResponse, site)
 

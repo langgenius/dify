@@ -15,7 +15,12 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import Account, EndUser, UploadFile
-from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from services.errors.file import (
+    BlockedFileExtensionError,
+    FileNotExistsError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
 from services.file_service import FileService
 
 
@@ -327,6 +332,16 @@ class TestFileService:
 
         assert result == "direct-url"
         get_presigned_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
+
+    def test_get_icon_url_maps_missing_cloud_file_to_service_error(
+        self, file_service: FileService, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, STORAGE_TYPE=StorageType.S3)
+        with (
+            patch.object(file_service, "get_file_presigned_url", side_effect=NotFound("File not found")),
+            pytest.raises(FileNotExistsError, match="File reference not found"),
+        ):
+            file_service.get_icon_url("file_id", "tenant_id")
 
     @pytest.mark.parametrize(
         ("deployment_edition", "storage_type"),

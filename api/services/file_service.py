@@ -30,7 +30,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -195,7 +195,10 @@ class FileService:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
             StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
         ):
-            return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+            try:
+                return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+            except NotFound as exc:
+                raise FileNotExistsError("File reference not found") from exc
         return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
