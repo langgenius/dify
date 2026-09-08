@@ -251,6 +251,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             transform: 'translate(-50%, -50%)',
           }}
           data-role="comment-marker"
+          id={`workflow-comment-marker-${comment.id}`}
           {...pointerEventHandlers}
           onClick={(event) => {
             if (event.detail === 0 && !isActive) {

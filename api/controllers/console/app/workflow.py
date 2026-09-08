@@ -77,7 +77,10 @@ from factories import file_factory, variable_factory
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
-from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
+from fields.workflow_run_fields import (
+    WorkflowRunNodeExecutionResponse,
+    node_execution_response_source,
+)
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
@@ -1260,7 +1263,7 @@ class DraftWorkflowNodeRunApi(Resource):
         )
 
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
 
 
@@ -1680,7 +1683,9 @@ class DraftWorkflowNodeLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            node_execution_response_source(node_exec, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")

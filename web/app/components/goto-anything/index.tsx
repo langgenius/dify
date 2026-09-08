@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
   return rows
 }
 
-function GotoAnythingDialog() {
+export function GotoAnything() {
   const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
@@ -379,8 +379,8 @@ function GotoAnythingDialog() {
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
-  function resetSearch() {
-    setSearchQuery('')
+  function handleDialogOpenChangeComplete(open: boolean) {
+    if (!open) setSearchQuery('')
   }
 
   useHotkey(
@@ -430,13 +430,6 @@ function GotoAnythingDialog() {
       default:
         if (result.path) router.push(result.path)
     }
-  }
-
-  function handleAutocompleteOpenChange(
-    nextOpen: boolean,
-    eventDetails: AutocompleteChangeEventDetails,
-  ) {
-    if (!nextOpen && eventDetails.reason === 'escape-key') gotoAnythingDialogHandle.close()
   }
 
   function handleAutocompleteValueChange(
@@ -500,7 +493,10 @@ function GotoAnythingDialog() {
   return (
     <>
       <SlashCommandProvider />
-      <Dialog handle={gotoAnythingDialogHandle} onOpenChange={resetSearch}>
+      <Dialog
+        handle={gotoAnythingDialogHandle}
+        onOpenChangeComplete={handleDialogOpenChangeComplete}
+      >
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
@@ -522,7 +518,6 @@ function GotoAnythingDialog() {
               items={visibleOptions}
               value={searchQuery}
               onValueChange={handleAutocompleteValueChange}
-              onOpenChange={handleAutocompleteOpenChange}
               itemToStringValue={optionToInputValue}
               filter={null}
               grid={isCommandsMode}
@@ -708,8 +703,4 @@ function GotoAnythingDialog() {
       )}
     </>
   )
-}
-
-export function GotoAnything() {
-  return <GotoAnythingDialog />
 }
