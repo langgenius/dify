@@ -5,8 +5,9 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import NamedTuple, Protocol, cast
 
-from enums import DeploymentEdition
 from werkzeug.exceptions import NotFound
+
+from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
 from services.file_service import FileService
