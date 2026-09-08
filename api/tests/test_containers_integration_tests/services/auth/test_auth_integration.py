@@ -12,14 +12,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.source import DataSourceApiKeyAuthBinding
-from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
+from repositories.data_source.api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.auth.errors import DataSourceApiKeyAuthProviderUnavailableError
-from services.entities.data_source_api_key_auth_entities import (
+from services.entities.data_source.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthCredentials,
 )

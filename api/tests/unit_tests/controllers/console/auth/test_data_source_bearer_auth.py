@@ -30,7 +30,7 @@ from services.auth.errors import (
     InvalidDataSourceApiKeyAuthCredentialsError,
     UnsupportedDataSourceApiKeyAuthProviderError,
 )
-from services.entities.data_source_api_key_auth_entities import (
+from services.entities.data_source.api_key_auth import (
     DataSourceApiKeyAuthBindingCreate,
     DataSourceApiKeyAuthBindingRecord,
     DataSourceApiKeyAuthCredentials,

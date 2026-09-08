@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
 from services.data_source.binding_application_service import BindingMutationResult, DataSourceBindingStore
-from services.data_source_oauth_service import DataSourceOAuthBindingRepository
-from services.entities.data_source_oauth_entities import (
+from services.data_source.oauth_service import DataSourceOAuthBindingRepository
+from services.entities.data_source.oauth import (
     DataSourceBindingSummary,
     DataSourceOAuthAuthorization,
     DataSourceOAuthBindingRecord,

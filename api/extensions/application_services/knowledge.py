@@ -6,6 +6,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from libs.helper import generate_text_hash
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
@@ -18,6 +19,7 @@ from services.data_source.credential_gateway import (
 )
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.document_sync import DocumentSyncApplicationService
+from services.knowledge.document_sync_adapters import CeleryDocumentSyncDispatcher
 from services.knowledge.indexing.adapters.estimate import IndexingRunnerEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
@@ -27,6 +29,7 @@ from services.knowledge.indexing.adapters.sources import (
 )
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.adapters import (
+    CelerySegmentBatchImportDispatcher,
     ModelManagerSegmentGuard,
     RedisSegmentClient,
     RedisSegmentIndexingState,
@@ -45,6 +48,7 @@ class KnowledgeServices:
     document_sync: DocumentSyncApplicationService
     indexing_estimates: IndexingEstimateApplicationService
     segments: DatasetSegmentApplicationService
+    pipeline_generator: PipelineGenerator
 
 
 def build_knowledge_services(
@@ -84,10 +88,11 @@ def build_knowledge_services(
         disable_task=disable_segments_from_index_task.delay,
     )
     return KnowledgeServices(
+        pipeline_generator=PipelineGenerator(documents=documents),
         document_sync=DocumentSyncApplicationService(
             dataset_access=dataset_access,
             documents=documents,
-            dispatcher=document_indexing_sync_task.delay,
+            dispatcher=CeleryDocumentSyncDispatcher(delay=document_indexing_sync_task.delay),
         ),
         indexing_estimates=IndexingEstimateApplicationService(
             dataset_access=dataset_access,
@@ -110,7 +115,7 @@ def build_knowledge_services(
             uploads=uploads,
             model_guard=ModelManagerSegmentGuard(),
             indexing_state=RedisSegmentIndexingState(redis),
-            batch_dispatcher=batch_create_segment_to_index_task.delay,
+            batch_dispatcher=CelerySegmentBatchImportDispatcher(delay=batch_create_segment_to_index_task.delay),
             job_id_factory=lambda: str(uuid4()),
         ),
     )

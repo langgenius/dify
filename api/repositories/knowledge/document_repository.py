@@ -4,10 +4,11 @@ import json
 from collections.abc import Mapping
 
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import select
+from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.dataset import Document
+from models.enums import IndexingStatus
 from services.knowledge.document_sync import SyncDocumentRecord
 from services.knowledge.indexing.estimate import EstimateDocumentRecord
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
@@ -58,6 +59,32 @@ class SQLAlchemyDocumentRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def exists(self, *, workspace_id: str, dataset_id: str, document_id: str) -> bool:
+        with self._session_factory() as session:
+            return bool(
+                session.scalar(
+                    select(
+                        exists().where(
+                            Document.tenant_id == workspace_id,
+                            Document.dataset_id == dataset_id,
+                            Document.id == document_id,
+                        )
+                    )
+                )
+            )
+
+    def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None:
+        with self._session_factory.begin() as session:
+            session.execute(
+                update(Document)
+                .where(
+                    Document.tenant_id == workspace_id,
+                    Document.dataset_id == dataset_id,
+                    Document.id == document_id,
+                )
+                .values(indexing_status=IndexingStatus.ERROR, error=error)
+            )
 
     def get_estimate_document(self, document_ref: DocumentRef) -> EstimateDocumentRecord | None:
         with self._session_factory() as session:

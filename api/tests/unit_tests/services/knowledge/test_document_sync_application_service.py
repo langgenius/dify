@@ -1,77 +1,147 @@
-from unittest.mock import Mock, call, create_autospec
+from dataclasses import dataclass, field
 
 import pytest
 
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccessDeniedError
 from services.knowledge.document_sync import (
     DocumentSyncApplicationService,
-    DocumentSyncReader,
     SyncDocumentNotFoundError,
     SyncDocumentRecord,
     SyncDocumentSourceError,
 )
-from services.knowledge.resource_scope import DatasetRef
-
-CONTEXT = RequestContext("request-1", None, "account-1", "workspace-1")
-DATASET = DatasetRef("workspace-1", "dataset-1")
-type ServiceFixture = tuple[DocumentSyncApplicationService, Mock, Mock, Mock]
+from services.knowledge.document_sync_adapters import CeleryDocumentSyncDispatcher
+from services.knowledge.resource_scope import DatasetRef, DocumentRef
 
 
-@pytest.fixture
-def fixture() -> ServiceFixture:
-    access = create_autospec(DatasetAccess, instance=True, spec_set=True)
-    access.require_accessible.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
-    documents = create_autospec(DocumentSyncReader, instance=True, spec_set=True)
-    documents.get_sync_document.return_value = SyncDocumentRecord("document-1", "notion_import")
-    dispatcher = Mock()
-    service = DocumentSyncApplicationService(dataset_access=access, documents=documents, dispatcher=dispatcher)
-    return service, access, documents, dispatcher
+def _context() -> RequestContext:
+    return RequestContext("request-1", None, "account-1", "workspace-1")
 
 
-def test_sync_dataset_dispatches_snapshot_after_tenant_scoped_read(fixture: ServiceFixture) -> None:
-    service, access, documents, dispatcher = fixture
-    documents.list_active_notion_refs.return_value = (DATASET.document("document-1"), DATASET.document("document-2"))
-
-    assert service.sync_dataset(CONTEXT, "dataset-1") == 2
-
-    access.require_accessible.assert_called_once_with(CONTEXT, "dataset-1")
-    documents.list_active_notion_refs.assert_called_once_with(DATASET)
-    assert dispatcher.call_args_list == [call("dataset-1", "document-1"), call("dataset-1", "document-2")]
+def _dataset() -> AccessibleDataset:
+    return AccessibleDataset(
+        id="dataset-1",
+        workspace_id="workspace-1",
+    )
 
 
-def test_sync_document_validates_owner_chain_and_source_before_dispatch(fixture: ServiceFixture) -> None:
-    service, access, documents, dispatcher = fixture
+def _document(*, data_source_type: str = "notion_import") -> SyncDocumentRecord:
+    return SyncDocumentRecord(
+        id="document-1",
+        data_source_type=data_source_type,
+    )
 
-    service.sync_document(CONTEXT, "dataset-1", "document-1")
 
-    access.require_accessible.assert_called_once_with(CONTEXT, "dataset-1")
-    documents.get_sync_document.assert_called_once_with(DATASET.document("document-1"))
-    dispatcher.assert_called_once_with("dataset-1", "document-1")
+@dataclass
+class DatasetAccessStub:
+    error: Exception | None = None
+    calls: list[str] = field(default_factory=list)
+
+    def require_accessible(self, context: RequestContext, dataset_id: str) -> AccessibleDataset:
+        assert context == _context()
+        self.calls.append(dataset_id)
+        if self.error is not None:
+            raise self.error
+        return _dataset()
+
+
+@dataclass
+class DocumentReaderStub:
+    document: SyncDocumentRecord | None = field(default_factory=_document)
+    active_refs: tuple[DocumentRef, ...] = ()
+    list_calls: list[DatasetRef] = field(default_factory=list)
+    get_calls: list[DocumentRef] = field(default_factory=list)
+
+    def list_active_notion_refs(self, dataset_ref: DatasetRef) -> tuple[DocumentRef, ...]:
+        self.list_calls.append(dataset_ref)
+        return self.active_refs
+
+    def get_sync_document(self, document_ref: DocumentRef) -> SyncDocumentRecord | None:
+        self.get_calls.append(document_ref)
+        return self.document
+
+
+@dataclass
+class DispatcherRecorder:
+    calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def dispatch(self, *, dataset_id: str, document_id: str) -> None:
+        self.calls.append((dataset_id, document_id))
+
+
+def test_celery_dispatcher_forwards_owned_identifiers_to_injected_delay() -> None:
+    calls: list[tuple[str, str]] = []
+    dispatcher = CeleryDocumentSyncDispatcher(
+        delay=lambda dataset_id, document_id: calls.append((dataset_id, document_id))
+    )
+
+    dispatcher.dispatch(dataset_id="dataset-1", document_id="document-1")
+
+    assert calls == [("dataset-1", "document-1")]
+
+
+def test_sync_dataset_dispatches_snapshot_after_tenant_scoped_read() -> None:
+    dataset_ref = DatasetRef("workspace-1", "dataset-1")
+    documents = DocumentReaderStub(active_refs=(dataset_ref.document("document-1"), dataset_ref.document("document-2")))
+    dispatcher = DispatcherRecorder()
+    service = DocumentSyncApplicationService(
+        dataset_access=DatasetAccessStub(), documents=documents, dispatcher=dispatcher
+    )
+
+    count = service.sync_dataset(_context(), "dataset-1")
+
+    assert count == 2
+    assert documents.list_calls == [dataset_ref]
+    assert dispatcher.calls == [("dataset-1", "document-1"), ("dataset-1", "document-2")]
+
+
+def test_sync_document_validates_owner_chain_and_source_before_dispatch() -> None:
+    documents = DocumentReaderStub()
+    dispatcher = DispatcherRecorder()
+    service = DocumentSyncApplicationService(
+        dataset_access=DatasetAccessStub(), documents=documents, dispatcher=dispatcher
+    )
+
+    service.sync_document(_context(), "dataset-1", "document-1")
+
+    assert documents.get_calls == [DatasetRef("workspace-1", "dataset-1").document("document-1")]
+    assert dispatcher.calls == [("dataset-1", "document-1")]
 
 
 @pytest.mark.parametrize(
     ("document", "error"),
-    [(None, SyncDocumentNotFoundError), (SyncDocumentRecord("document-1", "upload_file"), SyncDocumentSourceError)],
+    [
+        (None, SyncDocumentNotFoundError),
+        (_document(data_source_type="upload_file"), SyncDocumentSourceError),
+    ],
 )
 def test_sync_document_rejects_invalid_document_before_dispatch(
-    fixture: ServiceFixture, document: SyncDocumentRecord | None, error: type[Exception]
+    document: SyncDocumentRecord | None, error: type[Exception]
 ) -> None:
-    service, _, documents, dispatcher = fixture
-    documents.get_sync_document.return_value = document
+    dispatcher = DispatcherRecorder()
+    service = DocumentSyncApplicationService(
+        dataset_access=DatasetAccessStub(),
+        documents=DocumentReaderStub(document=document),
+        dispatcher=dispatcher,
+    )
 
     with pytest.raises(error):
-        service.sync_document(CONTEXT, "dataset-1", "document-1")
+        service.sync_document(_context(), "dataset-1", "document-1")
 
-    dispatcher.assert_not_called()
+    assert dispatcher.calls == []
 
 
-def test_sync_stops_before_document_read_and_dispatch_when_dataset_access_is_denied(fixture: ServiceFixture) -> None:
-    service, access, documents, dispatcher = fixture
-    access.require_accessible.side_effect = DatasetAccessDeniedError()
+def test_sync_stops_before_document_read_and_dispatch_when_dataset_access_is_denied() -> None:
+    documents = DocumentReaderStub()
+    dispatcher = DispatcherRecorder()
+    service = DocumentSyncApplicationService(
+        dataset_access=DatasetAccessStub(error=DatasetAccessDeniedError()),
+        documents=documents,
+        dispatcher=dispatcher,
+    )
 
     with pytest.raises(DatasetAccessDeniedError):
-        service.sync_document(CONTEXT, "dataset-1", "document-1")
+        service.sync_document(_context(), "dataset-1", "document-1")
 
-    documents.get_sync_document.assert_not_called()
-    dispatcher.assert_not_called()
+    assert documents.get_calls == []
+    assert dispatcher.calls == []

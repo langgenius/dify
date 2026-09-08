@@ -23,13 +23,13 @@ from fields.base import ResponseModel
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.data_source_oauth_service import (
+from services.data_source.oauth_service import (
     DataSourceOAuthConfigurationError,
     DataSourceOAuthError,
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
+from services.entities.data_source.oauth import DataSourceOAuthCallback
 
 from .. import console_ns
 

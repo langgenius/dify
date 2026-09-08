@@ -111,7 +111,11 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     if dataset.runtime_mode == "rag_pipeline":
                         with session_factory.create_session() as rag_session:
                             rag_pipeline_service = RagPipelineService(rag_session)
-                            rag_pipeline_service.retry_error_document(dataset, document, user)
+                            from extensions.ext_application_services import application_services
+
+                            rag_pipeline_service.retry_error_document(
+                                dataset, document, user, generator=application_services().knowledge.pipeline_generator
+                            )
                     else:
                         indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
                         indexing_runner.run([document], session)

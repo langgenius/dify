@@ -25,6 +25,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset, Pipeline
 from models.engine import db
@@ -387,6 +388,7 @@ def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_eng
 def test_rag_pipeline_run_uses_sqlite_session(
     app: Flask,
     sqlite_engine: Engine,
+    pipeline_application: PipelineGenerator,
     api_type: type,
     payload: dict[str, object],
 ) -> None:
@@ -411,6 +413,7 @@ def test_rag_pipeline_run_uses_sqlite_session(
     assert response == {"ok": True}
     load_pipeline.assert_called_once_with(session, pipeline.id)
     assert generate.call_args.kwargs["session"] is session
+    assert generate.call_args.kwargs["generator"] is pipeline_application
     assert session.get_bind() is sqlite_engine
 
 
@@ -418,6 +421,7 @@ def test_rag_pipeline_run_uses_sqlite_session(
 def test_rag_pipeline_run_translates_rate_limit(
     app: Flask,
     sqlite_engine: Engine,
+    pipeline_application: PipelineGenerator,
     api_type: type,
 ) -> None:
     payload: dict[str, object] = {
@@ -445,3 +449,4 @@ def test_rag_pipeline_run_translates_rate_limit(
         handler(api, req_data, session, _account(), pipeline.id)
 
     assert generate.call_args.kwargs["session"] is session
+    assert generate.call_args.kwargs["generator"] is pipeline_application

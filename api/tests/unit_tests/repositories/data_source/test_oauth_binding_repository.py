@@ -2,8 +2,8 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.source import DataSourceOauthBinding
-from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
-from services.entities.data_source_oauth_entities import DataSourceOAuthAuthorization
+from repositories.data_source.oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
+from services.entities.data_source.oauth import DataSourceOAuthAuthorization
 
 
 def test_upsert_authorization_inserts_and_reenables_existing_binding(

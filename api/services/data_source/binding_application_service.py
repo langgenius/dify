@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Literal, Protocol
 
 from machinery.context import RequestContext
-from services.entities.data_source_oauth_entities import DataSourceBindingSummary
+from services.entities.data_source.oauth import DataSourceBindingSummary
 
 type BindingMutationResult = Literal["updated", "not_found", "already_enabled", "already_disabled"]
 type BindingAction = Literal["enable", "disable"]

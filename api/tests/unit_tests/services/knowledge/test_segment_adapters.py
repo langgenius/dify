@@ -27,7 +27,6 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from libs.helper import generate_text_hash
 from libs.pagination import PaginatedResult
 from machinery.context import RequestContext
-from models import dataset as dataset_module
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from models.model import UploadFile
@@ -40,6 +39,7 @@ from services.entities.knowledge_entities.segments import ChildChunkUpdateArgs, 
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.segments.adapters import (
+    CelerySegmentBatchImportDispatcher,
     ModelManagerSegmentGuard,
     RedisSegmentIndexingState,
 )
@@ -59,6 +59,25 @@ from services.knowledge.segments.application import (
 @dataclass
 class SegmentLimitsStub:
     SINGLE_CHUNK_ATTACHMENT_LIMIT: int = 10
+
+
+def test_celery_dispatcher_preserves_task_argument_order() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def delay(*args: str) -> None:
+        calls.append(args)
+
+    dispatcher = CelerySegmentBatchImportDispatcher(delay=delay)
+    dispatcher.dispatch(
+        job_id="job-1",
+        upload_file_id="file-1",
+        dataset_id="dataset-1",
+        document_id="document-1",
+        workspace_id="workspace-1",
+        actor_id="account-1",
+    )
+
+    assert calls == [("job-1", "file-1", "dataset-1", "document-1", "workspace-1", "account-1")]
 
 
 def _dataset(dataset_id: str, workspace_id: str, *, permission: str = "partial_members") -> Dataset:
@@ -1066,7 +1085,6 @@ def test_economy_index_shares_persistence_with_existing_keyword_calls(
 
     session_storage = SessionFileStorage()
     monkeypatch.setattr(table_module, "storage", session_storage)
-    monkeypatch.setattr(dataset_module, "storage", session_storage)
     monkeypatch.setattr(jieba_module, "redis_client", IndexRedisStub())
     with sqlite_session_factory() as session:
         dataset = session.get(Dataset, "dataset-1")

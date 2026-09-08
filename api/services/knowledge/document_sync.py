@@ -21,7 +21,7 @@ class DocumentSyncReader(Protocol):
 
 
 class DocumentSyncDispatcher(Protocol):
-    def __call__(self, dataset_id: str, document_id: str, /) -> object: ...
+    def dispatch(self, *, dataset_id: str, document_id: str) -> None: ...
 
 
 class DocumentSyncError(Exception):
@@ -57,7 +57,7 @@ class DocumentSyncApplicationService:
         dataset_ref = DatasetRef(dataset.workspace_id, dataset.id)
         document_refs = self._documents.list_active_notion_refs(dataset_ref)
         for document_ref in document_refs:
-            self._dispatcher(dataset_ref.dataset_id, document_ref.document_id)
+            self._dispatcher.dispatch(dataset_id=dataset_ref.dataset_id, document_id=document_ref.document_id)
         return len(document_refs)
 
     def sync_document(self, context: RequestContext, dataset_id: str, document_id: str) -> None:
@@ -68,4 +68,4 @@ class DocumentSyncApplicationService:
             raise SyncDocumentNotFoundError()
         if document.data_source_type != "notion_import":
             raise SyncDocumentSourceError()
-        self._dispatcher(dataset.id, document.id)
+        self._dispatcher.dispatch(dataset_id=dataset.id, document_id=document.id)

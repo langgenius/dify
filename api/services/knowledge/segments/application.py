@@ -201,16 +201,16 @@ class SegmentIndexingState(Protocol):
 
 
 class SegmentBatchImportDispatcher(Protocol):
-    def __call__(
+    def dispatch(
         self,
+        *,
         job_id: str,
         upload_file_id: str,
         dataset_id: str,
         document_id: str,
         workspace_id: str,
         actor_id: str,
-        /,
-    ) -> object: ...
+    ) -> None: ...
 
 
 class SegmentApplicationError(Exception):
@@ -444,13 +444,13 @@ class DatasetSegmentApplicationService:
         job_id = self._job_id_factory()
         try:
             self._indexing_state.set_batch_waiting(job_id)
-            self._batch_dispatcher(
-                job_id,
-                upload_file_id,
-                scope.dataset.id,
-                scope.document.id,
-                scope.dataset.workspace_id,
-                context.account_id,
+            self._batch_dispatcher.dispatch(
+                job_id=job_id,
+                upload_file_id=upload_file_id,
+                dataset_id=scope.dataset.id,
+                document_id=scope.document.id,
+                workspace_id=scope.dataset.workspace_id,
+                actor_id=context.account_id,
             )
         except Exception as error:
             raise SegmentBatchImportDispatchError(str(error)) from error

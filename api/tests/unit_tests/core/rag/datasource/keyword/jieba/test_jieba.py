@@ -10,7 +10,6 @@ from core.rag.datasource.keyword.jieba import jieba as jieba_module
 from core.rag.datasource.keyword.jieba import keyword_table as table_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.models.document import Document
-from models import dataset as dataset_module
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -86,7 +85,6 @@ def runtime(request: pytest.FixtureRequest, sqlite_session: Session, monkeypatch
     monkeypatch.setattr(jieba_module, "redis_client", locks)
     monkeypatch.setattr(jieba_module, "storage", storage)
     monkeypatch.setattr(table_module, "storage", storage)
-    monkeypatch.setattr(dataset_module, "storage", storage)
     apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=request.param)
     dataset = Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author", keyword_number=2)
     sqlite_session.add(dataset)

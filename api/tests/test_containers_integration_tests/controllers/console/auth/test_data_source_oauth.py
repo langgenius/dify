@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from extensions.ext_application_services import ApplicationServices
 from models.source import DataSourceOauthBinding
-from services.data_source_oauth_service import InvalidDataSourceOAuthProviderError
-from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
+from services.data_source.oauth_service import InvalidDataSourceOAuthProviderError
+from services.entities.data_source.oauth import DataSourceOAuthCallback
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,

@@ -10,9 +10,9 @@ from core.datasource.datasource_manager import DatasourceManager
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
+from repositories.data_source.api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
-from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
-from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
+from repositories.data_source.oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.auth.data_source_api_key_auth_gateways import (
@@ -21,16 +21,20 @@ from services.auth.data_source_api_key_auth_gateways import (
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.data_source.binding_application_service import DataSourceBindingApplicationService
-from services.data_source.credential_adapters import OAuthDatasourceCredentialRefresher, PluginDatasourceCredentialCodec
+from services.data_source.credential_adapters import (
+    OAuthDatasourceCredentialRefresher,
+    PluginDatasourceCredentialCodec,
+    PluginDatasourceOAuthClientResolver,
+)
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
 )
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportApplicationService
-from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
+from services.data_source.notion_oauth_gateway import NotionDataSourceGateway
+from services.data_source.oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.knowledge.dataset_access import DatasetAccessService
-from services.notion_data_source_gateway import NotionDataSourceGateway
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,8 +62,7 @@ def build_data_source_credentials(*, database_client: sessionmaker[Session]) -> 
     provider_manager = PluginDatasourceManager()
     codec = PluginDatasourceCredentialCodec(provider_manager=provider_manager)
     refresher = OAuthDatasourceCredentialRefresher(
-        configs=credentials,
-        provider_manager=provider_manager,
+        oauth_clients=PluginDatasourceOAuthClientResolver(configs=credentials, provider_manager=provider_manager),
         oauth_handler=OAuthHandler(),
     )
     return DataSourceCredentials(

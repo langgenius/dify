@@ -53,7 +53,6 @@ ignore_imports =
     core.app.apps.pipeline.pipeline_generator -> services.datasource_provider_service
     core.app.apps.pipeline.pipeline_generator -> services.feature_service
     core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
-    core.app.apps.pipeline.pipeline_runner -> services.dataset_ref_service
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
@@ -244,6 +243,16 @@ forbidden_modules =
     services.credential_permission_service
 allow_indirect_imports = True
 
+[importlinter:contract:dataset-ref-service-boundary]
+name = Dataset reference helpers do not own persistence
+type = forbidden
+source_modules =
+    services.dataset_ref_service
+forbidden_modules =
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:credential-permission-query-policy-boundary]
 name = Credential permission service delegates its persistence policy
 type = forbidden
@@ -252,6 +261,16 @@ source_modules =
 forbidden_modules =
     models.credential_permission
     models.enums
+allow_indirect_imports = True
+
+[importlinter:contract:pipeline-document-lookup-boundary]
+name = Pipeline core depends on its document store port
+type = forbidden
+source_modules =
+    core.app.apps.pipeline.pipeline_generator
+    core.app.apps.pipeline.pipeline_runner
+forbidden_modules =
+    repositories
 allow_indirect_imports = True
 
 [importlinter:contract:init-validation-service-boundary]
@@ -400,7 +419,7 @@ forbidden_modules =
 name = Data source OAuth application service is framework and persistence neutral
 type = forbidden
 source_modules =
-    services.data_source_oauth_service
+    services.data_source.oauth_service
 forbidden_modules =
     configs
     controllers

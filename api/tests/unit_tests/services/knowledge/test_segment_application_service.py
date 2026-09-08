@@ -319,7 +319,7 @@ def test_batch_import_validates_tenant_scoped_upload(filename: str | None, expec
 
     assert uploads.get_file_name.call_args.kwargs["workspace_id"] == "workspace-1"
     state.set_batch_waiting.assert_not_called()
-    dispatcher.assert_not_called()
+    dispatcher.dispatch.assert_not_called()
 
 
 def test_batch_import_records_status_before_dispatch() -> None:
@@ -328,7 +328,7 @@ def test_batch_import_records_status_before_dispatch() -> None:
     service, _, store, scopes, _, state, dispatcher = _service(uploads=uploads)
     calls: list[str] = []
     state.set_batch_waiting.side_effect = lambda _job_id: calls.append("status")
-    dispatcher.side_effect = lambda *_args: calls.append("dispatch")
+    dispatcher.dispatch.side_effect = lambda **_kwargs: calls.append("dispatch")
 
     result = service.start_batch_import(
         _context(),
@@ -339,15 +339,21 @@ def test_batch_import_records_status_before_dispatch() -> None:
 
     assert result.job_id == "job-1"
     assert calls == ["status", "dispatch"]
-    dispatcher.assert_called_once()
-    assert dispatcher.call_args.args == ("job-1", "file-1", "dataset-1", "document-1", "workspace-1", "account-1")
+    dispatcher.dispatch.assert_called_once_with(
+        job_id="job-1",
+        upload_file_id="file-1",
+        dataset_id="dataset-1",
+        document_id="document-1",
+        workspace_id="workspace-1",
+        actor_id="account-1",
+    )
 
 
 def test_batch_import_translates_dispatch_failure() -> None:
     uploads = create_autospec(SegmentUploadCatalog, instance=True, spec_set=True)
     uploads.get_file_name.return_value = "segments.csv"
     service, _, store, scopes, _, _, dispatcher = _service(uploads=uploads)
-    dispatcher.side_effect = RuntimeError("queue down")
+    dispatcher.dispatch.side_effect = RuntimeError("queue down")
 
     with pytest.raises(SegmentBatchImportDispatchError, match="queue down"):
         service.start_batch_import(

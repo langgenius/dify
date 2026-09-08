@@ -567,17 +567,15 @@ class TestDocumentResource:
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
             ) as check_permission,
             patch(
-                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
-                return_value=document,
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[document],
             ) as get_document,
         ):
             assert api.get_document(session, "ds-1", "doc-1", user, "tenant-1") is document
 
         get_dataset.assert_called_once_with("ds-1", "tenant-1", session=session)
         check_permission.assert_called_once_with(dataset, user, session)
-        get_document.assert_called_once_with(
-            DatasetRef(tenant_id="tenant-1", dataset_id="ds-1").document("doc-1"), session=session
-        )
+        get_document.assert_called_once_with(DatasetRef(tenant_id="tenant-1", dataset_id="ds-1"), ["doc-1"], session)
 
     def test_get_document_relies_on_rbac_in_rbac_mode(self, dataset):
         api = DocumentResource()
@@ -592,8 +590,8 @@ class TestDocumentResource:
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
             ) as check_permission,
             patch(
-                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
-                return_value=MagicMock(),
+                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
+                return_value=[MagicMock()],
             ),
         ):
             api.get_document(session, "ds-1", "doc-1", MagicMock(), "tenant-1")

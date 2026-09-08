@@ -13,12 +13,12 @@ from controllers.console.auth.data_source_oauth import (
 )
 from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
-from services.data_source_oauth_service import (
+from services.data_source.oauth_service import (
     DataSourceOAuthError,
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
+from services.entities.data_source.oauth import DataSourceOAuthCallback
 from tests.unit_tests.config_override import config_overrides_context
 
 

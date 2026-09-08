@@ -11,7 +11,7 @@ from services.data_source.binding_application_service import (
     DataSourceBindingNotFoundError,
     DataSourceBindingStateError,
 )
-from services.entities.data_source_oauth_entities import DataSourceBindingSummary
+from services.entities.data_source.oauth import DataSourceBindingSummary
 
 
 def _context() -> RequestContext:

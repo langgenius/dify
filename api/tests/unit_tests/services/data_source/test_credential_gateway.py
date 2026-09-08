@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-from unittest.mock import Mock, create_autospec
+from typing import cast
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,10 +18,12 @@ from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity, P
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig
+from models.provider_ids import DatasourceProviderID
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from services.data_source.credential_adapters import (
     OAuthDatasourceCredentialRefresher,
     PluginDatasourceCredentialCodec,
+    PluginDatasourceOAuthClientResolver,
 )
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
@@ -30,7 +32,6 @@ from services.data_source.credential_gateway import (
     DatasourceCredentialNotFoundError,
     DatasourceCredentialRefreshError,
     RefreshedDatasourceCredential,
-    TrustedDatasourceCredentialStore,
     TrustedStoredDatasourceCredentialGateway,
 )
 from services.entities.data_source.credential import DatasourceCredentialRecord
@@ -99,11 +100,43 @@ class ReversibleCredentialCodec:
         return {"integration_secret": f"cipher:{credentials['integration_secret']}"}
 
 
-def _stored_catalog(record: DatasourceCredentialRecord | None) -> Mock:
-    catalog = create_autospec(TrustedDatasourceCredentialStore, instance=True, spec_set=True)
-    catalog.get_for_stored_document.return_value = record
-    catalog.update_if_unchanged.return_value = True
-    return catalog
+@dataclass
+class StoredCredentialCatalog:
+    record: DatasourceCredentialRecord | None
+    calls: list[dict[str, str | None]] = field(default_factory=list)
+    updates: list[tuple[DatasourceCredentialRecord, Mapping[str, object], int]] = field(default_factory=list)
+
+    def get_for_stored_document(
+        self,
+        *,
+        workspace_id: str,
+        dataset_id: str,
+        document_id: str,
+        credential_id: str | None,
+        provider: str,
+        plugin_id: str,
+    ) -> DatasourceCredentialRecord | None:
+        self.calls.append(
+            {
+                "workspace_id": workspace_id,
+                "dataset_id": dataset_id,
+                "document_id": document_id,
+                "credential_id": credential_id,
+                "provider": provider,
+                "plugin_id": plugin_id,
+            }
+        )
+        return self.record
+
+    def update_if_unchanged(
+        self,
+        *,
+        record: DatasourceCredentialRecord,
+        encrypted_credentials: Mapping[str, object],
+        expires_at: int,
+    ) -> bool:
+        self.updates.append((record, encrypted_credentials, expires_at))
+        return True
 
 
 @dataclass
@@ -124,26 +157,79 @@ class RecordingCredentialRefresher:
         return RefreshedDatasourceCredential({"integration_secret": "refreshed"}, 500)
 
 
-def _provider_manager(provider: PluginDatasourceProviderEntity) -> Mock:
-    manager = create_autospec(PluginDatasourceManager, instance=True, spec_set=True)
-    manager.fetch_datasource_provider.return_value = provider
-    return manager
+@dataclass
+class StaticProviderManager:
+    provider: PluginDatasourceProviderEntity
+    calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def fetch_datasource_provider(self, *, tenant_id: str, provider_id: str) -> PluginDatasourceProviderEntity:
+        self.calls.append((tenant_id, provider_id))
+        return self.provider
 
 
-def _oauth_handler(response: PluginOAuthCredentialsResponse | None = None, *, error: Exception | None = None) -> Mock:
-    handler = create_autospec(OAuthHandler, instance=True, spec_set=True)
-    handler.refresh_credentials.return_value = response
-    handler.refresh_credentials.side_effect = error
-    return handler
+@dataclass
+class RecordingOAuthHandler:
+    response: PluginOAuthCredentialsResponse | None = None
+    error: Exception | None = None
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def refresh_credentials(
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        redirect_uri: str,
+        system_credentials: Mapping[str, object],
+        credentials: Mapping[str, object],
+    ) -> PluginOAuthCredentialsResponse:
+        self.calls.append(
+            {
+                "tenant_id": tenant_id,
+                "user_id": user_id,
+                "plugin_id": plugin_id,
+                "provider": provider,
+                "redirect_uri": redirect_uri,
+                "system_credentials": system_credentials,
+                "credentials": credentials,
+            }
+        )
+        if self.error is not None:
+            raise self.error
+        assert self.response is not None
+        return self.response
+
+
+@dataclass
+class RecordingCredentialEncrypter:
+    decrypted: Mapping[str, object]
+    calls: list[Mapping[str, object]] = field(default_factory=list)
+
+    def decrypt(self, credentials: Mapping[str, object]) -> Mapping[str, object]:
+        self.calls.append(credentials)
+        return self.decrypted
+
+
+class StaticOAuthClientResolver:
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]:
+        del workspace_id, provider_id
+        return {}
 
 
 def _oauth_refresher(
-    session_factory: sessionmaker[Session], *, manager: Mock, handler: Mock
+    session_factory: sessionmaker[Session],
+    *,
+    manager: StaticProviderManager,
+    handler: RecordingOAuthHandler,
 ) -> OAuthDatasourceCredentialRefresher:
+    repository = SQLAlchemyDatasourceCredentialRepository(session_factory=session_factory)
+    oauth_clients = PluginDatasourceOAuthClientResolver(
+        configs=repository,
+        provider_manager=cast(PluginDatasourceManager, manager),
+    )
     return OAuthDatasourceCredentialRefresher(
-        configs=SQLAlchemyDatasourceCredentialRepository(session_factory=session_factory),
-        provider_manager=manager,
-        oauth_handler=handler,
+        oauth_clients=oauth_clients,
+        oauth_handler=cast(OAuthHandler, handler),
     )
 
 
@@ -214,7 +300,7 @@ def test_resolve_fails_closed_when_credential_is_not_visible() -> None:
 
 
 def test_trusted_stored_source_resolver_uses_distinct_owner_chain_port() -> None:
-    catalog = _stored_catalog(_record())
+    catalog = StoredCredentialCatalog(_record())
     gateway = TrustedStoredDatasourceCredentialGateway(
         credentials=catalog,
         codec=ReversibleCredentialCodec(),
@@ -232,19 +318,21 @@ def test_trusted_stored_source_resolver_uses_distinct_owner_chain_port() -> None
     )
 
     assert result == {"integration_secret": "plain:encrypted"}
-    catalog.get_for_stored_document.assert_called_once_with(
-        workspace_id="workspace-1",
-        dataset_id="dataset-1",
-        document_id="document-1",
-        credential_id="credential-1",
-        provider="notion_datasource",
-        plugin_id="langgenius/notion_datasource",
-    )
+    assert catalog.calls == [
+        {
+            "workspace_id": "workspace-1",
+            "dataset_id": "dataset-1",
+            "document_id": "document-1",
+            "credential_id": "credential-1",
+            "provider": "notion_datasource",
+            "plugin_id": "langgenius/notion_datasource",
+        }
+    ]
 
 
 def test_trusted_stored_source_resolver_fails_closed_for_missing_credential() -> None:
     gateway = TrustedStoredDatasourceCredentialGateway(
-        credentials=_stored_catalog(None),
+        credentials=StoredCredentialCatalog(None),
         codec=ReversibleCredentialCodec(),
         refresher=RecordingCredentialRefresher(),
         now=lambda: 100,
@@ -263,7 +351,7 @@ def test_trusted_stored_source_resolver_fails_closed_for_missing_credential() ->
 
 def test_trusted_stored_source_refreshes_with_persisted_credential_owner() -> None:
     record = _record(expires_at=120)
-    catalog = _stored_catalog(record)
+    catalog = StoredCredentialCatalog(record)
     refresher = RecordingCredentialRefresher()
     gateway = TrustedStoredDatasourceCredentialGateway(
         credentials=catalog,
@@ -283,11 +371,7 @@ def test_trusted_stored_source_refreshes_with_persisted_credential_owner() -> No
 
     assert result == {"integration_secret": "refreshed"}
     assert refresher.calls == [("workspace-1", "credential-owner-1", record, {"integration_secret": "plain:encrypted"})]
-    catalog.update_if_unchanged.assert_called_once_with(
-        record=record,
-        encrypted_credentials={"integration_secret": "cipher:refreshed"},
-        expires_at=500,
-    )
+    assert catalog.updates == [(record, {"integration_secret": "cipher:refreshed"}, 500)]
 
 
 def test_resolve_decrypts_without_refreshing_non_expiring_credential() -> None:
@@ -347,8 +431,8 @@ def test_plugin_codec_encrypts_and_decrypts_only_declared_secret_fields(
     auth_type: str,
     secret_name: str,
 ) -> None:
-    manager = _provider_manager(_provider())
-    codec = PluginDatasourceCredentialCodec(provider_manager=manager)
+    manager = StaticProviderManager(_provider())
+    codec = PluginDatasourceCredentialCodec(provider_manager=cast(PluginDatasourceManager, manager))
     record = replace(
         _record(auth_type=auth_type),
         encrypted_credentials={secret_name: "cipher", "label": "plain"},
@@ -383,7 +467,9 @@ def test_plugin_codec_encrypts_and_decrypts_only_declared_secret_fields(
 
 
 def test_plugin_codec_rejects_unsupported_credential_type() -> None:
-    codec = PluginDatasourceCredentialCodec(provider_manager=_provider_manager(_provider()))
+    codec = PluginDatasourceCredentialCodec(
+        provider_manager=cast(PluginDatasourceManager, StaticProviderManager(_provider()))
+    )
 
     with pytest.raises(DatasourceCredentialError, match="Unsupported credential type"):
         codec.decrypt(_record(auth_type="unauthorized"))
@@ -410,17 +496,16 @@ def test_oauth_refresher_prefers_enabled_tenant_client_and_returns_refreshed_sna
                 ),
             ]
         )
-    manager = _provider_manager(_provider())
-    handler = _oauth_handler(
+    manager = StaticProviderManager(_provider())
+    handler = RecordingOAuthHandler(
         response=PluginOAuthCredentialsResponse(
             credentials={"integration_secret": "refreshed-secret"},
             expires_at=500,
         )
     )
-    encrypter = Mock(spec_set=["decrypt"])
-    encrypter.decrypt.return_value = {"client_secret": "tenant-secret"}
+    encrypter = RecordingCredentialEncrypter({"client_secret": "tenant-secret"})
 
-    def create_encrypter(**kwargs: object) -> tuple[Mock, None]:
+    def create_encrypter(**kwargs: object) -> tuple[RecordingCredentialEncrypter, None]:
         assert kwargs["tenant_id"] == "workspace-1"
         return encrypter, None
 
@@ -435,10 +520,10 @@ def test_oauth_refresher_prefers_enabled_tenant_client_and_returns_refreshed_sna
     )
 
     assert result == RefreshedDatasourceCredential({"integration_secret": "refreshed-secret"}, 500)
-    encrypter.decrypt.assert_called_once_with({"client_secret": "tenant-cipher"})
-    assert handler.refresh_credentials.call_args.kwargs["system_credentials"] == {"client_secret": "tenant-secret"}
-    assert handler.refresh_credentials.call_args.kwargs["credentials"] == {"integration_secret": "old-secret"}
-    assert handler.refresh_credentials.call_args.kwargs["user_id"] == "actor-1"
+    assert encrypter.calls == [{"client_secret": "tenant-cipher"}]
+    assert handler.calls[0]["system_credentials"] == {"client_secret": "tenant-secret"}
+    assert handler.calls[0]["credentials"] == {"integration_secret": "old-secret"}
+    assert handler.calls[0]["user_id"] == "actor-1"
 
 
 def test_oauth_refresher_rejects_tenant_client_when_provider_has_no_oauth_schema(
@@ -455,10 +540,10 @@ def test_oauth_refresher_rejects_tenant_client_when_provider_has_no_oauth_schema
             )
         )
     provider = _provider(with_oauth_schema=False)
-    handler = _oauth_handler()
+    handler = RecordingOAuthHandler()
     refresher = _oauth_refresher(
         sqlite_session_factory,
-        manager=_provider_manager(provider),
+        manager=StaticProviderManager(provider),
         handler=handler,
     )
 
@@ -470,7 +555,7 @@ def test_oauth_refresher_rejects_tenant_client_when_provider_has_no_oauth_schema
             credentials={"integration_secret": "old"},
         )
 
-    handler.refresh_credentials.assert_not_called()
+    assert handler.calls == []
 
 
 @pytest.mark.parametrize("verified", [True, False])
@@ -496,8 +581,8 @@ def test_oauth_refresher_uses_system_client_only_for_verified_plugin(
                 ),
             ]
         )
-    manager = _provider_manager(_provider())
-    handler = _oauth_handler(
+    manager = StaticProviderManager(_provider())
+    handler = RecordingOAuthHandler(
         response=PluginOAuthCredentialsResponse(credentials={"integration_secret": "refreshed"}, expires_at=500)
     )
     verification_calls: list[tuple[str, str]] = []
@@ -517,7 +602,7 @@ def test_oauth_refresher_uses_system_client_only_for_verified_plugin(
                 record=_record(),
                 credentials={"integration_secret": "old"},
             )
-        handler.refresh_credentials.assert_not_called()
+        assert handler.calls == []
     else:
         refresher.refresh(
             workspace_id="workspace-1",
@@ -525,18 +610,17 @@ def test_oauth_refresher_uses_system_client_only_for_verified_plugin(
             record=_record(),
             credentials={"integration_secret": "old"},
         )
-        assert handler.refresh_credentials.call_args.kwargs["system_credentials"] == {"client_secret": "system-secret"}
+        assert handler.calls[0]["system_credentials"] == {"client_secret": "system-secret"}
 
     assert verification_calls == [("workspace-1", "langgenius/notion_datasource:1.0.0")]
 
 
-def test_oauth_refresher_translates_plugin_refresh_failure(
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler = _oauth_handler(error=RuntimeError("plugin unavailable"))
-    monkeypatch.setattr(credential_adapters_module, "resolve_datasource_oauth_client", Mock(return_value={}))
-    refresher = _oauth_refresher(sqlite_session_factory, manager=_provider_manager(_provider()), handler=handler)
+def test_oauth_refresher_translates_plugin_refresh_failure() -> None:
+    handler = RecordingOAuthHandler(error=RuntimeError("plugin unavailable"))
+    refresher = OAuthDatasourceCredentialRefresher(
+        oauth_clients=StaticOAuthClientResolver(),
+        oauth_handler=cast(OAuthHandler, handler),
+    )
 
     with pytest.raises(DatasourceCredentialRefreshError, match="credential-1"):
         refresher.refresh(

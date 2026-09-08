@@ -336,7 +336,9 @@ class DocumentResource(Resource):
 
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
-        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+        document = next(
+            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+        )
 
         if not document:
             raise NotFound("Document not found.")

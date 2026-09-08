@@ -32,6 +32,7 @@ from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs import helper
 from libs.helper import dump_response
@@ -310,6 +311,7 @@ class PipelineRunApi(DatasetApiResource):
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,

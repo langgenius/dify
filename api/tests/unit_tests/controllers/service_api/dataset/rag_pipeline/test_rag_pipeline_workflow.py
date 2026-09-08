@@ -46,6 +46,7 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     KnowledgebasePipelineFileUploadApi,
     PipelineRunApi,
 )
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.storage.storage_type import StorageType
 from models.account import Account
@@ -607,7 +608,15 @@ class TestPipelineRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
     def test_post_success_streaming(
-        self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app, sqlite_session: Session
+        self,
+        mock_ns,
+        mock_svc_cls,
+        mock_current_user,
+        mock_gen_svc,
+        mock_helper,
+        app: Flask,
+        sqlite_session: Session,
+        pipeline_application: PipelineGenerator,
     ):
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
@@ -639,6 +648,8 @@ class TestPipelineRunApiPost:
         assert response == {"result": "ok"}
         mock_svc_cls.assert_called_once_with(sqlite_session)
         mock_gen_svc.generate.assert_called_once()
+        assert mock_gen_svc.generate.call_args.kwargs["generator"] is pipeline_application
+        assert mock_gen_svc.generate.call_args.kwargs["session"] is sqlite_session
 
     def test_post_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""

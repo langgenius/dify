@@ -86,6 +86,31 @@ def test_document_queries_enforce_the_complete_owner_chain(
     assert repository.get_estimate_document(DatasetRef("workspace-2", "dataset-1").document("document-1")) is None
 
 
+def test_pipeline_document_store_owns_sessions_and_scopes_updates(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_dataset("dataset-1", "workspace-1"))
+        session.add(_document("document-1"))
+
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    assert repository.exists(workspace_id="workspace-1", dataset_id="dataset-1", document_id="document-1")
+    assert not repository.exists(workspace_id="workspace-2", dataset_id="dataset-1", document_id="document-1")
+    repository.mark_failed(
+        workspace_id="workspace-2", dataset_id="dataset-1", document_id="document-1", error="foreign"
+    )
+    with sqlite_session_factory() as session:
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.indexing_status == IndexingStatus.COMPLETED
+    repository.mark_failed(workspace_id="workspace-1", dataset_id="dataset-1", document_id="document-1", error="failed")
+    with sqlite_session_factory() as session:
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.indexing_status == IndexingStatus.ERROR
+        assert document.error == "failed"
+
+
 def test_active_notion_sync_excludes_archived_while_binding_includes_it(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

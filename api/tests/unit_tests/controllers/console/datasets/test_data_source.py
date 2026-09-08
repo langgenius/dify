@@ -35,7 +35,7 @@ from services.entities.data_source.notion_import import (
     NotionPageIcon,
     NotionWorkspace,
 )
-from services.entities.data_source_oauth_entities import DataSourceBindingSummary
+from services.entities.data_source.oauth import DataSourceBindingSummary
 from services.entities.knowledge_entities.indexing_estimate import (
     NewSourcesEstimateCommand,
     NotionEstimateSource,
@@ -208,7 +208,7 @@ class RecordingEstimateService:
 class RecordingDispatcher:
     calls: list[tuple[str, str]] = field(default_factory=list)
 
-    def __call__(self, dataset_id: str, document_id: str, /) -> None:
+    def dispatch(self, *, dataset_id: str, document_id: str) -> None:
         self.calls.append((dataset_id, document_id))
 
 

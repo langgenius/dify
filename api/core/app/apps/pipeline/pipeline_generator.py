@@ -20,6 +20,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.pipeline.document_store import PipelineDocumentStore
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
@@ -60,6 +61,9 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
+    def __init__(self, *, documents: PipelineDocumentStore) -> None:
+        self._documents = documents
+
     @overload
     def generate(
         self,
@@ -635,6 +639,7 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id=system_user_id,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
+                        documents=self._documents,
                     )
 
                     runner.run()

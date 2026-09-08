@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Protocol
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -62,3 +63,20 @@ class RedisSegmentIndexingState:
         if value is None:
             return None
         return value.decode() if isinstance(value, bytes) else value
+
+
+class CelerySegmentBatchImportDispatcher:
+    def __init__(self, *, delay: Callable[..., object]) -> None:
+        self._delay = delay
+
+    def dispatch(
+        self,
+        *,
+        job_id: str,
+        upload_file_id: str,
+        dataset_id: str,
+        document_id: str,
+        workspace_id: str,
+        actor_id: str,
+    ) -> None:
+        self._delay(job_id, upload_file_id, dataset_id, document_id, workspace_id, actor_id)

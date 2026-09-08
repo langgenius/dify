@@ -31,6 +31,10 @@ class DatasourceOAuthClientConfigReader(Protocol):
     ) -> DatasourceOAuthClientConfigRecord: ...
 
 
+class DatasourceOAuthClientResolver(Protocol):
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]: ...
+
+
 class PluginDatasourceCredentialCodec:
     def __init__(self, provider_manager: PluginDatasourceManager) -> None:
         self._provider_manager = provider_manager
@@ -84,6 +88,29 @@ def datasource_secret_variables(
     return tuple(schema.name for schema in schemas if schema.type.value == FormType.SECRET_INPUT)
 
 
+class PluginDatasourceOAuthClientResolver:
+    """Turn detached OAuth client rows into plugin-ready credentials."""
+
+    def __init__(
+        self,
+        *,
+        configs: DatasourceOAuthClientConfigReader,
+        provider_manager: PluginDatasourceManager,
+    ) -> None:
+        self._configs = configs
+        self._provider_manager = provider_manager
+
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]:
+        config = self._configs.get_oauth_client_config(
+            workspace_id=workspace_id,
+            provider=provider_id.provider_name,
+            plugin_id=provider_id.plugin_id,
+        )
+        return resolve_datasource_oauth_client(
+            config, workspace_id=workspace_id, provider_id=provider_id, provider_manager=self._provider_manager
+        )
+
+
 def resolve_datasource_oauth_client(
     config: DatasourceOAuthClientConfigRecord,
     *,
@@ -114,17 +141,15 @@ def resolve_datasource_oauth_client(
 
 
 class OAuthDatasourceCredentialRefresher:
-    """Load detached OAuth client configuration before refreshing credentials."""
+    """Refresh datasource credentials through an injected OAuth-client resolver."""
 
     def __init__(
         self,
         *,
-        configs: DatasourceOAuthClientConfigReader,
-        provider_manager: PluginDatasourceManager,
+        oauth_clients: DatasourceOAuthClientResolver,
         oauth_handler: OAuthHandler,
     ) -> None:
-        self._configs = configs
-        self._provider_manager = provider_manager
+        self._oauth_clients = oauth_clients
         self._oauth_handler = oauth_handler
 
     def refresh(
@@ -137,17 +162,12 @@ class OAuthDatasourceCredentialRefresher:
     ) -> RefreshedDatasourceCredential:
         provider_id = DatasourceProviderID(f"{record.plugin_id}/{record.provider}")
         try:
-            config = self._configs.get_oauth_client_config(
-                workspace_id=workspace_id, provider=provider_id.provider_name, plugin_id=provider_id.plugin_id
-            )
             return refresh_datasource_credential(
                 self._oauth_handler,
                 workspace_id=workspace_id,
                 actor_id=actor_id,
                 provider_id=provider_id,
-                system_credentials=resolve_datasource_oauth_client(
-                    config, workspace_id=workspace_id, provider_id=provider_id, provider_manager=self._provider_manager
-                ),
+                system_credentials=self._oauth_clients.resolve(workspace_id=workspace_id, provider_id=provider_id),
                 credentials=credentials,
             )
         except DatasourceCredentialError:
