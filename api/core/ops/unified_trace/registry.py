@@ -3,6 +3,7 @@
 import collections
 from typing import TypedDict, override
 
+from configs import dify_config
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import BaseTracingConfig, TracingProviderEnum
 
@@ -37,6 +38,31 @@ class UnifiedTraceProviderConfigMap(collections.UserDict[str, UnifiedProviderCon
 
 
 unified_provider_config_map = UnifiedTraceProviderConfigMap()
+
+# Providers that exist only in unified form: there is no legacy dispatch for the switch to keep.
+_UNIFIED_ONLY_PROVIDERS: frozenset[str] = frozenset({TracingProviderEnum.OTEL})
+
+
+def unified_dispatch_enabled(tracing_provider: str) -> bool:
+    """Whether the unified registry applies to ``tracing_provider`` in this deployment.
+
+    ``OPS_TRACE_UNIFIED_ENABLED`` exists to keep Phoenix and LangSmith on their legacy
+    per-provider dispatch until a deployment opts in. The generic OpenTelemetry provider is
+    always dispatched through the unified runtime; gating it on the switch only turned off
+    nested-workflow parent restoration while leaving every other unified behaviour in place.
+    """
+    return tracing_provider in _UNIFIED_ONLY_PROVIDERS or dify_config.OPS_TRACE_UNIFIED_ENABLED
+
+
+def is_unified_provider(tracing_provider: str) -> bool:
+    """Whether traces for ``tracing_provider`` are dispatched through the unified runtime."""
+    if not unified_dispatch_enabled(tracing_provider):
+        return False
+    try:
+        unified_provider_config_map[tracing_provider]
+    except KeyError:
+        return False
+    return True
 
 
 def unified_scope_key_field(tracing_provider: str) -> str | None:

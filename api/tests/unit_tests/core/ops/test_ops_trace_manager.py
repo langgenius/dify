@@ -571,6 +571,24 @@ def test_unified_and_legacy_instances_have_separate_cache_entries(
     assert legacy is not unified
 
 
+def test_unified_only_provider_dispatches_unified_without_switch(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    # OTel exists only in unified form, so OPS_TRACE_UNIFIED_ENABLED has no legacy path to keep for it
+    apply_config_overrides(monkeypatch, OPS_TRACE_UNIFIED_ENABLED=False)
+    monkeypatch.setattr(
+        module, "provider_config_map", FakeProviderMap({"dummy": PROVIDER_ENTRY, "otel": PROVIDER_ENTRY})
+    )
+    monkeypatch.setattr(
+        module,
+        "unified_provider_config_map",
+        FakeProviderMap({"dummy": UNIFIED_PROVIDER_ENTRY, "otel": UNIFIED_PROVIDER_ENTRY}),
+    )
+
+    assert OpsTraceManager._get_dispatch_entry("otel")[0] == "unified"
+    assert OpsTraceManager._get_dispatch_entry("dummy")[0] == "legacy"
+
+
 def test_message_config_lookup_uses_real_conversation_and_model_config(database: Session) -> None:
     app = _app(database)
     config = AppModelConfig(app_id=app.id, model='{"provider":"openai"}')

@@ -137,16 +137,11 @@ def resolve_parent_destination(parent_workflow_run_id: str) -> ParentDestination
         if trace_config is None or not isinstance(trace_config.tracing_config, Mapping):
             return None
 
-        unified = False
-        if dify_config.OPS_TRACE_UNIFIED_ENABLED:
-            from core.ops.unified_trace.registry import unified_provider_config_map
+        from core.ops.unified_trace.registry import is_unified_provider
 
-            try:
-                unified_provider_config_map[provider]
-                unified = True
-            except KeyError:
-                pass
-        return parent_destination_from_config(provider, trace_config.tracing_config, unified=unified)
+        return parent_destination_from_config(
+            provider, trace_config.tracing_config, unified=is_unified_provider(provider)
+        )
 
 
 class ParentContextCoordinator:

@@ -16,7 +16,6 @@ from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, is_obfuscated_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.config_entity import (
@@ -39,7 +38,11 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
+from core.ops.unified_trace.registry import (
+    UnifiedProviderConfigEntry,
+    unified_dispatch_enabled,
+    unified_provider_config_map,
+)
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -366,7 +369,7 @@ class OpsTraceManager:
         Registered unified providers never fall back after construction or dispatch starts.
         Unregistered providers continue through the legacy registry.
         """
-        if dify_config.OPS_TRACE_UNIFIED_ENABLED:
+        if unified_dispatch_enabled(tracing_provider):
             try:
                 return "unified", unified_provider_config_map[tracing_provider]
             except KeyError:
