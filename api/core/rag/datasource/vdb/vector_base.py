@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from core.rag.models.document import Document
 
 
 class VectorStoreDict(TypedDict):
     class_prefix: str
+    # Optional Weaviate native multi-tenancy metadata: when ``multi_tenant`` is set, ``class_prefix``
+    # names a shared collection and ``tenant`` identifies this dataset's isolated tenant within it.
+    multi_tenant: NotRequired[bool]
+    tenant: NotRequired[str]
 
 
 class VectorIndexStructDict(TypedDict):

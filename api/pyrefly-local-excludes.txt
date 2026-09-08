@@ -53,3 +53,4 @@ providers/vdb/vdb-vikingdb/src/dify_vdb_vikingdb/vikingdb_vector.py
 providers/vdb/vdb-vikingdb/tests/unit_tests/test_vikingdb_vector.py
 providers/vdb/vdb-weaviate/src/dify_vdb_weaviate/weaviate_vector.py
 providers/vdb/vdb-weaviate/tests/unit_tests/test_weaviate_vector.py
+providers/vdb/vdb-weaviate/tests/unit_tests/test_weaviate_phase2.py
