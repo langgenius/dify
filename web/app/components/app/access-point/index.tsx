@@ -18,6 +18,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
+import { AccessControlEntry } from './access-control'
 import { BuiltInAccessPoints } from './built-in-access-points'
 import { DeployedEnvironmentAccessPoints } from './deployed-environment-access-points'
 import {
@@ -70,10 +71,11 @@ function AccessPointContent({
     <main className="flex h-full min-h-0 flex-col bg-components-panel-bg">
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-2">
         <div className="flex flex-col gap-0.5">
-          <div className="flex h-6 items-center">
+          <div className="flex min-h-8 items-center justify-between gap-3">
             <h1 id="access-point-title" className="title-xl-semi-bold text-text-primary">
               {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
             </h1>
+            <AccessControlEntry />
           </div>
           <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['studio.accessPoint.description'], { ns: 'deployments' })}
