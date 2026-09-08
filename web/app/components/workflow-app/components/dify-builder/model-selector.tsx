@@ -3,7 +3,10 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useDefaultModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
@@ -32,10 +35,12 @@ const DifyBuilderModelSelector = () => {
     const provider = defaultModel.provider.provider
     const targetProvider = activeTextGenerationModelList.find((item) => item.provider === provider)
     const targetModel = targetProvider?.models.find((item) => item.model === defaultModel.model)
+    if (!targetModel || targetModel.status !== ModelStatusEnum.active) return null
+
     return {
       provider,
       name: defaultModel.model,
-      mode: String(targetModel?.model_properties.mode ?? ''),
+      mode: String(targetModel.model_properties.mode ?? ''),
       completion_params: {},
     }
   }, [activeTextGenerationModelList, defaultModel, selectedModel, sessionModel])
