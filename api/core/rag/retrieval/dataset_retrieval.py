@@ -116,9 +116,9 @@ _HIT_COUNT_UPDATE_RETRY_DELAYS_SECONDS = (0.05, 0.1)
 def _is_postgres_deadlock_error(exc: BaseException) -> bool:
     if not isinstance(exc, DBAPIError) or exc.orig is None:
         return False
-    return any(
-        code == _POSTGRES_DEADLOCK_SQLSTATE
-        for code in (getattr(exc.orig, "sqlstate", None), getattr(exc.orig, "pgcode", None))
+    orig = cast(Any, exc.orig)
+    return (hasattr(orig, "sqlstate") and orig.sqlstate == _POSTGRES_DEADLOCK_SQLSTATE) or (
+        hasattr(orig, "pgcode") and orig.pgcode == _POSTGRES_DEADLOCK_SQLSTATE
     )
 
 

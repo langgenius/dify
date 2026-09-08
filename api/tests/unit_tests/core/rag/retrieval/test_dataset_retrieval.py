@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask, current_app
 from sqlalchemy import event, select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
@@ -5496,10 +5497,11 @@ class TestInternalHooksCoverage:
         self.orm_session.expire_all()
         assert [segment.hit_count for segment in segments] == [1, 1, 1, 1]
         locking_statements = [
-            statement for statement in executed_statements if getattr(statement, "_for_update_arg", None) is not None
+            statement
+            for statement in executed_statements
+            if "ORDER BY document_segments.id FOR UPDATE" in str(statement.compile(dialect=postgresql.dialect()))  # type: ignore[union-attr]
         ]
         assert len(locking_statements) == 1
-        assert "ORDER BY document_segments.id" in str(locking_statements[0])
         mock_trace.assert_called_once()
 
     def test_on_retrieval_end_retries_postgres_deadlock(self, retrieval: DatasetRetrieval) -> None:
