@@ -32,10 +32,10 @@ const mocks = vi.hoisted(() => ({
   uploadWorkflowSandboxFile: vi.fn(),
 }))
 
-const permission = vi.hoisted(() => ({ canManageAgents: true }))
+const permission = vi.hoisted(() => ({ canCreateAgents: true }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => permission.canManageAgents,
+  useCanCreateAgents: () => permission.canCreateAgents,
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -496,7 +496,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     vi.clearAllMocks()
     useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mocks.completeBuildConversation = undefined
-    permission.canManageAgents = true
+    permission.canCreateAgents = true
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
@@ -904,8 +904,8 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the save-to-roster menu when the user cannot manage agents', async () => {
-      permission.canManageAgents = false
+    it('should hide the save-to-roster menu when the user cannot create agents', async () => {
+      permission.canCreateAgents = false
 
       renderWorkspace({
         onSaveInlineToRoster: vi.fn(),

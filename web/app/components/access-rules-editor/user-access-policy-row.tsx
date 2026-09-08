@@ -1,6 +1,6 @@
 'use client'
 
-import type { ResourceUserAccessSetting } from '@/models/access-control'
+import type { ResourceUserAccessPolicies } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,7 +23,7 @@ type PolicyOption = {
 }
 
 type UserAccessPolicyRowProps = {
-  setting: ResourceUserAccessSetting
+  setting: ResourceUserAccessPolicies
   policyOptions: PolicyOption[]
   disabled: boolean
   membershipChangesDisabled?: boolean
@@ -53,7 +53,7 @@ function UserAccessPolicyRow({
 }: UserAccessPolicyRowProps) {
   const { t } = useTranslation()
   const accountId = setting.account.account_id
-  const selectedPolicy = setting.access_policies[0]
+  const selectedPolicy = setting.access_policies?.[0]
   const selectedPolicyId = selectedPolicy?.id ?? DEFAULT_ACCESS_POLICY_ID
   const isPolicySelectDisabled = disabled || isProtected || !onChange
   const isRemoveDisabled = disabled || membershipChangesDisabled || isProtected || !onRemove
@@ -61,7 +61,7 @@ function UserAccessPolicyRow({
     disabled || membershipChangesDisabled || selectionDisabled || isProtected || !onSelectedChange
   const defaultAccessPolicyName = t(($) => $['accessRule.defaultPermission'], { ns: 'permission' })
   const accountEmail = setting.account.email || setting.account.account_name
-  const isWorkspaceOwner = setting.roles.some((role) => role.role_tag === 'owner')
+  const isWorkspaceOwner = setting.roles?.some((role) => role.role_tag === 'owner')
 
   const handlePolicyChange = useCallback(
     (nextPolicyId: string | null) => {
@@ -126,7 +126,7 @@ function UserAccessPolicyRow({
             <SelectValue>
               {selectedPolicyId === DEFAULT_ACCESS_POLICY_ID
                 ? defaultAccessPolicyName
-                : setting.access_policies[0]?.name}
+                : selectedPolicy?.name}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>

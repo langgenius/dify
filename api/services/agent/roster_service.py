@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from typing import Any, TypedDict
 
 from sqlalchemy import and_, func, or_, select
@@ -226,7 +227,14 @@ class AgentRosterService:
         }
 
     def list_invite_options(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
+        self,
+        *,
+        tenant_id: str,
+        page: int = 1,
+        limit: int = 20,
+        keyword: str | None = None,
+        app_id: str | None = None,
+        accessible_agent_ids: Sequence[str] | None = None,
     ) -> dict[str, Any]:
         """List active roster Agents whose published snapshot can be called by Workflow."""
 
@@ -234,6 +242,8 @@ class AgentRosterService:
             Agent.active_config_has_model.is_(True),
             workflow_callable_active_snapshot_filter(),
         )
+        if accessible_agent_ids is not None:
+            stmt = stmt.where(Agent.id.in_(accessible_agent_ids))
         total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
         versions_by_id = self._load_versions_by_id(

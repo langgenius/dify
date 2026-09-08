@@ -20,6 +20,10 @@ export const datasetDefaultPermissionKeysAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).data?.dataset?.default_permission_keys ?? []
 })
 
+export const agentDefaultPermissionKeysAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).data?.agent?.default_permission_keys ?? []
+})
+
 export const workspacePermissionKeysLoadingAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).isPending
 })

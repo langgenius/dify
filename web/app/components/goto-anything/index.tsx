@@ -43,7 +43,6 @@ import { useGetLanguage } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { usePathname, useRouter } from '@/next/navigation'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
@@ -231,10 +230,9 @@ function GotoAnythingDialog() {
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
-  const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const enableSkill = useProviderContextSelector((state) => state.enableSkill)
-  const agentsAvailable = isAgentV2Enabled() && canManageAgents
+  const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = enableSkill && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)

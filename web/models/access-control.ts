@@ -124,7 +124,7 @@ export type WorkspaceAccessRulesRequest = {
   language?: AccessControlTemplateLanguage
 } & PaginationParameters
 
-export type AccessPolicyResourceType = 'app' | 'dataset'
+export type AccessPolicyResourceType = 'app' | 'dataset' | 'agent'
 
 type AccessPolicyCategory = 'global_system_default' | 'global_custom'
 

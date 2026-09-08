@@ -26,6 +26,8 @@ import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
@@ -155,10 +157,10 @@ function AgentRosterPlaceholderState({
 type AgentCardActionMenuItemsProps = {
   kind: 'context' | 'dropdown'
   isExporting: boolean
-  onDelete: () => void
-  onDuplicate: () => void
-  onEdit: () => void
-  onExport: () => void
+  onDelete?: () => void
+  onDuplicate?: () => void
+  onEdit?: () => void
+  onExport?: () => void
 }
 
 function AgentCardActionMenuItems({
@@ -177,23 +179,31 @@ function AgentCardActionMenuItems({
 
   return (
     <>
-      <MenuItem className="gap-2" onClick={onEdit}>
-        <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-        <span>{t(($) => $['roster.editInfo'])}</span>
-      </MenuItem>
-      <MenuItem className="gap-2" onClick={onDuplicate}>
-        <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
-        <span>{tCommon(($) => $['operation.duplicate'])}</span>
-      </MenuItem>
-      <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
-        <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-        <span>{tApp(($) => $.export)}</span>
-      </MenuItem>
-      <MenuSeparator />
-      <MenuItem variant="destructive" className="gap-2" onClick={onDelete}>
-        <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-        <span>{tCommon(($) => $['operation.delete'])}</span>
-      </MenuItem>
+      {onEdit && (
+        <MenuItem className="gap-2" onClick={onEdit}>
+          <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+          <span>{t(($) => $['roster.editInfo'])}</span>
+        </MenuItem>
+      )}
+      {onDuplicate && (
+        <MenuItem className="gap-2" onClick={onDuplicate}>
+          <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
+          <span>{tCommon(($) => $['operation.duplicate'])}</span>
+        </MenuItem>
+      )}
+      {onExport && (
+        <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
+          <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
+          <span>{tApp(($) => $.export)}</span>
+        </MenuItem>
+      )}
+      {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
+      {onDelete && (
+        <MenuItem variant="destructive" className="gap-2" onClick={onDelete}>
+          <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          <span>{tCommon(($) => $['operation.delete'])}</span>
+        </MenuItem>
+      )}
     </>
   )
 }
@@ -207,6 +217,14 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const draftStatusId = useId()
   const [activeDialog, setActiveDialog] = useState<'delete' | 'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
+  const capabilities = getAgentACLCapabilities(agent.permission_keys)
+  const canDuplicate = useCanCreateAgents() && capabilities.canPreview
+  const hasActions =
+    capabilities.canEdit ||
+    canDuplicate ||
+    capabilities.canImportExportDSL ||
+    capabilities.canDelete
+  const defaultSection = getAgentDefaultSection(capabilities)
   const updatedAt =
     agent.updated_at != null
       ? formatTime(
@@ -250,6 +268,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   }
 
   const handleExport = () => {
+    if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
       toast.error(tApp(($) => $.exportFailed))
       return
@@ -270,7 +289,9 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
         <ContextMenuTrigger
           render={
             <Link
-              href={`/agents/${agent.id}/configure`}
+              href={
+                defaultSection ? `/agents/${agent.id}/${defaultSection}` : `/agents/${agent.id}`
+              }
               aria-labelledby={nameId}
               aria-describedby={accessibleDescriptionIds || undefined}
               className="flex h-full min-w-0 cursor-pointer touch-manipulation flex-col rounded-xl pb-9 outline-hidden"
@@ -312,44 +333,48 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             </Link>
           }
         />
-        <ContextMenuContent className="w-40">
-          <AgentCardActionMenuItems
-            kind="context"
-            isExporting={isExporting}
-            onEdit={handleEditOpen}
-            onDuplicate={handleDuplicateOpen}
-            onExport={handleExport}
-            onDelete={handleDeleteOpen}
-          />
-        </ContextMenuContent>
-      </ContextMenu>
-      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
-        <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              render={
-                <IconButton
-                  aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
-                  size="lg"
-                  className="data-popup-open:bg-state-base-hover"
-                >
-                  <span aria-hidden className="i-ri-more-fill size-4.5" />
-                </IconButton>
-              }
+        {hasActions && (
+          <ContextMenuContent className="w-40">
+            <AgentCardActionMenuItems
+              kind="context"
+              isExporting={isExporting}
+              onEdit={capabilities.canEdit ? handleEditOpen : undefined}
+              onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
+              onExport={capabilities.canImportExportDSL ? handleExport : undefined}
+              onDelete={capabilities.canDelete ? handleDeleteOpen : undefined}
             />
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
-              <AgentCardActionMenuItems
-                kind="dropdown"
-                isExporting={isExporting}
-                onEdit={handleEditOpen}
-                onDuplicate={handleDuplicateOpen}
-                onExport={handleExport}
-                onDelete={handleDeleteOpen}
+          </ContextMenuContent>
+        )}
+      </ContextMenu>
+      {hasActions && (
+        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+          <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+                    size="lg"
+                    className="data-popup-open:bg-state-base-hover"
+                  >
+                    <span aria-hidden className="i-ri-more-fill size-4.5" />
+                  </IconButton>
+                }
               />
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+                <AgentCardActionMenuItems
+                  kind="dropdown"
+                  isExporting={isExporting}
+                  onEdit={capabilities.canEdit ? handleEditOpen : undefined}
+                  onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
+                  onExport={capabilities.canImportExportDSL ? handleExport : undefined}
+                  onDelete={capabilities.canDelete ? handleDeleteOpen : undefined}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
+      )}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
@@ -380,22 +405,28 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           )}
         </div>
       </div>
-      <EditAgentDialog
-        agent={agent}
-        open={activeDialog === 'edit'}
-        onOpenChange={handleDialogOpenChange}
-      />
-      <DuplicateAgentDialog
-        agent={agent}
-        open={activeDialog === 'duplicate'}
-        onOpenChange={handleDialogOpenChange}
-      />
-      <DeleteAgentDialog
-        agentId={agent.id}
-        agentName={agent.name}
-        open={activeDialog === 'delete'}
-        onOpenChange={handleDialogOpenChange}
-      />
+      {capabilities.canEdit && (
+        <EditAgentDialog
+          agent={agent}
+          open={activeDialog === 'edit'}
+          onOpenChange={handleDialogOpenChange}
+        />
+      )}
+      {canDuplicate && (
+        <DuplicateAgentDialog
+          agent={agent}
+          open={activeDialog === 'duplicate'}
+          onOpenChange={handleDialogOpenChange}
+        />
+      )}
+      {capabilities.canDelete && (
+        <DeleteAgentDialog
+          agentId={agent.id}
+          agentName={agent.name}
+          open={activeDialog === 'delete'}
+          onOpenChange={handleDialogOpenChange}
+        />
+      )}
     </li>
   )
 }

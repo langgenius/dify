@@ -548,6 +548,101 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
   {
     path: ['console'],
     experimental_defaults: {
+      workspaces: {
+        current: {
+          rbac: {
+            accessPolicies: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateAccessPolicyQueries(context.client)
+                  },
+                },
+              },
+              byPolicyId: {
+                put: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) => {
+                      if (error) return
+                      return invalidateAccessPolicyQueries(context.client)
+                    },
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) => {
+                      if (error) return
+                      return invalidateAccessPolicyQueries(context.client)
+                    },
+                  },
+                },
+                copy: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, _variables, _result, context) => {
+                        if (error) return
+                        return invalidateAccessPolicyQueries(context.client)
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            agents: {
+              byAgentId: {
+                whitelist: {
+                  put: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        return invalidateAgentAccessQueries(
+                          context.client,
+                          variables.params.agent_id,
+                        )
+                      },
+                    },
+                  },
+                },
+                users: {
+                  byTargetAccountId: {
+                    accessPolicies: {
+                      put: {
+                        mutationOptions: {
+                          onSettled: (_data, error, variables, _result, context) => {
+                            if (error) return
+                            return invalidateAgentAccessQueries(
+                              context.client,
+                              variables.params.agent_id,
+                            )
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                accessPolicies: {
+                  byPolicyId: {
+                    memberBindings: {
+                      delete: {
+                        mutationOptions: {
+                          onSettled: (_data, error, variables, _result, context) => {
+                            if (error) return
+                            return invalidateAgentAccessQueries(
+                              context.client,
+                              variables.params.agent_id,
+                            )
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       account: {
         education: {
           get: {
@@ -1800,3 +1895,25 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
     },
   },
 )
+
+function invalidateAccessPolicyQueries(client: QueryClient) {
+  return invalidateQueryKeys(client, [
+    consoleQuery.workspaces.current.rbac.key(),
+    consoleQuery.agent.get.key(),
+    consoleQuery.agent.byAgentId.get.key(),
+    consoleQuery.apps.byAppId.get.key(),
+    consoleQuery.datasets.byDatasetId.get.key(),
+  ])
+}
+
+function invalidateAgentAccessQueries(client: QueryClient, agentId: string) {
+  return invalidateQueryKeys(client, [
+    consoleQuery.workspaces.current.rbac.agents.byAgentId.key({
+      input: { params: { agent_id: agentId } },
+    }),
+    consoleQuery.workspaces.current.rbac.myPermissions.get.key(),
+    consoleQuery.agent.get.key(),
+    consoleQuery.agent.inviteOptions.get.key(),
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+}

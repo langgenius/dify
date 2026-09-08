@@ -2409,14 +2409,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/permission-group-list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/header/github-star/index.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
@@ -4946,14 +4938,6 @@
     }
   },
   "web/service/access-control/use-member-roles.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-workspace-access-rules.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
     },

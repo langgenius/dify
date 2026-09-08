@@ -527,6 +527,33 @@ export type PluginCategoryListResponse = {
   plugins: Array<PluginCategoryInstalledPluginResponse>
 }
 
+export type AccessPolicyCreateRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
+  resource_type: RbacResourceType
+}
+
+export type AccessPolicy = {
+  category?: string
+  created_at?: number
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  policy_key?: string
+  resource_type: string
+  tenant_id?: string
+  updated_at?: number
+}
+
+export type AccessPolicyUpdateRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
+}
+
 export type DeleteMemberBindingsRequest = {
   account_ids?: Array<string>
 }
@@ -1655,6 +1682,8 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
+export type RbacResourceType = 'agent' | 'app' | 'dataset'
+
 export type AccessPolicyMemberBinding = {
   access_policy_id: string
   account_id: string
@@ -1688,20 +1717,6 @@ export type Pagination = {
   per_page?: number
   total_count?: number
   total_pages?: number
-}
-
-export type AccessPolicy = {
-  category?: string
-  created_at?: number
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  policy_key?: string
-  resource_type: string
-  tenant_id?: string
-  updated_at?: number
 }
 
 export type RbacRole = {
@@ -4372,16 +4387,14 @@ export type GetWorkspacesCurrentRbacAccessPoliciesResponse =
   GetWorkspacesCurrentRbacAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesResponses]
 
 export type PostWorkspacesCurrentRbacAccessPoliciesData = {
-  body?: never
+  body: AccessPolicyCreateRequest
   path?: never
   query?: never
   url: '/workspaces/current/rbac/access-policies'
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: AccessPolicy
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4424,7 +4437,7 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
   GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
-  body?: never
+  body: AccessPolicyUpdateRequest
   path: {
     policy_id: string
   }
@@ -4433,9 +4446,7 @@ export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicy
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
