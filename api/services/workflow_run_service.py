@@ -228,7 +228,7 @@ class WorkflowRunService:
             workflow_run_id=run_id,
             parent_node_execution_id=node_execution_id,
         )
-        traces = assemble_workflow_node_execution_traces(executions, self._node_executions)
+        traces = assemble_workflow_node_execution_traces(executions, self._node_executions, session=db.session())
         for trace in traces:
             if trace.process_data is not None:
                 trace.process_data = {
