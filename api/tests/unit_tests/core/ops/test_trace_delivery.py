@@ -1,6 +1,7 @@
 """Executable ownership, queue-budget, and lease checks without external services."""
 
 import logging
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from datetime import timedelta
@@ -12,9 +13,11 @@ from uuid import uuid4
 import pytest
 import sqlalchemy as sa
 from flask import Flask
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import (
     CompletedTrace,
     ParentSpanReference,
@@ -28,7 +31,7 @@ from models.ops_trace import OpsTraceDelivery
 from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
 
 
-def make_queued_trace(tenant_id=None, *, parent=None):
+def make_queued_trace(tenant_id: str | None = None, *, parent: ParentSpanReference | None = None) -> QueuedTrace:
     source = TraceSource(tenant_id=tenant_id or str(uuid4()), operation_id=str(uuid4()), app_id=str(uuid4()))
     root_span_id = str(uuid4())
     completed_trace = CompletedTrace(
@@ -47,13 +50,15 @@ def make_queued_trace(tenant_id=None, *, parent=None):
     return QueuedTrace.from_trace(completed_trace, settings)
 
 
-def make_repository(engine=None):
+def make_repository(engine: Engine | None = None) -> OpsTraceDeliveryRepository:
     engine = engine or sa.create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    OpsTraceDelivery.__table__.create(engine)
+    table = OpsTraceDelivery.__table__
+    assert isinstance(table, sa.Table)
+    table.create(engine)
     return OpsTraceDeliveryRepository(sessionmaker(engine, expire_on_commit=False))
 
 
-def test_claim_is_tenant_scoped_and_stale_attempt_cannot_complete():
+def test_claim_is_tenant_scoped_and_stale_attempt_cannot_complete() -> None:
     repository = make_repository()
     queued_trace = make_queued_trace()
     reserved, owns_upload = repository.reserve_delivery(queued_trace)
@@ -85,14 +90,14 @@ def test_claim_is_tenant_scoped_and_stale_attempt_cannot_complete():
     assert duplicate.status == "succeeded"
 
 
-def test_two_workers_claim_one_delivery():
+def test_two_workers_claim_one_delivery() -> None:
     with TemporaryDirectory() as directory:
         repository = make_repository(sa.create_engine(f"sqlite:///{directory}/trace.db"))
         reserved, _ = repository.reserve_delivery(make_queued_trace())
         assert repository.accept_upload(reserved)
         barrier = Barrier(2)
 
-        def claim():
+        def claim() -> OpsTraceDelivery | None:
             barrier.wait(timeout=3)
             return repository.claim_delivery(reserved.tenant_id, reserved.id)
 
@@ -101,7 +106,7 @@ def test_two_workers_claim_one_delivery():
             assert sum(future.result() is not None for future in futures) == 1
 
 
-def test_expired_writer_cannot_accept_after_cleanup_cancellation():
+def test_expired_writer_cannot_accept_after_cleanup_cancellation() -> None:
     repository = make_repository()
     queued_trace = make_queued_trace()
     reserved, _ = repository.reserve_delivery(queued_trace)
@@ -120,7 +125,7 @@ def test_expired_writer_cannot_accept_after_cleanup_cancellation():
     assert repository.get_delivery(str(uuid4()), reserved.id) is None
 
 
-def test_conflicting_duplicate_never_replaces_accepted_trace():
+def test_conflicting_duplicate_never_replaces_accepted_trace() -> None:
     repository = make_repository()
     queued_trace = make_queued_trace()
     reserved, _ = repository.reserve_delivery(queued_trace)
@@ -131,7 +136,7 @@ def test_conflicting_duplicate_never_replaces_accepted_trace():
         repository.reserve_delivery(duplicate)
 
 
-def test_queue_is_bounded_per_tenant_and_releases_all_budgets():
+def test_queue_is_bounded_per_tenant_and_releases_all_budgets() -> None:
     repository = Mock()
     storage = Mock()
     publish = Mock()
@@ -164,9 +169,9 @@ def test_queue_is_bounded_per_tenant_and_releases_all_budgets():
     assert not trace_queue.submit_trace(first)
 
 
-def test_publish_failure_preserves_accepted_row_and_other_tenant_drains():
+def test_publish_failure_preserves_accepted_row_and_other_tenant_drains() -> None:
     repository = make_repository()
-    saved = {}
+    saved: dict[str, bytes] = {}
     storage = Mock()
     storage.save.side_effect = lambda key, trace_json: saved.setdefault(key, trace_json)
     trace_queue = TraceQueue(
@@ -184,23 +189,25 @@ def test_publish_failure_preserves_accepted_row_and_other_tenant_drains():
     assert trace_queue.queued_bytes == 0
 
 
-def test_parent_wait_does_not_claim_or_increment_attempts():
+def test_parent_wait_does_not_claim_or_increment_attempts() -> None:
     repository = make_repository()
     queued = make_queued_trace(parent=ParentSpanReference(export_id=str(uuid4()), span_id=str(uuid4())))
     delivery, _ = repository.reserve_delivery(queued)
     assert repository.accept_upload(delivery)
     delivery = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert delivery is not None
     ready, receipt = repository.read_parent_reference(delivery)
     assert not ready
     assert receipt is None
     waiting = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert waiting is not None
     assert waiting.status == "pending"
     assert waiting.attempt_count == 0
     assert repository.claim_delivery(waiting.tenant_id, waiting.id) is None
 
 
-def test_worker_rejects_wrong_digest_before_credentials(monkeypatch):
-    from services import ops_trace_service
+def test_worker_rejects_wrong_digest_before_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.ops import trace_source
     from tasks.ops_trace_task import export_trace_delivery
 
     repository = make_repository()
@@ -208,7 +215,7 @@ def test_worker_rejects_wrong_digest_before_credentials(monkeypatch):
     delivery, _ = repository.reserve_delivery(queued)
     assert repository.accept_upload(delivery)
     load_config = Mock()
-    monkeypatch.setattr(ops_trace_service, "load_trace_provider_config", load_config)
+    monkeypatch.setattr(trace_source, "load_trace_provider_config", load_config)
     app = Flask(__name__)
     app.extensions["ops_trace_delivery_repository"] = repository
     app.extensions["ops_trace_storage"] = Mock(load_stream=Mock(return_value=iter((b"bad",))))
@@ -216,14 +223,52 @@ def test_worker_rejects_wrong_digest_before_credentials(monkeypatch):
         export_trace_delivery(delivery.tenant_id, delivery.id)
     load_config.assert_not_called()
     failed = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert failed is not None
     assert failed.status == "failed"
     assert failed.error_code == "invalid_trace_digest"
 
 
-def test_expired_parent_exports_a_linked_root(monkeypatch):
-    from core.ops import provider_export
+@pytest.mark.parametrize(
+    ("error", "status", "delay"),
+    [
+        (TraceExportError("provider_http_429", retryable=True, retry_after=60), "pending", 60),
+        (TraceExportError("provider_http_503", retryable=True, retry_after=7200), "pending", 3600),
+        (TraceExportError("provider_http_401"), "failed", 5),
+        (OSError("provider unreachable"), "pending", 5),
+        (ValueError("invalid provider response"), "failed", 5),
+    ],
+)
+def test_worker_uses_typed_provider_retry_policy(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], error: Exception, status: str, delay: int
+) -> None:
+    from core.ops import provider_export, trace_source
+    from tasks.ops_trace_task import export_trace_delivery
+
+    repository = make_repository()
+    queued = make_queued_trace()
+    delivery, _ = repository.reserve_delivery(queued)
+    assert repository.accept_upload(delivery)
+    monkeypatch.setattr(repository, "validate_trace_owner", Mock())
+    config_overrides(OPS_TRACE_RETRY_DELAY_SECONDS=5, OPS_TRACE_MAX_ATTEMPTS=20)
+    monkeypatch.setattr(trace_source, "load_trace_provider_config", Mock(return_value={}))
+    monkeypatch.setattr(provider_export, "export_trace", Mock(side_effect=error))
+    app = Flask(__name__)
+    app.extensions["ops_trace_delivery_repository"] = repository
+    app.extensions["ops_trace_storage"] = Mock(load_stream=Mock(return_value=iter((queued.trace_json,))))
+
+    with app.app_context():
+        export_trace_delivery(delivery.tenant_id, delivery.id)
+
+    result = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert result is not None
+    assert result.status == status
+    assert result.attempt_count == 1
+    assert result.next_attempt_at - result.updated_at == timedelta(seconds=delay)
+
+
+def test_expired_parent_exports_a_linked_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.ops import provider_export, trace_source
     from core.ops.trace_data import ExportedParentSpans
-    from services import ops_trace_service
     from tasks.ops_trace_task import export_trace_delivery
 
     repository = make_repository()
@@ -237,7 +282,7 @@ def test_expired_parent_exports_a_linked_root(monkeypatch):
         )
         session.commit()
     monkeypatch.setattr(repository, "validate_trace_owner", Mock())
-    monkeypatch.setattr(ops_trace_service, "load_trace_provider_config", Mock(return_value={}))
+    monkeypatch.setattr(trace_source, "load_trace_provider_config", Mock(return_value={}))
     export = Mock(return_value=ExportedParentSpans())
     monkeypatch.setattr(provider_export, "export_trace", export)
     app = Flask(__name__)
@@ -245,18 +290,23 @@ def test_expired_parent_exports_a_linked_root(monkeypatch):
     app.extensions["ops_trace_storage"] = Mock(load_stream=Mock(return_value=iter((queued.trace_json,))))
     with app.app_context():
         export_trace_delivery(delivery.tenant_id, delivery.id)
+    assert export.call_args is not None
     exported_trace = export.call_args.args[0]
+    assert isinstance(exported_trace, CompletedTrace)
     assert exported_trace.parent is None
     assert exported_trace.links == (parent_export_id,)
     assert exported_trace.spans[0].attributes["dify.parent_status"] == "parent_wait_expired"
-    assert repository.get_delivery(delivery.tenant_id, delivery.id).status == "succeeded"
+    result = repository.get_delivery(delivery.tenant_id, delivery.id)
+    assert result is not None
+    assert result.status == "succeeded"
 
 
-def test_foreign_parent_is_rejected_even_after_wait_expiry():
+def test_foreign_parent_is_rejected_even_after_wait_expiry() -> None:
     repository = make_repository()
     parent, _ = repository.reserve_delivery(make_queued_trace())
     assert repository.accept_upload(parent)
     parent_attempt = repository.claim_delivery(parent.tenant_id, parent.id)
+    assert parent_attempt is not None
     assert repository.finish_attempt(
         parent_attempt, "succeeded", parent_references={parent.root_span_id: {"span_id": parent.root_span_id}}
     )
@@ -275,14 +325,16 @@ def test_foreign_parent_is_rejected_even_after_wait_expiry():
         )
         session.commit()
     child = repository.get_delivery(child.tenant_id, child.id)
+    assert child is not None
     ready, _ = repository.read_parent_reference(child)
     assert not ready
     rejected = repository.get_delivery(child.tenant_id, child.id)
+    assert rejected is not None
     assert rejected.status == "cancelled"
     assert rejected.error_code == "parent_owner_mismatch"
 
 
-def test_application_startup_constructs_independent_queues(monkeypatch):
+def test_application_startup_constructs_independent_queues(monkeypatch: pytest.MonkeyPatch) -> None:
     from extensions import ext_ops_trace
 
     for name in ("worker_process_init", "worker_process_shutdown", "worker_ready", "worker_shutdown"):
@@ -297,6 +349,8 @@ def test_application_startup_constructs_independent_queues(monkeypatch):
         app.extensions["start_ops_tracing"]()
     try:
         first_queue, second_queue = first.extensions["ops_trace_queue"], second.extensions["ops_trace_queue"]
+        assert isinstance(first_queue, TraceQueue)
+        assert isinstance(second_queue, TraceQueue)
         first.extensions["start_ops_tracing"]()
         assert first.extensions["ops_trace_queue"] is first_queue
         assert first_queue is not second_queue
@@ -312,7 +366,7 @@ def test_application_startup_constructs_independent_queues(monkeypatch):
             app.extensions["close_ops_tracing"]()
 
 
-def test_migration_rejects_conflicting_configs_before_schema_changes():
+def test_migration_rejects_conflicting_configs_before_schema_changes() -> None:
     import importlib.util
     from pathlib import Path
 
@@ -324,6 +378,8 @@ def test_migration_rejects_conflicting_configs_before_schema_changes():
         / "migrations/versions/2026_09_09_1200-74f13a2c08b9_add_ops_trace_deliveries.py"
     )
     specification = importlib.util.spec_from_file_location("ops_delivery_migration", migration_file)
+    assert specification is not None
+    assert specification.loader is not None
     migration = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(migration)
     engine = sa.create_engine("sqlite://")
@@ -356,3 +412,39 @@ def test_migration_rejects_conflicting_configs_before_schema_changes():
             assert "ops_trace_deliveries" in sa.inspect(connection).get_table_names()
             migration.downgrade()
             assert "ops_trace_deliveries" not in sa.inspect(connection).get_table_names()
+
+
+@pytest.mark.parametrize("dialect_name", ["postgresql", "mysql"])
+def test_migration_generates_offline_sql_with_duplicate_constraint(dialect_name: str) -> None:
+    import importlib.util
+    from io import StringIO
+    from pathlib import Path
+
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    migration_file = (
+        Path(__file__).resolve().parents[4]
+        / "migrations/versions/2026_09_09_1200-74f13a2c08b9_add_ops_trace_deliveries.py"
+    )
+    specification = importlib.util.spec_from_file_location("ops_delivery_migration", migration_file)
+    assert specification is not None
+    assert specification.loader is not None
+    migration = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(migration)
+    output = StringIO()
+    context = MigrationContext.configure(
+        dialect_name=dialect_name,
+        opts={"as_sql": True, "output_buffer": output, "literal_binds": True},
+    )
+
+    with Operations.context(context):
+        migration.upgrade()
+        migration.downgrade()
+
+    sql = output.getvalue()
+    assert "Use an online upgrade to remove identical copies" in sql
+    assert "UNIQUE (app_id, tracing_provider)" in sql
+    assert sql.index("trace_app_config_app_provider_unique") < sql.index("ALTER TABLE apps")
+    assert "CREATE TABLE ops_trace_deliveries" in sql
+    assert "DROP TABLE ops_trace_deliveries" in sql

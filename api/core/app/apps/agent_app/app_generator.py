@@ -50,6 +50,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
+from core.ops.trace_source import create_message_trace
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
@@ -70,7 +71,6 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
-from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 
