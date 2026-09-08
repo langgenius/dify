@@ -9,7 +9,7 @@ import { Args, Flags } from '@/framework/flags'
 import { formatted } from '@/framework/output'
 
 export default class KnowledgeFsCat extends DifyCommand {
-  static override description = 'Read an Agentic Knowledge file'
+  static override description = 'Read an Agent Knowledge Base file'
 
   static override effect: CommandEffect = 'read'
 
@@ -19,8 +19,8 @@ export default class KnowledgeFsCat extends DifyCommand {
   ]
 
   static override args = {
-    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
-    path: Args.string({ description: 'Agentic Knowledge file path', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'Agent Knowledge Base ID', required: true }),
+    path: Args.string({ description: 'Agent Knowledge Base file path', required: true }),
   }
 
   static override flags = {
@@ -37,7 +37,7 @@ export default class KnowledgeFsCat extends DifyCommand {
       { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
-        label: 'Reading Agentic Knowledge file',
+        label: 'Reading Agent Knowledge Base file',
         execute: (client, workspaceId, knowledgeSpaceId) =>
           client.cat(workspaceId, knowledgeSpaceId, {
             path: args.path,

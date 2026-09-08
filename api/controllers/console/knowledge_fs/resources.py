@@ -582,7 +582,7 @@ def _public_multimodal_manifest(
     manifest: KnowledgeFSDocumentMultimodalManifest,
 ) -> KnowledgeFSDocumentMultimodalManifestResponse:
     if manifest.document_asset_id != document_id:
-        raise NotFound("Agentic Knowledge document multimodal manifest not found")
+        raise NotFound("Agent Knowledge Base document multimodal manifest not found")
 
     items: list[KnowledgeFSDocumentMultimodalItemResponse] = []
     for item in manifest.items:
@@ -1708,9 +1708,9 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
         except KnowledgeFSDownloadTooLargeError as exc:
             raise RequestEntityTooLarge(str(exc)) from exc
         except KnowledgeFSDownloadObjectNotFoundError as exc:
-            raise NotFound("Agentic Knowledge document object not found") from exc
+            raise NotFound("Agent Knowledge Base document object not found") from exc
         except KnowledgeFSDownloadUnavailableError as exc:
-            raise ServiceUnavailable("Agentic Knowledge object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
@@ -1734,9 +1734,9 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
         try:
             body = KnowledgeFSDownloadService().load_stream(descriptor)
         except KnowledgeFSDownloadObjectNotFoundError as exc:
-            raise NotFound("Agentic Knowledge document object not found") from exc
+            raise NotFound("Agent Knowledge Base document object not found") from exc
         except KnowledgeFSDownloadUnavailableError as exc:
-            raise ServiceUnavailable("Agentic Knowledge object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
         response = Response(body, content_type=descriptor.mime_type or "application/octet-stream")
         response.content_length = descriptor.size_bytes
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(descriptor.filename, safe='')}"
@@ -2159,11 +2159,11 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
             document_id=document_id,
         )
         if manifest.document_asset_id != document_id:
-            raise NotFound("Agentic Knowledge document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
         item = next((candidate for candidate in manifest.items if candidate.id == item_id), None)
         asset_ref = _multimodal_asset_ref(item, query.variant) if item else None
         if asset_ref is None or not asset_ref.object_key:
-            raise NotFound("Agentic Knowledge document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
         object_key = asset_ref.object_key
         if not _multimodal_object_key_is_scoped(
             document_id=document_id,
@@ -2171,17 +2171,17 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
             object_key=object_key,
             tenant_id=tenant_id,
         ):
-            raise NotFound("Agentic Knowledge document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
 
         object_storage = KnowledgeFSObjectStorageService()
         try:
             metadata = object_storage.head_object(key=object_key)
         except KnowledgeFSObjectStorageError as exc:
-            raise ServiceUnavailable("Agentic Knowledge object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
         if metadata is None:
-            raise NotFound("Agentic Knowledge document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
         if metadata.size_bytes > _DOCUMENT_MULTIMODAL_ASSET_MAX_BYTES:
-            raise RequestEntityTooLarge("Agentic Knowledge document multimodal asset is too large")
+            raise RequestEntityTooLarge("Agent Knowledge Base document multimodal asset is too large")
 
         content_type = (asset_ref.content_type or metadata.content_type or "").strip().lower()
         inline = content_type in _INLINE_MULTIMODAL_CONTENT_TYPES
@@ -2196,9 +2196,9 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
         try:
             body = KnowledgeFSDownloadService(object_storage=object_storage).load_stream(descriptor)
         except KnowledgeFSDownloadObjectNotFoundError as exc:
-            raise NotFound("Agentic Knowledge document multimodal asset not found") from exc
+            raise NotFound("Agent Knowledge Base document multimodal asset not found") from exc
         except KnowledgeFSDownloadUnavailableError as exc:
-            raise ServiceUnavailable("Agentic Knowledge object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
 
         response = Response(
             body,
@@ -4072,7 +4072,7 @@ class KnowledgeFSJWKSApi(Resource):
                 audit=SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(session_maker)
             )
         except KnowledgeFSCapabilityConfigurationError as exc:
-            raise ServiceUnavailable("Agentic Knowledge capability issuance is not configured") from exc
+            raise ServiceUnavailable("Agent Knowledge Base capability issuance is not configured") from exc
         if issuer is None:
             raise NotFound()
         payload = KnowledgeFSJWKSResponse.model_validate(issuer.public_jwks()).model_dump(mode="json")

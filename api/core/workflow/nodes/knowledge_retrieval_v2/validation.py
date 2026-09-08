@@ -60,7 +60,7 @@ def validate_control_space_references(
 ) -> None:
     missing = missing_control_space_ids(session=session, tenant_id=tenant_id, graph=graph)
     if missing:
-        raise ValueError("Agentic Knowledge Spaces are missing or inactive in this workspace: " + ", ".join(missing))
+        raise ValueError("Agent Knowledge Bases are missing or inactive in this workspace: " + ", ".join(missing))
 
 
 __all__ = [

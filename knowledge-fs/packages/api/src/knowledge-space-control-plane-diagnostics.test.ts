@@ -177,7 +177,7 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
       items: [
         expect.objectContaining({
           errorCode: "KNOWLEDGE_FS_TIMEOUT",
-          errorMessage: "The Agentic Knowledge operation timed out. Try again later.",
+          errorMessage: "The Agent Knowledge Base operation timed out. Try again later.",
           failure: expect.objectContaining({
             action: "retry",
             category: "timeout",

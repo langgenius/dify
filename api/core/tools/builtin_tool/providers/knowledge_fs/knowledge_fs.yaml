@@ -2,11 +2,11 @@ identity:
   author: Dify
   name: knowledge_fs
   label:
-    en_US: Agentic Knowledge
-    zh_Hans: Agentic Knowledge
+    en_US: Agent Knowledge Base
+    zh_Hans: Agent 知识库
   description:
-    en_US: Run explicitly bound Agentic Knowledge operations from an Agent or Workflow.
-    zh_Hans: 从 Agent 或 Workflow 执行显式绑定的 Agentic Knowledge 操作。
+    en_US: Run explicitly bound Agent Knowledge Base operations from an Agent or Workflow.
+    zh_Hans: 从 Agent 或工作流执行显式绑定的 Agent 知识库操作。
   icon: icon.svg
   tags:
     - rag

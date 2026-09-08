@@ -263,7 +263,7 @@ describe("document processing task repository", () => {
         expect(mapped).toMatchObject({
           errorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
           errorMessage:
-            "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
+            "Agent Knowledge Base could not complete the operation. Try again, or contact an administrator with the error reference.",
           failure: { code: "KNOWLEDGE_FS_INTERNAL_ERROR", retryPolicy: "manual" },
         });
       } else {

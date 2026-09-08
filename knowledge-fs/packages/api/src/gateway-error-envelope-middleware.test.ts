@@ -81,7 +81,7 @@ describe("createKnowledgeFsErrorEnvelopeMiddleware", () => {
     const body = await unsafe.json();
     expect(body).toMatchObject({
       code: "KNOWLEDGE_FS_UNAVAILABLE",
-      error: "Agentic Knowledge is temporarily unavailable. Try again later.",
+      error: "Agent Knowledge Base is temporarily unavailable. Try again later.",
       failure: { code: "KNOWLEDGE_FS_UNAVAILABLE" },
     });
     expect(JSON.stringify(body)).not.toContain("secret");
@@ -109,7 +109,7 @@ describe("createKnowledgeFsErrorEnvelopeMiddleware", () => {
 
     expect(body).toMatchObject({
       code: "FORBIDDEN",
-      error: "You do not have permission to perform this Agentic Knowledge operation.",
+      error: "You do not have permission to perform this Agent Knowledge Base operation.",
       failure: {
         category: "authorization",
         code: "KNOWLEDGE_FS_ACCESS_DENIED",
@@ -144,11 +144,11 @@ describe("createKnowledgeFsErrorEnvelopeMiddleware", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       code: "RETRIEVAL_DELETION_IN_PROGRESS",
-      error: "This knowledge space is being deleted and cannot be searched.",
+      error: "This Agent Knowledge Base is being deleted and cannot be searched.",
       failure: {
         category: "conflict",
         code: "RETRIEVAL_DELETION_IN_PROGRESS",
-        message: "This knowledge space is being deleted and cannot be searched.",
+        message: "This Agent Knowledge Base is being deleted and cannot be searched.",
         retryPolicy: "never",
         traceId: "trace-retrieval-deletion",
       },

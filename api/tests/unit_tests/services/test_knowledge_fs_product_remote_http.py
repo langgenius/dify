@@ -1317,7 +1317,7 @@ def test_json_remote_replaces_registered_failure_messages_with_safe_bff_copy(
 
     assert raised.value.failure is not None
     assert raised.value.failure.message == (
-        "The Agentic Knowledge operation requires a configuration change before it can continue."
+        "The Agent Knowledge Base operation requires a configuration change before it can continue."
     )
     assert "credential-secret" not in raised.value.failure.model_dump_json()
     assert response.is_closed

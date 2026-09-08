@@ -596,7 +596,7 @@ describe("createDocumentCompilationRuntime", () => {
     await expect(attempts.get(attemptId)).resolves.toMatchObject({
       lastErrorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
       lastErrorMessage:
-        "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
+        "Agent Knowledge Base could not complete the operation. Try again, or contact an administrator with the error reference.",
     });
   });
 

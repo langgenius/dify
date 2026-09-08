@@ -139,22 +139,22 @@ KnowledgeFSPublicErrorCode = Literal[
 
 class KnowledgeFSPublicFailureResponse(ResponseModel):
     _SAFE_MESSAGE_BY_CATEGORY: ClassVar[dict[str, str]] = {
-        "authorization": "You do not have permission to perform this Agentic Knowledge operation.",
-        "canceled": "The Agentic Knowledge operation was canceled.",
-        "configuration": "The Agentic Knowledge operation requires a configuration change before it can continue.",
-        "conflict": "The Agentic Knowledge operation conflicts with the current resource state.",
-        "dependency": "A service required by Agentic Knowledge is temporarily unavailable.",
+        "authorization": "You do not have permission to perform this Agent Knowledge Base operation.",
+        "canceled": "The Agent Knowledge Base operation was canceled.",
+        "configuration": "The Agent Knowledge Base operation requires a configuration change before it can continue.",
+        "conflict": "The Agent Knowledge Base operation conflicts with the current resource state.",
+        "dependency": "A service required by Agent Knowledge Base is temporarily unavailable.",
         "internal": (
-            "Agentic Knowledge could not complete the operation. Try again, or contact an administrator "
+            "Agent Knowledge Base could not complete the operation. Try again, or contact an administrator "
             "with the error reference."
         ),
-        "not_found": "The requested Agentic Knowledge resource was not found.",
-        "rate_limit": "Too many Agentic Knowledge operations were requested. Try again later.",
-        "timeout": "The Agentic Knowledge operation timed out. Try again later.",
-        "validation": "The Agentic Knowledge request is invalid.",
+        "not_found": "The requested Agent Knowledge Base resource was not found.",
+        "rate_limit": "Too many Agent Knowledge Base operations were requested. Try again later.",
+        "timeout": "The Agent Knowledge Base operation timed out. Try again later.",
+        "validation": "The Agent Knowledge Base request is invalid.",
     }
     _SAFE_MESSAGE_BY_CODE: ClassVar[dict[str, str]] = {
-        "RETRIEVAL_DELETION_IN_PROGRESS": "This knowledge space is being deleted and cannot be searched.",
+        "RETRIEVAL_DELETION_IN_PROGRESS": "This Agent Knowledge Base is being deleted and cannot be searched.",
         "RETRIEVAL_EXECUTION_LEASE_LOST": (
             "The retrieval execution expired before it could finish. Run the query again."
         ),

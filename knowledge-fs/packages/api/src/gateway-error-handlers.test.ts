@@ -28,13 +28,13 @@ describe("handleGatewayError", () => {
     await expect(response.json()).resolves.toEqual({
       code: "KNOWLEDGE_FS_INTERNAL_ERROR",
       error:
-        "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
+        "Agent Knowledge Base could not complete the operation. Try again, or contact an administrator with the error reference.",
       failure: {
         action: "contact_admin",
         category: "internal",
         code: "KNOWLEDGE_FS_INTERNAL_ERROR",
         message:
-          "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
+          "Agent Knowledge Base could not complete the operation. Try again, or contact an administrator with the error reference.",
         retryPolicy: "manual",
         traceId: "trace-background-task",
       },

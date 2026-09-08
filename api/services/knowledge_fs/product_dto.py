@@ -85,7 +85,7 @@ class KnowledgeFSRerankIntent(BaseModel):
     @model_validator(mode="after")
     def validate_enabled_model(self) -> KnowledgeFSRerankIntent:
         if not self.enabled or self.model is None:
-            raise ValueError("Knowledge-space retrieval requires an enabled rerank model")
+            raise ValueError("Agent Knowledge Base retrieval requires an enabled rerank model")
         return self
 
 
@@ -426,7 +426,7 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
     @model_validator(mode="after")
     def validate_initial_model_configuration(self) -> KnowledgeFSSpaceCreatePayload:
         if self.retrieval is not None and self.embedding is None:
-            raise ValueError("Knowledge-space retrieval requires an embedding model")
+            raise ValueError("Agent Knowledge Base retrieval requires an embedding model")
         return self
 
 
@@ -1285,9 +1285,9 @@ class KnowledgeFSSettingsPayload(BaseModel):
     @model_validator(mode="after")
     def validate_setting_present(self) -> KnowledgeFSSettingsPayload:
         if self.embedding is None and self.retrieval is None:
-            raise ValueError("At least one Agentic Knowledge setting must be supplied")
+            raise ValueError("At least one Agent Knowledge Base setting must be supplied")
         if self.retrieval is not None and (not self.retrieval.rerank.enabled or self.retrieval.rerank.model is None):
-            raise ValueError("Knowledge-space retrieval requires an enabled rerank model")
+            raise ValueError("Agent Knowledge Base retrieval requires an enabled rerank model")
         return self
 
 
@@ -2568,7 +2568,7 @@ class KnowledgeFSSourceImportFailureResponse(ResponseModel):
         self.error = (
             self.failure.message
             if self.failure is not None
-            else "Agentic Knowledge could not import this source document."
+            else "Agent Knowledge Base could not import this source document."
         )
         if self.failure is not None:
             self.code = self.failure.code

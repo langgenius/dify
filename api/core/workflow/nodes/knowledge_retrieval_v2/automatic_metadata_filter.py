@@ -336,7 +336,7 @@ class KnowledgeFSAutomaticMetadataFilterExtractor:
             )
         except ValueError as exc:
             raise KnowledgeFSRetrievalConfigurationError(
-                "Agentic Knowledge metadata filtering model is not configured or is unavailable"
+                "Agent Knowledge Base metadata filtering model is not configured or is unavailable"
             ) from exc
         prompt_messages, stop = build_metadata_filter_prompt(
             model_config=model_config_entity,

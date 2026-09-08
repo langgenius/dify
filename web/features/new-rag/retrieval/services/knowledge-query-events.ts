@@ -34,7 +34,7 @@ function parseEventBlock(block: string): KnowledgeQueryEvent | undefined {
 
 function capabilityTraceId(token: string) {
   const payload = token.split('.')[1]
-  if (!payload) throw new Error('Agentic Knowledge stream capability is malformed')
+  if (!payload) throw new Error('Agent Knowledge Base stream capability is malformed')
   try {
     const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
@@ -51,7 +51,7 @@ function capabilityTraceId(token: string) {
   } catch {
     // The signed token is verified by KnowledgeFS; the client only echoes its public trace claim.
   }
-  throw new Error('Agentic Knowledge stream capability is missing its trace binding')
+  throw new Error('Agent Knowledge Base stream capability is missing its trace binding')
 }
 
 export async function streamCapabilityEvents({
@@ -83,7 +83,7 @@ export async function streamCapabilityEvents({
     signal,
   })
   if (!response.ok) throw response
-  if (!response.body) throw new Error('Agentic Knowledge event stream has no response body')
+  if (!response.body) throw new Error('Agent Knowledge Base event stream has no response body')
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

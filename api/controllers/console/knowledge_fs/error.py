@@ -13,61 +13,61 @@ class _KnowledgeFSFailureHTTPError(BaseHTTPException):
 
 class KnowledgeFSSpaceNotFoundHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_space_not_found"
-    description = "Agentic Knowledge space was not found."
+    description = "Agent Knowledge Base was not found."
     code = 404
 
 
 class KnowledgeFSResourceNotFoundHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_resource_not_found"
-    description = "Agentic Knowledge resource was not found."
+    description = "Agent Knowledge Base resource was not found."
     code = 404
 
 
 class KnowledgeFSOperationUnavailableHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_operation_unavailable"
-    description = "Agentic Knowledge operation is not available."
+    description = "Agent Knowledge Base operation is not available."
     code = 503
 
 
 class KnowledgeFSUpstreamUnavailableHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_upstream_unavailable"
-    description = "Agentic Knowledge is unavailable."
+    description = "Agent Knowledge Base is unavailable."
     code = 503
 
 
 class KnowledgeFSInvalidRequestHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_invalid_request"
-    description = "Agentic Knowledge request is invalid."
+    description = "Agent Knowledge Base request is invalid."
     code = 400
 
 
 class KnowledgeFSAccessDeniedHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_access_denied"
-    description = "Agentic Knowledge operation is not allowed."
+    description = "Agent Knowledge Base operation is not allowed."
     code = 403
 
 
 class KnowledgeFSConflictHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_conflict"
-    description = "Agentic Knowledge operation conflicts with the current resource state."
+    description = "Agent Knowledge Base operation conflicts with the current resource state."
     code = 409
 
 
 class KnowledgeFSRequestTooLargeHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_request_too_large"
-    description = "Agentic Knowledge request is too large."
+    description = "Agent Knowledge Base request is too large."
     code = 413
 
 
 class KnowledgeFSRequestRejectedHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_request_rejected"
-    description = "Agentic Knowledge request was rejected."
+    description = "Agent Knowledge Base request was rejected."
     code = 422
 
 
 class KnowledgeFSRateLimitHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_rate_limit_exceeded"
-    description = "Agentic Knowledge request rate limit exceeded."
+    description = "Agent Knowledge Base request rate limit exceeded."
     code = 429
 
 

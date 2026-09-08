@@ -71,33 +71,33 @@ interface KnowledgeFsErrorDescriptor {
 
 const invalidRequest = descriptor(
   "validation",
-  "The Agentic Knowledge request is invalid.",
+  "The Agent Knowledge Base request is invalid.",
   "never",
   400,
 );
 const notFound = descriptor(
   "not_found",
-  "The requested Agentic Knowledge resource was not found.",
+  "The requested Agent Knowledge Base resource was not found.",
   "never",
   404,
 );
 const conflict = descriptor(
   "conflict",
-  "The Agentic Knowledge operation conflicts with the current resource state.",
+  "The Agent Knowledge Base operation conflicts with the current resource state.",
   "manual",
   409,
   "retry",
 );
 const unavailable = descriptor(
   "dependency",
-  "Agentic Knowledge is temporarily unavailable. Try again later.",
+  "Agent Knowledge Base is temporarily unavailable. Try again later.",
   "manual",
   503,
   "retry",
 );
 const internal = descriptor(
   "internal",
-  "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
+  "Agent Knowledge Base could not complete the operation. Try again, or contact an administrator with the error reference.",
   "manual",
   500,
   "contact_admin",
@@ -215,7 +215,7 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   ),
   KNOWLEDGE_FS_ACCESS_DENIED: descriptor(
     "authorization",
-    "You do not have permission to perform this Agentic Knowledge operation.",
+    "You do not have permission to perform this Agent Knowledge Base operation.",
     "never",
     403,
     "contact_admin",
@@ -226,14 +226,14 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   KNOWLEDGE_FS_NOT_FOUND: notFound,
   KNOWLEDGE_FS_RATE_LIMITED: descriptor(
     "rate_limit",
-    "Too many Agentic Knowledge operations were requested. Try again later.",
+    "Too many Agent Knowledge Base operations were requested. Try again later.",
     "manual",
     429,
     "retry",
   ),
   KNOWLEDGE_FS_TIMEOUT: descriptor(
     "timeout",
-    "The Agentic Knowledge operation timed out. Try again later.",
+    "The Agent Knowledge Base operation timed out. Try again later.",
     "manual",
     503,
     "retry",
@@ -241,14 +241,14 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   KNOWLEDGE_FS_UNAVAILABLE: unavailable,
   KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND: descriptor(
     "configuration",
-    "The knowledge space model configuration is unavailable. Configure the models before retrying.",
+    "The Agent Knowledge Base model configuration is unavailable. Configure the models before retrying.",
     "after_configuration",
     422,
     "configure_model",
   ),
   KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED: descriptor(
     "configuration",
-    "Configure the knowledge space retrieval models before importing documents.",
+    "Configure the Agent Knowledge Base retrieval models before importing documents.",
     "after_configuration",
     422,
     "configure_model",
@@ -318,7 +318,7 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   ),
   MODEL_PROFILE_ACTIVATION_INCOMPLETE: descriptor(
     "configuration",
-    "The knowledge space model configuration is incomplete. Configure the models before retrying.",
+    "The Agent Knowledge Base model configuration is incomplete. Configure the models before retrying.",
     "after_configuration",
     422,
     "configure_model",
@@ -367,7 +367,7 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   ),
   RESEARCH_TASK_CAPABILITY_REVOKED: descriptor(
     "authorization",
-    "Access to the knowledge space was revoked while the research task was running.",
+    "Access to the Agent Knowledge Base was revoked while the research task was running.",
     "never",
     403,
     "contact_admin",
@@ -409,7 +409,7 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   ),
   RETRIEVAL_DELETION_IN_PROGRESS: descriptor(
     "conflict",
-    "This knowledge space is being deleted and cannot be searched.",
+    "This Agent Knowledge Base is being deleted and cannot be searched.",
     "never",
     409,
   ),

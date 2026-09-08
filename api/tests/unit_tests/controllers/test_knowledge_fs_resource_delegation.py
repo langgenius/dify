@@ -1787,13 +1787,13 @@ def test_console_request_rejection_preserves_safe_failure_metadata() -> None:
 
     assert raised.value.data == {
         "code": "knowledge_fs_request_rejected",
-        "message": "The Agentic Knowledge operation requires a configuration change before it can continue.",
+        "message": "The Agent Knowledge Base operation requires a configuration change before it can continue.",
         "status": 422,
         "failure": {
             "action": "configure_model",
             "category": "configuration",
             "code": "MODEL_SELECTION_NOT_FOUND",
-            "message": "The Agentic Knowledge operation requires a configuration change before it can continue.",
+            "message": "The Agent Knowledge Base operation requires a configuration change before it can continue.",
             "retryPolicy": "after_configuration",
             "traceId": "trace-model",
         },

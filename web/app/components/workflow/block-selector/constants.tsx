@@ -79,12 +79,12 @@ export const BLOCKS = [
   {
     classification: BlockClassification.Default,
     type: BlockEnum.KnowledgeRetrieval,
-    title: 'Original Knowledge Retrieval',
+    title: 'Knowledge Retrieval',
   },
   {
     classification: BlockClassification.Default,
     type: BlockEnum.KnowledgeRetrievalV2,
-    title: 'Agentic Knowledge Retrieval',
+    title: 'Agent Knowledge Retrieval',
   },
   {
     classification: BlockClassification.Default,

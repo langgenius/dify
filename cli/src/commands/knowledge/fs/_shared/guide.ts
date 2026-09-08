@@ -1,6 +1,6 @@
 export const knowledgeFsAgentGuide = `
 WORKFLOW
-  Each Agentic Knowledge filesystem command is an independent difyctl command and
+  Each Agent Knowledge Base filesystem command is an independent difyctl command and
   OpenAPI operation:
     difyctl knowledge fs ls <space-id> /knowledge
     difyctl knowledge fs tree <space-id> /knowledge --depth 2
@@ -23,5 +23,5 @@ ERROR RECOVERY
   not logged in          difyctl auth login
   workspace required     pass -w <workspace-id> or run difyctl use workspace <id>
   invalid path           use /knowledge, /workspaces, /sources, or /evidence
-  path not visible       verify the knowledge-space id and your workspace access
+  path not visible       verify the Agent Knowledge Base ID and your workspace access
 `

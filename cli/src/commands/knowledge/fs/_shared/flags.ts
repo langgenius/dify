@@ -25,7 +25,7 @@ export function knowledgeFsFlags() {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'consistency-class': Flags.string({
-      description: 'Agentic Knowledge read consistency',
+      description: 'Agent Knowledge Base read consistency',
       options: KNOWLEDGE_FS_CONSISTENCY_CLASSES,
     }),
     'http-retry': httpRetryFlag,
