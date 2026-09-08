@@ -1,5 +1,6 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
+import type { ModelTypeEnum } from '../declarations'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -19,7 +20,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
-import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
+import { ConfigurationMethodEnum, ModelModalModeEnum, ModelStatusEnum } from '../declarations'
 import {
   useLanguage,
   useLazyModelProviderDetail,
@@ -82,21 +83,38 @@ function PopupItem({
   const isApiKeyActive = state.variant === 'api-active' || state.variant === 'api-fallback'
   const { credentialName } = state
 
-  const handleOpenModelModal = async () => {
+  const handleOpenModelModal = async (modelItem: ModelSelectorModel) => {
     if (!canCreateCredential || !currentProvider) return
 
     const detail = await loadProviderDetail()
     if (!detail) return
+    const isCustomizableModel = modelItem.fetch_from === ConfigurationMethodEnum.customizableModel
+    const modelType = modelItem.model_type as ModelTypeEnum
     setShowModelModal({
       payload: {
         currentProvider: detail,
-        currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+        currentConfigurationMethod: isCustomizableModel
+          ? ConfigurationMethodEnum.customizableModel
+          : ConfigurationMethodEnum.predefinedModel,
+        currentCustomConfigurationModelFixedFields: isCustomizableModel
+          ? {
+              __model_name: modelItem.model,
+              __model_type: modelType,
+            }
+          : undefined,
+        isModelCredential: isCustomizableModel || undefined,
+        model: isCustomizableModel
+          ? {
+              model: modelItem.model,
+              model_type: modelType,
+            }
+          : undefined,
+        mode: isCustomizableModel ? ModelModalModeEnum.configModelCredential : undefined,
       },
       onSaveCallback: () => {
         updateModelProviders()
 
-        const modelType = model.models[0]!.model_type
-        if (modelType) updateModelList(modelType as ModelType)
+        if (modelItem.model_type) updateModelList(modelItem.model_type as ModelType)
       },
     })
   }
@@ -267,7 +285,7 @@ function PopupItem({
                     variant="ghost-accent"
                     size="small"
                     className="h-auto shrink-0 p-0 text-xs opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-transparent focus-visible:opacity-100"
-                    onClick={() => void handleOpenModelModal()}
+                    onClick={() => void handleOpenModelModal(modelItem)}
                   >
                     {t(($) => $['operation.add'], { ns: 'common' }).toLocaleUpperCase()}
                   </Button>
