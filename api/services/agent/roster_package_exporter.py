@@ -383,8 +383,7 @@ class RosterAgentPackageExporter:
                 .tuples()
                 .all()
             )
-            if rows or not snapshot_id:
-                return rows
+            return rows
         if not snapshot_id:
             return []
         return (
