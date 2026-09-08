@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { MockedFunction } from 'vite-plus/test'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -53,9 +55,9 @@ const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 
-const mockUseModelList = vi.fn()
-const mockUseModelListAndDefaultModel = vi.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockModelListQuery = vi.fn()
+const mockModelListQueryAndDefaultModel = vi.fn()
+const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
 const mockUseCurrentProviderAndModel = vi.fn()
 const mockCheckShowMultiModalTip = vi.fn()
 
@@ -94,15 +96,13 @@ vi.mock('@/context/i18n', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
-    textGenerationModelList: [],
   }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (...args: unknown[]) => mockUseModelList(...args),
-  useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
+  useModelListAndDefaultModel: (...args: unknown[]) => mockModelListQueryAndDefaultModel(...args),
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
@@ -251,7 +251,7 @@ describe('SettingsModal', () => {
         ],
       },
     } as ReturnType<typeof useMembers>)
-    mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
+    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank) {
         return {
           data: [
@@ -264,8 +264,8 @@ describe('SettingsModal', () => {
       }
       return { data: [{ provider: 'embed-provider', models: [{ model: 'embed-model' }] }] }
     })
-    mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
+    mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
+    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       defaultModel: null,
       currentModel: null,
     })
@@ -436,7 +436,7 @@ describe('SettingsModal', () => {
     it('should block save when reranking is enabled without model', async () => {
       // Arrange
       const user = userEvent.setup()
-      mockUseModelList.mockReturnValue({ data: [] })
+      mockModelListQuery.mockReturnValue({ data: [] })
       const dataset = createDataset(
         {},
         createRetrievalConfig({
@@ -600,4 +600,23 @@ describe('SettingsModal', () => {
       })
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const args = options.queryKey[1].input?.params?.model_type
+      if (!args) throw new Error('Missing model type in query')
+      return mockModelListQuery(args)
+    },
+  }
 })

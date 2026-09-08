@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { useDismissedEducationExpireNotice } from './storage'
@@ -74,10 +73,14 @@ export function useEducationExpireNotice() {
       timezone: profile.timezone ?? undefined,
     }),
   })
-  const { enableEducationPlan } = useProviderContext()
+  const { data: enableEducationPlan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.education.enabled,
+    }),
+  )
   const { data: educationStatus, isLoading: isLoadingEducationStatus } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: enableEducationPlan,
+      enabled: enableEducationPlan === true,
       select: selectEducationExpireStatus,
     }),
   )

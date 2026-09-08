@@ -5,7 +5,6 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   DefaultModelResponse,
-  Model,
   ModelParameterRule,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -151,10 +150,6 @@ export const activateMember = ({
   body: ActivateMemberBody
 }): Promise<LoginResponse> => {
   return post<LoginResponse>(url, { body })
-}
-
-export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
-  return get<{ data: Model[] }>(url)
 }
 
 export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResponse }> => {

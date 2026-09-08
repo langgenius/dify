@@ -1,7 +1,9 @@
 import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -42,33 +44,12 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 // Mock model list hook
-const mockTextGenerationList: Model[] = []
-const mockTextEmbeddingList: Model[] = []
-const mockRerankList: Model[] = []
-const mockModerationList: Model[] = []
-const mockSttList: Model[] = []
-const mockTtsList: Model[] = []
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (type: ModelTypeEnum) => {
-    switch (type) {
-      case ModelTypeEnum.textGeneration:
-        return { data: mockTextGenerationList }
-      case ModelTypeEnum.textEmbedding:
-        return { data: mockTextEmbeddingList }
-      case ModelTypeEnum.rerank:
-        return { data: mockRerankList }
-      case ModelTypeEnum.moderation:
-        return { data: mockModerationList }
-      case ModelTypeEnum.speech2text:
-        return { data: mockSttList }
-      case ModelTypeEnum.tts:
-        return { data: mockTtsList }
-      default:
-        return { data: [] }
-    }
-  },
-}))
+const mockTextGenerationList: ProviderWithModelsResponse[] = []
+const mockTextEmbeddingList: ProviderWithModelsResponse[] = []
+const mockRerankList: ProviderWithModelsResponse[] = []
+const mockModerationList: ProviderWithModelsResponse[] = []
+const mockSttList: ProviderWithModelsResponse[] = []
+const mockTtsList: ProviderWithModelsResponse[] = []
 
 // Mock fetchAndMergeValidCompletionParams
 const mockFetchAndMergeValidCompletionParams = vi.fn()
@@ -88,7 +69,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
     onValueChange,
   }: {
     value?: { provider?: string; model?: string }
-    models?: Model[]
+    models?: ProviderWithModelsResponse[]
     scopeFeatures?: string[]
     surface?: 'default' | 'workflow'
     disabled?: boolean
@@ -163,7 +144,7 @@ vi.mock('../tts-params-panel', () => ({
     voice,
     onChange,
   }: {
-    currentModel?: ModelItem
+    currentModel?: ProviderModelWithStatusEntity
     language?: string
     voice?: string
     onChange?: (language: string, voice: string) => void
@@ -183,9 +164,11 @@ vi.mock('../tts-params-panel', () => ({
 // ==================== Test Utilities ====================
 
 /**
- * Factory function to create a ModelItem with defaults
+ * Factory function to create a ProviderModelWithStatusEntity with defaults
  */
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const createModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'test-model',
   label: { en_US: 'Test Model', zh_Hans: 'Test Model' },
   model_type: ModelTypeEnum.textGeneration,
@@ -198,9 +181,12 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
 })
 
 /**
- * Factory function to create a Model (provider with models) with defaults
+ * Factory function to create a ProviderWithModelsResponse (provider with models) with defaults
  */
-const createModel = (overrides: Partial<Model> = {}): Model => ({
+const createModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: 'icon-small.png', zh_Hans: 'icon-small.png' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -226,12 +212,12 @@ const createDefaultProps = (
  */
 const setupModelLists = (
   config: {
-    textGeneration?: Model[]
-    textEmbedding?: Model[]
-    rerank?: Model[]
-    moderation?: Model[]
-    stt?: Model[]
-    tts?: Model[]
+    textGeneration?: ProviderWithModelsResponse[]
+    textEmbedding?: ProviderWithModelsResponse[]
+    rerank?: ProviderWithModelsResponse[]
+    moderation?: ProviderWithModelsResponse[]
+    stt?: ProviderWithModelsResponse[]
+    tts?: ProviderWithModelsResponse[]
   } = {},
 ) => {
   mockTextGenerationList.length = 0
@@ -1373,4 +1359,38 @@ describe('ModelParameterModal', () => {
       expect(trigger).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const type = options.queryKey[1].input?.params?.model_type
+      if (!type) throw new Error('Missing model type in query')
+      switch (type) {
+        case ModelTypeEnum.textGeneration:
+          return { data: mockTextGenerationList }
+        case ModelTypeEnum.textEmbedding:
+          return { data: mockTextEmbeddingList }
+        case ModelTypeEnum.rerank:
+          return { data: mockRerankList }
+        case ModelTypeEnum.moderation:
+          return { data: mockModerationList }
+        case ModelTypeEnum.speech2text:
+          return { data: mockSttList }
+        case ModelTypeEnum.tts:
+          return { data: mockTtsList }
+        default:
+          return { data: [] }
+      }
+    },
+  }
 })

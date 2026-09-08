@@ -531,7 +531,6 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
   const value = {
     readonly: true,
     appId,
-    isAPIKeySet: true,
     isTrailFinished: false,
     mode,
     modelModeType: '',
@@ -619,7 +618,7 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
               >
                 <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
-                    isAPIKeySet
+                    isPreview
                     onSetting={noop}
                     inputs={inputs}
                     modelParameterParams={{

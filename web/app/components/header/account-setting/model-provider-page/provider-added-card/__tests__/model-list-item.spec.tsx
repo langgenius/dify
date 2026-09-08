@@ -14,7 +14,10 @@ let mockWorkspacePermissionKeys: string[] = ['plugin.model_config']
 function createWrapper(deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   return createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
-    features: { billing: { subscription: { plan: mockPlanType } } },
+    features: {
+      billing: { subscription: { plan: mockPlanType } },
+      model_load_balancing_enabled: mockModelLoadBalancingEnabled,
+    },
   }).wrapper
 }
 
@@ -24,10 +27,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: () => mockModelLoadBalancingEnabled,
-}))
 
 vi.mock('@/service/common', () => ({
   enableModel: vi.fn(),

@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
@@ -78,6 +79,7 @@ from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
+from services.tool_file_download_service import ToolFileDownloadService
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
@@ -252,6 +254,20 @@ def test_build_application_services_wires_message_file_previews(
     assert isinstance(services.message_file_previews._files, MessageFilePreviewQueryRepository)
     assert services.message_file_previews._files._session_factory is sqlite_session_factory
     assert services.message_file_previews._storage is ext_application_services.storage
+
+
+def test_build_application_services_wires_tool_file_downloads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.tool_file_downloads, ToolFileDownloadService)
+    assert isinstance(services.tool_file_downloads._tool_files, ToolFileManager)
 
 
 def test_build_application_services_wires_upload_file_delivery(

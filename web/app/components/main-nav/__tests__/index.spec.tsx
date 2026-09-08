@@ -12,7 +12,6 @@ import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -30,7 +29,6 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -168,11 +166,8 @@ type MainNavConsoleState = ConsoleStateFixture & {
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as MainNavConsoleState | undefined,
 }))
-const mockProviderContextState = vi.hoisted(() => ({
-  current: {
-    enableSkill: true,
-  } as Partial<ProviderContextState>,
-}))
+let skillEnabled = true
+let educationEnabled = false
 
 vi.mock('@tanstack/react-virtual')
 
@@ -192,12 +187,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
-    selector(mockProviderContextState.current),
-  ),
-}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
@@ -603,7 +592,11 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
-      features: { billing: { subscription: { plan: 'sandbox' } } },
+      features: {
+        billing: { subscription: { plan: 'sandbox' } },
+        enable_skill: skillEnabled,
+        education: { enabled: educationEnabled },
+      },
       educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
@@ -651,12 +644,8 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     mockConsoleState.current = consoleState
-    mockProviderContextState.current = {
-      enableSkill: true,
-    }
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
+    skillEnabled = true
+    educationEnabled = false
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
     } as unknown as ModalContextState)
@@ -775,9 +764,7 @@ describe('MainNav', () => {
   })
 
   it('hides the skills entry when skill is disabled', () => {
-    mockProviderContextState.current = {
-      enableSkill: false,
-    }
+    skillEnabled = false
 
     renderMainNav()
 
@@ -831,9 +818,7 @@ describe('MainNav', () => {
   })
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableEducationPlan: true,
-    } as ProviderContextState)
+    educationEnabled = true
 
     renderMainNav(defaultMainNavSystemFeatures, {
       educationStatus: { is_student: true },

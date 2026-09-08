@@ -186,6 +186,7 @@ from services.setup_service import SetupService
 from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
+from services.tool_file_download_service import ToolFileDownloadService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -268,6 +269,7 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
+    tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
@@ -672,6 +674,7 @@ def build_application_services(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
         ),
+        tool_file_downloads=ToolFileDownloadService(tool_files=ToolFileManager()),
         upload_file_delivery=UploadFileDeliveryService(
             files=UploadFileDeliveryQueryRepository(session_factory=database_client),
             storage=storage,
