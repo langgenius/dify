@@ -40,7 +40,7 @@ def test_enterprise_traces_use_owned_event_and_respect_enablement(kind, enabled)
     event = make_trace_event(kind)
     with (
         patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=enabled),
-        patch("services.ops_trace_service.record_enterprise_operation") as record,
+        patch("core.ops.trace_source.record_enterprise_operation") as record,
     ):
         emit(event)
     if enabled:
@@ -53,7 +53,7 @@ def test_enterprise_traces_use_owned_event_and_respect_enablement(kind, enabled)
 def test_trace_recording_error_does_not_interrupt_application(caplog):
     with (
         patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
-        patch("services.ops_trace_service.record_enterprise_operation", side_effect=ValueError("private data")),
+        patch("core.ops.trace_source.record_enterprise_operation", side_effect=ValueError("private data")),
     ):
         emit(make_trace_event("node"))
     assert "Cannot record enterprise trace" in caplog.text

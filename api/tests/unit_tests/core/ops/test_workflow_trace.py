@@ -2,7 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
-from types import SimpleNamespace
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -14,17 +14,21 @@ from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunPausedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
 
 
-def test_nested_retry_pause_resume_is_owned_and_sealed():
+def test_nested_retry_pause_resume_is_owned_and_sealed() -> None:
+    app_id = str(uuid4())
     source = TraceSource(
         tenant_id=str(uuid4()),
-        app_id=str(uuid4()),
+        app_id=app_id,
         operation_id=str(uuid4()),
         workflow_run_id=str(uuid4()),
         message_id=str(uuid4()),
@@ -44,8 +48,10 @@ def test_nested_retry_pause_resume_is_owned_and_sealed():
     )
     started = datetime.now(UTC)
 
-    def node(execution_id, tenant_id=source.tenant_id):
-        return SimpleNamespace(
+    def node(execution_id: str, tenant_id: str = source.tenant_id) -> Node[BaseNodeData]:
+        return create_autospec(
+            Node,
+            instance=True,
             execution_id=execution_id,
             id="reused-node-id",
             title="Node",
@@ -55,7 +61,7 @@ def test_nested_retry_pause_resume_is_owned_and_sealed():
             run_context={
                 DIFY_RUN_CONTEXT_KEY: DifyRunContext(
                     tenant_id=tenant_id,
-                    app_id=source.app_id,
+                    app_id=app_id,
                     user_id="user",
                     user_from=UserFrom.ACCOUNT,
                     invoke_from=InvokeFrom.DEBUGGER,
@@ -153,7 +159,7 @@ def test_nested_retry_pause_resume_is_owned_and_sealed():
 
 
 @pytest.mark.parametrize("include_loop", [False, True])
-def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop):
+def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop: bool) -> None:
     from functools import partial
     from unittest.mock import MagicMock
 
@@ -172,7 +178,8 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
         _workflow_tool_node,
     )
 
-    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    app_id = str(uuid4())
+    source = TraceSource(tenant_id=str(uuid4()), app_id=app_id, operation_id=str(uuid4()))
     child_app_id = str(uuid4())
     child_settings = TraceProviderSettings(
         tenant_id=source.tenant_id, app_id=child_app_id, provider_name="langsmith", config_id=str(uuid4())
@@ -187,13 +194,13 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
         load_provider_settings=lambda _tenant_id, _app_id: (child_settings,),
     )
     state = RuntimeState(workflow_id="outer-workflow", variable_pool=VariablePool(), start_at=1)
-    tool, runtime, request = _workflow_tool_node(state, app_id=source.app_id)
+    tool, runtime, request = _workflow_tool_node(state, app_id=app_id)
     tool.run_context[DIFY_RUN_CONTEXT_KEY].tenant_id = source.tenant_id
     runtime.build_workflow_tool_container_payload.return_value = request.model_copy(
         update={"source_app_id": child_app_id}
     )
     _, workflow = _source_workflow()
-    source_graph = workflow.graph_dict
+    source_graph = dict(workflow.graph_dict)
     if include_loop:
         source_graph["nodes"].extend(
             [
@@ -251,7 +258,7 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     recorder.finish_workflow_trace()
 
     assert isinstance(public_events[-1], GraphRunSucceededEvent)
-    assert not any(getattr(event, "node_id", "").startswith("source-") for event in public_events)
+    assert not any(isinstance(event, NodeEvent) and event.node_id.startswith("source-") for event in public_events)
     assert len(submitted) == 2
     child_trace, routes = submitted[0]
     parent_trace, _ = submitted[1]
@@ -270,7 +277,7 @@ def test_graphon_hidden_workflow_events_export_an_independent_child(include_loop
     assert parent_trace.complete
 
 
-def test_pause_destinations_cannot_switch_tenants_and_budget_releases():
+def test_pause_destinations_cannot_switch_tenants_and_budget_releases() -> None:
     from core.ops.trace_data import TraceProviderSettings
 
     source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
@@ -303,11 +310,12 @@ def test_pause_destinations_cannot_switch_tenants_and_budget_releases():
         )
 
 
-def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt():
+def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt() -> None:
     from core.ops.trace_data import TraceProviderSettings
     from graphon.engine_events import NodeRunFailedEvent
 
-    source = TraceSource(tenant_id=str(uuid4()), app_id=str(uuid4()), operation_id=str(uuid4()))
+    app_id = str(uuid4())
+    source = TraceSource(tenant_id=str(uuid4()), app_id=app_id, operation_id=str(uuid4()))
     child_app_id, child_workflow_id = str(uuid4()), str(uuid4())
     child_settings = TraceProviderSettings(
         tenant_id=source.tenant_id, app_id=child_app_id, provider_name="langsmith", config_id=str(uuid4())
@@ -324,8 +332,10 @@ def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt
     tool_execution_id = str(uuid4())
     started = datetime.now(UTC)
 
-    def node(execution_id, invocation_id=None):
-        return SimpleNamespace(
+    def node(execution_id: str, invocation_id: str | None = None) -> Node[BaseNodeData]:
+        return create_autospec(
+            Node,
+            instance=True,
             execution_id=execution_id,
             id="tool" if invocation_id is None else "child-node",
             title="Tool" if invocation_id is None else "Child node",
@@ -335,7 +345,7 @@ def test_retried_workflow_tool_exports_each_invocation_without_the_other_attempt
             run_context={
                 DIFY_RUN_CONTEXT_KEY: DifyRunContext(
                     tenant_id=source.tenant_id,
-                    app_id=source.app_id if invocation_id is None else child_app_id,
+                    app_id=app_id if invocation_id is None else child_app_id,
                     user_id="user",
                     user_from=UserFrom.ACCOUNT,
                     invoke_from=InvokeFrom.DEBUGGER,

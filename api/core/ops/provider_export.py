@@ -212,13 +212,13 @@ def create_provider_client(provider_name: str, provider_config: dict[str, Any]) 
 
             return create_trace_client(provider_name, provider_config)
         case "aliyun":
-            from dify_trace_aliyun.aliyun_trace import create_trace_client
+            from dify_trace_aliyun.aliyun_trace import create_trace_client as create_aliyun_trace_client
 
-            return create_trace_client(provider_config)
+            return create_aliyun_trace_client(provider_config)
         case "tencent":
-            from dify_trace_tencent.tencent_trace import create_trace_client
+            from dify_trace_tencent.tencent_trace import create_trace_client as create_tencent_trace_client
 
-            return create_trace_client(provider_config)
+            return create_tencent_trace_client(provider_config)
         case "mlflow" | "databricks":
             from dify_trace_mlflow.mlflow_trace import MLflowTraceClient
 

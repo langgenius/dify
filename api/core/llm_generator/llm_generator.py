@@ -25,6 +25,7 @@ from core.llm_generator.prompts import (
 )
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
+from core.ops.trace_source import create_message_trace
 from core.ops.utils import measure_time
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -39,7 +40,6 @@ from graphon.model_runtime.entities.model_entities import ModelType, ParameterTy
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
-from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 

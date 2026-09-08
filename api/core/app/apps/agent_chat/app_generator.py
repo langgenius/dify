@@ -24,13 +24,13 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, In
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.legacy_agent_trace import record_legacy_agent_result
+from core.ops.trace_source import create_message_trace
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
-from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 

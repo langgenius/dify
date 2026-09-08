@@ -12,6 +12,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
+from core.ops.trace_source import create_message_trace
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -41,7 +42,6 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.ops_trace_service import create_message_trace
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)

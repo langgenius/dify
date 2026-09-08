@@ -1353,12 +1353,14 @@ dependencies = [
     { name = "opentelemetry-propagator-b3" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
+    { name = "pydantic-settings" },
     { name = "pypandoc" },
     { name = "python-socketio" },
     { name = "readabilipy" },
     { name = "redis", extra = ["hiredis"] },
     { name = "resend" },
     { name = "sendgrid" },
+    { name = "sentry-sdk" },
     { name = "sseclient-py" },
     { name = "zstandard" },
 ]
@@ -1646,12 +1648,14 @@ requires-dist = [
     { name = "opentelemetry-propagator-b3", specifier = ">=1.41.1,<2.0.0" },
     { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.12.0,<3.0.0" },
     { name = "pypandoc", specifier = "==1.17" },
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
     { name = "readabilipy", specifier = "==0.3.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
+    { name = "sentry-sdk", specifier = ">=2.57.0,<3.0.0" },
     { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
     { name = "zstandard", specifier = "==0.25.0" },
 ]
@@ -4945,6 +4949,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pydantic-settings"
+version = "2.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/ca/31c57507b13119d7d3cfa1576dad2911a4861e3be07b579395f4e9d393f9/pydantic_settings-2.15.0.tar.gz", hash = "sha256:694b793e84f766ba76a90ebdefc01d0a9a045dab0382bee70393da93712ad117", size = 261253, upload-time = "2026-08-07T09:24:57.419Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/a4/2bffa9f8e804325a09867f0e9d30795c80ea9f8d62560bd1b6ad6220eb2f/pydantic_settings-2.15.0-py3-none-any.whl", hash = "sha256:0ba092c291c94baceb5eff768aa0d56400a457585bc0175925a5a5510303da42", size = 69413, upload-time = "2026-08-07T09:24:55.839Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
@@ -5702,6 +5720,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/da/fa/f718b2b953f99c1f0085811598ac7e31ccbd4229a81ec2a5290be868187a/sendgrid-6.12.5.tar.gz", hash = "sha256:ea9aae30cd55c332e266bccd11185159482edfc07c149b6cd15cf08869fabdb7", size = 50310, upload-time = "2025-09-19T06:23:09.229Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/55/b3c3880a77082e8f7374954e0074aafafaa9bc78bdf9c8f5a92c2e7afc6a/sendgrid-6.12.5-py3-none-any.whl", hash = "sha256:96f92cc91634bf552fdb766b904bbb53968018da7ae41fdac4d1090dc0311ca8", size = 102173, upload-time = "2025-09-19T06:23:07.93Z" },
+]
+
+[[package]]
+name = "sentry-sdk"
+version = "2.69.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/10/16/85874f5e51f8d0767ee8c4b4c460c5ea2bc8a1b613d641d9d9577ba39d3a/sentry_sdk-2.69.1.tar.gz", hash = "sha256:f9284b417540b0784b994fa021eb6f1e30ae1cce593d83541274d03c93966eff", size = 1043599, upload-time = "2026-09-08T14:18:19.505Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/eb/17040f8a60c300fe4cc349088d3e351b88812f478b57a0af05a49af7cb7c/sentry_sdk-2.69.1-py3-none-any.whl", hash = "sha256:2d2556d9a14db548982b914cbed2a2dc07b6e55d941a620752f89a2afccfd78d", size = 528587, upload-time = "2026-09-08T14:18:18.151Z" },
 ]
 
 [[package]]

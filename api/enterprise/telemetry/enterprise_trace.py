@@ -252,11 +252,11 @@ class EnterpriseTraceClient:
             documents = span.outputs.get("documents", []) if isinstance(span.outputs, dict) else span.outputs
             if isinstance(documents, list):
                 dataset_ids = {
-                    str(document["metadata"]["dataset_id"])
+                    str(metadata["dataset_id"])
                     for document in documents
                     if isinstance(document, dict)
-                    and isinstance(document.get("metadata"), dict)
-                    and document["metadata"].get("dataset_id")
+                    and isinstance(metadata := document.get("metadata"), dict)
+                    and metadata.get("dataset_id")
                 }
                 for dataset_id in dataset_ids:
                     metrics.append(

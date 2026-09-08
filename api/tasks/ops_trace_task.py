@@ -8,6 +8,7 @@ from uuid import UUID
 
 from flask import current_app
 
+from core.ops.provider_export import TraceExportError
 from core.ops.trace_data import CompletedTrace
 from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
 
@@ -29,7 +30,7 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
         return
     try:
         from core.ops.provider_export import export_trace
-        from services.ops_trace_service import load_trace_provider_config
+        from core.ops.trace_source import load_trace_provider_config
 
         if delivery.updated_at - delivery.created_at > timedelta(days=1):
             raise ValueError("delivery_expired")
@@ -84,8 +85,11 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
         from configs import dify_config
 
         # Exception strings can contain credentials or traced inputs; persist only bounded codes.
-        retryable = not isinstance(error, (ValueError, TypeError, PermissionError, ImportError, NotImplementedError))
-        retryable = getattr(error, "retryable", retryable)
+        retryable = (
+            error.retryable
+            if isinstance(error, TraceExportError)
+            else not isinstance(error, (ValueError, TypeError, PermissionError, ImportError, NotImplementedError))
+        )
         error_code = "export_failed" if retryable else "invalid_trace_or_configuration"
         if isinstance(error, ValueError) and str(error) in (
             "invalid_trace_schema",
@@ -107,9 +111,8 @@ def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
         maximum_attempts = dify_config.OPS_TRACE_MAX_ATTEMPTS
         retry = retryable and delivery.attempt_count < maximum_attempts
         delay = min(dify_config.OPS_TRACE_RETRY_DELAY_SECONDS * 2 ** min(delivery.attempt_count - 1, 6), 300)
-        retry_after = getattr(error, "retry_after", None)
-        if isinstance(retry_after, int):
-            delay = min(max(delay, retry_after), 3600)
+        if isinstance(error, TraceExportError) and error.retry_after is not None:
+            delay = min(max(delay, error.retry_after), 3600)
         status = "pending" if retry else "cancelled" if error_code == "configuration_changed" else "failed"
         repository.finish_attempt(delivery, status, error_code, retry_delay_seconds=delay)
         logger.warning(

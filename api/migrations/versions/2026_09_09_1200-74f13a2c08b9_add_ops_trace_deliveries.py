@@ -17,7 +17,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def remove_identical_trace_configs():
     connection = op.get_bind()
     trace_config = sa.table(
         "trace_app_config",
@@ -56,10 +56,21 @@ def upgrade():
         redundant_config_ids.extend(row["id"] for row in rows[1:])
     if redundant_config_ids:
         connection.execute(trace_config.delete().where(trace_config.c.id.in_(redundant_config_ids)))
-    with op.batch_alter_table("apps") as batch:
-        batch.add_column(sa.Column("tracing_revision", sa.Integer(), nullable=False, server_default="0"))
+
+
+def upgrade():
+    if op.get_context().as_sql:
+        op.execute(
+            "-- Duplicate trace configurations cannot be inspected during offline SQL generation.\n"
+            "-- The unique constraint below rejects all duplicates before other schema changes.\n"
+            "-- Use an online upgrade to remove identical copies and report conflicting configurations."
+        )
+    else:
+        remove_identical_trace_configs()
     with op.batch_alter_table("trace_app_config") as batch:
         batch.create_unique_constraint("trace_app_config_app_provider_unique", ["app_id", "tracing_provider"])
+    with op.batch_alter_table("apps") as batch:
+        batch.add_column(sa.Column("tracing_revision", sa.Integer(), nullable=False, server_default="0"))
     op.create_table(
         "ops_trace_deliveries",
         sa.Column("id", StringUUID(), primary_key=True),

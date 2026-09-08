@@ -39,7 +39,8 @@ flowchart TD
 | [trace_queue.py](../../api/core/ops/trace_queue.py) | Queue admission, byte budgets, one writer and durable acceptance |
 | [provider_config.py](../../api/core/ops/provider_config.py) | Configuration schemas, encryption and secret field selection |
 | [provider_export.py](../../api/core/ops/provider_export.py) | Fresh client construction, synchronous HTTP/OTLP support and receipt ownership |
-| [ops_trace_service.py](../../api/services/ops_trace_service.py) | Authorized source/configuration lookup, message enrichment, late operations and enterprise entry points |
+| [trace_source.py](../../api/core/ops/trace_source.py) | Authorized source/destination lookup, recorder creation, message enrichment and enterprise source handling |
+| [ops_trace_service.py](../../api/services/ops_trace_service.py) | Controller-facing reads and updates of the app's selected tracing settings |
 | [ops_trace_delivery_repository.py](../../api/repositories/ops_trace_delivery_repository.py) | Reservations, conditional claims, owner checks, parent lookup and retention |
 | [ops_trace.py](../../api/models/ops_trace.py) | Delivery table and derived storage keys |
 | [ops_trace_task.py](../../api/tasks/ops_trace_task.py) | One delivery attempt |
@@ -48,7 +49,7 @@ flowchart TD
 
 Names describe the held value or action: `provider_settings`, `workflow_run_id`, `record_workflow_event`, `save_pause_state`, `submit_trace`, `write_pending_traces`, `export_trace`. Established engine/repository APIs keep their existing names. New OPS code has no module-level queue, logger, client, configuration cache, mutable registry, timer, `ContextVar` or other global variable. Classes and functions define behavior; state belongs to instances or calls.
 
-Application startup stores the queue, repository and storage reference in that particular `app.extensions`. Service/task entry points resolve those resources once and pass them to recorders or workers. Shared capture and queue code does not discover another request's Flask context. The writer receives the bound `app.app_context` method and opens a fresh context per item. App-owned queues have independent locks, counters and threads. Lifecycle hooks create them after worker fork and close them on shutdown; there is no first-request startup race.
+Application startup stores the queue, repository and storage reference in that particular `app.extensions`. Invocation/task entry points resolve those resources once through the trace source functions and pass them to recorders or workers. Shared capture and queue code does not discover another request's Flask context. The writer receives the bound `app.app_context` method and opens a fresh context per item. App-owned queues have independent locks, counters and threads. Lifecycle hooks create them after worker fork and close them on shutdown; there is no first-request startup race.
 
 The three retiring app files do not import one another. Their generators supply an invocation-local `record_message_result` function to the existing shared message pipeline. Workflow, common OPS and provider code do not branch on those three app modes or import their files. Removing a retiring application removes its result file and generator wiring. Newer Agent and advanced-chat use common message collection while Workflow owns their graph-node traces.
 
@@ -80,7 +81,7 @@ Internal trace and span IDs are UUID5 values derived from tenant, operation and 
 
 ### Destination and asynchronous work
 
-`TraceProviderSettings` contains tenant/app, `destination_type` (`app_provider` or `enterprise`), provider name, configuration ID/revision and settings hash. It contains no decrypted credentials. An app-provider destination requires the same app as its trace source.
+`TraceProviderSettings` contains tenant/app, `destination_type` (`app_provider` or `enterprise`), provider name, configuration ID/revision and a settings fingerprint. The fingerprint is HMAC-SHA256 over the tenant ID and canonical settings, keyed by the deployment's `SECRET_KEY`; it does not expose a plain hash that could be used to guess credentials. It contains no decrypted credentials. An app-provider destination requires the same app as its trace source.
 
 `QueuedTrace` contains `trace_json: bytes`, `provider_settings` and a deterministic `export_id` derived from source operation, root span and destination identity/revision. One trace with app and enterprise destinations becomes two independent work items, each with its own payload and delivery status.
 
@@ -222,7 +223,7 @@ OPS no longer switches a creator account's active workspace, creates a service a
 
 `App.tracing_revision` increases with app tracing selection and configuration mutations. `TraceAppConfig(app_id, tracing_provider)` has a real unique constraint. [The configuration service](../../api/services/app_tracing_config_service.py), [gateway](../../api/services/app_tracing_config_gateway.py) and [repository](../../api/repositories/app_tracing_config_repository.py) keep the existing API, masking, encryption, verification and project URLs. Remote verification occurs outside the transaction; the subsequent write checks the captured revision so a stale masked-secret update cannot overwrite newer settings.
 
-Pending exports require the exact captured revision and enabled selection. Changes cancel old work with `configuration_changed`, rather than sending old input/output to a new project. App and enterprise work are independent. Disable/delete takes effect before an attempt's authorization check; an already authorized request may finish. Re-enabling increments the revision and does not revive old work.
+The settings fingerprint changes with the tenant, credential contents or deployment key. Fingerprinting requires a nonempty `SECRET_KEY`; rotating that key invalidates pending destination snapshots instead of reusing their old authorization. Pending exports require the exact captured revision and enabled selection. Changes cancel old work with `configuration_changed`, rather than sending old input/output to a new project. App and enterprise work are independent. Disable/delete takes effect before an attempt's authorization check; an already authorized request may finish. Re-enabling increments the revision and does not revive old work.
 
 Outbound provider requests use the existing SSRF-aware HTTP client with explicit request headers, disabled redirects and bounded time. gRPC uses explicit channels and the configured proxy, rejecting a proxy-bypass configuration. Logs contain safe IDs and error codes, not bodies or credential-bearing exception text. Bounded copying removes recognized secret fields; application input/output remains intentionally traceable and is not a general-purpose content classifier.
 

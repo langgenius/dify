@@ -43,6 +43,7 @@ from core.app.entities.task_entities import (
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
+from core.ops.trace_source import create_message_trace
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -59,7 +60,6 @@ from models.enums import WorkflowRunTriggeredFrom
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
-from services.ops_trace_service import create_message_trace
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,

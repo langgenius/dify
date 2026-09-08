@@ -1,17 +1,21 @@
 import json
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
+from core.ops import trace_source
 from models.account import Tenant
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, TraceAppConfig
-from services import ops_trace_service
+from services.ops_trace_service import update_app_trace_settings
 
 
-def seed_trace_owner(session):
+def seed_trace_owner(session: Session) -> tuple[Tenant, App, TraceAppConfig]:
     tenant = Tenant(name="trace tenant")
     session.add(tenant)
     session.flush()
@@ -34,30 +38,53 @@ def seed_trace_owner(session):
     return tenant, app, config
 
 
-def test_config_snapshot_cannot_switch_tenant_provider_or_revision(sqlite_session, sqlite_engine, monkeypatch):
+def test_config_snapshot_cannot_switch_tenant_provider_or_revision(
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(SECRET_KEY="ops-test-key")
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=sqlite_engine))
-    monkeypatch.setattr(ops_trace_service, "_enterprise_config", lambda: None)
+    monkeypatch.setattr(trace_source, "_enterprise_config", lambda: None)
     tenant, app, config = seed_trace_owner(sqlite_session)
-    settings = ops_trace_service.get_trace_provider_settings(tenant.id, app.id)[0]
+    settings = trace_source.get_trace_provider_settings(tenant.id, app.id)[0]
     decrypt = Mock(return_value={"secret_key": "decrypted"})
-    monkeypatch.setattr(ops_trace_service, "decrypt_provider_config", decrypt)
-    assert ops_trace_service.load_trace_provider_config(settings) == {"secret_key": "decrypted"}
+    monkeypatch.setattr(trace_source, "decrypt_provider_config", decrypt)
+    assert trace_source.load_trace_provider_config(settings) == {"secret_key": "decrypted"}
     decrypt.assert_called_once_with(tenant.id, "langfuse", config.tracing_config)
     decrypt.reset_mock()
     with pytest.raises(ValueError):
-        ops_trace_service.load_trace_provider_config(settings.model_copy(update={"tenant_id": str(uuid4())}))
+        trace_source.load_trace_provider_config(settings.model_copy(update={"tenant_id": str(uuid4())}))
     with pytest.raises(ValueError):
-        ops_trace_service.load_trace_provider_config(settings.model_copy(update={"app_id": str(uuid4())}))
+        trace_source.load_trace_provider_config(settings.model_copy(update={"app_id": str(uuid4())}))
     decrypt.assert_not_called()
-    ops_trace_service.update_app_trace_settings(
-        tenant_id=tenant.id, app_id=app.id, enabled=False, tracing_provider="langfuse"
-    )
+    update_app_trace_settings(tenant_id=tenant.id, app_id=app.id, enabled=False, tracing_provider="langfuse")
     with pytest.raises(ValueError, match="configuration_changed"):
-        ops_trace_service.load_trace_provider_config(settings)
+        trace_source.load_trace_provider_config(settings)
     decrypt.assert_not_called()
 
 
-def test_message_lookup_checks_tenant_app_and_conversation(sqlite_session, sqlite_engine, monkeypatch):
+def test_settings_hash_is_keyed_tenant_scoped_and_detects_credential_changes(
+    config_overrides: Callable[..., None],
+) -> None:
+    tenant_id = str(uuid4())
+    settings = {"endpoint": "https://collector.example", "api_key": "private-token"}
+    config_overrides(SECRET_KEY="ops-test-key")
+    fingerprint = trace_source._settings_hash(tenant_id, settings)
+    assert fingerprint == trace_source._settings_hash(tenant_id, dict(reversed(settings.items())))
+    assert fingerprint != trace_source._settings_hash(str(uuid4()), settings)
+    assert fingerprint != trace_source._settings_hash(tenant_id, {**settings, "api_key": "rotated-token"})
+    config_overrides(SECRET_KEY="rotated-ops-test-key")
+    assert fingerprint != trace_source._settings_hash(tenant_id, settings)
+    config_overrides(SECRET_KEY="")
+    with pytest.raises(ValueError, match="require SECRET_KEY"):
+        trace_source._settings_hash(tenant_id, settings)
+
+
+def test_message_lookup_checks_tenant_app_and_conversation(
+    sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("extensions.ext_database.db", SimpleNamespace(engine=sqlite_engine))
     tenant, app, _ = seed_trace_owner(sqlite_session)
     conversation = Conversation(
@@ -90,18 +117,18 @@ def test_message_lookup_checks_tenant_app_and_conversation(sqlite_session, sqlit
     )
     sqlite_session.add(message)
     sqlite_session.commit()
-    fields = ops_trace_service.read_message_trace_fields(tenant.id, app.id, message.id)
+    fields = trace_source.read_message_trace_fields(tenant.id, app.id, message.id)
     assert fields["outputs"] == "private answer"
     for tenant_id, app_id in ((str(uuid4()), app.id), (tenant.id, str(uuid4()))):
         with pytest.raises(ValueError, match="not found"):
-            ops_trace_service.read_message_trace_fields(tenant_id, app_id, message.id)
+            trace_source.read_message_trace_fields(tenant_id, app_id, message.id)
     conversation.app_id = str(uuid4())
     sqlite_session.commit()
     with pytest.raises(ValueError, match="not found"):
-        ops_trace_service.read_message_trace_fields(tenant.id, app.id, message.id)
+        trace_source.read_message_trace_fields(tenant.id, app.id, message.id)
 
 
-def test_enterprise_source_rejects_payload_owner_mismatch_before_recording(monkeypatch):
+def test_enterprise_source_rejects_payload_owner_mismatch_before_recording(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.telemetry.events import DraftNodeExecutionTraceEvent, TelemetryContext
 
     event = DraftNodeExecutionTraceEvent(
@@ -109,7 +136,7 @@ def test_enterprise_source_rejects_payload_owner_mismatch_before_recording(monke
         payload={"node_execution_data": {"tenant_id": str(uuid4()), "app_id": str(uuid4())}},
     )
     create = Mock()
-    monkeypatch.setattr(ops_trace_service, "create_message_trace", create)
+    monkeypatch.setattr(trace_source, "create_message_trace", create)
     with pytest.raises(ValueError, match="owner mismatch"):
-        ops_trace_service.record_enterprise_operation(event)
+        trace_source.record_enterprise_operation(event)
     create.assert_not_called()

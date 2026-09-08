@@ -296,13 +296,13 @@ class WorkflowTraceRecorder(Layer):
             return
         match event:
             case GraphRunSucceededEvent():
-                status, error = "ok", None
+                status, error, outputs = "ok", None, event.outputs
             case GraphRunPartialSucceededEvent():
-                status, error = "handled_error", None
+                status, error, outputs = "handled_error", None, event.outputs
             case GraphRunAbortedEvent():
-                status, error = "cancelled", event.reason
+                status, error, outputs = "cancelled", event.reason, event.outputs
             case GraphRunFailedEvent():
-                status, error = "error", event.error
+                status, error, outputs = "error", event.error, {}
             case _:
                 return
         self._paused = False
@@ -312,7 +312,7 @@ class WorkflowTraceRecorder(Layer):
                 "status": status,
                 "error": self._copy_value(error),
                 "ended_at": datetime.now(UTC),
-                "outputs": self._copy_value(getattr(event, "outputs", {})),
+                "outputs": self._copy_value(outputs),
             }
         )
 
@@ -383,7 +383,9 @@ class WorkflowTraceRecorder(Layer):
                 "started_at": span.started_at or self._utc(event.start_at),
                 "ended_at": self._utc(event.finished_at),
                 "status": status,
-                "error": self._copy_value(getattr(event, "error", None)),
+                "error": self._copy_value(
+                    event.error if isinstance(event, (NodeRunExceptionEvent, NodeRunFailedEvent)) else None
+                ),
                 "attempt": self._attempts[event.id],
                 "inputs": self._copy_value(event.node_run_result.inputs),
                 "outputs": self._copy_value(event.node_run_result.outputs),
@@ -473,7 +475,10 @@ class WorkflowTraceRecorder(Layer):
                 root_span_id=self._root_span_id,
                 spans=tuple(self._parent_first_spans()),
                 complete=not self._incomplete_reasons,
-                truncation={"reasons": self._incomplete_reasons, "omitted_spans": self._omitted_spans},
+                truncation={
+                    "reasons": list(self._incomplete_reasons),
+                    "omitted_spans": self._omitted_spans,
+                },
             )
             pending = self._pending_child_traces
             self._pending_child_traces = []
@@ -625,7 +630,7 @@ class WorkflowTraceRecorder(Layer):
             spans=tuple(spans),
             links=(self._trace_id,),
             complete=complete,
-            truncation={} if complete else {"reasons": self._incomplete_reasons or ["unfinished_execution"]},
+            truncation={} if complete else {"reasons": list(self._incomplete_reasons) or ["unfinished_execution"]},
         )
         child.submitted = True
         self._pending_child_traces.append((trace, child.provider_settings))
@@ -642,7 +647,8 @@ class WorkflowTraceRecorder(Layer):
                 self._mark_incomplete("span_limit")
                 return
             label = str(entry.get("label") or "Agent step")[:512]
-            metadata = entry.get("metadata") if isinstance(entry.get("metadata"), dict) else {}
+            entry_metadata = entry.get("metadata")
+            metadata = entry_metadata if isinstance(entry_metadata, dict) else {}
             entry_parent_id = entry.get("parent_id")
             span_id = self._span_id(f"{parent_span.node_execution_id}:agent:{entry['id']}")
             self._spans[span_id] = TraceSpan(
