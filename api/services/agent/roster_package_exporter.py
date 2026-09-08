@@ -29,7 +29,6 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import App, AppMode, UploadFile
-from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill, SkillVersion
 from models.tools import ToolFile
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import make_portable_agent_soul
@@ -50,6 +49,7 @@ from services.agent.roster_package_entities import (
     RosterAgentPackageSkill,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.skill_management_service import RuntimeAgentSkillArchive, SkillManagementService
 
 
 class _Storage(Protocol):
@@ -148,9 +148,7 @@ class RosterAgentPackageExporter:
             portable_soul, skill_sources, file_sources = self._collect_payloads(
                 session=session,
                 tenant_id=tenant_id,
-                agent=agent,
                 soul=soul,
-                draft=draft,
             )
             metadata = RosterAgentPackageMetadata(
                 name=agent.name,
@@ -160,6 +158,18 @@ class RosterAgentPackageExporter:
             )
             dependency_ids = extract_agent_soul_dependencies(portable_soul)
 
+        workspace_skills = SkillManagementService().list_runtime_agent_skill_archives(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            include_draft=draft is not None,
+        )
+        skill_sources.extend(
+            self._workspace_skill_sources(
+                soul=portable_soul,
+                archives=workspace_skills,
+                start_index=len(skill_sources),
+            )
+        )
         dependencies = self._dependency_provider(tenant_id, dependency_ids)
         return self._build_archive(
             metadata=metadata,
@@ -254,9 +264,7 @@ class RosterAgentPackageExporter:
         *,
         session: Session,
         tenant_id: str,
-        agent: Agent,
         soul: AgentSoulConfig,
-        draft: AgentConfigDraft | None,
     ) -> tuple[AgentSoulConfig, list[_SkillSource], list[_FileSource]]:
         portable_data = make_portable_agent_soul(soul).model_dump(mode="json")
         skill_sources: list[_SkillSource] = []
@@ -284,34 +292,6 @@ class RosterAgentPackageExporter:
                     description=ref.description,
                     priority=None,
                     audit_ref=tool_file.id,
-                )
-            )
-
-        workspace_rows = self._workspace_skill_rows(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
-            include_draft=draft is not None,
-        )
-        effective_skill_names = {item.name for item in soul.config_skills if not item.is_missing}
-        for binding, skill, version, tool_file in workspace_rows:
-            published_name = version.manifest.name or skill.name
-            if published_name in effective_skill_names:
-                continue
-            effective_skill_names.add(published_name)
-            resource_id = f"s_{len(skill_sources) + 1:06d}"
-            path = f"{resource_id}.zip"
-            skill_sources.append(
-                _SkillSource(
-                    payload=_PayloadSource(path, tool_file.file_key),
-                    id=resource_id,
-                    scope="workspace",
-                    name=published_name,
-                    display_name=version.manifest.display_name or skill.display_name,
-                    description=version.manifest.description or skill.description,
-                    priority=binding.priority,
-                    audit_ref=version.id,
                 )
             )
 
@@ -354,57 +334,30 @@ class RosterAgentPackageExporter:
         return AgentSoulConfig.model_validate(portable_data), skill_sources, file_sources
 
     @staticmethod
-    def _workspace_skill_rows(
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        snapshot_id: str | None,
-        include_draft: bool,
-    ) -> Sequence[tuple[AgentSkillBinding | AgentSkillBindingSnapshot, Skill, SkillVersion, ToolFile]]:
-        if include_draft:
-            rows = (
-                session.execute(
-                    select(AgentSkillBinding, Skill, SkillVersion, ToolFile)
-                    .join(Skill, Skill.id == AgentSkillBinding.skill_id)
-                    .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
-                    .join(
-                        ToolFile,
-                        (ToolFile.id == SkillVersion.archive_tool_file_id) & (ToolFile.tenant_id == tenant_id),
-                    )
-                    .where(
-                        AgentSkillBinding.tenant_id == tenant_id,
-                        AgentSkillBinding.agent_id == agent_id,
-                        Skill.tenant_id == tenant_id,
-                    )
-                    .order_by(AgentSkillBinding.priority)
+    def _workspace_skill_sources(
+        *, soul: AgentSoulConfig, archives: Sequence[RuntimeAgentSkillArchive], start_index: int
+    ) -> list[_SkillSource]:
+        sources: list[_SkillSource] = []
+        effective_skill_names = {item.name for item in soul.config_skills if not item.is_missing}
+        for archive in sorted(archives, key=lambda item: item.priority):
+            if archive.name in effective_skill_names:
+                continue
+            effective_skill_names.add(archive.name)
+            resource_id = f"s_{start_index + len(sources) + 1:06d}"
+            path = f"{resource_id}.zip"
+            sources.append(
+                _SkillSource(
+                    payload=_PayloadSource(path, archive.storage_key),
+                    id=resource_id,
+                    scope="workspace",
+                    name=archive.name,
+                    display_name=archive.display_name,
+                    description=archive.description,
+                    priority=archive.priority,
+                    audit_ref=archive.version_id,
                 )
-                .tuples()
-                .all()
             )
-            return rows
-        if not snapshot_id:
-            return []
-        return (
-            session.execute(
-                select(AgentSkillBindingSnapshot, Skill, SkillVersion, ToolFile)
-                .join(Skill, Skill.id == AgentSkillBindingSnapshot.skill_id)
-                .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
-                .join(
-                    ToolFile,
-                    (ToolFile.id == SkillVersion.archive_tool_file_id) & (ToolFile.tenant_id == tenant_id),
-                )
-                .where(
-                    AgentSkillBindingSnapshot.tenant_id == tenant_id,
-                    AgentSkillBindingSnapshot.agent_id == agent_id,
-                    AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
-                    Skill.tenant_id == tenant_id,
-                )
-                .order_by(AgentSkillBindingSnapshot.priority)
-            )
-            .tuples()
-            .all()
-        )
+        return sources
 
     @staticmethod
     def _tool_files(*, session: Session, tenant_id: str, file_ids: Sequence[str]) -> dict[str, ToolFile]:

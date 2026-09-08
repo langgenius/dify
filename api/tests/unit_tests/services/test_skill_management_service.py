@@ -3199,6 +3199,7 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
         description="draft description",
     )
     version = SimpleNamespace(
+        id="version-1",
         archive_tool_file_id="archive-1",
         archive_size=10,
         hash_code="hash-1",
@@ -3209,8 +3210,10 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             description="published description",
         ),
     )
+    binding = SimpleNamespace(priority=0)
+    tool_file = SimpleNamespace(file_key="tools/archive-1.zip")
     session = MagicMock()
-    session.execute.return_value = [(SimpleNamespace(), skill, version)]
+    session.execute.return_value = [(binding, skill, version, tool_file)]
 
     with patch("services.skill_management_service.session_factory.create_session") as create_session:
         create_session.return_value.__enter__.return_value = session
