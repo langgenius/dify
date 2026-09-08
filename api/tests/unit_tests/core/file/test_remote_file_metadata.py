@@ -207,3 +207,43 @@ class TestMagicImportWarnings:
         finally:
             if original_metadata is not None:
                 sys.modules[remote_file_metadata.__name__] = original_metadata
+
+
+class TestQuotedContentDispositionFilename:
+    def test_quoted_filename_drops_quotes(self) -> None:
+        # RFC 6266 quoted-string form, the most common form servers send
+        headers = {
+            "Content-Disposition": 'attachment; filename="report.pdf"',
+            "Content-Type": "application/pdf",
+        }
+        response = make_response(url="https://example.com/", headers=headers, content=b"pdf-bytes")
+
+        info = guess_file_info_from_response(response)
+
+        assert info.filename == "report.pdf"
+        assert info.extension == ".pdf"
+        assert info.mimetype == "application/pdf"
+
+    def test_filename_with_filename_star_sibling(self) -> None:
+        # RFC 5987: servers often send both filename and filename*
+        headers = {
+            "Content-Disposition": "attachment; filename=\"fallback.pdf\"; filename*=UTF-8''%E6%8A%A5%E8%A1%A8.pdf",
+            "Content-Type": "application/pdf",
+        }
+        response = make_response(url="https://example.com/", headers=headers, content=b"pdf-bytes")
+
+        info = guess_file_info_from_response(response)
+
+        assert info.filename == "fallback.pdf"
+        assert info.extension == ".pdf"
+
+    def test_quoted_filename_with_semicolon_param_after(self) -> None:
+        headers = {
+            "Content-Disposition": 'attachment; filename="a b.csv"; foo=bar',
+            "Content-Type": "text/csv",
+        }
+        response = make_response(url="https://example.com/", headers=headers, content=b"x")
+
+        info = guess_file_info_from_response(response)
+
+        assert info.filename == "a b.csv"

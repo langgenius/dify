@@ -52,7 +52,12 @@ def guess_file_info_from_response(response: httpx.Response) -> FileInfo:
     if not filename:
         content_disposition = response.headers.get("Content-Disposition")
         if content_disposition:
-            filename_match = re.search(r'filename="?(.+)"?', content_disposition)
+            # Prefer the RFC 6266 quoted-string form; fall back to a bare token.
+            # A greedy pattern would swallow the closing quote and any trailing
+            # parameters (e.g. a `filename*` sibling) into the filename.
+            filename_match = re.search(r'filename="([^"]*)"', content_disposition) or re.search(
+                r"filename=([^;\s]+)", content_disposition
+            )
             if filename_match:
                 filename = filename_match.group(1)
 
