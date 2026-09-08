@@ -17,16 +17,20 @@ import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useModalContextSelector } from '@/context/modal-context'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -89,7 +93,7 @@ export function Popup({
       select: (features) => features.knowledge_pipeline.publish_enabled,
     }),
   )
-  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const apiReferenceUrl = useDatasetApiAccessUrl()
   const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
@@ -201,7 +205,7 @@ export function Popup({
 
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      if (deploymentEdition === 'CLOUD') setShowPricingModal()
+      if (deploymentEdition === 'CLOUD') setPricing('open')
     } else {
       onShowPublishAsKnowledgePipelineModal?.()
     }
@@ -210,7 +214,7 @@ export function Popup({
     deploymentEdition,
     onRequestClose,
     onShowPublishAsKnowledgePipelineModal,
-    setShowPricingModal,
+    setPricing,
   ])
   return (
     <div

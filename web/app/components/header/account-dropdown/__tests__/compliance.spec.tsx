@@ -1,4 +1,3 @@
-import type { ModalContextState } from '@/context/modal-context'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,17 +5,15 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useModalContext } from '@/context/modal-context'
+import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { getDocDownloadUrl } from '@/service/common'
 import { seedFeatures } from '@/test/console/query-data'
 import { downloadUrl } from '@/utils/download'
 import Compliance from '../compliance'
 
-vi.mock('@/context/modal-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/modal-context')>()
-  return { ...actual, useModalContext: vi.fn() }
-})
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
 vi.mock('@/service/common', () => ({ getDocDownloadUrl: vi.fn() }))
 vi.mock('@/service/base', () => ({
   request: vi.fn(() => new Promise(() => {})),
@@ -30,11 +27,19 @@ vi.mock('@/utils/download', () => ({
 const mockSetSettingsDestination = vi.fn()
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+  return {
+    ...actual,
+    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
+      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
+  }
 })
 
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
+
 describe('Compliance', () => {
-  const mockSetShowPricingModal = vi.fn()
   const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
   const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
   let queryClient: QueryClient
@@ -50,9 +55,6 @@ describe('Compliance', () => {
       },
     })
     seedFeatures(queryClient, { billing: { subscription: { plan: 'sandbox' } } })
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    } as unknown as ModalContextState)
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {
@@ -93,7 +95,7 @@ describe('Compliance', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('common.compliance.gdpr'))
     await waitFor(() => expect(getDocDownloadUrl).toHaveBeenCalledWith('GDPR'))
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+    expect(onPricingUrlUpdate).not.toHaveBeenCalled()
   })
 
   describe('Rendering', () => {
@@ -184,14 +186,16 @@ describe('Compliance', () => {
       consoleSpy.mockRestore()
     })
 
-    it('should handle upgrade click on badge for sandbox plan', () => {
+    it('should handle upgrade click on badge for sandbox plan', async () => {
       // Act
       openMenuAndRender()
       const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
       fireEvent.click(upgradeBadges[0]!)
 
       // Assert
-      expect(mockSetShowPricingModal).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should handle upgrade click on badge for non-sandbox plan', () => {

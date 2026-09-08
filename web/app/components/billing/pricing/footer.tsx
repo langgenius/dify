@@ -1,13 +1,18 @@
+import type { Locale } from '@/i18n-config/language'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 
-export function PricingFooter({
-  pricingPageURL,
-  category,
-}: {
-  pricingPageURL: string
-  category: 'cloud' | 'self-hosted'
-}) {
+const websiteLocalePaths: Partial<Record<Locale, string>> = {
+  'zh-Hans': '/zh',
+  'ja-JP': '/ja',
+  'ko-KR': '/ko',
+}
+
+export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' }) {
+  const locale = useLocale()
+  const comparisonPage = category === 'cloud' ? 'dify-cloud' : 'dify-enterprise'
+  const pricingPageURL = `https://dify.ai${websiteLocalePaths[locale] ?? ''}/pricing/${comparisonPage}#compare`
   const { t } = useTranslation()
 
   return (

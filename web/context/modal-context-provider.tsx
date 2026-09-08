@@ -10,7 +10,6 @@ import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useCallback, useState } from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { usePricingModal } from '@/hooks/use-query-params'
 import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import { ModalContext } from './modal-context'
@@ -24,12 +23,6 @@ const ModerationSettingModal = dynamic(
 )
 const ExternalDataToolModal = dynamic(
   () => import('@/app/components/app/configuration/tools/external-data-tool-modal'),
-  {
-    ssr: false,
-  },
-)
-const Pricing = dynamic(
-  () => import('@/app/components/billing/pricing').then((module) => module.Pricing),
   {
     ssr: false,
   },
@@ -73,7 +66,6 @@ type ModalContextProviderProps = {
   children: ReactNode
 }
 export const ModalContextProvider = ({ children }: ModalContextProviderProps) => {
-  const [showPricingModal, setPricingModalOpen] = usePricingModal()
   const [showModerationSettingModal, setShowModerationSettingModal] =
     useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] =
@@ -178,17 +170,9 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     setShowOpeningModal(null)
   }
 
-  const handleShowPricingModal = useCallback(() => {
-    setPricingModalOpen(true)
-  }, [setPricingModalOpen])
-
-  const handleCancelPricingModal = useCallback(() => {
-    setPricingModalOpen(false)
-  }, [setPricingModalOpen])
   const hasBlockingModalOpen = Boolean(
     showModerationSettingModal ||
     showExternalDataToolModal ||
-    showPricingModal ||
     showAnnotationFullModal ||
     showModelModal ||
     showExternalKnowledgeAPIModal ||
@@ -203,7 +187,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         hasBlockingModalOpen,
         setShowModerationSettingModal,
         setShowExternalDataToolModal,
-        setShowPricingModal: handleShowPricingModal,
         setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
         setShowModelModal,
         setShowExternalKnowledgeAPIModal,
@@ -228,8 +211,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
           />
         )}
-
-        {!!showPricingModal && <Pricing onCancel={handleCancelPricingModal} />}
 
         {showAnnotationFullModal && (
           <AnnotationFullModal
@@ -301,10 +282,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             total={triggerEventsLimitModal.total}
             resetInDays={triggerEventsLimitModal.resetInDays}
             onClose={dismissTriggerEventsLimitModal}
-            onUpgrade={() => {
-              dismissTriggerEventsLimitModal()
-              handleShowPricingModal()
-            }}
           />
         )}
       </>
