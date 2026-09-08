@@ -12,10 +12,10 @@ from werkzeug.exceptions import NotFound
 import controllers.console.explore.saved_message as module
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
-from controllers.console.explore.wraps import InstalledAppResource
 from graphon.file import File, FileTransferMethod, FileType
-from models.model import InstalledApp
+from machinery.context import RequestContext
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError
+from services.installed_app_access_service import InstalledAppRef
 from services.saved_message_service import (
     SavedMessageActor,
     SavedMessageFeedback,
@@ -36,14 +36,16 @@ class _ApplicationServiceMocks:
     saved_messages: MagicMock
 
 
-def _installed_app() -> InstalledApp:
-    return InstalledApp(
+_REQUEST_CONTEXT = RequestContext(
+    request_id="test-request", trace_id=None, account_id=_ACCOUNT_ID, active_workspace_id=_WORKSPACE_ID
+)
+
+
+def _installed_app() -> InstalledAppRef:
+    return InstalledAppRef(
+        id="99999999-9999-4999-8999-999999999999",
         tenant_id=_WORKSPACE_ID,
         app_id="33333333-3333-4333-8333-333333333333",
-        app_owner_tenant_id="44444444-4444-4444-8444-444444444444",
-        position=0,
-        is_pinned=False,
-        last_used_at=None,
     )
 
 
@@ -136,11 +138,6 @@ def services() -> Generator[_ApplicationServiceMocks]:
         yield service_mocks
 
 
-def test_saved_message_resources_use_installed_app_admission() -> None:
-    assert issubclass(module.SavedMessageListApi, InstalledAppResource)
-    assert issubclass(module.SavedMessageApi, InstalledAppResource)
-
-
 class TestSavedMessageListApi:
     def test_get_success(self, app: Flask, services: _ApplicationServiceMocks) -> None:
         installed_app = _installed_app()
@@ -156,7 +153,7 @@ class TestSavedMessageListApi:
         ):
             result = unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 installed_app,
             )
 
@@ -181,7 +178,7 @@ class TestSavedMessageListApi:
         with app.test_request_context("/", query_string={"last_id": last_id, "limit": "50"}):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 installed_app,
             )
 
@@ -204,7 +201,7 @@ class TestSavedMessageListApi:
         ):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 installed_app,
             )
 
@@ -216,7 +213,7 @@ class TestSavedMessageListApi:
         with app.test_request_context("/"), pytest.raises(AppUnavailableError):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 _installed_app(),
             )
 
@@ -226,7 +223,7 @@ class TestSavedMessageListApi:
         with app.test_request_context("/"), pytest.raises(NotCompletionAppError):
             unwrap(module.SavedMessageListApi().get)(
                 module.SavedMessageListApi(),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 _installed_app(),
             )
 
@@ -237,7 +234,7 @@ class TestSavedMessageListApi:
         result = unwrap(module.SavedMessageListApi().post)(
             module.SavedMessageListApi(),
             module.SavedMessageCreatePayload.model_validate({"message_id": message_id}),
-            _ACCOUNT_ID,
+            _REQUEST_CONTEXT,
             installed_app,
         )
 
@@ -255,7 +252,7 @@ class TestSavedMessageListApi:
             unwrap(module.SavedMessageListApi().post)(
                 module.SavedMessageListApi(),
                 module.SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())}),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 _installed_app(),
             )
 
@@ -267,7 +264,7 @@ class TestSavedMessageApi:
 
         result = unwrap(module.SavedMessageApi().delete)(
             module.SavedMessageApi(),
-            _ACCOUNT_ID,
+            _REQUEST_CONTEXT,
             installed_app,
             message_id,
         )
@@ -285,7 +282,7 @@ class TestSavedMessageApi:
         with pytest.raises(NotCompletionAppError):
             unwrap(module.SavedMessageApi().delete)(
                 module.SavedMessageApi(),
-                _ACCOUNT_ID,
+                _REQUEST_CONTEXT,
                 _installed_app(),
                 uuid4(),
             )

@@ -49,6 +49,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.installed_app_access_repository import SQLAlchemyInstalledAppAccessRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -163,6 +164,7 @@ from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.installed_app_access_service import InstalledAppAccessService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
@@ -279,6 +281,7 @@ class ApplicationServices:
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
+    installed_app_access: InstalledAppAccessService
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
@@ -427,6 +430,12 @@ def build_application_services(
     installation_state = InstallationStateRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    webapp_access = WebAppAccessQueryService(
+        access=WebAppAccessQueryRepository(session_factory=database_client),
+        webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+        access_mode_for_app=_get_enterprise_webapp_access_mode,
+        is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+    )
     feature_gateway = FeatureServiceGateway()
     accounts = SQLAlchemyAccountRepository(session_factory=database_client)
     integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
@@ -639,11 +648,10 @@ def build_application_services(
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
-        webapp_access=WebAppAccessQueryService(
-            access=WebAppAccessQueryRepository(session_factory=database_client),
-            webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
-            access_mode_for_app=_get_enterprise_webapp_access_mode,
-            is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+        webapp_access=webapp_access,
+        installed_app_access=InstalledAppAccessService(
+            installed_apps=SQLAlchemyInstalledAppAccessRepository(session_factory=database_client),
+            is_user_allowed=webapp_access.is_user_allowed,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
