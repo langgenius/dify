@@ -52,6 +52,7 @@ from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
+from controllers.console.app.error import SiteConfigurationInvalidError
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
@@ -70,6 +71,7 @@ from models.engine import db
 from models.enums import CustomizeTokenStrategy
 from models.trigger import WorkflowWebhookTrigger
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.site_configuration_service import SiteConfigurationError
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -435,6 +437,36 @@ class TestSiteEndpoints:
         assert result["title"] == "My Site"
         assert result["input_placeholder"] == "Ask me anything"
         assert site.input_placeholder == "Ask me anything"
+
+    def test_app_site_update_rejects_invalid_icon_reference(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        api = site_module.AppSite()
+        method = unwrap(api.post)
+        site = self._add_site(db.session)
+        validate_icon_reference = MagicMock(side_effect=SiteConfigurationError("The site icon is invalid."))
+        monkeypatch.setattr(
+            site_module.SiteConfigurationService,
+            "validate_icon_reference",
+            validate_icon_reference,
+        )
+
+        with (
+            database_app.test_request_context("/", json={"icon_type": "image", "icon": "invalid-icon"}),
+            pytest.raises(SiteConfigurationInvalidError, match="The site icon is invalid"),
+        ):
+            method(
+                api,
+                AppSiteUpdatePayload(icon_type="image", icon="invalid-icon"),
+                db.session,
+                _make_account(),
+                app_model=_make_app(),
+            )
+
+        db.session.refresh(site)
+        assert site.icon is None
 
     def test_app_site_access_token_reset(
         self,

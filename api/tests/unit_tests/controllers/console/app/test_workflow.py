@@ -17,11 +17,12 @@ from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
-from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync, SiteConfigurationInvalidError
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
+from services.site_configuration_service import SiteConfigurationError
 
 
 def _make_workflow(**overrides):
@@ -108,6 +109,44 @@ def test_publish_workflow_returns_success(
         )
 
     assert response["result"] == "success"
+
+
+def test_publish_workflow_rejects_invalid_site_configuration(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    session = Mock()
+    publish_workflow = Mock()
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        Mock(return_value=SimpleNamespace(publish_workflow=publish_workflow)),
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        workflow_module.SiteConfigurationService,
+        "validate_for_publish",
+        Mock(side_effect=SiteConfigurationError("The site icon is invalid.")),
+    )
+
+    with (
+        app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}),
+        pytest.raises(SiteConfigurationInvalidError, match="The site icon is invalid"),
+    ):
+        inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+            workflow_module.PublishedWorkflowApi(),
+            current_user,
+            app_model,
+        )
+
+    publish_workflow.assert_not_called()
 
 
 @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])

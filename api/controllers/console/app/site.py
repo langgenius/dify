@@ -10,6 +10,7 @@ from constants.languages import supported_language
 from controllers.common.schema import register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.app.error import SiteConfigurationInvalidError
 from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model
 from controllers.console.wraps import (
     RBACPermission,
@@ -29,6 +30,7 @@ from libs.login import login_required
 from models import Site
 from models.account import Account
 from models.model import App
+from services.site_configuration_service import SiteConfigurationError, SiteConfigurationService
 
 
 class AppSiteUpdatePayload(BaseModel):
@@ -90,6 +92,7 @@ class AppSite(Resource):
     @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")
+    @console_ns.response(409, "Site configuration invalid")
     @setup_required
     @login_required
     @edit_permission_required
@@ -104,6 +107,16 @@ class AppSite(Resource):
         site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
         if not site:
             raise NotFound
+
+        try:
+            SiteConfigurationService.validate_icon_reference(
+                session=session,
+                tenant_id=app_model.tenant_id,
+                icon_type=req_data.icon_type if req_data.icon_type is not None else site.icon_type,
+                icon=req_data.icon if req_data.icon is not None else site.icon,
+            )
+        except SiteConfigurationError as exc:
+            raise SiteConfigurationInvalidError(description=str(exc)) from None
 
         for attr_name in [
             "title",

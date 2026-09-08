@@ -47,6 +47,12 @@ class AppUnavailableError(BaseHTTPException):
     code = 400
 
 
+class SiteConfigurationInvalidError(BaseHTTPException):
+    error_code = "site_configuration_invalid"
+    description = "The site configuration is invalid."
+    code = 409
+
+
 class CompletionRequestError(BaseHTTPException):
     error_code = "completion_request_error"
     description = "Completion request failed."
