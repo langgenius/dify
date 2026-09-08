@@ -7,14 +7,15 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console.agent.roster import AgentApiKeyListApi
 from controllers.console.apikey import (
     AppApiKeyListResource,
+    AppApiKeyResource,
     BaseApiKeyListResource,
     BaseApiKeyResource,
     DatasetApiKeyListResource,
@@ -22,8 +23,10 @@ from controllers.console.apikey import (
 from controllers.console.datasets.datasets import DatasetApiKeyApi
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
+from extensions.ext_database import db
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode, IconType
 from services.agent.errors import AgentAccessNotReadyError
@@ -171,6 +174,83 @@ def test_create_agent_api_key_requires_published_access(sqlite_session: Session)
 
     ensure_access_ready.assert_called_once_with(app, session=session)
     assert session.scalar(select(ApiToken)) is None
+
+
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+@pytest.mark.parametrize("agent_status", [AgentStatus.ACTIVE, AgentStatus.ARCHIVED])
+@pytest.mark.parametrize("method", ["get", "post", "delete"])
+def test_hidden_agent_app_api_keys_are_unreachable(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    rbac_enabled: bool,
+    agent_status: AgentStatus,
+    method: str,
+) -> None:
+    config_overrides(RBAC_ENABLED=rbac_enabled)
+    app_id = UUID("00000000-0000-0000-0000-000000000001")
+    key_id = UUID("00000000-0000-0000-0000-000000000002")
+    account = _make_account(TenantAccountRole.OWNER)
+    _persist_app(sqlite_session, mode=AppMode.AGENT, app_id=str(app_id))
+    sqlite_session.add(
+        Agent(
+            tenant_id="tenant-1",
+            name="Hidden workflow agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            status=agent_status,
+            backing_app_id=str(app_id),
+        )
+    )
+    api_key = ApiToken(type=ApiTokenType.APP, token="hidden-app-token", app_id=str(app_id), tenant_id="tenant-1")
+    api_key.id = str(key_id)
+    sqlite_session.add(api_key)
+    sqlite_session.commit()
+    session_proxy = scoped_session(sqlite_session_factory)
+
+    try:
+        with (
+            app.test_request_context(f"/apps/{app_id}/api-keys", method=method.upper()),
+            patch.object(db, "session", session_proxy),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+            patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache,
+        ):
+            g._login_user = account
+            invoke = {
+                "get": lambda: AppApiKeyListResource().get(resource_id=app_id),
+                "post": lambda: AppApiKeyListResource().post(resource_id=app_id),
+                "delete": lambda: AppApiKeyResource().delete(resource_id=app_id, api_key_id=key_id),
+            }[method]
+            with pytest.raises(NotFound):
+                invoke()
+
+            delete_cache.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert list(session.scalars(select(ApiToken.id))) == [str(key_id)]
+    finally:
+        session_proxy.remove()
+
+
+def test_roster_agent_app_api_keys_remain_accessible(sqlite_session: Session) -> None:
+    _persist_app(sqlite_session, mode=AppMode.AGENT)
+    sqlite_session.add(
+        Agent(
+            tenant_id="tenant-1",
+            name="Roster agent",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+    )
+    sqlite_session.add(ApiToken(type=ApiTokenType.APP, token="roster-app-token", app_id="app-1", tenant_id="tenant-1"))
+    sqlite_session.flush()
+
+    result = _make_list_resource()._get_api_key_list("app-1", "tenant-1", session=sqlite_session)
+
+    assert [item.token for item in result.data] == ["roster-app-token"]
 
 
 def test_delete_api_key_rejects_non_admin_account(sqlite_session: Session) -> None:

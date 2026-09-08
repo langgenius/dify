@@ -18,6 +18,7 @@ from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account
+from models.agent import AgentScope
 from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
@@ -98,9 +99,15 @@ def build_masked_api_key_list(
 
 
 def _get_resource(resource_id, tenant_id, resource_model, *, session: Session):
+    """Load a tenant-owned API key resource, excluding hidden Agent backing Apps."""
     resource = session.execute(
         select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
     ).scalar_one_or_none()
+
+    if isinstance(resource, App):
+        binding = resource.agent_app_binding_with_session(session=session, include_archived=True)
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            resource = None
 
     if resource is None:
         flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
