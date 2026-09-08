@@ -189,6 +189,18 @@ describe('HomeTrending', () => {
     )
   })
 
+  it('fits recommend card icons inside the frame instead of cover-cropping them', () => {
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    const icon = within(screen.getByRole('group', { name: 'Trending' }))
+      .getByRole('link', { name: 'Dropbox' })
+      .querySelector('img')
+
+    expect(icon?.getAttribute('src')).toContain('/plugins/langgenius/dropbox/icon')
+    expect(icon).toHaveClass('object-contain')
+    expect(icon).not.toHaveClass('object-cover')
+  })
+
   it('marks inactive standalone slides so mobile CSS can collapse mixed banner heights', () => {
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
@@ -766,6 +778,48 @@ describe('HomeTrending', () => {
         item_name: 'Dropbox',
       }),
     )
+  })
+
+  it('shows the served author on recommend template cards the same way as plugins', () => {
+    const banner: PluginBanner = {
+      id: 'recommend-templates',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'newest',
+        cards: [
+          {
+            item_type: 'template',
+            item_id: 'tpl-authored',
+            display_name: 'Go-to-Market',
+            creator: 'aisa-team',
+            link: '/templates/tpl-authored',
+            card_position: 0,
+          },
+          {
+            item_type: 'template',
+            item_id: 'tpl-anonymous',
+            display_name: 'Untitled Flow',
+            link: '/templates/tpl-anonymous',
+            card_position: 1,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[banner]} isMarketplacePlatform page="templates" />)
+
+    const authored = screen.getByRole('link', { name: 'Go-to-Market' })
+    const anonymous = screen.getByRole('link', { name: 'Untitled Flow' })
+
+    expect(
+      within(authored).getByText('plugin.marketplace.home.trendingByCreator'),
+    ).toBeInTheDocument()
+    expect(
+      within(anonymous).queryByText('plugin.marketplace.home.trendingByCreator'),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps standalone recommend plugin cards on local detail routes', () => {

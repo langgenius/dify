@@ -39,7 +39,7 @@ Then('I should see the Agent v2 Backend service API endpoint', async function (t
   await expect(serviceApiCard.getByRole('heading', { name: 'Backend service API' })).toBeVisible({
     timeout: 30_000,
   })
-  await expect(serviceApiCard.getByText('Service API Endpoint')).toBeVisible()
+  await expect(serviceApiCard.getByText('API Endpoint')).toBeVisible()
   await expect(serviceApiCard.getByText(apiAccess.service_api_base_url)).toBeVisible()
   await expect(serviceApiCard.getByLabel('Copy service API endpoint')).toBeEnabled()
 })

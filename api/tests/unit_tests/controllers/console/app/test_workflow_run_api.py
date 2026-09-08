@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
 from extensions.ext_database import db
+from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from machinery.context import RequestContext
 from models import Account, App, AppMode
@@ -348,7 +349,9 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
     _account(sqlite_session)
     execution = _workflow_run_node_execution(sqlite_session)
     workflow_runs = Mock()
-    workflow_runs.get_workflow_run_node_executions.return_value = [execution]
+    workflow_runs.get_workflow_run_node_executions.return_value = [
+        node_execution_response_source(execution, session=sqlite_session)
+    ]
     _mock_application_services(monkeypatch, workflow_runs)
     monkeypatch.setattr(db, "session", sqlite_session)
     request_context = _request_context()

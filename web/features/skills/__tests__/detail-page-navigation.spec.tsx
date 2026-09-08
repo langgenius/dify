@@ -103,6 +103,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('resizes the file tree sidebar within its accessible range', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
 
     const resizeHandle = await screen.findByRole('separator', {
@@ -120,11 +121,14 @@ describe('SkillDetailPage navigation', () => {
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
     fireEvent.pointerUp(document)
 
-    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' })
+    resizeHandle.focus()
+    await user.keyboard('{ArrowRight}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '248')
-    fireEvent.keyDown(resizeHandle, { key: 'End' })
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '280')
+    await user.keyboard('{End}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
-    fireEvent.keyDown(resizeHandle, { key: 'Home' })
+    await user.keyboard('{Home}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
   })
 

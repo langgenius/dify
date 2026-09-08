@@ -58,6 +58,7 @@ import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
@@ -107,7 +108,6 @@ import {
 
 const skillSidebarMinWidth = 240
 const skillSidebarMaxWidth = 420
-const skillSidebarKeyboardStep = 8
 
 const skillSidebarHelpTriggerIcon = (
   <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
@@ -176,6 +176,7 @@ export function FileTree({
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
   const filesTitleId = useId()
+  const sidebarPanelId = useId()
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
@@ -288,15 +289,17 @@ export function FileTree({
   )
 
   const handleSidebarResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    let nextWidth: number | undefined
-    if (event.key === 'ArrowLeft') nextWidth = sidebarWidth - skillSidebarKeyboardStep
-    if (event.key === 'ArrowRight') nextWidth = sidebarWidth + skillSidebarKeyboardStep
-    if (event.key === 'Home') nextWidth = skillSidebarMinWidth
-    if (event.key === 'End') nextWidth = skillSidebarMaxWidth
+    const nextWidth = getKeyboardResizeValue(event, {
+      side: 'right',
+      value: sidebarWidth,
+      min: skillSidebarMinWidth,
+      max: skillSidebarMaxWidth,
+    })
     if (nextWidth === undefined) return
 
     event.preventDefault()
-    setSidebarWidth(clampSkillSidebarWidth(nextWidth))
+    event.stopPropagation()
+    setSidebarWidth(nextWidth)
   }
 
   const fileMutation = useMutation(
@@ -1157,6 +1160,7 @@ export function FileTree({
         onMouseLeave={collapsed ? closeSidebarFloatingPreview : undefined}
       >
         <div
+          id={sidebarPanelId}
           data-testid="skill-detail-sidebar"
           className={cn(
             'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
@@ -1174,6 +1178,8 @@ export function FileTree({
               aria-valuemax={skillSidebarMaxWidth}
               aria-valuemin={skillSidebarMinWidth}
               aria-valuenow={sidebarWidth}
+              aria-valuetext={t(($) => $['resize.width'], { ns: 'common', width: sidebarWidth })}
+              aria-controls={sidebarPanelId}
               tabIndex={0}
               className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
               onKeyDown={handleSidebarResizeKeyDown}

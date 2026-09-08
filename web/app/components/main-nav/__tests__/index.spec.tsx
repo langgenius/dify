@@ -11,7 +11,6 @@ import type {
 import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { ModalContextState } from '@/context/modal-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -19,6 +18,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -28,14 +28,18 @@ import {
   stepByStepTourSkipRecoveryVisibleAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
-import { useModalContext } from '@/context/modal-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
 
@@ -398,11 +402,15 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const mockPush = vi.fn()
-const mockSetShowPricingModal = vi.fn()
+
 const mockSetSettingsDestination = vi.fn()
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+  return {
+    ...actual,
+    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
+      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
+  }
 })
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
@@ -523,7 +531,7 @@ const consoleState: MainNavConsoleState = {
 const workspaceMenuAccessibleName = /Solar Studio.*common\.mainNav\.workspace\.openMenu/
 
 type MainNavSystemFeatures = Exclude<
-  NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'],
+  NonNullable<Parameters<typeof renderWithoutPricing>[1]>['systemFeatures'],
   null | undefined
 >
 
@@ -539,7 +547,7 @@ const renderMainNav = (
   options: {
     store?: ReturnType<typeof createStore>
     extra?: ReactNode
-    educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+    educationStatus?: NonNullable<Parameters<typeof renderWithoutPricing>[1]>['educationStatus']
     skipRecoveryVisible?: boolean
   } = {},
 ) => {
@@ -585,7 +593,7 @@ const renderMainNav = (
       ...systemFeatures.branding,
     },
   }
-  return renderWithConsoleQuery(
+  return render(
     <JotaiProvider store={store}>
       <MainNav />
       {options.extra}
@@ -602,6 +610,11 @@ const renderMainNav = (
       queryClient,
     },
   )
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('MainNav', () => {
@@ -646,9 +659,7 @@ describe('MainNav', () => {
     mockConsoleState.current = consoleState
     skillEnabled = true
     educationEnabled = false
-    ;(useModalContext as Mock).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    } as unknown as ModalContextState)
+
     mockInstalledAppsRequest.mockImplementation(
       async ({ query }: { query: { cursor?: string; name?: string } }) => {
         if (mockInstalledAppsPending) return new Promise(() => {})
@@ -1269,7 +1280,9 @@ describe('MainNav', () => {
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
     })
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('hides the help menu when branding is enabled', () => {
@@ -1292,7 +1305,9 @@ describe('MainNav', () => {
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith('provider')
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByText('common.mainNav.workspace.settings'))
@@ -1324,7 +1339,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
   })
 
-  it('shows the view plan shortcut for paid workspaces', () => {
+  it('shows the view plan shortcut for paid workspaces', async () => {
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -1337,7 +1352,9 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 

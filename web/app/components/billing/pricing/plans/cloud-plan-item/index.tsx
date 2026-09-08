@@ -31,18 +31,19 @@ const ICON_MAP = {
 }
 
 type CloudPlanItemProps = {
-  currentPlan: CloudPlan
   plan: CloudPlan
   billingInterval: GetBillingSubscriptionData['query']['interval']
-  isEducationDiscountEligible: boolean
+  billing:
+    | {
+        currentPlan: CloudPlan
+        isEducationDiscountEligible: boolean | undefined
+      }
+    | undefined
 }
 
-export function CloudPlanItem({
-  plan,
-  currentPlan,
-  billingInterval,
-  isEducationDiscountEligible,
-}: CloudPlanItemProps) {
+export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemProps) {
+  const currentPlan = billing?.currentPlan
+  const isEducationDiscountEligible = billing?.isEducationDiscountEligible
   const { t } = useTranslation()
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
@@ -53,7 +54,11 @@ export function CloudPlanItem({
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
-  const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
+  const isPlanDisabled =
+    !billing ||
+    (!isCurrentPaidPlan &&
+      (billing.isEducationDiscountEligible === undefined ||
+        planInfo.level <= ALL_PLANS[billing.currentPlan].level))
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
     canManageBilling &&
@@ -83,7 +88,7 @@ export function CloudPlanItem({
   const runPlanAction = async () => {
     if (isPlanActionPending || isEducationDiscountLoading) return
 
-    if (isPlanDisabled) return
+    if (!billing || isPlanDisabled) return
 
     setIsPlanActionPending(true)
     try {
@@ -197,7 +202,7 @@ export function CloudPlanItem({
             variant="tertiary"
             size={null}
             disabled={isPlanDisabled}
-            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:bg-saas-dify-blue-static data-[plan=professional]:text-text-primary-on-surface data-[plan=professional]:hover:bg-saas-dify-blue-static-hover data-[plan=team]:bg-saas-background-inverted data-[plan=team]:text-background-default data-[plan=team]:hover:bg-saas-background-inverted-hover"
+            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover"
             onClick={handlePlanButtonClick}
           >
             <span className="grow text-start">{buttonLabel}</span>
