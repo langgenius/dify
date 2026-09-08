@@ -44,7 +44,7 @@ import {
 } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'

@@ -6,7 +6,7 @@ import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,

@@ -33,7 +33,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
@@ -253,8 +253,8 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
   const currentPermissionsQueryKey = [
     ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
@@ -517,7 +517,6 @@ const consoleState: MainNavConsoleState = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   profileMeta: {
@@ -604,6 +603,7 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      features: { billing: { subscription: { plan: 'sandbox' } } },
       educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
@@ -655,10 +655,7 @@ describe('MainNav', () => {
       enableSkill: true,
     }
     ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -835,10 +832,7 @@ describe('MainNav', () => {
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: true,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
 
     renderMainNav(defaultMainNavSystemFeatures, {
@@ -860,7 +854,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
@@ -897,7 +890,6 @@ describe('MainNav', () => {
         role: 'normal',
       },
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.acl.preview'],
@@ -1394,7 +1386,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,

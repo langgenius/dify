@@ -42,7 +42,7 @@ const apps = [
 const mockAppDetailQuery = vi.hoisted(() => vi.fn())
 const mockUseAppWorkflow = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       get: {

@@ -1,5 +1,6 @@
 import type { Features } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
@@ -88,7 +89,7 @@ const renderPanel = (
     showAnnotationReply: boolean
   }> = {},
 ) => {
-  return render(
+  return renderWithConsoleQuery(
     <FeaturesProvider features={defaultFeatures}>
       <NewFeaturePanel
         show={props.show ?? true}

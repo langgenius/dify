@@ -17,7 +17,7 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { useCredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useDebugWithMultipleModelContext } from './context'
 
 type ModelParameterTriggerProps = {

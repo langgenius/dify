@@ -201,7 +201,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: trackEventMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {

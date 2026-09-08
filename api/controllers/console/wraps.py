@@ -163,7 +163,7 @@ def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Ca
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
         billing_info = BillingService.get_info(current_tenant_id, exclude_vector_space=True)
-        if not billing_info["enabled"] or billing_info["subscription"]["plan"] not in (
+        if billing_info["subscription"]["plan"] not in (
             CloudPlan.PROFESSIONAL,
             CloudPlan.TEAM,
         ):
@@ -178,10 +178,10 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
-            if resource == "vector_space":
-                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-                    return view(*args, **kwargs)
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+                return view(*args, **kwargs)
 
+            if resource == "vector_space":
                 vector_space = application_services().feature_queries.get_workspace_vector_space(current_tenant_id)
                 if 0 < vector_space.limit <= vector_space.size:
                     abort(
@@ -191,30 +191,26 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                 return view(*args, **kwargs)
 
             features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
-            if features.billing.enabled:
-                members = features.members
-                apps = features.apps
-                documents_upload_quota = features.documents_upload_quota
-                annotation_quota_limit = features.annotation_quota_limit
-                if resource == "members" and 0 < members.limit <= members.size:
-                    abort(403, "The number of members has reached the limit of your subscription.")
-                elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    abort(403, "The number of apps has reached the limit of your subscription.")
-                elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    # The api of file upload is used in the multiple places,
-                    # so we need to check the source of the request from datasets
-                    source = request.args.get("source") or request.form.get("source")
-                    if source == "datasets":
-                        abort(403, "The number of documents has reached the limit of your subscription.")
-                    else:
-                        return view(*args, **kwargs)
-                elif resource == "workspace_custom" and not features.can_replace_logo:
-                    abort(403, "The workspace custom feature has reached the limit of your subscription.")
-                elif resource == "annotation" and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:
-                    abort(403, "The annotation quota has reached the limit of your subscription.")
+            members = features.members
+            apps = features.apps
+            documents_upload_quota = features.documents_upload_quota
+            annotation_quota_limit = features.annotation_quota_limit
+            if resource == "members" and 0 < members.limit <= members.size:
+                abort(403, "The number of members has reached the limit of your subscription.")
+            elif resource == "apps" and 0 < apps.limit <= apps.size:
+                abort(403, "The number of apps has reached the limit of your subscription.")
+            elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
+                # The api of file upload is used in the multiple places,
+                # so we need to check the source of the request from datasets
+                source = request.args.get("source") or request.form.get("source")
+                if source == "datasets":
+                    abort(403, "The number of documents has reached the limit of your subscription.")
                 else:
                     return view(*args, **kwargs)
-
+            elif resource == "workspace_custom" and not features.can_replace_logo:
+                abort(403, "The workspace custom feature has reached the limit of your subscription.")
+            elif resource == "annotation" and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:
+                abort(403, "The annotation quota has reached the limit of your subscription.")
             return view(*args, **kwargs)
 
         return decorated
@@ -229,16 +225,15 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or resource != "add_segment":
+                return view(*args, **kwargs)
+
             features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
-            if features.billing.enabled:
-                if resource == "add_segment":
-                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
-                        abort(
-                            403,
-                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
-                        )
-                else:
-                    return view(*args, **kwargs)
+            if features.billing.subscription.plan == CloudPlan.SANDBOX:
+                abort(
+                    403,
+                    "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
+                )
 
             return view(*args, **kwargs)
 

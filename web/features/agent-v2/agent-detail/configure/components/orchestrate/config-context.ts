@@ -6,7 +6,7 @@ import { createContext, use } from 'react'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export type AgentConfigApiContext = {
   agentId: string

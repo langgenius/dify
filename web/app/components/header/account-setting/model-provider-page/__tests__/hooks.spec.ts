@@ -9,8 +9,8 @@ import type {
 } from '../declarations'
 import { act, renderHook } from '@testing-library/react'
 import { useLocale } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
 import { fetchDefaultModal } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,

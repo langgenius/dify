@@ -38,7 +38,7 @@ import {
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import { useStrategyProviders } from '@/service/use-strategy'
 import {

@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
@@ -48,8 +48,8 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
       if (prop === 'workspaces') {
@@ -177,10 +177,7 @@ describe('WorkspaceCard', () => {
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
       enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
@@ -344,10 +341,7 @@ describe('WorkspaceCard', () => {
       plan: 'team',
     })
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
       enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
     } as ProviderContextState)
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 

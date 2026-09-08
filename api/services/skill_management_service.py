@@ -3623,7 +3623,7 @@ class SkillManagementService:
         except yaml.YAMLError as exc:
             line = None
             if isinstance(exc, MarkedYAMLError) and exc.problem_mark is not None:
-                line = int(exc.problem_mark.line) + 2
+                line = exc.problem_mark.line + 2
             raise SkillManagementServiceError(
                 "invalid_skill_md",
                 f"SKILL.md frontmatter YAML is invalid: {exc}",

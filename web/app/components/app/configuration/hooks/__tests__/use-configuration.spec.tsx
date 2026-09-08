@@ -1,7 +1,7 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'

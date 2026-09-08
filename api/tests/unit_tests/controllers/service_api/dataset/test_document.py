@@ -48,6 +48,7 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
@@ -65,6 +66,7 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -658,6 +660,7 @@ class TestDocumentServiceFileOperations:
 class TestDocumentServiceSaveValidation:
     """Test validations during document saving."""
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     @patch("services.dataset_service.DatasetService.check_doc_form")
     @patch("services.dataset_service.FeatureService.get_features")
     def test_save_document_validates_doc_form(self, mock_features, mock_check_form, sqlite_session: Session):
@@ -665,7 +668,6 @@ class TestDocumentServiceSaveValidation:
         dataset = make_dataset(tenant_id="tenant_id")
         config = Mock()
         features = Mock()
-        features.billing.enabled = False
         mock_features.return_value = features
 
         class TestStopError(Exception):
@@ -1416,7 +1418,6 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         mock_validate_token.return_value = api_token
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1591,7 +1592,6 @@ def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
     mock_validate_token.return_value = api_token
     mock_features = Mock()
-    mock_features.billing.enabled = False
     mock_feature_svc.get_features.return_value = mock_features
     mock_vector_space = Mock()
     mock_vector_space.limit = 10

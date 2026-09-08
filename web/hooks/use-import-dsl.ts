@@ -12,7 +12,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 
