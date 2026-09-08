@@ -1018,10 +1018,6 @@ class InstalledApp(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
-
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
 
