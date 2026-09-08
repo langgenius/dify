@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey

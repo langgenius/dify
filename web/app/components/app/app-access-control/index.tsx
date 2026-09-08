@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AccessControlForm } from './access-control-form'
 
 const EMPTY_SUBJECTS: AccessControlSubjects = {

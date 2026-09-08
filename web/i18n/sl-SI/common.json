@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "Nastavite privzeti model za pretvorbo besedila v govor v pogovoru.",
   "modelProvider.upgradeForLoadBalancing": "Nadgradite svoj načrt, da omogočite uravnoteženje obremenitev.",
   "modelProvider.used": "porabljeno",
+  "navigation.primary": "Glavni meni",
   "navigation.skipToMain": "Preskoči na glavno vsebino",
   "noData": "Ni podatkov",
   "operation.add": "Dodaj",

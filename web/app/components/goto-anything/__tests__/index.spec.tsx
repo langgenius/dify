@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import type { ActionItem, SearchResult } from '../actions/types'
-import type { ProviderContextState } from '@/context/provider-context'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { gotoAnythingDialogHandle } from '../dialog-handle'
 import { GotoAnything } from '../index'
 
@@ -79,28 +79,34 @@ function setRemoteResults(results: TestSearchResult[]) {
   })
 }
 
-vi.mock('@tanstack/react-query', () => ({
-  keepPreviousData: (previousData: unknown) => previousData,
-  useQuery: (options: {
-    queryKey: [key: keyof typeof remoteQueryStates, searchTerm: string]
-    enabled?: boolean
-    placeholderData?: (previousData: unknown) => unknown
-  }) => {
-    const provider = options.queryKey[0]
-    if (!options.enabled) return emptyRemoteQueryState()
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    keepPreviousData: (previousData: unknown) => previousData,
+    useQuery: (options: {
+      queryKey: readonly unknown[]
+      enabled?: boolean
+      placeholderData?: (previousData: unknown) => unknown
+    }) => {
+      if (typeof options.queryKey[0] !== 'string')
+        return actual.useQuery({ ...options, placeholderData: undefined })
+      const provider = options.queryKey[0] as keyof typeof remoteQueryStates
+      if (!options.enabled) return emptyRemoteQueryState()
 
-    enabledRemoteQueryKeys.push(provider)
-    enabledRemoteSearches.push(options.queryKey)
-    const state = remoteQueryStates[provider]
-    let data = state.data
-    if (state.isFetching && data.length === 0 && options.placeholderData)
-      data = (options.placeholderData(previousRemoteData[provider]) as TestSearchResult[]) ?? []
-    if (!state.isLoading && !state.isFetching && !state.isError)
-      previousRemoteData[provider] = state.data
+      enabledRemoteQueryKeys.push(provider)
+      enabledRemoteSearches.push([provider, options.queryKey[1] as string])
+      const state = remoteQueryStates[provider]
+      let data = state.data
+      if (state.isFetching && data.length === 0 && options.placeholderData)
+        data = (options.placeholderData(previousRemoteData[provider]) as TestSearchResult[]) ?? []
+      if (!state.isLoading && !state.isFetching && !state.isError)
+        previousRemoteData[provider] = state.data
 
-    return { ...state, data }
-  },
-}))
+      return { ...state, data }
+    },
+  }
+})
 
 vi.mock('../actions/app', () => ({
   appSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['app', searchTerm] }),
@@ -143,12 +149,6 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
 
 vi.mock('@/features/agent-v2/permissions', () => ({
   useCanManageAgents: () => visibilityState.canManageAgents,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
-    selector({ enableSkill: visibilityState.enableSkill }),
-  ),
 }))
 
 vi.mock(
@@ -249,7 +249,12 @@ vi.mock('../../plugins/install-plugin/install-from-marketplace', () => ({
   ),
 }))
 
-const renderGotoAnything = (ui: React.ReactElement) => render(ui)
+const renderGotoAnything = (ui: React.ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    features: { enable_skill: visibilityState.enableSkill },
+  })
+  return render(ui, { wrapper })
+}
 
 describe('GotoAnything', () => {
   beforeEach(() => {

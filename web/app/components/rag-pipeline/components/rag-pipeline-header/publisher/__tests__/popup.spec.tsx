@@ -4,9 +4,12 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
+let mockIsAllowPublishAsCustom = true
+
 const render = (ui: React.ReactElement) => {
   const { wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
   })
   return renderWithConsoleState(ui, { wrapper })
 }
@@ -50,7 +53,6 @@ const mockInvalidCustomizedTemplateList = vi.fn()
 let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
-let mockIsAllowPublishAsCustom = true
 let mockDatasetPermissionKeys = ['dataset.acl.use']
 let mockDatasetMaintainer: string | undefined
 let mockCurrentUserId = 'user-1'
@@ -152,10 +154,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: <T,>(
     selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
   ) => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: () => mockIsAllowPublishAsCustom,
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({

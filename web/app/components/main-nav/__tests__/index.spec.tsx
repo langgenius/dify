@@ -12,7 +12,6 @@ import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -30,10 +29,9 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
@@ -168,11 +166,8 @@ type MainNavConsoleState = ConsoleStateFixture & {
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as MainNavConsoleState | undefined,
 }))
-const mockProviderContextState = vi.hoisted(() => ({
-  current: {
-    enableSkill: true,
-  } as Partial<ProviderContextState>,
-}))
+let skillEnabled = true
+let educationEnabled = false
 
 vi.mock('@tanstack/react-virtual')
 
@@ -192,12 +187,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
-    selector(mockProviderContextState.current),
-  ),
-}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
@@ -253,8 +242,8 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
   const currentPermissionsQueryKey = [
     ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
@@ -464,7 +453,7 @@ const ownerWorkspacePermissionKeys = [
   'dataset.external.connect',
   'tool.manage',
   'mcp.manage',
-  'agent.manage',
+  'agent.acl.preview',
   'skill.view',
 ]
 
@@ -517,7 +506,6 @@ const consoleState: MainNavConsoleState = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   profileMeta: {
@@ -604,6 +592,11 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      features: {
+        billing: { subscription: { plan: 'sandbox' } },
+        enable_skill: skillEnabled,
+        education: { enabled: educationEnabled },
+      },
       educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
@@ -651,15 +644,8 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     mockConsoleState.current = consoleState
-    mockProviderContextState.current = {
-      enableSkill: true,
-    }
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      enableEducationPlan: false,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
-    } as ProviderContextState)
+    skillEnabled = true
+    educationEnabled = false
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
     } as unknown as ModalContextState)
@@ -724,7 +710,7 @@ describe('MainNav', () => {
       marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('navigation'))
+      within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).toEqual([
@@ -750,10 +736,12 @@ describe('MainNav', () => {
     )
   })
 
-  it('hides the roster entry when the user lacks agent.manage', () => {
+  it('hides the roster entry when the user lacks agent.acl.preview', () => {
     mockConsoleState.current = {
       ...consoleState,
-      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'agent.manage'),
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
+        (key) => key !== 'agent.acl.preview',
+      ),
     }
 
     renderMainNav()
@@ -761,7 +749,7 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
-  it('shows the roster entry when the user has agent.manage', () => {
+  it('shows the roster entry when the user has agent.acl.preview', () => {
     renderMainNav()
 
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
@@ -776,9 +764,7 @@ describe('MainNav', () => {
   })
 
   it('hides the skills entry when skill is disabled', () => {
-    mockProviderContextState.current = {
-      enableSkill: false,
-    }
+    skillEnabled = false
 
     renderMainNav()
 
@@ -832,12 +818,7 @@ describe('MainNav', () => {
   })
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      enableEducationPlan: true,
-      isFetchedPlan: true,
-      plan: { type: 'sandbox' },
-    } as ProviderContextState)
+    educationEnabled = true
 
     renderMainNav(defaultMainNavSystemFeatures, {
       educationStatus: { is_student: true },
@@ -858,7 +839,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
@@ -895,10 +875,9 @@ describe('MainNav', () => {
         role: 'normal',
       },
       isCurrentWorkspaceDatasetOperator: false,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.manage'],
+      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.acl.preview'],
     }
 
     renderMainNav({ branding: { enabled: false } })
@@ -1392,7 +1371,6 @@ describe('MainNav', () => {
         role: 'dataset_operator',
       },
       isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
