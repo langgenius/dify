@@ -316,12 +316,14 @@ class NotionExtractor(BaseExtractor):
             table_header_cell_texts = []
             table_header_cells = data["results"][0]["table_row"]["cells"]
             for table_header_cell in table_header_cells:
-                if table_header_cell:
-                    for table_header_cell_text in table_header_cell:
-                        text = table_header_cell_text["text"]["content"]
-                        table_header_cell_texts.append(text)
-                else:
-                    table_header_cell_texts.append("")
+                # A cell is an array of rich text segments; join them so one
+                # cell always maps to one Markdown column.
+                text = "".join(
+                    table_header_cell_text["text"]["content"]
+                    for table_header_cell_text in table_header_cell
+                    if "text" in table_header_cell_text
+                )
+                table_header_cell_texts.append(text)
             # Initialize Markdown table with headers
             markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
             markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
@@ -331,11 +333,15 @@ class NotionExtractor(BaseExtractor):
             for i in range(len(results) - 1):
                 column_texts = []
                 table_column_cells = data["results"][i + 1]["table_row"]["cells"]
-                for j in range(len(table_column_cells)):
-                    if table_column_cells[j]:
-                        for table_column_cell_text in table_column_cells[j]:
-                            column_text = table_column_cell_text["text"]["content"]
-                            column_texts.append(column_text)
+                for table_column_cell in table_column_cells:
+                    # Join the rich text segments of each cell and keep empty
+                    # cells as empty columns so the column count stays stable.
+                    column_text = "".join(
+                        table_column_cell_text["text"]["content"]
+                        for table_column_cell_text in table_column_cell
+                        if "text" in table_column_cell_text
+                    )
+                    column_texts.append(column_text)
                 # Add row to Markdown table
                 markdown_table += "| " + " | ".join(column_texts) + " |\n"
             result_lines_arr.append(markdown_table)
