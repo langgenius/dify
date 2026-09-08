@@ -280,57 +280,67 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     })
   }
 
+  const cardContent = (
+    <>
+      <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+        <span aria-hidden className="shrink-0">
+          <AppIcon
+            size="xl"
+            rounded
+            iconType={iconType}
+            icon={agent.icon ?? undefined}
+            background={agent.icon_background}
+            imageUrl={imageUrl}
+          />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+          <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
+            {agent.name}
+          </h2>
+          <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
+        </div>
+      </div>
+      <div className="px-4 py-1 system-xs-regular text-text-tertiary">
+        <div id={descriptionId} className="line-clamp-2 min-h-8">
+          {agent.description}
+        </div>
+      </div>
+      {isDraft && (
+        <div className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+          <div
+            id={draftStatusId}
+            className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
+          >
+            {t(($) => $['roster.usageStatus.draft'])}
+          </div>
+        </div>
+      )}
+    </>
+  )
+  const cardClassName = 'flex h-full min-w-0 flex-col rounded-xl pb-9 outline-hidden'
+
   return (
     <li
       aria-labelledby={nameId}
+      aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
       className="group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
     >
       <ContextMenu>
         <ContextMenuTrigger
           render={
-            <Link
-              href={
-                defaultSection ? `/agents/${agent.id}/${defaultSection}` : `/agents/${agent.id}`
-              }
-              aria-labelledby={nameId}
-              aria-describedby={accessibleDescriptionIds || undefined}
-              className="flex h-full min-w-0 cursor-pointer touch-manipulation flex-col rounded-xl pb-9 outline-hidden"
-            >
-              <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-                <span aria-hidden className="shrink-0">
-                  <AppIcon
-                    size="xl"
-                    rounded
-                    iconType={iconType}
-                    icon={agent.icon ?? undefined}
-                    background={agent.icon_background}
-                    imageUrl={imageUrl}
-                  />
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-                  <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
-                    {agent.name}
-                  </h2>
-                  <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
-                </div>
-              </div>
-              <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-                <div id={descriptionId} className="line-clamp-2 min-h-8">
-                  {agent.description}
-                </div>
-              </div>
-              {isDraft && (
-                <div className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
-                  <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-                  <div
-                    id={draftStatusId}
-                    className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
-                  >
-                    {t(($) => $['roster.usageStatus.draft'])}
-                  </div>
-                </div>
-              )}
-            </Link>
+            defaultSection ? (
+              <Link
+                href={`/agents/${agent.id}/${defaultSection}`}
+                aria-labelledby={nameId}
+                aria-describedby={accessibleDescriptionIds || undefined}
+                className={cn(cardClassName, 'cursor-pointer touch-manipulation')}
+              >
+                {cardContent}
+              </Link>
+            ) : (
+              <div className={cardClassName}>{cardContent}</div>
+            )
           }
         />
         {hasActions && (

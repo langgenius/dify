@@ -603,6 +603,18 @@ describe('AgentRosterList', () => {
       within(reopenedDialog).getByRole('button', { name: 'common.operation.save' }),
     ).toBeDisabled()
   })
+
+  it('renders preview-only agent cards without navigation', () => {
+    workspacePermissions.canCreate = false
+    renderList([createAgent({ permission_keys: [AgentPermission.Preview] })])
+
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
+    expect(within(card).queryByRole('link', { name: 'Research Agent' })).not.toBeInTheDocument()
+    expect(card).toHaveAccessibleDescription(
+      'agentV2.roster.usageStatus.draft Find and summarize market materials.',
+    )
+  })
+
   it('links viewers to access points and hides mutation menus including the context menu', async () => {
     workspacePermissions.canCreate = false
     renderList([
