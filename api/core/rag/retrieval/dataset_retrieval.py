@@ -6,6 +6,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
+from datetime import datetime
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
@@ -93,7 +94,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
-from models.enums import CreatorUserRole, DatasetQuerySource
+from models.enums import CreatorUserRole, DatasetMetadataType, DatasetQuerySource
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 
@@ -106,6 +107,31 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 }
 
 logger = logging.getLogger(__name__)
+
+
+def _coerce_metadata_filter_value(value: Any, field_type: str | None) -> Any:
+    """Coerce the LLM-extracted metadata filter value into the form the SQL
+    filter expects.
+
+    The automatic-metadata-filter prompt only knows the bare field names (see
+    `_automatic_metadata_filter_func`), so a `time`-typed field's value is
+    often returned as a date string (e.g. ``"2024-01-01"``). The downstream
+    filter uses ``as_float()`` for ``time``/``number`` columns, so a date
+    string would raise
+    ``psycopg2.errors.InvalidTextRepresentation: invalid input syntax for
+    type double precision``. Convert a parseable date string to a Unix
+    timestamp here so the filter executes. The ``is``/``is not`` conditions
+    are left as strings (time fields are usually compared with ``before``/
+    ``after``/``≤``/``≥``).
+    """
+    if not isinstance(value, str):
+        return value
+    if field_type == DatasetMetadataType.TIME:
+        try:
+            return datetime.fromisoformat(value).timestamp()
+        except ValueError:
+            return value
+    return value
 
 
 class DatasetRetrieval:
@@ -1586,6 +1612,7 @@ class DatasetRetrieval:
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = session.scalars(metadata_stmt).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        metadata_field_types = {mf.name: mf.type for mf in metadata_fields}
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1626,7 +1653,10 @@ class DatasetRetrieval:
                         automatic_metadata_filters.append(
                             {
                                 "metadata_name": item.get("metadata_field_name"),
-                                "value": item.get("metadata_field_value"),
+                                "value": _coerce_metadata_filter_value(
+                                    item.get("metadata_field_value"),
+                                    metadata_field_types.get(item.get("metadata_field_name")),
+                                ),
                                 "condition": item.get("comparison_operator"),
                             }
                         )
