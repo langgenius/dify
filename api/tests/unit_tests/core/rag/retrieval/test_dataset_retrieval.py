@@ -9,8 +9,9 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -5477,15 +5478,50 @@ class TestInternalHooksCoverage:
             ),
         ]
 
-        with (
-            patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
-            patch.object(retrieval, "_send_trace_task") as mock_trace,
-        ):
-            retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
+        executed_statements: list[object] = []
+
+        def capture_statement(*args: object) -> None:
+            executed_statements.append(args[1])
+
+        event.listen(self.orm_engine, "before_execute", capture_statement)
+        try:
+            with (
+                patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
+                patch.object(retrieval, "_send_trace_task") as mock_trace,
+            ):
+                retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
+        finally:
+            event.remove(self.orm_engine, "before_execute", capture_statement)
 
         self.orm_session.expire_all()
         assert [segment.hit_count for segment in segments] == [1, 1, 1, 1]
+        locking_statements = [
+            statement for statement in executed_statements if getattr(statement, "_for_update_arg", None) is not None
+        ]
+        assert len(locking_statements) == 1
+        assert "ORDER BY document_segments.id" in str(locking_statements[0])
         mock_trace.assert_called_once()
+
+    def test_on_retrieval_end_retries_postgres_deadlock(self, retrieval: DatasetRetrieval) -> None:
+        app = Flask(__name__)
+        deadlock = DBAPIError(
+            "UPDATE document_segments",
+            {},
+            SimpleNamespace(sqlstate="40P01"),
+            connection_invalidated=False,
+        )
+        doc = _doc(provider="dify")
+
+        with (
+            patch.object(retrieval, "_update_segment_hit_counts", side_effect=[deadlock, None]) as mock_update,
+            patch.object(retrieval, "_send_trace_task") as mock_trace,
+            patch("core.rag.retrieval.dataset_retrieval.time.sleep") as mock_sleep,
+        ):
+            retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer={"cost": 1})
+
+        assert mock_update.call_count == 2
+        mock_sleep.assert_called_once_with(0.05)
+        mock_trace.assert_called_once_with("m1", [doc], {"cost": 1})
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
         flask_app = SimpleNamespace(app_context=lambda: nullcontext())

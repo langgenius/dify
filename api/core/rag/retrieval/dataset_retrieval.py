@@ -11,6 +11,7 @@ from typing import Any, Union, cast
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
@@ -106,6 +107,19 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 }
 
 logger = logging.getLogger(__name__)
+
+_POSTGRES_DEADLOCK_SQLSTATE = "40P01"
+_HIT_COUNT_UPDATE_MAX_ATTEMPTS = 3
+_HIT_COUNT_UPDATE_RETRY_DELAYS_SECONDS = (0.05, 0.1)
+
+
+def _is_postgres_deadlock_error(exc: BaseException) -> bool:
+    if not isinstance(exc, DBAPIError) or exc.orig is None:
+        return False
+    return any(
+        code == _POSTGRES_DEADLOCK_SQLSTATE
+        for code in (getattr(exc.orig, "sqlstate", None), getattr(exc.orig, "pgcode", None))
+    )
 
 
 class DatasetRetrieval:
@@ -929,101 +943,124 @@ class DatasetRetrieval:
                 self._send_trace_task(message_id, documents, timer)
                 return
 
-            with sessionmaker(bind=db.engine).begin() as session:
-                # Collect all document_ids and batch fetch DatasetDocuments
-                document_ids = {
-                    doc.metadata["document_id"]
-                    for doc in dify_documents
-                    if doc.metadata and "document_id" in doc.metadata
-                }
-                if not document_ids:
-                    self._send_trace_task(message_id, documents, timer)
-                    return
-
-                dataset_docs_stmt = select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-                dataset_docs = session.scalars(dataset_docs_stmt).all()
-                dataset_doc_map = {str(doc.id): doc for doc in dataset_docs}
-
-                # Categorize documents by type and collect necessary IDs
-                parent_child_text_docs: list[tuple[Document, DatasetDocument]] = []
-                parent_child_image_docs: list[tuple[Document, DatasetDocument]] = []
-                normal_text_docs: list[tuple[Document, DatasetDocument]] = []
-                normal_image_docs: list[tuple[Document, DatasetDocument]] = []
-
-                for doc in dify_documents:
-                    if not doc.metadata or "document_id" not in doc.metadata:
-                        continue
-                    dataset_doc = dataset_doc_map.get(doc.metadata["document_id"])
-                    if not dataset_doc:
-                        continue
-
-                    is_image = doc.metadata.get("doc_type") == DocType.IMAGE
-                    is_parent_child = dataset_doc.doc_form == IndexStructureType.PARENT_CHILD_INDEX
-
-                    if is_parent_child:
-                        if is_image:
-                            parent_child_image_docs.append((doc, dataset_doc))
-                        else:
-                            parent_child_text_docs.append((doc, dataset_doc))
-                    else:
-                        if is_image:
-                            normal_image_docs.append((doc, dataset_doc))
-                        else:
-                            normal_text_docs.append((doc, dataset_doc))
-
-                segment_ids_to_update: set[str] = set()
-
-                # Process PARENT_CHILD_INDEX text documents - batch fetch ChildChunks
-                if parent_child_text_docs:
-                    index_node_ids = [doc.metadata["doc_id"] for doc, _ in parent_child_text_docs if doc.metadata]
-                    if index_node_ids:
-                        child_chunks_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(index_node_ids))
-                        child_chunks = session.scalars(child_chunks_stmt).all()
-                        child_chunk_map = {chunk.index_node_id: chunk.segment_id for chunk in child_chunks}
-                        for doc, _ in parent_child_text_docs:
-                            if doc.metadata:
-                                segment_id = child_chunk_map.get(doc.metadata["doc_id"])
-                                if segment_id:
-                                    segment_ids_to_update.add(str(segment_id))
-
-                # Process non-PARENT_CHILD_INDEX text documents - batch fetch DocumentSegments
-                if normal_text_docs:
-                    index_node_ids = [doc.metadata["doc_id"] for doc, _ in normal_text_docs if doc.metadata]
-                    if index_node_ids:
-                        segments_stmt = select(DocumentSegment).where(DocumentSegment.index_node_id.in_(index_node_ids))
-                        segments = session.scalars(segments_stmt).all()
-                        segment_map = {seg.index_node_id: seg.id for seg in segments}
-                        for doc, _ in normal_text_docs:
-                            if doc.metadata:
-                                segment_id = segment_map.get(doc.metadata["doc_id"])
-                                if segment_id:
-                                    segment_ids_to_update.add(str(segment_id))
-
-                # Process IMAGE documents - batch fetch SegmentAttachmentBindings
-                all_image_docs = parent_child_image_docs + normal_image_docs
-                if all_image_docs:
-                    attachment_ids = [
-                        doc.metadata["doc_id"]
-                        for doc, _ in all_image_docs
-                        if doc.metadata and doc.metadata.get("doc_id")
-                    ]
-                    if attachment_ids:
-                        bindings_stmt = select(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
-                        )
-                        bindings = session.scalars(bindings_stmt).all()
-                        segment_ids_to_update.update(str(binding.segment_id) for binding in bindings)
-
-                # Batch update hit_count for all segments
-                if segment_ids_to_update:
-                    session.execute(
-                        update(DocumentSegment)
-                        .where(DocumentSegment.id.in_(segment_ids_to_update))
-                        .values(hit_count=DocumentSegment.hit_count + 1)
-                        .execution_options(synchronize_session=False)
+            for attempt in range(1, _HIT_COUNT_UPDATE_MAX_ATTEMPTS + 1):
+                try:
+                    self._update_segment_hit_counts(dify_documents)
+                    break
+                except DBAPIError as exc:
+                    if not _is_postgres_deadlock_error(exc) or attempt == _HIT_COUNT_UPDATE_MAX_ATTEMPTS:
+                        raise
+                    delay = _HIT_COUNT_UPDATE_RETRY_DELAYS_SECONDS[attempt - 1]
+                    logger.warning(
+                        "Retrying document segment hit-count update after PostgreSQL deadlock "
+                        "(attempt %s/%s, sleep %.2fs)",
+                        attempt,
+                        _HIT_COUNT_UPDATE_MAX_ATTEMPTS,
+                        delay,
+                        exc_info=True,
                     )
+                    time.sleep(delay)
 
             self._send_trace_task(message_id, documents, timer)
+
+    def _update_segment_hit_counts(self, dify_documents: list[Document]) -> None:
+        """Increment segment hit counts while acquiring overlapping row locks in a stable order."""
+        with sessionmaker(bind=db.engine).begin() as session:
+            # Collect all document_ids and batch fetch DatasetDocuments
+            document_ids = {
+                doc.metadata["document_id"] for doc in dify_documents if doc.metadata and "document_id" in doc.metadata
+            }
+            if not document_ids:
+                return
+
+            dataset_docs_stmt = select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
+            dataset_docs = session.scalars(dataset_docs_stmt).all()
+            dataset_doc_map = {str(doc.id): doc for doc in dataset_docs}
+
+            # Categorize documents by type and collect necessary IDs
+            parent_child_text_docs: list[tuple[Document, DatasetDocument]] = []
+            parent_child_image_docs: list[tuple[Document, DatasetDocument]] = []
+            normal_text_docs: list[tuple[Document, DatasetDocument]] = []
+            normal_image_docs: list[tuple[Document, DatasetDocument]] = []
+
+            for doc in dify_documents:
+                if not doc.metadata or "document_id" not in doc.metadata:
+                    continue
+                dataset_doc = dataset_doc_map.get(doc.metadata["document_id"])
+                if not dataset_doc:
+                    continue
+
+                is_image = doc.metadata.get("doc_type") == DocType.IMAGE
+                is_parent_child = dataset_doc.doc_form == IndexStructureType.PARENT_CHILD_INDEX
+
+                if is_parent_child:
+                    if is_image:
+                        parent_child_image_docs.append((doc, dataset_doc))
+                    else:
+                        parent_child_text_docs.append((doc, dataset_doc))
+                else:
+                    if is_image:
+                        normal_image_docs.append((doc, dataset_doc))
+                    else:
+                        normal_text_docs.append((doc, dataset_doc))
+
+            segment_ids_to_update: set[str] = set()
+
+            # Process PARENT_CHILD_INDEX text documents - batch fetch ChildChunks
+            if parent_child_text_docs:
+                index_node_ids = [doc.metadata["doc_id"] for doc, _ in parent_child_text_docs if doc.metadata]
+                if index_node_ids:
+                    child_chunks_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(index_node_ids))
+                    child_chunks = session.scalars(child_chunks_stmt).all()
+                    child_chunk_map = {chunk.index_node_id: chunk.segment_id for chunk in child_chunks}
+                    for doc, _ in parent_child_text_docs:
+                        if doc.metadata:
+                            segment_id = child_chunk_map.get(doc.metadata["doc_id"])
+                            if segment_id:
+                                segment_ids_to_update.add(str(segment_id))
+
+            # Process non-PARENT_CHILD_INDEX text documents - batch fetch DocumentSegments
+            if normal_text_docs:
+                index_node_ids = [doc.metadata["doc_id"] for doc, _ in normal_text_docs if doc.metadata]
+                if index_node_ids:
+                    segments_stmt = select(DocumentSegment).where(DocumentSegment.index_node_id.in_(index_node_ids))
+                    segments = session.scalars(segments_stmt).all()
+                    segment_map = {seg.index_node_id: seg.id for seg in segments}
+                    for doc, _ in normal_text_docs:
+                        if doc.metadata:
+                            segment_id = segment_map.get(doc.metadata["doc_id"])
+                            if segment_id:
+                                segment_ids_to_update.add(str(segment_id))
+
+            # Process IMAGE documents - batch fetch SegmentAttachmentBindings
+            all_image_docs = parent_child_image_docs + normal_image_docs
+            if all_image_docs:
+                attachment_ids = [
+                    doc.metadata["doc_id"] for doc, _ in all_image_docs if doc.metadata and doc.metadata.get("doc_id")
+                ]
+                if attachment_ids:
+                    bindings_stmt = select(SegmentAttachmentBinding).where(
+                        SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
+                    )
+                    bindings = session.scalars(bindings_stmt).all()
+                    segment_ids_to_update.update(str(binding.segment_id) for binding in bindings)
+
+            # Batch update hit_count for all segments
+            if segment_ids_to_update:
+                # PostgreSQL does not guarantee that an IN predicate is visited in parameter order.
+                # Lock every target row explicitly and consistently before the multi-row update.
+                session.scalars(
+                    select(DocumentSegment.id)
+                    .where(DocumentSegment.id.in_(segment_ids_to_update))
+                    .order_by(DocumentSegment.id)
+                    .with_for_update()
+                ).all()
+                session.execute(
+                    update(DocumentSegment)
+                    .where(DocumentSegment.id.in_(segment_ids_to_update))
+                    .values(hit_count=DocumentSegment.hit_count + 1)
+                    .execution_options(synchronize_session=False)
+                )
 
     def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict[str, Any] | None):
         """Send trace task if trace manager is available."""
