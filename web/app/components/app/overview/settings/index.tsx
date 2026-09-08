@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
@@ -30,6 +31,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -37,7 +39,10 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { useModalContext } from '@/context/modal-context'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -212,7 +217,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       select: (data) => data.webapp_copyright_enabled,
     }),
   )
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const canCustomizePlaceholder = deploymentEdition !== 'CLOUD' || webappCopyrightEnabled === true
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
@@ -268,8 +273,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     if (nextLanguage) setLanguage(nextLanguage.value)
   }
   const handlePlanClick = useCallback(() => {
-    setShowPricingModal()
-  }, [setShowPricingModal])
+    setPricing('open')
+  }, [setPricing])
 
   const shouldResetForm =
     isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)

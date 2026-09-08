@@ -4,10 +4,12 @@ import type { Mock } from 'vite-plus/test'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
@@ -138,9 +140,16 @@ const createDefaultProps = (
 })
 
 function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
     features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
   })
 }
 

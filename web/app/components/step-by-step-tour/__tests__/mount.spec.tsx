@@ -904,6 +904,23 @@ describe('StepByStepTourMount', () => {
     expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
   })
 
+  it('hides expanded tour overlays while pricing is open', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount('?pricing=open')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
   it('hides expanded tour overlays while the Education expiration notice is open', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],

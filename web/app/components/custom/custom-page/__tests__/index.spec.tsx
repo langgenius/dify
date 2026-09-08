@@ -1,14 +1,19 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { contactSalesUrl } from '@/app/components/billing/config'
-import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import CustomPage from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUNITY'
 let canReplaceLogo = true
@@ -21,14 +26,14 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-function render(ui: ReactElement) {
+function renderWithData(ui: ReactElement) {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), {
     remove_webapp_brand: false,
     replace_webapp_logo: null,
   })
 
-  return renderWithConsoleQuery(ui, {
+  return renderWithoutPricing(ui, {
     queryClient,
     features: {
       can_replace_logo: canReplaceLogo,
@@ -57,27 +62,22 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-const mockUseModalContext = vi.mocked(useModalContext)
+function render(...args: Parameters<typeof renderWithData>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithData(...args)
+}
 
 describe('CustomPage', () => {
-  const setShowPricingModal = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
 
     deploymentEdition = 'COMMUNITY'
     canReplaceLogo = true
     plan = 'professional'
-    mockUseModalContext.mockReturnValue({
-      setShowPricingModal,
-    } as unknown as ReturnType<typeof useModalContext>)
   })
 
   // Integration coverage for the page and its child custom brand section.
@@ -104,7 +104,9 @@ describe('CustomPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
 
-      expect(setShowPricingModal).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should show the contact link for professional workspaces', () => {

@@ -2,11 +2,14 @@
 
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getKeyboardMovement } from '../utils/keyboard-movement'
 import CommentPreview from './comment-preview'
 
 type CommentIconProps = {
@@ -18,6 +21,8 @@ type CommentIconProps = {
 
 export const CommentIcon: FC<CommentIconProps> = memo(
   ({ comment, onClick, isActive = false, onPositionUpdate }) => {
+    const { t } = useTranslation('workflow')
+    const descriptionId = useId()
     const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
     const viewport = useViewport()
     const { data: currentUserId } = useSuspenseQuery({
@@ -28,6 +33,14 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const [showPreview, setShowPreview] = useState(false)
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
     const [isDragging, setIsDragging] = useState(false)
+    const keyboardPositionRef = useRef<{ x: number; y: number } | null>(null)
+    const finishKeyboardMove = useCallback(() => {
+      const position = keyboardPositionRef.current
+      if (!position) return
+      keyboardPositionRef.current = null
+      setDragPosition(null)
+      onPositionUpdate?.(position)
+    }, [onPositionUpdate])
     const dragStateRef = useRef<{
       offsetX: number
       offsetY: number
@@ -72,7 +85,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     }, [isActive, isAuthor, isDragging])
 
     const handlePointerDown = useCallback(
-      (event: ReactPointerEvent<HTMLDivElement>) => {
+      (event: ReactPointerEvent<HTMLElement>) => {
         if (event.button !== 0) return
 
         event.stopPropagation()
@@ -102,7 +115,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       [isAuthor, screenPosition],
     )
 
-    const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
       const dragState = dragStateRef.current
       if (!dragState) return
 
@@ -126,7 +139,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       setDragPosition({ x: nextX, y: nextY })
     }, [])
 
-    const finishDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const finishDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
       const dragState = dragStateRef.current
       if (!dragState) return false
 
@@ -140,7 +153,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     }, [])
 
     const handlePointerUp = useCallback(
-      (event: ReactPointerEvent<HTMLDivElement>) => {
+      (event: ReactPointerEvent<HTMLElement>) => {
         event.stopPropagation()
         event.preventDefault()
 
@@ -173,7 +186,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     )
 
     const handlePointerCancel = useCallback(
-      (event: ReactPointerEvent<HTMLDivElement>) => {
+      (event: ReactPointerEvent<HTMLElement>) => {
         event.stopPropagation()
         event.preventDefault()
         finishDrag(event)
@@ -226,8 +239,12 @@ export const CommentIcon: FC<CommentIconProps> = memo(
 
     return (
       <>
-        <div
-          className="absolute z-10"
+        <IconButton
+          aria-label={t(($) => $['keyboard.openComment'], {
+            name: comment.created_by_account?.name ?? '',
+          })}
+          aria-describedby={isAuthor && onPositionUpdate ? descriptionId : undefined}
+          className="absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
           style={{
             left: canvasPosition.x,
             top: canvasPosition.y,
@@ -235,6 +252,30 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           }}
           data-role="comment-marker"
           {...pointerEventHandlers}
+          onClick={(event) => {
+            if (event.detail === 0 && !isActive) {
+              finishKeyboardMove()
+              onClick()
+            }
+          }}
+          onBlur={finishKeyboardMove}
+          onKeyUp={(event) => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))
+              finishKeyboardMove()
+          }}
+          onKeyDown={(event) => {
+            const delta = getKeyboardMovement(event)
+            if (!delta || !isAuthor || !onPositionUpdate) return
+            event.preventDefault()
+            event.stopPropagation()
+            const current = keyboardPositionRef.current ?? {
+              x: comment.position_x,
+              y: comment.position_y,
+            }
+            const next = { x: current.x + delta.x, y: current.y + delta.y }
+            keyboardPositionRef.current = next
+            setDragPosition(flowToScreenPosition(next))
+          }}
         >
           <div
             className={cursorClass}
@@ -263,7 +304,13 @@ export const CommentIcon: FC<CommentIconProps> = memo(
               </div>
             </div>
           </div>
-        </div>
+        </IconButton>
+        {isAuthor && onPositionUpdate && (
+          <span id={descriptionId} className="sr-only" aria-live="polite">
+            {t(($) => $['keyboard.moveHelp'])}{' '}
+            {t(($) => $['keyboard.position'], { x: comment.position_x, y: comment.position_y })}
+          </span>
+        )}
 
         {/* Preview panel */}
         {showPreview && !isActive && (

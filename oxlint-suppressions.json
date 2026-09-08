@@ -221,11 +221,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap.tsx": {
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -2947,7 +2942,7 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/snippets/hooks/use-snippet-run.ts": {
@@ -4438,7 +4433,7 @@
       "count": 4
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 5
+      "count": 4
     },
     "typescript/no-explicit-any": {
       "count": 1
