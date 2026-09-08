@@ -63,17 +63,17 @@ def _agent(
 
 
 class TestHasAgentListPermission:
-    def test_matches_preview_permission(self):
+    def test_matches_preview_permission(self) -> None:
         for key in AGENT_LIST_PERMISSION_KEYS:
             assert has_agent_list_permission([key])
 
-    def test_rejects_non_preview_permissions(self):
+    def test_rejects_non_preview_permissions(self) -> None:
         assert not has_agent_list_permission(["agent.acl.edit", "agent.acl.delete"])
         assert not has_agent_list_permission([])
 
 
 class TestAgentAccessFilter:
-    def test_unrestricted_leaves_app_params_untouched(self, unbound_session: Session):
+    def test_unrestricted_leaves_app_params_untouched(self, unbound_session: Session) -> None:
         params = AppListParams(mode="agent")
 
         AgentAccessFilter.unrestricted().apply_to_app_params(
@@ -84,7 +84,7 @@ class TestAgentAccessFilter:
 
         assert params.accessible_app_ids is None
 
-    def test_maps_visible_agent_ids_to_active_agent_apps(self, sqlite_session: Session):
+    def test_maps_visible_agent_ids_to_active_agent_apps(self, sqlite_session: Session) -> None:
         sqlite_session.add_all(
             [
                 _agent(agent_id="agent-1", app_id="app-2"),
@@ -102,7 +102,7 @@ class TestAgentAccessFilter:
 
         assert params.accessible_app_ids == ["app-1", "app-2"]
 
-    def test_empty_visible_set_filters_every_agent_app(self, unbound_session: Session):
+    def test_empty_visible_set_filters_every_agent_app(self, unbound_session: Session) -> None:
         params = AppListParams(mode="agent")
 
         AgentAccessFilter(accessible_agent_ids=set()).apply_to_app_params(
@@ -121,7 +121,9 @@ class TestResolveAgentAccessFilter:
             lambda _tenant_id, _account_id: whitelist,
         )
 
-    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    def test_default_preview_is_unrestricted(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
 
         access_filter = resolve_agent_access_filter(
@@ -137,7 +139,7 @@ class TestResolveAgentAccessFilter:
         self,
         monkeypatch: pytest.MonkeyPatch,
         unbound_session: Session,
-    ):
+    ) -> None:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
 
         access_filter = resolve_agent_access_filter(
@@ -164,7 +166,7 @@ class TestResolveAgentAccessFilter:
         self,
         monkeypatch: pytest.MonkeyPatch,
         unbound_session: Session,
-    ):
+    ) -> None:
         self._patch_whitelist(
             monkeypatch,
             ResourceWhitelistResources(unrestricted=False, resource_ids=["agent-9"]),
