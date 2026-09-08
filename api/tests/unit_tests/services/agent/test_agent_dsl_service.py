@@ -526,7 +526,7 @@ def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
     assert create_kwargs["source"] == AgentSource.WORKFLOW
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(
+def test_extract_package_dependencies_covers_models_features_tools_and_knowledge(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
@@ -542,6 +542,12 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
     soul = AgentSoulConfig.model_validate(
         {
             "model": {"plugin_id": "model-plugin", "model_provider": "provider/model", "model": "model"},
+            "app_features": {
+                "suggested_questions_after_answer": {
+                    "enabled": True,
+                    "model": {"provider": "provider/follow-up", "name": "follow-up-model"},
+                }
+            },
             "tools": {
                 "dify_tools": [
                     {
@@ -581,6 +587,7 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(
 
     assert dependencies == [
         "model:provider/model",
+        "model:provider/follow-up",
         "tool:provider/tool",
         "tool:plugin-id/fallback-provider",
         "model:provider/retrieval",
