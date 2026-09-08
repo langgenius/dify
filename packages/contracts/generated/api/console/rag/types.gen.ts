@@ -175,31 +175,7 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccountResponse | null
   version: string
-}
-
-export type DraftWorkflowSyncPayload = {
-  conversation_variables?: Array<{
-    [key: string]: unknown
-  }> | null
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }> | null
-  features?: {
-    [key: string]: unknown
-  } | null
-  graph: {
-    [key: string]: unknown
-  }
-  hash?: string | null
-  rag_pipeline_variables?: Array<{
-    [key: string]: unknown
-  }> | null
-}
-
-export type RagPipelineWorkflowSyncResponse = {
-  hash: string
-  result: string
-  updated_at: number
+  version_number?: number | null
 }
 
 export type DatasourceNodeRunPayload = {
@@ -310,11 +286,6 @@ export type WorkflowDraftVariable = {
   visible?: boolean
 }
 
-export type WorkflowDraftVariablePatchPayload = {
-  name?: string | null
-  value?: unknown | null
-}
-
 export type RagPipelineWorkflowPublishResponse = {
   created_at: number
   result: string
@@ -342,9 +313,10 @@ export type PublishedWorkflowRunPayload = {
   start_node_id: string
 }
 
-export type WorkflowUpdatePayload = {
-  marked_comment?: string | null
-  marked_name?: string | null
+export type RagPipelineWorkflowSyncResponse = {
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
@@ -584,6 +556,10 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
   url: '/rag/pipeline/customized/templates/{template_id}'
 }
 
+export type PostRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  404: unknown
+}
+
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   200: SimpleDataResponse
 }
@@ -645,6 +621,10 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
     type?: string
   }
   url: '/rag/pipeline/templates/{template_id}'
+}
+
+export type GetRagPipelineTemplatesByTemplateIdErrors = {
+  404: unknown
 }
 
 export type GetRagPipelineTemplatesByTemplateIdResponses = {
@@ -754,6 +734,10 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
   url: '/rag/pipelines/transform/datasets/{dataset_id}'
 }
 
+export type PostRagPipelinesTransformDatasetsByDatasetIdErrors = {
+  404: unknown
+}
+
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
   200: RagPipelineOpaqueResponse
 }
@@ -768,6 +752,10 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
   }
   query?: never
   url: '/rag/pipelines/{pipeline_id}/customized/publish'
+}
+
+export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
+  404: unknown
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
@@ -946,7 +934,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftResponse =
   GetRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
-  body: DraftWorkflowSyncPayload
+  body?: never
   path: {
     pipeline_id: string
   }
@@ -955,7 +943,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: RagPipelineWorkflowSyncResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse =
@@ -1250,7 +1240,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRespon
   GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
-  body: WorkflowDraftVariablePatchPayload
+  body?: never
   path: {
     pipeline_id: string
     variable_id: string
@@ -1423,7 +1413,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse =
   DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
-  body: WorkflowUpdatePayload
+  body?: never
   path: {
     pipeline_id: string
     workflow_id: string

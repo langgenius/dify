@@ -19,7 +19,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
-from core.rbac import RBACPermission
+from core.rbac import RBACPermission, RBACResourceScope
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
@@ -44,6 +44,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
+from models.agent import AgentScope
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
@@ -64,7 +65,6 @@ from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -227,9 +227,7 @@ class AppDslService:
             # If app_id is provided, check if it exists
             app = None
             if app_id:
-                stmt = select(App).where(App.id == app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
-
+                app = self._load_app_for_overwrite(account, app_id)
                 if not app:
                     return Import(
                         id=import_id,
@@ -246,8 +244,11 @@ class AppDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = PendingData(
-                    tenant_id=account.current_tenant_id,
+                    tenant_id=tenant_id,
                     account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
@@ -367,8 +368,13 @@ class AppDslService:
 
             app = None
             if pending_data.app_id:
-                stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
-                app = self._session.scalar(stmt)
+                app = self._load_app_for_overwrite(account, pending_data.app_id)
+                if not app:
+                    return Import(
+                        id=import_id,
+                        status=ImportStatus.FAILED,
+                        error="App not found",
+                    )
 
             # Create or update app
             app = self._create_or_update_app(
@@ -429,20 +435,52 @@ class AppDslService:
             leaked_dependencies=leaked_dependencies,
         )
 
-    @staticmethod
-    def _ensure_agent_manage_permission(account: Account) -> None:
-        """Importing an Agent DSL creates a roster Agent, which requires ``agent.manage``."""
+    def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
+        if account.current_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        if dify_config.RBAC_ENABLED and self._session.in_transaction():
+            raise RuntimeError("App overwrite authorization requires a session without an active transaction")
+        rbac_allowed = not dify_config.RBAC_ENABLED or RBACService.CheckAccess.check(
+            account.current_tenant_id,
+            account.id,
+            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app_id,
+        )
+        app = self._session.scalar(
+            select(App)
+            .where(
+                App.id == app_id,
+                App.tenant_id == account.current_tenant_id,
+                App.status == "normal",
+            )
+            .execution_options(populate_existing=True)
+        )
+        if app is not None and not rbac_allowed and app.maintainer != account.id:
+            raise NoPermissionError("You do not have permission to overwrite this app")
+        return app
+
+    def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:
             return
         if account.current_tenant_id is None:
             raise ValueError("Current tenant is not set")
+        binding = (
+            app.agent_app_binding_with_session(session=self._session, include_archived=True)
+            if app is not None
+            else None
+        )
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
         allowed = RBACService.CheckAccess.check(
             account.current_tenant_id,
             account.id,
-            scene=RBACPermission.AGENT_MANAGE,
+            scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.AGENT if binding is not None else None,
+            resource_id=str(binding.id) if binding is not None else None,
         )
         if not allowed:
-            raise NoPermissionError("Agent management permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
 
     def _create_or_update_app(
         self,
@@ -465,7 +503,7 @@ class AppDslService:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         if app_mode == AppMode.AGENT:
-            self._ensure_agent_manage_permission(account)
+            self._ensure_agent_import_permission(account, app=app)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -583,15 +621,10 @@ class AppDslService:
                         draft_workflow=draft_workflow,
                     )
                     self._session.commit()
-                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                    WorkflowAgentRetirementService.retire_unowned(
                         tenant_id=app.tenant_id,
                         agent_ids=retirement_candidates,
                         account_id=account.id,
-                    )
-                    enqueue_agent_resource_collection(
-                        tenant_id=app.tenant_id,
-                        binding_ids=binding_ids,
-                        home_snapshot_ids=home_snapshot_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
@@ -652,6 +685,9 @@ class AppDslService:
         :param app_model: App instance
         :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
+        :param workflow_id: Optional published workflow version to export
+        :raises WorkflowNotFoundError: If the selected workflow version does not exist
+        :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
@@ -711,10 +747,13 @@ class AppDslService:
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
+        :param workflow_id: Optional published workflow version to export
         """
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id, session=session)
         if not workflow:
+            if workflow_id:
+                raise WorkflowNotFoundError(f"Workflow version not found. Workflow ID: {workflow_id}.")
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)

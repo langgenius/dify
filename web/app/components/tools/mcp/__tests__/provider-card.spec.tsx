@@ -3,7 +3,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import MCPCard from '../provider-card'
 
@@ -191,6 +191,12 @@ describe('MCPCard', () => {
       const dataWithNoTools = createMockData({ tools: [], is_team_authorization: true })
       render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
+    })
+
+    it('should show update time when not configured', () => {
+      const dataNotConfigured = createMockData({ tools: [], is_team_authorization: false })
+      render(<MCPCard {...defaultProps} data={dataNotConfigured} />, { wrapper: createWrapper() })
+      expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
     })
   })
 

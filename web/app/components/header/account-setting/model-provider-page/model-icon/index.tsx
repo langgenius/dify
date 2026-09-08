@@ -1,6 +1,9 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ModelProviderSummaryResponse,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { Model, ModelProvider } from '../declarations'
+import type { ModelProvider } from '../declarations'
 import type { ModelSelectorProvider } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
@@ -10,7 +13,11 @@ import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 
 type ModelIconProps = {
-  provider?: Model | ModelProvider | ModelProviderSummaryResponse | ModelSelectorProvider
+  provider?:
+    | ProviderWithModelsResponse
+    | ModelProvider
+    | ModelProviderSummaryResponse
+    | ModelSelectorProvider
   modelName?: string
   className?: string
   iconClassName?: string
@@ -37,14 +44,14 @@ const ModelIcon: FC<ModelIconProps> = ({
     modelName?.startsWith('o')
   )
     return (
-      <div className="flex items-center justify-center">
+      <span className="flex items-center justify-center">
         <OpenaiYellow className={cn('size-5', className)} />
-      </div>
+      </span>
     )
 
   if (iconUrl) {
     return (
-      <div
+      <span
         className={cn(
           'flex size-5 items-center justify-center',
           isDeprecated && 'opacity-50',
@@ -60,21 +67,21 @@ const ModelIcon: FC<ModelIconProps> = ({
           src={iconUrl}
           width={20}
         />
-      </div>
+      </span>
     )
   }
 
   return (
-    <div
+    <span
       className={cn(
         'flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
         className,
       )}
     >
-      <div className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
+      <span className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
         <span aria-hidden className="i-custom-vender-other-group size-3 text-text-tertiary" />
-      </div>
-    </div>
+      </span>
+    </span>
   )
 }
 

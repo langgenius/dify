@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'vitest'
+import { describe, it } from 'vite-plus/test'
 import { consumeServiceApiSse } from '../features/agent-v2/support/service-api-sse'
 
 const encodeChunks = (text: string, splitPoints: number[]) => {

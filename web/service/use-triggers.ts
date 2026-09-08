@@ -18,7 +18,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'
@@ -657,7 +657,7 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post(
         {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
-          body: { credentials: credentials ?? {} },
+          body: credentials === undefined ? {} : { credentials },
         },
         {
           context: { silent: true },

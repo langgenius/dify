@@ -68,7 +68,7 @@ class DifyHITLCallback:
     _OUTPUT_FIELD_ACTION_ID = "__action_id"
     _OUTPUT_FIELD_ACTION_VALUE = "__action_value"
     _OUTPUT_FIELD_RENDERED_CONTENT = "__rendered_content"
-    _TIMEOUT_HANDLE = "__timeout__"
+    _TIMEOUT_HANDLE = "__timeout"
 
     def __init__(
         self,

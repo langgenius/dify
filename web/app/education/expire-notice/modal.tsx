@@ -1,11 +1,17 @@
 'use client'
+
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { useDocLink } from '@/context/i18n'
-import { useModalContextSelector } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
@@ -29,7 +35,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const docLink = useDocLink()
   const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
-  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
     <Dialog
@@ -39,7 +45,17 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
       }}
     >
       <DialogContent className="w-full max-w-150 overflow-hidden! border-none text-left align-middle">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {expired
             ? t(($) => $[`${i18nPrefix}.expired.title`], { ns: 'education' })
@@ -98,7 +114,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
               <Button
                 onClick={() => {
                   onClose()
-                  setShowPricingModal()
+                  setPricing('open')
                 }}
                 className="flex items-center"
               >

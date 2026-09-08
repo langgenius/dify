@@ -1,6 +1,6 @@
 import type { RootNode } from 'lexical'
 import { $createParagraphNode, $createTextNode, $getRoot, ParagraphNode, TextNode } from 'lexical'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { createTestEditor, withEditorUpdate } from './utils'
 
 describe('Prompt Editor Test Utils', () => {

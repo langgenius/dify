@@ -4,13 +4,21 @@ from collections.abc import Sequence
 from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import app_task_command_channel_key
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
+    StopFlagCommandChannel,
 )
+from core.app.apps.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    DifyRunContext,
+    InvokeFrom,
+    WorkflowAppGenerateEntity,
+    get_credit_usage_app_type,
+)
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
@@ -96,6 +104,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -104,6 +113,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
@@ -147,20 +157,23 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
-        channel_key = f"workflow:{task_id}:commands"
+        channel_key = app_task_command_channel_key(task_id)
         celery_signal_channel = CelerySignalCommandChannel(
             shutdown_state_getter=celery_warm_shutdown_started,
             abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
         )
+        attach_stop_aware_ready_queue(graph_runtime_state, task_id=task_id)
         command_channel = CombinedCommandChannel(
             (
                 RedisChannel(redis_client, channel_key),
+                StopFlagCommandChannel(task_id=task_id),
                 celery_signal_channel,
             )
         )
@@ -205,6 +218,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                     user_id=self.application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=invoke_from,
+                    app_type=get_credit_usage_app_type(app_config.app_mode),
                     trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 )
             )

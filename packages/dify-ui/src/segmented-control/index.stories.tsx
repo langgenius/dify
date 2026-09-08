@@ -10,11 +10,14 @@ const meta = {
     docs: {
       description: {
         component:
-          'Segmented control built on Base UI ToggleGroup and Toggle. Use it for mode, filter, and view selection that does not need tabpanel semantics.',
+          'Required single-choice segmented control built on Base UI RadioGroup and Radio. Use it for mode, filter, and view selection that does not need tabpanel semantics.',
       },
     },
   },
   tags: ['autodocs'],
+  args: {
+    defaultValue: 'one',
+  },
 } satisfies Meta<typeof SegmentedControl>
 
 export default meta
@@ -44,7 +47,7 @@ function SegmentedControlExample({
 }: SegmentedControlProps) {
   return (
     <SegmentedControl
-      defaultValue={[defaultValue]}
+      defaultValue={defaultValue}
       aria-label="Segmented control"
       className={noPadding ? 'rounded-lg border-[0.5px] border-divider-subtle p-0' : undefined}
     >
@@ -113,7 +116,7 @@ export const DesignSpec: Story = {
 export const DataAttributeStates: Story = {
   render: () => (
     <div className="flex flex-col gap-5">
-      <SegmentedControl defaultValue={['active']} aria-label="Basic states">
+      <SegmentedControl defaultValue="active" aria-label="Basic states">
         <SegmentedControlItem value="default">
           <Item />
         </SegmentedControlItem>
@@ -125,29 +128,17 @@ export const DataAttributeStates: Story = {
         </SegmentedControlItem>
       </SegmentedControl>
 
-      <SegmentedControl defaultValue={['accent-light']} aria-label="Active states">
+      <SegmentedControl defaultValue="accent-light" aria-label="Active states">
         <SegmentedControlItem value="accent-light">
           <Item />
         </SegmentedControlItem>
-        <SegmentedControlItem value="neutral" className="data-pressed:text-text-primary">
+        <SegmentedControlItem value="neutral" className="data-checked:text-text-primary">
           <Item />
         </SegmentedControlItem>
         <SegmentedControlItem
           value="accent"
-          className="data-pressed:border-components-segmented-control-item-active-accent-border data-pressed:bg-components-segmented-control-item-active-accent-bg data-pressed:text-text-accent"
+          className="data-checked:border-components-segmented-control-item-active-accent-border data-checked:bg-components-segmented-control-item-active-accent-bg data-checked:text-text-accent"
         >
-          <Item />
-        </SegmentedControlItem>
-      </SegmentedControl>
-
-      <SegmentedControl defaultValue={['one', 'three']} multiple aria-label="Multiple selection">
-        <SegmentedControlItem value="one">
-          <Item />
-        </SegmentedControlItem>
-        <SegmentedControlItem value="two">
-          <Item />
-        </SegmentedControlItem>
-        <SegmentedControlItem value="three">
           <Item />
         </SegmentedControlItem>
       </SegmentedControl>
@@ -157,7 +148,7 @@ export const DataAttributeStates: Story = {
     docs: {
       description: {
         story:
-          '`SegmentedControlItem` gets `data-pressed` and `data-disabled` from Base UI Toggle. Accent, neutral, and multiple-selection examples are composed through props and className.',
+          '`SegmentedControlItem` gets `data-checked` and `data-disabled` from Base UI Radio. Accent and neutral states are composed through props and className.',
       },
     },
   },

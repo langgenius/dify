@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { fetchAppDetail, fetchAppList, fetchInstalledAppList } from './explore'
 
 const mockExploreAppsGet = vi.hoisted(() => vi.fn())
 const mockExploreAppDetailGet = vi.hoisted(() => vi.fn())
 const mockInstalledAppsGet = vi.hoisted(() => vi.fn())
 
-vi.mock('./client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     explore: {
       apps: {

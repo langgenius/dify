@@ -1,10 +1,9 @@
 import type { FileEntity } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
@@ -53,16 +52,18 @@ const FileItem = ({
         )}
       >
         {showDeleteAction && (
-          <Button
+          <IconButton
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-            className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-item:flex"
+            variant="secondary"
+            size="sm"
+            className="absolute -top-1.5 -right-1.5 z-11 hidden rounded-full group-hover/file-item:flex"
             onClick={() => onRemove?.(id)}
           >
             <span
               className="i-ri-close-line size-4 text-components-button-secondary-text"
               aria-hidden="true"
             />
-          </Button>
+          </IconButton>
         )}
         <div
           className="mb-1 line-clamp-2 h-8 cursor-pointer system-xs-medium break-all text-text-tertiary"
@@ -83,9 +84,9 @@ const FileItem = ({
             {!!file.size && formatFileSize(file.size)}
           </div>
           {showDownloadAction && download_url && (
-            <ActionButton
+            <IconButton
               aria-label={t(($) => $['operation.download'], { ns: 'common' })}
-              size="m"
+              size="md"
               className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
               onClick={(e) => {
                 e.stopPropagation()
@@ -93,7 +94,7 @@ const FileItem = ({
               }}
             >
               <span className="i-ri-download-line size-3.5 text-text-tertiary" aria-hidden="true" />
-            </ActionButton>
+            </IconButton>
           )}
           {progress >= 0 && !fileIsUploaded(file) && (
             <ProgressCircle

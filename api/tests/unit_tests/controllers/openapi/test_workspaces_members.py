@@ -22,14 +22,14 @@ import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
@@ -42,10 +42,10 @@ from controllers.openapi.workspaces import (
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
+from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.base import TypeBase
 from services.account_service import TenantService as RealTenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -56,6 +56,7 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -92,14 +93,8 @@ def openapi_app() -> Flask:
 
 
 @pytest.fixture
-def database_session(sqlite_engine: Engine):
-    models = (Account, Tenant, TenantAccountJoin)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    factory = SimpleNamespace(get_session_maker=lambda: session_maker, create_session=session_maker)
-    with patch("controllers.common.session.session_factory", factory), session_maker() as session:
-        yield session
+def database_session(sqlite_session: Session):
+    return sqlite_session
 
 
 def _rule(app: Flask, path: str):
@@ -451,7 +446,6 @@ def test_invite_happy_path_returns_invite_url_and_member_id(
 
 def _features(
     *,
-    billing_enabled: bool = False,
     members_size: int = 0,
     members_limit: int = 0,
     workspace_members_enabled: bool = False,
@@ -459,17 +453,16 @@ def _features(
     workspace_members_limit: int = 0,
 ) -> SimpleNamespace:
     """Build a feature object matching the surface `_check_member_invite_quota`
-    reads: `.billing.enabled`, `.members.{size,limit}`,
+    reads: `.members.{size,limit}`,
     `.workspace_members.{enabled, is_available(N)}`.
 
-    Defaults model CE (both flags off, both caps inert).
+    Defaults leave both quotas unrestricted.
     """
 
     def _is_available(n: int) -> bool:
         return workspace_members_size + n <= workspace_members_limit
 
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=billing_enabled),
         members=SimpleNamespace(size=members_size, limit=members_limit),
         workspace_members=SimpleNamespace(
             enabled=workspace_members_enabled,
@@ -489,6 +482,7 @@ def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
     )
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 def test_invite_blocked_by_saas_members_cap(
     app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
 ):
@@ -514,7 +508,7 @@ def test_invite_blocked_by_saas_members_cap(
         "FeatureService",
         SimpleNamespace(
             get_features=Mock(
-                return_value=_features(billing_enabled=True, members_size=10, members_limit=10),
+                return_value=_features(members_size=10, members_limit=10),
             ),
         ),
     )
@@ -527,13 +521,13 @@ def test_invite_blocked_by_saas_members_cap(
     invite_mock.assert_not_called()
 
 
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 def test_invite_blocked_by_ee_workspace_members_license(
     app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
 ):
     """EE License workspace_members cap → MemberLicenseExceeded (403).
 
-    Note: billing.enabled is False (EE without SaaS billing); only the
-    license cap fires.
+    Enterprise member limits come from the license.
     """
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()

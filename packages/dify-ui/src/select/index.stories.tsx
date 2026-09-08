@@ -60,7 +60,7 @@ export const Default: Story = {
         <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
-        <SelectContent listProps={{ 'aria-label': 'City options' }}>
+        <SelectContent>
           <SelectItem value="seattle">
             <SelectItemText>Seattle</SelectItemText>
             <SelectItemIndicator />
@@ -368,7 +368,7 @@ const MultipleControlledDemo = () => {
             }}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent listProps={{ 'aria-label': 'Deployment region options' }}>
+        <SelectContent>
           {deploymentRegionItems.map((item) => (
             <SelectItem<DeploymentRegion> key={item.value} value={item.value}>
               <SelectItemText>{item.label}</SelectItemText>

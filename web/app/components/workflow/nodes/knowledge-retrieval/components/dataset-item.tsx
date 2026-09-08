@@ -10,12 +10,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -98,27 +97,25 @@ const DatasetItem: FC<Props> = ({
       {!readonly && (
         <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
           {editable && (
-            <ActionButton
+            <IconButton
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
               onClick={(e) => {
                 e.stopPropagation()
                 setIsShowSettingsModal(true)
               }}
             >
-              <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-            </ActionButton>
+              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+            </IconButton>
           )}
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             onClick={handleRemove}
-            state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
+            tone="destructive"
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine
-              className={`size-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`}
-            />
-          </ActionButton>
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          </IconButton>
         </div>
       )}
       {payload.is_multimodal && (

@@ -26,7 +26,7 @@ const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType =>
   data.type === BlockEnum.DataSource
 
 type IconValue = ToolWithProvider['icon']
-type ToolCollections = {
+export type ToolIconCollections = {
   buildInTools?: ToolWithProvider[]
   customTools?: ToolWithProvider[]
   workflowTools?: ToolWithProvider[]
@@ -60,7 +60,7 @@ const findTriggerPluginIcon = (
 
 const getPrimaryToolCollection = (
   providerType: CollectionType | undefined,
-  collections: ToolCollections,
+  collections: ToolIconCollections,
 ) => {
   switch (providerType) {
     case CollectionType.custom:
@@ -77,7 +77,7 @@ const getPrimaryToolCollection = (
 
 const getCollectionsToSearch = (
   providerType: CollectionType | undefined,
-  collections: ToolCollections,
+  collections: ToolIconCollections,
 ) => {
   return [
     getPrimaryToolCollection(providerType, collections),
@@ -116,7 +116,7 @@ const findToolNodeIcon = ({
   theme,
 }: {
   data: ToolNodeType
-  collections: ToolCollections
+  collections: ToolIconCollections
   theme?: string
 }) => {
   const matched = findToolInCollections(
@@ -136,7 +136,7 @@ const findDataSourceIcon = (data: DataSourceNodeType, dataSourceList?: ToolWithP
     ?.icon
 }
 
-const findNodeIcon = ({
+export const findNodeIcon = ({
   data,
   collections,
   dataSourceList,
@@ -144,7 +144,7 @@ const findNodeIcon = ({
   theme,
 }: {
   data?: Node['data']
-  collections: ToolCollections
+  collections: ToolIconCollections
   dataSourceList?: ToolWithProvider[]
   triggerPlugins?: TriggerWithProvider[]
   theme?: string

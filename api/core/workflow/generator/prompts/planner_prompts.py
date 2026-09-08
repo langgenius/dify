@@ -59,15 +59,20 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
      node that combines every result, then one "llm" node that consumes the
      template output as context; the retrievals are parallel inputs to the
      template, not mutually exclusive branches
-5. PREFER "tool" over "http-request" or "code" whenever an installed tool from the
-   "Available tools" section below covers the task (e.g. web search, time lookup,
-   scraping, audio, translation, etc.). Only fall back to "http-request" for
-   arbitrary external APIs not provided by any installed tool, and to "code" for
-   genuine data transformations no tool can express.
+5. INSTALLED-TOOL-FIRST planning: before choosing each functional node, scan the
+   "Relevant installed tools" section below for a semantic capability match. When an installed
+   tool can perform that step, you MUST use a "tool" node instead of "llm",
+   "http-request", or "code". This includes common capabilities such as web search,
+   scraping, time lookup, audio, translation, messaging, and external-service actions.
+   Use "http-request" only for an external API not covered by an installed tool, "code"
+   only for a genuine data transformation, and "llm" only for reasoning or generation
+   the tools do not provide. Never add an unrelated tool merely because it is installed.
 6. Each node "label" must be a short, human-readable, Title-Case name (≤ 25 chars).
 7. Each node "purpose" is one sentence explaining what it does in this workflow.
-   For "tool" nodes, name the chosen tool inside the purpose, e.g.
-   "Search the web using google/search.".
+   Every "tool" node MUST also include
+   ``"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}``, copied
+   exactly from Relevant installed tools, and name the same provider/tool in its purpose.
+   Example: ``"purpose": "Search the web using google/search."``.
 8. For "iteration" and "loop" nodes (containers), list the container node first
    and then EACH inner-pipeline step as its own entry tagged with
    ``"parent": "<container-label>"``. Container children execute in declaration
@@ -223,7 +228,7 @@ def format_tool_catalogue_section(catalogue_text: str) -> str:
     if not catalogue_text.strip():
         return ""
     return (
-        "# Available tools (planner: when picking 'tool' nodes, choose "
-        "from this list and reference them by exact provider/tool name)\n\n"
+        "# Relevant installed tools (dynamically selected; when an entry covers a workflow step, "
+        "the planner must choose a 'tool' node and copy its explicit provider_id and tool_name values)\n\n"
         f"{catalogue_text}\n\n"
     )

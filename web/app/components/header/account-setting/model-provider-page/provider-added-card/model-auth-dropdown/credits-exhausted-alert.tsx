@@ -1,8 +1,12 @@
 import { Meter, MeterIndicator, MeterLabel, MeterTrack } from '@langgenius/dify-ui/meter'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { Trans, useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { useModalContextSelector } from '@/context/modal-context'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { formatNumber } from '@/utils/format'
 import { useTrialCredits } from '../use-trial-credits'
@@ -23,7 +27,7 @@ export default function CreditsExhaustedAlert({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const trialCredits = useTrialCredits()
   const credits = creditsOverride ?? trialCredits.credits
   const totalCredits = totalCreditsOverride ?? trialCredits.totalCredits
@@ -56,7 +60,7 @@ export default function CreditsExhaustedAlert({
                   <button
                     type="button"
                     className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
-                    onClick={() => setShowPricingModal()}
+                    onClick={() => setPricing('open')}
                   />
                 ) : (
                   <span />
@@ -71,7 +75,7 @@ export default function CreditsExhaustedAlert({
             {t(($) => $['modelProvider.card.usageLabel'], { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
-            {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
+            {/* oxlint-disable-next-line dify/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
             <CreditsCoin className="size-3" />
             <span>
               {formatNumber(usedCredits)}/{formatNumber(totalCredits)}

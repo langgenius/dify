@@ -1,13 +1,17 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CliToolDialog } from '../dialog'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => () => 'https://docs.example.com',
 }))
 
 type CliToolDialogProps = Parameters<typeof CliToolDialog>[0]
@@ -129,6 +133,16 @@ describe('CliToolDialog', () => {
   })
 
   describe('Actions', () => {
+    it('should link to documentation through the shared documentation URL', () => {
+      renderCliToolDialog()
+
+      expect(
+        screen.getByRole('link', {
+          name: /agentV2\.agentDetail\.configure\.tools\.cliDialog\.learnMore/,
+        }),
+      ).toHaveAttribute('href', 'https://docs.example.com')
+    })
+
     it('should keep the form open when the backdrop is clicked', async () => {
       const user = userEvent.setup()
       const { onOpenChange } = renderCliToolDialog()

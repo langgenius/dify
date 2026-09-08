@@ -62,7 +62,7 @@ When('I open the Agent v2 workflow Agent details', async function (this: DifyWor
   await expect(page.getByRole('dialog', { exact: true, name: agentName })).toBeVisible()
 })
 
-When('I open the Agent v2 workflow Agent in Agent Console', async function (this: DifyWorld) {
+When('I open the Agent v2 workflow Agent in Agents', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentName = this.lastCreatedAgentName
   if (!agentName) throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
@@ -70,7 +70,7 @@ When('I open the Agent v2 workflow Agent in Agent Console', async function (this
   const detailsDialog = page.getByRole('dialog', { exact: true, name: agentName })
   const [agentConsolePage] = await Promise.all([
     page.waitForEvent('popup'),
-    detailsDialog.getByRole('link', { name: 'Edit in Agent Console' }).click(),
+    detailsDialog.getByRole('link', { name: 'Edit in Agents' }).click(),
   ])
 
   this.agentBuilder.workflow.agentConsolePage = agentConsolePage
@@ -97,24 +97,25 @@ Then(
     if (agentRole) await expect(detailsDialog.getByText(agentRole, { exact: true })).toBeVisible()
     await expect(detailsDialog.getByText(stableModel.name, { exact: true })).toBeVisible()
     await expect(detailsDialog.getByText(normalAgentPrompt)).toBeVisible()
-    await expect(
-      detailsDialog.getByRole('link', { name: 'Edit in Agent Console' }),
-    ).toHaveAttribute('href', `/agents/${this.createdAgentIds.at(-1)}/configure`)
+    await expect(detailsDialog.getByRole('link', { name: 'Edit in Agents' })).toHaveAttribute(
+      'href',
+      `/agents/${this.createdAgentIds.at(-1)}/configure`,
+    )
   },
 )
 
 Then(
-  'the Agent v2 Agent Console should open for the same workflow Agent',
+  'the Agent v2 Agents page should open for the same workflow Agent',
   async function (this: DifyWorld) {
     const agentConsolePage = this.agentBuilder.workflow.agentConsolePage
     const agentId = this.createdAgentIds.at(-1)
     const agentName = this.lastCreatedAgentName
     const stableModel = this.agentBuilder.fixtures.stableModel
-    if (!agentConsolePage) throw new Error('Agent Console page was not opened.')
+    if (!agentConsolePage) throw new Error('Agents page was not opened.')
     if (!agentId || !agentName)
       throw new Error('No Agent v2 ID or name found. Create a workflow Agent v2 node first.')
     if (!stableModel)
-      throw new Error('Stable chat model fixture setup must run before asserting Agent Console.')
+      throw new Error('Stable chat model fixture setup must run before asserting the Agents page.')
 
     await expect(agentConsolePage).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
     await expect(agentConsolePage.getByRole('heading', { name: 'Configure' })).toBeVisible({

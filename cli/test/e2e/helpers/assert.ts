@@ -6,7 +6,7 @@
  */
 
 import type { RunResult } from './cli.js'
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 import './vitest-context.js'
 
 // ── ANSI ──────────────────────────────────────────────────────────────────

@@ -1,4 +1,3 @@
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -6,11 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '../../base/logo/dify-logo'
 import styles from './header.module.css'
 
-type HeaderProps = {
-  onClose: () => void
-}
-
-const Header = ({ onClose }: HeaderProps) => {
+const Header = () => {
   const { t } = useTranslation()
 
   return (
@@ -32,14 +27,6 @@ const Header = ({ onClose }: HeaderProps) => {
         <DialogDescription className="system-sm-regular text-text-tertiary">
           {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
         </DialogDescription>
-        <Button
-          variant="secondary"
-          className="absolute -right-4.5 bottom-[40.5px] z-10 size-9 rounded-full p-2"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onClose}
-        >
-          <span aria-hidden="true" className="i-ri-close-line size-5" />
-        </Button>
       </div>
     </div>
   )

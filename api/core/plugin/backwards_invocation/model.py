@@ -3,8 +3,10 @@ from binascii import hexlify, unhexlify
 from collections.abc import Generator
 from typing import Any
 
-from core.app.llm import deduct_llm_quota
+from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
+from core.credit_usage import CreditUsageCreatedBy
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
@@ -37,6 +39,7 @@ from models.account import Tenant
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.PLUGIN_API)
     def _get_bound_model_instance(
         *,
         tenant_id: str,
@@ -80,15 +83,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
-                    if chunk.delta.usage:
-                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
-            if response.usage:
-                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
@@ -141,15 +140,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
                 for chunk in response:
-                    if chunk.delta.usage:
-                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
-            if response.usage:
-                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(
                 response: LLMResultWithStructuredOutput,
@@ -223,12 +218,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model=payload.model,
         )
 
-        # invoke model
-        response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
-
         def handle() -> Generator[dict[str, Any], None, None]:
-            for chunk in response:
-                yield {"result": hexlify(chunk).decode("utf-8")}
+            response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
+            audio_stream, mime_type = inspect_audio_stream(response, get_model_audio_mime_type(model_instance))
+            for chunk in audio_stream:
+                yield {"result": hexlify(chunk).decode("utf-8"), "mime_type": mime_type}
 
         return handle()
 

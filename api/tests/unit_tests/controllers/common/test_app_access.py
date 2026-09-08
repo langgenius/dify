@@ -114,7 +114,7 @@ class TestResolveAppAccessFilter:
         assert flt.accessible_app_ids is None
         assert flt.can_manage_own_apps is False
 
-    def test_default_preview_overrides_whitelist_restriction(
+    def test_restricted_whitelist_overrides_default_preview(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-9"]))
@@ -124,9 +124,8 @@ class TestResolveAppAccessFilter:
 
         flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
 
-        # Workspace-level preview grant defeats the whitelist restriction.
-        assert flt.accessible_app_ids is None
-        assert flt.can_manage_own_apps is True
+        assert flt.accessible_app_ids == {"app-9"}
+        assert flt.can_manage_own_apps is False
 
     def test_override_apps_collected_without_default_preview(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
@@ -143,7 +142,9 @@ class TestResolveAppAccessFilter:
 
         assert flt.accessible_app_ids == {"app-1"}
 
-    def test_whitelist_union_with_override_apps(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    def test_restricted_whitelist_ignores_override_apps(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"]))
         permissions = _permissions(
             app_overrides=[ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.acl.preview"])],
@@ -151,7 +152,7 @@ class TestResolveAppAccessFilter:
 
         flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
 
-        assert flt.accessible_app_ids == {"app-1", "app-5"}
+        assert flt.accessible_app_ids == {"app-5"}
 
     def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
@@ -170,5 +171,5 @@ class TestResolveAppAccessFilter:
         flt = resolve_app_access_filter("tenant-1", "acc-1", session=session)
 
         assert flt.accessible_app_ids == set()
-        assert flt.can_manage_own_apps is True
+        assert flt.can_manage_own_apps is False
         assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1", "session": session}

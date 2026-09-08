@@ -56,4 +56,17 @@ describe('RestoreConfirmModal', () => {
     expect(onClose).toHaveBeenCalled()
     expect(onRestore).toHaveBeenCalledWith(versionInfo, expect.anything())
   })
+
+  it('renders the version number when the marked name is empty', () => {
+    render(
+      <RestoreConfirmModal
+        isOpen
+        versionInfo={createVersionInfo({ marked_name: '', version_number: 5 })}
+        onClose={vi.fn()}
+        onRestore={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('workflow.common.restore # 5')).toBeInTheDocument()
+  })
 })

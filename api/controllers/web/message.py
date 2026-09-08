@@ -2,7 +2,6 @@ import logging
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -11,6 +10,7 @@ from controllers.common.controller_schemas import MessageFeedbackPayload, Messag
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -77,13 +77,11 @@ class MessageListApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
-    def get(self, app_model: App, end_user: EndUser):
+    @model_validate(MessageListQuery)
+    def get(self, query: MessageListQuery, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
-
-        raw_args = request.args.to_dict()
-        query = MessageListQuery.model_validate(raw_args)
 
         try:
             session = db.session()
@@ -134,10 +132,9 @@ class MessageFeedbackApi(WebApiResource):
     )
     @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
     @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
-    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
         message_id_str = str(message_id)
-
-        payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})
 
         try:
             MessageService.create_feedback(
@@ -171,14 +168,19 @@ class MessageMoreLikeThisApi(WebApiResource):
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
     @with_session
-    def get(self, session: Session, app_model: App, end_user: EndUser, message_id: UUID):
+    @model_validate(MessageMoreLikeThisQuery)
+    def get(
+        self,
+        query: MessageMoreLikeThisQuery,
+        session: Session,
+        app_model: App,
+        end_user: EndUser,
+        message_id: UUID,
+    ):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         message_id_str = str(message_id)
-
-        raw_args = request.args.to_dict()
-        query = MessageMoreLikeThisQuery.model_validate(raw_args)
 
         streaming = query.response_mode == "streaming"
 

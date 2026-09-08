@@ -9,8 +9,8 @@ if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     llm_entities_module = types.ModuleType("graphon.model_runtime.entities.llm_entities")
     message_entities_module = types.ModuleType("graphon.model_runtime.entities.message_entities")
 
-    llm_entities_module.LLMResultChunk = type("LLMResultChunk", (), {})
-    llm_entities_module.LLMUsage = type("LLMUsage", (), {})
+    setattr(llm_entities_module, "LLMResultChunk", type("LLMResultChunk", (), {}))
+    setattr(llm_entities_module, "LLMUsage", type("LLMUsage", (), {}))
 
     for name in (
         "AssistantPromptMessage",
@@ -34,10 +34,10 @@ if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     sys.modules["graphon.model_runtime.entities.llm_entities"] = llm_entities_module
     sys.modules["graphon.model_runtime.entities.message_entities"] = message_entities_module
 
-    graphon_module.model_runtime = model_runtime_module
-    model_runtime_module.entities = entities_module
-    entities_module.llm_entities = llm_entities_module
-    entities_module.message_entities = message_entities_module
+    setattr(graphon_module, "model_runtime", model_runtime_module)
+    setattr(model_runtime_module, "entities", entities_module)
+    setattr(entities_module, "llm_entities", llm_entities_module)
+    setattr(entities_module, "message_entities", message_entities_module)
 
 if "jsonschema" not in sys.modules:
     jsonschema_module = types.ModuleType("jsonschema")
@@ -65,16 +65,18 @@ if "jsonschema" not in sys.modules:
     def _validator_for(schema):
         return _Validator
 
-    jsonschema_module.SchemaError = _SchemaError
-    jsonschema_exceptions_module.ValidationError = _ValidationError
-    jsonschema_protocols_module.Validator = _Validator
-    jsonschema_validators_module.validator_for = _validator_for
+    setattr(jsonschema_module, "SchemaError", _SchemaError)
+    setattr(jsonschema_exceptions_module, "ValidationError", _ValidationError)
+    setattr(jsonschema_protocols_module, "Validator", _Validator)
+    setattr(jsonschema_validators_module, "validator_for", _validator_for)
 
     sys.modules["jsonschema"] = jsonschema_module
     sys.modules["jsonschema.exceptions"] = jsonschema_exceptions_module
     sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
     sys.modules["jsonschema.validators"] = jsonschema_validators_module
 
+from dify_agent.layers.config import DIFY_CONFIG_LAYER_TYPE_ID, DifyConfigLayerConfig
+from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
@@ -95,9 +97,21 @@ class FakeProvider:
 
 def _runtime_backend_profile() -> RuntimeBackendProfile:
     return RuntimeBackendProfile(
-        home_snapshots=cast(HomeSnapshotBackend, FakeProvider()),
-        execution_bindings=cast(ExecutionBindingBackend, FakeProvider()),
+        home_snapshots=cast(HomeSnapshotBackend, cast(object, FakeProvider())),
+        execution_bindings=cast(ExecutionBindingBackend, cast(object, FakeProvider())),
     )
+
+
+def test_default_layer_providers_register_config_layer() -> None:
+    providers = create_default_layer_providers()
+
+    config_provider = next(provider for provider in providers if provider.type_id == DIFY_CONFIG_LAYER_TYPE_ID)
+    config = DifyConfigLayerConfig(agent_id="agent-1")
+    layer = config_provider.create_layer(config)
+
+    assert isinstance(layer, DifyConfigLayer)
+    assert layer.type_id == DIFY_CONFIG_LAYER_TYPE_ID
+    assert layer.config == config
 
 
 def test_default_layer_providers_register_runtime_layer() -> None:

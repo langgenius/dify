@@ -15,6 +15,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _dataset(**overrides) -> Dataset:
@@ -280,8 +281,11 @@ def test_init_vector_uses_whitelist_override(
     tenant_id = str(uuid4())
     sqlite_session.add(Whitelist(tenant_id=tenant_id, category="vector_db"))
     sqlite_session.commit()
-    monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE", vector_factory_module.VectorType.CHROMA)
-    monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", True)
+    apply_config_overrides(
+        monkeypatch,
+        VECTOR_STORE=vector_factory_module.VectorType.CHROMA,
+        VECTOR_STORE_WHITELIST_ENABLE=True,
+    )
     monkeypatch.setattr(
         vector_factory_module.Vector,
         "get_vector_factory",
@@ -302,8 +306,7 @@ def test_init_vector_uses_whitelist_override(
 def test_init_vector_raises_when_vector_store_missing(
     vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ):
-    monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE", None)
-    monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", False)
+    apply_config_overrides(monkeypatch, VECTOR_STORE=None, VECTOR_STORE_WHITELIST_ENABLE=False)
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = _dataset(index_struct_dict=None)

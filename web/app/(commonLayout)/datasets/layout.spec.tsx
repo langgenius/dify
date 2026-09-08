@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import DatasetsLayout from './layout'
 
@@ -26,7 +26,6 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 type ConsoleStateFixture = {
-  isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   isLoadingCurrentWorkspace: boolean
   isLoadingWorkspacePermissionKeys: boolean
@@ -37,7 +36,6 @@ type ConsoleStateFixture = {
 }
 
 const baseContext: ConsoleStateFixture = {
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
@@ -97,7 +95,6 @@ describe('DatasetsLayout', () => {
 
   it('should render children without a page-level dataset permission', () => {
     setConsoleState({
-      isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceDatasetOperator: true,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     })
@@ -114,7 +111,6 @@ describe('DatasetsLayout', () => {
 
   it('should render children on the dataset list route without dataset permissions', () => {
     setConsoleState({
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceDatasetOperator: false,
       workspacePermissionKeys: [],
     })

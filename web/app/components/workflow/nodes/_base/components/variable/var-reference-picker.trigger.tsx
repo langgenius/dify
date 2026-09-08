@@ -13,7 +13,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   PreviewCard,
-  PreviewCardContent,
+  PreviewCardPopup,
+  PreviewCardPortal,
+  PreviewCardPositioner,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -225,9 +227,11 @@ const VarReferencePickerTrigger: FC<Props> = ({
     hoverPopup?.kind === 'full-path' ? (
       <PreviewCard>
         <PreviewCardTrigger delay={300} closeDelay={200} render={pill} />
-        <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
-          {hoverPopup.panel}
-        </PreviewCardContent>
+        <PreviewCardPortal>
+          <PreviewCardPositioner>
+            <PreviewCardPopup>{hoverPopup.panel}</PreviewCardPopup>
+          </PreviewCardPositioner>
+        </PreviewCardPortal>
       </PreviewCard>
     ) : hoverPopup?.kind === 'invalid-variable' ? (
       <Tooltip>

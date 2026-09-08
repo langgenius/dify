@@ -1,5 +1,7 @@
 import type { Features } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
@@ -57,7 +59,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: () => <div data-testid="model-selector">Model Selector</div>,
+  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -87,20 +89,23 @@ const renderPanel = (
     showFileUpload: boolean
     showAnnotationReply: boolean
   }> = {},
+  searchParams = '',
 ) => {
-  return render(
-    <FeaturesProvider features={defaultFeatures}>
-      <NewFeaturePanel
-        show={props.show ?? true}
-        isChatMode={props.isChatMode ?? true}
-        disabled={props.disabled ?? false}
-        onChange={props.onChange}
-        onClose={props.onClose ?? vi.fn()}
-        inWorkflow={props.inWorkflow}
-        showFileUpload={props.showFileUpload}
-        showAnnotationReply={props.showAnnotationReply}
-      />
-    </FeaturesProvider>,
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter searchParams={searchParams}>
+      <FeaturesProvider features={defaultFeatures}>
+        <NewFeaturePanel
+          show={props.show ?? true}
+          isChatMode={props.isChatMode ?? true}
+          disabled={props.disabled ?? false}
+          onChange={props.onChange}
+          onClose={props.onClose ?? vi.fn()}
+          inWorkflow={props.inWorkflow}
+          showFileUpload={props.showFileUpload}
+          showAnnotationReply={props.showAnnotationReply}
+        />
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
   )
 }
 
@@ -110,6 +115,11 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Rendering', () => {
+    it('hides the feature drawer while pricing is open', () => {
+      renderPanel({ show: true }, '?pricing=open')
+      expect(screen.queryByText(/common\.featuresDescription/)).not.toBeInTheDocument()
+    })
+
     it('should not render when show is false', () => {
       renderPanel({ show: false })
 

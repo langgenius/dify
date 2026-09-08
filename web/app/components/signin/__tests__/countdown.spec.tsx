@@ -50,4 +50,26 @@ describe('Countdown', () => {
     expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
     expect(onResend).toHaveBeenCalledOnce()
   })
+
+  it('does not restart the countdown while resend is disabled', () => {
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} resendDisabled />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
+
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
+    expect(onResend).not.toHaveBeenCalled()
+  })
+
+  it('lets the caller defer restarting the countdown until resend succeeds', () => {
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} restartOnResend={false} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
+
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
+    expect(onResend).toHaveBeenCalledOnce()
+  })
 })

@@ -1,6 +1,5 @@
 import datetime
 import json
-from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 
@@ -112,6 +111,13 @@ def _bundle_model(entry: ArchiveBundleCatalogEntry) -> WorkflowRunArchiveBundle:
         archived_at=datetime.datetime(2026, 1, 1),
     )
     bundle.id = entry.catalog_id
+    return bundle
+
+
+def _cursor_bundle(*, year: int, tenant_id: str) -> WorkflowRunArchiveBundle:
+    bundle = _bundle_model(_catalog_entry())
+    bundle.year = year
+    bundle.tenant_id = tenant_id
     return bundle
 
 
@@ -291,31 +297,26 @@ def test_catalog_shard_preflight_uses_requested_tenant_scope(
     [
         (None, None, "does not exist"),
         (
-            SimpleNamespace(year=2024, month=3, tenant_id=TENANT_ID),
+            _cursor_bundle(year=2024, tenant_id=TENANT_ID),
             None,
             "requested archive month",
         ),
         (
-            SimpleNamespace(year=2025, month=3, tenant_id="other-tenant"),
+            _cursor_bundle(year=2025, tenant_id="other-tenant"),
             [TENANT_ID],
             "requested tenant scope",
         ),
     ],
 )
 def test_catalog_discovery_rejects_cursor_outside_requested_scope(
-    cursor_bundle: SimpleNamespace | None,
+    cursor_bundle: WorkflowRunArchiveBundle | None,
     tenant_ids: list[str] | None,
     error_message: str,
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
     if cursor_bundle is not None:
-        entry = _catalog_entry()
-        stored = _bundle_model(entry)
-        stored.year = cursor_bundle.year
-        stored.month = cursor_bundle.month
-        stored.tenant_id = cursor_bundle.tenant_id
-        sqlite_session.add(stored)
+        sqlite_session.add(cursor_bundle)
         sqlite_session.commit()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),

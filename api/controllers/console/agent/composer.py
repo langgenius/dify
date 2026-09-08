@@ -4,13 +4,13 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -94,7 +94,7 @@ class WorkflowAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -134,7 +134,7 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -182,14 +182,7 @@ class WorkflowAgentComposerValidateApi(Resource):
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
-        findings = AgentComposerService.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=req_data,
-            agent_id=AgentComposerService.resolve_workflow_node_agent_id(
-                session=session, tenant_id=tenant_id, app_id=app_model.id, node_id=node_id
-            ),
-        )
+        findings = AgentComposerService.collect_validation_findings(payload=req_data)
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
@@ -253,8 +246,8 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -330,9 +323,7 @@ class SnippetAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -369,9 +360,7 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -413,22 +402,12 @@ class SnippetAgentComposerValidateApi(Resource):
     @with_session(write=False)
     @model_validate(ComposerSavePayload)
     def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
-        app_id = _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
+        _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
         ComposerConfigValidator.validate_publish_payload(req_data)
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
-        findings = AgentComposerService.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=req_data,
-            agent_id=AgentComposerService.resolve_workflow_node_agent_id(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                node_id=node_id,
-            ),
-        )
+        findings = AgentComposerService.collect_validation_findings(payload=req_data)
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
@@ -493,10 +472,8 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -529,6 +506,7 @@ class AgentComposerApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
     @with_session
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -543,8 +521,7 @@ class AgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session
@@ -571,6 +548,7 @@ class AgentComposerValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_tenant_id
     @with_session
     @model_validate(ComposerSavePayload)
@@ -580,12 +558,7 @@ class AgentComposerValidateApi(Resource):
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
-        findings = AgentComposerService.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=req_data,
-            agent_id=str(agent_id),
-        )
+        findings = AgentComposerService.collect_validation_findings(payload=req_data)
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
@@ -597,6 +570,7 @@ class AgentComposerCandidatesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session(write=False)

@@ -37,7 +37,7 @@ import { join } from 'node:path'
 import { assertExitCode, assertNonZeroExit } from '@test/e2e/helpers/assert.js'
 import { run, withAuthFixture, withTempConfig } from '@test/e2e/helpers/cli.js'
 import { resolveEnv } from '@test/e2e/setup/env.js'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { ZERO } from '@/util/uuid.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation

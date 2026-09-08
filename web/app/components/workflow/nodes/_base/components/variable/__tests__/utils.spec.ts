@@ -3,7 +3,7 @@ import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/type
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import {
   BlockEnum,
@@ -101,11 +101,7 @@ describe('variable utils', () => {
         expect.arrayContaining([
           expect.objectContaining({
             nodeId: 'node-1',
-            vars: [
-              { variable: 'text', type: VarType.string },
-              { variable: 'files', type: VarType.arrayFile },
-              { variable: 'json', type: VarType.object },
-            ],
+            vars: [{ variable: 'text', type: VarType.string }],
           }),
         ]),
       )
@@ -150,16 +146,13 @@ describe('variable utils', () => {
           expect.objectContaining({
             nodeId: 'node-1',
             vars: [
+              { variable: 'text', type: VarType.string },
               { variable: 'summary', type: VarType.string },
               { variable: 'attachments', type: VarType.arrayFile },
             ],
           }),
         ]),
       )
-      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
-        variable: 'text',
-        type: VarType.string,
-      })
     })
   })
 

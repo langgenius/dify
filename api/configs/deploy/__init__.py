@@ -30,6 +30,11 @@ class DeploymentConfig(BaseSettings):
         default=DeploymentEdition.COMMUNITY,
     )
 
+    INIT_PASSWORD: str = Field(
+        description="Password required before initializing a self-hosted deployment",
+        default="",
+    )
+
     DEPLOY_ENV: str = Field(
         description="Deployment environment (e.g., 'PRODUCTION', 'DEVELOPMENT'), default to PRODUCTION",
         default="PRODUCTION",

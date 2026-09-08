@@ -107,3 +107,20 @@ def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
     for src in cases:
         obj = parse_and_check_json_markdown(src, ["keywords", "category_id", "category_name"])
         assert obj == expected
+
+
+def test_parse_json_markdown_backtick_inside_string_value():
+    """Backticks inside JSON string values must not be mistaken for code fences."""
+    src = '{"code": "use `print` function", "n": 1}'
+    assert parse_json_markdown(src) == {"code": "use `print` function", "n": 1}
+
+
+def test_parse_json_markdown_backtick_in_surrounding_prose():
+    """Backticks in prose before the JSON must not break extraction."""
+    src = 'Here is `the` result: {"a": 1}'
+    assert parse_json_markdown(src) == {"a": 1}
+
+
+def test_parse_json_markdown_fenced_scalar_still_supported():
+    """Fenced content without brackets still parses via the fence fallback."""
+    assert parse_json_markdown('```json\n"hello"\n```') == "hello"

@@ -23,7 +23,7 @@ import {
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   getAgentToolPublishIssue,
   useAgentToolPresentation,

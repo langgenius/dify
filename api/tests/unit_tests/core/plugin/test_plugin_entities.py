@@ -1,11 +1,11 @@
 import binascii
 import datetime
+from collections.abc import Callable
 from enum import StrEnum
 
 import pytest
 from flask import Response
 from pydantic import ValidationError
-from pytest_mock import MockerFixture
 
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
@@ -35,8 +35,8 @@ from graphon.model_runtime.entities.message_entities import (
 
 
 class TestEndpointEntity:
-    def test_endpoint_entity_with_instance_renders_url(self, mocker: MockerFixture):
-        mocker.patch("core.plugin.entities.endpoint.dify_config.ENDPOINT_URL_TEMPLATE", "https://dify.test/{hook_id}")
+    def test_endpoint_entity_with_instance_renders_url(self, config_overrides: Callable[..., None]):
+        config_overrides(ENDPOINT_URL_TEMPLATE="https://dify.test/{hook_id}")
         now = datetime.datetime.now(datetime.UTC)
 
         entity = EndpointEntityWithInstance.model_validate(
@@ -244,8 +244,14 @@ class TestPluginParameterEntities:
         with pytest.raises(
             ValueError,
             match=r"The tool parameter value <.*_BadString object at .* is not in correct type of string\.",
-        ):
+        ) as exc_info:
             cast_parameter_value(PluginParameterType.STRING, _BadString())
+
+        # PEP 3134: the re-raised ValueError must chain the underlying RuntimeError
+        # so the original traceback is preserved for debugging.
+        assert exc_info.value.__cause__ is not None
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
+        assert str(exc_info.value.__cause__) == "boom"
 
     def test_init_frontend_parameter(self):
         rule = PluginParameter(

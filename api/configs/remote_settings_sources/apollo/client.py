@@ -167,8 +167,8 @@ class ApolloClient:
                 old_value = old_kv.get(key)
                 if old_value is None:
                     self._change_listener("add", namespace, key, new_value)
-        except BaseException as e:
-            logger.warning(str(e))
+        except BaseException:
+            logger.warning("Apollo config change listener failed", exc_info=True)
 
     def _path_checker(self) -> None:
         if not os.path.isdir(self._cache_file_path):
@@ -235,8 +235,8 @@ class ApolloClient:
                     return
             else:
                 logger.warning("Sleep...")
-        except Exception as e:
-            logger.warning(str(e))
+        except Exception:
+            logger.warning("Apollo long polling failed", exc_info=True)
 
     def _get_net_and_set_local(self, namespace: str, n_id: int, call_change: bool = False) -> None:
         namespace_data = self.get_json_from_net(namespace)

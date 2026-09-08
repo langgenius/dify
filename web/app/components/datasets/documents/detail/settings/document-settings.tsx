@@ -24,6 +24,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import DatasetDetailContext from '@/context/dataset-detail'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import {
   useDocumentDetail,
@@ -61,6 +62,11 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     documentId,
     params: { metadata: 'without' },
   })
+  const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  useDocumentTitle(`${settingsTitle} · ${documentTitle} · ${datasetTitle}`)
 
   const dataSourceInfo = documentDetail?.data_source_info
 
