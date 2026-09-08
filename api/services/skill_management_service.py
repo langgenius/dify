@@ -509,6 +509,20 @@ class PublishedSkillArchive:
 
 
 @dataclass(frozen=True, slots=True)
+class RuntimeAgentSkillArchive:
+    skill_id: str
+    version_id: str
+    tool_file_id: str
+    storage_key: str
+    name: str
+    display_name: str
+    description: str
+    priority: int
+    size: int
+    hash: str
+
+
+@dataclass(frozen=True, slots=True)
 class SkillFileContent:
     filename: str
     path: str
@@ -2267,6 +2281,32 @@ class SkillManagementService:
         include_draft: bool = False,
     ) -> list[dict[str, Any]]:
         """Return workspace Skills from the Agent draft or active published snapshot."""
+        return [
+            {
+                "id": item.skill_id,
+                "name": item.name,
+                "file_id": item.tool_file_id,
+                "description": item.description,
+                "size": item.size,
+                "hash": item.hash,
+                "mime_type": "application/zip",
+            }
+            for item in self.list_runtime_agent_skill_archives(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                include_draft=include_draft,
+            )
+        ]
+
+    def list_runtime_agent_skill_archives(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        include_draft: bool = False,
+    ) -> list[RuntimeAgentSkillArchive]:
+        """Return export-ready workspace Skill archives with published identity compatibility."""
+
         with self._session_scope() as session:
             binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
             conditions = [
@@ -2279,29 +2319,37 @@ class SkillManagementService:
                 conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
             rows = list(
                 session.execute(
-                    select(binding_model, Skill, SkillVersion)
+                    select(binding_model, Skill, SkillVersion, ToolFile)
                     .join(Skill, Skill.id == binding_model.skill_id)
                     .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
                     .join(Agent, Agent.id == binding_model.agent_id)
+                    .join(
+                        ToolFile,
+                        (ToolFile.id == SkillVersion.archive_tool_file_id) & (ToolFile.tenant_id == tenant_id),
+                    )
                     .where(*conditions)
                     .order_by(Skill.name)
                 )
             )
-            return [
-                {
-                    "id": skill.id,
-                    "name": published_name,
-                    "file_id": version.archive_tool_file_id,
-                    "description": published_description,
-                    "size": version.archive_size,
-                    "hash": version.hash_code,
-                    "mime_type": "application/zip",
-                }
-                for _binding, skill, version in rows
-                for published_name, _published_display_name, published_description in [
-                    self._published_skill_identity(skill, version)
-                ]
+
+        return [
+            RuntimeAgentSkillArchive(
+                skill_id=skill.id,
+                version_id=version.id,
+                tool_file_id=version.archive_tool_file_id,
+                storage_key=tool_file.file_key,
+                name=published_name,
+                display_name=published_display_name,
+                description=published_description,
+                priority=binding.priority,
+                size=version.archive_size,
+                hash=version.hash_code,
+            )
+            for binding, skill, version, tool_file in rows
+            for published_name, published_display_name, published_description in [
+                self._published_skill_identity(skill, version)
             ]
+        ]
 
     def pull_runtime_agent_skill(
         self,
@@ -4406,14 +4454,15 @@ class SkillManagementService:
             tool_file = session.scalar(select(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id == file_id))
             if tool_file is None:
                 raise SkillManagementServiceError("skill_archive_missing", "skill archive is missing", status_code=404)
-            try:
-                return storage.load_once(tool_file.file_key)
-            except (OSError, SQLAlchemyError) as exc:
-                raise SkillManagementServiceError(
-                    "skill_archive_missing",
-                    "skill archive is missing",
-                    status_code=404,
-                ) from exc
+            file_key = tool_file.file_key
+        try:
+            return storage.load_once(file_key)
+        except (OSError, SQLAlchemyError) as exc:
+            raise SkillManagementServiceError(
+                "skill_archive_missing",
+                "skill archive is missing",
+                status_code=404,
+            ) from exc
 
     @staticmethod
     def _load_assistant_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:

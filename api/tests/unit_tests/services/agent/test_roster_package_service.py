@@ -462,10 +462,15 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
 
 
 def test_export_uses_current_workspace_skill_bindings(
+    monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    workspace_payload = _skill_archive("workspace-research")
+    workspace_payload = _skill_archive("legacy-published")
     storage = _MemoryStorage({"tools/workspace.zip": workspace_payload})
+    monkeypatch.setattr(
+        "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
+        staticmethod(lambda **_kwargs: workspace_payload),
+    )
     archive_file = ToolFile(
         user_id="account-1",
         tenant_id="tenant-1",
@@ -479,9 +484,9 @@ def test_export_uses_current_workspace_skill_bindings(
     archive_file.id = "11111111-1111-4111-8111-111111111111"
     skill = Skill(
         tenant_id="tenant-1",
-        name="workspace-research",
-        display_name="Workspace Research",
-        description="Workspace skill.",
+        name="renamed-workspace",
+        display_name="Renamed Workspace",
+        description="Renamed description.",
         created_by="account-1",
         updated_by="account-1",
     )
@@ -492,9 +497,9 @@ def test_export_uses_current_workspace_skill_bindings(
         version_name="1.0",
         publish_note="",
         manifest=SkillVersionManifest(
-            name=skill.name,
-            display_name=skill.display_name,
-            description=skill.description,
+            name=None,
+            display_name=None,
+            description=None,
             files=[],
         ),
         archive_tool_file_id=archive_file.id,
@@ -524,7 +529,7 @@ def test_export_uses_current_workspace_skill_bindings(
         agent_id=agent.id,
         version=1,
         config_snapshot=AgentSoulConfig.model_validate(
-            {"config_skills": [{"name": "workspace-research", "file_id": "", "is_missing": True}]}
+            {"config_skills": [{"name": "legacy-published", "file_id": "", "is_missing": True}]}
         ),
         created_by="account-1",
     )
@@ -551,7 +556,9 @@ def test_export_uses_current_workspace_skill_bindings(
         assert len(exported.manifest.skills) == 1
         assert exported.manifest.skills[0].scope == "workspace"
         assert exported.manifest.skills[0].priority == 0
-        assert exported.manifest.skills[0].name == "workspace-research"
+        assert exported.manifest.skills[0].name == "legacy-published"
+        assert exported.manifest.skills[0].display_name == "Legacy Published"
+        assert exported.manifest.skills[0].description == "Research skill."
         assert exported.manifest.soul.config_skills[0].is_missing is True
         with RosterAgentPackageReader().read(exported.archive) as prepared:
             assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
