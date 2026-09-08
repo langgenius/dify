@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, final
 
@@ -56,6 +57,8 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 
 from .workflow_tool_container_types import WorkflowToolContainerPayload
 
+logger = logging.getLogger(__name__)
+
 _file_access_controller = DatabaseFileAccessController()
 _RESERVED_TOOL_OUTPUTS = frozenset(("text", "json", "files"))
 _FAILURE_SELECTOR_PREFIX = "__workflow_tool_container__"
@@ -76,7 +79,12 @@ def _persist_workflow_tool_event(event: NodeEvent, listeners: Mapping[str, Calla
     source_boundary = event.node_run_result.process_data.get(_HIDDEN_CHILD_EVENT_KEY)
     source_frame_id = source_boundary.get("frame_id") if isinstance(source_boundary, Mapping) else None
     if isinstance(source_frame_id, str) and (listener := listeners.get(source_frame_id)) is not None:
-        listener(event)
+        try:
+            listener(event)
+        except Exception:
+            logger.exception(
+                "Failed to persist Workflow Tool event: frame_id=%s, node_id=%s", source_frame_id, event.node_id
+            )
 
 
 @final
@@ -103,7 +111,9 @@ class WorkflowToolNestedContainerHandler:
         self._handler.handle_request(invocation_id=invocation_id, request=request)
 
     def prepare_frame_event(self, *, frame: ExecutionFrame, event: NodeEvent) -> None:
-        self._handler.prepare_frame_event(frame=frame, event=event)
+        # Source control flow belongs to the Workflow Tool, even when node IDs overlap.
+        if _HIDDEN_CHILD_EVENT_KEY not in event.node_run_result.process_data:
+            self._handler.prepare_frame_event(frame=frame, event=event)
 
     def should_emit(self, *, event: NodeEvent) -> bool:
         should_emit = self._handler.should_emit(event=event)

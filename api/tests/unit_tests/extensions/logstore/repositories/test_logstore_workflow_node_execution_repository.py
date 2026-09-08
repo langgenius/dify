@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -51,6 +52,7 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
         node_type=BuiltinNodeTypes.AGENT,
         title="Agent",
         created_at=naive_utc_now(),
+        process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "caller-app"},
     )
     source.save_synchronously(node)
     with sqlite_session_factory() as session:
@@ -78,6 +80,19 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
 
     caller.save_synchronously(node.model_copy(update={"id": "caller-exec", "node_execution_id": "caller-exec"}))
     caller.save_synchronously(node.model_copy(update={"id": "legacy-exec", "node_execution_id": "legacy-exec"}))
+    for execution_id in ("foreign-root", "foreign-run", "foreign-tenant"):
+        source.save_synchronously(node.model_copy(update={"id": execution_id, "node_execution_id": execution_id}))
+    with sqlite_session_factory() as session:
+        foreign_root = session.get(WorkflowNodeExecutionModel, "foreign-root")
+        foreign_run = session.get(WorkflowNodeExecutionModel, "foreign-run")
+        foreign_tenant = session.get(WorkflowNodeExecutionModel, "foreign-tenant")
+        assert foreign_root is not None
+        assert foreign_run is not None
+        assert foreign_tenant is not None
+        foreign_root.process_data = '{"workflow_tool_root_app_id": "other-app"}'
+        foreign_run.workflow_run_id = "other-run"
+        foreign_tenant.tenant_id = "other-tenant"
+        session.commit()
     with sqlite_engine.begin() as connection:
         connection.exec_driver_sql(
             "CREATE TABLE workflow_node_execution AS SELECT *, 1 AS log_version FROM workflow_node_executions"
@@ -86,14 +101,30 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
 
     def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
         with sqlite_engine.connect() as connection:
-            return [dict(row) for row in connection.exec_driver_sql(sql).mappings()]
+            return [
+                dict(row)
+                for row in connection.exec_driver_sql(sql.replace("json_extract_scalar", "json_extract")).mappings()
+            ]
 
     logstore.return_value.execute_sql.side_effect = execute_query
     assert {execution.id for execution in caller.get_by_workflow_execution("caller-run")} == {
         "caller-exec",
         "legacy-exec",
     }
-    assert [execution.id for execution in source.get_by_workflow_execution("caller-run")] == ["source-exec"]
+    assert {execution.id for execution in source.get_by_workflow_execution("caller-run")} == {
+        "source-exec",
+        "foreign-root",
+    }
+    assert {
+        execution.id for execution in caller.get_by_workflow_execution("caller-run", include_workflow_tools=True)
+    } == {"caller-exec", "legacy-exec", "source-exec"}
+    assert {execution.id for execution in caller.get_by_workflow_execution("caller-run")} == {
+        "caller-exec",
+        "legacy-exec",
+    }
+    caller._app_id = None
+    with pytest.raises(ValueError, match="app_id is required"):
+        caller.get_by_workflow_execution("caller-run", include_workflow_tools=True)
 
 
 def test_save_synchronously_writes_sql_when_dual_write_is_disabled(

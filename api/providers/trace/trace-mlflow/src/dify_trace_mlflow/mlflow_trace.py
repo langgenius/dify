@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta
+from graphlib import TopologicalSorter
 from typing import Any, cast, override
 
 import mlflow
@@ -22,6 +23,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.ops.utils import JSON_DICT_ADAPTER
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from extensions.ext_database import db
@@ -165,7 +167,15 @@ class MLflowDataTrace(BaseTraceInstance):
 
         try:
             # Create child spans for workflow nodes
-            for node in self._get_workflow_nodes(trace_info.workflow_run_id):
+            workflow_nodes = self._get_workflow_nodes(trace_info.workflow_run_id)
+            tool_parents = workflow_tool_parent_ids(workflow_nodes)
+            node_spans: dict[str, LiveSpan] = {}
+            nodes_by_id = {node.id: node for node in workflow_nodes}
+            ordered_node_ids = TopologicalSorter(
+                {node.id: (tool_parents[node.id],) if node.id in tool_parents else () for node in workflow_nodes}
+            ).static_order()
+            for node_id in ordered_node_ids:
+                node = nodes_by_id[node_id]
                 inputs = None
                 attributes: SpanAttributes = {
                     "node_id": node.id,
@@ -188,11 +198,12 @@ class MLflowDataTrace(BaseTraceInstance):
                 node_span = _start_span_no_context(
                     name=node.title,
                     span_type=self._get_node_span_type(node.node_type),
-                    parent_span=workflow_span,
+                    parent_span=node_spans.get(tool_parents.get(node.id, ""), workflow_span),
                     inputs=inputs,
                     attributes=attributes,
                     start_time_ns=datetime_to_nanoseconds(node.created_at),
                 )
+                node_spans[node.id] = node_span
 
                 # Handle node errors
                 if node.status != "succeeded":

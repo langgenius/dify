@@ -57,7 +57,9 @@ class RepositoryWorkflowExecutionLoader:
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        return repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)
+        return repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
+        )
 
 
 _NODE_KIND: dict[str, CanonicalSpanKind] = {

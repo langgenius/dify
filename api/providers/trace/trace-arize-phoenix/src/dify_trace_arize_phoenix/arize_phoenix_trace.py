@@ -41,6 +41,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.exceptions import PendingTraceParentContextError
+from core.ops.unified_trace.hierarchy import workflow_tool_parent_ids
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
@@ -853,11 +854,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Get all executions for this workflow run
         workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
-            workflow_execution_id=trace_info.workflow_run_id
+            workflow_execution_id=trace_info.workflow_run_id, include_workflow_tools=True
         )
+        tool_parents = workflow_tool_parent_ids(workflow_node_executions)
         node_title_by_id = _build_node_title_by_id(trace_info)
         execution_id_by_node_id = _build_execution_id_by_node_id(workflow_node_executions)
         graph_parent_index = _build_graph_parent_index(workflow_node_executions)
+        graph_parent_index.update(tool_parents)
         node_execution_by_execution_id = {
             _get_node_execution_id(node_execution): node_execution for node_execution in workflow_node_executions
         }
@@ -1011,7 +1014,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 loop_index = node_metadata.get("loop_index")
                 iteration_index = node_metadata.get("iteration_index")
                 node_span = self.tracer.start_span(
-                    name=_resolve_workflow_node_span_name(node_execution, node_title_by_id),
+                    name=_resolve_workflow_node_span_name(
+                        node_execution, None if execution_id in tool_parents else node_title_by_id
+                    ),
                     attributes={
                         SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.INPUT_VALUE: safe_json_dumps(inputs_value),

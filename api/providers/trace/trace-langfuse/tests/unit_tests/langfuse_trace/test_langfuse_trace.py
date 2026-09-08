@@ -154,8 +154,9 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+@pytest.mark.parametrize("workflow_tool_child", [False, True])
 def test_workflow_trace_with_message_id(
-    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session, workflow_tool_child: bool
 ) -> None:
     # Setup trace info
     trace_info = WorkflowTraceInfo(
@@ -215,6 +216,10 @@ def test_workflow_trace_with_message_id(
     node_other.elapsed_time = 0.2
     node_other.metadata = None
 
+    if workflow_tool_child:
+        node_other.node_type = BuiltinNodeTypes.TOOL
+        node_llm.process_data["workflow_tool_parent_execution_id"] = node_other.id
+
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = [node_llm, node_other]
 
@@ -231,6 +236,7 @@ def test_workflow_trace_with_message_id(
 
     trace_instance.workflow_trace(trace_info)
 
+    repo.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1", include_workflow_tools=True)
     # Verify add_trace (Workflow Level)
     trace_instance.add_trace.assert_called_once()
     trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
@@ -252,6 +258,7 @@ def test_workflow_trace_with_message_id(
     assert gen_data.id == "node-llm"
     assert gen_data.usage.input == 10
     assert gen_data.usage.output == 20
+    assert gen_data.parent_observation_id == (node_other.id if workflow_tool_child else "run-1")
 
     # Verify normal span for Other node
     # Second add_span call
