@@ -12,7 +12,6 @@ import {
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
@@ -1609,12 +1608,7 @@ export const delete7 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(
-    z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
-      params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
-    }),
-  )
+  .input(z.object({ params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath }))
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
 
 export const get19 = oc
