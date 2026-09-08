@@ -61,6 +61,20 @@ def test_validate_and_normalize_accepts_crlf_skill_md():
     assert package.skill_md_bytes.decode() == _SKILL_MD
 
 
+def test_inspect_reports_uncompressed_size_without_rebuilding(monkeypatch: pytest.MonkeyPatch):
+    members = {"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}
+
+    def fail_if_called(*_args: object, **_kwargs: object) -> bytes:
+        raise AssertionError("inspection must not rebuild the archive")
+
+    monkeypatch.setattr(SkillPackageService, "_build_normalized_archive", fail_if_called)
+
+    inspection = SkillPackageService().inspect(content=_zip(members), filename="skill.zip")
+
+    assert inspection.name == "pdf-toolkit"
+    assert inspection.uncompressed_size == sum(len(content) for content in members.values())
+
+
 def test_name_and_description_are_required_in_frontmatter():
     with pytest.raises(SkillPackageError) as exc_info:
         _normalize({"SKILL.md": b"# heading-name\n\nbody"})

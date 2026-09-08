@@ -20,6 +20,7 @@ import io
 import posixpath
 import zipfile
 import zlib
+from dataclasses import dataclass
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -50,20 +51,29 @@ class SkillPackageError(Exception):
         self.status_code = status_code
 
 
-class SkillManifest(BaseModel):
-    """Validated metadata extracted from a Skill package."""
-
+class _SkillMetadata(BaseModel):
     name: str = Field(min_length=1, max_length=64, pattern=_SKILL_NAME_PATTERN)
     description: str = Field(min_length=1, max_length=_MAX_SKILL_DESCRIPTION_LENGTH)
-    entry_path: str  # path of SKILL.md inside the archive
-    files: list[str]  # all (safe) file paths inside the archive
-    size: int  # total uncompressed bytes
-    hash: str  # sha256 of the archive bytes
 
     @field_validator("name", "description", mode="before")
     @classmethod
     def _strip_required_string(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
+
+
+class SkillPackageInspection(_SkillMetadata):
+    """Metadata read without rebuilding or fully extracting a Skill archive."""
+
+    uncompressed_size: int = Field(ge=0)
+
+
+class SkillManifest(_SkillMetadata):
+    """Validated metadata extracted from a Skill package."""
+
+    entry_path: str  # path of SKILL.md inside the archive
+    files: list[str]  # all (safe) file paths inside the archive
+    size: int  # total uncompressed bytes
+    hash: str  # sha256 of the archive bytes
 
 
 class NormalizedSkillPackage(BaseModel):
@@ -75,8 +85,23 @@ class NormalizedSkillPackage(BaseModel):
     strip_prefix: str | None
 
 
+@dataclass(frozen=True)
+class _InspectedSkillArchive:
+    metadata: SkillPackageInspection
+    normalized_members: dict[str, zipfile.ZipInfo]
+    normalized_size: int
+    skill_md_bytes: bytes
+    strip_prefix: str | None
+
+
 class SkillPackageService:
     """Validate Skill archives and produce a normalized package."""
+
+    def inspect(self, *, content: bytes, filename: str) -> SkillPackageInspection:
+        """Validate archive metadata and SKILL.md without rebuilding the archive."""
+        archive = self._open_archive(content=content, filename=filename)
+        with archive:
+            return self._inspect_archive(archive).metadata
 
     def validate_and_normalize(self, *, content: bytes, filename: str) -> NormalizedSkillPackage:
         """Return the canonical package for an uploaded skill archive.
@@ -92,40 +117,20 @@ class SkillPackageService:
         """
         archive = self._open_archive(content=content, filename=filename)
         with archive:
-            members = self._collect_file_members(archive)
-            member_paths = [safe_path for _, safe_path in members]
-            entry_path = self._find_skill_md(member_paths)
-            strip_prefix = self._skill_root_prefix(entry_path)
-            normalized_members = self._normalize_members(
-                members=members,
-                skill_root_prefix=strip_prefix,
-                ignore_outside_selected_root=self._can_strip_single_top_level_folder(
-                    paths=member_paths, entry_path=entry_path
-                ),
-            )
-            skill_md_member = normalized_members[_SKILL_MD_NAME]
-            self._validate_skill_md_size(skill_md_member)
-            raw_skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
-            skill_md = self._decode_skill_md(raw_skill_md_bytes)
-            skill_md_bytes = skill_md.encode("utf-8")
+            inspection = self._inspect_archive(archive)
             normalized_archive_bytes = self._build_normalized_archive(
                 archive=archive,
-                normalized_members=normalized_members,
-                skill_md_bytes=skill_md_bytes,
-            )
-            normalized_size = sum(
-                len(skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
-                for path, info in normalized_members.items()
+                normalized_members=inspection.normalized_members,
+                skill_md_bytes=inspection.skill_md_bytes,
             )
 
-        name, description = self._parse_skill_md(skill_md)
         try:
             manifest = SkillManifest(
-                name=name,
-                description=description,
+                name=inspection.metadata.name,
+                description=inspection.metadata.description,
                 entry_path=_SKILL_MD_NAME,
-                files=sorted(normalized_members),
-                size=normalized_size,
+                files=sorted(inspection.normalized_members),
+                size=inspection.normalized_size,
                 hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
             )
         except ValidationError as exc:
@@ -133,6 +138,43 @@ class SkillPackageService:
         return NormalizedSkillPackage(
             manifest=manifest,
             archive_bytes=normalized_archive_bytes,
+            skill_md_bytes=inspection.skill_md_bytes,
+            strip_prefix=inspection.strip_prefix,
+        )
+
+    def _inspect_archive(self, archive: zipfile.ZipFile) -> _InspectedSkillArchive:
+        members = self._collect_file_members(archive)
+        member_paths = [safe_path for _, safe_path in members]
+        entry_path = self._find_skill_md(member_paths)
+        strip_prefix = self._skill_root_prefix(entry_path)
+        normalized_members = self._normalize_members(
+            members=members,
+            skill_root_prefix=strip_prefix,
+            ignore_outside_selected_root=self._can_strip_single_top_level_folder(
+                paths=member_paths, entry_path=entry_path
+            ),
+        )
+        skill_md_member = normalized_members[_SKILL_MD_NAME]
+        self._validate_skill_md_size(skill_md_member)
+        raw_skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
+        skill_md = self._decode_skill_md(raw_skill_md_bytes)
+        skill_md_bytes = skill_md.encode("utf-8")
+        name, description = self._parse_skill_md(skill_md)
+        try:
+            metadata = SkillPackageInspection(
+                name=name,
+                description=description,
+                uncompressed_size=sum(max(info.file_size, 0) for info, _ in members),
+            )
+        except ValidationError as exc:
+            raise self._manifest_validation_error(exc) from exc
+        return _InspectedSkillArchive(
+            metadata=metadata,
+            normalized_members=normalized_members,
+            normalized_size=sum(
+                len(skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
+                for path, info in normalized_members.items()
+            ),
             skill_md_bytes=skill_md_bytes,
             strip_prefix=strip_prefix,
         )
@@ -343,4 +385,10 @@ class SkillPackageService:
         return loaded if isinstance(loaded, dict) else {}
 
 
-__all__ = ["NormalizedSkillPackage", "SkillManifest", "SkillPackageError", "SkillPackageService"]
+__all__ = [
+    "NormalizedSkillPackage",
+    "SkillManifest",
+    "SkillPackageError",
+    "SkillPackageInspection",
+    "SkillPackageService",
+]

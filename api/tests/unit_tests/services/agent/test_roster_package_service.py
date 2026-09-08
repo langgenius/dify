@@ -337,6 +337,61 @@ def test_preflight_rejects_oversized_skill_before_materializing(monkeypatch: pyt
     assert exc_info.value.code == 413
 
 
+def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.MonkeyPatch) -> None:
+    skill_payloads = {
+        "s_000001.zip": _zip(
+            {
+                "SKILL.md": b"---\nname: research-one\ndescription: Research skill.\n---\n",
+                "data.bin": b"x" * 8192,
+            }
+        ),
+        "s_000002.zip": _zip(
+            {
+                "SKILL.md": b"---\nname: research-two\ndescription: Research skill.\n---\n",
+                "data.bin": b"x" * 8192,
+            }
+        ),
+    }
+    soul = AgentSoulConfig.model_validate(
+        {
+            "config_skills": [
+                {"name": "research-one", "file_id": "s_000001"},
+                {"name": "research-two", "file_id": "s_000002"},
+            ]
+        }
+    )
+    manifest = RosterAgentPackageManifest(
+        format=ROSTER_AGENT_PACKAGE_FORMAT,
+        format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
+        metadata=RosterAgentPackageMetadata(name="Research Agent"),
+        soul=soul,
+        skills=[
+            RosterAgentPackageSkill(
+                id=path.removesuffix(".zip"),
+                scope="agent_config",
+                name=f"research-{index}",
+                description="Research skill.",
+                path=path,
+                size=len(payload),
+                sha256=hashlib.sha256(payload).hexdigest(),
+            )
+            for index, (path, payload) in zip(("one", "two"), skill_payloads.items())
+        ],
+    )
+    package = _zip(
+        {
+            "manifest.json": manifest.model_dump_json(exclude_none=True).encode(),
+            **skill_payloads,
+        }
+    )
+    nested_limit = 12 * 1024
+    assert len(package) < nested_limit
+    monkeypatch.setattr(roster_package_reader_module, "ROSTER_AGENT_PACKAGE_MAX_BYTES", nested_limit)
+
+    with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
+
+
 def test_read_member_enforces_actual_output_limit() -> None:
     package = _zip({"payload.bin": b"x" * 32})
 
@@ -350,6 +405,20 @@ def test_read_member_enforces_actual_output_limit() -> None:
             )
 
     assert exc_info.value.error_code == "roster_agent_package_too_large"
+
+
+@pytest.mark.parametrize("expected_size", [8, 64])
+def test_read_member_validates_actual_size_while_streaming(expected_size: int) -> None:
+    package = _zip({"payload.bin": b"x" * 32})
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        with pytest.raises(InvalidRosterAgentPackageError, match="failed integrity checks"):
+            RosterAgentPackageReader._read_member(
+                archive,
+                archive.getinfo("payload.bin"),
+                collect=False,
+                expected_size=expected_size,
+            )
 
 
 def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
