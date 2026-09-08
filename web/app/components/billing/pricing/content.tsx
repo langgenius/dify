@@ -1,6 +1,7 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useQuery } from '@tanstack/react-query'
@@ -106,19 +107,20 @@ export function PricingContent() {
             />
           </TabsList>
           {isCloud && (
-            <div className="flex items-center justify-end gap-x-3 pr-5">
-              <Switch
-                aria-label={t(($) => $['plansCommon.yearlyBilling'], { ns: 'billing' })}
-                size="lg"
-                checked={billingInterval === 'year'}
-                onCheckedChange={(checked) =>
-                  setSelectedBillingInterval(checked ? 'year' : 'month')
-                }
-              />
-              <span className="system-md-regular text-text-tertiary">
-                {t(($) => $['plansCommon.annualBilling'], { ns: 'billing', percent: 17 })}
-              </span>
-            </div>
+            <Field>
+              <FieldLabel className="flex items-center justify-end gap-x-3 pr-5">
+                <Switch
+                  size="lg"
+                  checked={billingInterval === 'year'}
+                  onCheckedChange={(checked) =>
+                    setSelectedBillingInterval(checked ? 'year' : 'month')
+                  }
+                />
+                <span className="system-md-regular text-text-tertiary">
+                  {t(($) => $['plansCommon.annualBilling'], { ns: 'billing', percent: 17 })}
+                </span>
+              </FieldLabel>
+            </Field>
           )}
         </div>
       </div>

@@ -158,3 +158,21 @@ it('keeps plan information visible after a request failure and restores billing 
 })
 
 afterEach(() => vi.restoreAllMocks())
+
+it('uses the visible billing label to name and toggle the switch', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient)
+  show()
+  const billingSwitch = screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ })
+  expect(billingSwitch).toHaveAccessibleName(
+    screen.getByText(/billing\.plansCommon\.annualBilling/).textContent!,
+  )
+  expect(billingSwitch).not.toBeChecked()
+  await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
+  expect(billingSwitch).toBeChecked()
+  expect(screen.getByText('$590')).toBeVisible()
+  await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
+  expect(billingSwitch).not.toBeChecked()
+  expect(screen.getByText('$59')).toBeVisible()
+})

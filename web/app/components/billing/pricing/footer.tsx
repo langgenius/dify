@@ -31,7 +31,7 @@ export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' 
         <span className="flex h-fit items-center gap-x-1 text-saas-dify-blue-accessible">
           <Link
             href={pricingPageURL}
-            className="system-md-regular hover:underline focus-visible:underline focus-visible:outline-hidden"
+            className="rounded-xs system-md-regular hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             target="_blank"
             rel="noopener noreferrer"
           >

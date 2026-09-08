@@ -183,7 +183,7 @@ describe('Pricing Modal Flow', () => {
       await render(<Pricing />)
 
       expect(
-        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+        screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
       ).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
@@ -202,7 +202,9 @@ describe('Pricing Modal Flow', () => {
     await user.tab()
     expect(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' })).toHaveFocus()
     await user.tab()
-    expect(screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' })).toHaveFocus()
+    expect(
+      screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
+    ).toHaveFocus()
     await user.tab()
     expect(screen.getByRole('tabpanel', { name: 'billing.plansCommon.cloud' })).toHaveFocus()
   })
@@ -317,7 +319,7 @@ describe('Pricing Modal Flow', () => {
       await render(<Pricing />)
 
       expect(
-        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+        screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
       ).toBeChecked()
 
       await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
