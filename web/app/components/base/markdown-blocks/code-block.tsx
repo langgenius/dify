@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
+import type { BundledTheme } from 'shiki/bundle/web'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import ReactEcharts from 'echarts-for-react'
@@ -78,7 +78,7 @@ const ShikiCodeBlock = memo(
 
       void highlightCode({
         code,
-        language: language as BundledLanguage,
+        language,
         theme,
       })
         .then((result) => {

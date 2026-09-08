@@ -47,7 +47,7 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <div data-testid="divider" />,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {

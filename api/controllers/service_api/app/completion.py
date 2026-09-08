@@ -208,7 +208,6 @@ class CompletionApi(Resource):
             200: "Completion created successfully",
             400: "Bad request - invalid parameters",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
             500: "Internal server error",
         }
     )
@@ -399,7 +398,7 @@ class ChatApi(Resource):
             and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
         ):
             billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         external_trace_id = get_external_trace_id(request)

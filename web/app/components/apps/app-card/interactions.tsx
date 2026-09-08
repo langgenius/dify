@@ -51,7 +51,6 @@ import {
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -59,7 +58,7 @@ import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -276,7 +275,6 @@ export function AppCardInteractions({
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
   const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
@@ -329,7 +327,6 @@ export function AppCardInteractions({
         {
           onSuccess: () => {
             toast.success(t(($) => $.appDeleted, { ns: 'app' }))
-            onPlanInfoChanged()
             setActiveDialog(null)
             setConfirmDeleteInput('')
           },
@@ -345,7 +342,7 @@ export function AppCardInteractions({
       const message = error instanceof Error ? error.message : ''
       toast.error(`${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
-  }, [app.id, deleteApp, onPlanInfoChanged, t])
+  }, [app.id, deleteApp, t])
 
   const onDeleteDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -461,7 +458,6 @@ export function AppCardInteractions({
 
             setActiveDialog(null)
             toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-            onPlanInfoChanged()
             getRedirection(newApp, push, {
               currentUserId,
               resourceMaintainer: newApp.maintainer ?? undefined,
