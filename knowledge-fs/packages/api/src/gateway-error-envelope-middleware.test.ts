@@ -81,7 +81,7 @@ describe("createKnowledgeFsErrorEnvelopeMiddleware", () => {
     const body = await unsafe.json();
     expect(body).toMatchObject({
       code: "KNOWLEDGE_FS_UNAVAILABLE",
-      error: "KnowledgeFS is temporarily unavailable. Try again later.",
+      error: "Agentic Knowledge is temporarily unavailable. Try again later.",
       failure: { code: "KNOWLEDGE_FS_UNAVAILABLE" },
     });
     expect(JSON.stringify(body)).not.toContain("secret");
@@ -109,7 +109,7 @@ describe("createKnowledgeFsErrorEnvelopeMiddleware", () => {
 
     expect(body).toMatchObject({
       code: "FORBIDDEN",
-      error: "You do not have permission to perform this KnowledgeFS operation.",
+      error: "You do not have permission to perform this Agentic Knowledge operation.",
       failure: {
         category: "authorization",
         code: "KNOWLEDGE_FS_ACCESS_DENIED",

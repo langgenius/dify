@@ -71,33 +71,33 @@ interface KnowledgeFsErrorDescriptor {
 
 const invalidRequest = descriptor(
   "validation",
-  "The KnowledgeFS request is invalid.",
+  "The Agentic Knowledge request is invalid.",
   "never",
   400,
 );
 const notFound = descriptor(
   "not_found",
-  "The requested KnowledgeFS resource was not found.",
+  "The requested Agentic Knowledge resource was not found.",
   "never",
   404,
 );
 const conflict = descriptor(
   "conflict",
-  "The KnowledgeFS operation conflicts with the current resource state.",
+  "The Agentic Knowledge operation conflicts with the current resource state.",
   "manual",
   409,
   "retry",
 );
 const unavailable = descriptor(
   "dependency",
-  "KnowledgeFS is temporarily unavailable. Try again later.",
+  "Agentic Knowledge is temporarily unavailable. Try again later.",
   "manual",
   503,
   "retry",
 );
 const internal = descriptor(
   "internal",
-  "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+  "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
   "manual",
   500,
   "contact_admin",
@@ -215,7 +215,7 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   ),
   KNOWLEDGE_FS_ACCESS_DENIED: descriptor(
     "authorization",
-    "You do not have permission to perform this KnowledgeFS operation.",
+    "You do not have permission to perform this Agentic Knowledge operation.",
     "never",
     403,
     "contact_admin",
@@ -226,14 +226,14 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
   KNOWLEDGE_FS_NOT_FOUND: notFound,
   KNOWLEDGE_FS_RATE_LIMITED: descriptor(
     "rate_limit",
-    "Too many KnowledgeFS operations were requested. Try again later.",
+    "Too many Agentic Knowledge operations were requested. Try again later.",
     "manual",
     429,
     "retry",
   ),
   KNOWLEDGE_FS_TIMEOUT: descriptor(
     "timeout",
-    "The KnowledgeFS operation timed out. Try again later.",
+    "The Agentic Knowledge operation timed out. Try again later.",
     "manual",
     503,
     "retry",

@@ -1285,7 +1285,7 @@ class KnowledgeFSSettingsPayload(BaseModel):
     @model_validator(mode="after")
     def validate_setting_present(self) -> KnowledgeFSSettingsPayload:
         if self.embedding is None and self.retrieval is None:
-            raise ValueError("At least one KnowledgeFS setting must be supplied")
+            raise ValueError("At least one Agentic Knowledge setting must be supplied")
         if self.retrieval is not None and (not self.retrieval.rerank.enabled or self.retrieval.rerank.model is None):
             raise ValueError("Knowledge-space retrieval requires an enabled rerank model")
         return self
@@ -2566,7 +2566,9 @@ class KnowledgeFSSourceImportFailureResponse(ResponseModel):
     @model_validator(mode="after")
     def normalize_public_failure(self) -> KnowledgeFSSourceImportFailureResponse:
         self.error = (
-            self.failure.message if self.failure is not None else "KnowledgeFS could not import this source document."
+            self.failure.message
+            if self.failure is not None
+            else "Agentic Knowledge could not import this source document."
         )
         if self.failure is not None:
             self.code = self.failure.code

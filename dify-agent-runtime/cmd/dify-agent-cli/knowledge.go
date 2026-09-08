@@ -12,7 +12,7 @@ import (
 
 func newKnowledgeCommand() *cobra.Command {
 	var protocolVersion bool
-	root := &cobra.Command{Use: "knowledge", Short: "Autonomously inspect read-only KnowledgeFS evidence. All results are JSON.",
+	root := &cobra.Command{Use: "knowledge", Short: "Autonomously inspect read-only Agentic Knowledge evidence. All results are JSON.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if protocolVersion {
 				_, err := fmt.Fprintln(cmd.OutOrStdout(), "1")

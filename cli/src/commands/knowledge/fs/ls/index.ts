@@ -9,7 +9,7 @@ import { Args } from '@/framework/flags'
 import { formatted } from '@/framework/output'
 
 export default class KnowledgeFsList extends DifyCommand {
-  static override description = 'List a KnowledgeFS directory'
+  static override description = 'List an Agentic Knowledge directory'
 
   static override effect: CommandEffect = 'read'
 
@@ -20,7 +20,7 @@ export default class KnowledgeFsList extends DifyCommand {
 
   static override args = {
     knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
-    path: Args.string({ description: 'KnowledgeFS directory path', required: true }),
+    path: Args.string({ description: 'Agentic Knowledge directory path', required: true }),
   }
 
   static override flags = paginatedKnowledgeFsFlags()
@@ -33,7 +33,7 @@ export default class KnowledgeFsList extends DifyCommand {
       { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
-        label: 'Listing KnowledgeFS directory',
+        label: 'Listing Agentic Knowledge directory',
         execute: (client, workspaceId, knowledgeSpaceId) =>
           client.list(workspaceId, knowledgeSpaceId, {
             path: args.path,

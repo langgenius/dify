@@ -9,7 +9,7 @@ import { Args, Flags } from '@/framework/flags'
 import { formatted } from '@/framework/output'
 
 export default class KnowledgeFsGrep extends DifyCommand {
-  static override description = 'Search text under a KnowledgeFS path'
+  static override description = 'Search text under an Agentic Knowledge path'
 
   static override effect: CommandEffect = 'read'
 
@@ -21,7 +21,7 @@ export default class KnowledgeFsGrep extends DifyCommand {
   static override args = {
     knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
     query: Args.string({ description: 'text to search for', required: true }),
-    path: Args.string({ description: 'KnowledgeFS path to search', required: true }),
+    path: Args.string({ description: 'Agentic Knowledge path to search', required: true }),
   }
 
   static override flags = {
@@ -37,7 +37,7 @@ export default class KnowledgeFsGrep extends DifyCommand {
       { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
-        label: 'Searching KnowledgeFS text',
+        label: 'Searching Agentic Knowledge text',
         execute: (client, workspaceId, knowledgeSpaceId) =>
           client.grep(workspaceId, knowledgeSpaceId, {
             path: args.path,

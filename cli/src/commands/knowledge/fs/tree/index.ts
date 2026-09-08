@@ -9,7 +9,7 @@ import { Args, Flags } from '@/framework/flags'
 import { formatted } from '@/framework/output'
 
 export default class KnowledgeFsTree extends DifyCommand {
-  static override description = 'Read a KnowledgeFS directory tree'
+  static override description = 'Read an Agentic Knowledge directory tree'
 
   static override effect: CommandEffect = 'read'
 
@@ -20,7 +20,7 @@ export default class KnowledgeFsTree extends DifyCommand {
 
   static override args = {
     knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
-    path: Args.string({ description: 'KnowledgeFS directory path', required: true }),
+    path: Args.string({ description: 'Agentic Knowledge directory path', required: true }),
   }
 
   static override flags = {
@@ -36,7 +36,7 @@ export default class KnowledgeFsTree extends DifyCommand {
       { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
-        label: 'Reading KnowledgeFS tree',
+        label: 'Reading Agentic Knowledge tree',
         execute: (client, workspaceId, knowledgeSpaceId) =>
           client.tree(workspaceId, knowledgeSpaceId, {
             path: args.path,

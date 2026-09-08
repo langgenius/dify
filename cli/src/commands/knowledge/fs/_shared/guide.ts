@@ -1,6 +1,6 @@
 export const knowledgeFsAgentGuide = `
 WORKFLOW
-  Each KnowledgeFS filesystem command is an independent difyctl command and
+  Each Agentic Knowledge filesystem command is an independent difyctl command and
   OpenAPI operation:
     difyctl knowledge fs ls <space-id> /knowledge
     difyctl knowledge fs tree <space-id> /knowledge --depth 2

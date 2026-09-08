@@ -13,61 +13,61 @@ class _KnowledgeFSServiceFailureHTTPError(BaseHTTPException):
 
 class KnowledgeFSInvalidCredentialHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_invalid_credential"
-    description = "Invalid KnowledgeFS service credential."
+    description = "Invalid Agentic Knowledge service credential."
     code = 401
 
 
 class KnowledgeFSServiceOperationUnavailableHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_operation_unavailable"
-    description = "KnowledgeFS operation is not available."
+    description = "Agentic Knowledge operation is not available."
     code = 503
 
 
 class KnowledgeFSServiceUpstreamUnavailableHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_upstream_unavailable"
-    description = "KnowledgeFS is unavailable."
+    description = "Agentic Knowledge is unavailable."
     code = 502
 
 
 class KnowledgeFSServiceInvalidRequestHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_invalid_request"
-    description = "KnowledgeFS request is invalid."
+    description = "Agentic Knowledge request is invalid."
     code = 400
 
 
 class KnowledgeFSServiceAccessDeniedHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_access_denied"
-    description = "KnowledgeFS operation is not allowed."
+    description = "Agentic Knowledge operation is not allowed."
     code = 403
 
 
 class KnowledgeFSServiceResourceNotFoundHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_resource_not_found"
-    description = "KnowledgeFS resource was not found."
+    description = "Agentic Knowledge resource was not found."
     code = 404
 
 
 class KnowledgeFSServiceConflictHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_conflict"
-    description = "KnowledgeFS operation conflicts with the current resource state."
+    description = "Agentic Knowledge operation conflicts with the current resource state."
     code = 409
 
 
 class KnowledgeFSServiceRequestTooLargeHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_request_too_large"
-    description = "KnowledgeFS request is too large."
+    description = "Agentic Knowledge request is too large."
     code = 413
 
 
 class KnowledgeFSServiceRequestRejectedHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_request_rejected"
-    description = "KnowledgeFS request was rejected."
+    description = "Agentic Knowledge request was rejected."
     code = 422
 
 
 class KnowledgeFSServiceRateLimitHTTPError(_KnowledgeFSServiceFailureHTTPError):
     error_code = "knowledge_fs_rate_limit_exceeded"
-    description = "KnowledgeFS request rate limit exceeded."
+    description = "Agentic Knowledge request rate limit exceeded."
     code = 429
 
 

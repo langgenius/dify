@@ -139,19 +139,19 @@ KnowledgeFSPublicErrorCode = Literal[
 
 class KnowledgeFSPublicFailureResponse(ResponseModel):
     _SAFE_MESSAGE_BY_CATEGORY: ClassVar[dict[str, str]] = {
-        "authorization": "You do not have permission to perform this KnowledgeFS operation.",
-        "canceled": "The KnowledgeFS operation was canceled.",
-        "configuration": "The KnowledgeFS operation requires a configuration change before it can continue.",
-        "conflict": "The KnowledgeFS operation conflicts with the current resource state.",
-        "dependency": "A service required by KnowledgeFS is temporarily unavailable.",
+        "authorization": "You do not have permission to perform this Agentic Knowledge operation.",
+        "canceled": "The Agentic Knowledge operation was canceled.",
+        "configuration": "The Agentic Knowledge operation requires a configuration change before it can continue.",
+        "conflict": "The Agentic Knowledge operation conflicts with the current resource state.",
+        "dependency": "A service required by Agentic Knowledge is temporarily unavailable.",
         "internal": (
-            "KnowledgeFS could not complete the operation. Try again, or contact an administrator "
+            "Agentic Knowledge could not complete the operation. Try again, or contact an administrator "
             "with the error reference."
         ),
-        "not_found": "The requested KnowledgeFS resource was not found.",
-        "rate_limit": "Too many KnowledgeFS operations were requested. Try again later.",
-        "timeout": "The KnowledgeFS operation timed out. Try again later.",
-        "validation": "The KnowledgeFS request is invalid.",
+        "not_found": "The requested Agentic Knowledge resource was not found.",
+        "rate_limit": "Too many Agentic Knowledge operations were requested. Try again later.",
+        "timeout": "The Agentic Knowledge operation timed out. Try again later.",
+        "validation": "The Agentic Knowledge request is invalid.",
     }
     _SAFE_MESSAGE_BY_CODE: ClassVar[dict[str, str]] = {
         "RETRIEVAL_DELETION_IN_PROGRESS": "This knowledge space is being deleted and cannot be searched.",

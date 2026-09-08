@@ -269,7 +269,7 @@ class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
 class KnowledgeFsInvalidRequestError(OpenApiError):
     code = 400
     error_code = OpenApiErrorCode.KNOWLEDGE_FS_INVALID_REQUEST
-    description = "The KnowledgeFS request is invalid."
+    description = "The Agentic Knowledge request is invalid."
 
 
 class KnowledgeFsAccessDeniedError(OpenApiError):
@@ -287,22 +287,22 @@ class KnowledgeFsResourceNotFoundError(OpenApiError):
 class KnowledgeFsConflictError(OpenApiError):
     code = 409
     error_code = OpenApiErrorCode.KNOWLEDGE_FS_CONFLICT
-    description = "The KnowledgeFS request conflicts with the current state."
+    description = "The Agentic Knowledge request conflicts with the current state."
 
 
 class KnowledgeFsRequestTooLargeError(OpenApiError):
     code = 413
     error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_TOO_LARGE
-    description = "The KnowledgeFS request exceeds the allowed size."
+    description = "The Agentic Knowledge request exceeds the allowed size."
 
 
 class KnowledgeFsRequestRejectedError(OpenApiError):
     code = 422
     error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_REJECTED
-    description = "The KnowledgeFS request could not be processed."
+    description = "The Agentic Knowledge request could not be processed."
 
 
 class KnowledgeFsUnavailableError(OpenApiError):
     code = 503
     error_code = OpenApiErrorCode.KNOWLEDGE_FS_UNAVAILABLE
-    description = "KnowledgeFS is temporarily unavailable."
+    description = "Agentic Knowledge is temporarily unavailable."

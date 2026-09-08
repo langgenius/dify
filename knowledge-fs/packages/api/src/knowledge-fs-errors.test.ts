@@ -210,11 +210,11 @@ describe("KnowledgeFS public errors", () => {
 
     expect(knowledgeFsFailureFromError(validation)).toMatchObject({
       code: "KNOWLEDGE_FS_INVALID_REQUEST",
-      message: "The KnowledgeFS request is invalid.",
+      message: "The Agentic Knowledge request is invalid.",
     });
     expect(knowledgeFsFailureFromError(missing)).toMatchObject({
       code: "KNOWLEDGE_FS_NOT_FOUND",
-      message: "The requested KnowledgeFS resource was not found.",
+      message: "The requested Agentic Knowledge resource was not found.",
     });
     expect(knowledgeFsFailureFromError(safeMissing).message).toBe(
       "The selected document was not found.",

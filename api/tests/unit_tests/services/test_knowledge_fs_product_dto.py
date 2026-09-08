@@ -251,7 +251,7 @@ def test_public_failure_accepts_only_allowlisted_bounded_parameters() -> None:
     )
 
     assert failure.parameters == {"retryAfterSeconds": 30}
-    assert failure.message == "Too many KnowledgeFS operations were requested. Try again later."
+    assert failure.message == "Too many Agentic Knowledge operations were requested. Try again later."
     with pytest.raises(ValidationError):
         KnowledgeFSPublicFailureResponse.model_validate(
             {
@@ -303,7 +303,9 @@ def test_public_failure_replaces_a_registered_code_message_with_a_safe_bff_fallb
         }
     )
 
-    assert failure.message == ("The KnowledgeFS operation requires a configuration change before it can continue.")
+    assert failure.message == (
+        "The Agentic Knowledge operation requires a configuration change before it can continue."
+    )
     assert "credential-secret" not in failure.model_dump_json()
 
 
@@ -1434,7 +1436,7 @@ def test_source_workflow_response_exposes_only_validated_terminal_failures() -> 
     )
     assert response.last_error_code == "SOURCE_OPERATION_FAILED"
     assert response.failure is not None
-    assert response.failure.message == "A service required by KnowledgeFS is temporarily unavailable."
+    assert response.failure.message == "A service required by Agentic Knowledge is temporarily unavailable."
     assert "provider-secret" not in response.model_dump_json()
 
     compilation_failure = KnowledgeFSSourceWorkflowResponse.model_validate(
@@ -1451,7 +1453,7 @@ def test_source_workflow_response_exposes_only_validated_terminal_failures() -> 
     )
     assert compilation_failure.last_error_code == "SOURCE_DOCUMENT_COMPILATION_FAILED"
     assert compilation_failure.failure is not None
-    assert compilation_failure.failure.message == "A service required by KnowledgeFS is temporarily unavailable."
+    assert compilation_failure.failure.message == "A service required by Agentic Knowledge is temporarily unavailable."
     assert "provider-secret" not in compilation_failure.model_dump_json()
 
 
@@ -1469,7 +1471,7 @@ def test_source_result_dtos_never_forward_untrusted_success_payload_messages() -
             "valid": False,
         }
     )
-    assert credential.error == "The KnowledgeFS operation requires a configuration change before it can continue."
+    assert credential.error == "The Agentic Knowledge operation requires a configuration change before it can continue."
     assert "credential-test-secret" not in credential.model_dump_json()
 
     legacy_import = KnowledgeFSSourceImportFailureResponse.model_validate(
@@ -1479,7 +1481,7 @@ def test_source_result_dtos_never_forward_untrusted_success_payload_messages() -
             "filename": "runbook.pdf",
         }
     )
-    assert legacy_import.error == "KnowledgeFS could not import this source document."
+    assert legacy_import.error == "Agentic Knowledge could not import this source document."
     assert "signed-url-secret" not in legacy_import.model_dump_json()
 
 

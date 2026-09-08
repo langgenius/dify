@@ -814,7 +814,7 @@ describe("knowledge space operator handlers coverage", () => {
     expect(commits.items[0]).toMatchObject({
       errorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
       errorMessage:
-        "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+        "Agentic Knowledge could not complete the operation. Try again, or contact an administrator with the error reference.",
       failure: {
         code: "KNOWLEDGE_FS_INTERNAL_ERROR",
         stage: "document-upload",

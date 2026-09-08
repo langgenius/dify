@@ -980,7 +980,7 @@ def test_automatic_metadata_filter_fails_closed_on_missing_model_or_catalog_reje
 
     assert missing_model.status == WorkflowNodeExecutionStatus.FAILED
     assert missing_model.error_type == "KnowledgeFSRetrievalConfigurationError"
-    assert missing_model.error == "KnowledgeFS automatic metadata filtering requires a metadata filtering model"
+    assert missing_model.error == "Agentic Knowledge automatic metadata filtering requires a metadata filtering model"
     assert unavailable_model.status == WorkflowNodeExecutionStatus.FAILED
     assert unavailable_model.error_type == "KnowledgeFSRetrievalConfigurationError"
     assert unavailable_model.error == "metadata model unavailable"
@@ -1281,7 +1281,7 @@ def test_node_fails_closed_for_binding_rejection_and_invalid_query_type() -> Non
     assert rejected.error is not None
     assert rejected.error.startswith("[knowledge_fs_binding_not_enabled] ")
     assert rejected.error == (
-        "[knowledge_fs_binding_not_enabled] KnowledgeFS Space space-a is not bound to this workflow"
+        "[knowledge_fs_binding_not_enabled] Agentic Knowledge Space space-a is not bound to this workflow"
     )
     assert invalid_query.status == WorkflowNodeExecutionStatus.FAILED
     assert invalid_query.error_type == "KnowledgeFSRetrievalConfigurationError"
@@ -1295,20 +1295,20 @@ def test_node_fails_closed_for_binding_rejection_and_invalid_query_type() -> Non
         (
             KnowledgeFSAppChannelDisabledError("KnowledgeFS workflow channel is disabled"),
             "knowledge_fs_workflow_access_disabled",
-            "[knowledge_fs_workflow_access_disabled] Workflow access is disabled for KnowledgeFS Space space-a; "
+            "[knowledge_fs_workflow_access_disabled] Workflow access is disabled for Agentic Knowledge Space space-a; "
             "ask a workspace owner to enable the Workflow channel",
         ),
         (
             KnowledgeFSAppSpaceUnavailableError("KnowledgeFS control-space is not active or provisioned"),
             "knowledge_fs_space_unavailable",
-            "[knowledge_fs_space_unavailable] KnowledgeFS Space space-a is not ready for workflow retrieval; "
+            "[knowledge_fs_space_unavailable] Agentic Knowledge Space space-a is not ready for workflow retrieval; "
             "select an active, provisioned Space",
         ),
         (
             KnowledgeFSAppAuthorizationNotReadyError("KnowledgeFS authorization state is not ready"),
             "knowledge_fs_authorization_not_ready",
-            "[knowledge_fs_authorization_not_ready] KnowledgeFS Space space-a permissions are not ready; "
-            "ask a workspace owner to finish KnowledgeFS permission setup",
+            "[knowledge_fs_authorization_not_ready] Agentic Knowledge Space space-a permissions are not ready; "
+            "ask a workspace owner to finish Agentic Knowledge permission setup",
         ),
     ],
 )
