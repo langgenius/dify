@@ -226,7 +226,7 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
   return rows
 }
 
-function GotoAnythingDialog() {
+export function GotoAnything() {
   const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
@@ -432,13 +432,6 @@ function GotoAnythingDialog() {
     }
   }
 
-  function handleAutocompleteOpenChange(
-    nextOpen: boolean,
-    eventDetails: AutocompleteChangeEventDetails,
-  ) {
-    if (!nextOpen && eventDetails.reason === 'escape-key') gotoAnythingDialogHandle.close()
-  }
-
   function handleAutocompleteValueChange(
     nextValue: string,
     eventDetails: AutocompleteChangeEventDetails,
@@ -525,7 +518,6 @@ function GotoAnythingDialog() {
               items={visibleOptions}
               value={searchQuery}
               onValueChange={handleAutocompleteValueChange}
-              onOpenChange={handleAutocompleteOpenChange}
               itemToStringValue={optionToInputValue}
               filter={null}
               grid={isCommandsMode}
@@ -711,8 +703,4 @@ function GotoAnythingDialog() {
       )}
     </>
   )
-}
-
-export function GotoAnything() {
-  return <GotoAnythingDialog />
 }
