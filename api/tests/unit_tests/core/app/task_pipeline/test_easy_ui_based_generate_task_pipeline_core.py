@@ -54,7 +54,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -1337,13 +1337,65 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
 
-    def test_save_message_persists_fields_and_emits_trace(
+    @pytest.mark.parametrize(
+        "terminal_event",
+        [QueueMessageEndEvent(), QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)],
+        ids=["completed", "stopped"],
+    )
+    @pytest.mark.parametrize("commit_succeeds", [True, False], ids=["committed", "commit-failed"])
+    def test_message_trace_observes_only_committed_result(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        terminal_event: AppQueueEvent,
+        commit_succeeds: bool,
+    ) -> None:
+        pipeline, queue_manager = _make_pipeline()
+        pipeline._application_generate_entity.extras["trace_session_id"] = "session-1"
+        _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+        pipeline._task_state.llm_result.message.content = "finished answer"
+        pipeline._task_state.llm_result.usage = LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 42})
+        monkeypatch.setattr(pipeline, "_handle_stop", Mock())
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send", Mock()
+        )
+        queue_manager.set_events([_queue_message(terminal_event)])
+        sqlite_session.add_all([_make_conversation(AppMode.CHAT), _make_message()])
+        sqlite_session.commit()
+        observed_messages: list[tuple[str, int, int]] = []
+
+        def read_message_immediately(task: TraceTask) -> None:
+            # A separate session sees exactly what the asynchronous trace consumer can read.
+            with Session(sqlite_session.get_bind()) as reader:
+                message = reader.get(Message, task.message_id)
+                assert message is not None
+                observed_messages.append((message.answer, message.message_tokens, message.answer_tokens))
+
+        trace_manager = Mock(spec=TraceQueueManager)
+        trace_manager.add_trace_task.side_effect = read_message_immediately
+        if not commit_succeeds:
+            monkeypatch.setattr(Session, "commit", Mock(side_effect=RuntimeError("commit failed")))
+            with pytest.raises(RuntimeError, match="commit failed"):
+                list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+            trace_manager.add_trace_task.assert_not_called()
+            return
+
+        list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+
+        assert observed_messages == [("finished answer", 13, 42)]
+        trace_manager.add_trace_task.assert_called_once()
+        trace_task = trace_manager.add_trace_task.call_args.args[0]
+        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
+        assert trace_task.conversation_id == "conv"
+        assert trace_task.message_id == "msg"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
+
+    def test_save_message_persists_fields_and_sends_event(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
-        application_generate_entity.extras = {"trace_session_id": "session-1"}
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=_FakeQueueManager(),
@@ -1364,8 +1416,6 @@ class TestEasyUiBasedGenerateTaskPipeline:
         session = sqlite_session
         session.add_all([conversation_obj, message_obj])
         session.flush()
-        trace_manager_double = _TraceManagerDouble()
-        trace_manager = cast(TraceQueueManager, trace_manager_double)
         sent_payloads: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
         monkeypatch.setattr(
@@ -1388,17 +1438,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
             lambda *args, **kwargs: sent_payloads.append((args, kwargs)),
         )
 
-        pipeline._save_message(session=session, trace_manager=trace_manager)
+        pipeline._save_message(session=session)
 
         assert message_obj.message == "serialized-prompt"
         assert message_obj.answer == "hello"
         assert message_obj.provider_response_latency == 5.0
-        trace_manager_double.add_trace_task.assert_called_once()
-        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
-        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-        assert trace_task.conversation_id == "conv"
-        assert trace_task.message_id == "msg"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
 
     def test_save_stopped_message_preserves_backend_reported_usage(

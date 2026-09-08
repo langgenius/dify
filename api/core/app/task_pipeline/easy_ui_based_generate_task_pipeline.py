@@ -324,12 +324,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         if isinstance(event, QueueStopEvent):
                             self._save_message(
                                 session=session,
-                                trace_manager=trace_manager,
                                 preserve_existing_usage=True,
                             )
                         else:
-                            self._save_message(session=session, trace_manager=trace_manager)
+                            self._save_message(session=session)
                         session.commit()
+
+                    if trace_manager:
+                        trace_manager.add_trace_task(
+                            TraceTask(
+                                TraceTaskName.MESSAGE_TRACE,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
+                            )
+                        )
+
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
                 case QueueRetrieverResourcesEvent():
@@ -426,7 +436,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         self,
         *,
         session: Session,
-        trace_manager: TraceQueueManager | None = None,
         preserve_existing_usage: bool = False,
     ):
         """
@@ -482,16 +491,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if has_persisted_usage and "usage" in existing_metadata:
             metadata["usage"] = existing_metadata["usage"]
         message.message_metadata = json.dumps(metadata, ensure_ascii=False)
-
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MESSAGE_TRACE,
-                    conversation_id=self._conversation_id,
-                    message_id=self._message_id,
-                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
-                )
-            )
 
         message_was_created.send(
             message,

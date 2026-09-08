@@ -29,7 +29,6 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
-from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from models.enums import ConversationFromSource
@@ -362,29 +361,6 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
 
         # Assert
         publisher.publish.assert_called_once_with(mock_queue_message)
-
-    def test_trace_manager_passed_to_save_message(self, pipeline, committed_sessions):
-        """Test that trace manager is passed to _save_message."""
-        # Setup
-        trace_manager = Mock(spec=TraceQueueManager)
-
-        message_end_event = Mock(spec=QueueMessageEndEvent)
-        message_end_event.llm_result = None
-
-        mock_queue_message = Mock()
-        mock_queue_message.event = message_end_event
-        pipeline.queue_manager.listen.return_value = [mock_queue_message]
-
-        pipeline._save_message = Mock()
-        pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
-
-        list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
-
-        # Assert
-        session = pipeline._save_message.call_args.kwargs["session"]
-        assert isinstance(session, Session)
-        assert committed_sessions == [session]
-        pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, mock_task_state):
         """Test handling multiple events in sequence."""
