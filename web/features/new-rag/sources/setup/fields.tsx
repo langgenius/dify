@@ -9,8 +9,10 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import Link from '@/next/link'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './source-draft'
 import { SyncPolicyField } from './sync-policy-field'
@@ -154,6 +156,30 @@ type SourceProviderIconValue =
   | InstalledSourceProviderOption['datasource']['identity']['icon']
   | InstalledSourceProviderOption['plugin']['declaration']['identity']['icon']
 
+function SourceProviderImage({
+  className,
+  fallbackIcon,
+  src,
+}: {
+  className?: string
+  fallbackIcon: string
+  src: string
+}) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) return <span aria-hidden className={cn(fallbackIcon, 'size-4 shrink-0', className)} />
+
+  return (
+    <img
+      aria-hidden
+      alt=""
+      className={cn('size-4 shrink-0 object-contain', className)}
+      src={src}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 export function SourceProviderIcon({
   className,
   fallbackIcon,
@@ -163,15 +189,14 @@ export function SourceProviderIcon({
   fallbackIcon: string
   icon?: SourceProviderIconValue
 }) {
-  if (typeof icon === 'string' && icon)
+  const { getIconUrl } = useGetIcon()
+
+  if (typeof icon === 'string' && icon) {
+    const src = /^[a-z][a-z\d+.-]*:/i.test(icon) || icon.startsWith('/') ? icon : getIconUrl(icon)
     return (
-      <img
-        aria-hidden
-        alt=""
-        className={cn('size-4 shrink-0 object-contain', className)}
-        src={icon}
-      />
+      <SourceProviderImage key={src} className={className} fallbackIcon={fallbackIcon} src={src} />
     )
+  }
 
   if (icon && typeof icon !== 'string')
     return (
@@ -246,7 +271,7 @@ export function SourceProviderSelector({
             icon: (
               <SourceProviderIcon
                 fallbackIcon={option.fallbackIcon}
-                icon={option.datasource.identity.icon ?? option.plugin.declaration.identity.icon}
+                icon={option.datasource.identity.icon || option.plugin.declaration.identity.icon}
               />
             ),
             label: option.label,

@@ -576,7 +576,7 @@ function UnconfiguredProvider({
         <SourceProviderIcon
           fallbackIcon={providerOption.fallbackIcon}
           icon={
-            providerOption.datasource.identity.icon ??
+            providerOption.datasource.identity.icon ||
             providerOption.plugin.declaration.identity.icon
           }
         />

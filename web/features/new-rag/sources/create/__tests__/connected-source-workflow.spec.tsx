@@ -60,6 +60,13 @@ const clientMock = vi.hoisted(() => ({
 
 const openMock = vi.hoisted(() => vi.fn())
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-123' },
+  }))
+})
+
 vi.mock('@/service/use-datasource', async () => {
   const { useQuery } =
     await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
@@ -600,7 +607,7 @@ describe('ConnectedSourceWorkflow', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
-    expect(view.container.querySelectorAll('img[src="icon.svg"]')).toHaveLength(2)
+    expect(view.container.querySelectorAll('img[src$="filename=icon.svg"]')).toHaveLength(2)
 
     await user.click(
       screen.getByRole('button', {

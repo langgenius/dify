@@ -22,6 +22,13 @@ const routerMock = vi.hoisted(() => ({
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
   keys: ['knowledge_space_document_write'],
 }))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-123' },
+  }))
+})
+
 vi.mock('../../../space/context', () => ({
   useKnowledgeSpacePermission: (permission: string) =>
     knowledgeSpacePermissionState.keys.includes(permission),

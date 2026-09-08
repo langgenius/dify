@@ -168,7 +168,7 @@ export function CreateSourceSetup(props: CreateSourceSetupProps) {
               icon: (
                 <SourceProviderIcon
                   fallbackIcon={option.fallbackIcon}
-                  icon={option.datasource.identity.icon ?? option.plugin.declaration.identity.icon}
+                  icon={option.datasource.identity.icon || option.plugin.declaration.identity.icon}
                 />
               ),
               label: option.label,
@@ -505,7 +505,7 @@ function CreateSourceSetupSession({
             <SourceProviderIcon
               fallbackIcon={installedProviderOption.fallbackIcon}
               icon={
-                installedProviderOption.datasource.identity.icon ??
+                installedProviderOption.datasource.identity.icon ||
                 installedProviderOption.plugin.declaration.identity.icon
               }
             />
