@@ -7,6 +7,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from extensions.ext_storage import storage
 from models.dataset import Dataset, Document, SegmentAttachmentBinding
 from models.model import UploadFile
 
@@ -70,6 +71,16 @@ def delete_segment_from_index_task(
                     index_processor.clean(
                         session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
                     )
+                    # collect the storage keys of the attachment files before
+                    # removing their DB rows, so we can clean up the physical
+                    # objects even after the upload_files are gone
+                    attachment_file_keys = [
+                        upload_file.key
+                        for upload_file in session.scalars(
+                            select(UploadFile).where(UploadFile.id.in_(attachment_ids))
+                        ).all()
+                    ]
+
                     segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
 
                     for i in range(0, len(segment_attachment_bind_ids), 1000):
@@ -81,6 +92,15 @@ def delete_segment_from_index_task(
                     # delete upload file
                     session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
                     session.commit()
+
+                    # delete the physical attachment files from storage; a
+                    # backend failure should only be logged, not undo the
+                    # database cleanup already committed above
+                    for attachment_file_key in attachment_file_keys:
+                        try:
+                            storage.delete(attachment_file_key)
+                        except Exception:
+                            logger.exception("Delete attachment_file failed for key: %s", attachment_file_key)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
