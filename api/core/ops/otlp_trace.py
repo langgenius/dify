@@ -331,6 +331,6 @@ class OtlpTraceClient:
                             )
                         )
                 for field in ("gen_ai.server.time_to_first_token", "gen_ai.streaming.time_to_generate"):
-                    if isinstance(seconds := span.attributes.get(field), (int, float)):
-                        metrics.append(histogram(field, float(seconds), span, labels))
+                    if isinstance(streaming_seconds := span.attributes.get(field), (int, float)):
+                        metrics.append(histogram(field, float(streaming_seconds), span, labels))
         return metrics

@@ -4,6 +4,7 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from typing import Never, TypedDict, Unpack
 from uuid import UUID, uuid4
 
 import httpx
@@ -13,6 +14,7 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
     ExportTraceServiceResponse,
 )
+from pydantic import JsonValue
 
 from core.ops.otlp_trace import OtlpTraceClient
 from core.ops.provider_export import TraceExportError, TraceProviderHttpClient, create_provider_client, export_trace
@@ -24,6 +26,16 @@ from core.ops.trace_data import (
     make_span_id,
     make_trace_id,
 )
+
+
+class RequestArguments(TypedDict, total=False):
+    headers: dict[str, str]
+    json: dict[str, JsonValue]
+    content: bytes
+    max_retries: int
+    follow_redirects: bool
+    timeout: float
+    http_client: httpx.Client
 
 
 def make_completed_trace() -> CompletedTrace:
@@ -73,7 +85,7 @@ def make_completed_trace() -> CompletedTrace:
     )
 
 
-def provider_config(provider: str, secret: str = "tenant-secret") -> dict[str, object]:
+def provider_config(provider: str, secret: str = "tenant-secret") -> dict[str, str]:
     return {
         "langsmith": {"api_key": secret, "project": "project", "endpoint": "https://langsmith.example"},
         "langfuse": {"public_key": "public", "secret_key": secret, "host": "https://langfuse.example"},
@@ -104,13 +116,33 @@ def settings_for(trace: CompletedTrace, provider: str) -> TraceProviderSettings:
 
 
 @pytest.mark.parametrize(
+    ("endpoint", "trace_path"),
+    [
+        ("https://log.aliyuncs.com", "api/v1/traces"),
+        ("https://project.cn-heyuan.log.aliyuncs.com", "api/v1/traces"),
+        ("https://PROJECT.LOG.ALIYUNCS.COM:443", "api/v1/traces"),
+        ("https://evillog.aliyuncs.com", "api/otlp/traces"),
+        ("https://log.aliyuncs.com.evil.example", "api/otlp/traces"),
+        ("https://evil.example/log.aliyuncs.com", "api/otlp/traces"),
+        ("https://evil.example/?host=log.aliyuncs.com", "api/otlp/traces"),
+    ],
+)
+def test_aliyun_trace_path_matches_complete_hostname(endpoint: str, trace_path: str) -> None:
+    client = create_provider_client("aliyun", {**provider_config("aliyun"), "endpoint": endpoint})
+
+    assert client.http.endpoint.endswith(f"/adapt_tenant-secret/{trace_path}")
+
+
+@pytest.mark.parametrize(
     "provider",
     ["langsmith", "langfuse", "opik", "weave", "phoenix", "arize", "aliyun", "tencent", "mlflow", "databricks"],
 )
-def test_every_provider_exports_complete_tree_with_repeatable_ids(provider, monkeypatch):
-    requests: list[tuple[str, str, dict[str, object]]] = []
+def test_every_provider_exports_complete_tree_with_repeatable_ids(
+    provider: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requests: list[tuple[str, str, RequestArguments]] = []
 
-    def request(method, url, **kwargs):
+    def request(method: str, url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
         requests.append((method, url, kwargs))
         if "credentials-for-data-upload" in url:
             return httpx.Response(
@@ -129,7 +161,7 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(provider, monk
             return httpx.Response(200, content=b"")
         return httpx.Response(200, json={})
 
-    def grpc_request(client, signal, serialized):
+    def grpc_request(client: OtlpTraceClient, signal: str, serialized: bytes) -> bytes:
         requests.append(("GRPC", signal, {"content": serialized, "headers": dict(client.http.headers)}))
         return b""
 
@@ -159,13 +191,28 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(provider, monk
         assert len({span.trace_id for span in spans}) == 1
         assert spans[0].trace_id == UUID(trace.trace_id).bytes
     elif provider == "langsmith":
-        runs = [request[2]["json"]["post"][0] for request in requests[:3]]
+        runs: list[dict[str, JsonValue]] = []
+        for request in requests[:3]:
+            posted = request[2]["json"]["post"]
+            assert isinstance(posted, list)
+            assert isinstance(posted[0], dict)
+            runs.append(posted[0])
         assert runs[2]["parent_run_id"] == runs[1]["id"]
-        assert runs[2]["dotted_order"].startswith(runs[1]["dotted_order"] + ".")
+        child_order, parent_order = runs[2]["dotted_order"], runs[1]["dotted_order"]
+        assert isinstance(child_order, str)
+        assert isinstance(parent_order, str)
+        assert child_order.startswith(parent_order + ".")
     elif provider == "langfuse":
         events = requests[0][2]["json"]["batch"]
+        assert isinstance(events, list)
         assert len(events) == 4
-        assert events[3]["body"]["parentObservationId"] == events[2]["body"]["id"]
+        child_event, parent_event = events[3], events[2]
+        assert isinstance(child_event, dict)
+        assert isinstance(parent_event, dict)
+        child_body, parent_body = child_event["body"], parent_event["body"]
+        assert isinstance(child_body, dict)
+        assert isinstance(parent_body, dict)
+        assert child_body["parentObservationId"] == parent_body["id"]
     elif provider == "databricks":
         uploaded = json.loads(next(kwargs["content"] for method, _, kwargs in requests if method == "PUT"))
         assert len(uploaded["spans"]) == 3
@@ -173,11 +220,13 @@ def test_every_provider_exports_complete_tree_with_repeatable_ids(provider, monk
         assert all("Authorization" not in kwargs["headers"] for method, _, kwargs in requests if method == "PUT")
 
 
-def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(monkeypatch):
+def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     trace = make_completed_trace()
     settings = settings_for(trace, "langsmith")
 
-    def unexpected(*_args):
+    def unexpected(*_args: object) -> Never:
         pytest.fail("No provider client may be created for mismatched ownership")
 
     monkeypatch.setattr("core.ops.provider_export.create_provider_client", unexpected)
@@ -187,13 +236,13 @@ def test_tenant_and_parent_destination_mismatch_rejected_before_client_creation(
         export_trace(trace, settings, {}, {"tenant_id": str(uuid4())})
 
 
-def test_overlapping_exports_keep_credentials_and_parent_order_separate(monkeypatch):
+def test_overlapping_exports_keep_credentials_and_parent_order_separate(monkeypatch: pytest.MonkeyPatch) -> None:
     from threading import Barrier
 
     barrier = Barrier(2)
-    sent = []
+    sent: list[RequestArguments] = []
 
-    def request(_method, _url, **kwargs):
+    def request(_method: str, _url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
         if not any(item["headers"]["x-api-key"] == kwargs["headers"]["x-api-key"] for item in sent):
             barrier.wait(timeout=5)
         sent.append(kwargs)
@@ -211,10 +260,17 @@ def test_overlapping_exports_keep_credentials_and_parent_order_separate(monkeypa
         expected_tenant = (
             trace_a.source.tenant_id if request["headers"]["x-api-key"] == "secret-a" else trace_b.source.tenant_id
         )
-        assert request["json"]["post"][0]["extra"]["metadata"]["dify.tenant_id"] == expected_tenant
+        posted = request["json"]["post"]
+        assert isinstance(posted, list)
+        assert isinstance(posted[0], dict)
+        extra = posted[0]["extra"]
+        assert isinstance(extra, dict)
+        metadata = extra["metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["dify.tenant_id"] == expected_tenant
 
 
-def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch):
+def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.ops.provider_export.ssrf_proxy.make_request",
         lambda *_args, **_kwargs: httpx.Response(429, headers={"retry-after": "60"}),
@@ -233,10 +289,10 @@ def test_http_errors_and_otlp_partial_acceptance_are_not_success(monkeypatch):
         create_provider_client("phoenix", provider_config("phoenix")).export_trace(make_completed_trace())
 
 
-def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch):
-    requests = []
+def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[tuple[str, bytes]] = []
 
-    def request(_method, url, **kwargs):
+    def request(_method: str, url: str, **kwargs: Unpack[RequestArguments]) -> httpx.Response:
         requests.append((url, kwargs["content"]))
         return httpx.Response(200, content=b"")
 
@@ -279,15 +335,15 @@ def test_enterprise_metrics_keep_root_and_model_usage_distinct(monkeypatch):
         assert inputs.startswith("ref:operation_id=")
 
 
-def test_ssrf_clients_close_and_do_not_share_response_cookies(monkeypatch):
-    received_cookies = []
-    clients = []
+def test_ssrf_clients_close_and_do_not_share_response_cookies(monkeypatch: pytest.MonkeyPatch) -> None:
+    received_cookies: list[str | None] = []
+    clients: list[httpx.Client] = []
 
-    def respond(request):
+    def respond(request: httpx.Request) -> httpx.Response:
         received_cookies.append(request.headers.get("cookie"))
         return httpx.Response(200, headers={"set-cookie": "session=tenant-a; Path=/"})
 
-    def create_client():
+    def create_client() -> httpx.Client:
         client = httpx.Client(transport=httpx.MockTransport(respond), trust_env=False)
         clients.append(client)
         return client

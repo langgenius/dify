@@ -11,7 +11,7 @@ from services.app_tracing_config_service import (
 )
 
 
-def test_provider_config_preserves_masked_credentials_without_mutating_inputs():
+def test_provider_config_preserves_masked_credentials_without_mutating_inputs() -> None:
     previous = {"public_key": "encrypted-public", "secret_key": "encrypted-secret", "host": "https://old.example"}
     submitted = {"public_key": "pub***", "secret_key": "sec***", "host": "https://new.example"}
     with patch("core.helper.encrypter.encrypt_token") as encrypt:
@@ -30,7 +30,7 @@ def test_provider_config_preserves_masked_credentials_without_mutating_inputs():
     assert encrypted["secret_key"] == "encrypted-secret"
 
 
-def test_config_checks_verify_before_encrypt_and_use_only_request_settings():
+def test_config_checks_verify_before_encrypt_and_use_only_request_settings() -> None:
     checks = TraceProviderConfigChecks()
     client = Mock()
     client.verify_credentials.return_value = True
@@ -55,7 +55,7 @@ def test_config_checks_verify_before_encrypt_and_use_only_request_settings():
         assert encrypt.call_count == 1
 
 
-def test_invalid_configuration_never_contacts_provider():
+def test_invalid_configuration_never_contacts_provider() -> None:
     checks = TraceProviderConfigChecks()
     with pytest.raises(AppTracingConfigInvalidProviderError):
         checks.validate_provider("unknown")

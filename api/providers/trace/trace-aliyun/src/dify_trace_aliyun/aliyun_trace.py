@@ -9,9 +9,10 @@ from dify_trace_aliyun.config import AliyunConfig
 
 def create_trace_client(provider_config: dict[str, Any]) -> OtlpTraceClient:
     config = AliyunConfig.model_validate(provider_config)
+    hostname = urlsplit(config.endpoint).hostname or ""
     path = (
         "api/v1/traces"
-        if (urlsplit(config.endpoint).hostname or "").endswith("log.aliyuncs.com")
+        if hostname == "log.aliyuncs.com" or hostname.endswith(".log.aliyuncs.com")
         else "api/otlp/traces"
     )
     endpoint = urljoin(config.endpoint, f"adapt_{quote(config.license_key, safe='')}/{path}")

@@ -24,6 +24,7 @@ from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, I
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.completion_trace import record_completion_result
+from core.ops.trace_source import create_message_trace
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -31,7 +32,6 @@ from models import Account, App, AppModelConfig, Conversation, EndUser, Message
 from models.model import load_annotation_reply_config
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
-from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 
