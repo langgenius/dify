@@ -7,7 +7,6 @@ from werkzeug.exceptions import NotFound
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
@@ -17,7 +16,6 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination
 from libs.helper import dump_response
 from machinery.context import RequestContext
-from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppRef
 from services.saved_message_service import SavedMessageActor
@@ -27,15 +25,9 @@ register_response_schema_models(console_ns, ResultResponse, SavedMessageInfinite
 
 
 def _require_completion_app(installed_app: InstalledAppRef) -> str:
-    app_id = installed_app.app_id
-    try:
-        mode = application_services().app_definitions.get_mode(app_id)
-    except AppDefinitionUnavailableError:
-        raise AppUnavailableError() from None
-
-    if mode != "completion":
+    if installed_app.app_mode != "completion":
         raise NotCompletionAppError()
-    return app_id
+    return installed_app.app_id
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")

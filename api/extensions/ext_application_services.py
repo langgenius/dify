@@ -48,6 +48,7 @@ from repositories.explore_banner_query_repository import ExploreBannerQueryRepos
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -146,6 +147,7 @@ from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthS
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_service import ConversationService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -159,6 +161,7 @@ from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_conversation_service import InstalledAppConversationService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.installed_app_service import InstalledAppService
@@ -207,6 +210,18 @@ from tasks.mail_inner_task import enqueue_inner_mail
 logger = logging.getLogger(__name__)
 
 _EXTENSION_KEY = "application_services"
+
+
+def _generate_installed_app_conversation_name(
+    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str
+) -> str:
+    # Legacy provider and tracing lookups use db.session. Give them their own
+    # scope so teardown releases it before the conversation write transaction,
+    # without removing a session owned by the surrounding request.
+    with current_app.app_context():
+        return ConversationService.generate_name(
+            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id, query=query, app_mode=app_mode
+        )
 
 
 # TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
@@ -303,6 +318,7 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
+    installed_app_conversations: InstalledAppConversationService
     installed_app_generation: InstalledAppGenerationService
     installed_apps: InstalledAppService
     notifications: NotificationService
@@ -680,8 +696,12 @@ def build_application_services(
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=webapp_access,
         installed_app_access=installed_app_access,
+        installed_app_conversations=InstalledAppConversationService(
+            conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
+            generate_name=_generate_installed_app_conversation_name,
+            enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+        ),
         installed_app_generation=InstalledAppGenerationService(
-            app_definitions=app_definitions,
             usage=installed_apps,
             runtime=AppGenerateServiceRuntime(session_factory=database_client),
         ),

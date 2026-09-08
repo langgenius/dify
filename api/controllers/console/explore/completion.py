@@ -147,10 +147,7 @@ class CompletionStopApi(Resource):
     def post(
         self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str
     ) -> tuple[dict[str, object], int]:
-        try:
-            app_mode = application_services().app_definitions.get_mode(installed_app.app_id)
-        except AppDefinitionUnavailableError:
-            raise AppUnavailableError() from None
+        app_mode = installed_app.app_mode
         if app_mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -232,11 +229,7 @@ class ChatStopApi(Resource):
     def post(
         self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str
     ) -> tuple[dict[str, object], int]:
-        try:
-            mode = application_services().app_definitions.get_mode(installed_app.app_id)
-        except AppDefinitionUnavailableError:
-            raise AppUnavailableError() from None
-        app_mode = AppMode.value_of(mode)
+        app_mode = AppMode.value_of(installed_app.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 

@@ -12,12 +12,13 @@ import controllers.console.explore.workflow as workflow_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
-from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
-from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskControlService
 from services.errors.llm import InvokeRateLimitError
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -74,7 +75,6 @@ class _Runtime:
 @dataclass(frozen=True)
 class _Services:
     installed_app_generation: InstalledAppGenerationService
-    app_definitions: AppDefinitionQueryService
     app_tasks: AppTaskControlService
 
 
@@ -91,17 +91,11 @@ def runtime(
         assert installation is not None
         installation.last_used_at = _LAST_USED_AT
     runtime = _Runtime(sqlite_session_factory, harness.installed_app.id)
-    definitions = AppDefinitionQueryService(
-        definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
-        builtin_icon_url_prefix="/tools/icons",
-    )
     services = _Services(
         installed_app_generation=InstalledAppGenerationService(
-            app_definitions=definitions,
             usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
             runtime=runtime,
         ),
-        app_definitions=definitions,
         app_tasks=AppTaskControlService(redis_client=stop_redis),
     )
     monkeypatch.setattr(workflow_module, "application_services", lambda: services)
@@ -315,6 +309,24 @@ def test_workflow_handlers_reject_other_modes_without_side_effects(
 
 
 @pytest.mark.parametrize("action", ["run", "stop"])
+def test_workflow_handlers_use_the_mode_captured_at_admission(
+    harness: _Harness,
+    runtime: _Runtime,
+    stop_redis: _StopRedis,
+    sqlite_session_factory: sessionmaker[Session],
+    action: str,
+) -> None:
+    harness.state.permission_action = lambda: _set_app_mode(harness, sqlite_session_factory, AppMode.CHAT)
+
+    response = harness.app.test_client().post(_url(harness, action), json={"inputs": {}})
+
+    assert response.status_code == 200
+    assert len(runtime.calls) == (1 if action == "run" else 0)
+    assert stop_redis.operations == (["legacy_flag", "graph_command"] if action == "stop" else [])
+    runtime.assert_usage_unchanged()
+
+
+@pytest.mark.parametrize("action", ["run", "stop"])
 @pytest.mark.parametrize("rejection", ["permission", "tenant", "missing"])
 def test_workflow_handlers_require_admission_before_payload_or_task_actions(
     harness: _Harness,
@@ -357,11 +369,12 @@ def test_workflow_handlers_require_admission_before_payload_or_task_actions(
 
 
 @pytest.mark.parametrize("action", ["run", "stop"])
-def test_workflow_handlers_preserve_not_workflow_error_when_app_disappears_after_admission(
+def test_workflow_run_revalidates_app_while_stop_uses_admission_snapshot(
     harness: _Harness,
     runtime: _Runtime,
     stop_redis: _StopRedis,
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
     action: str,
 ) -> None:
     def remove_app() -> None:
@@ -371,14 +384,32 @@ def test_workflow_handlers_preserve_not_workflow_error_when_app_disappears_after
             session.delete(app)
 
     harness.state.permission_action = remove_app
+    services = _Services(
+        installed_app_generation=InstalledAppGenerationService(
+            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+            runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+        ),
+        app_tasks=AppTaskControlService(redis_client=stop_redis),
+    )
+    monkeypatch.setattr(workflow_module, "application_services", lambda: services)
+
+    def generate(**_kwargs: object) -> GenerationResponse:
+        pytest.fail("A removed workflow app must be rejected before generation")
+
+    monkeypatch.setattr(AppGenerateService, "generate", generate)
 
     response = harness.app.test_client().post(_url(harness, action), json={"inputs": {}})
 
-    _assert_json_response(
-        response, status=400, body={"code": "not_workflow_app", "message": "Only support workflow app.", "status": 400}
-    )
+    if action == "run":
+        _assert_json_response(
+            response,
+            status=400,
+            body={"code": "not_workflow_app", "message": "Only support workflow app.", "status": 400},
+        )
+    else:
+        _assert_json_response(response, status=200, body={"result": "success"})
     assert runtime.calls == []
-    assert stop_redis.operations == []
+    assert stop_redis.operations == (["legacy_flag", "graph_command"] if action == "stop" else [])
     runtime.assert_usage_unchanged()
 
 

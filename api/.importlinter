@@ -227,6 +227,30 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:installed-app-conversation-boundary]
+name = Installed app conversation service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.installed_app_conversation_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:conversation-persistence-boundary]
+name = Conversation persistence does not call the legacy conversation application service
+type = forbidden
+source_modules =
+    repositories.installed_app_conversation_repository
+    repositories.conversation_lifecycle
+forbidden_modules =
+    services.conversation_service
+allow_indirect_imports = True
+
 [importlinter:contract:installed-app-generation-boundary]
 name = Installed app generation service is framework and persistence neutral
 type = forbidden

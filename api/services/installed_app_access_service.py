@@ -10,9 +10,12 @@ from services.webapp_access_query_service import WebAppAccessModesQuery, WebAppU
 
 @dataclass(frozen=True, slots=True)
 class InstalledAppRef:
+    """Installation identity and app mode captured during request admission."""
+
     id: str
     app_id: str
     tenant_id: str
+    app_mode: str
 
 
 class InstalledAppAccessStore(Protocol):

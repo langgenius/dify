@@ -41,6 +41,30 @@ class WebAppAccessUnavailableHTTPError(InstalledAppHTTPError):
     code = 503
 
 
+class ConversationNotFoundHTTPError(InstalledAppHTTPError):
+    error_code = "conversation_not_found"
+    description = "The conversation was not found for this account and app."
+    code = 404
+
+
+class ConversationCursorNotFoundHTTPError(InstalledAppHTTPError):
+    error_code = "conversation_cursor_not_found"
+    description = "The conversation cursor is not in the current list. Refresh the list and try again."
+    code = 404
+
+
+class ConversationFirstMessageNotFoundHTTPError(InstalledAppHTTPError):
+    error_code = "conversation_first_message_not_found"
+    description = "The conversation has no message from which to generate a name."
+    code = 404
+
+
+class ConversationNameRequiredHTTPError(InstalledAppHTTPError):
+    error_code = "conversation_name_required"
+    description = "A name is required when automatic naming is disabled."
+    code = 400
+
+
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Not Completion App"

@@ -3,6 +3,7 @@
 import json
 import logging
 from collections.abc import Mapping
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -14,12 +15,25 @@ from flask import Flask
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.credit_usage import CreditUsageAppType
+from core.llm_generator.llm_generator import LLMGenerator
+from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
+from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.model import AccountTrialAppRecord, App, AppMode, AppModelConfig, DifySetup, InstalledApp
+from models.model import (
+    AccountTrialAppRecord,
+    App,
+    AppMode,
+    AppModelConfig,
+    Conversation,
+    DifySetup,
+    InstalledApp,
+    Message,
+)
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_oauth_repository import (
@@ -75,6 +89,7 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.services.test_app_task_service import _StopRedis
 
@@ -634,7 +649,9 @@ def installed_app_ref(sqlite_session_factory: sessionmaker[Session]) -> Installe
         )
         session.add(installed_app)
         session.flush()
-        result = InstalledAppRef(id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id)
+        result = InstalledAppRef(
+            id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id, app_mode=app.mode.value
+        )
     return result
 
 
@@ -1037,6 +1054,133 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
         ]
     else:
         enterprise_request.assert_not_called()
+
+
+@pytest.mark.parametrize("naming_fails", [False, True])
+def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
+    sqlite_session_factory: sessionmaker[Session],
+    installed_app_ref: InstalledAppRef,
+    monkeypatch: pytest.MonkeyPatch,
+    naming_fails: bool,
+) -> None:
+    account_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, installed_app_ref.app_id)
+        assert app is not None
+        app.mode = AppMode.CHAT
+        owner_tenant_id = app.tenant_id
+        conversation = Conversation(
+            app_id=app.id,
+            mode=AppMode.CHAT,
+            name="Original",
+            inputs={"enabled": False},
+            from_source="console",
+            from_account_id=account_id,
+            from_end_user_id=None,
+            invoke_from="explore",
+        )
+        session.add(conversation)
+        session.flush()
+        conversation_id = conversation.id
+        session.add(
+            Message(
+                app_id=app.id,
+                conversation_id=conversation.id,
+                inputs={},
+                query="First question",
+                message={},
+                message_unit_price=Decimal(0),
+                answer="Answer",
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source="console",
+                from_account_id=account_id,
+            )
+        )
+
+    active_connections = 0
+
+    @event.listens_for(sqlite_session_factory.kw["bind"], "checkout")
+    def connection_checked_out(_connection: object, _record: object, _proxy: object) -> None:
+        nonlocal active_connections
+        active_connections += 1
+
+    @event.listens_for(sqlite_session_factory.kw["bind"], "checkin")
+    def connection_checked_in(_connection: object, _record: object) -> None:
+        nonlocal active_connections
+        active_connections -= 1
+
+    naming_sessions: list[Session] = []
+
+    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str) -> str:
+        assert active_connections == 0
+        assert get_credit_usage_metadata() == {"app_type": CreditUsageAppType.CHATBOT, "request_id": "naming-request"}
+        assert (tenant_id, query, c_id, app_id) == (
+            owner_tenant_id,
+            "First question",
+            conversation_id,
+            installed_app_ref.app_id,
+        )
+        # Provider/tracing code still uses the Flask-scoped session. Exercise
+        # that lifecycle rather than letting a pure callback hide a leaked read.
+        naming_session = db.session()
+        naming_session.scalar(select(1))
+        naming_sessions.append(naming_session)
+        if naming_fails:
+            raise RuntimeError("Provider unavailable")
+        return "Generated name"
+
+    queued: list[str] = []
+
+    def enqueue_cleanup(c_id: str) -> None:
+        assert active_connections == 0
+        assert all(not session.in_transaction() for session in naming_sessions)
+        with sqlite_session_factory() as session:
+            stored = session.get(Conversation, c_id)
+            assert stored is not None
+            assert stored.is_deleted
+        queued.append(c_id)
+
+    monkeypatch.setattr(LLMGenerator, "generate_conversation_name", generate_name)
+    monkeypatch.setattr(delete_conversation_related_data, "delay", enqueue_cleanup)
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_StopRedis(),
+    )
+    naming_app = Flask(__name__)
+    admitted_app = services.installed_app_access.get_access(
+        installed_app_id=installed_app_ref.id,
+        tenant_id=installed_app_ref.tenant_id,
+        account_id=account_id,
+    )
+    assert admitted_app.app_mode == "chat"
+    naming_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    db.init_app(naming_app)
+    previous_metadata = get_credit_usage_metadata()
+    with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
+        outer_session = db.session()
+        renamed = services.installed_app_conversations.rename(
+            installed_app=admitted_app,
+            account_id=account_id,
+            conversation_id=conversation_id,
+            name=None,
+            auto_generate=True,
+        )
+        assert get_credit_usage_metadata() == {"request_id": "naming-request"}
+        assert renamed.name == ("Original" if naming_fails else "Generated name")
+        assert renamed.inputs == {"enabled": False}
+        assert len(naming_sessions) == 1
+        assert naming_sessions[0] is not outer_session
+        assert not naming_sessions[0].in_transaction()
+        assert db.session() is outer_session
+        services.installed_app_conversations.delete(
+            installed_app=admitted_app, account_id=account_id, conversation_id=conversation_id
+        )
+    assert get_credit_usage_metadata() == previous_metadata
+    assert queued == [conversation_id]
+    assert active_connections == 0
 
 
 def test_installed_app_visibility_batches_settings_before_permissions_and_preserves_truthiness_filter(
