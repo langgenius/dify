@@ -739,7 +739,7 @@ class TestMessageServiceSuggestedQuestions:
         llm_generator = MagicMock()
         llm_generator.generate_suggested_questions_after_answer.return_value = ["Q1?"]
         monkeypatch.setattr(service_module, "LLMGenerator", llm_generator)
-        monkeypatch.setattr(service_module, "TraceQueueManager", MagicMock())
+        monkeypatch.setattr(service_module, "create_message_trace", MagicMock())
         return model_manager, memory, llm_generator
 
     def test_user_none(self, factory: MessageServiceTestDataFactory, sqlite_session: Session) -> None:

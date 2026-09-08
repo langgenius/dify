@@ -1,141 +1,121 @@
-"""
-Celery task for asynchronous ops trace dispatch.
-
-Trace providers may report explicitly retryable dispatch failures through the
-core retryable exception contract. The task preserves the payload file only
-when Celery accepts the retry request; successful dispatches and terminal
-failures clean up the stored payload.
-
-One concrete producer today is Phoenix nested workflow tracing. The outer
-workflow tool span publishes a restorable parent span context asynchronously,
-while the nested workflow trace may be picked up by Celery first. In that
-ordering window, the provider raises a retryable core exception instead of
-dropping the trace or emitting it under the wrong parent. The task intentionally
-does not know that the provider is Phoenix; it only honors the core retryable
-dispatch contract.
-"""
+"""Export one tenant-owned immutable delivery with an SQL attempt token."""
 
 import json
-import logging
+from datetime import timedelta
+from hashlib import sha256
+from typing import Any
+from uuid import UUID
 
-from celery import shared_task
-from celery.exceptions import Retry
 from flask import current_app
 
-from configs import dify_config
-from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
-from core.ops.entities.trace_entity import trace_info_info_map
-from core.ops.exceptions import RetryableTraceDispatchError
-from core.rag.models.document import Document
-from extensions.ext_redis import redis_client
-from extensions.ext_storage import storage
-from models.model import Message
-from models.workflow import WorkflowRun
-
-logger = logging.getLogger(__name__)
-
-_RETRYABLE_TRACE_DISPATCH_LIMIT = dify_config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES
-_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS = dify_config.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
+from core.ops.trace_data import CompletedTrace
+from repositories.ops_trace_delivery_repository import OpsTraceDeliveryRepository
 
 
-@shared_task(
-    queue="ops_trace",
-    bind=True,
-    max_retries=_RETRYABLE_TRACE_DISPATCH_LIMIT,
-    default_retry_delay=_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS,
-)
-def process_trace_tasks(self, file_info):
-    """
-    Async process trace tasks
-    Usage: process_trace_tasks.delay(tasks_data)
-    """
-    from core.ops.ops_trace_manager import OpsTraceManager
-
-    app_id = file_info.get("app_id")
-    file_id = file_info.get("file_id")
-    file_path = f"{OPS_FILE_PATH}{app_id}/{file_id}.json"
-    file_data = json.loads(storage.load(file_path))
-    trace_info = file_data.get("trace_info")
-    trace_info_type = file_data.get("trace_info_type")
-    enterprise_trace_dispatched = bool(file_data.get("_enterprise_trace_dispatched"))
-    trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
-
-    if trace_info.get("message_data"):
-        trace_info["message_data"] = Message.from_dict(data=trace_info["message_data"])
-    if trace_info.get("workflow_data"):
-        trace_info["workflow_data"] = WorkflowRun.from_dict(data=trace_info["workflow_data"])
-    if trace_info.get("documents"):
-        trace_info["documents"] = [Document.model_validate(doc) for doc in trace_info["documents"]]
-
-    should_delete_file = True
-
+def export_trace_delivery(tenant_id: str, delivery_id: str) -> None:
+    """Celery messages supply IDs only; the stored row supplies all routing."""
+    tenant_id, delivery_id = str(UUID(tenant_id)), str(UUID(delivery_id))
+    repository: OpsTraceDeliveryRepository = current_app.extensions["ops_trace_delivery_repository"]
+    trace_storage = current_app.extensions["ops_trace_storage"]
+    logger = current_app.logger
+    delivery = repository.get_delivery(tenant_id, delivery_id)
+    if delivery is None or delivery.status not in ("pending", "sending"):
+        return
+    parent_ready, parent_reference = repository.read_parent_reference(delivery)
+    if not parent_ready:
+        return
+    delivery = repository.claim_delivery(tenant_id, delivery_id)
+    if delivery is None:
+        return
     try:
-        trace_type = trace_info_info_map.get(trace_info_type)
-        if trace_type:
-            trace_info = trace_type(**trace_info)
+        from core.ops.provider_export import export_trace
+        from services.ops_trace_service import load_trace_provider_config
 
-        from extensions.ext_enterprise_telemetry import is_enabled as is_ee_telemetry_enabled
-
-        if is_ee_telemetry_enabled() and not enterprise_trace_dispatched:
-            from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
-
-            try:
-                EnterpriseOtelTrace().trace(trace_info)
-            except Exception:
-                logger.exception("Enterprise trace failed for app_id: %s", app_id)
-            else:
-                file_data["_enterprise_trace_dispatched"] = True
-                enterprise_trace_dispatched = True
-
-        if trace_instance:
-            with current_app.app_context():
-                trace_instance.trace(trace_info)
-
-        logger.info("Processing trace tasks success, app_id: %s", app_id)
-    except RetryableTraceDispatchError as e:
-        # Retryable dispatch failures represent a transient provider-side
-        # ordering gap, not corrupt payload data. Keep the payload only after
-        # Celery accepts the retry request; otherwise this attempt becomes a
-        # terminal failure and the stored file is cleaned up in `finally`.
-        #
-        # Enterprise telemetry runs before provider dispatch. If it already ran
-        # and provider dispatch asks for a retry, persist that private flag so
-        # the next attempt does not emit the same enterprise trace twice.
-        if self.request.retries >= _RETRYABLE_TRACE_DISPATCH_LIMIT:
-            logger.exception("Retryable trace dispatch budget exhausted, app_id: %s", app_id)
-            failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
-            redis_client.incr(failed_key)
-        else:
-            logger.warning(
-                "Retryable trace dispatch failure, scheduling retry %s/%s for app_id %s: %s",
-                self.request.retries + 1,
-                _RETRYABLE_TRACE_DISPATCH_LIMIT,
-                app_id,
-                e,
-            )
-            try:
-                if enterprise_trace_dispatched:
-                    storage.save(file_path, json.dumps(file_data).encode("utf-8"))
-                raise self.retry(exc=e, countdown=_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS)
-            except Retry:
-                should_delete_file = False
-                raise
-            except Exception:
-                logger.exception("Failed to schedule trace dispatch retry, app_id: %s", app_id)
-                failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
-                redis_client.incr(failed_key)
-    except Exception as e:
-        logger.exception("Processing trace tasks failed, app_id: %s", app_id)
-        failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
-        redis_client.incr(failed_key)
-    finally:
-        if should_delete_file:
-            try:
-                storage.delete(file_path)
-            except Exception as e:
-                logger.warning(
-                    "Failed to delete trace file %s for app_id %s: %s",
-                    file_path,
-                    app_id,
-                    e,
+        if delivery.updated_at - delivery.created_at > timedelta(days=1):
+            raise ValueError("delivery_expired")
+        if delivery.schema_version != 2 or not 0 < delivery.trace_size_bytes <= 8 * 1024 * 1024:
+            raise ValueError("invalid_trace_schema")
+        # Streaming avoids allocating an unbounded replacement object before checking its size.
+        trace_parts = bytearray()
+        for chunk in trace_storage.load_stream(delivery.trace_storage_key()):
+            if len(trace_parts) + len(chunk) > delivery.trace_size_bytes:
+                raise ValueError("invalid_trace_size")
+            trace_parts.extend(chunk)
+        if len(trace_parts) != delivery.trace_size_bytes or sha256(trace_parts).hexdigest() != delivery.trace_sha256:
+            raise ValueError("invalid_trace_digest")
+        completed_trace = CompletedTrace.model_validate_json(trace_parts)
+        repository.validate_trace_owner(delivery, completed_trace)
+        if completed_trace.parent is not None and parent_reference is None:
+            missing_parent = completed_trace.parent.export_id
+            spans = tuple(
+                span.model_copy(
+                    update={
+                        "attributes": {
+                            **span.attributes,
+                            "dify.parent_export_id": missing_parent,
+                            "dify.parent_status": delivery.error_code or "parent_unavailable",
+                        }
+                    }
                 )
+                if span.span_id == completed_trace.root_span_id
+                else span
+                for span in completed_trace.spans
+            )
+            completed_trace = completed_trace.model_copy(
+                update={
+                    "parent": None,
+                    "spans": spans,
+                    "links": (*completed_trace.links, missing_parent),
+                }
+            )
+        provider_settings = repository.provider_settings(delivery)
+        provider_config: dict[str, Any] = load_trace_provider_config(provider_settings)
+        if not repository.extend_attempt_lease(delivery):
+            return
+        parent_spans = export_trace(completed_trace, provider_settings, provider_config, parent_reference)
+        # Late operations attach to the original root; nested trees export together.
+        root_reference = parent_spans.spans.get(completed_trace.root_span_id)
+        parent_references = {completed_trace.root_span_id: root_reference} if root_reference is not None else {}
+        receipt_error = None
+        if len(json.dumps(parent_references).encode()) > 64 * 1024:
+            parent_references, receipt_error = {}, "parent_reference_too_large"
+        repository.finish_attempt(delivery, "succeeded", receipt_error, parent_references=parent_references)
+    except Exception as error:
+        from configs import dify_config
+
+        # Exception strings can contain credentials or traced inputs; persist only bounded codes.
+        retryable = not isinstance(error, (ValueError, TypeError, PermissionError, ImportError, NotImplementedError))
+        retryable = getattr(error, "retryable", retryable)
+        error_code = "export_failed" if retryable else "invalid_trace_or_configuration"
+        if isinstance(error, ValueError) and str(error) in (
+            "invalid_trace_schema",
+            "invalid_trace_size",
+            "invalid_trace_digest",
+            "trace_owner_mismatch",
+            "tenant_deleted",
+            "source_owner_mismatch",
+            "workflow_owner_mismatch",
+            "workflow_run_owner_mismatch",
+            "conversation_owner_mismatch",
+            "message_owner_mismatch",
+            "configuration_changed",
+            "delivery_expired",
+        ):
+            error_code = str(error)
+        if isinstance(error, PermissionError):
+            error_code = "configuration_changed"
+        maximum_attempts = dify_config.OPS_TRACE_MAX_ATTEMPTS
+        retry = retryable and delivery.attempt_count < maximum_attempts
+        delay = min(dify_config.OPS_TRACE_RETRY_DELAY_SECONDS * 2 ** min(delivery.attempt_count - 1, 6), 300)
+        retry_after = getattr(error, "retry_after", None)
+        if isinstance(retry_after, int):
+            delay = min(max(delay, retry_after), 3600)
+        status = "pending" if retry else "cancelled" if error_code == "configuration_changed" else "failed"
+        repository.finish_attempt(delivery, status, error_code, retry_delay_seconds=delay)
+        logger.warning(
+            "OPS export failed tenant_id=%s delivery_id=%s retry=%s error_code=%s",
+            tenant_id,
+            delivery_id,
+            retry,
+            error_code,
+        )

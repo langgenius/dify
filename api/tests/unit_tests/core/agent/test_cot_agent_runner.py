@@ -77,7 +77,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner
     application_generate_entity.model_conf.stop = []
     application_generate_entity.model_conf.provider = "openai"
     application_generate_entity.model_conf.parameters = {}
-    application_generate_entity.trace_manager = None
+    application_generate_entity.trace_recorder = None
     application_generate_entity.invoke_from = "test"
 
     app_config = MagicMock()

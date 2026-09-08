@@ -12,7 +12,7 @@ from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine_events import GraphRunFailedEvent, NodeRunSucceededEvent
+from graphon.engine_events import GraphRunFailedEvent, GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
@@ -176,6 +176,7 @@ class TestWorkflowEntryInit:
 class TestWorkflowEntryRun:
     def test_run_swallows_generate_task_stopped_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._workflow_trace = None
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
         entry._response_stream_filter = ResponseStreamFilter()
@@ -183,6 +184,7 @@ class TestWorkflowEntryRun:
         assert list(entry.run()) == []
 
     def test_iter_dify_graph_engine_events_applies_response_stream_filter(self):
+        filtered_event = GraphRunSucceededEvent(outputs={"answer": ["original"]})
         graph_engine = MagicMock()
         graph_engine.run.return_value = iter([sentinel.raw_event])
 
@@ -205,12 +207,14 @@ class TestWorkflowEntryRun:
             patch.object(
                 workflow_entry,
                 "filter_engine_events",
-                return_value=iter([sentinel.filtered_event]),
+                return_value=iter([filtered_event]),
             ) as filter_engine_events,
         ):
             events = list(workflow_entry.iter_dify_graph_engine_events(graph_engine))
 
-        assert events == [sentinel.filtered_event]
+        assert events == [filtered_event]
+        events[0].outputs["answer"][0] = "changed"
+        assert filtered_event.outputs["answer"] == ["original"]
         from_engine.assert_called_once_with(graph_engine)
         response_stream_filter_cls.assert_called_once_with()
         filter_engine_events.assert_called_once_with(
@@ -221,6 +225,7 @@ class TestWorkflowEntryRun:
 
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._workflow_trace = None
         entry.graph_engine = sentinel.graph_engine
         entry._response_stream_filter = sentinel.response_stream_filter
 
@@ -236,6 +241,7 @@ class TestWorkflowEntryRun:
 
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._workflow_trace = None
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = RuntimeError("boom")
         entry._response_stream_filter = ResponseStreamFilter()

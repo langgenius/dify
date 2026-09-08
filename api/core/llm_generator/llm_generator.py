@@ -25,8 +25,6 @@ from core.llm_generator.prompts import (
 )
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -41,6 +39,7 @@ from graphon.model_runtime.entities.model_entities import ModelType, ParameterTy
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
+from services.ops_trace_service import create_message_trace
 
 logger = logging.getLogger(__name__)
 
@@ -279,19 +278,23 @@ class LLMGenerator:
         if len(name) > 75:
             name = name[:75] + "..."
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.GENERATE_NAME_TRACE,
-                conversation_id=conversation_id,
-                message_id=message_id,
-                generate_conversation_name=name,
-                inputs=prompt,
-                timer=timer,
-                tenant_id=tenant_id,
-            )
+        trace_recorder = create_message_trace(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            message_id=message_id,
+            conversation_id=conversation_id,
         )
+        if trace_recorder:
+            trace_recorder.record_operation(
+                "generate_conversation_name",
+                span_type="llm",
+                inputs=prompt,
+                outputs=name,
+                usage=response.usage.model_dump(mode="json"),
+                timer=timer,
+                independent=True,
+                attributes={"operation_type": "generate_name", "model_name": response.model},
+            )
 
         return name
 

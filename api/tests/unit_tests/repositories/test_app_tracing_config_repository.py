@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.model import App, AppMode, TraceAppConfig
 from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from services.app_tracing_config_service import AppTracingConfigAppNotFoundError, AppTracingConfigRecord
+from services.app_tracing_config_service import (
+    AppTracingConfigAppNotFoundError,
+    AppTracingConfigChangedError,
+    AppTracingConfigRecord,
+)
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -64,6 +68,7 @@ def test_config_lifecycle_is_persisted_by_owned_transactions(
     assert record.tracing_config == {"public_key": "original"}
 
     assert repository.update(
+        expected_revision=1,
         workspace_id=_WORKSPACE_ID,
         app_id=_APP_ID,
         tracing_provider=_PROVIDER,
@@ -76,6 +81,7 @@ def test_config_lifecycle_is_persisted_by_owned_transactions(
 
     assert repository.delete(workspace_id=_WORKSPACE_ID, app_id=_APP_ID, tracing_provider=_PROVIDER)
     assert not repository.update(
+        expected_revision=1,
         workspace_id=_WORKSPACE_ID,
         app_id=_APP_ID,
         tracing_provider=_PROVIDER,
@@ -109,6 +115,7 @@ def test_all_operations_reject_apps_outside_the_active_workspace_scope(
             tracing_config={},
         ),
         lambda: repository.update(
+            expected_revision=1,
             workspace_id=workspace_id,
             app_id=_APP_ID,
             tracing_provider=_PROVIDER,
@@ -134,7 +141,7 @@ def test_record_mapping_does_not_expose_the_orm_model_or_its_config_dict(
     sqlite_session.add(config)
     sqlite_session.commit()
 
-    record = SQLAlchemyAppTracingConfigRepository._to_record(config)
+    record = SQLAlchemyAppTracingConfigRepository._to_record(config, 0)
 
     assert isinstance(record, AppTracingConfigRecord)
     assert record is not config
@@ -143,3 +150,17 @@ def test_record_mapping_does_not_expose_the_orm_model_or_its_config_dict(
     assert record.tracing_config is not None
     record.tracing_config["public_key"] = "changed"
     assert config.tracing_config == {"public_key": "original"}
+
+
+def test_config_update_rejects_stale_revision_after_verification(sqlite_session, sqlite_session_factory):
+    _persist_app(sqlite_session)
+    repository = _repository(sqlite_session_factory)
+    arguments = {"workspace_id": _WORKSPACE_ID, "app_id": _APP_ID, "tracing_provider": _PROVIDER}
+    assert repository.create(**arguments, tracing_config={"public_key": "first"})
+    original = repository.get(**arguments)
+    assert original.revision == 1
+    assert repository.update(**arguments, expected_revision=original.revision, tracing_config={"public_key": "second"})
+    with pytest.raises(AppTracingConfigChangedError):
+        repository.update(**arguments, expected_revision=original.revision, tracing_config={"public_key": "stale"})
+    assert repository.get(**arguments).tracing_config == {"public_key": "second"}
+    assert repository.get(**arguments).revision == 2
