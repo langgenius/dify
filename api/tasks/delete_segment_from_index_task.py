@@ -72,21 +72,10 @@ def delete_segment_from_index_task(
                     )
                 ).all()
                 if segment_attachment_bindings:
-                    attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
-                    attachment_storage_keys = list(
-                        dict.fromkeys(
-                            session.scalars(
-                                select(UploadFile.key).where(
-                                    UploadFile.tenant_id == dataset.tenant_id,
-                                    UploadFile.id.in_(attachment_ids),
-                                )
-                            ).all()
-                        )
-                    )
-                    index_processor.clean(
-                        session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
-                    )
                     segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
+                    attachment_ids = list(
+                        dict.fromkeys(binding.attachment_id for binding in segment_attachment_bindings)
+                    )
 
                     for i in range(0, len(segment_attachment_bind_ids), 1000):
                         segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
@@ -97,13 +86,43 @@ def delete_segment_from_index_task(
                         )
                         session.execute(segment_attachment_bind_delete_stmt)
 
-                    # delete upload file
-                    session.execute(
-                        delete(UploadFile).where(
-                            UploadFile.tenant_id == dataset.tenant_id,
-                            UploadFile.id.in_(attachment_ids),
-                        )
+                    session.flush()
+                    remaining_attachment_ids = set(
+                        session.scalars(
+                            select(SegmentAttachmentBinding.attachment_id).where(
+                                SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
+                            )
+                        ).all()
                     )
+                    orphan_attachment_ids = [
+                        attachment_id
+                        for attachment_id in attachment_ids
+                        if attachment_id not in remaining_attachment_ids
+                    ]
+
+                    if orphan_attachment_ids:
+                        attachment_storage_keys = list(
+                            dict.fromkeys(
+                                session.scalars(
+                                    select(UploadFile.key).where(
+                                        UploadFile.tenant_id == dataset.tenant_id,
+                                        UploadFile.id.in_(orphan_attachment_ids),
+                                    )
+                                ).all()
+                            )
+                        )
+                        index_processor.clean(
+                            session=session, dataset=dataset, node_ids=orphan_attachment_ids, with_keywords=False
+                        )
+                        session.execute(
+                            delete(UploadFile).where(
+                                UploadFile.tenant_id == dataset.tenant_id,
+                                UploadFile.id.in_(orphan_attachment_ids),
+                            )
+                        )
+                    else:
+                        attachment_storage_keys = []
+
                     session.commit()
 
                     for storage_key in attachment_storage_keys:
