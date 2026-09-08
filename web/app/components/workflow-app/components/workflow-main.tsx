@@ -74,6 +74,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
+  const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -575,6 +576,13 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     <DifyBuilderProvider
       appId={appId}
       canEdit={appACLCapabilities.canEdit}
+      canStartCreation={
+        isWorkflowDataLoaded &&
+        (!isCollaborationEnabled ||
+          (collaborationGraphState.appId === appId &&
+            collaborationGraphState.isReady &&
+            collaborationManager.canPersistLocalGraph()))
+      }
       getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
       onFocusCanvas={handleDifyBuilderFocusCanvas}
       onSyncDraft={handleDifyBuilderSyncDraft}
