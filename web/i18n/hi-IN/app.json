@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "\"देखें\" बटन जहाँ खुलता है। छिपाने के लिए खाली छोड़ें।",
   "tracing.otel.resourceAttributes": "Resource विशेषताएँ (JSON)",
   "tracing.otel.serviceName": "सेवा का नाम",
+  "tracing.otel.serviceNameHint": "एक-दूसरे को कॉल करने वाले ऐप्स के ट्रेस केवल तभी एक ट्रेस में नेस्ट होते हैं जब दोनों ऐप्स समान endpoint और सर्विस नाम का उपयोग करते हैं।",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "आपके LLM वर्कफ़्लोज़ और एजेंट्स के लिए ओपन-सोर्स और OpenTelemetry-आधारित ऑब्ज़र्वेबिलिटी, मूल्यांकन, प्रॉम्प्ट इंजीनियरिंग और प्रयोग का प्लेटफ़ॉर्म।",
   "tracing.phoenix.title": "Phoenix",

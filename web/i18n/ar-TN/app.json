@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "الوجهة التي يفتحها زر \"عرض\". اتركه فارغًا لإخفائه.",
   "tracing.otel.resourceAttributes": "سمات Resource (JSON)",
   "tracing.otel.serviceName": "اسم الخدمة",
+  "tracing.otel.serviceNameHint": "لا تتداخل آثار التطبيقات التي تستدعي بعضها في أثر واحد إلا إذا استخدم كلا التطبيقين نفس نقطة النهاية ونفس اسم الخدمة.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "منصة مفتوحة المصدر تعتمد على OpenTelemetry للمراقبة والتقييم وهندسة المطالبات والتجريب لتدفقات عمل LLM والوكلاء.",
   "tracing.phoenix.title": "Phoenix",

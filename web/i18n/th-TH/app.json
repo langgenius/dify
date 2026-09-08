@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "ปลายทางของปุ่ม \"ดู\" เว้นว่างเพื่อซ่อนปุ่ม",
   "tracing.otel.resourceAttributes": "แอตทริบิวต์ Resource (JSON)",
   "tracing.otel.serviceName": "ชื่อบริการ",
+  "tracing.otel.serviceNameHint": "Trace ของแอปที่เรียกกันจะซ้อนรวมเป็น trace เดียวก็ต่อเมื่อทั้งสองแอปใช้ endpoint และชื่อบริการเดียวกัน",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "แพลตฟอร์มโอเพ่นซอร์สและ OpenTelemetry สำหรับการสังเกตการณ์ การประเมิน วิศวกรรมพรอมต์ และการทดลองสำหรับเวิร์กโฟลว์และตัวแทน LLM ของคุณ",
   "tracing.phoenix.title": "Phoenix",

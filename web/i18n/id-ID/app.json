@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Tujuan tombol \"Lihat\". Kosongkan untuk menyembunyikannya.",
   "tracing.otel.resourceAttributes": "Atribut Resource (JSON)",
   "tracing.otel.serviceName": "Nama Layanan",
+  "tracing.otel.serviceNameHint": "Trace dari aplikasi yang saling memanggil hanya digabung menjadi satu trace bersarang jika kedua aplikasi memakai endpoint dan nama layanan yang sama.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Observabilitas, evaluasi, rekayasa cepat, dan platform eksperimen berbasis sumber terbuka & OpenTelemetri untuk alur kerja dan agen LLM Anda.",
   "tracing.phoenix.title": "Phoenix",

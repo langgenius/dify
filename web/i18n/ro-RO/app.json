@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Destinația butonului „Vizualizare”. Lăsați gol pentru a-l ascunde.",
   "tracing.otel.resourceAttributes": "Atribute Resource (JSON)",
   "tracing.otel.serviceName": "Numele serviciului",
+  "tracing.otel.serviceNameHint": "Urmele aplicațiilor care se apelează reciproc sunt imbricate într-o singură urmă doar dacă ambele aplicații folosesc același endpoint și același nume de serviciu.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Platformă open-source și bazată pe OpenTelemetry pentru observabilitate, evaluare, inginerie de prompturi și experimentare pentru fluxurile de lucru și agenții LLM.",
   "tracing.phoenix.title": "Phoenix",

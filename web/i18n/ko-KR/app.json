@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "'보기' 버튼이 여는 주소입니다. 비워 두면 버튼이 표시되지 않습니다.",
   "tracing.otel.resourceAttributes": "Resource 속성 (JSON)",
   "tracing.otel.serviceName": "서비스 이름",
+  "tracing.otel.serviceNameHint": "서로 호출하는 앱의 트레이스는 두 앱의 엔드포인트와 서비스 이름이 같을 때만 하나의 트레이스로 중첩됩니다.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "오픈소스 및 OpenTelemetry 기반의 가시성, 평가, 프롬프트 엔지니어링 및 실험 플랫폼으로, LLM 워크플로우 및 에이전트를 지원합니다.",
   "tracing.phoenix.title": "Phoenix",

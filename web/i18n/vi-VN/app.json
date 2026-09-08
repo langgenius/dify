@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Đích đến của nút \"Xem\". Để trống để ẩn nút.",
   "tracing.otel.resourceAttributes": "Thuộc tính Resource (JSON)",
   "tracing.otel.serviceName": "Tên dịch vụ",
+  "tracing.otel.serviceNameHint": "Trace của các ứng dụng gọi lẫn nhau chỉ được lồng vào một trace khi cả hai ứng dụng dùng cùng endpoint và cùng tên dịch vụ.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Nền tảng mã nguồn mở và dựa trên OpenTelemetry cho khả năng quan sát, đánh giá, kỹ thuật prompt và thử nghiệm cho quy trình làm việc và tác nhân LLM của bạn.",
   "tracing.phoenix.title": "Phoenix",

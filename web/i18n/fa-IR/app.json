@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "مقصد دکمه «مشاهده». برای پنهان کردن آن، خالی بگذارید.",
   "tracing.otel.resourceAttributes": "ویژگی‌های Resource (JSON)",
   "tracing.otel.serviceName": "نام سرویس",
+  "tracing.otel.serviceNameHint": "ردهای برنامه‌هایی که یکدیگر را فراخوانی می‌کنند تنها زمانی در یک رد تودرتو می‌شوند که هر دو برنامه از یک نقطه پایانی و نام سرویس یکسان استفاده کنند.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "پلتفرم متن‌باز و مبتنی بر OpenTelemetry برای مشاهده‌پذیری، ارزیابی، مهندسی پرامپت و آزمایش برای جریان‌های کاری و عامل‌های LLM شما.",
   "tracing.phoenix.title": "Phoenix",

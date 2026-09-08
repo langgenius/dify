@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Куда ведёт кнопка «Просмотр». Оставьте пустым, чтобы скрыть её.",
   "tracing.otel.resourceAttributes": "Атрибуты Resource (JSON)",
   "tracing.otel.serviceName": "Имя сервиса",
+  "tracing.otel.serviceNameHint": "Трассы приложений, вызывающих друг друга, объединяются в одну вложенную трассу только если оба приложения используют один и тот же endpoint и имя сервиса.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Открытая и основанная на OpenTelemetry платформа для наблюдаемости, оценки, инженерии подсказок и экспериментов для ваших рабочих процессов и агентов LLM.",
   "tracing.phoenix.title": "Phoenix",

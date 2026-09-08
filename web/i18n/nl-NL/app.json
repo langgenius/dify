@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Doel van de knop 'Bekijken'. Laat leeg om deze te verbergen.",
   "tracing.otel.resourceAttributes": "Resource-attributen (JSON)",
   "tracing.otel.serviceName": "Servicenaam",
+  "tracing.otel.serviceNameHint": "Traces van apps die elkaar aanroepen worden alleen in één trace genest als beide apps hetzelfde endpoint en dezelfde servicenaam gebruiken.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Open-source & OpenTelemetry-based observability, evaluation, prompt engineering and experimentation platform for your LLM workflows and agents.",
   "tracing.phoenix.title": "Phoenix",

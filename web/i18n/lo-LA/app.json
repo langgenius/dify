@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "ປາຍທາງຂອງປຸ່ມ \"ເບິ່ງ\". ປ່ອຍວ່າງເພື່ອເຊື່ອງປຸ່ມ.",
   "tracing.otel.resourceAttributes": "ຄຸນລັກສະນະ Resource (JSON)",
   "tracing.otel.serviceName": "ຊື່ບໍລິການ",
+  "tracing.otel.serviceNameHint": "Trace ຂອງແອັບທີ່ເອີ້ນກັນຈະຖືກຊ້ອນເປັນ trace ດຽວກໍຕໍ່ເມື່ອທັງສອງແອັບໃຊ້ endpoint ແລະຊື່ບໍລິການດຽວກັນ.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "ແພລັດຟອມຕິດຕາມ ແລະ ປະເມີນຜົນແບບ open-source ທີ່ອີງໃສ່ OpenTelemetry ສຳລັບ Workflow ແລະ ເອເຈນ LLM ຂອງທ່ານ.",
   "tracing.phoenix.title": "Phoenix",

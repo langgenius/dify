@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "「查看」按钮跳转的地址。留空则不显示该按钮。",
   "tracing.otel.resourceAttributes": "Resource 属性（JSON）",
   "tracing.otel.serviceName": "服务名",
+  "tracing.otel.serviceNameHint": "互相调用的应用只有在 Endpoint 和服务名都相同时，Trace 才会嵌套为一条。",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "开源且基于OpenTelemetry的可观测性、评估、提示工程和实验平台，适用于您的LLM工作流程和代理。",
   "tracing.phoenix.title": "Phoenix",

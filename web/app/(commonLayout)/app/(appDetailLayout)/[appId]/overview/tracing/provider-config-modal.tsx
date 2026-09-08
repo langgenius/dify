@@ -835,6 +835,7 @@ const ProviderConfigModal: FC<Props> = ({
                           value={(config as OTelConfig).service_name}
                           onChange={handleConfigChange('service_name')}
                           placeholder="dify"
+                          description={t(($) => $['tracing.otel.serviceNameHint'], { ns: 'app' })!}
                         />
                         <Field
                           label={t(($) => $['tracing.otel.resourceAttributes'], { ns: 'app' })!}

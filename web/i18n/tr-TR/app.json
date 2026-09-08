@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "\"Görüntüle\" düğmesinin açtığı adres. Gizlemek için boş bırakın.",
   "tracing.otel.resourceAttributes": "Resource Öznitelikleri (JSON)",
   "tracing.otel.serviceName": "Servis Adı",
+  "tracing.otel.serviceNameHint": "Birbirini çağıran uygulamaların izleri yalnızca her iki uygulama da aynı uç noktayı ve hizmet adını kullandığında tek bir iz altında iç içe yerleşir.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "LLM iş akışlarınız ve ajanlarınız için açık kaynaklı ve OpenTelemetry tabanlı gözlemlenebilirlik, değerlendirme, istem mühendisliği ve deney platformu.",
   "tracing.phoenix.title": "Phoenix",

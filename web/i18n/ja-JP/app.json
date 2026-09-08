@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "「表示」ボタンの遷移先。空欄にするとボタンを表示しません。",
   "tracing.otel.resourceAttributes": "Resource 属性（JSON）",
   "tracing.otel.serviceName": "サービス名",
+  "tracing.otel.serviceNameHint": "アプリ同士が呼び出し合う場合、両方のアプリのエンドポイントとサービス名が同じときにのみトレースが 1 つに入れ子になります。",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "オープンソースおよびOpenTelemetryベースの可観測性、評価、プロンプトエンジニアリング、実験プラットフォームで、LLMワークフローおよびエージェントに対応します。",
   "tracing.phoenix.title": "Phoenix",

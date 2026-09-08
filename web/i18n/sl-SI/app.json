@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Cilj gumba »Ogled«. Pustite prazno, da ga skrijete.",
   "tracing.otel.resourceAttributes": "Atributi Resource (JSON)",
   "tracing.otel.serviceName": "Ime storitve",
+  "tracing.otel.serviceNameHint": "Sledi aplikacij, ki kličeta druga drugo, se gnezdijo v eno sled le, če obe aplikaciji uporabljata isto končno točko in isto ime storitve.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Odprtokodna in na OpenTelemetry osnovana platforma za opazovanje, vrednotenje, inženiring pozivov ter eksperimentiranje za vaše LLM poteke dela in agente.",
   "tracing.phoenix.title": "Phoenix",

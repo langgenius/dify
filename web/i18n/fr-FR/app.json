@@ -271,6 +271,7 @@
   "tracing.otel.projectUrlHint": "Cible du bouton « Voir ». Laissez vide pour le masquer.",
   "tracing.otel.resourceAttributes": "Attributs Resource (JSON)",
   "tracing.otel.serviceName": "Nom du service",
+  "tracing.otel.serviceNameHint": "Les traces d'applications qui s'appellent mutuellement ne sont imbriquées en une seule trace que si les deux applications utilisent le même point de terminaison et le même nom de service.",
   "tracing.otel.title": "OpenTelemetry",
   "tracing.phoenix.description": "Plateforme open-source basée sur OpenTelemetry pour l’observabilité, l’évaluation, l’ingénierie des prompts et l’expérimentation de vos flux de travail et agents LLM.",
   "tracing.phoenix.title": "Phoenix",
