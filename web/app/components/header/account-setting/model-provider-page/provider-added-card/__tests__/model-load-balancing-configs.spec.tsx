@@ -15,13 +15,10 @@ import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 
 let mockModelLoadBalancingEnabled = true
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelLoadBalancingEnabled: boolean }) => boolean,
-  ) => selector({ modelLoadBalancingEnabled: mockModelLoadBalancingEnabled }),
-}))
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { model_load_balancing_enabled: mockModelLoadBalancingEnabled },
+  })
 
 vi.mock('../cooldown-timer', () => ({
   default: ({

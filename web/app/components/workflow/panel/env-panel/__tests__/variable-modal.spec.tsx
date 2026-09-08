@@ -1,8 +1,8 @@
-import type { ReactElement } from 'react'
 import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -21,12 +21,12 @@ type MockModelParameterModalProps = {
   provider: string
   modelId: string
   completionParams: Record<string, unknown>
-  modelList?: Model[]
+  modelList?: ProviderWithModelsResponse[]
   setModel: (model: { provider: string; modelId: string; mode?: string }) => void
   onCompletionParamsChange: (params: Record<string, unknown>) => void
 }
 
-let mockTextGenerationModelList: Model[] = []
+let mockTextGenerationModelList: ProviderWithModelsResponse[] = []
 let latestModelParameterModalProps: MockModelParameterModalProps | undefined
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -89,7 +89,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockToastError = vi.mocked(toast.error)
 
-const createModelItem = (model: string, mode: string): ModelItem => ({
+const createModelItem = (model: string, mode: string): ProviderModelWithStatusEntity => ({
   model,
   label: { en_US: model, zh_Hans: model },
   model_type: ModelTypeEnum.textGeneration,
@@ -100,7 +100,8 @@ const createModelItem = (model: string, mode: string): ModelItem => ({
   load_balancing_enabled: false,
 })
 
-const createModelProvider = (): Model => ({
+const createModelProvider = (): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },

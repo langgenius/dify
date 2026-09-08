@@ -1,8 +1,6 @@
 'use client'
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -34,7 +32,7 @@ type IndexingSectionProps = {
   setKeywordNumber: (value: number) => void
   embeddingModel: DefaultModel
   setEmbeddingModel: (value: DefaultModel) => void
-  embeddingModelList: Model[]
+  embeddingModelList: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
   setRetrievalConfig: (value: RetrievalConfig) => void
   summaryIndexSetting: SummaryIndexSettingType | undefined
@@ -150,7 +148,7 @@ const IndexingSection = ({
         </div>
       )}
 
-      {/* Embedding Model */}
+      {/* Embedding ProviderWithModelsResponse */}
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
           <div className="flex w-45 shrink-0 flex-col pt-1">

@@ -14,7 +14,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
@@ -226,7 +226,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { skipToken } = await import('@tanstack/react-query')
   const getChatMessagesQueryKey = (input: unknown) => ['agent-chat-conversation-messages', input]
 

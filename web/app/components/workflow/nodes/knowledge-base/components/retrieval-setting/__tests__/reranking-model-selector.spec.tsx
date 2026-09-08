@@ -1,7 +1,5 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -12,7 +10,7 @@ import RerankingModelSelector from '../reranking-model-selector'
 
 type MockModelSelectorProps = {
   value?: DefaultModel
-  models: Model[]
+  models: ProviderWithModelsResponse[]
   onValueChange?: (model: DefaultModel) => void
 }
 
@@ -45,6 +43,7 @@ describe('RerankingModelSelector', () => {
     mockUseModelListAndDefaultModel.mockReturnValue({
       modelList: [
         createModel({
+          tenant_id: 'test-workspace',
           provider: 'cohere',
           label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
           models: [

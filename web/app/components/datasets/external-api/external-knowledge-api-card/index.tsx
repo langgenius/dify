@@ -15,7 +15,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   checkUsageExternalAPI,
   deleteExternalAPI,

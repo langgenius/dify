@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "مدل پیش‌فرض را برای ورودی متن به گفتار در مکالمه تنظیم کنید.",
   "modelProvider.upgradeForLoadBalancing": "برای فعال کردن تعادل بار، طرح خود را ارتقا دهید.",
   "modelProvider.used": "استفاده‌شده",
+  "navigation.primary": "منوی اصلی",
   "navigation.skipToMain": "پرش به محتوای اصلی",
   "noData": "بدون داده",
   "operation.add": "افزودن",

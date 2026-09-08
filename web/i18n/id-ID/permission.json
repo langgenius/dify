@@ -34,6 +34,7 @@
   "accessRule.updated": "Aturan akses berhasil diperbarui",
   "accessRule.workspaceOwner": "Pemilik Workspace",
   "common.duplicateAction": "Duplikat",
+  "group.agent": "Agen",
   "group.app": "Aplikasi",
   "group.app_acl": "Izin akses aplikasi",
   "group.billing": "Penagihan",

@@ -1,14 +1,22 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  seedFeatures,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
 import ActionMenu from '../index'
 
+let mockPlanType: CloudPlan = 'professional'
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+
 const renderActionMenu = (ui: React.ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+  seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
+  seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
   return renderWorkflowComponent(ui, { queryClient })
 }
 
@@ -19,21 +27,11 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-let mockPlanType: CloudPlan = 'professional'
-let mockEnableBilling = true
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-    enableBilling: mockEnableBilling,
-  }),
-}))
-
 describe('ActionMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPlanType = 'professional'
-    mockEnableBilling = true
+    deploymentEdition = 'CLOUD'
   })
 
   it('toggles the trigger and forwards menu clicks', async () => {

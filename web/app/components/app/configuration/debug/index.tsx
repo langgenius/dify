@@ -9,6 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
@@ -34,7 +35,7 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/console'
 import { sendCompletionMessage } from '@/service/debug'
 import { AppSourceType } from '@/service/share'
 import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
@@ -48,7 +49,7 @@ import DebugWithSingleModel from './debug-with-single-model'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from './types'
 
 type IDebug = {
-  isAPIKeySet: boolean
+  isPreview?: boolean
   onSetting: () => void
   inputs: Inputs
   modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
@@ -58,7 +59,7 @@ type IDebug = {
 }
 
 const Debug: FC<IDebug> = ({
-  isAPIKeySet = true,
+  isPreview = false,
   onSetting,
   inputs,
   modelParameterParams,
@@ -332,9 +333,16 @@ const Debug: FC<IDebug> = ({
     }
   })
 
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const hasActiveProvider =
+    isPreview || !!textGenerationModelList?.some((provider) => provider.status === 'active')
   const handleChangeToSingleModel = (item: ModelAndParameter) => {
-    const currentProvider = textGenerationModelList.find(
+    const currentProvider = textGenerationModelList?.find(
       (modelItem) => modelItem.provider === item.provider,
     )
     const currentModel = currentProvider?.models.find((model) => model.model === item.model)
@@ -342,8 +350,11 @@ const Debug: FC<IDebug> = ({
     modelParameterParams.setModel({
       modelId: item.model,
       provider: item.provider,
-      mode: currentModel?.model_properties.mode as string,
-      features: currentModel?.features,
+      mode:
+        typeof currentModel?.model_properties.mode === 'string'
+          ? currentModel.model_properties.mode
+          : undefined,
+      features: currentModel?.features ?? undefined,
     })
     modelParameterParams.onCompletionParamsChange(item.parameters)
     onMultipleModelConfigsChange(false, [])
@@ -352,7 +363,7 @@ const Debug: FC<IDebug> = ({
   const handleVisionConfigInMultipleModel = useCallback(() => {
     if (debugWithMultipleModel && mode) {
       const supportedVision = multipleModelConfigs.some((modelConfig) => {
-        const currentProvider = textGenerationModelList.find(
+        const currentProvider = textGenerationModelList?.find(
           (modelItem) => modelItem.provider === modelConfig.provider,
         )
         const currentModel = currentProvider?.models.find(
@@ -541,9 +552,11 @@ const Debug: FC<IDebug> = ({
       {!debugWithMultipleModel && (
         <div className="flex grow flex-col" ref={ref}>
           {/* No model provider configured */}
-          {(!modelConfig.provider || !isAPIKeySet) && <HasNotSetAPIKEY onSetting={onSetting} />}
+          {(!modelConfig.provider || !hasActiveProvider) && (
+            <HasNotSetAPIKEY onSetting={onSetting} />
+          )}
           {/* No model selected */}
-          {modelConfig.provider && isAPIKeySet && !modelConfig.model_id && (
+          {modelConfig.provider && hasActiveProvider && !modelConfig.model_id && (
             <div className="flex grow flex-col items-center justify-center pb-30">
               <div className="flex w-full max-w-100 flex-col gap-2 px-4 py-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">

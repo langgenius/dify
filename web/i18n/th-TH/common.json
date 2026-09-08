@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "ตั้งค่าโมเดลเริ่มต้นสําหรับการป้อนข้อมูลเป็นข้อความเป็นคําพูดในการสนทนา",
   "modelProvider.upgradeForLoadBalancing": "อัปเกรดแผนของคุณเพื่อเปิดใช้งานการปรับสมดุลโหลด",
   "modelProvider.used": "ใช้แล้ว",
+  "navigation.primary": "เมนูหลัก",
   "navigation.skipToMain": "ข้ามไปยังเนื้อหาหลัก",
   "noData": "ไม่มีข้อมูล",
   "operation.add": "เพิ่ม",

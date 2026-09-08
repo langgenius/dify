@@ -85,28 +85,6 @@ export const updateAppInfo = ({
   return put<AppDetailResponse>(`apps/${appID}`, { body })
 }
 
-export const copyApp = ({
-  appID,
-  name,
-  icon_type,
-  icon,
-  icon_background,
-  mode,
-  description,
-}: {
-  appID: string
-  name: string
-  icon_type: AppIconType
-  icon: string
-  icon_background?: string | null
-  mode: AppModeEnum
-  description?: string
-}): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>(`apps/${appID}/copy`, {
-    body: { name, icon_type, icon, icon_background, mode, description },
-  })
-}
-
 export const exportAppConfig = ({
   appID,
   include = false,

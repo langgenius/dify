@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createUploadItemId,
   deriveSkillDetailFromDraftFiles,
