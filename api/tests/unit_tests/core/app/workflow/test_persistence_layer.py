@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -470,14 +470,12 @@ class TestWorkflowPersistenceLayer:
         layer, _, _, _ = _make_layer()
         layer._workflow_execution = object()
         layer._node_execution_cache["cached"] = object()
-        layer._node_snapshots["cached"] = object()
         layer._node_sequence = 9
 
         layer.on_graph_start()
 
         assert layer._workflow_execution is None
         assert layer._node_execution_cache == {}
-        assert layer._node_snapshots == {}
         assert layer._node_sequence == 0
 
     def test_get_execution_id_requires_system_variable(self):
@@ -549,11 +547,13 @@ class TestWorkflowPersistenceLayer:
                 node_id=execution.node_id,
                 node_type=execution.node_type,
                 start_at=started_at,
+                finished_at=started_at + timedelta(seconds=2),
                 node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
             )
         )
 
         assert execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert execution.elapsed_time == 2.0
         assert layer._next_node_sequence() == 5
 
     def test_handle_graph_run_succeeded_updates_execution(self):
@@ -715,7 +715,7 @@ class TestWorkflowPersistenceLayer:
 
         assert node_repo.saved
         assert "exec" in layer._node_execution_cache
-        assert layer._node_snapshots["exec"].node_id == "node"
+        assert node_repo.saved[-1].created_at == start_event.start_at
 
         retry_event = NodeRunRetryEvent(
             id="exec",

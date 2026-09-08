@@ -7,8 +7,10 @@ from contextlib import closing
 from unittest.mock import MagicMock, patch
 
 import pytest
+from aliyun.log import GetLogsRequest
 
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_PARENT_EXECUTION_ID_KEY
+from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     LogstoreAPIWorkflowNodeExecutionRepository,
     _dict_to_workflow_node_execution_model,
@@ -16,10 +18,41 @@ from extensions.logstore.repositories.logstore_api_workflow_node_execution_repos
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 
-def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows() -> None:
-    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
-    repository.logstore_client = MagicMock(supports_pg_protocol=True)
+@pytest.fixture(params=["pg", "sdk"])
+def sql_repository(request: pytest.FixtureRequest):
+    """Exercise the real protocol adapter while executing its SQL against local records."""
+    store = object.__new__(AliyunLogStore)
+    store._use_pg_protocol = request.param == "pg"
+    store._pg_client = MagicMock()
+    store.client = MagicMock()
+    store.project_name = "test"
+    store.log_enabled = False
+    with closing(sqlite3.connect(":memory:")) as database:
+        database.row_factory = sqlite3.Row
+
+        def execute(sql: str, *_args: object) -> list[dict[str, object]]:
+            return [dict(row) for row in database.execute(sql)]
+
+        def get_logs(log_request: GetLogsRequest):
+            search, separator, sql = log_request.get_query().partition(" | ")
+            assert separator
+            assert search
+            assert log_request.get_from() == 0
+            assert log_request.get_to() <= int(time.time())
+            return MagicMock(get_logs=lambda: [MagicMock(get_contents=lambda row=row: row) for row in execute(sql)])
+
+        store._pg_client.execute_sql.side_effect = execute
+        store.client.get_logs.side_effect = get_logs
+        with patch(
+            "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore",
+            return_value=store,
+        ):
+            repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+        yield repository, database
+
+
+def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(sql_repository) -> None:
+    repository, database = sql_repository
     rows = [
         {
             "id": execution_id,
@@ -41,46 +74,57 @@ def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(
             ("child", 3, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
         )
     ]
-    with closing(sqlite3.connect(":memory:")) as database:
-        database.row_factory = sqlite3.Row
-        database.execute(
-            "CREATE TABLE workflow_node_execution (id TEXT, tenant_id TEXT, app_id TEXT, workflow_id TEXT, "
-            'workflow_run_id TEXT, node_id TEXT, triggered_from TEXT, status TEXT, "index" INTEGER, '
-            "created_at INTEGER, log_version INTEGER, __time__ INTEGER)"
-        )
-        database.executemany(
-            "INSERT INTO workflow_node_execution VALUES "
-            "(:id, :tenant_id, :app_id, :workflow_id, :workflow_run_id, :node_id, :triggered_from, :status, "
-            ":index, :created_at, :log_version, :__time__)",
-            rows,
-        )
-
-        def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
-            return [dict(row) for row in database.execute(sql)]
-
-        repository.logstore_client.execute_sql.side_effect = execute_query
-        history = repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
-        latest = repository.get_node_last_execution(
-            tenant_id="tenant", app_id="app", workflow_id="workflow", node_id="same-node"
-        )
+    database.execute(
+        "CREATE TABLE workflow_node_execution (id TEXT, tenant_id TEXT, app_id TEXT, workflow_id TEXT, "
+        'workflow_run_id TEXT, node_id TEXT, triggered_from TEXT, status TEXT, "index" INTEGER, '
+        "created_at INTEGER, log_version INTEGER, __time__ INTEGER)"
+    )
+    insert = (
+        "INSERT INTO workflow_node_execution VALUES "
+        "(:id, :tenant_id, :app_id, :workflow_id, :workflow_run_id, :node_id, :triggered_from, :status, "
+        ":index, :created_at, :log_version, :__time__)"
+    )
+    database.executemany(insert, rows)
+    history = repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
+    # A newer paused/hidden version must not expose the earlier visible version.
+    rows = [
+        {**rows[0], "id": "paused", "created_at": 10, "status": "running"},
+        {**rows[0], "id": "paused", "created_at": 10, "status": "paused", "log_version": 2},
+        {**rows[0], "id": "hidden", "created_at": 11},
+        {**rows[2], "id": "hidden", "created_at": 11, "log_version": 2},
+        {**rows[1], "id": "null-status", "created_at": 0, "status": None},
+        *[
+            {**rows[0], "id": f"other-{field}", field: "other", "created_at": 99}
+            for field in ("tenant_id", "app_id", "workflow_id", "node_id")
+        ],
+    ]
+    database.executemany(insert, rows)
+    latest = repository.get_node_last_execution(
+        tenant_id="tenant", app_id="app", workflow_id="workflow", node_id="same-node"
+    )
 
     assert [execution.id for execution in history] == ["legacy", "root"]
     assert latest is not None
     assert latest.id == "legacy"
+    assert repository.get_node_last_execution("tenant", "app", "workflow", "unknown") is None
+    database.execute("DELETE FROM workflow_node_execution WHERE id IN ('legacy', 'root')")
+    assert repository.get_node_last_execution("tenant", "app", "workflow", "same-node").id == "null-status"
 
 
 def test_sdk_history_queries_exclude_recursive_tool_executions() -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
         repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
     repository.logstore_client = MagicMock(supports_pg_protocol=False)
-    repository.logstore_client.get_logs.return_value = list[dict[str, object]]()
     repository.logstore_client.execute_sql.return_value = []
 
     repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
     repository.get_node_last_execution(tenant_id="tenant", app_id="app", workflow_id="workflow", node_id="same-node")
 
-    assert 'not triggered_from: "workflow-tool"' in repository.logstore_client.get_logs.call_args.kwargs["query"]
-    history_query = repository.logstore_client.execute_sql.call_args.kwargs
+    history_query, latest_query = [call.kwargs for call in repository.logstore_client.execute_sql.call_args_list]
+    assert "triggered_from != 'workflow-tool'" in latest_query["sql"]
+    assert latest_query["query"] == (
+        'tenant_id: "tenant" and app_id: "app" and workflow_id: "workflow" and node_id: "same-node"'
+    )
     assert "triggered_from != 'workflow-tool'" in history_query["sql"]
     assert history_query["query"] == 'tenant_id: "tenant" and app_id: "app" and workflow_run_id: "run"'
 
@@ -282,29 +326,33 @@ def test_load_full_process_data_returns_logstore_mapping() -> None:
     assert repository.load_full_process_data(execution) == {"__dify_retry_history": [{"retry_index": 1}]}
 
 
-def test_get_execution_by_id_keeps_process_data_from_highest_failed_log_version() -> None:
-    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
-    repository.logstore_client = MagicMock(supports_pg_protocol=False)
-    repository.logstore_client.get_logs.return_value = [
-        {
-            "id": "execution-1",
-            "log_version": "1",
-            "process_data": "{}",
-        },
-        {
-            "id": "execution-1",
-            "log_version": "2",
-            "status": "failed",
-            "process_data": json.dumps({"workflow_agent_binding_id": "binding-1"}),
-        },
-    ]
-
-    execution = repository.get_execution_by_id("execution-1")
+def test_get_execution_by_id_keeps_process_data_from_highest_failed_log_version(sql_repository) -> None:
+    repository, database = sql_repository
+    execution_id, tenant_id = "execution'1", 'tenant"1'
+    database.execute(
+        "CREATE TABLE workflow_node_execution "
+        "(id TEXT, tenant_id TEXT, log_version INTEGER, status TEXT, process_data TEXT, __time__ INTEGER)"
+    )
+    database.executemany(
+        "INSERT INTO workflow_node_execution VALUES (?, ?, ?, ?, ?, 1)",
+        [
+            (execution_id, tenant_id, 1, "running", "{}"),
+            (execution_id, tenant_id, 2, "failed", '{"workflow_agent_binding_id":"binding-1"}'),
+            ("other-execution", "other-tenant", 3, "succeeded", "{}"),
+        ],
+    )
+    execution = repository.get_execution_by_id(execution_id, tenant_id)
 
     assert execution is not None
     assert execution.status.value == "failed"
     assert execution.process_data_dict == {"workflow_agent_binding_id": "binding-1"}
+    if not repository.logstore_client.supports_pg_protocol:
+        sdk_query = repository.logstore_client.client.get_logs.call_args.args[0].get_query()
+        assert sdk_query.startswith('id: "execution\'1" and tenant_id: "tenant\\"1" | ')
+    assert repository.get_execution_by_id(execution_id).id == execution_id
+    assert repository.get_execution_by_id(execution_id, "other-tenant") is None
+    assert repository.get_execution_by_id("unknown") is None
+    assert repository.get_execution_by_id("execution' OR '1'='1") is None
 
 
 _CREATED_AT = datetime.datetime(2026, 8, 18, 2, 0, 0, tzinfo=datetime.UTC)

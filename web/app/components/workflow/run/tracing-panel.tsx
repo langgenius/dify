@@ -70,18 +70,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
     setHoveredParallel(getHoveredParallelId(e.relatedTarget))
   }, [])
 
-  const {
-    showSpecialResultPanel,
-
-    showRetryDetail,
-    setShowRetryDetailFalse,
-    retryResultList,
-    handleShowRetryResultList,
-
-    agentOrToolLogItemStack,
-    agentOrToolLogListMap,
-    handleShowAgentOrToolLog,
-  } = useLogs()
+  const logs = useLogs()
 
   const renderNode = (node: NodeTracing) => {
     const isParallelFirstNode = !!node.parallelDetail?.isParallelStartNode
@@ -159,8 +148,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
             allExecutions={list}
             onShowIterationDetail={() => setContainerId(node.id)}
             onShowLoopDetail={() => setContainerId(node.id)}
-            onShowRetryDetail={handleShowRetryResultList}
-            onShowAgentOrToolLog={handleShowAgentOrToolLog}
+            onShowRetryDetail={logs.handleShowRetryResultList}
+            onShowAgentOrToolLog={logs.handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
           />
@@ -177,11 +166,9 @@ const TracingPanel: FC<TracingPanelProps> = ({
         workflowRun={runScope}
         onBack={() => setWorkflowTool(null)}
       />
-    ) : container || showSpecialResultPanel ? (
+    ) : container || logs.showSpecialResultPanel ? (
       <SpecialResultPanel
-        showRetryDetail={showRetryDetail}
-        setShowRetryDetailFalse={setShowRetryDetailFalse}
-        retryResultList={retryResultList}
+        {...logs}
         showIteratingDetail={!!iteration}
         setShowIteratingDetailFalse={() => setContainerId(null)}
         iterationResultList={iteration ? getIterationResultList(iteration, list) : undefined}
@@ -191,9 +178,6 @@ const TracingPanel: FC<TracingPanelProps> = ({
         loopResultList={loop ? getLoopResultList(loop, list) : undefined}
         loopResultDurationMap={loop?.loopDurationMap || loop?.execution_metadata?.loop_duration_map}
         loopResultVariableMap={loop?.execution_metadata?.loop_variable_map}
-        agentOrToolLogItemStack={agentOrToolLogItemStack}
-        agentOrToolLogListMap={agentOrToolLogListMap}
-        handleShowAgentOrToolLog={handleShowAgentOrToolLog}
       />
     ) : (
       <div
