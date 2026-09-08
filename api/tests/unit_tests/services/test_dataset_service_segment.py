@@ -1224,9 +1224,7 @@ class TestSegmentServiceQaPartialUpdate:
         assert sqlite_session.get(DocumentSegment, segment.id).answer == "old answer"
         vector_update.assert_called_once()
 
-    def test_high_quality_content_change_omitted_answer_used_in_embedding(
-        self, sqlite_session: Session
-    ) -> None:
+    def test_high_quality_content_change_omitted_answer_used_in_embedding(self, sqlite_session: Session) -> None:
         dataset, document, segment = self._persist_qa_segment(
             sqlite_session, indexing_technique=IndexTechniqueType.HIGH_QUALITY
         )
@@ -1249,9 +1247,7 @@ class TestSegmentServiceQaPartialUpdate:
             )
 
         assert updated.answer == "old answer"
-        embedding_model.get_text_embedding_num_tokens.assert_called_once_with(
-            texts=["new questionold answer"]
-        )
+        embedding_model.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionold answer"])
 
     def test_explicit_answer_still_updates(self, sqlite_session: Session) -> None:
         dataset, document, segment = self._persist_qa_segment(sqlite_session)
