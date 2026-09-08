@@ -7,7 +7,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useInlineAgentScope } from '@/features/agent-v2/analytics'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDefaultAgentSoul } from './agent-soul-config'

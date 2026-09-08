@@ -39,7 +39,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byAppId: {

@@ -23,7 +23,7 @@ import {
   trackAgentBuildModeRun,
   trackAgentPreviewModeRun,
 } from '@/features/agent-v2/analytics'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useAgentConfigureModelOptions } from '../hooks'
 import {
   agentConfigureConversationIdsAtom,

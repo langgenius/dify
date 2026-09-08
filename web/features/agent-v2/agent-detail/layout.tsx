@@ -6,7 +6,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type AgentDetailLayoutProps = {
   agentId: string

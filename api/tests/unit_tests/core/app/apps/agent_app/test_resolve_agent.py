@@ -319,7 +319,7 @@ class TestResolveAgent:
     @pytest.fixture(autouse=True)
     def _publish_visibility(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def is_publish_visible(*, agent: Agent, **_kwargs: object) -> bool:
-            return bool(agent.active_config_is_published)
+            return agent.active_config_is_published
 
         monkeypatch.setattr(
             app_generator,

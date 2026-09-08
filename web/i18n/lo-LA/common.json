@@ -441,6 +441,7 @@
   "modelProvider.ttsModel.tip": "ຕັ້ງຄ່າໂມເດວເລີ່ມຕົ້ນສຳລັບການປ່ຽນຂໍ້ຄວາມເປັນສຽງໃນການສົນທະນາ.",
   "modelProvider.upgradeForLoadBalancing": "ອັບເກຣດແຜນຂອງທ່ານເພື່ອເປີດໃຊ້ Load Balancing.",
   "modelProvider.used": "ໃຊ້ໄປແລ້ວ",
+  "navigation.primary": "ເມນູຫຼັກ",
   "navigation.skipToMain": "ຂ້າມໄປເນື້ອຫາຫຼັກ",
   "noData": "ບໍ່ມີຂໍ້ມູນ",
   "operation.add": "ເພີ່ມ",
