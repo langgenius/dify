@@ -3,6 +3,7 @@
 import io
 import logging
 import os
+import re
 import tempfile
 from collections import UserDict
 from collections.abc import Generator
@@ -820,3 +821,36 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+def _generate_table_with_pipe_cells():
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    table.style = "Table Grid"
+    table.cell(0, 0).text = "Name"
+    table.cell(0, 1).text = "Formula"
+    table.cell(1, 0).text = "OR gate"
+    table.cell(1, 1).text = "a | b"
+    return doc.tables[0]
+
+
+def test_table_to_markdown_escapes_pipes():
+    table = _generate_table_with_pipe_cells()
+    extractor = object.__new__(WordExtractor)
+    markdown = extractor._table_to_markdown(table, {})
+
+    lines = markdown.splitlines()
+    assert lines[2] == "| OR gate | a \\| b |"
+    # Every row must have the same number of unescaped pipe separators,
+    # otherwise markdown renderers treat the row as a different column count.
+    for line in lines:
+        assert len(re.findall(r"(?<!\\)\|", line)) == 3
+
+
+def test_parse_row_escapes_pipes_in_header():
+    doc = Document()
+    table = doc.add_table(rows=1, cols=1)
+    table.style = "Table Grid"
+    table.cell(0, 0).text = "col | name"
+    extractor = object.__new__(WordExtractor)
+    assert extractor._parse_row(table.rows[0], {}, 1) == ["col \\| name"]
