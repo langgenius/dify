@@ -37,7 +37,6 @@ from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
-    SiteConfigurationInvalidError,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
 from controllers.console.app.wraps import get_app_model, with_session
@@ -98,7 +97,6 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.site_configuration_service import SiteConfigurationError, SiteConfigurationService
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
@@ -1299,7 +1297,6 @@ class PublishedWorkflowApi(Resource):
 
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
-    @console_ns.response(409, "Site configuration invalid")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1315,11 +1312,6 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            try:
-                SiteConfigurationService.validate_for_publish(session=session, app=app_model)
-            except SiteConfigurationError as exc:
-                raise SiteConfigurationInvalidError(description=str(exc)) from None
-
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,

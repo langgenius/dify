@@ -6384,10 +6384,6 @@ export type PostAppsByAppIdWorkflowsPublishData = {
   url: '/apps/{app_id}/workflows/publish'
 }
 
-export type PostAppsByAppIdWorkflowsPublishErrors = {
-  409: unknown
-}
-
 export type PostAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowPublishResponse
 }

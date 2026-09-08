@@ -6,7 +6,6 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
-from controllers.web.error import SiteConfigurationInvalidError
 from controllers.web.wraps import WebApiResource
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -15,7 +14,7 @@ from libs.helper import build_icon_url, dump_response
 from models.account import Tenant
 from models.model import App, AppMode, EndUser, Site
 from services.entities.feature_entities import FeatureModel
-from services.web_app_runtime_query_service import WebAppRuntimeAssetUnavailableError, WebAppRuntimeUnavailableError
+from services.web_app_runtime_query_service import WebAppRuntimeUnavailableError
 
 
 class WebSiteResponse(ResponseModel):
@@ -137,7 +136,6 @@ class AppSiteApi(WebApiResource):
             401: "Unauthorized",
             403: "Forbidden",
             404: "App Not Found",
-            409: "Site Configuration Invalid",
             500: "Internal Server Error",
         }
     )
@@ -146,8 +144,6 @@ class AppSiteApi(WebApiResource):
         """Retrieve app site info."""
         try:
             bootstrap = application_services().web_app_runtime.get_bootstrap(app_model.id)
-        except WebAppRuntimeAssetUnavailableError:
-            raise SiteConfigurationInvalidError() from None
         except WebAppRuntimeUnavailableError:
             raise Forbidden() from None
 

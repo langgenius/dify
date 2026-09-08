@@ -10,6 +10,7 @@ from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
 from services.errors.file import FileNotExistsError
 from services.file_service import FileService
+from services.site_configuration_service import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +45,6 @@ class WebAppRuntimeUnavailableError(ValueError):
     """Raised when the admitted Web app can no longer be bootstrapped."""
 
 
-class WebAppRuntimeAssetUnavailableError(ValueError):
-    """Raised when an optional site asset has an invalid persisted reference."""
-
-
 _ARCHIVED_TENANT_STATUS = "archive"
 
 
@@ -73,6 +70,7 @@ class WebAppRuntimeQueryService:
             raise WebAppRuntimeUnavailableError("Site not found")
 
         features = self._workspace_features(record.tenant_id)
+        site_icon_unavailable = False
         try:
             site_icon_url = (
                 self._file_service.get_icon_url(record.site.icon, record.tenant_id)
@@ -86,10 +84,15 @@ class WebAppRuntimeQueryService:
                 record.tenant_id,
                 record.site.icon,
             )
-            raise WebAppRuntimeAssetUnavailableError("Site icon is unavailable") from exc
+            site_icon_url = None
+            site_icon_unavailable = True
 
         site = cast(dict[str, str | bool | None], record.site._asdict())
         site["icon_url"] = site_icon_url
+        if site_icon_unavailable:
+            site["icon_type"] = DEFAULT_ICON_TYPE.value
+            site["icon"] = DEFAULT_ICON
+            site["icon_background"] = DEFAULT_ICON_BACKGROUND
         if self._deployment_edition == DeploymentEdition.CLOUD and not features.webapp_copyright_enabled:
             site["copyright"] = None
             site["input_placeholder"] = None

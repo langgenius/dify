@@ -63,7 +63,12 @@ from services.entities.dsl_entities import (
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.site_configuration_service import SiteConfigurationError, SiteConfigurationService
+from services.site_configuration_service import (
+    DEFAULT_ICON,
+    DEFAULT_ICON_TYPE,
+    SiteConfigurationError,
+    SiteConfigurationService,
+)
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -526,8 +531,8 @@ class AppDslService:
                 icon=icon,
             )
         except SiteConfigurationError:
-            resolved_icon_type = IconType.EMOJI
-            icon = "🤖"
+            resolved_icon_type = DEFAULT_ICON_TYPE
+            icon = DEFAULT_ICON
 
         if app:
             # Update existing app
