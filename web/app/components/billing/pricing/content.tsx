@@ -1,6 +1,5 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -72,39 +71,19 @@ export function PricingContent() {
           >
             <TabsTab
               value="cloud"
-              className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 outline-hidden data-active:border-transparent"
-              render={(props, { active }) => (
-                <button {...props}>
-                  <Cloud isActive={active} />
-                  <span
-                    className={cn(
-                      'system-xl-semibold text-text-secondary',
-                      active && 'text-saas-dify-blue-accessible',
-                    )}
-                  >
-                    {t(($) => $['plansCommon.cloud'], { ns: 'billing' })}
-                  </span>
-                </button>
-              )}
-            />
+              className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 system-xl-semibold text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible"
+            >
+              <Cloud />
+              {t(($) => $['plansCommon.cloud'], { ns: 'billing' })}
+            </TabsTab>
             <Divider type="vertical" className="mx-2 h-4 bg-divider-accent" />
             <TabsTab
               value="self-hosted"
-              className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 outline-hidden data-active:border-transparent"
-              render={(props, { active }) => (
-                <button {...props}>
-                  <SelfHosted isActive={active} />
-                  <span
-                    className={cn(
-                      'system-xl-semibold text-text-secondary',
-                      active && 'text-saas-dify-blue-accessible',
-                    )}
-                  >
-                    {t(($) => $['plansCommon.self'], { ns: 'billing' })}
-                  </span>
-                </button>
-              )}
-            />
+              className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 system-xl-semibold text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible"
+            >
+              <SelfHosted />
+              {t(($) => $['plansCommon.self'], { ns: 'billing' })}
+            </TabsTab>
           </TabsList>
           {isCloud && (
             <Field>
