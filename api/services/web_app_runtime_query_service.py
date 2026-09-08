@@ -5,11 +5,10 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import NamedTuple, Protocol, cast
 
-from werkzeug.exceptions import NotFound
-
 from enums import DeploymentEdition
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
+from services.errors.file import FileNotExistsError
 from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
@@ -80,7 +79,7 @@ class WebAppRuntimeQueryService:
                 if record.site.icon_type == "image" and record.site.icon
                 else None
             )
-        except NotFound as exc:
+        except FileNotExistsError as exc:
             logger.warning(
                 "Web app site icon is unavailable: app_id=%s tenant_id=%s file_id=%s",
                 record.app_id,
