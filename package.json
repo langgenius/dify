@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "vp check && pnpm lint:eslint",
-    "check:fix": "pnpm lint:eslint:fix && vp check --fix",
+    "check": "vp check && vp run lint:eslint",
+    "check:fix": "vp run lint:eslint:fix && vp check --fix",
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
     "knip": "knip --workspace web",
     "knip:production": "knip --workspace web --production --include files",

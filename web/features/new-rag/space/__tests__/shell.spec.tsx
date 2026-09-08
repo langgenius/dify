@@ -200,7 +200,7 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
       'href',
-      '/datasets?view=new',
+      '/datasets?view=agent',
     )
     expect(screen.getByRole('link', { name: 'knowledgeSpace.overviewTitle' })).toHaveAttribute(
       'href',

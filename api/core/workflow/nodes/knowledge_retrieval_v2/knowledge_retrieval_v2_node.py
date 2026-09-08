@@ -189,7 +189,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         if max_concurrency < 1 or max_concurrency > 10:
-            raise ValueError("KnowledgeFS retrieval concurrency must be between 1 and 10")
+            raise ValueError("Agent Knowledge Retrieval concurrency must be between 1 and 10")
         self._capability_service = capability_service
         self._binding_service = binding_service
         self._rerank_model_manager = rerank_model_manager
@@ -213,7 +213,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             query_images, query_image_inputs = self._resolve_query_images(run_context)
             if not query and not query_images:
                 raise KnowledgeFSRetrievalConfigurationError(
-                    "KnowledgeFS retrieval requires a query text or at least one query image"
+                    "Agent Knowledge Retrieval requires a query text or at least one query image"
                 )
             self._ensure_draft_bindings(run_context)
             filters, automatic_outcome = self._resolved_retrieval_filters(run_context=run_context, query=query)
@@ -284,11 +284,11 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         if variable is None:
             return ""
         if not isinstance(variable, StringSegment):
-            raise KnowledgeFSRetrievalConfigurationError("KnowledgeFS query variable must be a string")
+            raise KnowledgeFSRetrievalConfigurationError("Agent Knowledge Base query variable must be a string")
         query = variable.value.strip()
         if len(query) > 16_000:
             raise KnowledgeFSRetrievalConfigurationError(
-                "KnowledgeFS query variable must contain at most 16000 characters"
+                "Agent Knowledge Base query variable must contain at most 16000 characters"
             )
         return query
 
@@ -306,11 +306,11 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             files = list(variable.value)
         else:
             raise KnowledgeFSRetrievalConfigurationError(
-                "KnowledgeFS query attachment variable must be a file or array of files"
+                "Agent Knowledge Base query attachment variable must be a file or array of files"
             )
         if len(files) > QUERY_IMAGE_MAX_COUNT:
             raise KnowledgeFSRetrievalConfigurationError(
-                f"KnowledgeFS query attachments must contain at most {QUERY_IMAGE_MAX_COUNT} images"
+                f"Agent Knowledge Base query attachments must contain at most {QUERY_IMAGE_MAX_COUNT} images"
             )
 
         references: list[KnowledgeFSRetrievalQueryImageReference] = []
@@ -362,7 +362,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
 
     def _service(self) -> _RetrievalCapability:
         if self._capability_service is None:
-            raise KnowledgeFSRetrievalConfigurationError("KnowledgeFS retrieval capability is not configured")
+            raise KnowledgeFSRetrievalConfigurationError("Agent Knowledge Retrieval capability is not configured")
         return self._capability_service
 
     def _ensure_draft_bindings(self, run_context: DifyRunContext) -> None:
@@ -384,7 +384,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 )
         except (KnowledgeFSAppBindingManagementError, RuntimeError, ValueError) as exc:
             raise KnowledgeFSRetrievalBindingError(
-                "KnowledgeFS draft binding could not be enabled for this workflow"
+                "Agent Knowledge Base draft binding could not be enabled for this workflow"
             ) from exc
 
     def _retrieve_all_spaces(
@@ -433,37 +433,42 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         except KnowledgeFSAppChannelDisabledError as exc:
             raise KnowledgeFSRetrievalBindingError(
                 "[knowledge_fs_workflow_access_disabled] "
-                f"Workflow access is disabled for KnowledgeFS Space {control_space_id}; "
+                f"Workflow access is disabled for Agent Knowledge Base {control_space_id}; "
                 "ask a workspace owner to enable the Workflow channel"
             ) from exc
         except KnowledgeFSAppSpaceUnavailableError as exc:
             raise KnowledgeFSRetrievalBindingError(
                 "[knowledge_fs_space_unavailable] "
-                f"KnowledgeFS Space {control_space_id} is not ready for workflow {action}; "
-                "select an active, provisioned Space"
+                f"Agent Knowledge Base {control_space_id} is not ready for workflow {action}; "
+                "select an active, provisioned Agent Knowledge Base"
             ) from exc
         except KnowledgeFSAppAuthorizationNotReadyError as exc:
             raise KnowledgeFSRetrievalBindingError(
                 "[knowledge_fs_authorization_not_ready] "
-                f"KnowledgeFS Space {control_space_id} permissions are not ready; "
-                "ask a workspace owner to finish KnowledgeFS permission setup"
+                f"Agent Knowledge Base {control_space_id} permissions are not ready; "
+                "ask a workspace owner to finish Agent Knowledge Base permission setup"
             ) from exc
         except KnowledgeFSAppAdmissionError as exc:
             raise KnowledgeFSRetrievalBindingError(
-                f"[knowledge_fs_binding_not_enabled] KnowledgeFS Space {control_space_id} is not bound to this workflow"
+                f"[knowledge_fs_binding_not_enabled] Agent Knowledge Base {control_space_id} "
+                "is not bound to this workflow"
             ) from exc
         except ValidationError as exc:
             raise KnowledgeFSRetrievalContractError(
-                f"KnowledgeFS Space {control_space_id} returned an invalid {action} response"
+                f"Agent Knowledge Base {control_space_id} returned an invalid {action} response"
             ) from exc
         except KnowledgeFSProductRequestRejectedError as exc:
             raise KnowledgeFSRetrievalConfigurationError(
-                f"KnowledgeFS Space {control_space_id} rejected the {action} request"
+                f"Agent Knowledge Base {control_space_id} rejected the {action} request"
             ) from exc
         except (KnowledgeFSOperationUnavailableError, KnowledgeFSProductRemoteError) as exc:
-            raise KnowledgeFSRetrievalUnavailableError(f"KnowledgeFS Space {control_space_id} is unavailable") from exc
+            raise KnowledgeFSRetrievalUnavailableError(
+                f"Agent Knowledge Base {control_space_id} is unavailable"
+            ) from exc
         except RuntimeError as exc:
-            raise KnowledgeFSRetrievalUnavailableError(f"KnowledgeFS Space {control_space_id} {action} failed") from exc
+            raise KnowledgeFSRetrievalUnavailableError(
+                f"Agent Knowledge Base {control_space_id} {action} failed"
+            ) from exc
 
     def _resolved_retrieval_filters(
         self,
@@ -505,7 +510,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         model_config = self._node_data.metadata_model_config
         if model_config is None:
             raise KnowledgeFSRetrievalConfigurationError(
-                "KnowledgeFS automatic metadata filtering requires a metadata filtering model"
+                "Agent Knowledge Base automatic metadata filtering requires a metadata filtering model"
             )
         catalog = intersect_metadata_fields(
             [
@@ -588,7 +593,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             if not cursor:
                 return fields
         raise KnowledgeFSRetrievalContractError(
-            f"KnowledgeFS Space {control_space_id} metadata catalog exceeds the supported page count"
+            f"Agent Knowledge Base {control_space_id} metadata catalog exceeds the supported page count"
         )
 
     def _resolve_manual_retrieval_filters(

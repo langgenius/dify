@@ -482,28 +482,6 @@ export const zParserEnable = z.object({
 })
 
 /**
- * WorkflowTriggerResponse
- */
-export const zWorkflowTriggerResponse = z.object({
-  created_at: z.iso.datetime().nullish(),
-  icon: z.string(),
-  id: z.string(),
-  node_id: z.string(),
-  provider_name: z.string(),
-  status: z.string(),
-  title: z.string(),
-  trigger_type: z.string(),
-  updated_at: z.iso.datetime().nullish(),
-})
-
-/**
- * WorkflowTriggerListResponse
- */
-export const zWorkflowTriggerListResponse = z.object({
-  data: z.array(zWorkflowTriggerResponse),
-})
-
-/**
  * WorkflowAgentSandboxDownloadPayload
  */
 export const zWorkflowAgentSandboxDownloadPayload = z.object({
@@ -1479,6 +1457,28 @@ export const zTextToSpeechVoiceResponse = z.object({
  * Available voices
  */
 export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
+ * WorkflowTriggerResponse
+ */
+export const zWorkflowTriggerResponse = z.object({
+  created_at: z.iso.datetime().nullish(),
+  icon: z.string(),
+  id: z.string(),
+  node_id: z.string(),
+  provider_name: z.string(),
+  status: z.string(),
+  title: z.string(),
+  trigger_type: z.string(),
+  updated_at: z.iso.datetime().nullish(),
+})
+
+/**
+ * WorkflowTriggerListResponse
+ */
+export const zWorkflowTriggerListResponse = z.object({
+  data: z.array(zWorkflowTriggerResponse),
+})
 
 /**
  * SimpleAccountResponse
@@ -3067,7 +3067,7 @@ export const zAgentSoulHumanConfig = z.object({
 /**
  * AgentKnowledgeSpaceConfig
  *
- * One read-only KnowledgeFS binding, addressed by stable ID or CLI alias.
+ * One read-only Agent Knowledge Base binding, addressed by stable ID or CLI alias.
  *
  * The control-space ID is Dify-owned, never the execution-plane space ID.
  * ``is_missing`` preserves unresolved DSL references for editing; it never
@@ -3949,11 +3949,11 @@ export const zAgentKnowledgeSetConfig = z.object({
 /**
  * AgentSoulKnowledgeConfig
  *
- * KnowledgeFS-only authoring, with lossless historical dataset decoding.
+ * Agent Knowledge Base authoring, with lossless Classic Knowledge Base configuration decoding.
  *
  * New configuration uses ``spaces``. ``sets`` is retained solely so existing
- * snapshots/DSL remain readable; new publish/run validation rejects legacy
- * datasets with an explicit rebind error. Empty knowledge adds no runtime
+ * snapshots/DSL remain readable; new publish/run validation rejects Classic
+ * Knowledge Base bindings with an explicit rebind error. Empty knowledge adds no runtime
  * capability. The two formats must never coexist or shadow one another.
  */
 export const zAgentSoulKnowledgeConfig = z.object({
@@ -4795,9 +4795,9 @@ export const zDeleteAppsByAppIdAnnotationsPath = z.object({
 })
 
 /**
- * Annotations deleted successfully
+ * Success
  */
-export const zDeleteAppsByAppIdAnnotationsResponse = z.void()
+export const zDeleteAppsByAppIdAnnotationsResponse = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdAnnotationsPath = z.object({
   app_id: z.uuid(),
@@ -4869,9 +4869,9 @@ export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
 })
 
 /**
- * Annotation deleted successfully
+ * Success
  */
-export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.void()
+export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.record(z.string(), z.unknown())
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdBody = zUpdateAnnotationPayload
 
@@ -5493,7 +5493,7 @@ export const zPostAppsByAppIdTriggerEnablePath = z.object({
 /**
  * Success
  */
-export const zPostAppsByAppIdTriggerEnableResponse = zWorkflowTriggerResponse
+export const zPostAppsByAppIdTriggerEnableResponse = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdTriggersPath = z.object({
   app_id: z.uuid(),
@@ -6386,9 +6386,9 @@ export const zDeleteAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
 })
 
 /**
- * Workflow deleted successfully
+ * Success
  */
-export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.void()
+export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.record(z.string(), z.unknown())
 
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 

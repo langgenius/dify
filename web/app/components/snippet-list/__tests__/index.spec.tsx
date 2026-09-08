@@ -77,7 +77,6 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
@@ -263,7 +262,6 @@ describe('SnippetList', () => {
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.creatorIDs = []
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
     mockUseInfiniteSnippetList.mockReturnValue({
@@ -428,8 +426,7 @@ describe('SnippetList', () => {
     expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
   })
 
-  it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
-    mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+  it('shows the create button for users with snippet create permission', () => {
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
 
     renderList()

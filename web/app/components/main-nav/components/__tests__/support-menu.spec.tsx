@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { Mock } from 'vite-plus/test'
 import {
   DropdownMenu,
@@ -8,10 +9,12 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import SupportMenu from '../support-menu'
+
+let plan: CloudPlan = 'team'
 
 const {
   mockConfig,
@@ -46,7 +49,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: mockToastError },
 }))
 
-vi.mock('@/app/components/header/utils/util', () => ({
+vi.mock('@/app/components/header/utils/util', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/header/utils/util')>()),
   mailToSupport: mockMailToSupport,
 }))
 
@@ -67,10 +71,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-
 describe('SupportMenu', () => {
   let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' = 'CLOUD'
 
@@ -84,23 +84,29 @@ describe('SupportMenu', () => {
       langGeniusVersionInfo: { current_version: '1.0.0' },
       userProfile: { email: 'user@example.com' },
     }
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: 'team' },
-    })
+    plan = 'team'
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
     })
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 
-  const renderSupportMenu = () => {
+  const renderSupportMenu = (withPlan = true) => {
+    const queryClient = createConsoleQueryClient()
+    if (!withPlan && deploymentEdition === 'CLOUD') {
+      void queryClient.query({
+        ...consoleQuery.features.get.queryOptions(),
+        queryFn: () => new Promise(() => {}),
+      })
+    }
     const { wrapper } = createConsoleQueryWrapper({
+      queryClient,
       accountProfile: mockConsoleState.current.userProfile,
       accountProfileMeta: {
         currentVersion: mockConsoleState.current.langGeniusVersionInfo.current_version,
       },
       systemFeatures: { deployment_edition: deploymentEdition },
+      ...(withPlan ? { features: { billing: { subscription: { plan } } } } : {}),
     })
     return render(
       <DropdownMenu open={true} onOpenChange={() => {}}>
@@ -145,10 +151,7 @@ describe('SupportMenu', () => {
   })
 
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: 'sandbox' },
-    })
+    plan = 'sandbox'
 
     renderSupportMenu()
 
@@ -172,26 +175,9 @@ describe('SupportMenu', () => {
     expect(zendeskRuntime.open).not.toHaveBeenCalled()
   })
 
-  it('hides upgrade contact for Cloud sandbox plan when billing is disabled', () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: false,
-      plan: { type: 'sandbox' },
-    })
-
-    renderSupportMenu()
-
-    expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
-    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
-  })
-
   it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
     mockConfig.supportEmailAddress = 'support@example.com'
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: 'sandbox' },
-    })
+    plan = 'sandbox'
 
     renderSupportMenu()
 
@@ -206,10 +192,7 @@ describe('SupportMenu', () => {
   it('keeps email support for Cloud sandbox plan with support email and no Zendesk configured', () => {
     mockConfig.supportEmailAddress = 'support@example.com'
     mockConfig.zendeskWidgetKey = ''
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: 'sandbox' },
-    })
+    plan = 'sandbox'
 
     renderSupportMenu()
 
@@ -226,10 +209,7 @@ describe('SupportMenu', () => {
 
   it('hides dedicated support channels for non-Cloud sandbox plan without support email', () => {
     deploymentEdition = 'COMMUNITY'
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      plan: { type: 'sandbox' },
-    })
+    plan = 'sandbox'
 
     renderSupportMenu()
 
@@ -249,6 +229,27 @@ describe('SupportMenu', () => {
     expect(
       screen.getByRole('menuitem', { name: 'common.userProfile.emailSupport' }),
     ).toHaveAttribute('href', 'mailto:support@example.com')
+  })
+
+  it('waits for the Cloud plan before generating a support email', () => {
+    mockConfig.supportEmailAddress = 'support@example.com'
+    mockConfig.zendeskWidgetKey = ''
+    renderSupportMenu(false)
+
+    expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
+    expect(mailToSupport).not.toHaveBeenCalled()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
+  })
+
+  it('keeps configured self-hosted email support independent of Cloud plan data', () => {
+    deploymentEdition = 'ENTERPRISE'
+    mockConfig.supportEmailAddress = 'support@example.com'
+    renderSupportMenu(false)
+
+    expect(
+      screen.getByRole('menuitem', { name: 'common.userProfile.emailSupport' }),
+    ).toHaveAttribute('href', 'mailto:support@example.com')
+    expect(mailToSupport).not.toHaveBeenCalled()
   })
 
   it('has the Discord link and no Forum entry', () => {

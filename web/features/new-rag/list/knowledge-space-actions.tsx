@@ -50,7 +50,7 @@ export function KnowledgeSpaceActions({
     onSuccess: () => {
       setDeleteDialogOpen(false)
       setDeleteConfirmation('')
-      toast.success(t(($) => $.datasetDeleted, { ns: 'dataset' }))
+      toast.success(t(($) => $.deleteSuccess))
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
       })

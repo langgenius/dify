@@ -84,7 +84,7 @@ export const BLOCKS = [
   {
     classification: BlockClassification.Default,
     type: BlockEnum.KnowledgeRetrievalV2,
-    title: 'Knowledge Retrieval v2',
+    title: 'Agent Knowledge Retrieval',
   },
   {
     classification: BlockClassification.Default,

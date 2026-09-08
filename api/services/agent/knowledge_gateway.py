@@ -92,14 +92,18 @@ class AgentKnowledgeGateway:
 
         binding = next((item for item in expected if command.space in (item.id, item.name)), None)
         if binding is None:
-            raise KnowledgeFsError("KNOWLEDGE_SPACE_NOT_BOUND", "Choose a space from knowledge spaces.", 403)
+            raise KnowledgeFsError(
+                "KNOWLEDGE_SPACE_NOT_BOUND", "Choose an Agent Knowledge Base from `knowledge spaces`.", 403
+            )
         citation = request.citation
         if command.receipt_id and (
             citation is None
             or citation.id != command.receipt_id
             or citation.control_space_id != binding.control_space_id
         ):
-            raise KnowledgeFsError("KNOWLEDGE_RECEIPT_INVALID", "Evidence receipt is unavailable for this space.", 404)
+            raise KnowledgeFsError(
+                "KNOWLEDGE_RECEIPT_INVALID", "Evidence receipt is unavailable for this Agent Knowledge Base.", 404
+            )
         if command.command == "image" and not request.agent_supports_vision:
             raise KnowledgeFsError(
                 "KNOWLEDGE_VISION_UNSUPPORTED", "This Agent model cannot consume images; use image captions."
@@ -108,7 +112,9 @@ class AgentKnowledgeGateway:
         operation_id = _OPERATIONS[command.command]
         if not is_product_operation_ready(operation_id):
             raise KnowledgeFsError(
-                "KNOWLEDGE_PROTOCOL_UNAVAILABLE", "Deploy matching API and KnowledgeFS versions.", 503
+                "KNOWLEDGE_PROTOCOL_UNAVAILABLE",
+                "Deploy matching Dify API and Agent Knowledge Base service versions.",
+                503,
             )
         operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
         document_id = citation.document_asset_id if citation and command.command in {"images", "image"} else None
@@ -129,7 +135,7 @@ class AgentKnowledgeGateway:
             or parsed.fragment
             or parsed.username
         ):
-            raise KnowledgeFsError("KNOWLEDGE_UNAVAILABLE", "KnowledgeFS is not configured.", 503)
+            raise KnowledgeFsError("KNOWLEDGE_UNAVAILABLE", "Agent Knowledge Base is not configured.", 503)
         headers = {
             "Authorization": f"Bearer {issued.token}",
             "X-Trace-Id": issued.trace_id,

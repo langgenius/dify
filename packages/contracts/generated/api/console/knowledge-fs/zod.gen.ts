@@ -792,11 +792,11 @@ export const zKnowledgeFsSpaceCreateResponse = z.object({
 /**
  * KnowledgeFSProductPermission
  *
- * Product-level capability of a caller on one KnowledgeFS space.
+ * Product-level capability of a caller on one Agent Knowledge Base.
  *
  * These values are what the console returns as ``permission_keys`` so the web can gate
- * its UI. Enterprise RBAC is not evaluated in this vocabulary: KnowledgeFS spaces reuse
- * the legacy knowledge base (``dataset_*``) permission points, and each capability is
+ * its UI. Enterprise RBAC is not evaluated in this vocabulary: Agent Knowledge Bases reuse
+ * the Classic Knowledge Base (``dataset_*``) permission points, and each capability is
  * granted when the caller holds the dataset permission it maps to (see
  * :data:`RBAC_PERMISSION_BY_PRODUCT_PERMISSION`).
  */
@@ -3235,14 +3235,14 @@ export const zKnowledgeFsQualityReplayListResponse = z.object({
 })
 
 /**
- * KnowledgeFS Capability v2 public keys
+ * Agent Knowledge Base Capability v2 public keys
  */
 export const zGetKnowledgeFsWellKnownJwksJsonResponse = zKnowledgeFsjwksResponse
 
 export const zPostKnowledgeFsQueryStreamBody = zKnowledgeFsAdmittedQueryRequest
 
 /**
- * KnowledgeFS query event stream
+ * Agent Knowledge Base query event stream
  */
 export const zPostKnowledgeFsQueryStreamResponse = z.string()
 
@@ -3257,7 +3257,7 @@ export const zGetKnowledgeFsResearchTasksByTaskIdEventsQuery = z.object({
 })
 
 /**
- * KnowledgeFS research task event stream
+ * Agent Knowledge Base research task event stream
  */
 export const zGetKnowledgeFsResearchTasksByTaskIdEventsResponse = z.string()
 
@@ -3307,14 +3307,14 @@ export const zGetKnowledgeFsSpacesQuery = z.object({
 })
 
 /**
- * KnowledgeFS spaces
+ * Agent Knowledge Bases
  */
 export const zGetKnowledgeFsSpacesResponse = zKnowledgeFsSpaceListResponse
 
 export const zPostKnowledgeFsSpacesBody = zKnowledgeFsSpaceCreatePayload
 
 /**
- * KnowledgeFS provisioning accepted
+ * Agent Knowledge Base provisioning accepted
  */
 export const zPostKnowledgeFsSpacesResponse = zKnowledgeFsSpaceCreateResponse
 
@@ -3323,7 +3323,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdPath = z.object({
 })
 
 /**
- * KnowledgeFS deletion accepted
+ * Agent Knowledge Base deletion accepted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdResponse = z.void()
 
@@ -3332,7 +3332,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdPath = z.object({
 })
 
 /**
- * KnowledgeFS space
+ * Agent Knowledge Base
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdResponse = zKnowledgeFsSpaceDetailResponse
 
@@ -3343,7 +3343,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdPath = z.object({
 })
 
 /**
- * KnowledgeFS space updated
+ * Agent Knowledge Base updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdResponse = zKnowledgeFsSpaceDetailResponse
 
@@ -3352,7 +3352,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdAppBindingsPath = z.object({
 })
 
 /**
- * KnowledgeFS app bindings
+ * Agent Knowledge Base app bindings
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdAppBindingsResponse =
   zKnowledgeFsAppBindingListResponse
@@ -3364,7 +3364,7 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdAppBindingsPath = z.object({
 })
 
 /**
- * KnowledgeFS app binding enabled
+ * Agent Knowledge Base app binding enabled
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdAppBindingsResponse =
   zKnowledgeFsAppBindingResponse
@@ -3376,7 +3376,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAp
 })
 
 /**
- * KnowledgeFS app binding revoked
+ * Agent Knowledge Base app binding revoked
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdResponse =
   z.void()
@@ -3391,7 +3391,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksQuery = z.objec
 })
 
 /**
- * KnowledgeFS background tasks
+ * Agent Knowledge Base background tasks
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponse =
   zKnowledgeFsBackgroundTaskListResponse
@@ -3404,7 +3404,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTa
   })
 
 /**
- * KnowledgeFS background task canceled
+ * Agent Knowledge Base background task canceled
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelResponse =
   zKnowledgeFsBackgroundTaskResponse
@@ -3417,7 +3417,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTa
   })
 
 /**
- * KnowledgeFS background task retried
+ * Agent Knowledge Base background task retried
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryResponse =
   zKnowledgeFsBackgroundTaskResponse
@@ -3428,7 +3428,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath = z.object
 })
 
 /**
- * KnowledgeFS bulk job
+ * Agent Knowledge Base bulk job
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
   zKnowledgeFsBulkJobResponse
@@ -3443,7 +3443,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveQuery
 })
 
 /**
- * Resolved KnowledgeFS document reference
+ * Resolved Agent Knowledge Base document reference
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse =
   zKnowledgeFsResolvedDocumentReferenceResponse
@@ -3457,7 +3457,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsQuery = z.object({
 })
 
 /**
- * KnowledgeFS documents
+ * Agent Knowledge Base documents
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   zKnowledgeFsDocumentListResponse
@@ -3470,7 +3470,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
 })
 
 /**
- * KnowledgeFS document accepted for processing
+ * Agent Knowledge Base document accepted for processing
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   zKnowledgeFsDocumentCreateAcceptedResponse
@@ -3487,7 +3487,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath = z.objec
 })
 
 /**
- * KnowledgeFS document deletions accepted
+ * Agent Knowledge Base document deletions accepted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponse =
   zKnowledgeFsBulkDeletionAcceptedResponse
@@ -3500,7 +3500,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexPath = z.obje
 })
 
 /**
- * KnowledgeFS document reindex queued
+ * Agent Knowledge Base document reindex queued
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse =
   zKnowledgeFsDocumentReindexResponse
@@ -3518,7 +3518,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath =
 })
 
 /**
- * KnowledgeFS document deletion accepted
+ * Agent Knowledge Base document deletion accepted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
   zKnowledgeFsDurableDeletionAcceptedResponse
@@ -3529,7 +3529,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.
 })
 
 /**
- * KnowledgeFS document
+ * Agent Knowledge Base document
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
   zKnowledgeFsDocumentResponse
@@ -3543,7 +3543,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = 
 })
 
 /**
- * KnowledgeFS document metadata updated
+ * Agent Knowledge Base document metadata updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
@@ -3554,7 +3554,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimoda
 })
 
 /**
- * KnowledgeFS document multimodal manifest
+ * Agent Knowledge Base document multimodal manifest
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponse =
   zKnowledgeFsDocumentMultimodalManifestResponse
@@ -3577,7 +3577,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimoda
   })
 
 /**
- * KnowledgeFS document multimodal asset
+ * Agent Knowledge Base document multimodal asset
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse =
   zBinaryFileResponse
@@ -3588,7 +3588,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlinePa
 })
 
 /**
- * KnowledgeFS document outline
+ * Agent Knowledge Base document outline
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponse =
   zKnowledgeFsDocumentOutlineResponse
@@ -3603,7 +3603,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisions
 })
 
 /**
- * KnowledgeFS document revisions
+ * Agent Knowledge Base document revisions
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponse =
   zKnowledgeFsDocumentRevisionListResponse
@@ -3622,7 +3622,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisions
   })
 
 /**
- * KnowledgeFS document chunks
+ * Agent Knowledge Base document chunks
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
   zKnowledgeFsDocumentChunkListResponse
@@ -3636,7 +3636,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisions
   })
 
 /**
- * KnowledgeFS document chunk
+ * Agent Knowledge Base document chunk
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse =
   zKnowledgeFsDocumentChunkResponse
@@ -3646,7 +3646,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdExternalAccessPath = z.object(
 })
 
 /**
- * KnowledgeFS external access
+ * Agent Knowledge Base external access
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   zKnowledgeFsExternalAccessResponse
@@ -3659,7 +3659,7 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessPath = z.object(
 })
 
 /**
- * KnowledgeFS external access updated
+ * Agent Knowledge Base external access updated
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   zKnowledgeFsExternalAccessResponse
@@ -3674,7 +3674,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsQuery = z.objec
 })
 
 /**
- * KnowledgeFS golden questions
+ * Agent Knowledge Base golden questions
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
   zKnowledgeFsGoldenQuestionListResponse
@@ -3687,7 +3687,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath = z.objec
 })
 
 /**
- * KnowledgeFS golden question created
+ * Agent Knowledge Base golden question created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse =
   zKnowledgeFsGoldenQuestionResponse
@@ -3700,7 +3700,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportPath
 })
 
 /**
- * KnowledgeFS golden questions imported
+ * Agent Knowledge Base golden questions imported
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponse =
   zKnowledgeFsGoldenQuestionBulkImportResponse
@@ -3713,7 +3713,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatche
 })
 
 /**
- * KnowledgeFS golden question evidence matches
+ * Agent Knowledge Base golden question evidence matches
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponse =
   zKnowledgeFsGoldenQuestionEvidenceMatchResponse
@@ -3724,7 +3724,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionId
 })
 
 /**
- * KnowledgeFS golden question deleted
+ * Agent Knowledge Base golden question deleted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse = z.void()
 
@@ -3737,7 +3737,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdP
 })
 
 /**
- * KnowledgeFS golden question updated
+ * Agent Knowledge Base golden question updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse =
   zKnowledgeFsGoldenQuestionResponse
@@ -3748,7 +3748,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath = z.object(
 })
 
 /**
- * KnowledgeFS compilation job canceled
+ * Agent Knowledge Base compilation job canceled
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse =
   zKnowledgeFsDocumentCompilationJobResponse
@@ -3759,7 +3759,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath = z.object({
 })
 
 /**
- * KnowledgeFS compilation job
+ * Agent Knowledge Base compilation job
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse =
   zKnowledgeFsDocumentCompilationJobResponse
@@ -3770,7 +3770,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryPath = z.obje
 })
 
 /**
- * KnowledgeFS compilation job retried
+ * Agent Knowledge Base compilation job retried
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse =
   zKnowledgeFsDocumentCompilationJobResponse
@@ -3784,7 +3784,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.obje
 })
 
 /**
- * KnowledgeFS logical documents
+ * Agent Knowledge Base logical documents
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
@@ -3797,7 +3797,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.obj
 })
 
 /**
- * KnowledgeFS logical document availability updated
+ * Agent Knowledge Base logical document availability updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsBulkDocumentAvailabilityResponse
@@ -3814,7 +3814,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkPath = 
 })
 
 /**
- * KnowledgeFS logical document deletions accepted
+ * Agent Knowledge Base logical document deletions accepted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponse =
   zKnowledgeFsBulkDeletionAcceptedResponse
@@ -3827,7 +3827,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipPa
 })
 
 /**
- * KnowledgeFS logical documents ZIP
+ * Agent Knowledge Base logical documents ZIP
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse =
   zBinaryFileResponse
@@ -3847,7 +3847,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentI
 })
 
 /**
- * KnowledgeFS logical document deletion accepted
+ * Agent Knowledge Base logical document deletion accepted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   zKnowledgeFsDurableDeletionAcceptedResponse
@@ -3858,7 +3858,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPa
 })
 
 /**
- * KnowledgeFS logical document
+ * Agent Knowledge Base logical document
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
@@ -3872,7 +3872,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentId
 })
 
 /**
- * KnowledgeFS logical document availability updated
+ * Agent Knowledge Base logical document availability updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
@@ -3884,7 +3884,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDo
   })
 
 /**
- * KnowledgeFS logical document
+ * Agent Knowledge Base logical document
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =
   zBinaryFileResponse
@@ -3896,7 +3896,7 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdMembersPath = z.object({
 })
 
 /**
- * KnowledgeFS space members replaced
+ * Agent Knowledge Base members replaced
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersResponse =
   zKnowledgeFsPermissionListResponse
@@ -3911,7 +3911,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdMetadataQuery = z.object({
 })
 
 /**
- * KnowledgeFS metadata fields
+ * Agent Knowledge Base metadata fields
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdMetadataResponse =
   zKnowledgeFsMetadataFieldListResponse
@@ -3924,7 +3924,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdMetadataPath = z.object({
 })
 
 /**
- * KnowledgeFS metadata field created
+ * Agent Knowledge Base metadata field created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdMetadataResponse =
   zKnowledgeFsMetadataFieldResponse
@@ -3939,7 +3939,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdQuery = z.
 })
 
 /**
- * KnowledgeFS metadata field deleted
+ * Agent Knowledge Base metadata field deleted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse =
   zKnowledgeFsMetadataFieldDeleteResponse
@@ -3953,7 +3953,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdPath = z.ob
 })
 
 /**
- * KnowledgeFS metadata field updated
+ * Agent Knowledge Base metadata field updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse =
   zKnowledgeFsMetadataFieldResponse
@@ -4000,7 +4000,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityQuery = z.obje
 })
 
 /**
- * KnowledgeFS activity
+ * Agent Knowledge Base activity
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponse =
   zKnowledgeFsOverviewActivityListResponse
@@ -4015,7 +4015,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionQuery = z.obj
 })
 
 /**
- * KnowledgeFS attention findings
+ * Agent Knowledge Base attention findings
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponse =
   zKnowledgeFsOverviewAttentionListResponse
@@ -4025,7 +4025,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthPath = z.object(
 })
 
 /**
- * KnowledgeFS health
+ * Agent Knowledge Base health
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthResponse =
   zKnowledgeFsOverviewHealthResponse
@@ -4035,7 +4035,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryPath = z.obje
 })
 
 /**
- * KnowledgeFS inventory
+ * Agent Knowledge Base inventory
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryResponse =
   zKnowledgeFsOverviewInventoryResponse
@@ -4049,7 +4049,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesQuery = z
 })
 
 /**
- * KnowledgeFS query outcomes
+ * Agent Knowledge Base query outcomes
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesResponse =
   zKnowledgeFsOverviewQueryOutcomesResponse
@@ -4063,7 +4063,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsQuery = z.object(
 })
 
 /**
- * KnowledgeFS Overview statistics
+ * Agent Knowledge Base Overview statistics
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsResponse =
   zKnowledgeFsOverviewStatsResponse
@@ -4073,7 +4073,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdPermissionsPath = z.object({
 })
 
 /**
- * KnowledgeFS space permissions
+ * Agent Knowledge Base permissions
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdPermissionsResponse =
   zKnowledgeFsPermissionListResponse
@@ -4088,7 +4088,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesQuery = z.objec
 })
 
 /**
- * KnowledgeFS bad cases
+ * Agent Knowledge Base bad cases
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse =
   zKnowledgeFsBadCaseListResponse
@@ -4101,7 +4101,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesPath = z.objec
 })
 
 /**
- * KnowledgeFS bad case created
+ * Agent Knowledge Base bad case created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse =
   zKnowledgeFsBadCaseResponse
@@ -4112,7 +4112,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdPath
 })
 
 /**
- * KnowledgeFS bad case
+ * Agent Knowledge Base bad case
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse =
   zKnowledgeFsBadCaseResponse
@@ -4126,7 +4126,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdPa
 })
 
 /**
- * KnowledgeFS bad case updated
+ * Agent Knowledge Base bad case updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse =
   zKnowledgeFsBadCaseResponse
@@ -4138,7 +4138,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTrac
   })
 
 /**
- * KnowledgeFS bad case trace reference
+ * Agent Knowledge Base bad case trace reference
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse =
   zKnowledgeFsBadCaseTraceReferenceResponse
@@ -4155,7 +4155,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsQuery = z.obj
 })
 
 /**
- * KnowledgeFS quality replay history
+ * Agent Knowledge Base quality replay history
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
   zKnowledgeFsQualityReplayListResponse
@@ -4172,7 +4172,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsPath = z.obj
 })
 
 /**
- * KnowledgeFS quality replay queued
+ * Agent Knowledge Base quality replay queued
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
   zKnowledgeFsQualityReplayResponse
@@ -4187,7 +4187,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdQuery 
 })
 
 /**
- * KnowledgeFS quality replay run
+ * Agent Knowledge Base quality replay run
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse =
   zKnowledgeFsQualityReplayResponse
@@ -4199,7 +4199,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesPath = z.object({
 })
 
 /**
- * KnowledgeFS query accepted
+ * Agent Knowledge Base query accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesResponse = zKnowledgeFsQueryResponse
 
@@ -4211,7 +4211,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionPath = z.obje
 })
 
 /**
- * KnowledgeFS streaming query admitted through Dify API
+ * Agent Knowledge Base streaming query admitted through Dify API
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse =
   zKnowledgeFsQueryAdmissionResponse
@@ -4221,7 +4221,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityPath = z
 })
 
 /**
- * KnowledgeFS Dify API query stream capability
+ * Agent Knowledge Base Dify API query stream capability
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityResponse =
   zKnowledgeFsQueryStreamCapabilityResponse
@@ -4235,7 +4235,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksQuery = z.object(
 })
 
 /**
- * KnowledgeFS research tasks
+ * Agent Knowledge Base research tasks
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse =
   zKnowledgeFsResearchTaskListResponse
@@ -4248,7 +4248,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPath = z.object(
 })
 
 /**
- * KnowledgeFS research task accepted
+ * Agent Knowledge Base research task accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse =
   zKnowledgeFsResearchTaskResponse
@@ -4261,7 +4261,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanPath = z.obj
 })
 
 /**
- * KnowledgeFS research task plan
+ * Agent Knowledge Base research task plan
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponse =
   zKnowledgeFsResearchTaskPlanResponse
@@ -4272,7 +4272,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath =
 })
 
 /**
- * KnowledgeFS research task canceled
+ * Agent Knowledge Base research task canceled
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse =
   zKnowledgeFsResearchTaskResponse
@@ -4283,7 +4283,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath = z.
 })
 
 /**
- * KnowledgeFS research task
+ * Agent Knowledge Base research task
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse =
   zKnowledgeFsResearchTaskResponse
@@ -4299,7 +4299,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsQ
 })
 
 /**
- * KnowledgeFS research task partial evidence
+ * Agent Knowledge Base research task partial evidence
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponse =
   zKnowledgeFsResearchTaskPartialListResponse
@@ -4309,7 +4309,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsPath = z.object({
 })
 
 /**
- * KnowledgeFS settings
+ * Agent Knowledge Base settings
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsResponse = zKnowledgeFsSettingsResponse
 
@@ -4320,7 +4320,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsPath = z.object({
 })
 
 /**
- * KnowledgeFS settings updated
+ * Agent Knowledge Base settings updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse =
   zKnowledgeFsSettingsUpdateResponse
@@ -4331,7 +4331,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationI
 })
 
 /**
- * KnowledgeFS settings migration
+ * Agent Knowledge Base settings migration
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse =
   zKnowledgeFsProfileMigrationResponse
@@ -4346,7 +4346,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsQuery = z.obj
 })
 
 /**
- * KnowledgeFS source connections
+ * Agent Knowledge Base source connections
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
   zKnowledgeFsSourceConnectionListResponse
@@ -4359,7 +4359,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath = z.obj
 })
 
 /**
- * KnowledgeFS source connection created
+ * Agent Knowledge Base source connection created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
   zKnowledgeFsSourceConnectionResponse
@@ -4374,7 +4374,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnection
   })
 
 /**
- * KnowledgeFS source connection refreshed
+ * Agent Knowledge Base source connection refreshed
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponse =
   zKnowledgeFsSourceConnectionResponse
@@ -4384,7 +4384,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersPath = z.object
 })
 
 /**
- * KnowledgeFS source providers
+ * Agent Knowledge Base source providers
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponse =
   zKnowledgeFsSourceProviderListResponse
@@ -4395,7 +4395,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPath = z
 })
 
 /**
- * KnowledgeFS source workflow
+ * Agent Knowledge Base source workflow
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4409,7 +4409,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelP
 })
 
 /**
- * KnowledgeFS source workflow canceled
+ * Agent Knowledge Base source workflow canceled
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4425,7 +4425,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesQue
 })
 
 /**
- * KnowledgeFS crawl preview pages
+ * Agent Knowledge Base crawl preview pages
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponse =
   zKnowledgeFsCrawlPreviewPageListResponse
@@ -4436,7 +4436,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryPa
 })
 
 /**
- * KnowledgeFS source workflow retried
+ * Agent Knowledge Base source workflow retried
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4455,7 +4455,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelecti
 })
 
 /**
- * KnowledgeFS crawl preview selection accepted
+ * Agent Knowledge Base crawl preview selection accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4470,7 +4470,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesQuery = z.object({
 })
 
 /**
- * KnowledgeFS sources
+ * Agent Knowledge Base sources
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesResponse = zKnowledgeFsSourceListResponse
 
@@ -4481,7 +4481,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesPath = z.object({
 })
 
 /**
- * KnowledgeFS source created
+ * Agent Knowledge Base source created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesResponse = zKnowledgeFsSourceResponse
 
@@ -4502,7 +4502,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdQuery = z.
 })
 
 /**
- * KnowledgeFS source deletion accepted
+ * Agent Knowledge Base source deletion accepted
  */
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsDurableDeletionAcceptedResponse
@@ -4513,7 +4513,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.obje
 })
 
 /**
- * KnowledgeFS source
+ * Agent Knowledge Base source
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsSourceResponse
@@ -4527,7 +4527,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.ob
 })
 
 /**
- * KnowledgeFS source updated
+ * Agent Knowledge Base source updated
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsSourceResponse
@@ -4545,7 +4545,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportP
 })
 
 /**
- * KnowledgeFS Source import accepted for asynchronous reconciliation
+ * Agent Knowledge Base Source import accepted for asynchronous reconciliation
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4563,7 +4563,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportP
 })
 
 /**
- * KnowledgeFS selected website crawl import accepted
+ * Agent Knowledge Base selected website crawl import accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4578,7 +4578,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreview
 })
 
 /**
- * KnowledgeFS source crawl preview accepted
+ * Agent Knowledge Base source crawl preview accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4596,7 +4596,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesQuery = 
 })
 
 /**
- * KnowledgeFS source files
+ * Agent Knowledge Base source files
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponse =
   zKnowledgeFsSourceFilesResponse
@@ -4610,7 +4610,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportPath =
 })
 
 /**
- * KnowledgeFS source pages imported
+ * Agent Knowledge Base source pages imported
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponse =
   zKnowledgeFsSourceImportResponse
@@ -4624,7 +4624,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesP
 })
 
 /**
- * KnowledgeFS source files imported
+ * Agent Knowledge Base source files imported
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponse =
   zKnowledgeFsSourceImportResponse
@@ -4640,7 +4640,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = 
 })
 
 /**
- * KnowledgeFS source pages
+ * Agent Knowledge Base source pages
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse =
   zKnowledgeFsSourcePagesResponse
@@ -4655,7 +4655,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPath = z
 })
 
 /**
- * KnowledgeFS source sync accepted
+ * Agent Knowledge Base source sync accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4666,7 +4666,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPat
 })
 
 /**
- * KnowledgeFS source sync policy
+ * Agent Knowledge Base source sync policy
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
   zKnowledgeFsSourceSyncPolicyResponse
@@ -4680,7 +4680,7 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPat
 })
 
 /**
- * KnowledgeFS source sync policy updated
+ * Agent Knowledge Base source sync policy updated
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
   zKnowledgeFsSourceSyncPolicyResponse
@@ -4691,7 +4691,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestPath = z
 })
 
 /**
- * KnowledgeFS source credential test
+ * Agent Knowledge Base source credential test
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse =
   zKnowledgeFsSourceCredentialTestResponse
@@ -4710,7 +4710,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImpo
 })
 
 /**
- * KnowledgeFS durable provider import accepted
+ * Agent Knowledge Base durable provider import accepted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
   zKnowledgeFsSourceWorkflowResponse
@@ -4720,7 +4720,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTagsPath = z.object({
 })
 
 /**
- * KnowledgeFS space tags
+ * Agent Knowledge Base tags
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdTagsResponse = zKnowledgeFsSpaceTagListResponse
 
@@ -4731,7 +4731,7 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdTagsPath = z.object({
 })
 
 /**
- * KnowledgeFS space tags replaced
+ * Agent Knowledge Base tags replaced
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse = zKnowledgeFsSpaceTagListResponse
 
@@ -4745,7 +4745,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesQuery = z.object({
 })
 
 /**
- * KnowledgeFS traces
+ * Agent Knowledge Base traces
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesResponse = zKnowledgeFsTraceListResponse
 
@@ -4755,7 +4755,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdPath = z.object
 })
 
 /**
- * KnowledgeFS answer trace
+ * Agent Knowledge Base answer trace
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponse =
   zKnowledgeFsAnswerTraceResponse
@@ -4771,7 +4771,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsQuery 
 })
 
 /**
- * KnowledgeFS trace conflicts
+ * Agent Knowledge Base trace conflicts
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse =
   zKnowledgeFsTraceEntryListResponse
@@ -4787,7 +4787,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceQuery =
 })
 
 /**
- * KnowledgeFS trace evidence view
+ * Agent Knowledge Base trace evidence view
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponse =
   zKnowledgeFsTraceEntryListResponse
@@ -4803,7 +4803,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingQuery = 
 })
 
 /**
- * KnowledgeFS trace missing evidence
+ * Agent Knowledge Base trace missing evidence
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse =
   zKnowledgeFsTraceEntryListResponse
@@ -4820,7 +4820,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsPath = z.object
 })
 
 /**
- * KnowledgeFS upload session created
+ * Agent Knowledge Base upload session created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponse =
   zKnowledgeFsUploadSessionCreateResponse
@@ -4835,7 +4835,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSession
   })
 
 /**
- * KnowledgeFS upload session aborted
+ * Agent Knowledge Base upload session aborted
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponse =
   zKnowledgeFsUploadSessionMutationResponse
@@ -4850,7 +4850,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSession
   })
 
 /**
- * KnowledgeFS upload session completed
+ * Agent Knowledge Base upload session completed
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponse =
   zKnowledgeFsUploadSessionMutationResponse
@@ -4866,7 +4866,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSession
   })
 
 /**
- * KnowledgeFS upload part URL created
+ * Agent Knowledge Base upload part URL created
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponse =
   zKnowledgeFsPresignedUploadResponse
@@ -4883,7 +4883,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSession
   })
 
 /**
- * KnowledgeFS small-file fallback completed
+ * Agent Knowledge Base small-file fallback completed
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileResponse =
   zKnowledgeFsSmallFileUploadResponse
@@ -4895,7 +4895,7 @@ export const zPostKnowledgeFsTasksByTaskIdStreamCapabilityPath = z.object({
 })
 
 /**
- * KnowledgeFS task stream capability
+ * Agent Knowledge Base task stream capability
  */
 export const zPostKnowledgeFsTasksByTaskIdStreamCapabilityResponse =
   zKnowledgeFsStreamCapabilityResponse
@@ -4905,7 +4905,7 @@ export const zPostKnowledgeFsUploadsBody = z.object({
 })
 
 /**
- * KnowledgeFS document bytes staged in the current workspace
+ * Agent Knowledge Base document bytes staged in the current workspace
  */
 export const zPostKnowledgeFsUploadsResponse = zKnowledgeFsStagedUploadResponse
 
@@ -4914,6 +4914,6 @@ export const zDeleteKnowledgeFsUploadsByUploadIdPath = z.object({
 })
 
 /**
- * KnowledgeFS staged upload discarded
+ * Agent Knowledge Base staged upload discarded
  */
 export const zDeleteKnowledgeFsUploadsByUploadIdResponse = z.void()

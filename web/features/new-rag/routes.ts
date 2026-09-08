@@ -11,7 +11,7 @@ export function singleSearchParam(value: string | string[] | undefined) {
 
 const newKnowledgeCreatePath = '/datasets/new/create'
 
-export const newKnowledgeListPath = '/datasets?view=new'
+export const newKnowledgeListPath = '/datasets?view=agent'
 
 export const newKnowledgeOverviewPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}`

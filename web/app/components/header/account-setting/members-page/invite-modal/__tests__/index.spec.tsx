@@ -1,12 +1,13 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { vi } from 'vite-plus/test'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import { seedFeatures } from '@/test/console/query-data'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { InviteModal } from '../index'
 
 const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
@@ -15,27 +16,33 @@ const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/service/access-control/use-workspace-roles')
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    features: {
-      get: {
-        queryKey: () => ['features'],
-        queryOptions: () => ({ queryKey: ['features'], queryFn: fetchFeatures }),
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      features: {
+        get: {
+          queryKey: () => ['features'],
+          queryOptions: () => ({ queryKey: ['features'], queryFn: fetchFeatures }),
+        },
       },
-    },
-    workspaces: {
-      current: {
-        members: {
-          inviteEmail: {
-            post: {
-              mutationOptions: () => ({ mutationFn: inviteMember }),
+      workspaces: {
+        current: {
+          members: {
+            inviteEmail: {
+              post: {
+                mutationOptions: () => ({ mutationFn: inviteMember }),
+              },
             },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 describe('InviteModal', () => {
   const onOpenChange = vi.fn()
@@ -108,11 +115,12 @@ describe('InviteModal', () => {
     queryClient?: QueryClient
     workspaceMembers?: GetFeaturesResponse['workspace_members']
   } = {}) => {
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
     const features = seedFeatures(queryClient, { workspace_members: workspaceMembers })
     fetchFeatures.mockResolvedValue(features)
 
     return render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientTestProvider queryClient={queryClient}>
         <InviteModal
           open={open}
           trigger={<button type="button">members.invite</button>}
@@ -120,7 +128,7 @@ describe('InviteModal', () => {
           onOpenChange={onOpenChange}
           onSend={onSend}
         />
-      </QueryClientProvider>,
+      </QueryClientTestProvider>,
     )
   }
 
@@ -658,13 +666,14 @@ describe('InviteModal', () => {
   it('resets the form after a controlled close', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
     const features = seedFeatures(queryClient)
     fetchFeatures.mockResolvedValue(features)
     const ControlledInviteModal = () => {
       const [open, setOpen] = useState(false)
 
       return (
-        <QueryClientProvider client={queryClient}>
+        <QueryClientTestProvider queryClient={queryClient}>
           <InviteModal
             open={open}
             trigger={<button type="button">members.invite</button>}
@@ -672,7 +681,7 @@ describe('InviteModal', () => {
             onOpenChange={setOpen}
             onSend={onSend}
           />
-        </QueryClientProvider>
+        </QueryClientTestProvider>
       )
     }
     render(<ControlledInviteModal />)

@@ -26,6 +26,7 @@ from werkzeug.exceptions import (
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -47,7 +48,6 @@ from controllers.console.knowledge_fs.error import (
 )
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     rbac_permission_required,
@@ -522,7 +522,7 @@ _DOCUMENT_UPLOAD_PARAMS = {
 }
 _STAGED_UPLOAD_PARAMS = {
     "file": {
-        "description": "Workspace-scoped document bytes staged before KnowledgeFS admission",
+        "description": "Workspace-scoped document bytes staged before Agent Knowledge Base admission",
         "in": "formData",
         "type": "file",
         "required": True,
@@ -582,7 +582,7 @@ def _public_multimodal_manifest(
     manifest: KnowledgeFSDocumentMultimodalManifest,
 ) -> KnowledgeFSDocumentMultimodalManifestResponse:
     if manifest.document_asset_id != document_id:
-        raise NotFound("KnowledgeFS document multimodal manifest not found")
+        raise NotFound("Agent Knowledge Base document multimodal manifest not found")
 
     items: list[KnowledgeFSDocumentMultimodalItemResponse] = []
     for item in manifest.items:
@@ -1003,7 +1003,7 @@ class KnowledgeFSStagedUploadsApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=_STAGED_UPLOAD_PARAMS)
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS document bytes staged in the current workspace",
+        "Agent Knowledge Base document bytes staged in the current workspace",
         console_ns.models[KnowledgeFSStagedUploadResponse.__name__],
     )
     @setup_required
@@ -1032,7 +1032,7 @@ class KnowledgeFSStagedUploadsApi(Resource):
 
 @console_ns.route("/knowledge-fs/uploads/<string:upload_id>")
 class KnowledgeFSStagedUploadApi(Resource):
-    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS staged upload discarded")
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base staged upload discarded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1046,7 +1046,9 @@ class KnowledgeFSStagedUploadApi(Resource):
 @console_ns.route("/knowledge-fs/spaces")
 class KnowledgeFSSpacesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSpaceListQuery))
-    @console_ns.response(HTTPStatus.OK, "KnowledgeFS spaces", console_ns.models[KnowledgeFSSpaceListResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Agent Knowledge Bases", console_ns.models[KnowledgeFSSpaceListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1068,7 +1070,7 @@ class KnowledgeFSSpacesApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSpaceCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS provisioning accepted",
+        "Agent Knowledge Base provisioning accepted",
         console_ns.models[KnowledgeFSSpaceCreateResponse.__name__],
     )
     @setup_required
@@ -1090,7 +1092,7 @@ class KnowledgeFSSpacesApi(Resource):
 class KnowledgeFSSpaceTagsApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS space tags",
+        "Agent Knowledge Base tags",
         console_ns.models[KnowledgeFSSpaceTagListResponse.__name__],
     )
     @setup_required
@@ -1109,7 +1111,7 @@ class KnowledgeFSSpaceTagsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSpaceTagsReplacePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS space tags replaced",
+        "Agent Knowledge Base tags replaced",
         console_ns.models[KnowledgeFSSpaceTagListResponse.__name__],
     )
     @setup_required
@@ -1136,7 +1138,7 @@ class KnowledgeFSSpaceTagsApi(Resource):
 class KnowledgeFSSpaceApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS space",
+        "Agent Knowledge Base",
         console_ns.models[KnowledgeFSSpaceDetailResponse.__name__],
     )
     @setup_required
@@ -1155,7 +1157,7 @@ class KnowledgeFSSpaceApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSpaceUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS space updated",
+        "Agent Knowledge Base updated",
         console_ns.models[KnowledgeFSSpaceDetailResponse.__name__],
     )
     @setup_required
@@ -1173,7 +1175,7 @@ class KnowledgeFSSpaceApi(Resource):
         )
         return dump_response(KnowledgeFSSpaceDetailResponse, result)
 
-    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS deletion accepted")
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base deletion accepted")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1193,7 +1195,7 @@ class KnowledgeFSSpaceApi(Resource):
 class KnowledgeFSSpacePermissionsApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS space permissions",
+        "Agent Knowledge Base permissions",
         console_ns.models[KnowledgeFSPermissionListResponse.__name__],
     )
     @setup_required
@@ -1215,7 +1217,7 @@ class KnowledgeFSSpaceMembersApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSMembersReplacePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS space members replaced",
+        "Agent Knowledge Base members replaced",
         console_ns.models[KnowledgeFSPermissionListResponse.__name__],
     )
     @setup_required
@@ -1239,7 +1241,7 @@ class KnowledgeFSSpaceMembersApi(Resource):
 class KnowledgeFSSpaceExternalAccessApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS external access",
+        "Agent Knowledge Base external access",
         console_ns.models[KnowledgeFSExternalAccessResponse.__name__],
     )
     @setup_required
@@ -1258,7 +1260,7 @@ class KnowledgeFSSpaceExternalAccessApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSExternalAccessPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS external access updated",
+        "Agent Knowledge Base external access updated",
         console_ns.models[KnowledgeFSExternalAccessResponse.__name__],
     )
     @setup_required
@@ -1281,7 +1283,7 @@ class KnowledgeFSSpaceExternalAccessApi(Resource):
 class KnowledgeFSSpaceAppBindingsApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS app bindings",
+        "Agent Knowledge Base app bindings",
         console_ns.models[KnowledgeFSAppBindingListResponse.__name__],
     )
     @setup_required
@@ -1300,7 +1302,7 @@ class KnowledgeFSSpaceAppBindingsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSAppBindingPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS app binding enabled",
+        "Agent Knowledge Base app binding enabled",
         console_ns.models[KnowledgeFSAppBindingResponse.__name__],
     )
     @setup_required
@@ -1321,7 +1323,7 @@ class KnowledgeFSSpaceAppBindingsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/app-bindings/<string:caller_kind>/<string:app_id>")
 class KnowledgeFSSpaceAppBindingApi(Resource):
-    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS app binding revoked")
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base app binding revoked")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1347,7 +1349,7 @@ class KnowledgeFSSpaceAppBindingApi(Resource):
 class KnowledgeFSSpaceSettingsApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS settings",
+        "Agent Knowledge Base settings",
         console_ns.models[KnowledgeFSSettingsResponse.__name__],
     )
     @setup_required
@@ -1366,7 +1368,7 @@ class KnowledgeFSSpaceSettingsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSettingsPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS settings updated",
+        "Agent Knowledge Base settings updated",
         console_ns.models[KnowledgeFSSettingsUpdateResponse.__name__],
     )
     @setup_required
@@ -1389,7 +1391,7 @@ class KnowledgeFSSpaceSettingsApi(Resource):
 class KnowledgeFSSpaceSettingsMigrationApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS settings migration",
+        "Agent Knowledge Base settings migration",
         console_ns.models[KnowledgeFSProfileMigrationResponse.__name__],
     )
     @setup_required
@@ -1412,7 +1414,7 @@ class KnowledgeFSSpaceOverviewStatsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewWindowQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS Overview statistics",
+        "Agent Knowledge Base Overview statistics",
         console_ns.models[KnowledgeFSOverviewStatsResponse.__name__],
     )
     @setup_required
@@ -1451,7 +1453,7 @@ class KnowledgeFSSpaceOverviewQueryOutcomesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewWindowQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS query outcomes",
+        "Agent Knowledge Base query outcomes",
         console_ns.models[KnowledgeFSOverviewQueryOutcomesResponse.__name__],
     )
     @setup_required
@@ -1474,7 +1476,7 @@ class KnowledgeFSSpaceOverviewQueryOutcomesApi(Resource):
 class KnowledgeFSSpaceOverviewInventoryApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS inventory",
+        "Agent Knowledge Base inventory",
         console_ns.models[KnowledgeFSOverviewInventoryResponse.__name__],
     )
     @setup_required
@@ -1496,7 +1498,7 @@ class KnowledgeFSSpaceOverviewAttentionApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewAttentionListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS attention findings",
+        "Agent Knowledge Base attention findings",
         console_ns.models[KnowledgeFSOverviewAttentionListResponse.__name__],
     )
     @setup_required
@@ -1521,7 +1523,7 @@ class KnowledgeFSSpaceOverviewActivityApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewActivityListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS activity",
+        "Agent Knowledge Base activity",
         console_ns.models[KnowledgeFSOverviewActivityListResponse.__name__],
     )
     @setup_required
@@ -1552,7 +1554,7 @@ class KnowledgeFSSpaceOverviewActivityApi(Resource):
 class KnowledgeFSSpaceOverviewHealthApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS health",
+        "Agent Knowledge Base health",
         console_ns.models[KnowledgeFSOverviewHealthResponse.__name__],
     )
     @setup_required
@@ -1574,7 +1576,7 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS logical documents",
+        "Agent Knowledge Base logical documents",
         console_ns.models[KnowledgeFSLogicalDocumentListResponse.__name__],
     )
     @setup_required
@@ -1595,7 +1597,7 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSBulkDocumentAvailabilityPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS logical document availability updated",
+        "Agent Knowledge Base logical document availability updated",
         console_ns.models[KnowledgeFSBulkDocumentAvailabilityResponse.__name__],
     )
     @setup_required
@@ -1619,7 +1621,7 @@ class KnowledgeFSSpaceDocumentReferenceApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentReferenceQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "Resolved KnowledgeFS document reference",
+        "Resolved Agent Knowledge Base document reference",
         console_ns.models[KnowledgeFSResolvedDocumentReferenceResponse.__name__],
     )
     @setup_required
@@ -1645,7 +1647,7 @@ class KnowledgeFSSpaceBulkLogicalDocumentsApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS logical document deletions accepted",
+        "Agent Knowledge Base logical document deletions accepted",
         console_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__],
     )
     @setup_required
@@ -1671,17 +1673,13 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
     @console_ns.produces(["application/zip"])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS logical documents ZIP",
+        "Agent Knowledge Base logical documents ZIP",
         console_ns.models[BinaryFileResponse.__name__],
     )
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET,
-        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_required=False,
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
@@ -1712,23 +1710,21 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
         except KnowledgeFSDownloadTooLargeError as exc:
             raise RequestEntityTooLarge(str(exc)) from exc
         except KnowledgeFSDownloadObjectNotFoundError as exc:
-            raise NotFound("KnowledgeFS document object not found") from exc
+            raise NotFound("Agent Knowledge Base document object not found") from exc
         except KnowledgeFSDownloadUnavailableError as exc:
-            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
 class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
     @console_ns.produces(["application/octet-stream"])
-    @console_ns.response(HTTPStatus.OK, "KnowledgeFS logical document", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Agent Knowledge Base logical document", console_ns.models[BinaryFileResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET,
-        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_required=False,
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, Workspace()))
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
     def get(self, control_space_id: str, document_id: str):
@@ -1742,9 +1738,9 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
         try:
             body = KnowledgeFSDownloadService().load_stream(descriptor)
         except KnowledgeFSDownloadObjectNotFoundError as exc:
-            raise NotFound("KnowledgeFS document object not found") from exc
+            raise NotFound("Agent Knowledge Base document object not found") from exc
         except KnowledgeFSDownloadUnavailableError as exc:
-            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
         response = Response(body, content_type=descriptor.mime_type or "application/octet-stream")
         response.content_length = descriptor.size_bytes
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(descriptor.filename, safe='')}"
@@ -1756,7 +1752,7 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
 class KnowledgeFSSpaceLogicalDocumentApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS logical document",
+        "Agent Knowledge Base logical document",
         console_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
     )
     @setup_required
@@ -1776,7 +1772,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentAvailabilityPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS logical document availability updated",
+        "Agent Knowledge Base logical document availability updated",
         console_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
     )
     @setup_required
@@ -1799,7 +1795,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS logical document deletion accepted",
+        "Agent Knowledge Base logical document deletion accepted",
         console_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @setup_required
@@ -1825,7 +1821,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS documents",
+        "Agent Knowledge Base documents",
         console_ns.models[KnowledgeFSDocumentListResponse.__name__],
     )
     @setup_required
@@ -1851,7 +1847,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
     )
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS document accepted for processing",
+        "Agent Knowledge Base document accepted for processing",
         console_ns.models[KnowledgeFSDocumentCreateAcceptedResponse.__name__],
     )
     @setup_required
@@ -1886,7 +1882,7 @@ class KnowledgeFSSpaceMetadataApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSMetadataFieldListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS metadata fields",
+        "Agent Knowledge Base metadata fields",
         console_ns.models[KnowledgeFSMetadataFieldListResponse.__name__],
     )
     @setup_required
@@ -1908,7 +1904,7 @@ class KnowledgeFSSpaceMetadataApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSMetadataFieldCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS metadata field created",
+        "Agent Knowledge Base metadata field created",
         console_ns.models[KnowledgeFSMetadataFieldResponse.__name__],
     )
     @setup_required
@@ -1932,7 +1928,7 @@ class KnowledgeFSSpaceMetadataFieldApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSMetadataFieldUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS metadata field updated",
+        "Agent Knowledge Base metadata field updated",
         console_ns.models[KnowledgeFSMetadataFieldResponse.__name__],
     )
     @setup_required
@@ -1954,7 +1950,7 @@ class KnowledgeFSSpaceMetadataFieldApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSMetadataFieldDeleteQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS metadata field deleted",
+        "Agent Knowledge Base metadata field deleted",
         console_ns.models[KnowledgeFSMetadataFieldDeleteResponse.__name__],
     )
     @setup_required
@@ -1981,7 +1977,7 @@ class KnowledgeFSSpaceBulkDocumentsApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS document deletions accepted",
+        "Agent Knowledge Base document deletions accepted",
         console_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__],
     )
     @setup_required
@@ -2006,7 +2002,7 @@ class KnowledgeFSSpaceDocumentReindexApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentReindexPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document reindex queued",
+        "Agent Knowledge Base document reindex queued",
         console_ns.models[KnowledgeFSDocumentReindexResponse.__name__],
     )
     @setup_required
@@ -2029,7 +2025,7 @@ class KnowledgeFSSpaceDocumentReindexApi(Resource):
 class KnowledgeFSSpaceDocumentApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document",
+        "Agent Knowledge Base document",
         console_ns.models[KnowledgeFSDocumentResponse.__name__],
     )
     @setup_required
@@ -2049,7 +2045,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentMetadataPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document metadata updated",
+        "Agent Knowledge Base document metadata updated",
         console_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
     )
     @setup_required
@@ -2072,7 +2068,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS document deletion accepted",
+        "Agent Knowledge Base document deletion accepted",
         console_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @setup_required
@@ -2097,7 +2093,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
 class KnowledgeFSSpaceDocumentOutlineApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document outline",
+        "Agent Knowledge Base document outline",
         console_ns.models[KnowledgeFSDocumentOutlineResponse.__name__],
     )
     @setup_required
@@ -2119,7 +2115,7 @@ class KnowledgeFSSpaceDocumentOutlineApi(Resource):
 class KnowledgeFSSpaceDocumentMultimodalManifestApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document multimodal manifest",
+        "Agent Knowledge Base document multimodal manifest",
         console_ns.models[KnowledgeFSDocumentMultimodalManifestResponse.__name__],
     )
     @setup_required
@@ -2151,7 +2147,7 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentMultimodalAssetQuery))
     @console_ns.produces(["application/octet-stream", "image/gif", "image/jpeg", "image/png", "image/webp"])
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS document multimodal asset", console_ns.models[BinaryFileResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base document multimodal asset", console_ns.models[BinaryFileResponse.__name__]
     )
     @setup_required
     @login_required
@@ -2167,11 +2163,11 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
             document_id=document_id,
         )
         if manifest.document_asset_id != document_id:
-            raise NotFound("KnowledgeFS document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
         item = next((candidate for candidate in manifest.items if candidate.id == item_id), None)
         asset_ref = _multimodal_asset_ref(item, query.variant) if item else None
         if asset_ref is None or not asset_ref.object_key:
-            raise NotFound("KnowledgeFS document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
         object_key = asset_ref.object_key
         if not _multimodal_object_key_is_scoped(
             document_id=document_id,
@@ -2179,17 +2175,17 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
             object_key=object_key,
             tenant_id=tenant_id,
         ):
-            raise NotFound("KnowledgeFS document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
 
         object_storage = KnowledgeFSObjectStorageService()
         try:
             metadata = object_storage.head_object(key=object_key)
         except KnowledgeFSObjectStorageError as exc:
-            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
         if metadata is None:
-            raise NotFound("KnowledgeFS document multimodal asset not found")
+            raise NotFound("Agent Knowledge Base document multimodal asset not found")
         if metadata.size_bytes > _DOCUMENT_MULTIMODAL_ASSET_MAX_BYTES:
-            raise RequestEntityTooLarge("KnowledgeFS document multimodal asset is too large")
+            raise RequestEntityTooLarge("Agent Knowledge Base document multimodal asset is too large")
 
         content_type = (asset_ref.content_type or metadata.content_type or "").strip().lower()
         inline = content_type in _INLINE_MULTIMODAL_CONTENT_TYPES
@@ -2204,9 +2200,9 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
         try:
             body = KnowledgeFSDownloadService(object_storage=object_storage).load_stream(descriptor)
         except KnowledgeFSDownloadObjectNotFoundError as exc:
-            raise NotFound("KnowledgeFS document multimodal asset not found") from exc
+            raise NotFound("Agent Knowledge Base document multimodal asset not found") from exc
         except KnowledgeFSDownloadUnavailableError as exc:
-            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
+            raise ServiceUnavailable("Agent Knowledge Base object storage is unavailable") from exc
 
         response = Response(
             body,
@@ -2227,7 +2223,7 @@ class KnowledgeFSSpaceDocumentRevisionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document revisions",
+        "Agent Knowledge Base document revisions",
         console_ns.models[KnowledgeFSDocumentRevisionListResponse.__name__],
     )
     @setup_required
@@ -2254,7 +2250,7 @@ class KnowledgeFSSpaceDocumentChunksApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentChunkListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document chunks",
+        "Agent Knowledge Base document chunks",
         console_ns.models[KnowledgeFSDocumentChunkListResponse.__name__],
     )
     @setup_required
@@ -2282,7 +2278,7 @@ class KnowledgeFSSpaceDocumentChunksApi(Resource):
 class KnowledgeFSSpaceDocumentChunkApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document chunk",
+        "Agent Knowledge Base document chunk",
         console_ns.models[KnowledgeFSDocumentChunkResponse.__name__],
     )
     @setup_required
@@ -2306,7 +2302,7 @@ class KnowledgeFSSpaceDocumentChunkApi(Resource):
 class KnowledgeFSSpaceCompilationJobApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS compilation job",
+        "Agent Knowledge Base compilation job",
         console_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @setup_required
@@ -2322,7 +2318,7 @@ class KnowledgeFSSpaceCompilationJobApi(Resource):
 
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS compilation job canceled",
+        "Agent Knowledge Base compilation job canceled",
         console_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @setup_required
@@ -2342,7 +2338,7 @@ class KnowledgeFSSpaceCompilationJobApi(Resource):
 class KnowledgeFSSpaceCompilationJobRetryApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS compilation job retried",
+        "Agent Knowledge Base compilation job retried",
         console_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @setup_required
@@ -2362,7 +2358,7 @@ class KnowledgeFSSpaceCompilationJobRetryApi(Resource):
 class KnowledgeFSSpaceBulkJobApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS bulk job",
+        "Agent Knowledge Base bulk job",
         console_ns.models[KnowledgeFSBulkJobResponse.__name__],
     )
     @setup_required
@@ -2382,7 +2378,7 @@ class KnowledgeFSSpaceBackgroundTasksApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSBackgroundTaskListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS background tasks",
+        "Agent Knowledge Base background tasks",
         console_ns.models[KnowledgeFSBackgroundTaskListResponse.__name__],
     )
     @setup_required
@@ -2408,7 +2404,7 @@ class KnowledgeFSSpaceBackgroundTasksApi(Resource):
 class KnowledgeFSSpaceBackgroundTaskCancelApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS background task canceled",
+        "Agent Knowledge Base background task canceled",
         console_ns.models[KnowledgeFSBackgroundTaskResponse.__name__],
     )
     @setup_required
@@ -2434,7 +2430,7 @@ class KnowledgeFSSpaceBackgroundTaskCancelApi(Resource):
 class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS background task retried",
+        "Agent Knowledge Base background task retried",
         console_ns.models[KnowledgeFSBackgroundTaskResponse.__name__],
     )
     @setup_required
@@ -2458,7 +2454,7 @@ class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
 class KnowledgeFSSourceProvidersApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source providers",
+        "Agent Knowledge Base source providers",
         console_ns.models[KnowledgeFSSourceProviderListResponse.__name__],
     )
     @setup_required
@@ -2480,7 +2476,7 @@ class KnowledgeFSSourceConnectionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceConnectionListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source connections",
+        "Agent Knowledge Base source connections",
         console_ns.models[KnowledgeFSSourceConnectionListResponse.__name__],
     )
     @setup_required
@@ -2502,7 +2498,7 @@ class KnowledgeFSSourceConnectionsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceConnectionCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS source connection created",
+        "Agent Knowledge Base source connection created",
         console_ns.models[KnowledgeFSSourceConnectionResponse.__name__],
     )
     @setup_required
@@ -2526,7 +2522,7 @@ class KnowledgeFSSourceConnectionRefreshApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceConnectionRefreshPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source connection refreshed",
+        "Agent Knowledge Base source connection refreshed",
         console_ns.models[KnowledgeFSSourceConnectionResponse.__name__],
     )
     @setup_required
@@ -2551,7 +2547,7 @@ class KnowledgeFSSpaceSourcesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS sources",
+        "Agent Knowledge Base sources",
         console_ns.models[KnowledgeFSSourceListResponse.__name__],
     )
     @setup_required
@@ -2573,7 +2569,7 @@ class KnowledgeFSSpaceSourcesApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS source created",
+        "Agent Knowledge Base source created",
         console_ns.models[KnowledgeFSSourceResponse.__name__],
     )
     @setup_required
@@ -2594,7 +2590,9 @@ class KnowledgeFSSpaceSourcesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>")
 class KnowledgeFSSpaceSourceApi(Resource):
-    @console_ns.response(HTTPStatus.OK, "KnowledgeFS source", console_ns.models[KnowledgeFSSourceResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Agent Knowledge Base source", console_ns.models[KnowledgeFSSourceResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -2608,7 +2606,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
 
     @console_ns.expect(console_ns.models[KnowledgeFSSourceUpdatePayload.__name__])
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source updated", console_ns.models[KnowledgeFSSourceResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base source updated", console_ns.models[KnowledgeFSSourceResponse.__name__]
     )
     @setup_required
     @login_required
@@ -2729,7 +2727,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery) | _IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS source deletion accepted",
+        "Agent Knowledge Base source deletion accepted",
         console_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @setup_required
@@ -2756,7 +2754,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
 class KnowledgeFSSpaceSourceTestApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source credential test",
+        "Agent Knowledge Base source credential test",
         console_ns.models[KnowledgeFSSourceCredentialTestResponse.__name__],
     )
     @setup_required
@@ -2777,7 +2775,7 @@ class KnowledgeFSSpaceSourceSyncApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS source sync accepted",
+        "Agent Knowledge Base source sync accepted",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2802,7 +2800,7 @@ class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS source crawl preview accepted",
+        "Agent Knowledge Base source crawl preview accepted",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2828,7 +2826,7 @@ class KnowledgeFSSpaceSourceCrawlImportApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS selected website crawl import accepted",
+        "Agent Knowledge Base selected website crawl import accepted",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2855,7 +2853,7 @@ class KnowledgeFSSpaceSourceWorkflowImportApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS durable provider import accepted",
+        "Agent Knowledge Base durable provider import accepted",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2880,7 +2878,7 @@ class KnowledgeFSSpaceSourceWorkflowImportApi(Resource):
 class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source sync policy",
+        "Agent Knowledge Base source sync policy",
         console_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__],
     )
     @setup_required
@@ -2900,7 +2898,7 @@ class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceSyncPolicyPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source sync policy updated",
+        "Agent Knowledge Base source sync policy updated",
         console_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__],
     )
     @setup_required
@@ -2924,7 +2922,7 @@ class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
 class KnowledgeFSSourceWorkflowApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source workflow",
+        "Agent Knowledge Base source workflow",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2947,7 +2945,7 @@ class KnowledgeFSSourceWorkflowCancelApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceWorkflowCancelPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source workflow canceled",
+        "Agent Knowledge Base source workflow canceled",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2971,7 +2969,7 @@ class KnowledgeFSSourceWorkflowCancelApi(Resource):
 class KnowledgeFSSourceWorkflowRetryApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source workflow retried",
+        "Agent Knowledge Base source workflow retried",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -2996,7 +2994,7 @@ class KnowledgeFSSourceWorkflowPagesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCrawlPreviewPageListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS crawl preview pages",
+        "Agent Knowledge Base crawl preview pages",
         console_ns.models[KnowledgeFSCrawlPreviewPageListResponse.__name__],
     )
     @setup_required
@@ -3023,7 +3021,7 @@ class KnowledgeFSSourceWorkflowSelectionApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS crawl preview selection accepted",
+        "Agent Knowledge Base crawl preview selection accepted",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -3050,7 +3048,7 @@ class KnowledgeFSSourceAsyncImportApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS Source import accepted for asynchronous reconciliation",
+        "Agent Knowledge Base Source import accepted for asynchronous reconciliation",
         console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
@@ -3077,7 +3075,7 @@ class KnowledgeFSSourceAsyncImportApi(Resource):
 class KnowledgeFSSpaceSourcePagesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourcePagesQuery))
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source pages", console_ns.models[KnowledgeFSSourcePagesResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base source pages", console_ns.models[KnowledgeFSSourcePagesResponse.__name__]
     )
     @setup_required
     @login_required
@@ -3101,7 +3099,9 @@ class KnowledgeFSSpaceSourcePagesApi(Resource):
 class KnowledgeFSSpaceSourcePageImportApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceImportPagesPayload.__name__])
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source pages imported", console_ns.models[KnowledgeFSSourceImportResponse.__name__]
+        HTTPStatus.OK,
+        "Agent Knowledge Base source pages imported",
+        console_ns.models[KnowledgeFSSourceImportResponse.__name__],
     )
     @setup_required
     @login_required
@@ -3124,7 +3124,7 @@ class KnowledgeFSSpaceSourcePageImportApi(Resource):
 class KnowledgeFSSpaceSourceFilesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceFilesQuery))
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source files", console_ns.models[KnowledgeFSSourceFilesResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base source files", console_ns.models[KnowledgeFSSourceFilesResponse.__name__]
     )
     @setup_required
     @login_required
@@ -3147,7 +3147,9 @@ class KnowledgeFSSpaceSourceFilesApi(Resource):
 class KnowledgeFSSpaceSourceFileImportApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSSourceImportFilesPayload.__name__])
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source files imported", console_ns.models[KnowledgeFSSourceImportResponse.__name__]
+        HTTPStatus.OK,
+        "Agent Knowledge Base source files imported",
+        console_ns.models[KnowledgeFSSourceImportResponse.__name__],
     )
     @setup_required
     @login_required
@@ -3172,7 +3174,7 @@ class KnowledgeFSSpaceQueriesApi(Resource):
     @console_ns.doc(deprecated=True)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS query accepted",
+        "Agent Knowledge Base query accepted",
         console_ns.models[KnowledgeFSQueryResponse.__name__],
     )
     @setup_required
@@ -3182,7 +3184,7 @@ class KnowledgeFSSpaceQueriesApi(Resource):
     def post(self, control_space_id: str):
         _ = control_space_id
         raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS query creation is deprecated; use the queries/admission streaming BFF flow"
+            "Buffered Agent Knowledge Base query creation is deprecated; use the queries/admission streaming BFF flow"
         )
 
 
@@ -3191,7 +3193,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS streaming query admitted through Dify API",
+        "Agent Knowledge Base streaming query admitted through Dify API",
         console_ns.models[KnowledgeFSQueryAdmissionResponse.__name__],
     )
     @setup_required
@@ -3236,7 +3238,7 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
 class KnowledgeFSQueryStreamProxyApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSAdmittedQueryRequest.__name__])
     @console_ns.doc(produces=["text/event-stream"])
-    @console_ns.response(HTTPStatus.OK, "KnowledgeFS query event stream")
+    @console_ns.response(HTTPStatus.OK, "Agent Knowledge Base query event stream")
     @_knowledge_fs_errors
     def post(self):
         # This endpoint intentionally authenticates with the short-lived, resource-scoped
@@ -3257,7 +3259,7 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research tasks",
+        "Agent Knowledge Base research tasks",
         console_ns.models[KnowledgeFSResearchTaskListResponse.__name__],
     )
     @setup_required
@@ -3278,7 +3280,7 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSResearchTaskCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS research task accepted",
+        "Agent Knowledge Base research task accepted",
         console_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @setup_required
@@ -3309,7 +3311,7 @@ class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSResearchTaskPlanPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task plan",
+        "Agent Knowledge Base research task plan",
         console_ns.models[KnowledgeFSResearchTaskPlanResponse.__name__],
     )
     @setup_required
@@ -3339,7 +3341,7 @@ class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
 class KnowledgeFSSpaceResearchTaskApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task",
+        "Agent Knowledge Base research task",
         console_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @setup_required
@@ -3355,7 +3357,7 @@ class KnowledgeFSSpaceResearchTaskApi(Resource):
 
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task canceled",
+        "Agent Knowledge Base research task canceled",
         console_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @setup_required
@@ -3376,7 +3378,7 @@ class KnowledgeFSSpaceResearchTaskPartialsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSResearchTaskPartialsQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task partial evidence",
+        "Agent Knowledge Base research task partial evidence",
         console_ns.models[KnowledgeFSResearchTaskPartialListResponse.__name__],
     )
     @setup_required
@@ -3402,7 +3404,7 @@ class KnowledgeFSSpaceTracesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS traces",
+        "Agent Knowledge Base traces",
         console_ns.models[KnowledgeFSTraceListResponse.__name__],
     )
     @setup_required
@@ -3427,7 +3429,7 @@ class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS golden questions",
+        "Agent Knowledge Base golden questions",
         console_ns.models[KnowledgeFSGoldenQuestionListResponse.__name__],
     )
     @setup_required
@@ -3449,7 +3451,7 @@ class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionPayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS golden question created",
+        "Agent Knowledge Base golden question created",
         console_ns.models[KnowledgeFSGoldenQuestionResponse.__name__],
     )
     @setup_required
@@ -3473,7 +3475,7 @@ class KnowledgeFSSpaceGoldenQuestionEvidenceMatchesApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionEvidenceMatchPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS golden question evidence matches",
+        "Agent Knowledge Base golden question evidence matches",
         console_ns.models[KnowledgeFSGoldenQuestionEvidenceMatchResponse.__name__],
     )
     @setup_required
@@ -3497,7 +3499,7 @@ class KnowledgeFSSpaceGoldenQuestionBulkImportApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionBulkImportPayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS golden questions imported",
+        "Agent Knowledge Base golden questions imported",
         console_ns.models[KnowledgeFSGoldenQuestionBulkImportResponse.__name__],
     )
     @setup_required
@@ -3521,7 +3523,7 @@ class KnowledgeFSSpaceGoldenQuestionApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS golden question updated",
+        "Agent Knowledge Base golden question updated",
         console_ns.models[KnowledgeFSGoldenQuestionResponse.__name__],
     )
     @setup_required
@@ -3540,7 +3542,7 @@ class KnowledgeFSSpaceGoldenQuestionApi(Resource):
         )
         return dump_response(KnowledgeFSGoldenQuestionResponse, result)
 
-    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS golden question deleted")
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base golden question deleted")
     @setup_required
     @login_required
     @account_initialization_required
@@ -3562,7 +3564,7 @@ class KnowledgeFSSpaceBadCasesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS bad cases",
+        "Agent Knowledge Base bad cases",
         console_ns.models[KnowledgeFSBadCaseListResponse.__name__],
     )
     @setup_required
@@ -3584,7 +3586,7 @@ class KnowledgeFSSpaceBadCasesApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSBadCaseCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS bad case created",
+        "Agent Knowledge Base bad case created",
         console_ns.models[KnowledgeFSBadCaseResponse.__name__],
     )
     @setup_required
@@ -3608,7 +3610,7 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityReplayListQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS quality replay history",
+        "Agent Knowledge Base quality replay history",
         console_ns.models[KnowledgeFSQualityReplayListResponse.__name__],
     )
     @setup_required
@@ -3633,7 +3635,7 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS quality replay queued",
+        "Agent Knowledge Base quality replay queued",
         console_ns.models[KnowledgeFSQualityReplayResponse.__name__],
     )
     @setup_required
@@ -3658,7 +3660,7 @@ class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityReplayDetailQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS quality replay run",
+        "Agent Knowledge Base quality replay run",
         console_ns.models[KnowledgeFSQualityReplayResponse.__name__],
     )
     @setup_required
@@ -3684,7 +3686,7 @@ class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
 class KnowledgeFSSpaceBadCaseTraceReferenceApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS bad case trace reference",
+        "Agent Knowledge Base bad case trace reference",
         console_ns.models[KnowledgeFSBadCaseTraceReferenceResponse.__name__],
     )
     @setup_required
@@ -3706,7 +3708,7 @@ class KnowledgeFSSpaceBadCaseTraceReferenceApi(Resource):
 class KnowledgeFSSpaceBadCaseApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS bad case",
+        "Agent Knowledge Base bad case",
         console_ns.models[KnowledgeFSBadCaseResponse.__name__],
     )
     @setup_required
@@ -3726,7 +3728,7 @@ class KnowledgeFSSpaceBadCaseApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSBadCaseUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS bad case updated",
+        "Agent Knowledge Base bad case updated",
         console_ns.models[KnowledgeFSBadCaseResponse.__name__],
     )
     @setup_required
@@ -3749,7 +3751,7 @@ class KnowledgeFSSpaceBadCaseApi(Resource):
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>")
 class KnowledgeFSSpaceTraceApi(Resource):
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS answer trace", console_ns.models[KnowledgeFSAnswerTraceResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base answer trace", console_ns.models[KnowledgeFSAnswerTraceResponse.__name__]
     )
     @setup_required
     @login_required
@@ -3783,7 +3785,7 @@ class KnowledgeFSSpaceTraceEvidenceApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS trace evidence view",
+        "Agent Knowledge Base trace evidence view",
         console_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @setup_required
@@ -3799,7 +3801,7 @@ class KnowledgeFSSpaceTraceConflictsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS trace conflicts",
+        "Agent Knowledge Base trace conflicts",
         console_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @setup_required
@@ -3815,7 +3817,7 @@ class KnowledgeFSSpaceTraceMissingApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS trace missing evidence",
+        "Agent Knowledge Base trace missing evidence",
         console_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @setup_required
@@ -3834,7 +3836,7 @@ class KnowledgeFSSpaceUploadSessionsApi(Resource):
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS upload session created",
+        "Agent Knowledge Base upload session created",
         console_ns.models[KnowledgeFSUploadSessionCreateResponse.__name__],
     )
     @setup_required
@@ -3862,7 +3864,7 @@ class KnowledgeFSSpaceUploadSessionPartPresignApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSUploadPartPresignPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS upload part URL created",
+        "Agent Knowledge Base upload part URL created",
         console_ns.models[KnowledgeFSPresignedUploadResponse.__name__],
     )
     @setup_required
@@ -3890,7 +3892,7 @@ class KnowledgeFSSpaceUploadSessionCompleteApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionCompletePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS upload session completed",
+        "Agent Knowledge Base upload session completed",
         console_ns.models[KnowledgeFSUploadSessionMutationResponse.__name__],
     )
     @setup_required
@@ -3917,7 +3919,7 @@ class KnowledgeFSSpaceUploadSessionAbortApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionAbortPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS upload session aborted",
+        "Agent Knowledge Base upload session aborted",
         console_ns.models[KnowledgeFSUploadSessionMutationResponse.__name__],
     )
     @setup_required
@@ -3944,7 +3946,7 @@ class KnowledgeFSSpaceSmallFileUploadApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=_SMALL_FILE_UPLOAD_PARAMS)
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS small-file fallback completed",
+        "Agent Knowledge Base small-file fallback completed",
         console_ns.models[KnowledgeFSSmallFileUploadResponse.__name__],
     )
     @setup_required
@@ -3971,7 +3973,7 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
     @console_ns.doc(deprecated=True)
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS Dify API query stream capability",
+        "Agent Knowledge Base Dify API query stream capability",
         console_ns.models[KnowledgeFSQueryStreamCapabilityResponse.__name__],
     )
     @setup_required
@@ -4003,7 +4005,7 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSStreamCapabilityPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS task stream capability",
+        "Agent Knowledge Base task stream capability",
         console_ns.models[KnowledgeFSStreamCapabilityResponse.__name__],
     )
     @setup_required
@@ -4042,7 +4044,7 @@ class KnowledgeFSResearchTaskStreamProxyApi(Resource):
         params=query_params_from_model(KnowledgeFSResearchTaskStreamQuery),
         produces=["text/event-stream"],
     )
-    @console_ns.response(HTTPStatus.OK, "KnowledgeFS research task event stream")
+    @console_ns.response(HTTPStatus.OK, "Agent Knowledge Base research task event stream")
     @_knowledge_fs_errors
     def get(self, task_id: str):
         capability_token, trace_id = _stream_capability()
@@ -4068,7 +4070,7 @@ def _research_task_events_url(*, task_id: str, knowledge_space_id: str) -> str:
 class KnowledgeFSJWKSApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS Capability v2 public keys",
+        "Agent Knowledge Base Capability v2 public keys",
         console_ns.models[KnowledgeFSJWKSResponse.__name__],
     )
     def get(self) -> Response:
@@ -4080,7 +4082,7 @@ class KnowledgeFSJWKSApi(Resource):
                 audit=SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(session_maker)
             )
         except KnowledgeFSCapabilityConfigurationError as exc:
-            raise ServiceUnavailable("KnowledgeFS capability issuance is not configured") from exc
+            raise ServiceUnavailable("Agent Knowledge Base capability issuance is not configured") from exc
         if issuer is None:
             raise NotFound()
         payload = KnowledgeFSJWKSResponse.model_validate(issuer.public_jwks()).model_dump(mode="json")

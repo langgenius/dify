@@ -55,7 +55,7 @@ class KnowledgeFSDownloadService:
     ) -> Generator[str, None, None]:
         total_size = sum(item.size_bytes for item in descriptors)
         if total_size > KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_BYTES:
-            raise KnowledgeFSDownloadTooLargeError("KnowledgeFS batch download exceeds the size limit")
+            raise KnowledgeFSDownloadTooLargeError("Agent Knowledge Base batch download exceeds the size limit")
 
         used_names: set[str] = set()
         tmp_path: str | None = None

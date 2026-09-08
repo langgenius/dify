@@ -476,7 +476,7 @@ class WorkflowRunByIdApi(Resource):
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         payload = WorkflowRunPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})

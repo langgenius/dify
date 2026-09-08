@@ -7,13 +7,13 @@ Vite+ provides the primary static check through `vp check`, which combines Oxfmt
 Run the complete repository check from the root before committing or pushing:
 
 ```sh
-pnpm check
+vp run -w check
 ```
 
 Apply safe fixes before running the same checks:
 
 ```sh
-pnpm check:fix
+vp run -w check:fix
 ```
 
 CI and local development use the same root `vite.config.ts` configuration.
@@ -31,14 +31,14 @@ Run only the Web JSX accessibility rules for selected files or directories with
 `lint:a11y`. Quote paths that contain shell metacharacters such as parentheses:
 
 ```sh
-pnpm --dir web lint:a11y 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+vp run dify-web#lint:a11y 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
 ```
 
 Use dependency mode to resolve an entry file's transitive local imports, including path aliases,
 re-exports, and dynamic imports, and then lint the resulting JSX and TSX files:
 
 ```sh
-pnpm --dir web lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+vp run dify-web#lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
 ```
 
 This is a local page-scoped diagnostic. The repository-wide accessibility rule baseline remains
@@ -47,23 +47,17 @@ owned by `lint.config.ts` and is also enforced by the normal `vp check` path.
 Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
 
 ```sh
-pnpm lint:eslint package.json pnpm-workspace.yaml web/docs
-pnpm lint:eslint:fix package.json pnpm-workspace.yaml web/docs
+vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
+vp run -w lint:eslint:fix package.json pnpm-workspace.yaml web/docs
 ```
 
 Oxlint and Vite+ type-check scope is defined by `lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `eslint.config.mjs` global ignores.
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
-Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `pnpm check` command does not load it. Run `pnpm lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `pnpm lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
+Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
 The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
-
-### Auto-fix Workflow
-
-Configure the Oxc and ESLint editor extensions to apply their respective fixes on save. The commit hook runs `vp staged`, which delegates staged files to `vp check --fix` and adds the ESLint fallback for non-code files. The autofix workflow uses the same combined Vite+ check.
-
-Always review automatic fixes before committing. JS plugins are allowed to provide fixes, and their behavior is not necessarily identical to a native Oxlint rule.
 
 ### Type-aware Linting
 
@@ -72,7 +66,7 @@ The root configuration enables both `typeAware` and `typeCheck`, so `vp check` r
 The web package still runs its existing TSSLint rule separately:
 
 ```sh
-pnpm --dir web lint:tss
+vp run dify-web#lint:tss
 ```
 
 ### Bulk Suppressions
@@ -82,8 +76,8 @@ Existing Oxlint error diagnostics are tracked in the root `oxlint-suppressions.j
 The bulk-suppression flags are available in the bundled Oxlint version but are currently hidden from `vp lint --help`. Run them from the repository root so every package uses the same baseline:
 
 ```sh
-pnpm lint:oxlint --suppress-all
-pnpm lint:oxlint --prune-suppressions
+vp run -w lint:oxlint --suppress-all
+vp run -w lint:oxlint --prune-suppressions
 ```
 
 The Oxc editor extension does not yet apply the bulk-suppression baseline, so the editor may still display findings that the CLI suppresses.

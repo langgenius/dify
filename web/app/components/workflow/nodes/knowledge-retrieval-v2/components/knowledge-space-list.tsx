@@ -25,7 +25,7 @@ const KnowledgeSpaceList: FC<Props> = ({ list, onChange, readonly }) => {
   if (!list.length) {
     return (
       <div className="cursor-default rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary select-none">
-        {t(($) => $['datasetConfig.knowledgeTip'], { ns: 'appDebug' })}
+        {t(($) => $['nodes.knowledgeRetrievalV2.knowledgeTip'], { ns: 'workflow' })}
       </div>
     )
   }

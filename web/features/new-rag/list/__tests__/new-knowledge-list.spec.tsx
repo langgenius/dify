@@ -431,7 +431,7 @@ describe('NewKnowledgeList', () => {
   it('shows a scoped loading state', () => {
     queryMock.isPending = true
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
@@ -441,7 +441,7 @@ describe('NewKnowledgeList', () => {
     upgradeJobsMock.data = { data: [createUpgradeJob()] }
     upgradeDatasetsMock.isPending = true
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSpace.emptyTitle')).not.toBeInTheDocument()
@@ -453,7 +453,7 @@ describe('NewKnowledgeList', () => {
     upgradeJobsMock.data = { data: [createUpgradeJob()] }
     upgradeDatasetsMock.error = new Error('Failed to restore upgrade datasets')
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('heading', { name: 'knowledgeSpace.errorTitle' })).toBeInTheDocument()
 
@@ -474,7 +474,7 @@ describe('NewKnowledgeList', () => {
     upgradeJobsMock.data = { data: jobs }
     upgradeDatasetsMock.data = { data: [] }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     const requestedIdBatches = consoleQueryMock.datasetsQueryOptions.mock.calls.map(
       ([options]) => options.input.query.ids,
@@ -496,7 +496,7 @@ describe('NewKnowledgeList', () => {
     upgradeJobsMock.data = { data: jobs }
     upgradeDatasetsMock.data = { data: [] }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     const requestedDatasetIds = consoleQueryMock.datasetsQueryOptions.mock.calls.flatMap(
       ([options]) => options.input.query.ids,
@@ -507,7 +507,7 @@ describe('NewKnowledgeList', () => {
   it('requests the generated KnowledgeFS collection contract with cursor pagination', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
     expect(options).toBeDefined()
@@ -563,7 +563,7 @@ describe('NewKnowledgeList', () => {
       ],
     }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('upgrade:dataset-31:upgrade-1:failed')).toBeInTheDocument()
     expect(consoleQueryMock.upgradeJobsQueryOptions).toHaveBeenCalledOnce()
@@ -616,7 +616,7 @@ describe('NewKnowledgeList', () => {
       ],
     }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('upgrade:dataset-1:upgrade-1:failed')).toBeInTheDocument()
     expect(screen.getByText('upgrade:dataset-1:upgrade-2:failed')).toBeInTheDocument()
@@ -669,7 +669,7 @@ describe('NewKnowledgeList', () => {
       ],
     }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'retry:upgrade-failed' })).toBeInTheDocument()
   })
@@ -709,7 +709,7 @@ describe('NewKnowledgeList', () => {
           upgrades: [localUpgrade],
         }}
       >
-        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
       </KnowledgeUpgradeContext>,
     )
 
@@ -750,7 +750,7 @@ describe('NewKnowledgeList', () => {
     }
     const { rerender } = renderWithNuqs(
       <KnowledgeUpgradeContext value={contextValue}>
-        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
       </KnowledgeUpgradeContext>,
     )
 
@@ -795,7 +795,7 @@ describe('NewKnowledgeList', () => {
     ])
     rerender(
       <KnowledgeUpgradeContext value={contextValue}>
-        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
       </KnowledgeUpgradeContext>,
     )
 
@@ -805,7 +805,7 @@ describe('NewKnowledgeList', () => {
     upgradeJobsMock.data = { data: [] }
     rerender(
       <KnowledgeUpgradeContext value={contextValue}>
-        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
       </KnowledgeUpgradeContext>,
     )
 
@@ -867,7 +867,7 @@ describe('NewKnowledgeList', () => {
       ],
     }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('upgrade:dataset-1:upgrade-1:running')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'space-1' })).not.toBeInTheDocument()
@@ -912,7 +912,7 @@ describe('NewKnowledgeList', () => {
       ],
     }
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('link', { name: 'Upgraded knowledge' }).closest('li')).not.toHaveClass(
       'border-state-accent-solid',
@@ -922,7 +922,7 @@ describe('NewKnowledgeList', () => {
   it('links the guide through the shared documentation URL', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('link', { name: 'knowledgeSpace.learnMore' })).toHaveAttribute(
       'href',
@@ -959,7 +959,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
     const list = screen.getByRole('list', { name: 'dataset.knowledge' })
     const supportCard = within(list).getByRole('link', {
       name: 'Support knowledge',
@@ -1010,7 +1010,7 @@ describe('NewKnowledgeList', () => {
         updatedAt: '2026-07-19T00:00:00Z',
       },
     ])
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByRole('link', { name: 'Support knowledge' })).toHaveAccessibleDescription(
       'knowledgeSpace.overview.linkedApps: 3',
@@ -1035,7 +1035,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     const cardLink = screen.getByRole('link', { name: 'Support knowledge' })
     const actions = screen.getByRole('button', { name: 'common.operation.more' })
@@ -1062,7 +1062,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
@@ -1090,7 +1090,7 @@ describe('NewKnowledgeList', () => {
     expect(invalidateQueriesMock).toHaveBeenCalledWith({
       queryKey: consoleQueryMock.listKey,
     })
-    expect(toastMock.success).toHaveBeenCalledWith('dataset.datasetDeleted')
+    expect(toastMock.success).toHaveBeenCalledWith('knowledgeSpace.deleteSuccess')
   })
 
   it('syncs tag filters to the URL and collection API while keeping search interactive', async () => {
@@ -1117,7 +1117,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
     expect(screen.getByText('external API panel')).toBeInTheDocument()
@@ -1160,7 +1160,7 @@ describe('NewKnowledgeList', () => {
   it('restores tag filters from the URL and sends match-any IDs to the collection API', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />, {
       searchParams: '?tag_ids=tag-1%3Btag-2',
     })
 
@@ -1173,9 +1173,12 @@ describe('NewKnowledgeList', () => {
   it('restores server search from the URL and shows its empty state', async () => {
     const user = userEvent.setup()
     setResolvedPage()
-    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
-      searchParams: '?query=no%20matching%20knowledge',
-    })
+    const { onUrlUpdate } = renderWithNuqs(
+      <NewKnowledgeList view="agent" onViewChange={vi.fn()} />,
+      {
+        searchParams: '?query=no%20matching%20knowledge',
+      },
+    )
 
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
     expect(search).toHaveValue('no matching knowledge')
@@ -1206,7 +1209,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.queryByRole('checkbox', { name: /Pending member/ })).not.toBeInTheDocument()
@@ -1246,7 +1249,7 @@ describe('NewKnowledgeList', () => {
   it('restores the creator filter from the URL', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />, {
       searchParams: '?creator_ids=account-2',
     })
 
@@ -1271,7 +1274,7 @@ describe('NewKnowledgeList', () => {
     membersMock.data = { accounts }
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />, {
       searchParams: `?creator_ids=${creatorIdsFromUrl.join(';')}`,
     })
 
@@ -1290,7 +1293,7 @@ describe('NewKnowledgeList', () => {
     membersMock.isPending = true
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
@@ -1303,7 +1306,7 @@ describe('NewKnowledgeList', () => {
     membersMock.isError = true
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.getByRole('alert')).toHaveTextContent('common.error')
@@ -1317,7 +1320,7 @@ describe('NewKnowledgeList', () => {
     membersMock.isError = true
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.getByRole('checkbox', { name: /Alice/ })).toBeInTheDocument()
@@ -1329,7 +1332,7 @@ describe('NewKnowledgeList', () => {
   it('links available creation modes from the empty state', () => {
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     const connectSource = screen.getByRole('link', {
       name: 'knowledgeSpace.connectSource',
@@ -1360,7 +1363,7 @@ describe('NewKnowledgeList', () => {
     systemFeaturesStateMock.knowledgeFsUploadEnabled = false
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     const uploadFiles = screen.getByRole('button', {
       name: 'knowledgeSpace.uploadFiles',
@@ -1375,7 +1378,7 @@ describe('NewKnowledgeList', () => {
     permissionStateMock.workspacePermissionKeys = ['dataset.external.connect']
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.queryByRole('link', { name: 'common.operation.create' })).not.toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.readOnlyEmpty')).toBeInTheDocument()
@@ -1388,7 +1391,7 @@ describe('NewKnowledgeList', () => {
     permissionStateMock.workspacePermissionKeys = []
     setResolvedPage()
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(
       screen.queryByRole('link', { name: /^knowledgeSpace\.startEmpty/ }),
@@ -1405,7 +1408,7 @@ describe('NewKnowledgeList', () => {
 
   it.each([404, 503])('shows an unavailable state for a %s response', (status) => {
     queryMock.error = { status }
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('knowledgeSpace.unavailableTitle')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
@@ -1414,7 +1417,7 @@ describe('NewKnowledgeList', () => {
   it('shows a retryable error state for other failures', async () => {
     const user = userEvent.setup()
     queryMock.error = new Error('request failed')
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('knowledgeSpace.errorTitle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -1436,7 +1439,7 @@ describe('NewKnowledgeList', () => {
     ])
     queryMock.isFetchNextPageError = true
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
@@ -1457,7 +1460,7 @@ describe('NewKnowledgeList', () => {
     ])
     queryMock.hasNextPage = true
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
     await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'support')

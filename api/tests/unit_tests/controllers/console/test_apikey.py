@@ -7,14 +7,15 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console.agent.roster import AgentApiKeyListApi
 from controllers.console.apikey import (
     AppApiKeyListResource,
+    AppApiKeyResource,
     BaseApiKeyListResource,
     BaseApiKeyResource,
     DatasetApiKeyListResource,
@@ -22,8 +23,10 @@ from controllers.console.apikey import (
 from controllers.console.datasets.datasets import DatasetApiKeyApi
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
+from extensions.ext_database import db
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode, IconType
 from services.agent.errors import AgentAccessNotReadyError
@@ -57,9 +60,9 @@ def _make_account(role: TenantAccountRole) -> Account:
     return account
 
 
-def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
+def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT, app_id: str = "app-1") -> App:
     app = App(
-        id="app-1",
+        id=app_id,
         tenant_id="tenant-1",
         name="API key app",
         mode=mode,
@@ -173,6 +176,83 @@ def test_create_agent_api_key_requires_published_access(sqlite_session: Session)
     assert session.scalar(select(ApiToken)) is None
 
 
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+@pytest.mark.parametrize("agent_status", [AgentStatus.ACTIVE, AgentStatus.ARCHIVED])
+@pytest.mark.parametrize("method", ["get", "post", "delete"])
+def test_hidden_agent_app_api_keys_are_unreachable(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    rbac_enabled: bool,
+    agent_status: AgentStatus,
+    method: str,
+) -> None:
+    config_overrides(RBAC_ENABLED=rbac_enabled)
+    app_id = UUID("00000000-0000-0000-0000-000000000001")
+    key_id = UUID("00000000-0000-0000-0000-000000000002")
+    account = _make_account(TenantAccountRole.OWNER)
+    _persist_app(sqlite_session, mode=AppMode.AGENT, app_id=str(app_id))
+    sqlite_session.add(
+        Agent(
+            tenant_id="tenant-1",
+            name="Hidden workflow agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            status=agent_status,
+            backing_app_id=str(app_id),
+        )
+    )
+    api_key = ApiToken(type=ApiTokenType.APP, token="hidden-app-token", app_id=str(app_id), tenant_id="tenant-1")
+    api_key.id = str(key_id)
+    sqlite_session.add(api_key)
+    sqlite_session.commit()
+    session_proxy = scoped_session(sqlite_session_factory)
+
+    try:
+        with (
+            app.test_request_context(f"/apps/{app_id}/api-keys", method=method.upper()),
+            patch.object(db, "session", session_proxy),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+            patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache,
+        ):
+            g._login_user = account
+            invoke = {
+                "get": lambda: AppApiKeyListResource().get(resource_id=app_id),
+                "post": lambda: AppApiKeyListResource().post(resource_id=app_id),
+                "delete": lambda: AppApiKeyResource().delete(resource_id=app_id, api_key_id=key_id),
+            }[method]
+            with pytest.raises(NotFound):
+                invoke()
+
+            delete_cache.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert list(session.scalars(select(ApiToken.id))) == [str(key_id)]
+    finally:
+        session_proxy.remove()
+
+
+def test_roster_agent_app_api_keys_remain_accessible(sqlite_session: Session) -> None:
+    _persist_app(sqlite_session, mode=AppMode.AGENT)
+    sqlite_session.add(
+        Agent(
+            tenant_id="tenant-1",
+            name="Roster agent",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+    )
+    sqlite_session.add(ApiToken(type=ApiTokenType.APP, token="roster-app-token", app_id="app-1", tenant_id="tenant-1"))
+    sqlite_session.flush()
+
+    result = _make_list_resource()._get_api_key_list("app-1", "tenant-1", session=sqlite_session)
+
+    assert [item.token for item in result.data] == ["roster-app-token"]
+
+
 def test_delete_api_key_rejects_non_admin_account(sqlite_session: Session) -> None:
     resource = _make_key_resource()
     raw_delete = cast(
@@ -260,15 +340,23 @@ def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callab
     cases = [
         (
             lambda: AppApiKeyListResource().get(resource_id=api_id),
-            [(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True)],
+            {
+                "scene": RBACPermission.APP_RELEASE_AND_VERSION,
+                "resource_type": RBACResourceScope.APP,
+                "resource_id": str(api_id),
+            },
         ),
         (
             lambda: DatasetApiKeyApi().get(),
-            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, False)],
+            {"scene": RBACPermission.DATASET_API_KEY_MANAGE, "resource_type": None, "resource_id": None},
         ),
         (
             lambda: DatasetApiKeyListResource().get(resource_id=api_id),
-            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, True)],
+            {
+                "scene": RBACPermission.DATASET_API_KEY_MANAGE,
+                "resource_type": RBACResourceScope.DATASET,
+                "resource_id": str(api_id),
+            },
         ),
     ]
 
@@ -276,20 +364,25 @@ def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callab
         app.test_request_context("/"),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch("controllers.common.rbac.locators.agent_binding", return_value=None),
+        patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
+        patch("controllers.common.rbac.locators.DatasetId.owner_id", return_value=None),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
     ):
-        for invoke, expected_gates in cases:
+        for invoke, expected_kwargs in cases:
             with patch(
-                "controllers.common.wraps.enforce_rbac_access",
-                side_effect=[None] * (len(expected_gates) - 1) + [Forbidden()],
-            ) as enforce_rbac_access:
+                "controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False
+            ) as check_access:
                 with pytest.raises(Forbidden):
                     invoke()
 
-            assert [
-                (kwargs["resource_type"], kwargs["scene"], kwargs["resource_required"])
-                for _, kwargs in enforce_rbac_access.call_args_list
-            ] == expected_gates
+            check_access.assert_called_once_with(
+                "tenant-1",
+                account.id,
+                scene=expected_kwargs["scene"],
+                resource_type=expected_kwargs["resource_type"],
+                resource_id=expected_kwargs["resource_id"],
+            )
 
     get_api_key_list.assert_not_called()
 

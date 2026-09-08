@@ -542,19 +542,19 @@ export const apps2 = {
 }
 
 /**
- * Read KnowledgeFS entry content (cat)
+ * Read Agent Knowledge Base entry content (cat)
  *
- * Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const get14 = oc
   .route({
     description:
-      'Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCat',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat',
-    summary: 'Read KnowledgeFS entry content (cat)',
+    summary: 'Read Agent Knowledge Base entry content (cat)',
     tags: ['openapi'],
   })
   .input(
@@ -570,19 +570,19 @@ export const cat = {
 }
 
 /**
- * Compare two KnowledgeFS entries (diff)
+ * Compare two Agent Knowledge Base entries (diff)
  *
- * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const post11 = oc
   .route({
     description:
-      'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiff',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff',
-    summary: 'Compare two KnowledgeFS entries (diff)',
+    summary: 'Compare two Agent Knowledge Base entries (diff)',
     tags: ['openapi'],
   })
   .input(
@@ -598,19 +598,19 @@ export const diff = {
 }
 
 /**
- * Find KnowledgeFS entries (find)
+ * Find Agent Knowledge Base entries (find)
  *
- * Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const get15 = oc
   .route({
     description:
-      'Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFind',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find',
-    summary: 'Find KnowledgeFS entries (find)',
+    summary: 'Find Agent Knowledge Base entries (find)',
     tags: ['openapi'],
   })
   .input(
@@ -626,19 +626,19 @@ export const find = {
 }
 
 /**
- * Search KnowledgeFS content (grep)
+ * Search Agent Knowledge Base content (grep)
  *
- * Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const get16 = oc
   .route({
     description:
-      'Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrep',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep',
-    summary: 'Search KnowledgeFS content (grep)',
+    summary: 'Search Agent Knowledge Base content (grep)',
     tags: ['openapi'],
   })
   .input(
@@ -654,19 +654,19 @@ export const grep = {
 }
 
 /**
- * List a KnowledgeFS directory (ls)
+ * List an Agent Knowledge Base directory (ls)
  *
- * Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const get17 = oc
   .route({
     description:
-      'Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLs',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls',
-    summary: 'List a KnowledgeFS directory (ls)',
+    summary: 'List an Agent Knowledge Base directory (ls)',
     tags: ['openapi'],
   })
   .input(
@@ -682,19 +682,19 @@ export const ls = {
 }
 
 /**
- * Inspect a KnowledgeFS entry (stat)
+ * Inspect an Agent Knowledge Base entry (stat)
  *
- * Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const get18 = oc
   .route({
     description:
-      'Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStat',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat',
-    summary: 'Inspect a KnowledgeFS entry (stat)',
+    summary: 'Inspect an Agent Knowledge Base entry (stat)',
     tags: ['openapi'],
   })
   .input(
@@ -710,19 +710,19 @@ export const stat = {
 }
 
 /**
- * Traverse a KnowledgeFS directory (tree)
+ * Traverse an Agent Knowledge Base directory (tree)
  *
- * Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ * Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
 export const get19 = oc
   .route({
     description:
-      'Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+      'Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTree',
     path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree',
-    summary: 'Traverse a KnowledgeFS directory (tree)',
+    summary: 'Traverse an Agent Knowledge Base directory (tree)',
     tags: ['openapi'],
   })
   .input(

@@ -51,7 +51,7 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
     def normalize_control_space_ids(cls, values: list[str]) -> list[str]:
         normalized = [value.strip() for value in values]
         if any(not value for value in normalized):
-            raise ValueError("KnowledgeFS control-space ids must be non-empty")
+            raise ValueError("Agent Knowledge Base IDs must be non-empty")
         return list(dict.fromkeys(normalized))
 
     @field_validator("query_variable_selector")
@@ -63,16 +63,16 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
         if not normalized:
             return None
         if len(normalized) < 2:
-            raise ValueError("KnowledgeFS query variable selector must contain at least two parts")
+            raise ValueError("Agent Knowledge Base query variable selector must contain at least two parts")
         if any(not value for value in normalized):
-            raise ValueError("KnowledgeFS query variable selector must be non-empty")
+            raise ValueError("Agent Knowledge Base query variable selector must be non-empty")
         return normalized
 
     @model_validator(mode="after")
     def require_query_text_or_image(self) -> KnowledgeRetrievalV2NodeData:
         # Either modality can drive retrieval on its own; a node that binds neither can never run.
         if not self.query_variable_selector and not self.query_attachment_selector:
-            raise ValueError("KnowledgeFS retrieval requires a query text or a query image variable")
+            raise ValueError("Agent Knowledge Retrieval requires a query text or a query image variable")
         return self
 
     @field_validator("query_attachment_selector")
@@ -84,9 +84,9 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
         if not normalized:
             return None
         if len(normalized) < 2:
-            raise ValueError("KnowledgeFS query attachment selector must contain at least two parts")
+            raise ValueError("Agent Knowledge Base query attachment selector must contain at least two parts")
         if any(not value for value in normalized):
-            raise ValueError("KnowledgeFS query attachment selector must be non-empty")
+            raise ValueError("Agent Knowledge Base query attachment selector must be non-empty")
         return normalized
 
 

@@ -23,7 +23,7 @@ from controllers.console.knowledge_fs.error import (
     KnowledgeFSRequestTooLargeHTTPError,
     KnowledgeFSResourceNotFoundHTTPError,
 )
-from controllers.console.wraps import RBACPermission, RBACResourceScope
+from controllers.console.wraps import RBACPermission
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
 from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
@@ -280,7 +280,7 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
         "current_account_with_tenant",
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
-    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(
@@ -294,12 +294,11 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
         permission_wrapper(api_class(), **path_args)
 
     permission_gate.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        resource_type=RBACResourceScope.DATASET,
+        "tenant-1",
+        "account-1",
         scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_required=False,
-        path_args=path_args,
+        resource_type=None,
+        resource_id=None,
     )
 
 
@@ -323,7 +322,7 @@ def test_single_document_download_allows_dataset_download_permission_and_keeps_t
         "current_account_with_tenant",
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
-    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
@@ -342,12 +341,11 @@ def test_single_document_download_allows_dataset_download_permission_and_keeps_t
     assert response.get_data() == b"body"
     assert response.headers["Content-Disposition"] == "attachment; filename*=UTF-8''guide.md"
     permission_gate.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        resource_type=RBACResourceScope.DATASET,
+        "tenant-1",
+        "account-1",
         scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_required=False,
-        path_args={"control_space_id": "control-1", "document_id": "document-1"},
+        resource_type=None,
+        resource_id=None,
     )
     facade.prepare_logical_document_download.assert_called_once_with(
         tenant_id="tenant-1",
@@ -373,7 +371,7 @@ def test_single_document_download_preserves_resource_not_found_after_permission_
         "current_account_with_tenant",
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
-    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
@@ -421,7 +419,7 @@ def test_single_document_download_maps_storage_unavailable_after_permission_allo
         "current_account_with_tenant",
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
-    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
@@ -463,7 +461,7 @@ def test_batch_document_download_maps_storage_unavailable_after_permission_allow
         "current_account_with_tenant",
         lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
     )
-    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))

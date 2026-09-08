@@ -141,7 +141,7 @@ def test_space_subset_changed_config_and_receipt_scope_fail_closed(authorized_ga
     service, runtime = authorized_gateway
     value = request("search", query="x")
     value.command.space = "another-space"
-    with pytest.raises(KnowledgeFsError, match="Choose a space"):
+    with pytest.raises(KnowledgeFsError, match="Choose an Agent Knowledge Base"):
         service.prepare(value)
     value = request()
     value.bindings = [BINDING.model_copy(update={"name": "swapped"})]

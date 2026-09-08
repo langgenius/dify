@@ -24,7 +24,7 @@ describe('KnowledgeViewSwitcher', () => {
 
   it('restores focus to the guide trigger when Escape closes the popover', async () => {
     const user = userEvent.setup()
-    render(<KnowledgeViewSwitcher value="new" onChange={vi.fn()} />)
+    render(<KnowledgeViewSwitcher value="agent" onChange={vi.fn()} />)
 
     const trigger = screen.getByRole('button', {
       name: 'knowledgeSpace.guideTitle',
@@ -43,7 +43,7 @@ describe('KnowledgeViewSwitcher', () => {
   it('dismisses the guide without changing the selected knowledge view', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    render(<KnowledgeViewSwitcher value="new" onChange={onChange} />)
+    render(<KnowledgeViewSwitcher value="agent" onChange={onChange} />)
 
     await user.click(
       within(

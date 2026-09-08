@@ -108,5 +108,5 @@ def test_graph_can_create_unused_retrieval_node_without_knowledge_fs_config(
         # the real configuration error rather than silently disabling retrieval.
         result = node._run()
         assert result.status == WorkflowNodeExecutionStatus.FAILED
-        assert result.error == "KnowledgeFS draft binding could not be enabled for this workflow"
+        assert result.error == "Agent Knowledge Base draft binding could not be enabled for this workflow"
         resolve_runtime.assert_called_once()

@@ -1681,7 +1681,7 @@ export const zPostDatasetsInitBody = zKnowledgeConfig
 export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
 
 /**
- * Recoverable KnowledgeFS Dataset upgrade jobs
+ * Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base
  */
 export const zGetDatasetsKnowledgeFsUpgradeJobsResponse = zKnowledgeFsUpgradeJobListResponse
 
@@ -2269,7 +2269,7 @@ export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
 })
 
 /**
- * KnowledgeFS Dataset upgrade discovery
+ * Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base
  */
 export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
   zKnowledgeFsUpgradeDiscoveryResponse
@@ -2283,7 +2283,7 @@ export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
 })
 
 /**
- * KnowledgeFS Dataset upgrade accepted
+ * Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted
  */
 export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse = zKnowledgeFsUpgradeJobResponse
 
@@ -2293,7 +2293,7 @@ export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
 })
 
 /**
- * KnowledgeFS Dataset upgrade status
+ * Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base
  */
 export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
   zKnowledgeFsUpgradeJobResponse
@@ -2304,7 +2304,7 @@ export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
 })
 
 /**
- * KnowledgeFS Dataset upgrade retry accepted
+ * Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted
  */
 export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
   zKnowledgeFsUpgradeRetryResponse

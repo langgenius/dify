@@ -9,7 +9,7 @@ import { Args, Flags } from '@/framework/flags'
 import { formatted } from '@/framework/output'
 
 export default class KnowledgeFsDiff extends DifyCommand {
-  static override description = 'Diff two KnowledgeFS text paths'
+  static override description = 'Diff two Agent Knowledge Base text paths'
 
   static override effect: CommandEffect = 'read'
 
@@ -19,9 +19,9 @@ export default class KnowledgeFsDiff extends DifyCommand {
   ]
 
   static override args = {
-    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
-    oldPath: Args.string({ description: 'original KnowledgeFS path', required: true }),
-    newPath: Args.string({ description: 'new KnowledgeFS path', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'Agent Knowledge Base ID', required: true }),
+    oldPath: Args.string({ description: 'base Agent Knowledge Base path', required: true }),
+    newPath: Args.string({ description: 'comparison Agent Knowledge Base path', required: true }),
   }
 
   static override flags = {
@@ -41,7 +41,7 @@ export default class KnowledgeFsDiff extends DifyCommand {
       { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
-        label: 'Diffing KnowledgeFS paths',
+        label: 'Diffing Agent Knowledge Base paths',
         execute: (client, workspaceId, knowledgeSpaceId) =>
           client.diff(workspaceId, knowledgeSpaceId, {
             old_path: args.oldPath,

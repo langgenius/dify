@@ -26,7 +26,9 @@ export const getMarketplacePluginsInfiniteQueryOptions = (
     // the grid unmounts, the container collapses, and the scroll position jumps —
     // the "jitter" the Marketplace search is reported for. Consumers show a
     // quiet pending state off `isPlaceholderData` instead.
-    placeholderData: keepPreviousData,
+    // Returning to collections disables search; keeping its placeholder then
+    // leaves the last category visible and permanently marked as refreshing.
+    placeholderData: queryParams === undefined ? undefined : keepPreviousData,
     // Matches the autocomplete queries. Now that the fetcher propagates
     // failures, react-query's default of 3 retries would hold isFetching true
     // through ~7s of backoff — indistinguishable from a hang. Failing fast and

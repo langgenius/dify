@@ -151,7 +151,6 @@ const baseConsoleState: ConsoleStateFixture = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   isLoadingCurrentWorkspace: false,
@@ -198,6 +197,7 @@ describe('AccountSetting', () => {
     }
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
+      features: { billing: { subscription: { plan: 'sandbox' } } },
       accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
       systemFeatures: {
         deployment_edition: deploymentEdition,
@@ -214,7 +214,7 @@ describe('AccountSetting', () => {
     vi.clearAllMocks()
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
-      enableBilling: true,
+
       enableReplaceWebAppLogo: true,
     })
     mockConsoleState.current = baseConsoleState
@@ -444,12 +444,12 @@ describe('AccountSetting', () => {
       // Arrange
       vi.mocked(useProviderContext).mockReturnValue({
         ...baseProviderContextValue,
-        enableBilling: false,
+
         enableReplaceWebAppLogo: false,
       })
 
       // Act
-      renderAccountSetting()
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
       // Assert
       // Assert

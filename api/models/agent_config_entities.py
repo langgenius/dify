@@ -724,7 +724,7 @@ class AgentSoulToolsConfig(BaseModel):
 
 
 class AgentKnowledgeSpaceConfig(BaseModel):
-    """One read-only KnowledgeFS binding, addressed by stable ID or CLI alias.
+    """One read-only Agent Knowledge Base binding, addressed by stable ID or CLI alias.
 
     The control-space ID is Dify-owned, never the execution-plane space ID.
     ``is_missing`` preserves unresolved DSL references for editing; it never
@@ -754,11 +754,11 @@ class AgentKnowledgeSpaceConfig(BaseModel):
 
 
 class AgentSoulKnowledgeConfig(BaseModel):
-    """KnowledgeFS-only authoring, with lossless historical dataset decoding.
+    """Agent Knowledge Base authoring, with lossless Classic Knowledge Base configuration decoding.
 
     New configuration uses ``spaces``. ``sets`` is retained solely so existing
-    snapshots/DSL remain readable; new publish/run validation rejects legacy
-    datasets with an explicit rebind error. Empty knowledge adds no runtime
+    snapshots/DSL remain readable; new publish/run validation rejects Classic
+    Knowledge Base bindings with an explicit rebind error. Empty knowledge adds no runtime
     capability. The two formats must never coexist or shadow one another.
     """
 
@@ -770,11 +770,11 @@ class AgentSoulKnowledgeConfig(BaseModel):
     @model_validator(mode="after")
     def validate_unique_sets(self) -> Self:
         if self.spaces and self.sets:
-            raise ValueError("KnowledgeFS spaces cannot be mixed with legacy dataset sets")
+            raise ValueError("Agent Knowledge Base bindings cannot be mixed with Classic Knowledge Base bindings")
         for attribute in ("id", "control_space_id", "name"):
             values = [getattr(space, attribute).casefold() for space in self.spaces]
             if len(values) != len(set(values)):
-                raise ValueError(f"knowledge space {attribute} values must be unique")
+                raise ValueError(f"Agent Knowledge Base {attribute} values must be unique")
         # An alias must not shadow a different binding's stable ID.
         ids = {space.id.casefold(): space for space in self.spaces}
         for space in self.spaces:

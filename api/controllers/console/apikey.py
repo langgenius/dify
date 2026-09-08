@@ -11,13 +11,14 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.rbac import AgentBehindApp, DatasetId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models
 from controllers.common.session import with_session
-from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account
+from models.agent import AgentScope
 from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
@@ -28,7 +29,6 @@ from services.dataset_api_key_service import ApiKeyBindings
 from . import console_ns
 from .wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     rbac_permission_required,
@@ -99,9 +99,15 @@ def build_masked_api_key_list(
 
 
 def _get_resource(resource_id, tenant_id, resource_model, *, session: Session):
+    """Load a tenant-owned API key resource, excluding hidden Agent backing Apps."""
     resource = session.execute(
         select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
     ).scalar_one_or_none()
+
+    if isinstance(resource, App):
+        binding = resource.agent_app_binding_with_session(session=session, include_archived=True)
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            resource = None
 
     if resource is None:
         flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
@@ -248,8 +254,10 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp("resource_id")),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp("resource_id")),
+    )
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for an app"""
@@ -265,8 +273,10 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp("resource_id")),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp("resource_id")),
+    )
     @with_session
     def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for an app"""
@@ -289,8 +299,10 @@ class AppApiKeyResource(BaseApiKeyResource):
     @console_ns.response(204, "API key deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
+    @rbac_permission_required(
+        RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp("resource_id")),
+        RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp("resource_id")),
+    )
     @with_session
     def delete(
         self,
@@ -327,7 +339,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id")))
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for a dataset"""
@@ -343,7 +355,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id")))
     @with_session
     def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for a dataset"""
@@ -366,7 +378,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     @console_ns.response(204, "API key deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id")))
     @with_session
     def delete(
         self,

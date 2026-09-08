@@ -1,8 +1,8 @@
 'use client'
 
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useProviderContext } from '@/context/provider-context'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 
 export const CLOUD_SANDBOX_TIME_PERIOD_KEYS = new Set(['1', '2', '3'])
 export const CLOUD_SANDBOX_CLEARED_TIME_PERIOD = '1'
@@ -42,12 +42,15 @@ export function useCloudSandboxPlanStatus(): CloudSandboxPlanState {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { enableBilling, isFetchedPlan, isFetchedPlanInfo, plan } = useProviderContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (features) => features.billing.subscription.plan,
+    }),
+  )
 
   if (deploymentEdition !== 'CLOUD') return 'unrestricted'
-  if (!isFetchedPlanInfo) return 'pending'
-  if (!enableBilling) return 'unrestricted'
-  if (!isFetchedPlan) return 'pending'
+  if (!plan) return 'pending'
 
-  return plan.type === 'sandbox' ? 'sandbox' : 'unrestricted'
+  return plan === 'sandbox' ? 'sandbox' : 'unrestricted'
 }

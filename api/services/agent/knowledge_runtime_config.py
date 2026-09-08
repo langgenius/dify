@@ -15,16 +15,21 @@ def build_knowledge_fs_layer_config(
 ) -> DifyKnowledgeFsLayerConfig | None:
     if agent_soul.knowledge.sets:
         raise KnowledgeFsError(
-            "KNOWLEDGE_REBIND_REQUIRED", "Replace legacy Agent datasets with KnowledgeFS spaces before running."
+            "KNOWLEDGE_REBIND_REQUIRED",
+            "Replace Classic Knowledge Base bindings with Agent Knowledge Base bindings before running.",
         )
     if not agent_soul.knowledge.spaces:
         return None
     if any(space.is_missing for space in agent_soul.knowledge.spaces):
-        raise KnowledgeFsError("KNOWLEDGE_REBIND_REQUIRED", "Reselect imported or unavailable KnowledgeFS spaces.")
+        raise KnowledgeFsError("KNOWLEDGE_REBIND_REQUIRED", "Reselect imported or unavailable Agent Knowledge Bases.")
     if not dify_config.AGENT_SHELL_ENABLED:
-        raise KnowledgeFsError("KNOWLEDGE_SHELL_UNAVAILABLE", "KnowledgeFS CLI requires the Agent sandbox shell.", 503)
+        raise KnowledgeFsError(
+            "KNOWLEDGE_SHELL_UNAVAILABLE", "Agent Knowledge Base CLI requires the Agent sandbox shell.", 503
+        )
     if not agent_soul.model:
-        raise KnowledgeFsError("KNOWLEDGE_MODEL_REQUIRED", "Select an Agent model before using KnowledgeFS.")
+        raise KnowledgeFsError(
+            "KNOWLEDGE_MODEL_REQUIRED", "Select an Agent model before using an Agent Knowledge Base."
+        )
     schema = (
         DifyModelFactory(run_context=run_context)
         .init_model_instance(

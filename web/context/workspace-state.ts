@@ -32,15 +32,6 @@ export const isCurrentWorkspaceManagerAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceManager
 })
 
-/**
- * Retained for future permission checks when RBAC is disabled.
- *
- * @public
- */
-export const isCurrentWorkspaceEditorAtom = atom((get) => {
-  return get(workspaceRoleFlagsAtom).isCurrentWorkspaceEditor
-})
-
 export const isCurrentWorkspaceDatasetOperatorAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceDatasetOperator
 })

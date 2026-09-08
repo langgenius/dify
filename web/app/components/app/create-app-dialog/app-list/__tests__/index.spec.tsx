@@ -247,7 +247,7 @@ describe('Apps', () => {
   })
 
   it('renders template cards when data is available', () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getAllByTestId('app-card')).toHaveLength(6)
     expect(screen.getByText('Alpha'))!.toBeInTheDocument()
@@ -255,7 +255,7 @@ describe('Apps', () => {
   })
 
   it('opens create modal when a template card is clicked', () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     expect(screen.getByTestId('create-from-template-modal'))!.toBeInTheDocument()
@@ -264,7 +264,7 @@ describe('Apps', () => {
   it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
     mockWorkspacePermissionKeys = ['app.create_and_management']
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getAllByTestId('app-card')[0]).toHaveAttribute('data-can-create', 'true')
   })
@@ -272,7 +272,7 @@ describe('Apps', () => {
   it('does not allow template creation when app.create_and_management permission is missing', () => {
     mockWorkspacePermissionKeys = []
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getAllByTestId('app-card')[0]).toHaveAttribute('data-can-create', 'false')
   })
@@ -283,14 +283,14 @@ describe('Apps', () => {
       isLoading: false,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
     expect(screen.getByText('app.newApp.noTemplateFoundTip'))!.toBeInTheDocument()
   })
 
   it('filters templates by keyword and selected app type', async () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.change(screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate'), {
       target: { value: 'Bravo' },
@@ -314,9 +314,9 @@ describe('Apps', () => {
   })
 
   it('creates an app from a template and redirects after import succeeds', async () => {
-    const onSuccess = vi.fn()
+    const onClose = vi.fn()
 
-    render(<Apps onSuccess={onSuccess} />)
+    render(<Apps onClose={onClose} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
@@ -337,7 +337,7 @@ describe('Apps', () => {
       templateId: 'Alpha',
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onSuccess).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
     expect(mockGetRedirection).toHaveBeenCalledWith(
       {
@@ -361,7 +361,7 @@ describe('Apps', () => {
       app_mode: AppModeEnum.WORKFLOW,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
@@ -387,7 +387,7 @@ describe('Apps', () => {
   it('shows an error toast when importing the template fails', async () => {
     mockImportDSL.mockRejectedValueOnce(new Error('failed'))
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getAllByTestId('app-card')[0]!)
     fireEvent.click(screen.getByTestId('confirm-create'))
@@ -400,7 +400,7 @@ describe('Apps', () => {
   it('forwards the create-from-blank action from the sidebar', () => {
     const onCreateFromBlank = vi.fn()
 
-    render(<Apps onCreateFromBlank={onCreateFromBlank} />)
+    render(<Apps onClose={vi.fn()} onCreateFromBlank={onCreateFromBlank} />)
 
     fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
 
@@ -413,7 +413,7 @@ describe('Apps', () => {
       isLoading: true,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByRole('status'))!.toBeInTheDocument()
   })
@@ -424,13 +424,13 @@ describe('Apps', () => {
       isLoading: false,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByText('app.newApp.noTemplateFound'))!.toBeInTheDocument()
   })
 
   it('should filter templates by category and the remaining app modes', async () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByText('Cat C'))
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
@@ -473,7 +473,7 @@ describe('Apps', () => {
       isLoading: false,
     })
 
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     expect(screen.getByText('Cat A'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'v' })).not.toBeInTheDocument()
@@ -481,7 +481,7 @@ describe('Apps', () => {
   })
 
   it('should clear the search, hide the sidebar during search, and close the modal when requested', async () => {
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     const searchInput = screen.getByPlaceholderText('app.newAppFromTemplate.searchAllTemplate')
     fireEvent.change(searchInput, {
@@ -510,7 +510,7 @@ describe('Apps', () => {
 
   it('clears an active search immediately and returns focus to the searchbox', async () => {
     const user = userEvent.setup()
-    render(<Apps />)
+    render(<Apps onClose={vi.fn()} />)
 
     const searchInput = screen.getByRole('searchbox', {
       name: 'app.newAppFromTemplate.searchAllTemplate',

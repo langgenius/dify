@@ -76,7 +76,7 @@ from services.knowledge_fs.product_remote import (
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from services.knowledge_fs_capability import KnowledgeFSCapabilityConfigurationError
 
-_PATH_DESCRIPTION = "Canonical KnowledgeFS virtual path under /sources, /knowledge, /evidence, or /workspaces."
+_PATH_DESCRIPTION = "Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces."
 _PAGE_SIZE_DESCRIPTION = "Maximum number of results to return (1-100)."
 _PAGE_TOKEN_DESCRIPTION = (
     "Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token."
@@ -85,18 +85,19 @@ _NEXT_PAGE_TOKEN_DESCRIPTION = "Opaque continuation token for the next page; nul
 _CONTENT_PAGE_SIZE_DESCRIPTION = (
     "Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value."
 )
-_CONSISTENCY_DESCRIPTION = "Optional KnowledgeFS read-consistency policy."
+_CONSISTENCY_DESCRIPTION = "Optional Agent Knowledge Base read-consistency policy."
 _OPEN_RESPONSE_VALUE_DESCRIPTION = (
     "Open response value. Clients must tolerate unknown future values and fall back to generic display behavior."
 )
 _READ_SECURITY_DESCRIPTION = (
     "Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before "
-    "request validation, and knowledge-space membership is revalidated for every call. A hidden or missing knowledge "
-    "space or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events."
+    "request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing "
+    "Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation "
+    "audit events."
 )
 _PAGINATION_DESCRIPTION = (
-    "Results use the canonical, stable KnowledgeFS traversal order. The opaque next_page_token captures that order; "
-    "reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware "
+    "Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that "
+    "order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware "
     "visibility scans are bounded and an exact count can require an unbounded scan."
 )
 _CONTENT_CONTINUATION_DESCRIPTION = (
@@ -105,14 +106,14 @@ _CONTENT_CONTINUATION_DESCRIPTION = (
 )
 
 _KNOWLEDGE_FS_ERROR_RESPONSES = {
-    400: "Invalid KnowledgeFS request",
+    400: "Invalid Agent Knowledge Base request",
     401: "Missing or invalid OAuth account bearer",
-    403: "Caller lacks workspace or knowledge-space read access",
-    404: "Knowledge space or entry is missing or hidden",
+    403: "Caller lacks workspace or Agent Knowledge Base read access",
+    404: "Agent Knowledge Base or entry is missing or hidden",
     409: "Requested consistency conflicts with current state",
-    413: "Request exceeds a KnowledgeFS operational bound",
+    413: "Request exceeds an Agent Knowledge Base operational bound",
     422: "Request validation failed or the request was rejected",
-    503: "KnowledgeFS is temporarily unavailable",
+    503: "Agent Knowledge Base is temporarily unavailable",
 }
 
 
@@ -129,7 +130,7 @@ class _KnowledgeFSPaginatedEntryQuery(_KnowledgeFSEntryQuery):
 
 
 class KnowledgeFSEntryListQuery(_KnowledgeFSPaginatedEntryQuery):
-    """List direct children in stable KnowledgeFS traversal order."""
+    """List direct children in stable Agent Knowledge Base traversal order."""
 
 
 class KnowledgeFSEntryTreeQuery(_KnowledgeFSPaginatedEntryQuery):
@@ -551,8 +552,8 @@ def _knowledge_fs_operation[**P, R](
             summary=summary,
             description=f"{description} {_READ_SECURITY_DESCRIPTION}",
             params={
-                "knowledge_space_id": "Stable Dify knowledge-space resource ID; treat it as opaque.",
-                "workspace_id": "Dify workspace ID that owns the knowledge space.",
+                "knowledge_space_id": "Stable Dify Agent Knowledge Base resource ID; treat it as opaque.",
+                "workspace_id": "Dify workspace ID that owns the Agent Knowledge Base.",
             },
         )(view)
         for status_code, response_description in _KNOWLEDGE_FS_ERROR_RESPONSES.items():
@@ -576,10 +577,10 @@ class KnowledgeFsEntryListApi(Resource):
     )
     @_knowledge_fs_operation(
         "ls_knowledge_fs",
-        summary="List a KnowledgeFS directory (ls)",
+        summary="List an Agent Knowledge Base directory (ls)",
         description=(f"Lists direct child entries under path, equivalent to difyctl fs ls. {_PAGINATION_DESCRIPTION}"),
     )
-    @returns(200, KnowledgeFSEntryListResponse, description="Knowledge-space entry page")
+    @returns(200, KnowledgeFSEntryListResponse, description="Agent Knowledge Base entry page")
     @accepts(query=KnowledgeFSEntryListQuery)
     @_knowledge_fs_errors
     def get(
@@ -605,13 +606,13 @@ class KnowledgeFsEntryTreeApi(Resource):
     )
     @_knowledge_fs_operation(
         "tree_knowledge_fs",
-        summary="Traverse a KnowledgeFS directory (tree)",
+        summary="Traverse an Agent Knowledge Base directory (tree)",
         description=(
             f"Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. "
             f"{_PAGINATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryTreeResponse, description="Knowledge-space entry tree")
+    @returns(200, KnowledgeFSEntryTreeResponse, description="Agent Knowledge Base entry tree")
     @accepts(query=KnowledgeFSEntryTreeQuery)
     @_knowledge_fs_errors
     def get(
@@ -637,13 +638,13 @@ class KnowledgeFsEntryContentSearchApi(Resource):
     )
     @_knowledge_fs_operation(
         "grep_knowledge_fs",
-        summary="Search KnowledgeFS content (grep)",
+        summary="Search Agent Knowledge Base content (grep)",
         description=(
             "Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry "
             f"traversal order and source-offset order within each entry. {_PAGINATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryContentSearchResponse, description="Knowledge-space content matches")
+    @returns(200, KnowledgeFSEntryContentSearchResponse, description="Agent Knowledge Base content matches")
     @accepts(query=KnowledgeFSEntryContentSearchQuery)
     @_knowledge_fs_errors
     def get(
@@ -669,14 +670,14 @@ class KnowledgeFsEntrySearchApi(Resource):
     )
     @_knowledge_fs_operation(
         "find_knowledge_fs",
-        summary="Find KnowledgeFS entries (find)",
+        summary="Find Agent Knowledge Base entries (find)",
         description=(
             "Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent "
             "to difyctl fs find. "
             f"{_PAGINATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryListResponse, description="Knowledge-space entry search results")
+    @returns(200, KnowledgeFSEntryListResponse, description="Agent Knowledge Base entry search results")
     @accepts(query=KnowledgeFSEntrySearchQuery)
     @_knowledge_fs_errors
     def get(
@@ -704,14 +705,14 @@ class KnowledgeFsEntryCompareApi(Resource):
     )
     @_knowledge_fs_operation(
         "diff_knowledge_fs",
-        summary="Compare two KnowledgeFS entries (diff)",
+        summary="Compare two Agent Knowledge Base entries (diff)",
         description=(
             "Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a "
             "structured query and an optional semantic summary can consume model quota. Automatic retries are not safe "
             "when include_semantic_summary=true because each retry can consume quota again."
         ),
     )
-    @returns(200, KnowledgeFSEntryComparisonResponse, description="Knowledge-space entry comparison")
+    @returns(200, KnowledgeFSEntryComparisonResponse, description="Agent Knowledge Base entry comparison")
     @accepts(body=KnowledgeFSEntryComparePayload)
     @_knowledge_fs_errors
     def post(
@@ -737,13 +738,13 @@ class KnowledgeFsEntryReadContentApi(Resource):
     )
     @_knowledge_fs_operation(
         "cat_knowledge_fs",
-        summary="Read KnowledgeFS entry content (cat)",
+        summary="Read Agent Knowledge Base entry content (cat)",
         description=(
             f"Reads a bounded text portion of one entry, equivalent to difyctl fs cat. "
             f"{_CONTENT_CONTINUATION_DESCRIPTION}"
         ),
     )
-    @returns(200, KnowledgeFSEntryReadContentResponse, description="Knowledge-space entry content")
+    @returns(200, KnowledgeFSEntryReadContentResponse, description="Agent Knowledge Base entry content")
     @accepts(query=KnowledgeFSEntryReadContentQuery)
     @_knowledge_fs_errors
     def get(
@@ -769,13 +770,13 @@ class KnowledgeFsEntryInspectApi(Resource):
     )
     @_knowledge_fs_operation(
         "stat_knowledge_fs",
-        summary="Inspect a KnowledgeFS entry (stat)",
+        summary="Inspect an Agent Knowledge Base entry (stat)",
         description=(
             "Returns stable metadata for one entry selected by canonical virtual path without reading content, "
             "equivalent to difyctl fs stat."
         ),
     )
-    @returns(200, KnowledgeFSEntryMetadataResponse, description="Knowledge-space entry metadata")
+    @returns(200, KnowledgeFSEntryMetadataResponse, description="Agent Knowledge Base entry metadata")
     @accepts(query=KnowledgeFSEntryInspectQuery)
     @_knowledge_fs_errors
     def get(

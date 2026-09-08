@@ -7,6 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiFolder6Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionConnector from '@/app/components/base/notion-connector'
@@ -14,7 +15,7 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/client'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
@@ -100,7 +101,13 @@ const StepOne = ({
 }: IStepOneProps) => {
   const { t } = useTranslation()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
-  const { plan, enableBilling } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
 
   // Preview state management
   const {
@@ -134,7 +141,7 @@ const StepOne = ({
 
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
-  const shouldCheckVectorSpace = enableBilling && (allFileLoaded || hasNotion)
+  const shouldCheckVectorSpace = deploymentEdition === 'CLOUD' && (allFileLoaded || hasNotion)
   const {
     data: vectorSpace,
     isFetching: isFetchingVectorSpacePlan,
@@ -144,14 +151,17 @@ const StepOne = ({
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceUnavailable =
-    shouldCheckVectorSpace && plan.type === 'sandbox' && !!vectorSpace?.usage_unknown
+    shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
     !!vectorSpace &&
     !vectorSpace.usage_unknown &&
     vectorSpace.limit > 0 &&
     vectorSpace.size >= vectorSpace.limit
-  const isShowVectorSpaceFull = (allFileLoaded || hasNotion) && isVectorSpaceFull && enableBilling
-  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+  const isShowVectorSpaceFull =
+    (allFileLoaded || hasNotion) && isVectorSpaceFull && deploymentEdition === 'CLOUD'
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
+  const supportBatchUpload =
+    deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'
 
   const isNotionAuthed = useMemo(
     () => checkNotionAuth(authedDataSourceList),
@@ -181,6 +191,7 @@ const StepOne = ({
 
   // Handle step change with batch upload check
   const onStepChange = useCallback(() => {
+    if (isPlanUnavailable) return
     if (!supportBatchUpload && dataSourceType) {
       const checkFn = MULTIPLE_ITEMS_CHECK[dataSourceType]
       if (checkFn?.({ files, notionPages, websitePages })) {
@@ -193,6 +204,7 @@ const StepOne = ({
     dataSourceType,
     doOnStepChange,
     files,
+    isPlanUnavailable,
     supportBatchUpload,
     notionPages,
     showPlanUpgradeModal,
@@ -247,8 +259,11 @@ const StepOne = ({
                       />
                     </div>
                   )}
-                  <NextStepButton disabled={fileNextDisabled} onClick={onStepChange} />
-                  {enableBilling && plan.type === 'sandbox' && (
+                  <NextStepButton
+                    disabled={isPlanUnavailable || fileNextDisabled}
+                    onClick={onStepChange}
+                  />
+                  {deploymentEdition === 'CLOUD' && plan === 'sandbox' && (
                     <div className="mt-5">
                       <div className="mb-4 h-px bg-divider-subtle" />
                       <UpgradeCard />
@@ -292,7 +307,10 @@ const StepOne = ({
                       )}
                       <NextStepButton
                         disabled={
-                          isShowVectorSpaceFull || isVectorSpaceUnavailable || !notionPages.length
+                          isPlanUnavailable ||
+                          isShowVectorSpaceFull ||
+                          isVectorSpaceUnavailable ||
+                          !notionPages.length
                         }
                         onClick={onStepChange}
                       />
@@ -322,7 +340,7 @@ const StepOne = ({
                     </div>
                   )}
                   <NextStepButton
-                    disabled={isShowVectorSpaceFull || !websitePages.length}
+                    disabled={isPlanUnavailable || isShowVectorSpaceFull || !websitePages.length}
                     onClick={onStepChange}
                   />
                 </>

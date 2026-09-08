@@ -38,7 +38,7 @@ import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
 import { useDatasetList, useInvalidDatasetList } from './use-dataset-list'
 
-const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
+const knowledgeViewParser = parseAsStringLiteral(['classic', 'agent']).withDefault('classic')
 
 function LegacyList({
   knowledgeViewSwitcherProps,
@@ -196,13 +196,13 @@ function LegacyList({
 
 function KnowledgeFsList() {
   const [view, setView] = useQueryState('view', knowledgeViewParser)
-  const onViewChange = (nextView: 'legacy' | 'new') => {
+  const onViewChange = (nextView: 'classic' | 'agent') => {
     void setView(nextView)
   }
 
   return (
-    <KnowledgeUpgradeProvider onUpgradeStarted={() => void setView('new')}>
-      {view === 'new' ? (
+    <KnowledgeUpgradeProvider onUpgradeStarted={() => void setView('agent')}>
+      {view === 'agent' ? (
         <NewKnowledgeList view={view} onViewChange={onViewChange} />
       ) : (
         <LegacyList

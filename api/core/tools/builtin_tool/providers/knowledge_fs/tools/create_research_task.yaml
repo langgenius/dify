@@ -2,23 +2,23 @@ identity:
   name: create_research_task
   author: Dify
   label:
-    en_US: Create KnowledgeFS Research Task
-    zh_Hans: 创建 KnowledgeFS Research 任务
+    en_US: Create Agent Knowledge Base Research Task
+    zh_Hans: 创建 Agent 知识库研究任务
 description:
   human:
-    en_US: Create a Research task in an explicitly bound KnowledgeFS space.
-    zh_Hans: 在显式绑定的 KnowledgeFS 空间中创建 Research 任务。
-  llm: Create a durable research task using an explicitly configured KnowledgeFS resource.
+    en_US: Create a Research task in an explicitly bound Agent Knowledge Base.
+    zh_Hans: 在显式绑定的 Agent 知识库中创建研究任务。
+  llm: Create a durable research task using an explicitly configured Agent Knowledge Base.
 parameters:
   - name: resource
     type: object
     required: true
     label:
-      en_US: KnowledgeFS resource
-      zh_Hans: KnowledgeFS 资源
+      en_US: Agent Knowledge Base
+      zh_Hans: Agent 知识库
     human_description:
-      en_US: A typed KnowledgeFS control-space reference configured by the app author.
-      zh_Hans: 由应用作者配置的类型化 KnowledgeFS control-space 引用。
+      en_US: A reference to an Agent Knowledge Base configured by the app author.
+      zh_Hans: 由应用作者配置的 Agent 知识库引用。
     form: form
     input_schema:
       type: object
@@ -38,11 +38,11 @@ parameters:
     required: true
     label:
       en_US: Research query
-      zh_Hans: Research 查询
+      zh_Hans: 研究查询
     human_description:
       en_US: The question the Research task should investigate.
-      zh_Hans: Research 任务需要调查的问题。
-    llm_description: The question to investigate with KnowledgeFS.
+      zh_Hans: 研究任务需要调查的问题。
+    llm_description: The question to investigate with the Agent Knowledge Base.
     form: llm
   - name: mode
     type: select
@@ -51,8 +51,8 @@ parameters:
       en_US: Mode
       zh_Hans: 模式
     human_description:
-      en_US: Optional KnowledgeFS retrieval mode.
-      zh_Hans: 可选的 KnowledgeFS 检索模式。
+      en_US: Optional Agent Knowledge Base retrieval mode.
+      zh_Hans: 可选的 Agent 知识库检索模式。
     llm_description: Optional retrieval mode. Use auto unless the task needs a specific mode.
     form: llm
     options:
@@ -71,5 +71,4 @@ parameters:
       - value: research
         label:
           en_US: Research
-          zh_Hans: Research
-
+          zh_Hans: 研究

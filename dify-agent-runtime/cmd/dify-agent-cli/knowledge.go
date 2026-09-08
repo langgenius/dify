@@ -12,7 +12,7 @@ import (
 
 func newKnowledgeCommand() *cobra.Command {
 	var protocolVersion bool
-	root := &cobra.Command{Use: "knowledge", Short: "Autonomously inspect read-only KnowledgeFS evidence. All results are JSON.",
+	root := &cobra.Command{Use: "knowledge", Short: "Autonomously inspect read-only Agent Knowledge Base evidence. All results are JSON.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if protocolVersion {
 				_, err := fmt.Fprintln(cmd.OutOrStdout(), "1")
@@ -25,9 +25,9 @@ func newKnowledgeCommand() *cobra.Command {
 		name, description string
 		flags             []string
 	}{
-		{"spaces", "List only spaces bound to this Agent and their current availability.", nil},
-		{"capabilities", "Inspect this space's current capabilities (no model credentials).", []string{"space"}},
-		{"search", "Retrieve evidence using the space profile; no nested planner or generated answer.", []string{"space", "query", "image-file-id", "limit"}},
+		{"spaces", "List only Agent Knowledge Bases bound to this Agent and their current availability.", nil},
+		{"capabilities", "Inspect this Agent Knowledge Base's current capabilities (no model credentials).", []string{"space"}},
+		{"search", "Retrieve evidence using the knowledge base profile; no nested planner or generated answer.", []string{"space", "query", "image-file-id", "limit"}},
 		{"ls", "List a bounded page of /knowledge entries.", []string{"space", "path", "cursor", "limit"}},
 		{"tree", "Browse a bounded /knowledge subtree.", []string{"space", "path", "cursor", "limit", "depth"}},
 		{"find", "Find /knowledge entries whose names contain the query.", []string{"space", "path", "query", "cursor", "limit"}},
@@ -46,11 +46,13 @@ func newKnowledgeCommand() *cobra.Command {
 		for _, flag := range definition.flags {
 			switch flag {
 			case "limit":
-				cmd.Flags().Int(flag, 10, "Maximum returned items/segments (1–50); retrieval depth still belongs to the space profile.")
+				cmd.Flags().Int(flag, 10, "Maximum returned items/segments (1–50); retrieval depth still belongs to the knowledge base profile.")
 			case "depth":
 				cmd.Flags().Int(flag, 2, "Maximum tree depth (1–4).")
 			case "path":
 				cmd.Flags().String(flag, "/knowledge", "Canonical read-only /knowledge path.")
+			case "space":
+				cmd.Flags().String(flag, "", "Agent Knowledge Base bound to this Agent.")
 			case "image-file-id":
 				cmd.Flags().StringArray(flag, nil, "Authorized upload UUID or local_file dify-file-ref from inputs; repeat at most four times, never a URL.")
 			default:

@@ -322,7 +322,7 @@ class KnowledgeFSServiceDocumentsApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS documents",
+        "Agent Knowledge Base documents",
         service_api_ns.models[KnowledgeFSDocumentListResponse.__name__],
     )
     @_service_api_errors
@@ -343,7 +343,7 @@ class KnowledgeFSServiceBulkDocumentsApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSBulkDocumentDeletePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS document deletions accepted",
+        "Agent Knowledge Base document deletions accepted",
         service_api_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__],
     )
     @_service_api_errors
@@ -362,7 +362,7 @@ class KnowledgeFSServiceDocumentReindexApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentReindexPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document reindex queued",
+        "Agent Knowledge Base document reindex queued",
         service_api_ns.models[KnowledgeFSDocumentReindexResponse.__name__],
     )
     @_service_api_errors
@@ -378,7 +378,7 @@ class KnowledgeFSServiceDocumentReindexApi(Resource):
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>")
 class KnowledgeFSServiceDocumentApi(Resource):
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS document", service_api_ns.models[KnowledgeFSDocumentResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base document", service_api_ns.models[KnowledgeFSDocumentResponse.__name__]
     )
     @_service_api_errors
     def get(self, control_space_id: str, document_id: str):
@@ -393,7 +393,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentMetadataPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document metadata updated",
+        "Agent Knowledge Base document metadata updated",
         service_api_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
     )
     @_service_api_errors
@@ -410,7 +410,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS document deletion accepted",
+        "Agent Knowledge Base document deletion accepted",
         service_api_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @_service_api_errors
@@ -430,7 +430,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
 class KnowledgeFSServiceDocumentOutlineApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document outline",
+        "Agent Knowledge Base document outline",
         service_api_ns.models[KnowledgeFSDocumentOutlineResponse.__name__],
     )
     @_service_api_errors
@@ -449,7 +449,7 @@ class KnowledgeFSServiceDocumentRevisionsApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document revisions",
+        "Agent Knowledge Base document revisions",
         service_api_ns.models[KnowledgeFSDocumentRevisionListResponse.__name__],
     )
     @_service_api_errors
@@ -472,7 +472,7 @@ class KnowledgeFSServiceDocumentChunksApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSDocumentChunkListQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document chunks",
+        "Agent Knowledge Base document chunks",
         service_api_ns.models[KnowledgeFSDocumentChunkListResponse.__name__],
     )
     @_service_api_errors
@@ -494,7 +494,7 @@ class KnowledgeFSServiceDocumentChunksApi(Resource):
 class KnowledgeFSServiceDocumentChunkApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS document chunk",
+        "Agent Knowledge Base document chunk",
         service_api_ns.models[KnowledgeFSDocumentChunkResponse.__name__],
     )
     @_service_api_errors
@@ -516,7 +516,7 @@ class KnowledgeFSServiceDocumentChunkApi(Resource):
 class KnowledgeFSServiceCompilationJobApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS compilation job",
+        "Agent Knowledge Base compilation job",
         service_api_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @_service_api_errors
@@ -528,7 +528,7 @@ class KnowledgeFSServiceCompilationJobApi(Resource):
 
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS compilation job canceled",
+        "Agent Knowledge Base compilation job canceled",
         service_api_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @_service_api_errors
@@ -543,7 +543,7 @@ class KnowledgeFSServiceCompilationJobApi(Resource):
 class KnowledgeFSServiceCompilationJobRetryApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS compilation job retried",
+        "Agent Knowledge Base compilation job retried",
         service_api_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @_service_api_errors
@@ -557,7 +557,7 @@ class KnowledgeFSServiceCompilationJobRetryApi(Resource):
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/bulk-jobs/<string:job_id>")
 class KnowledgeFSServiceBulkJobApi(Resource):
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS bulk job", service_api_ns.models[KnowledgeFSBulkJobResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base bulk job", service_api_ns.models[KnowledgeFSBulkJobResponse.__name__]
     )
     @_service_api_errors
     def get(self, control_space_id: str, job_id: str):
@@ -572,7 +572,7 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS streaming query admitted through Dify API",
+        "Agent Knowledge Base streaming query admitted through Dify API",
         service_api_ns.models[KnowledgeFSQueryAdmissionResponse.__name__],
     )
     @_service_api_errors
@@ -600,7 +600,7 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
 class KnowledgeFSServiceQueryStreamProxyApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSAdmittedQueryRequest.__name__])
     @service_api_ns.doc(produces=["text/event-stream"])
-    @service_api_ns.response(HTTPStatus.OK, "KnowledgeFS query event stream")
+    @service_api_ns.response(HTTPStatus.OK, "Agent Knowledge Base query event stream")
     @_service_api_errors
     def post(self):
         capability_token, trace_id = _stream_capability()
@@ -617,7 +617,7 @@ class KnowledgeFSServiceQueryStreamProxyApi(Resource):
 class KnowledgeFSServiceSettingsApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS settings",
+        "Agent Knowledge Base settings",
         service_api_ns.models[KnowledgeFSSettingsResponse.__name__],
     )
     @_service_api_errors
@@ -630,7 +630,7 @@ class KnowledgeFSServiceSettingsApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSettingsPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS settings updated",
+        "Agent Knowledge Base settings updated",
         service_api_ns.models[KnowledgeFSSettingsResponse.__name__],
     )
     @_service_api_errors
@@ -650,7 +650,7 @@ class KnowledgeFSServiceSourcesApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS sources",
+        "Agent Knowledge Base sources",
         service_api_ns.models[KnowledgeFSSourceListResponse.__name__],
     )
     @_service_api_errors
@@ -668,7 +668,7 @@ class KnowledgeFSServiceSourcesApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.CREATED,
-        "KnowledgeFS source created",
+        "Agent Knowledge Base source created",
         service_api_ns.models[KnowledgeFSSourceResponse.__name__],
     )
     @_service_api_errors
@@ -686,7 +686,7 @@ class KnowledgeFSServiceSourcesApi(Resource):
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>")
 class KnowledgeFSServiceSourceApi(Resource):
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base source", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
     )
     @_service_api_errors
     def get(self, control_space_id: str, source_id: str):
@@ -700,7 +700,7 @@ class KnowledgeFSServiceSourceApi(Resource):
 
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceUpdatePayload.__name__])
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source updated", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
+        HTTPStatus.OK, "Agent Knowledge Base source updated", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
     )
     @_service_api_errors
     def patch(self, control_space_id: str, source_id: str):
@@ -717,7 +717,7 @@ class KnowledgeFSServiceSourceApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery))
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS source deletion accepted",
+        "Agent Knowledge Base source deletion accepted",
         service_api_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @_service_api_errors
@@ -739,7 +739,7 @@ class KnowledgeFSServiceSourceApi(Resource):
 class KnowledgeFSServiceSourceTestApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source credential test",
+        "Agent Knowledge Base source credential test",
         service_api_ns.models[KnowledgeFSSourceCredentialTestResponse.__name__],
     )
     @_service_api_errors
@@ -756,7 +756,9 @@ class KnowledgeFSServiceSourceTestApi(Resource):
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl")
 class KnowledgeFSServiceSourceCrawlApi(Resource):
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source crawl", service_api_ns.models[KnowledgeFSSourceCrawlResponse.__name__]
+        HTTPStatus.OK,
+        "Agent Knowledge Base source crawl",
+        service_api_ns.models[KnowledgeFSSourceCrawlResponse.__name__],
     )
     @_service_api_errors
     def post(self, control_space_id: str, source_id: str):
@@ -773,7 +775,9 @@ class KnowledgeFSServiceSourceCrawlApi(Resource):
 class KnowledgeFSServiceSourcePagesApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourcePagesQuery))
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source pages", service_api_ns.models[KnowledgeFSSourcePagesResponse.__name__]
+        HTTPStatus.OK,
+        "Agent Knowledge Base source pages",
+        service_api_ns.models[KnowledgeFSSourcePagesResponse.__name__],
     )
     @_service_api_errors
     def get(self, control_space_id: str, source_id: str):
@@ -793,7 +797,7 @@ class KnowledgeFSServiceSourcePageImportApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceImportPagesPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source pages imported",
+        "Agent Knowledge Base source pages imported",
         service_api_ns.models[KnowledgeFSSourceImportResponse.__name__],
     )
     @_service_api_errors
@@ -812,7 +816,9 @@ class KnowledgeFSServiceSourcePageImportApi(Resource):
 class KnowledgeFSServiceSourceFilesApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceFilesQuery))
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source files", service_api_ns.models[KnowledgeFSSourceFilesResponse.__name__]
+        HTTPStatus.OK,
+        "Agent Knowledge Base source files",
+        service_api_ns.models[KnowledgeFSSourceFilesResponse.__name__],
     )
     @_service_api_errors
     def get(self, control_space_id: str, source_id: str):
@@ -832,7 +838,7 @@ class KnowledgeFSServiceSourceFileImportApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceImportFilesPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS source files imported",
+        "Agent Knowledge Base source files imported",
         service_api_ns.models[KnowledgeFSSourceImportResponse.__name__],
     )
     @_service_api_errors
@@ -852,7 +858,7 @@ class KnowledgeFSServiceResearchTasksApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research tasks",
+        "Agent Knowledge Base research tasks",
         service_api_ns.models[KnowledgeFSResearchTaskListResponse.__name__],
     )
     @_service_api_errors
@@ -870,7 +876,7 @@ class KnowledgeFSServiceResearchTasksApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSResearchTaskCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
-        "KnowledgeFS research task accepted",
+        "Agent Knowledge Base research task accepted",
         service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @_service_api_errors
@@ -889,7 +895,7 @@ class KnowledgeFSServiceResearchTaskPlanApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSResearchTaskPlanPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task plan",
+        "Agent Knowledge Base research task plan",
         service_api_ns.models[KnowledgeFSResearchTaskPlanResponse.__name__],
     )
     @_service_api_errors
@@ -907,7 +913,7 @@ class KnowledgeFSServiceResearchTaskPlanApi(Resource):
 class KnowledgeFSServiceResearchTaskApi(Resource):
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task",
+        "Agent Knowledge Base research task",
         service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @_service_api_errors
@@ -921,7 +927,7 @@ class KnowledgeFSServiceResearchTaskApi(Resource):
 
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task canceled",
+        "Agent Knowledge Base research task canceled",
         service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @_service_api_errors
@@ -939,7 +945,7 @@ class KnowledgeFSServiceResearchTaskPartialsApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSResearchTaskPartialsQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS research task partial evidence",
+        "Agent Knowledge Base research task partial evidence",
         service_api_ns.models[KnowledgeFSResearchTaskPartialListResponse.__name__],
     )
     @_service_api_errors
@@ -959,7 +965,7 @@ class KnowledgeFSServiceTracesApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceListQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS traces",
+        "Agent Knowledge Base traces",
         service_api_ns.models[KnowledgeFSTraceListResponse.__name__],
     )
     @_service_api_errors
@@ -978,7 +984,9 @@ class KnowledgeFSServiceTracesApi(Resource):
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>")
 class KnowledgeFSServiceTraceApi(Resource):
     @service_api_ns.response(
-        HTTPStatus.OK, "KnowledgeFS answer trace", service_api_ns.models[KnowledgeFSAnswerTraceResponse.__name__]
+        HTTPStatus.OK,
+        "Agent Knowledge Base answer trace",
+        service_api_ns.models[KnowledgeFSAnswerTraceResponse.__name__],
     )
     @_service_api_errors
     def get(self, control_space_id: str, trace_id: str):
@@ -1013,7 +1021,7 @@ class KnowledgeFSServiceTraceEvidenceApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS trace evidence view",
+        "Agent Knowledge Base trace evidence view",
         service_api_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @_service_api_errors
@@ -1026,7 +1034,7 @@ class KnowledgeFSServiceTraceConflictsApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS trace conflicts",
+        "Agent Knowledge Base trace conflicts",
         service_api_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @_service_api_errors
@@ -1039,7 +1047,7 @@ class KnowledgeFSServiceTraceMissingApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
-        "KnowledgeFS trace missing evidence",
+        "Agent Knowledge Base trace missing evidence",
         service_api_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @_service_api_errors

@@ -2,14 +2,13 @@
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
+import { RiApps2Line, RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -19,8 +18,8 @@ import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import UpgradeBtn from '../upgrade-btn'
-import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
+import { getResetInDaysFromDate, parseLimit, parseRateLimit } from '../utils'
 import { Professional, Sandbox, Team } from './assets'
 
 type Props = Readonly<{
@@ -40,7 +39,8 @@ const PlanComp: FC<Props> = ({ loc }) => {
   })
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: features } = useSuspenseQuery(consoleQuery.features.get.queryOptions())
+  const enableEducationPlan = features.education.enabled
   const { data: educationStatus } = useQuery(
     consoleQuery.account.education.get.queryOptions({
       enabled: enableEducationPlan,
@@ -48,16 +48,17 @@ const PlanComp: FC<Props> = ({ loc }) => {
     }),
   )
   const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
-  const { type } = plan
-
-  const { usage, total, reset } = plan
+  const type = features.billing.subscription.plan
+  const triggerEventsLimit = parseRateLimit(features.trigger_event.limit)
+  const apiRateLimit = parseRateLimit(features.api_rate_limit.limit)
+  const apiRateLimitReset = getResetInDaysFromDate(features.api_rate_limit.reset_date)
   const triggerEventsResetInDays =
-    type === 'professional' && total.triggerEvents !== NUM_INFINITE
-      ? (reset.triggerEvents ?? undefined)
+    type === 'professional' && triggerEventsLimit !== NUM_INFINITE
+      ? (getResetInDaysFromDate(features.trigger_event.reset_date) ?? undefined)
       : undefined
   const apiRateLimitResetInDays = (() => {
-    if (total.apiRateLimit === NUM_INFINITE) return undefined
-    if (typeof reset.apiRateLimit === 'number') return reset.apiRateLimit
+    if (apiRateLimit === NUM_INFINITE) return undefined
+    if (typeof apiRateLimitReset === 'number') return apiRateLimitReset
     if (type === 'sandbox') return getDaysUntilEndOfMonth()
     return undefined
   })()
@@ -66,9 +67,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
   return (
     <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
-        {plan.type === 'sandbox' && <Sandbox />}
-        {plan.type === 'professional' && <Professional />}
-        {plan.type === 'team' && <Team />}
+        {type === 'sandbox' && <Sandbox />}
+        {type === 'professional' && <Professional />}
+        {type === 'team' && <Team />}
         <div className="mt-1 flex items-center">
           <div className="grow">
             <div className="mb-1 flex items-center gap-1">
@@ -110,41 +111,46 @@ const PlanComp: FC<Props> = ({ loc }) => {
       </div>
       {/* Plan detail */}
       <div className="grid grid-cols-3 content-start gap-1 p-2">
-        <AppsInfo />
+        <UsageInfo
+          Icon={RiApps2Line}
+          name={t(($) => $['usagePage.buildApps'], { ns: 'billing' })}
+          usage={features.apps.size}
+          total={parseLimit(features.apps.limit)}
+        />
         <UsageInfo
           Icon={RiGroupLine}
           name={t(($) => $['usagePage.teamMembers'], { ns: 'billing' })}
-          usage={usage.teamMembers}
-          total={total.teamMembers}
+          usage={features.members.size}
+          total={parseLimit(features.members.limit)}
         />
         <UsageInfo
           Icon={RiBook2Line}
           name={t(($) => $['usagePage.documentsUploadQuota'], { ns: 'billing' })}
-          usage={usage.documentsUploadQuota}
-          total={total.documentsUploadQuota}
+          usage={features.documents_upload_quota.size}
+          total={parseLimit(features.documents_upload_quota.limit)}
         />
         <VectorSpaceInfo />
         <UsageInfo
           Icon={RiFileEditLine}
           name={t(($) => $['usagePage.annotationQuota'], { ns: 'billing' })}
-          usage={usage.annotatedResponse}
-          total={total.annotatedResponse}
+          usage={features.annotation_quota_limit.size}
+          total={parseLimit(features.annotation_quota_limit.limit)}
         />
         <UsageInfo
           Icon={TriggerAll}
           name={t(($) => $['usagePage.triggerEvents'], { ns: 'billing' })}
-          usage={usage.triggerEvents}
-          total={total.triggerEvents}
+          usage={features.trigger_event.usage}
+          total={triggerEventsLimit}
           tooltip={t(($) => $['plansCommon.triggerEvents.tooltip'], { ns: 'billing' }) as string}
           resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
           Icon={ApiAggregate}
           name={t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}
-          usage={usage.apiRateLimit}
-          total={total.apiRateLimit}
+          usage={features.api_rate_limit.usage}
+          total={apiRateLimit}
           tooltip={
-            total.apiRateLimit === NUM_INFINITE
+            apiRateLimit === NUM_INFINITE
               ? undefined
               : (t(($) => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string)
           }

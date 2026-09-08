@@ -68,7 +68,7 @@ describe("KnowledgeFS public errors", () => {
     expect(failure).toEqual({
       category: "conflict",
       code: "RETRIEVAL_DELETION_IN_PROGRESS",
-      message: "This knowledge space is being deleted and cannot be searched.",
+      message: "This Agent Knowledge Base is being deleted and cannot be searched.",
       retryPolicy: "never",
     });
     expect(knowledgeFsFailureAllowsManualRetry(failure)).toBe(false);
@@ -228,11 +228,11 @@ describe("KnowledgeFS public errors", () => {
 
     expect(knowledgeFsFailureFromError(validation)).toMatchObject({
       code: "KNOWLEDGE_FS_INVALID_REQUEST",
-      message: "The KnowledgeFS request is invalid.",
+      message: "The Agent Knowledge Base request is invalid.",
     });
     expect(knowledgeFsFailureFromError(missing)).toMatchObject({
       code: "KNOWLEDGE_FS_NOT_FOUND",
-      message: "The requested KnowledgeFS resource was not found.",
+      message: "The requested Agent Knowledge Base resource was not found.",
     });
     expect(knowledgeFsFailureFromError(safeMissing).message).toBe(
       "The selected document was not found.",

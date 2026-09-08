@@ -1,11 +1,13 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { ReactElement } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal from '../index'
 import { CreateFromDSLModalTab } from '../types'
+
+/* oxlint-disable typescript/no-explicit-any */
 
 const mockPush = vi.fn()
 const mockImportDSL = vi.fn()
@@ -25,8 +27,8 @@ const toastMocks = vi.hoisted(() => ({
 const hotkeyMocks = vi.hoisted(() => ({
   handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
 }))
-let mockPlanUsage = 0
-let mockPlanTotal = 10
+let appCount = 0
+let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
 vi.mock('ahooks', () => ({
@@ -76,6 +78,7 @@ vi.mock('@/service/client', async (importOriginal) => {
     },
     consoleQuery: {
       ...actual.consoleQuery,
+      features: actual.consoleQuery.features,
       account: {
         profile: {
           get: {
@@ -122,20 +125,6 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: {
-        buildApps: mockPlanUsage,
-      },
-      total: {
-        buildApps: mockPlanTotal,
-      },
-    },
-    enableBilling: true,
-  }),
-}))
-
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
 }))
@@ -157,12 +146,19 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: { size: appCount, limit: appLimit } },
+  })
+}
+
 describe('CreateFromDSLModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hotkeyMocks.handlers.clear()
-    mockPlanUsage = 0
-    mockPlanTotal = 10
+    appCount = 0
+    appLimit = 10
     mockWorkspacePermissionKeys = ['app.create_and_management']
     Object.defineProperty(File.prototype, 'text', {
       configurable: true,
@@ -803,8 +799,8 @@ describe('CreateFromDSLModal', () => {
       })
     })
 
-    mockPlanUsage = 1
-    mockPlanTotal = 1
+    appCount = 1
+    appLimit = 1
     render(
       <CreateFromDSLModal
         show

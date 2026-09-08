@@ -443,11 +443,20 @@ jobs:
         run: |
           set -euo pipefail
           report="${RUNNER_TEMP:?}/dify-knowledge-fs-coverage.json"
+          coverage_base="$KNOWLEDGE_FS_COVERAGE_BASE"
+          if [[ "$GITHUB_EVENT_NAME" == 'push' && "$GITHUB_REF" == 'refs/heads/deploy/konwledge' ]]; then
+            latest_merge="$(git rev-list --first-parent --merges --max-count=1 "${coverage_base}..HEAD")"
+            if [[ -n "$latest_merge" ]]; then
+              # Mainline syncs are already gated on main; cover deployment-branch
+              # changes made after the newest sync instead of the merged diff.
+              coverage_base="$latest_merge"
+            fi
+          fi
           uv run --project api --dev coverage json --show-contexts -o "$report"
           uv run --project api --dev python api/dev/check_knowledge_fs_coverage.py \
             --coverage-json "$report" \
             --glue-manifest "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/glue-files" \
-            --base "$KNOWLEDGE_FS_COVERAGE_BASE" \
+            --base "$coverage_base" \
             --minimum 90 \
             --glue-minimum 90
 

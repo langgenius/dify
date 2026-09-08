@@ -12,7 +12,7 @@ import { Args, Flags } from '@/framework/flags'
 import { formatted } from '@/framework/output'
 
 export default class KnowledgeFsFind extends DifyCommand {
-  static override description = 'Find KnowledgeFS paths by name or metadata'
+  static override description = 'Find Agent Knowledge Base paths by name or metadata'
 
   static override effect: CommandEffect = 'read'
 
@@ -22,8 +22,8 @@ export default class KnowledgeFsFind extends DifyCommand {
   ]
 
   static override args = {
-    knowledgeSpaceId: Args.string({ description: 'knowledge-space id', required: true }),
-    path: Args.string({ description: 'KnowledgeFS path to search', required: true }),
+    knowledgeSpaceId: Args.string({ description: 'Agent Knowledge Base ID', required: true }),
+    path: Args.string({ description: 'Agent Knowledge Base path to search', required: true }),
   }
 
   static override flags = {
@@ -45,7 +45,7 @@ export default class KnowledgeFsFind extends DifyCommand {
       { workspace: flags.workspace, knowledgeSpaceId: args.knowledgeSpaceId },
       { active: ctx.active, http: ctx.http, io: ctx.io },
       {
-        label: 'Finding KnowledgeFS paths',
+        label: 'Finding Agent Knowledge Base paths',
         execute: (client, workspaceId, knowledgeSpaceId) =>
           client.find(workspaceId, knowledgeSpaceId, {
             path: args.path,

@@ -3,7 +3,7 @@ import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
@@ -11,7 +11,8 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
+import { useProviderContextSelector } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
 import { disableModel, enableModel } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -41,7 +42,13 @@ const ModelListItem = ({
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (features) => features.billing.subscription.plan,
+    }),
+  )
   const modelLoadBalancingEnabled = useProviderContextSelector(
     (state) => state.modelLoadBalancingEnabled,
   )
@@ -131,7 +138,7 @@ const ModelListItem = ({
             </Badge>
           )}
         {canConfigureModels &&
-          (modelLoadBalancingEnabled || plan.type === 'sandbox') &&
+          (deploymentEdition !== 'CLOUD' || modelLoadBalancingEnabled || plan === 'sandbox') &&
           !model.deprecated &&
           [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
             <ConfigModel
