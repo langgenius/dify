@@ -35,6 +35,7 @@ from services.agent.errors import (
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
+    ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
     ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
@@ -50,8 +51,10 @@ class _MemoryStorage:
     def __init__(self, files: dict[str, bytes], *, before_read: Callable[[], None] | None = None) -> None:
         self.files = files
         self.before_read = before_read
+        self.read_count = 0
 
     def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+        self.read_count += 1
         if self.before_read is not None:
             self.before_read()
         content = self.files[filename]
@@ -489,6 +492,22 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
 
     assert sqlite_session.in_transaction()
     assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
+
+    monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_ENTRIES", 3)
+    with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
+        with zipfile.ZipFile(exported.archive) as archive:
+            assert len(archive.infolist()) == 3
+
+    reads_before_limit_check = storage.read_count
+    monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_ENTRIES", 2)
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id)
+    assert storage.read_count == reads_before_limit_check
+    monkeypatch.setattr(
+        roster_package_exporter_module,
+        "ROSTER_AGENT_PACKAGE_MAX_ENTRIES",
+        ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
+    )
 
     monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES", 1)
     with pytest.raises(RosterAgentPackageTooLargeError):

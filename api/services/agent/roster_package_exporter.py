@@ -42,6 +42,7 @@ from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
     ROSTER_AGENT_PACKAGE_MAX_BYTES,
+    ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
     ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageAudit,
     RosterAgentPackageExport,
@@ -191,6 +192,10 @@ class RosterAgentPackageExporter:
         file_sources: Sequence[_FileSource],
         dependencies: list[PluginDependency],
     ) -> RosterAgentPackageExport:
+        required_entries = len(skill_sources) + len(file_sources) + 1
+        if required_entries > ROSTER_AGENT_PACKAGE_MAX_ENTRIES:
+            raise RosterAgentPackageTooLargeError("Roster Agent package has too many members")
+
         # Ownership is transferred to RosterAgentPackageExport.
         output = cast(
             BinaryIO,
