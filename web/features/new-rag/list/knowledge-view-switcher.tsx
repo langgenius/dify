@@ -17,8 +17,8 @@ import {
 } from '@/features/new-rag/list/storage'
 
 export type KnowledgeViewSwitcherProps = {
-  value: 'legacy' | 'new'
-  onChange: (value: 'legacy' | 'new') => void
+  value: 'classic' | 'agent'
+  onChange: (value: 'classic' | 'agent') => void
 }
 
 export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcherProps) {
@@ -45,13 +45,13 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
       >
         <SegmentedControlItem
           className="h-5.5 rounded-md px-1 py-px system-xs-medium"
-          value="legacy"
+          value="classic"
         >
           {t(($) => $['view.classic'])}
         </SegmentedControlItem>
         <SegmentedControlItem
           className="h-5.5 rounded-md py-px pr-5 pl-1 system-xs-medium"
-          value="new"
+          value="agent"
         >
           {t(($) => $['view.agent'])}
         </SegmentedControlItem>

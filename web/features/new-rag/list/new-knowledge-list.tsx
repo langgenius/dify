@@ -95,8 +95,8 @@ export function NewKnowledgeList({
   view,
   onViewChange,
 }: {
-  view: 'legacy' | 'new'
-  onViewChange: (value: 'legacy' | 'new') => void
+  view: 'classic' | 'agent'
+  onViewChange: (value: 'classic' | 'agent') => void
 }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')

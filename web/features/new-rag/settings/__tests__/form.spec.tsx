@@ -923,7 +923,7 @@ describe('KnowledgeSettingsPage workflows', () => {
         expect.anything(),
       )
     })
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
   })
 
   it('keeps edits and shows a standard error toast after saving fails', async () => {

@@ -2474,15 +2474,15 @@ describe('CreateKnowledgePage', () => {
     expect(document.querySelector('.bg-background-overlay-backdrop')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
     routerMock.replace.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
     routerMock.replace.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
   })
 
   it('closes an unsaved draft without confirmation', async () => {
@@ -2492,7 +2492,7 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 

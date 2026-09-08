@@ -322,17 +322,20 @@ describe('List', () => {
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
     })
 
-    it('should show the Legacy and New views when KnowledgeFS is enabled', () => {
+    it('should default to Classic when KnowledgeFS is enabled', () => {
       mockConsoleState.knowledgeFsEnabled = true
 
       renderWithNuqs(<List />)
 
-      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
       expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' })).toBeInTheDocument()
     })
 
     it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
-      renderWithNuqs(<List />, { searchParams: '?view=new' })
+      renderWithNuqs(<List />, { searchParams: '?view=agent' })
 
       expect(
         screen.queryByRole('radio', { name: 'knowledgeSpace.view.agent' }),
@@ -346,7 +349,7 @@ describe('List', () => {
       expect(useDatasetList).toHaveBeenCalled()
     })
 
-    it('should switch to New Knowledge and persist the selected view in the URL', async () => {
+    it('should switch to Agent and persist the selected view in the URL', async () => {
       const user = userEvent.setup()
       mockConsoleState.knowledgeFsEnabled = true
       const { onUrlUpdate } = renderWithNuqs(<List />)
@@ -356,7 +359,23 @@ describe('List', () => {
       expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('agent')
+    })
+
+    it('should return to Classic without a view parameter and preserve other filters', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const { onUrlUpdate } = renderWithNuqs(<List />, {
+        searchParams: '?view=agent&creator_ids=creator-1',
+      })
+
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' }))
+
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const searchParams = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+      expect(searchParams?.has('view')).toBe(false)
+      expect(searchParams?.get('creator_ids')).toBe('creator-1')
     })
 
     it('should reset each view panel when its owning list unmounts', async () => {
@@ -377,10 +396,10 @@ describe('List', () => {
       expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
 
-    it('should restore the New Knowledge view from the URL', () => {
+    it('should restore the Agent view from the URL', () => {
       mockConsoleState.knowledgeFsEnabled = true
 
-      renderWithNuqs(<List />, { searchParams: '?view=new' })
+      renderWithNuqs(<List />, { searchParams: '?view=agent' })
 
       expect(screen.getByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
       expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' })).toHaveAttribute(
