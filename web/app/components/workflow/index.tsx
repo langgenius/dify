@@ -658,6 +658,66 @@ export const Workflow: FC<WorkflowProps> = memo(
         )}
         ref={workflowContainerRef}
       >
+        <WorkflowContextmenu>
+          <ReactFlow
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            nodes={nodes}
+            edges={edges}
+            className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
+            onNodeDragStart={handleNodeDragStart}
+            onNodeDrag={handleNodeDrag}
+            onNodeDragStop={handleNodeDragStop}
+            onNodeMouseEnter={handleNodeEnter}
+            onNodeMouseLeave={handleNodeLeave}
+            onNodeClick={handleNodeClick}
+            onNodeContextMenu={handleNodeContextMenu}
+            onConnect={handleNodeConnect}
+            onConnectStart={handleNodeConnectStart}
+            onConnectEnd={handleNodeConnectEnd}
+            onEdgeMouseEnter={handleEdgeEnter}
+            onEdgeMouseLeave={handleEdgeLeave}
+            onEdgesChange={handleEdgesChange}
+            onEdgeContextMenu={handleEdgeContextMenu}
+            onSelectionStart={handleSelectionStart}
+            onSelectionChange={handleSelectionChange}
+            onSelectionDrag={handleSelectionDrag}
+            onPaneContextMenu={handlePaneContextMenu}
+            onSelectionContextMenu={handleSelectionContextMenu}
+            connectionLineComponent={CustomConnectionLine}
+            defaultViewport={viewport}
+            multiSelectionKeyCode={null}
+            deleteKeyCode={null}
+            nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
+            nodesConnectable={!nodesReadOnly}
+            nodesFocusable={!nodesReadOnly}
+            edgesFocusable={!nodesReadOnly}
+            panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
+            panOnDrag={controlMode === ControlMode.Hand || [1]}
+            zoomOnPinch={true}
+            zoomOnScroll={true}
+            zoomOnDoubleClick={true}
+            isValidConnection={isValidConnection}
+            selectionKeyCode={null}
+            selectionMode={SelectionMode.Partial}
+            selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
+            minZoom={0.25}
+          >
+            <Background
+              gap={[14, 14]}
+              size={2}
+              className="bg-workflow-canvas-workflow-bg"
+              color="var(--color-workflow-canvas-workflow-dot-color)"
+            />
+            {showUserCursors && cursors && (
+              <UserCursors
+                cursors={cursors}
+                myUserId={myUserId || null}
+                onlineUsers={onlineUsers || []}
+              />
+            )}
+          </ReactFlow>
+        </WorkflowContextmenu>
         <CandidateNode />
         <CommentManager />
         <div
@@ -761,66 +821,6 @@ export const Workflow: FC<WorkflowProps> = memo(
           ) : null
         })}
         {children}
-        <WorkflowContextmenu>
-          <ReactFlow
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            nodes={nodes}
-            edges={edges}
-            className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
-            onNodeDragStart={handleNodeDragStart}
-            onNodeDrag={handleNodeDrag}
-            onNodeDragStop={handleNodeDragStop}
-            onNodeMouseEnter={handleNodeEnter}
-            onNodeMouseLeave={handleNodeLeave}
-            onNodeClick={handleNodeClick}
-            onNodeContextMenu={handleNodeContextMenu}
-            onConnect={handleNodeConnect}
-            onConnectStart={handleNodeConnectStart}
-            onConnectEnd={handleNodeConnectEnd}
-            onEdgeMouseEnter={handleEdgeEnter}
-            onEdgeMouseLeave={handleEdgeLeave}
-            onEdgesChange={handleEdgesChange}
-            onEdgeContextMenu={handleEdgeContextMenu}
-            onSelectionStart={handleSelectionStart}
-            onSelectionChange={handleSelectionChange}
-            onSelectionDrag={handleSelectionDrag}
-            onPaneContextMenu={handlePaneContextMenu}
-            onSelectionContextMenu={handleSelectionContextMenu}
-            connectionLineComponent={CustomConnectionLine}
-            defaultViewport={viewport}
-            multiSelectionKeyCode={null}
-            deleteKeyCode={null}
-            nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
-            nodesConnectable={!nodesReadOnly}
-            nodesFocusable={!nodesReadOnly}
-            edgesFocusable={!nodesReadOnly}
-            panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
-            panOnDrag={controlMode === ControlMode.Hand || [1]}
-            zoomOnPinch={true}
-            zoomOnScroll={true}
-            zoomOnDoubleClick={true}
-            isValidConnection={isValidConnection}
-            selectionKeyCode={null}
-            selectionMode={SelectionMode.Partial}
-            selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
-            minZoom={0.25}
-          >
-            <Background
-              gap={[14, 14]}
-              size={2}
-              className="bg-workflow-canvas-workflow-bg"
-              color="var(--color-workflow-canvas-workflow-dot-color)"
-            />
-            {showUserCursors && cursors && (
-              <UserCursors
-                cursors={cursors}
-                myUserId={myUserId || null}
-                onlineUsers={onlineUsers || []}
-              />
-            )}
-          </ReactFlow>
-        </WorkflowContextmenu>
         <SyncingDataModal />
       </div>
     )
