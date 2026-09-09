@@ -576,7 +576,6 @@
   "sort.item": "第 {{position}} 項",
   "sort.moved": "已將 {{item}} 移至第 {{position}} 項，共 {{count}} 項。",
   "sort.started": "已選取 {{item}}，目前為第 {{position}} 項，共 {{count}} 項。",
-  "sort.target": "將 {{item}} 移至第 {{position}} 項，共 {{count}} 項",
   "stepByStepTour.completion.description": "你已經了解了核心內容。現在可以開始建構了。",
   "stepByStepTour.completion.dismiss": "關閉",
   "stepByStepTour.completion.label": "Step-by-step Tour 已完成",

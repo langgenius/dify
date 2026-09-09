@@ -576,7 +576,6 @@
   "sort.item": "العنصر {{position}}",
   "sort.moved": "تم نقل {{item}} إلى الموضع {{position}} من {{count}}.",
   "sort.started": "تم اختيار {{item}}، في الموضع {{position}} من {{count}}.",
-  "sort.target": "نقل {{item}} إلى الموضع {{position}} من {{count}}",
   "stepByStepTour.completion.description": "لقد اطّلعت على الأساسيات. حان وقت بناء شيء ما.",
   "stepByStepTour.completion.dismiss": "إغلاق",
   "stepByStepTour.completion.label": "اكتملت جولة Step-by-step Tour",

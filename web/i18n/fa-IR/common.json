@@ -576,7 +576,6 @@
   "sort.item": "مورد {{position}}",
   "sort.moved": "{{item}} به جایگاه {{position}} از {{count}} منتقل شد.",
   "sort.started": "{{item}} انتخاب شد، جایگاه {{position}} از {{count}}.",
-  "sort.target": "انتقال {{item}} به جایگاه {{position}} از {{count}}",
   "stepByStepTour.completion.description": "موارد اصلی را دیدید. وقت ساختن چیزی تازه است.",
   "stepByStepTour.completion.dismiss": "بستن",
   "stepByStepTour.completion.label": "Step-by-step Tour کامل شد",

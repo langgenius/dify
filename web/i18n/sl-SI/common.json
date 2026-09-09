@@ -576,7 +576,6 @@
   "sort.item": "Element {{position}}",
   "sort.moved": "{{item}} premaknjen na položaj {{position}} od {{count}}.",
   "sort.started": "{{item}} izbran, položaj {{position}} od {{count}}.",
-  "sort.target": "Premakni {{item}} na položaj {{position}} od {{count}}",
   "stepByStepTour.completion.description": "Ogledali ste si osnove. Čas je, da nekaj ustvarite.",
   "stepByStepTour.completion.dismiss": "Zapri",
   "stepByStepTour.completion.label": "Step-by-step Tour dokončan",

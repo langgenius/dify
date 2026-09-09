@@ -576,7 +576,6 @@
   "sort.item": "項目 {{position}}",
   "sort.moved": "{{item}} を {{count}} 件中 {{position}} 番目に移動しました。",
   "sort.started": "{{item}} を選択しました。{{count}} 件中 {{position}} 番目です。",
-  "sort.target": "{{item}} を {{count}} 件中 {{position}} 番目に移動",
   "stepByStepTour.completion.description": "基本を確認しました。さあ、作り始めましょう。",
   "stepByStepTour.completion.dismiss": "閉じる",
   "stepByStepTour.completion.label": "Step-by-step Tour が完了しました",

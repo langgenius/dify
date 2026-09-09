@@ -6,7 +6,6 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useSelectOrDelete } from '../../hooks'
-import KeyboardSortButton from '../draggable-plugin/keyboard-sort-button'
 import { DELETE_HITL_INPUT_BLOCK_COMMAND } from './'
 import ComponentUi from './component-ui'
 
@@ -81,8 +80,7 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
   )
 
   return (
-    <div ref={ref} className="relative w-full pt-3 pb-1">
-      {!readonly && <KeyboardSortButton nodeKey={nodeKey} name={varName} />}
+    <div ref={ref} className="w-full pt-3 pb-1">
       <ComponentUi
         nodeId={nodeId}
         varName={varName}

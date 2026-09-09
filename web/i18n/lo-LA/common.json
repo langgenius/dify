@@ -576,7 +576,6 @@
   "sort.item": "ລາຍການ {{position}}",
   "sort.moved": "ຍ້າຍ {{item}} ໄປລຳດັບ {{position}} ຈາກ {{count}} ແລ້ວ.",
   "sort.started": "ເລືອກ {{item}} ແລ້ວ, ລຳດັບ {{position}} ຈາກ {{count}}.",
-  "sort.target": "ຍ້າຍ {{item}} ໄປລຳດັບ {{position}} ຈາກ {{count}}",
   "stepByStepTour.completion.description": "ທ່ານໄດ້ເຫັນສິ່ງທີ່ຈຳເປັນແລ້ວ. ເຖິງເວລາສ້າງບາງສິ່ງແລ້ວ.",
   "stepByStepTour.completion.dismiss": "ປິດອອກ",
   "stepByStepTour.completion.label": "ການແນະນຳເທື່ອລະຂັ້ນຕອນສຳເລັດແລ້ວ",

@@ -576,7 +576,6 @@
   "sort.item": "Item {{position}}",
   "sort.moved": "Moved {{item}} to position {{position}} of {{count}}.",
   "sort.started": "Picked up {{item}}, position {{position}} of {{count}}.",
-  "sort.target": "Move {{item}} to position {{position}} of {{count}}",
   "stepByStepTour.completion.description": "You’ve seen the essentials. Time to build something.",
   "stepByStepTour.completion.dismiss": "Dismiss",
   "stepByStepTour.completion.label": "Step-by-step Tour completed",

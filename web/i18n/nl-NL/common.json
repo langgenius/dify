@@ -576,7 +576,6 @@
   "sort.item": "Item {{position}}",
   "sort.moved": "{{item}} verplaatst naar positie {{position}} van {{count}}.",
   "sort.started": "{{item}} opgepakt, positie {{position}} van {{count}}.",
-  "sort.target": "{{item}} verplaatsen naar positie {{position}} van {{count}}",
   "stepByStepTour.completion.description": "Je hebt de basis gezien. Tijd om iets te bouwen.",
   "stepByStepTour.completion.dismiss": "Sluiten",
   "stepByStepTour.completion.label": "Step-by-step Tour voltooid",

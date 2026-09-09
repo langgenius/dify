@@ -576,7 +576,6 @@
   "sort.item": "Elementul {{position}}",
   "sort.moved": "{{item}} mutat la poziția {{position}} din {{count}}.",
   "sort.started": "{{item}} selectat, poziția {{position}} din {{count}}.",
-  "sort.target": "Mută {{item}} la poziția {{position}} din {{count}}",
   "stepByStepTour.completion.description": "Ai văzut elementele esențiale. Este timpul să construiești ceva.",
   "stepByStepTour.completion.dismiss": "Închide",
   "stepByStepTour.completion.label": "Step-by-step Tour finalizat",

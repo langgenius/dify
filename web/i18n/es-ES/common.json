@@ -576,7 +576,6 @@
   "sort.item": "Elemento {{position}}",
   "sort.moved": "{{item}} movido a la posición {{position}} de {{count}}.",
   "sort.started": "{{item}} seleccionado, posición {{position}} de {{count}}.",
-  "sort.target": "Mover {{item}} a la posición {{position}} de {{count}}",
   "stepByStepTour.completion.description": "Ya viste lo esencial. Es hora de crear algo.",
   "stepByStepTour.completion.dismiss": "Descartar",
   "stepByStepTour.completion.label": "Step-by-step Tour completado",

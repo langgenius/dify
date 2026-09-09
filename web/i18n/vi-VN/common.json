@@ -576,7 +576,6 @@
   "sort.item": "Mục {{position}}",
   "sort.moved": "Đã chuyển {{item}} đến vị trí {{position}} trên {{count}}.",
   "sort.started": "Đã chọn {{item}}, vị trí {{position}} trên {{count}}.",
-  "sort.target": "Chuyển {{item}} đến vị trí {{position}} trên {{count}}",
   "stepByStepTour.completion.description": "Bạn đã xem những phần cốt lõi. Đến lúc bắt đầu xây dựng.",
   "stepByStepTour.completion.dismiss": "Đóng",
   "stepByStepTour.completion.label": "Step-by-step Tour đã hoàn tất",

@@ -576,7 +576,6 @@
   "sort.item": "Item {{position}}",
   "sort.moved": "{{item}} dipindahkan ke posisi {{position}} dari {{count}}.",
   "sort.started": "{{item}} dipilih, posisi {{position}} dari {{count}}.",
-  "sort.target": "Pindahkan {{item}} ke posisi {{position}} dari {{count}}",
   "stepByStepTour.completion.description": "Anda sudah melihat hal-hal penting. Saatnya mulai membangun sesuatu.",
   "stepByStepTour.completion.dismiss": "Tutup",
   "stepByStepTour.completion.label": "Step-by-step Tour selesai",

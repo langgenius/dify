@@ -576,7 +576,6 @@
   "sort.item": "Element {{position}}",
   "sort.moved": "Przeniesiono {{item}} na pozycję {{position}} z {{count}}.",
   "sort.started": "Wybrano {{item}}, pozycja {{position}} z {{count}}.",
-  "sort.target": "Przenieś {{item}} na pozycję {{position}} z {{count}}",
   "stepByStepTour.completion.description": "Znasz już najważniejsze elementy. Czas coś zbudować.",
   "stepByStepTour.completion.dismiss": "Zamknij",
   "stepByStepTour.completion.label": "Step-by-step Tour ukończony",
