@@ -22,9 +22,17 @@ export const useOpenLink = () => {
     return mergeRegister(
       editor.registerUpdateListener(() => {
         setTimeout(() => {
-          const { selectedLinkUrl, selectedIsLink, setLinkAnchorElement, setLinkOperatorShow } =
-            noteEditorStore.getState()
+          const {
+            selectedLinkUrl,
+            selectedIsLink,
+            selectedLinkKey,
+            dismissedLinkKey,
+            setLinkAnchorElement,
+            setLinkOperatorShow,
+          } = noteEditorStore.getState()
           if (selectedIsLink) {
+            // Restoring the editor selection must not reopen a dismissed surface.
+            if (dismissedLinkKey && dismissedLinkKey === selectedLinkKey) return
             setLinkAnchorElement(true)
             if (selectedLinkUrl) setLinkOperatorShow(true)
             else setLinkOperatorShow(false)
@@ -103,8 +111,12 @@ export const useLink = () => {
     const { setLinkAnchorElement } = noteEditorStore.getState()
     setLinkAnchorElement()
   }, [editor, noteEditorStore])
+  const restoreEditorFocus = useCallback(() => {
+    editor.focus()
+  }, [editor])
   return {
     handleSaveLink,
     handleUnlink,
+    restoreEditorFocus,
   }
 }
