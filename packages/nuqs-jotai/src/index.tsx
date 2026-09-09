@@ -3,25 +3,21 @@
 import type { Atom, WritableAtom } from 'jotai'
 import type { Options, SetValues, UseQueryStatesKeysMap, UseQueryStatesOptions, Values } from 'nuqs'
 import type { ReactNode } from 'react'
+import type { Binding } from './binding'
 import { atom, useAtomValueRawSync, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useHydrateAtoms } from 'jotai/utils'
+import { atomWithLazy, useHydrateAtoms } from 'jotai/utils'
 import { useQueryStates } from 'nuqs'
 import { useEffect, useInsertionEffect, useState } from 'react'
+import { createBinding } from './binding'
 
 const definitionKey = Symbol('nuqs-jotai.definition')
 type KeyMap = UseQueryStatesKeysMap
-type Binding = {
-  write: SetValues<KeyMap>
-  refresh: (write: SetValues<KeyMap>) => void
-  connect: (write: SetValues<KeyMap>) => () => void
-  dispose: () => void
-}
 type Definition = {
   parsers: KeyMap
   options: Partial<UseQueryStatesOptions<KeyMap>>
   valueAtom: WritableAtom<Values<KeyMap>, [Values<KeyMap>], void>
-  bindingAtom: WritableAtom<Binding | null, [Binding | null], void>
+  bindingAtom: WritableAtom<Binding, [Binding], void>
 }
 type Registered = { readonly [definitionKey]: Definition }
 
@@ -49,17 +45,17 @@ export function atomWithSearchParams<P extends KeyMap>(
   { debugLabel = 'query', ...options }: SearchParamsOptions<P> = {},
 ): SearchParamsAtom<P> {
   const valueAtom = atom<Values<KeyMap>>({})
-  const bindingAtom = atom<Binding | null>(null)
+  const bindingAtom = atomWithLazy<Binding>(() => {
+    throw new Error('[nuqs-jotai] Register this atom in QueryStateProvider')
+  })
   const definition: Definition = { parsers, options, valueAtom, bindingAtom }
   const queryAtom = atom(
     (get) => {
-      if (!get(bindingAtom))
-        throw new Error('[nuqs-jotai] Register this atom in QueryStateProvider')
+      get(bindingAtom)
       return get(valueAtom) as Values<P>
     },
     (get, _set, ...args: Parameters<SetValues<P>>) => {
       const binding = get(bindingAtom)
-      if (!binding) throw new Error('[nuqs-jotai] Register this atom in QueryStateProvider')
       return (binding.write as SetValues<P>)(...args)
     },
   )
@@ -125,55 +121,6 @@ export function useQueryAtom<Value, Args extends unknown[], Result>(
   queryAtom: WritableAtom<Value, Args, Result>,
 ) {
   return [useQueryAtomValue(queryAtom), useSetAtom(queryAtom)] as const
-}
-
-/** No URL scheduler: only hold mount-time commands until nuqs has subscribed. */
-function createBinding(): Binding {
-  let writer: SetValues<KeyMap> | undefined
-  let disposed = false
-  const waiting: {
-    args: Parameters<SetValues<KeyMap>>
-    resolve: (value: URLSearchParams | PromiseLike<URLSearchParams>) => void
-    reject: (error: unknown) => void
-  }[] = []
-  const unavailable = () => new Error('[nuqs-jotai] Cannot write after QueryStateProvider unmounts')
-  return {
-    write(...args) {
-      if (disposed) throw unavailable()
-      if (writer && waiting.length === 0) return writer(...args)
-      return new Promise((resolve, reject) => waiting.push({ args, resolve, reject }))
-    },
-    refresh(write) {
-      // Only refresh an attached connection. Mount/reveal commands must still
-      // wait until nuqs reattaches its passive subscriptions.
-      if (writer) writer = write
-    },
-    connect(write) {
-      writer = write
-      let active = true
-      // Parent and sibling nuqs hooks may not have subscribed yet. Flush held
-      // commands after this effect pass, preserving their typed emitter payloads.
-      queueMicrotask(() => {
-        if (!active || disposed) return
-        for (const request of waiting.splice(0)) {
-          try {
-            request.resolve(write(...request.args))
-          } catch (error) {
-            request.reject(error)
-          }
-        }
-      })
-      return () => {
-        active = false
-        writer = undefined
-      }
-    },
-    dispose() {
-      disposed = true
-      writer = undefined
-      for (const request of waiting.splice(0)) request.reject(unavailable())
-    },
-  }
 }
 
 /** Mount beneath the framework's NuqsAdapter. Register groups once per URL scope. */
