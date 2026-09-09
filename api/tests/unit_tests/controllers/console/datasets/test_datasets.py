@@ -219,6 +219,38 @@ class TestDatasetList(_UsesSQLiteSession):
             "icon_url": None,
         }
 
+    def test_get_has_more_false_on_last_page_exact_limit(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        datasets = [make_dataset() for _ in range(20)]
+        with app.test_request_context("/datasets?page=1&limit=20"):
+            with (
+                patch.object(DatasetService, "get_datasets", return_value=(datasets, 20)),
+                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+            ):
+                resp, status = method(api, self.session, "tenant-1", current_user)
+        assert status == 200
+        assert resp["has_more"] is False
+        assert resp["limit"] == 20
+
+    def test_get_has_more_true_when_limit_exceeds_cap(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        datasets = [make_dataset() for _ in range(100)]
+        with app.test_request_context("/datasets?page=1&limit=200"):
+            with (
+                patch.object(DatasetService, "get_datasets", return_value=(datasets, 150)) as get_datasets,
+                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+            ):
+                resp, status = method(api, self.session, "tenant-1", current_user)
+        assert status == 200
+        assert resp["has_more"] is True
+        assert resp["limit"] == 100
+        assert len(resp["data"]) == 100
+        assert get_datasets.call_args.args[1] == 100
+
     def test_get_serializes_database_fields_with_caller_session(self, app: Flask, dataset_model_property_defaults):
         api = DatasetListApi()
         method = unwrap(api.get)
@@ -1066,6 +1098,43 @@ class TestDatasetQueryApi(_UsesSQLiteSession):
         assert status == 200
         assert response["has_more"] is True
         assert len(response["data"]) == 20
+
+    def test_get_queries_has_more_false_on_last_page_exact_limit(self, app: Flask):
+        api = DatasetQueryApi()
+        method = unwrap(api.get)
+        dataset_id = "dataset-id"
+        current_user = make_account()
+        dataset = make_dataset(id=dataset_id)
+        queries = [self._query_record(index) for index in range(1, 21)]
+        with (
+            app.test_request_context("/datasets/queries?page=1&limit=20"),
+            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission", return_value=None),
+            patch.object(DatasetService, "get_dataset_queries", return_value=(queries, 20)),
+        ):
+            response, status = method(api, self.session, current_user, dataset_id)
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == 20
+
+    def test_get_queries_has_more_true_when_limit_exceeds_cap(self, app: Flask):
+        api = DatasetQueryApi()
+        method = unwrap(api.get)
+        dataset_id = "dataset-id"
+        current_user = make_account()
+        dataset = make_dataset(id=dataset_id)
+        queries = [self._query_record(index % 28 + 1) for index in range(1, 101)]
+        with (
+            app.test_request_context("/datasets/queries?page=1&limit=200"),
+            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission", return_value=None),
+            patch.object(DatasetService, "get_dataset_queries", return_value=(queries, 150)),
+        ):
+            response, status = method(api, self.session, current_user, dataset_id)
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert len(response["data"]) == 100
 
 
 class TestDatasetIndexingEstimateApi(_UsesSQLiteSession):

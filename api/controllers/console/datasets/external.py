@@ -168,13 +168,14 @@ class ExternalApiTemplateListApi(Resource):
     @model_validate(ExternalApiTemplateListQuery)
     def get(self, req_data: ExternalApiTemplateListQuery, session: Session, current_tenant_id: str):
 
+        effective_limit = min(req_data.limit, 100)
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            req_data.page, req_data.limit, current_tenant_id, req_data.keyword, session=session
+            req_data.page, effective_limit, current_tenant_id, req_data.keyword, session=session
         )
         return ExternalKnowledgeApiListResponse(
             data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
-            has_more=len(external_knowledge_apis) == req_data.limit,
-            limit=req_data.limit,
+            has_more=req_data.page * effective_limit < total,
+            limit=effective_limit,
             total=total,
             page=req_data.page,
         ).model_dump(mode="json"), 200

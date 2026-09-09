@@ -501,6 +501,7 @@ class DatasetListApi(Resource):
                 accessible_dataset_ids = sorted(filtered_dataset_ids)
 
         if query.ids:
+            effective_limit = len(query.ids)
             datasets, total = DatasetService.get_datasets_by_ids(
                 query.ids,
                 current_tenant_id,
@@ -510,9 +511,10 @@ class DatasetListApi(Resource):
                 session=session,
             )
         else:
+            effective_limit = min(query.limit, 100)
             datasets, total = DatasetService.get_datasets(
                 query.page,
-                query.limit,
+                effective_limit,
                 session,
                 current_tenant_id,
                 current_user,
@@ -574,8 +576,8 @@ class DatasetListApi(Resource):
 
         response = {
             "data": data,
-            "has_more": len(datasets) == query.limit,
-            "limit": query.limit,
+            "has_more": query.page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
             "page": query.page,
         }
@@ -866,15 +868,16 @@ class DatasetQueryApi(Resource):
 
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
+        effective_limit = min(limit, 100)
 
         dataset_queries, total = DatasetService.get_dataset_queries(
-            dataset_id=dataset.id, page=page, per_page=limit, session=session
+            dataset_id=dataset.id, page=page, per_page=effective_limit, session=session
         )
 
         response = {
             "data": [_DatasetQueryResponseSource(query=query, session=session) for query in dataset_queries],
-            "has_more": len(dataset_queries) == limit,
-            "limit": limit,
+            "has_more": page * effective_limit < total,
+            "limit": effective_limit,
             "total": total,
             "page": page,
         }

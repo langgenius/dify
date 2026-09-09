@@ -386,6 +386,46 @@ class TestDatasetDocumentListApi(_UsesSQLiteSession):
         assert response["data"][0]["data_source_info"] == {"upload_file_id": "file-1"}
         assert response["data"][0]["doc_metadata"] == []
 
+    def test_get_has_more_false_on_last_page_exact_limit(
+        self, app: Flask, patch_tenant, patch_dataset, patch_permission
+    ):
+        api = DatasetDocumentListApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        documents = [make_serializable_document() for _ in range(20)]
+        pagination = MagicMock(items=documents, total=20)
+        with (
+            app.test_request_context("/?page=1&limit=20"),
+            patch("controllers.console.datasets.datasets_document.paginate_query", return_value=pagination),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
+                return_value=None,
+            ),
+        ):
+            response = method(api, self.session, tenant_id, user, "ds-1")
+        assert response["has_more"] is False
+        assert response["limit"] == 20
+
+    def test_get_has_more_true_when_limit_exceeds_cap(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
+        api = DatasetDocumentListApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        documents = [make_serializable_document() for _ in range(100)]
+        pagination = MagicMock(items=documents, total=150)
+        with (
+            app.test_request_context("/?page=1&limit=200"),
+            patch("controllers.console.datasets.datasets_document.paginate_query", return_value=pagination) as pg,
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
+                return_value=None,
+            ),
+        ):
+            response = method(api, self.session, tenant_id, user, "ds-1")
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert len(response["data"]) == 100
+        assert pg.call_args.kwargs["per_page"] == 100
+
     def test_post_success(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.post)
