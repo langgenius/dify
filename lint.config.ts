@@ -205,7 +205,7 @@ export const lintConfig = {
     'eslint-plugin-storybook',
   ],
   options: {
-    reportUnusedDisableDirectives: 'warn',
+    reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
     typeCheck: true,
@@ -458,6 +458,9 @@ export const lintConfig = {
     ],
     'vars-on-top': 'error',
     yoda: ['error', 'never'],
+    'unicorn/no-abusive-eslint-disable': 'error',
+    'dify/no-file-wide-disable': 'error',
+    'dify/require-disable-directive-description': 'warn',
     'eslint-comments/no-aggregating-enable': 'error',
     'eslint-comments/no-duplicate-disable': 'error',
     'eslint-comments/no-unlimited-disable': 'error',
