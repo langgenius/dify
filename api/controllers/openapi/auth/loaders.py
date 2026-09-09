@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from enum import StrEnum
 
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
@@ -12,7 +13,13 @@ from models.model import App, EndUser
 from services.account_service import TenantService
 from services.app_service import AppService
 
-_APP_ID = "app_id"
+
+class PathParam(StrEnum):
+    """The route path parameters the auth layer reads."""
+
+    APP_ID = "app_id"
+    WORKSPACE_ID = "workspace_id"
+    FORM_TOKEN = "form_token"
 
 
 def route_has_app(ctx: Context) -> bool:
@@ -20,7 +27,7 @@ def route_has_app(ctx: Context) -> bool:
     router stored. The store holds what the request resolved; the shape of the
     request is a question its readers answer for themselves.
     """
-    return _APP_ID in ctx.view_args
+    return PathParam.APP_ID in ctx.view_args
 
 
 def load_app(ctx: Context) -> App:
@@ -75,7 +82,7 @@ def _path_param(ctx: Context, name: str) -> str:
 
 
 def _fetch_app(ctx: Context) -> App:
-    raw = _path_param(ctx, _APP_ID)
+    raw = _path_param(ctx, PathParam.APP_ID)
     try:
         # Canonical dashed form, so a bare-hex path parameter names the same app.
         app_id = str(uuid.UUID(raw))
@@ -106,7 +113,7 @@ def _workspace_from_app(ctx: Context) -> Tenant:
 
 
 def _workspace_from_request(ctx: Context) -> Tenant:
-    workspace_id = ctx.view_args.get("workspace_id") or request.args.get("workspace_id")
+    workspace_id = ctx.view_args.get(PathParam.WORKSPACE_ID) or request.args.get(PathParam.WORKSPACE_ID)
     if not workspace_id:
         raise NotFound("workspace not found")
     try:

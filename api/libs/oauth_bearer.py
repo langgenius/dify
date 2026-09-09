@@ -47,16 +47,20 @@ class Scope(StrEnum):
 
 
 class SubjectType(StrEnum):
-    # An annotation-only name is not a member; it declares what `__new__` attaches.
+    # Annotation-only names are not members; they declare what `__new__` attaches.
     scopes: frozenset[Scope]
+    # Whether the subject's token rows carry an `account_id`. A subject that does
+    # not is keyed by its external issuer instead.
+    bound_to_account: bool
 
-    ACCOUNT = ("account", frozenset({Scope.FULL}))
-    EXTERNAL_SSO = ("external_sso", frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}))
+    ACCOUNT = ("account", frozenset({Scope.FULL}), True)
+    EXTERNAL_SSO = ("external_sso", frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}), False)
 
-    def __new__(cls, value: str, scopes: frozenset[Scope]) -> SubjectType:
+    def __new__(cls, value: str, scopes: frozenset[Scope], bound_to_account: bool) -> SubjectType:
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.scopes = scopes
+        obj.bound_to_account = bound_to_account
         return obj
 
 
@@ -335,8 +339,7 @@ class _TokenTypeResolver:
         return resolved
 
     def _matches_subject(self, row: ResolvedRow | OAuthAccessToken) -> bool:
-        """An account row has an `account_id`; an external one does not."""
-        return (row.account_id is not None) == (self._token_type.subject is SubjectType.ACCOUNT)
+        return (row.account_id is not None) == self._token_type.subject.bound_to_account
 
     def _load_from_db(self, session: Session, token_hash: str) -> OAuthAccessToken | None:
         return (
