@@ -45,6 +45,12 @@ from core.workflow.node_factory import (
 )
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.constants import (
+    OUTPUT_FIELD_ACTION_ID,
+    OUTPUT_FIELD_ACTION_VALUE,
+    OUTPUT_FIELD_RENDERED_CONTENT,
+    TIMEOUT_HANDLE,
+)
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
     build_bootstrap_variables,
@@ -109,6 +115,7 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
+        self._human_input_node_titles: dict[str, str] = {}
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -511,6 +518,8 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunStartedEvent():
+                if event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
+                    self._human_input_node_titles[event.id] = event.node_title
                 self._publish_event(
                     QueueNodeStartedEvent(
                         node_execution_id=event.id,
@@ -526,6 +535,8 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunSucceededEvent():
+                if event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
+                    self._publish_human_input_completion(event)
                 node_run_result = event.node_run_result
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data
@@ -744,6 +755,41 @@ class WorkflowBasedAppRunner:
                 )
             except Exception:  # pragma: no cover - defensive logging
                 logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
+
+    def _publish_human_input_completion(self, event: NodeRunSucceededEvent) -> None:
+        # The callback's Completed and Expired decisions both become generic
+        # success events. Notify clients before publishing node/run completion;
+        # Answer text may already have been emitted by the response filter.
+        result = event.node_run_result
+        node_title = self._human_input_node_titles.pop(event.id)
+        if result.edge_source_handle == TIMEOUT_HANDLE:
+            # DifyNodeFactory passes node.execution_id to the callback as form_id.
+            # Resolve that exact form to recover the deadline omitted by Expired.
+            form = HumanInputFormSubmissionRepository().get_by_form_id(event.id)
+            if form is None or form.app_id != self._app_id or form.node_id != event.node_id:
+                raise ValueError(f"Cannot resolve timed-out human input form for node execution {event.id}")
+            self._publish_event(
+                QueueHumanInputFormTimeoutEvent(
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=node_title,
+                    expiration_time=form.expiration_time,
+                )
+            )
+            return
+
+        self._publish_event(
+            QueueHumanInputFormFilledEvent(
+                node_execution_id=event.id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                node_title=node_title,
+                rendered_content=result.outputs[OUTPUT_FIELD_RENDERED_CONTENT].text,
+                action_id=result.outputs[OUTPUT_FIELD_ACTION_ID].text,
+                action_text=result.outputs[OUTPUT_FIELD_ACTION_VALUE].text,
+                submitted_data=result.inputs,
+            )
+        )
 
     def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
