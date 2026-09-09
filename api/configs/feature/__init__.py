@@ -410,6 +410,12 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    NETWORK_ACCESS_API_URL: str = Field(
+        description="Optional internal SaaS API base URL for network access policy requests; "
+        "falls back to BILLING_API_URL",
+        default="",
+    )
+
 
 class FileAccessConfig(BaseSettings):
     """
