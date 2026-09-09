@@ -10,6 +10,25 @@ Floating surfaces render through [Base UI Portal] into `document.body`. Convenie
 such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portals internally;
 primitives with explicit anatomy expose the constituent portal and content parts.
 
+## Mounting and state lifetime
+
+An overlay root's React lifetime, its open state, and its portal subtree's presence are separate.
+Presence is part of each primitive's contract. Convenience content follows its primitive's
+default mount behavior; for example, `DialogContent` owns a [`Dialog.Portal`] whose subtree mounts
+when the dialog opens and unmounts after any close transition completes. The `Dialog` root may
+remain mounted and controlled independently of that content lifetime. Removing the controlled
+root with the same condition that closes it bypasses the primitive's closing lifecycle.
+
+Application code can use an unmounting content subtree as the owner of state scoped to one mounted
+content session. State that must survive the subtree's unmount belongs to an explicit longer-lived
+feature owner.
+Unmounting resets only DOM and component state owned inside that subtree; state declared by an
+ancestor or external store survives. Portal placement alone is not a reset boundary.
+Consumers using explicit anatomy may opt into `keepMounted` where that portal supports it; they
+must then define which state persists and which state resets instead of relying on a remount.
+Check the selected primitive's API rather than assuming every overlay portal has the same presence
+options.
+
 The host must establish an isolated stacking context at its application root:
 
 ```tsx
@@ -58,6 +77,7 @@ spacing unless its API documents a measured exception.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [MDN `isolation`]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/isolation
+[`Dialog.Portal`]: https://base-ui.com/react/components/dialog#portal
 [`Popover`]: https://base-ui.com/react/components/popover
 [`PreviewCard`]: https://base-ui.com/react/components/preview-card
 [`Tooltip`]: https://base-ui.com/react/components/tooltip

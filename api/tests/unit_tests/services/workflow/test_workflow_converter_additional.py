@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -45,15 +45,36 @@ def converter() -> WorkflowConverter:
 
 
 def _app_model(**kwargs: Any) -> App:
-    return cast(App, SimpleNamespace(**kwargs))
+    defaults: dict[str, Any] = {
+        "id": "app-1",
+        "tenant_id": "tenant-1",
+        "name": "Source App",
+        "description": "",
+        "mode": AppMode.CHAT,
+        "enable_site": True,
+        "enable_api": True,
+        "max_active_requests": 0,
+    }
+    defaults.update(kwargs)
+    return App(**defaults)
 
 
 def _account(**kwargs: Any) -> Account:
-    return cast(Account, SimpleNamespace(**kwargs))
+    account_id = kwargs.pop("id", "account-1")
+    account = Account(
+        name=kwargs.pop("name", "Converter user"),
+        email=kwargs.pop("email", "user@example.com"),
+        **kwargs,
+    )
+    account.id = account_id
+    return account
 
 
 def _app_model_config(**kwargs: Any) -> AppModelConfig:
-    return cast(AppModelConfig, SimpleNamespace(**kwargs))
+    config_id = kwargs.pop("id", "config-1")
+    config = AppModelConfig(app_id=kwargs.pop("app_id", "app-1"), **kwargs)
+    config.id = config_id
+    return config
 
 
 def _build_start_graph() -> dict[str, Any]:
@@ -94,10 +115,7 @@ def test__convert_to_start_node(default_variables: list[VariableEntity]) -> None
 def test__convert_to_http_request_node_for_chatbot(
     default_variables: list[VariableEntity], unbound_session: Session
 ) -> None:
-    app_model = MagicMock()
-    app_model.id = "app_id"
-    app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.CHAT
+    app_model = _app_model(id="app_id", tenant_id="tenant_id", mode=AppMode.CHAT)
 
     extension = APIBasedExtension(
         tenant_id="tenant_id",
@@ -139,10 +157,7 @@ def test__convert_to_http_request_node_for_chatbot(
 def test__convert_to_http_request_node_for_workflow_app(
     default_variables: list[VariableEntity], unbound_session: Session
 ) -> None:
-    app_model = MagicMock()
-    app_model.id = "app_id"
-    app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.WORKFLOW
+    app_model = _app_model(id="app_id", tenant_id="tenant_id", mode=AppMode.WORKFLOW)
 
     extension = APIBasedExtension(
         tenant_id="tenant_id",
@@ -593,7 +608,7 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
 def test_convert_to_app_config_should_route_to_correct_manager(
     converter: WorkflowConverter,
     monkeypatch: pytest.MonkeyPatch,
-    unbound_session: Session,
+    sqlite_session: Session,
 ) -> None:
     agent_result = SimpleNamespace(kind="agent")
     chat_result = SimpleNamespace(kind="chat")
@@ -606,47 +621,61 @@ def test_convert_to_app_config_should_route_to_correct_manager(
     monkeypatch.setattr(converter_module.ChatAppConfigManager, "get_app_config", chat_get_app_config)
     monkeypatch.setattr(converter_module.CompletionAppConfigManager, "get_app_config", completion_get_app_config)
     monkeypatch.setattr(converter_module, "load_annotation_reply_config", load_annotation_reply)
-    agent_mode_app = _app_model(mode=AppMode.AGENT_CHAT, is_agent_with_session=MagicMock(return_value=False))
-    agent_flag_app = _app_model(mode=AppMode.CHAT, is_agent_with_session=MagicMock(return_value=True))
-    chat_app = _app_model(mode=AppMode.CHAT, is_agent_with_session=MagicMock(return_value=False))
-    completion_app = _app_model(mode=AppMode.COMPLETION, is_agent_with_session=MagicMock(return_value=False))
+    agent_mode_app = _app_model(id="app-1", mode=AppMode.AGENT_CHAT, app_model_config_id="cfg-1")
+    agent_flag_app = _app_model(id="app-2", mode=AppMode.CHAT, app_model_config_id="cfg-2")
+    chat_app = _app_model(id="app-3", mode=AppMode.CHAT, app_model_config_id="cfg-3")
+    completion_app = _app_model(id="app-4", mode=AppMode.COMPLETION, app_model_config_id="cfg-4")
     agent_mode_config = _app_model_config(id="cfg-1", app_id="app-1")
-    agent_flag_config = _app_model_config(id="cfg-2", app_id="app-2")
+    agent_flag_config = _app_model_config(
+        id="cfg-2", app_id="app-2", agent_mode=json.dumps({"enabled": True, "strategy": "react"})
+    )
     chat_config = _app_model_config(id="cfg-3", app_id="app-3")
     completion_config = _app_model_config(id="cfg-4", app_id="app-4")
+    sqlite_session.add_all(
+        [
+            agent_mode_app,
+            agent_flag_app,
+            chat_app,
+            completion_app,
+            agent_mode_config,
+            agent_flag_config,
+            chat_config,
+            completion_config,
+        ]
+    )
+    sqlite_session.commit()
 
     from_agent_mode = converter._convert_to_app_config(
         app_model=agent_mode_app,
         app_model_config=agent_mode_config,
-        session=unbound_session,
+        session=sqlite_session,
     )
     from_agent_flag = converter._convert_to_app_config(
         app_model=agent_flag_app,
         app_model_config=agent_flag_config,
-        session=unbound_session,
+        session=sqlite_session,
     )
     from_chat_mode = converter._convert_to_app_config(
         app_model=chat_app,
         app_model_config=chat_config,
-        session=unbound_session,
+        session=sqlite_session,
     )
     from_completion_mode = converter._convert_to_app_config(
         app_model=completion_app,
         app_model_config=completion_config,
-        session=unbound_session,
+        session=sqlite_session,
     )
 
     assert from_agent_mode is agent_result
     assert from_agent_flag is agent_result
     assert from_chat_mode is chat_result
     assert from_completion_mode is completion_result
-    agent_flag_app.is_agent_with_session.assert_called_once_with(session=unbound_session)
     load_annotation_reply.assert_has_calls(
         [
-            call(unbound_session, "app-1"),
-            call(unbound_session, "app-2"),
-            call(unbound_session, "app-3"),
-            call(unbound_session, "app-4"),
+            call(sqlite_session, "app-1"),
+            call(sqlite_session, "app-2"),
+            call(sqlite_session, "app-3"),
+            call(sqlite_session, "app-4"),
         ]
     )
     assert all(
@@ -659,7 +688,7 @@ def test_convert_to_app_config_should_route_to_correct_manager(
 def test_convert_to_app_config_should_raise_for_invalid_app_mode(
     converter: WorkflowConverter, unbound_session: Session
 ) -> None:
-    app_model = _app_model(mode=AppMode.WORKFLOW, is_agent_with_session=MagicMock(return_value=False))
+    app_model = _app_model(mode=AppMode.WORKFLOW)
 
     with pytest.raises(ValueError, match="Invalid app mode"):
         converter._convert_to_app_config(
@@ -845,25 +874,35 @@ def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converte
 
 def test_get_api_based_extension_should_raise_when_extension_not_found(
     converter: WorkflowConverter,
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    db_session = SimpleNamespace(scalar=MagicMock(return_value=None))
-
     with pytest.raises(ValueError, match="API Based Extension not found"):
-        converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1", session=db_session)
-    db_session.scalar.assert_called_once()
+        converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1", session=sqlite_session)
 
 
 def test_get_api_based_extension_should_return_entity_when_found(
     converter: WorkflowConverter,
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    extension = SimpleNamespace(id="ext-1")
-    db_session = SimpleNamespace(scalar=MagicMock(return_value=extension))
+    extension = APIBasedExtension(
+        tenant_id="tenant-1",
+        name="API extension",
+        api_key="encrypted",
+        api_endpoint="https://example.com",
+    )
+    extension.id = "ext-1"
+    decoy = APIBasedExtension(
+        tenant_id="other-tenant",
+        name="Other tenant API extension",
+        api_key="encrypted",
+        api_endpoint="https://example.com",
+    )
+    decoy.id = "ext-other"
+    sqlite_session.add_all([extension, decoy])
+    sqlite_session.commit()
 
     result = converter._get_api_based_extension(
-        tenant_id="tenant-1", api_based_extension_id="ext-1", session=db_session
+        tenant_id="tenant-1", api_based_extension_id="ext-1", session=sqlite_session
     )
 
     assert result is extension
-    db_session.scalar.assert_called_once()

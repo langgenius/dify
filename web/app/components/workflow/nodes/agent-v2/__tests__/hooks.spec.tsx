@@ -1,11 +1,11 @@
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
-import { getDefaultStore } from 'jotai'
+import { useSetAtom } from 'jotai'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import {
-  agentComposerDraftAtom,
-  agentComposerSavedDraftAtom,
-} from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { AgentScope } from '@/features/agent-v2/analytics'
+import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -128,6 +128,7 @@ const mockSnippetComposerQueryOptions = vi.hoisted(() =>
     },
   ),
 )
+const trackCreateAppMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -141,7 +142,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: trackCreateAppMock,
+}))
+
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -318,6 +323,7 @@ describe('useWorkflowInlineAgentDetail', () => {
 describe('useCreateInlineAgentBinding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mockDefaultModel.value = {
       model: 'gpt-4o-mini',
       model_type: 'llm',
@@ -405,6 +411,44 @@ describe('useCreateInlineAgentBinding', () => {
         }),
       }),
     )
+    expect(trackCreateAppMock).toHaveBeenCalledWith({
+      source: 'studio_blank',
+      appMode: 'agent-v2',
+      agentScope: AgentScope.InWorkflow,
+    })
+  })
+
+  it('tracks inline agent creation with the chatflow scope', async () => {
+    useAppStore.getState().setAppDetail({ mode: AppModeEnum.ADVANCED_CHAT } as never)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
+      queryClient,
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'chatflow-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    act(() => {
+      void result.current.createInlineAgentBinding('node-1')
+    })
+
+    await waitFor(() => {
+      expect(trackCreateAppMock).toHaveBeenCalledWith({
+        source: 'studio_blank',
+        appMode: 'agent-v2',
+        agentScope: AgentScope.InChatflow,
+      })
+    })
   })
 
   it('creates inline agent through the snippet composer API', async () => {
@@ -589,9 +633,6 @@ describe('useCreateInlineAgentBinding', () => {
 describe('useWorkflowInlineAgentConfigureSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const store = getDefaultStore()
-    store.set(agentComposerSavedDraftAtom, defaultAgentSoulConfigFormState)
-    store.set(agentComposerDraftAtom, defaultAgentSoulConfigFormState)
   })
 
   it('saves inline agent composer changes through the workflow node composer API', async () => {
@@ -606,8 +647,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
     })
     const { result } = renderWorkflowHook(
-      () =>
-        useWorkflowInlineAgentConfigureSync({
+      () => ({
+        ...useWorkflowInlineAgentConfigureSync({
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -618,6 +659,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           },
           enabled: true,
         }),
+        setDraft: useSetAtom(agentComposerDraftAtom),
+      }),
       {
         queryClient,
         hooksStoreProps: {
@@ -631,7 +674,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     )
 
     act(() => {
-      getDefaultStore().set(agentComposerDraftAtom, {
+      result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Workflow inline prompt',
       })
@@ -685,14 +728,16 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
     })
     const { result } = renderWorkflowHook(
-      () =>
-        useWorkflowInlineAgentConfigureSync({
+      () => ({
+        ...useWorkflowInlineAgentConfigureSync({
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
           },
           enabled: true,
         }),
+        setDraft: useSetAtom(agentComposerDraftAtom),
+      }),
       {
         queryClient,
         hooksStoreProps: {
@@ -706,7 +751,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     )
 
     act(() => {
-      getDefaultStore().set(agentComposerDraftAtom, {
+      result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Snippet inline prompt',
       })
@@ -756,8 +801,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
     })
     const { result } = renderWorkflowHook(
-      () =>
-        useWorkflowInlineAgentConfigureSync({
+      () => ({
+        ...useWorkflowInlineAgentConfigureSync({
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -765,6 +810,8 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           autoSaveEnabled: false,
           enabled: true,
         }),
+        setDraft: useSetAtom(agentComposerDraftAtom),
+      }),
       {
         queryClient,
         hooksStoreProps: {
@@ -778,7 +825,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     )
 
     act(() => {
-      getDefaultStore().set(agentComposerDraftAtom, {
+      result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Manual inline prompt',
       })

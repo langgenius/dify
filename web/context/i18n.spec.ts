@@ -31,7 +31,6 @@ vi.mock('@/i18n-config/language', () => ({
     return map[locale] || 'en'
   }),
   getLanguage: vi.fn(),
-  getPricingPageLanguage: vi.fn(),
 }))
 
 describe('useDocLink', () => {
@@ -148,6 +147,25 @@ describe('useDocLink', () => {
   })
 
   describe('Product prefix handling', () => {
+    it.each([
+      ['CLOUD', 'cloud'],
+      ['COMMUNITY', 'self-host'],
+    ] as const)(
+      'should route New Agent docs in %s edition to %s product docs',
+      (deploymentEdition, docsProduct) => {
+        mockDeploymentEdition.value = deploymentEdition
+
+        const { result } = renderHook(() => useDocLink())
+
+        expect(result.current('/use-dify/build/new-agent/overview')).toBe(
+          `${defaultDocBaseUrl}/en/${docsProduct}/use-dify/build/new-agent/overview`,
+        )
+        expect(result.current('/use-dify/build/new-agent/build#prompt')).toBe(
+          `${defaultDocBaseUrl}/en/${docsProduct}/use-dify/build/new-agent/build#prompt`,
+        )
+      },
+    )
+
     it('should add cloud product prefix for product docs available in both editions', () => {
       mockDeploymentEdition.value = 'CLOUD'
 

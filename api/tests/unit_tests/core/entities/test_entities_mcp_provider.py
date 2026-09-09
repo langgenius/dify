@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from core.entities import mcp_provider as mcp_provider_module
 from core.entities.mcp_provider import (
     DEFAULT_EXPIRES_IN,
     DEFAULT_TOKEN_TYPE,
@@ -69,7 +68,9 @@ def test_from_db_model_maps_fields() -> None:
 def test_redirect_url_uses_console_api_url(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     entity = _build_mcp_provider_entity()
-    monkeypatch.setattr(mcp_provider_module.dify_config, "CONSOLE_API_URL", "https://console.example.com")
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://console.example.com")
 
     # Act
     redirect_url = entity.redirect_url

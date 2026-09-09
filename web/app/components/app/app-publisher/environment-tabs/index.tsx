@@ -21,7 +21,7 @@ import {
   estimateFallbackTextWidth,
   getEnvironmentTabLayout,
   SELECTED_OVERFLOW_LABEL_MAX_WIDTH,
-} from './layout'
+} from './layout-calculations'
 import { EnvironmentTabsMeasurementProbe } from './measurement-probe'
 import { useEnvironmentTabMeasurements } from './use-measurements'
 
@@ -144,9 +144,7 @@ export function PublisherEnvironmentTabs({
                   <TooltipTrigger
                     render={<span className="min-w-0 truncate">{triggerLabel}</span>}
                   />
-                  <TooltipContent role="tooltip">
-                    {selectedOverflowEnvironment?.name}
-                  </TooltipContent>
+                  <TooltipContent>{selectedOverflowEnvironment?.name}</TooltipContent>
                 </Tooltip>
                 <span aria-hidden className="i-ri-arrow-down-s-line size-3.5 shrink-0" />
               </button>

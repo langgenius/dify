@@ -37,6 +37,7 @@ _AUDIO_MIME_TYPE_ALIASES = {
     "webm": "audio/webm",
     "audio/webm": "audio/webm",
 }
+SUPPORTED_TTS_AUDIO_MIME_TYPES = tuple(sorted(set(_AUDIO_MIME_TYPE_ALIASES.values())))
 
 
 def normalize_audio_mime_type(audio_type: object | None) -> str | None:

@@ -27,7 +27,7 @@ def billing_config() -> Iterator[None]:
 @pytest.mark.usefixtures("billing_config")
 def test_network_access_requests_use_independent_api_url_when_configured() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
-    response.json.return_value = {"tenant_id": TENANT_ID, "entitled": True, "groups": []}
+    response.json.return_value = {"tenant_id": TENANT_ID, "entitled": True, "groups": list[object]()}
 
     with (
         patch.object(dify_config, "NETWORK_ACCESS_API_URL", "https://saas.internal/v1/"),
@@ -48,7 +48,7 @@ def test_network_access_requests_use_independent_api_url_when_configured() -> No
 @pytest.mark.usefixtures("billing_config")
 def test_network_access_requests_fall_back_to_billing_api_url_at_request_time() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
-    response.json.return_value = {"tenant_id": TENANT_ID, "entitled": True, "groups": []}
+    response.json.return_value = {"tenant_id": TENANT_ID, "entitled": True, "groups": list[object]()}
 
     with patch("services.billing_service._http_client.request", return_value=response) as request:
         BillingService.list_network_access_groups(TENANT_ID, ACCOUNT_ID)

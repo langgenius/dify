@@ -11,6 +11,7 @@ from libs.helper import escape_like_pattern
 from models.dataset import Dataset
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
+from models.skill import Skill
 from models.snippet import CustomizedSnippet
 from services.tag_application_service import (
     CreateTagInput,
@@ -207,6 +208,8 @@ class TagRepository(TagStore):
                 CustomizedSnippet.tenant_id == workspace_id,
                 CustomizedSnippet.id == binding.target_id,
             )
+        elif binding.type == "skill":
+            stmt = select(Skill.id).where(Skill.tenant_id == workspace_id, Skill.id == binding.target_id)
         else:
             raise InvalidTagBindingTypeError
 

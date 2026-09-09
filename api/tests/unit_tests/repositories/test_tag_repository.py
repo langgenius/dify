@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import TagType
 from models.model import Tag, TagBinding
+from models.skill import Skill
 from models.snippet import CustomizedSnippet, SnippetType
 from repositories.tag_repository import TagRepository
 from services.tag_application_service import (
@@ -33,6 +34,18 @@ def _snippet(snippet_id: str, *, workspace_id: str) -> CustomizedSnippet:
     )
     snippet.id = snippet_id
     return snippet
+
+
+def _skill(skill_id: str, *, workspace_id: str) -> Skill:
+    skill = Skill(
+        tenant_id=workspace_id,
+        name=f"skill-{skill_id}",
+        display_name="Skill",
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    skill.id = skill_id
+    return skill
 
 
 def test_list_tags_scopes_binding_counts_and_escapes_keyword(
@@ -126,4 +139,39 @@ def test_binding_mutation_rejects_missing_target(sqlite_session_factory: session
             "workspace-1",
             "account-1",
             TagBindingInput(("tag-1",), "missing", "snippet"),
+        )
+
+
+def test_binding_mutations_validate_skill_target(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _skill("skill-1", workspace_id="workspace-1"),
+                _tag("tag-1", workspace_id="workspace-1", tag_type=TagType.SKILL, name="Skill"),
+                _tag("tag-2", workspace_id="workspace-1", tag_type=TagType.APP, name="Wrong type"),
+                _tag("tag-3", workspace_id="workspace-2", tag_type=TagType.SKILL, name="Wrong workspace"),
+            ]
+        )
+
+    repository = TagRepository(sqlite_session_factory)
+    binding = TagBindingInput(("tag-1", "tag-2", "tag-3"), "skill-1", "skill")
+    repository.create_bindings("workspace-1", "account-1", binding)
+
+    with sqlite_session_factory() as session:
+        bindings = session.scalars(select(TagBinding).where(TagBinding.target_id == "skill-1")).all()
+        assert len(bindings) == 1
+        assert bindings[0].tag_id == "tag-1"
+        assert bindings[0].tenant_id == "workspace-1"
+
+    repository.delete_bindings("workspace-1", binding)
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(TagBinding).where(TagBinding.target_id == "skill-1")).all() == []
+
+    with pytest.raises(TagBindingTargetNotFoundError, match="Skill not found"):
+        repository.create_bindings(
+            "workspace-1",
+            "account-1",
+            TagBindingInput(("tag-1",), "missing", "skill"),
         )

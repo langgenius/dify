@@ -1,11 +1,19 @@
-import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentApiAccessResponse,
+  AgentAppDetailWithSite,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { QueryClient } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { AgentPermission } from '@/features/agent-v2/acl'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -19,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
   accessControlRender: vi.fn(),
+  accessSubjectsQueryFn: vi.fn(),
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
@@ -75,7 +84,7 @@ vi.mock('@/context/permission-state', async () => {
     },
   }))
 })
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     account: {
       profile: {
@@ -91,6 +100,26 @@ vi.mock('@/service/client', () => ({
           queryKey: ['system-features'],
           ...options,
         }),
+      },
+    },
+    features: {
+      get: {
+        queryKey: () => ['features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['features'],
+          staleTime: Infinity,
+          ...options,
+        }),
+      },
+    },
+    enterprise: {
+      webAppAuth: {
+        getWebAppWhitelistSubjects: {
+          queryOptions: ({ input }: { input: { query: { appId?: string } } }) => ({
+            queryKey: ['web-app-whitelist-subjects', input.query.appId],
+            queryFn: () => mocks.accessSubjectsQueryFn(input),
+          }),
+        },
       },
     },
     apps: {
@@ -124,6 +153,11 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
+          queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+            queryKey: ['agent-detail', input.params.agent_id],
+            queryFn: async () => createAgent(),
+            staleTime: Infinity,
+          }),
           queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
             'agent-detail',
             input.params.agent_id,
@@ -178,6 +212,7 @@ vi.mock('@/service/client', () => ({
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
+    permission_keys: Object.values(AgentPermission),
     access_ready: true,
     enable_api: true,
     enable_site: true,
@@ -206,13 +241,60 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
   }
 }
 
+function createAppDetailResponse(overrides: Partial<AppDetail> = {}): AppDetail {
+  return {
+    enable_api: true,
+    enable_site: true,
+    id: 'app-1',
+    mode: 'agent',
+    name: 'Support Agent',
+    ...overrides,
+  }
+}
+
+function createAgentApiAccessResponse(
+  overrides: Partial<AgentApiAccessResponse> = {},
+): AgentApiAccessResponse {
+  const serviceApiBaseUrl = 'https://api.example.test/v1'
+
+  return {
+    access_ready: true,
+    api_key_count: 2,
+    api_rph: 0,
+    api_rpm: 0,
+    chat_endpoint: `${serviceApiBaseUrl}/chat-messages`,
+    conversations_endpoint: `${serviceApiBaseUrl}/conversations`,
+    enabled: true,
+    files_upload_endpoint: `${serviceApiBaseUrl}/files/upload`,
+    info_endpoint: `${serviceApiBaseUrl}/info`,
+    messages_endpoint: `${serviceApiBaseUrl}/messages`,
+    meta_endpoint: `${serviceApiBaseUrl}/meta`,
+    parameters_endpoint: `${serviceApiBaseUrl}/parameters`,
+    service_api_base_url: serviceApiBaseUrl,
+    stop_endpoint: `${serviceApiBaseUrl}/chat-messages/{task_id}/stop`,
+    streaming_only: true,
+    ...overrides,
+  }
+}
+
+function createAccessCardWrapper(queryClient: QueryClient) {
+  const QueryWrapper = createQueryClientWrapper(queryClient)
+  return function AccessCardWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    )
+  }
+}
+
 function renderWithQueryClient(
   ui: React.ReactElement,
   { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
 ) {
   const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  render(ui, { wrapper: createAccessCardWrapper(queryClient) })
 
   return queryClient
 }
@@ -234,45 +316,180 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  queryClient.setQueryData<AgentAppDetailWithSite>(
+    consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
+      .queryKey,
+    createAgent(),
+  )
+  seedFeatures(queryClient)
   return queryClient
+}
+
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
 }
 
 describe('Agent access surface cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
   })
 
   describe('Web app access', () => {
-    it('should render the backend web app URL and toggle site status through the backing app id', async () => {
+    it('should serialize Web App toggles and cache each confirmed response', async () => {
       const user = userEvent.setup()
-      mocks.siteEnableMutation.mockResolvedValueOnce({ enable_site: false })
+      const firstToggle = createDeferredPromise<AppDetail>()
+      const secondToggle = createDeferredPromise<AppDetail>()
+      mocks.siteEnableMutation
+        .mockReturnValueOnce(firstToggle.promise)
+        .mockReturnValueOnce(secondToggle.promise)
 
-      renderWithQueryClient(
-        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      const agent = createAgent()
+      const queryClient = renderWithQueryClient(
+        <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
       )
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
 
       expect(screen.getByText('https://chat.example.test/agent/site-token')).toBeInTheDocument()
       expect(
-        screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+        screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
       ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
-      expect(screen.getByText('agentV2.agentDetail.access.webApp.ssoEnabled')).toBeInTheDocument()
+      expect(screen.getByText('agentV2.agentDetail.access.webApp.description')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyAccessUrl' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.showQrCode' }),
+      ).toBeInTheDocument()
+      const webAppCard = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.access.webApp.title',
+      })
+      expect(
+        within(webAppCard).getByRole('heading', {
+          name: 'agentV2.agentDetail.access.webApp.title',
+          level: 3,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        within(within(webAppCard).getByRole('contentinfo')).getAllByRole('button'),
+      ).toHaveLength(3)
 
-      await user.click(
-        screen.getByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      expect(accessSwitch).toBeEnabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
+      ).toBeDisabled()
+      expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+        params: {
+          app_id: 'app-1',
+        },
+        body: {
+          enable_site: false,
+        },
+      })
+
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
+      ).toBeDisabled()
+      expect(mocks.siteEnableMutation).toHaveBeenCalledTimes(1)
+
+      firstToggle.resolve(
+        createAppDetailResponse({
+          enable_site: false,
+          updated_at: 1781660200,
+          updated_by: 'user-2',
         }),
       )
 
       await waitFor(() => {
-        expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+        expect(mocks.siteEnableMutation.mock.calls[1]?.[0]).toEqual({
           params: {
             app_id: 'app-1',
           },
           body: {
-            enable_site: false,
+            enable_site: true,
           },
         })
       })
+      expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
+        enable_site: false,
+        updated_at: 1781660200,
+        updated_by: 'user-2',
+      })
+
+      secondToggle.resolve(
+        createAppDetailResponse({
+          enable_site: true,
+          updated_at: 1781660300,
+          updated_by: 'user-3',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
+          enable_site: true,
+          updated_at: 1781660300,
+          updated_by: 'user-3',
+        })
+      })
+      expect(
+        await screen.findByRole('link', {
+          name: 'agentV2.agentDetail.access.webApp.actions.open',
+        }),
+      ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+      expect(toast.success).not.toHaveBeenCalled()
+    })
+
+    it('should keep open disabled while enabling is pending and roll back after failure', async () => {
+      const user = userEvent.setup()
+      const toggle = createDeferredPromise<AppDetail>()
+      mocks.siteEnableMutation.mockReturnValueOnce(toggle.promise)
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      const openButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.open',
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      expect(accessSwitch).toBeEnabled()
+      expect(openButton).toBeDisabled()
+      expect(
+        screen.queryByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
+      ).not.toBeInTheDocument()
+
+      toggle.reject(new Error('request failed'))
+
+      await waitFor(() => {
+        expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      })
+      expect(openButton).toBeDisabled()
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
     })
 
     it('should open the customize dialog with the backing app id and API base URL', async () => {
@@ -283,7 +500,9 @@ describe('Agent access surface cards', () => {
       )
 
       await user.click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+        }),
       )
 
       const dialog = await screen.findByRole('dialog', {
@@ -292,7 +511,7 @@ describe('Agent access surface cards', () => {
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
       expect(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('link', {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
         }),
       ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
@@ -306,7 +525,9 @@ describe('Agent access surface cards', () => {
       )
 
       await user.click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.embedIntoSite',
+        }),
       )
 
       const dialog = await screen.findByRole('dialog', {
@@ -335,7 +556,9 @@ describe('Agent access surface cards', () => {
       )
 
       await user.click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.embedIntoSite',
+        }),
       )
       const dialog = await screen.findByRole('dialog', {
         name: 'appOverview.overview.appInfo.embedded.title',
@@ -529,7 +752,9 @@ describe('Agent access surface cards', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.embedIntoSite',
+        }),
       ).toBeDisabled()
     })
 
@@ -542,20 +767,15 @@ describe('Agent access surface cards', () => {
       })
       const queryClient = createConsoleQueryClient()
       const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
-        </QueryClientProvider>,
+        <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />,
+        { wrapper: createAccessCardWrapper(queryClient) },
       )
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
       ).toBeDisabled()
 
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />
-        </QueryClientProvider>,
-      )
+      rerender(<WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />)
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
@@ -572,11 +792,14 @@ describe('Agent access surface cards', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+        }),
       ).toBeDisabled()
     })
 
-    it('should keep the Web App switch disabled until the Agent is published', () => {
+    it('should explain that publishing enables the Web App switch and open action', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(
         <WebAppAccessCard
           agent={createAgent({ access_ready: false, enable_site: false })}
@@ -585,35 +808,111 @@ describe('Agent access surface cards', () => {
         />,
       )
 
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
+
+      await user.tab()
+      expect(accessSwitch).toHaveFocus()
       expect(
-        screen.getByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
         }),
-      ).toHaveAttribute('aria-disabled', 'true')
+      ).toBeVisible()
+
+      await user.tab()
+      await waitFor(() => {
+        expect(
+          screen.queryByText('agentV2.agentDetail.access.publishRequired', {
+            selector: '[data-open]',
+          }),
+        ).not.toBeInTheDocument()
+      })
+
+      await user.hover(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.open',
+        }),
+      )
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
     })
   })
 
   describe('Service API access', () => {
     it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
       const user = userEvent.setup()
-      mocks.apiAccessQueryFn.mockResolvedValueOnce({
-        access_ready: true,
-        api_key_count: 2,
-        enabled: true,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
-      mocks.apiEnableMutation.mockResolvedValueOnce({
-        access_ready: true,
-        api_key_count: 2,
-        enabled: false,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
+      const toggle = createDeferredPromise<AgentApiAccessResponse>()
+      mocks.apiAccessQueryFn.mockResolvedValueOnce(createAgentApiAccessResponse())
+      mocks.apiEnableMutation.mockReturnValueOnce(toggle.promise)
 
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
       expect(await screen.findByText('https://api.example.test/v1')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', {
+          name: 'agentV2.agentDetail.access.serviceApi.title',
+          level: 3,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.access.serviceApi.description'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyServiceEndpoint' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('link', {
+          name: 'agentV2.agentDetail.access.serviceApi.actions.apiReference',
+        }),
+      ).toHaveAttribute('href', 'https://docs.example.test/api-reference/guides/agent')
       expect(screen.getByText('2')).toBeInTheDocument()
 
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+      })
+      const apiKeyButton = screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      expect(accessSwitch).toBeEnabled()
+      expect(apiKeyButton).toBeEnabled()
+      expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          enable_api: false,
+        },
+      })
+
+      toggle.reject(new Error('request failed'))
+
+      await waitFor(() => {
+        expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      })
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.success).not.toHaveBeenCalled()
+    })
+
+    it('should keep raw API enablement separate from effective API access status', async () => {
+      const user = userEvent.setup()
+      const initialApiAccess = createAgentApiAccessResponse({ enabled: false })
+      const updatedApiAccess = createAgentApiAccessResponse({ access_ready: false, enabled: false })
+      mocks.apiAccessQueryFn.mockResolvedValueOnce(initialApiAccess)
+      mocks.apiEnableMutation.mockResolvedValueOnce(updatedApiAccess)
+
+      const agent = createAgent({ enable_api: false })
+      const queryClient = renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
+
+      await screen.findByText(initialApiAccess.service_api_base_url)
       await user.click(
         screen.getByRole('switch', {
           name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
@@ -621,25 +920,17 @@ describe('Agent access surface cards', () => {
       )
 
       await waitFor(() => {
-        expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
-          params: {
-            agent_id: 'agent-1',
-          },
-          body: {
-            enable_api: false,
-          },
+        expect(queryClient.getQueryData(['agent-api-access', 'agent-1'])).toEqual(updatedApiAccess)
+        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
+          enable_api: true,
         })
       })
+      expect(toast.success).not.toHaveBeenCalled()
     })
 
     it('should manage API keys with the Agent API key endpoints', async () => {
       const user = userEvent.setup()
-      mocks.apiAccessQueryFn.mockResolvedValue({
-        access_ready: true,
-        api_key_count: 1,
-        enabled: true,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
+      mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse({ api_key_count: 1 }))
       mocks.apiKeysQueryFn.mockResolvedValue({
         data: [
           {
@@ -699,117 +990,249 @@ describe('Agent access surface cards', () => {
       })
     })
 
-    it('should disable the Service API switch and key action until the Agent is published', async () => {
-      mocks.apiAccessQueryFn.mockResolvedValueOnce({
-        access_ready: false,
-        api_key_count: 0,
-        enabled: false,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
+    it('should explain that publishing enables the Service API switch', async () => {
+      const user = userEvent.setup()
+      mocks.apiAccessQueryFn.mockResolvedValueOnce(
+        createAgentApiAccessResponse({
+          access_ready: false,
+          api_key_count: 0,
+          enabled: false,
+        }),
+      )
 
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
-      expect(
-        await screen.findByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
-        }),
-      ).toHaveAttribute('aria-disabled', 'true')
+      await screen.findByText('https://api.example.test/v1')
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+      })
+      expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
       expect(
         screen.getByRole('button', {
           name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
         }),
       ).toBeDisabled()
+
+      await user.tab()
+      expect(accessSwitch).toHaveFocus()
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.publishRequired', {
+          selector: '[data-open]',
+        }),
+      ).toBeVisible()
+    })
+
+    it('should show the unavailable status when the Service API query fails', async () => {
+      mocks.apiAccessQueryFn.mockRejectedValueOnce(new Error('Service API unavailable'))
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.status.unavailable'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
     })
   })
 
-  describe('Web app access control', () => {
+  describe('App-style Web app access control', () => {
     const accessControlAgent = () =>
       createAgent({
-        access_mode: 'private',
-        maintainer: 'user-1',
-        permission_keys: ['app.acl.release_and_version'],
+        access_mode: 'private_all',
+        maintainer: 'user-2',
+        permission_keys: [AgentPermission.ReleaseAndVersion],
       })
 
-    const accessControlButtonName = 'agentV2.agentDetail.access.webApp.actions.accessControl'
+    const organizationAccessLabel = 'app.accessControlDialog.accessItems.organization'
 
-    it('should render the access control button when webapp auth is enabled and user can manage', () => {
+    it('should render the access mode entry in the card content', () => {
       renderWithQueryClient(
         <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      expect(screen.getByRole('button', { name: accessControlButtonName })).toBeInTheDocument()
+      const entry = screen.getByRole('button', { name: organizationAccessLabel })
+      const card = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.access.webApp.title',
+      })
+      expect(entry).toBeInTheDocument()
+      expect(within(card).getByRole('contentinfo')).not.toContainElement(entry)
     })
 
-    it('should hide the access control button when webapp auth is disabled', () => {
-      renderWithQueryClient(
-        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
-        { webAppAuthEnabled: false },
-      )
+    it('should render the access control skeleton while the card is loading', () => {
+      renderWithQueryClient(<WebAppAccessCard agent={undefined} agentId="agent-1" isLoading />)
 
-      expect(
-        screen.queryByRole('button', { name: accessControlButtonName }),
-      ).not.toBeInTheDocument()
+      const card = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.access.webApp.title',
+      })
+      expect(within(card).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     })
 
-    it('should hide the access control button when the user cannot manage access control', () => {
-      renderWithQueryClient(
-        <WebAppAccessCard
-          agent={createAgent({ access_mode: 'private', permission_keys: [] })}
-          agentId="agent-1"
-          isLoading={false}
-        />,
-      )
-
-      expect(
-        screen.queryByRole('button', { name: accessControlButtonName }),
-      ).not.toBeInTheDocument()
-    })
-
-    it.each([null, 'future-access-mode'])(
-      'should hide the access control button when the access mode is %s',
-      (accessMode) => {
-        renderWithQueryClient(
-          <WebAppAccessCard
-            agent={createAgent({
-              access_mode: accessMode,
-              maintainer: 'user-1',
-              permission_keys: ['app.acl.release_and_version'],
-            })}
-            agentId="agent-1"
-            isLoading={false}
-          />,
-        )
-
-        expect(
-          screen.queryByRole('button', { name: accessControlButtonName }),
-        ).not.toBeInTheDocument()
-      },
-    )
-
-    it('should open the access control dialog wired with the backing app id', async () => {
-      const user = userEvent.setup()
-
+    it('should keep access control interactive before the Agent is published', () => {
       renderWithQueryClient(
         <WebAppAccessCard
           agent={createAgent({
-            access_mode: 'private',
-            app_id: 'source-app-1',
-            backing_app_id: 'backing-app-1',
-            maintainer: 'user-1',
-            permission_keys: ['app.acl.release_and_version'],
+            ...accessControlAgent(),
+            access_ready: false,
           })}
           agentId="agent-1"
           isLoading={false}
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: accessControlButtonName }))
+      expect(screen.getByRole('button', { name: organizationAccessLabel })).toBeEnabled()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
+    })
 
-      expect(screen.getByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
+    it('should hide the access mode entry when Web app auth is disabled', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+        { webAppAuthEnabled: false },
+      )
+
+      expect(
+        screen.queryByRole('button', { name: organizationAccessLabel }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should disable the access mode entry when the user cannot manage access control', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: 'private_all',
+            maintainer: 'user-2',
+            permission_keys: [AgentPermission.AccessPointManage],
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: organizationAccessLabel })).toBeDisabled()
+    })
+
+    it.each([null, 'future-access-mode'])(
+      'should hide the access mode entry when the access mode is %s',
+      (accessMode) => {
+        renderWithQueryClient(
+          <WebAppAccessCard
+            agent={createAgent({ access_mode: accessMode })}
+            agentId="agent-1"
+            isLoading={false}
+          />,
+        )
+
+        expect(
+          screen.queryByRole('button', { name: organizationAccessLabel }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it('should open the shared App access control dialog for the backing app', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: 'private_all',
+            app_id: 'source-app-1',
+            backing_app_id: 'backing-app-1',
+            maintainer: 'user-2',
+            permission_keys: [AgentPermission.ReleaseAndVersion],
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: organizationAccessLabel }))
+
+      expect(await screen.findByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
       expect(mocks.accessControlRender).toHaveBeenCalledWith({
         id: 'backing-app-1',
-        access_mode: 'private',
+        access_mode: 'private_all',
       })
     })
+  })
+  it('allows viewers to copy and open WebApp addresses while disabling management actions', async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(
+      <WebAppAccessCard
+        agent={createAgent({
+          permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView],
+        })}
+        agentId="agent-1"
+        isLoading={false}
+      />,
+    )
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
+    ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyAccessUrl' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.showQrCode' }),
+    ).toBeEnabled()
+    for (const action of ['embedIntoSite', 'customFrontend', 'settings']) {
+      expect(
+        screen.getByRole('button', { name: `agentV2.agentDetail.access.webApp.actions.${action}` }),
+      ).toBeDisabled()
+    }
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.refreshUrl' }),
+    ).toBeDisabled()
+    const toggle = screen.getByRole('switch')
+    await user.click(toggle)
+    expect(mocks.siteEnableMutation).not.toHaveBeenCalled()
+    expect(mocks.accessSubjectsQueryFn).not.toHaveBeenCalled()
+  })
+
+  it('allows API viewers to copy the endpoint and read documentation without fetching API keys', async () => {
+    const user = userEvent.setup()
+    mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse())
+    const client = createConsoleQueryClient()
+    client.setQueryData(
+      ['agent-detail', 'agent-1'],
+      createAgent({ permission_keys: [AgentPermission.AccessPointView] }),
+    )
+    render(<ServiceApiAccessCard agentId="agent-1" />, {
+      wrapper: createAccessCardWrapper(client),
+    })
+    expect(
+      await screen.findByRole('button', { name: 'agentV2.agentDetail.access.copyServiceEndpoint' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('link', {
+        name: 'agentV2.agentDetail.access.serviceApi.actions.apiReference',
+      }),
+    ).toHaveAttribute('href', 'https://docs.example.test/api-reference/guides/agent')
+    const apiKeys = screen.getByRole('button', { name: /serviceApi.actions.apiKey/ })
+    expect(apiKeys).toBeDisabled()
+    await user.click(apiKeys)
+    await user.click(screen.getByRole('switch'))
+    expect(mocks.apiKeysQueryFn).not.toHaveBeenCalled()
+    expect(mocks.apiEnableMutation).not.toHaveBeenCalled()
+  })
+
+  it('closes the settings dialog when Agent access point management is revoked', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    const { rerender } = render(
+      <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      { wrapper: createAccessCardWrapper(queryClient) },
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    rerender(
+      <WebAppAccessCard
+        agent={createAgent({ permission_keys: [AgentPermission.AccessPointView] })}
+        agentId="agent-1"
+        isLoading={false}
+      />,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.siteMutation).not.toHaveBeenCalled()
   })
 })

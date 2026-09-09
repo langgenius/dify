@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
@@ -231,7 +232,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             and text_to_speech_dict.get("enabled")
         ):
             publisher = AppGeneratorTTSPublisher(
-                tenant_id, text_to_speech_dict.get("voice", ""), text_to_speech_dict.get("language", None)
+                tenant_id,
+                text_to_speech_dict.get("voice", ""),
+                text_to_speech_dict.get("language", None),
+                get_credit_usage_app_type(self._app_config.app_mode),
             )
         try:
             for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):

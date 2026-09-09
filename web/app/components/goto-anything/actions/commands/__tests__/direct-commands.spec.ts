@@ -1,14 +1,14 @@
 /**
  * Tests for direct-mode commands that share similar patterns:
- * docs, account, community, forum
+ * docs, account, discord, models
  *
  * Each command: opens a URL or navigates, has direct mode, and registers a navigation command.
  */
 import { accountCommand } from '../account'
 import { registerCommands, unregisterCommands } from '../command-bus'
-import { communityCommand } from '../community'
+import { discordCommand } from '../discord'
 import { docsCommand } from '../docs'
-import { forumCommand } from '../forum'
+import { modelsCommand, SYSTEM_MODELS_PATH } from '../models'
 
 vi.mock('../command-bus')
 
@@ -161,21 +161,21 @@ describe('accountCommand', () => {
   })
 })
 
-describe('communityCommand', () => {
+describe('discordCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('has correct metadata', () => {
-    expect(communityCommand.name).toBe('community')
-    expect(communityCommand.mode).toBe('direct')
-    expect(communityCommand.execute).toBeDefined()
+    expect(discordCommand.name).toBe('discord')
+    expect(discordCommand.mode).toBe('direct')
+    expect(discordCommand.execute).toBeDefined()
   })
 
   it('execute opens Discord URL', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 
-    communityCommand.execute?.()
+    discordCommand.execute?.()
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://discord.gg/5AEfbxcd9k',
@@ -185,46 +185,46 @@ describe('communityCommand', () => {
     openSpy.mockRestore()
   })
 
-  it('search returns community result', async () => {
-    const results = await communityCommand.search('', 'en')
+  it('search returns Discord result', async () => {
+    const results = await discordCommand.search('', 'en')
 
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({
-      id: 'community',
+      id: 'discord',
       type: 'command',
-      data: { command: 'navigation.community' },
+      data: { command: 'navigation.discord' },
     })
   })
 
   it('search uses fallback description when i18n returns empty', async () => {
-    mockT.mockImplementation((key: string) => (key.includes('communityDesc') ? '' : key))
+    mockT.mockImplementation((key: string) => (key.includes('discordDesc') ? '' : key))
 
-    const results = await communityCommand.search('', 'en')
+    const results = await discordCommand.search('', 'en')
 
     expect(results[0]!.description).toBe('Open Discord community')
     mockT.mockImplementation((key: string) => key)
   })
 
-  it('registers navigation.community command', () => {
-    communityCommand.register?.({} as Record<string, never>)
-    expect(registerCommands).toHaveBeenCalledWith({ 'navigation.community': expect.any(Function) })
+  it('registers navigation.discord command', () => {
+    discordCommand.register?.({} as Record<string, never>)
+    expect(registerCommands).toHaveBeenCalledWith({ 'navigation.discord': expect.any(Function) })
   })
 
   it('registered handler opens URL from args', async () => {
-    communityCommand.register?.({} as Record<string, never>)
+    discordCommand.register?.({} as Record<string, never>)
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
-    await handlers['navigation.community']!({ url: 'https://custom-url.com' })
+    await handlers['navigation.discord']!({ url: 'https://custom-url.com' })
 
     expect(openSpy).toHaveBeenCalledWith('https://custom-url.com', '_blank', 'noopener,noreferrer')
     openSpy.mockRestore()
   })
 
   it('registered handler falls back to default URL when no args', async () => {
-    communityCommand.register?.({} as Record<string, never>)
+    discordCommand.register?.({} as Record<string, never>)
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
-    await handlers['navigation.community']!()
+    await handlers['navigation.discord']!()
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://discord.gg/5AEfbxcd9k',
@@ -234,83 +234,61 @@ describe('communityCommand', () => {
     openSpy.mockRestore()
   })
 
-  it('unregisters navigation.community command', () => {
-    communityCommand.unregister?.()
-    expect(unregisterCommands).toHaveBeenCalledWith(['navigation.community'])
+  it('unregisters navigation.discord command', () => {
+    discordCommand.unregister?.()
+    expect(unregisterCommands).toHaveBeenCalledWith(['navigation.discord'])
   })
 })
 
-describe('forumCommand', () => {
+describe('modelsCommand', () => {
+  let originalHref: string
+
   beforeEach(() => {
     vi.clearAllMocks()
+    originalHref = window.location.href
   })
 
-  it('has correct metadata', () => {
-    expect(forumCommand.name).toBe('forum')
-    expect(forumCommand.mode).toBe('direct')
-    expect(forumCommand.execute).toBeDefined()
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { value: { href: originalHref }, writable: true })
   })
 
-  it('execute opens forum URL', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
-    forumCommand.execute?.()
-
-    expect(openSpy).toHaveBeenCalledWith('https://forum.dify.ai', '_blank', 'noopener,noreferrer')
-    openSpy.mockRestore()
+  it('has direct command metadata', () => {
+    expect(modelsCommand.name).toBe('models')
+    expect(modelsCommand.mode).toBe('direct')
+    expect(modelsCommand.execute).toBeDefined()
   })
 
-  it('search returns forum result', async () => {
-    const results = await forumCommand.search('', 'en')
+  it('navigates to model provider with the system model dialog URL state', () => {
+    Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
+
+    modelsCommand.execute?.()
+
+    expect(window.location.href).toBe(SYSTEM_MODELS_PATH)
+  })
+
+  it('search returns the system models result', async () => {
+    const results = await modelsCommand.search('', 'en')
 
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({
-      id: 'forum',
+      id: 'models',
       type: 'command',
-      data: { command: 'navigation.forum' },
+      data: { command: 'navigation.models' },
     })
   })
 
-  it('search uses fallback description when i18n returns empty', async () => {
-    mockT.mockImplementation((key: string) => (key.includes('feedbackDesc') ? '' : key))
-
-    const results = await forumCommand.search('', 'en')
-
-    expect(results[0]!.description).toBe('Open community feedback discussions')
-    mockT.mockImplementation((key: string) => key)
-  })
-
-  it('registers navigation.forum command', () => {
-    forumCommand.register?.({} as Record<string, never>)
-    expect(registerCommands).toHaveBeenCalledWith({ 'navigation.forum': expect.any(Function) })
-  })
-
-  it('registered handler opens URL from args', async () => {
-    forumCommand.register?.({} as Record<string, never>)
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('registers a navigation command that opens the system model route', async () => {
+    Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
+    modelsCommand.register?.({} as Record<string, never>)
     const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
-    await handlers['navigation.forum']!({ url: 'https://custom-forum.com' })
 
-    expect(openSpy).toHaveBeenCalledWith(
-      'https://custom-forum.com',
-      '_blank',
-      'noopener,noreferrer',
-    )
-    openSpy.mockRestore()
+    await handlers['navigation.models']!()
+
+    expect(window.location.href).toBe(SYSTEM_MODELS_PATH)
   })
 
-  it('registered handler falls back to default URL when no args', async () => {
-    forumCommand.register?.({} as Record<string, never>)
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
-    await handlers['navigation.forum']!()
-
-    expect(openSpy).toHaveBeenCalledWith('https://forum.dify.ai', '_blank', 'noopener,noreferrer')
-    openSpy.mockRestore()
-  })
-
-  it('unregisters navigation.forum command', () => {
-    forumCommand.unregister?.()
-    expect(unregisterCommands).toHaveBeenCalledWith(['navigation.forum'])
+  it('unregisters navigation.models command', () => {
+    modelsCommand.unregister?.()
+    expect(unregisterCommands).toHaveBeenCalledWith(['navigation.models'])
   })
 })

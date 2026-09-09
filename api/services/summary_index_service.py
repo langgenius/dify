@@ -9,7 +9,9 @@ from typing import TypedDict, cast
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
@@ -46,6 +48,7 @@ class SummaryIndexService:
     """Service for generating and managing summary indexes."""
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_summary_for_segment(
         segment: DocumentSegment,
         dataset: Dataset,
@@ -158,6 +161,7 @@ class SummaryIndexService:
             return summary_record
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def vectorize_summary(
         summary_record: DocumentSegmentSummary,
         segment: DocumentSegment,
@@ -513,8 +517,16 @@ class SummaryIndexService:
                         summary_record_id,
                         original_session is not None,
                     )
-                    # Always create a new session for error handling to avoid issues with closed sessions
-                    # Even if original_session was provided, we create a new one for safety
+                    if original_session is not None:
+                        # Keep the error update in the caller-owned transaction. Opening another
+                        # session here can deadlock when the caller has already flushed this row.
+                        summary_record.status = SummaryStatus.ERROR
+                        summary_record.error = f"Vectorization failed: {str(e)}"
+                        summary_record.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                        original_session.add(summary_record)
+                        raise
+
+                    # Standalone callers still need this method to persist the error itself.
                     with session_factory.create_session() as error_session:
                         # Try to find the record by id first
                         # Note: Using assignment only (no type annotation) to avoid redeclaration error
@@ -655,6 +667,7 @@ class SummaryIndexService:
                 logger.warning("Summary record not found for segment %s when updating error", segment.id)
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def generate_and_vectorize_summary(
         segment: DocumentSegment,
         dataset: Dataset,

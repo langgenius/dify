@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 from sqlalchemy.orm import Session
 
@@ -73,12 +71,11 @@ def test_get_pipeline_templates(sqlite_session: Session) -> None:
 
 
 @pytest.mark.parametrize("sqlite_session", [(Account, PipelineCustomizedTemplate)], indirect=True)
-def test_get_pipeline_template_detail_returns_detail(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_get_pipeline_template_detail_returns_detail(sqlite_session: Session) -> None:
     creator = Account(name="creator", email="creator@example.com")
     creator.id = CREATOR_ID
     sqlite_session.add_all([creator, _template()])
     sqlite_session.commit()
-    monkeypatch.setattr("models.dataset.db", SimpleNamespace(session=sqlite_session))
     retrieval = CustomizedPipelineTemplateRetrieval()
 
     detail = retrieval.get_pipeline_template_detail(TEMPLATE_ID, TENANT_ID, session=sqlite_session)

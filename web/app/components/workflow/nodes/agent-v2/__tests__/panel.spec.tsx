@@ -3,6 +3,7 @@ import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
@@ -121,6 +122,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
   return {
     ...actual,
+    useSuspenseQuery: () => ({ data: { rbac_enabled: false } }),
     useMutation: () => ({
       isPending: mockCopyFromRosterState.isPending,
       mutate: mockCopyFromRosterMutate,
@@ -143,12 +145,16 @@ vi.mock('@/app/components/base/prompt-editor/plugins/custom-text/node', () => ({
   }),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test${path}`,
+}))
+
 vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: (id: string, data: AgentV2NodeType) => mockUseNodeCrud(id, data),
 }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
+  useCanCreateAgents: () => true,
 }))
 
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
@@ -257,30 +263,11 @@ vi.mock('../components/save-inline-agent-to-roster-dialog', () => ({
     onSaved,
   }: {
     open: boolean
-    onSaved: (binding: {
-      agent_id?: string | null
-      binding_type: 'inline_agent' | 'roster_agent'
-      current_snapshot_id?: string | null
-      id: string
-      node_id: string
-      workflow_id: string
-    }) => void
+    onSaved: (agentId: string) => void
   }) =>
     open ? (
       <div role="dialog" aria-label="save-inline-agent-to-roster">
-        <button
-          type="button"
-          onClick={() =>
-            onSaved({
-              id: 'binding-1',
-              binding_type: 'roster_agent',
-              agent_id: 'saved-roster-agent',
-              current_snapshot_id: 'saved-snapshot',
-              workflow_id: 'workflow-1',
-              node_id: 'agent-node',
-            })
-          }
-        >
+        <button type="button" onClick={() => onSaved('saved-roster-agent')}>
           Save inline agent to roster
         </button>
       </div>
@@ -407,6 +394,7 @@ describe('agent/panel', () => {
             icon: 'N',
             icon_background: '#E9D7FE',
             icon_type: 'emoji',
+            permission_keys: ['agent.acl.edit'],
             role: 'Researcher',
           }
         : undefined,
@@ -452,6 +440,17 @@ describe('agent/panel', () => {
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     ).toBeInTheDocument()
+  })
+
+  it('links the Agent task explanation to its documentation', async () => {
+    const user = userEvent.setup()
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }))
+
+    expect(
+      await screen.findByRole('link', { name: 'workflow.nodes.agent.task.learnMore' }),
+    ).toHaveAttribute('href', 'https://docs.example.test/use-dify/nodes/agent#give-it-a-task')
   })
 
   it('opens and closes the roster agent layered panel', () => {
@@ -1230,7 +1229,8 @@ describe('agent/panel', () => {
     expect(screen.queryByText('Clarification Drafter')).not.toBeInTheDocument()
   })
 
-  it('updates agent task and opens prompt insertion shortcuts', () => {
+  it('updates agent task and opens prompt insertion shortcuts', async () => {
+    const user = userEvent.setup()
     render(
       <AgentV2Panel
         id="agent-node"
@@ -1267,9 +1267,9 @@ describe('agent/panel', () => {
       screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.focus(editor)
+    await user.click(editor)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
     expect(

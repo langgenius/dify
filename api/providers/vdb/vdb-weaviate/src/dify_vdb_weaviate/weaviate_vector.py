@@ -7,6 +7,7 @@ document embeddings used in retrieval-augmented generation workflows.
 
 import atexit
 import datetime
+import importlib.metadata
 import json
 import logging
 import threading
@@ -36,6 +37,48 @@ logger = logging.getLogger(__name__)
 
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
+# Identifies Dify to Weaviate's server-side telemetry via the X-Weaviate-Client-Integration
+# header, matching the identifier emitted by other official Weaviate integrations.
+_INTEGRATION_NAME = "dify"
+
+
+def _integration_version() -> str:
+    """Best-effort Dify version reported in the integration telemetry header."""
+    version = (dify_config.project.version or "").strip()
+    if version:
+        return version
+    try:
+        return importlib.metadata.version("dify-api")
+    except Exception:
+        return "unknown"
+
+
+def _register_integration(client: weaviate.WeaviateClient) -> None:
+    """
+    Registers the ``X-Weaviate-Client-Integration`` telemetry header on the client.
+
+    The header value is ``dify/<version>`` and is sent on both HTTP and gRPC requests, letting
+    Weaviate's server attribute traffic to Dify in its telemetry (alongside the built-in
+    ``X-Weaviate-Client`` header). Registration is best-effort: any failure — including older
+    weaviate-client releases that lack the ``integrations`` API — is swallowed so telemetry never
+    breaks client initialization.
+    """
+    try:
+        from pydantic import Field
+        from weaviate.connect.integrations import _IntegrationConfig
+
+        value = f"{_INTEGRATION_NAME}/{_integration_version()}"
+
+        class _DifyIntegration(_IntegrationConfig):
+            integration: str = Field(
+                default=value,
+                serialization_alias="X-Weaviate-Client-Integration",
+            )
+
+        client.integrations.configure(_DifyIntegration())
+    except Exception:
+        logger.debug("Could not register Dify Weaviate integration header", exc_info=True)
 
 
 def _shutdown_weaviate_client() -> None:
@@ -159,6 +202,9 @@ class WeaviateVector(BaseVector):
                 skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
             )
 
+            # Tag outgoing requests so Weaviate can attribute traffic to Dify in its telemetry.
+            _register_integration(client)
+
             if not client.is_ready():
                 raise ConnectionError("Vector database is not ready")
 
@@ -278,18 +324,38 @@ class WeaviateVector(BaseVector):
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
     @override
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
         """
-        Generates deterministic UUIDs for documents based on their content.
+        Generate canonical Weaviate object ids for each document.
 
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
+        Issue #41714: insert and the cleanup path
+        (``batch_clean_document_task`` → ``index_processor.clean`` →
+        ``vector.delete_by_ids``) must agree on the object id, otherwise
+        ``delete_by_id`` silently no-ops and the cleanup task reports
+        success while the objects stay behind as orphans.
+
+        Use the same source the rest of the VDB stack uses
+        (``VectorBase._get_uuids``): the ``doc_id`` stored in each
+        document's metadata. ``doc_id`` is the segment's
+        ``index_node_id`` that ``delete_by_ids`` already passes in.
+
+        Preserve the parent caller's positional alignment: a missing
+        ``doc_id`` is replaced with a freshly generated ``uuid4`` rather
+        than dropping the slot, so the parallel ``objs`` list in
+        ``add_texts`` keeps matching the input documents one-for-one.
         """
-        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-
-        uuids = []
-        for doc in documents:
-            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
-            uuids.append(str(uuid_val))
+        uuids: list[str] = []
+        for doc in texts:
+            doc_id = (doc.metadata or {}).get("doc_id")
+            if isinstance(doc_id, str) and doc_id:
+                uuids.append(doc_id)
+            else:
+                # Fallback only when the caller didn't supply a doc_id.
+                # Random uuid4 keeps the object uniquely addressable; the
+                # cleanup path can't find it without doc_id, but that's
+                # only acceptable for tests / fixtures that don't exercise
+                # cleanup.
+                uuids.append(str(_uuid.uuid4()))
 
         return uuids
 
@@ -380,17 +446,40 @@ class WeaviateVector(BaseVector):
         Deletes objects by their UUID identifiers.
 
         Silently ignores 404 errors for non-existent IDs.
+
+        Issue #41714: cleanup task (and any other caller) passes
+        ``index_node_id`` (a UUID) here. New objects inserted after this
+        fix use the segment's ``index_node_id`` as their Weaviate UUID, so
+        the call lands cleanly. **Pre-existing** objects written by the
+        old UUID5 path still don't match — fall through to a
+        backward-compatible ``doc_id``-metadata filter so they are
+        cleaned up too, and a legacy object whose Weaviate UUID differs
+        from its ``doc_id`` is still reaped.
         """
         if not self._client.collections.exists(self._collection_name):
             return
 
         col = self._client.collections.use(self._collection_name)
 
+        # 1. Best-effort direct delete by UUID for the fresh-write path.
+        #    404s mean the object was never written (or was written under
+        #    a different UUID), which is expected for legacy rows.
         for uid in ids:
             try:
                 col.data.delete_by_id(uid)
             except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
+                if e.status_code != 404:
+                    raise
+
+        # 2. Backward-compatible catch-up: the legacy UUID5 path (or any
+        #    other source) wrote rows whose Weaviate UUID no longer
+        #    matches ``index_node_id``. Reap them by the ``doc_id``
+        #    metadata so a delete pass never leaves orphans behind.
+        if ids:
+            try:
+                col.data.delete_many(where=Filter.by_property("doc_id").contains_any(ids))
+            except UnexpectedStatusCodeError as e:
+                if e.status_code != 404:
                     raise
 
     @override

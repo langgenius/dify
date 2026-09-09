@@ -2,7 +2,7 @@
 
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,11 +13,12 @@ import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
@@ -37,7 +38,12 @@ export function MainNav({ className }: MainNavProps) {
     select: (data) => data.meta.currentEnv,
   })
   const agentV2Enabled = isAgentV2Enabled()
-  const canManageAgents = useCanManageAgents()
+  const canViewSkills = useCanViewSkills()
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
   const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -46,9 +52,10 @@ export function MainNav({ className }: MainNavProps) {
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
-          canManageAgents,
+          canViewSkills,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
+          skillEnabled: enableSkill === true,
         }),
       ).map((route) => ({
         href: route.href,
@@ -59,7 +66,8 @@ export function MainNav({ className }: MainNavProps) {
       })),
     [
       agentV2Enabled,
-      canManageAgents,
+      canViewSkills,
+      enableSkill,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,
       t,
@@ -106,7 +114,10 @@ export function MainNav({ className }: MainNavProps) {
         <div className="p-2">
           <WorkspaceCard />
         </div>
-        <nav className="isolate flex flex-col gap-px p-2">
+        <nav
+          aria-label={t(($) => $['navigation.primary'], { ns: 'common' })}
+          className="isolate flex flex-col gap-px p-2"
+        >
           {navItems.map((item) => (
             <MainNavLink key={item.href} item={item} pathname={pathname}>
               {item.href === '/agents' && (
