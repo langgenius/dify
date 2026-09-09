@@ -10,14 +10,12 @@ from dataclasses import dataclass
 from typing import BinaryIO, Protocol
 from uuid import uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.db.session_factory import session_factory
-from core.plugin.entities.plugin import PluginDependency
-from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -26,17 +24,15 @@ from models.agent import (
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
-    AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
-    AgentDebugConversation,
     AgentScope,
     AgentSource,
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
-from models.model import App, AppMode, AppModelConfig, Conversation, InstalledApp, Site, UploadFile
+from models.model import App, AppMode, AppModelConfig, UploadFile
 from models.tools import ToolFile
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_portable_agent_soul
@@ -50,6 +46,7 @@ from services.agent.errors import (
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
+from services.agent.roster_package_cleanup import CleanupResource, PackageCleanupJob, RosterPackageCleanup
 from services.agent.roster_package_entities import (
     PreparedRosterAgentPackage,
     RosterAgentPackageMetadata,
@@ -58,11 +55,6 @@ from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.app_creation_records import create_installed_app_record, create_site_record
-from services.app_dsl_service import (
-    CHECK_DEPENDENCIES_REDIS_KEY_PREFIX,
-    IMPORT_INFO_REDIS_EXPIRY,
-    CheckDependenciesPendingData,
-)
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
 from services.file_service import FileService
@@ -75,26 +67,6 @@ class _Storage(Protocol):
     def save(self, filename: str, data: bytes) -> None: ...
 
     def delete(self, filename: str) -> None: ...
-
-
-class _DependencyState(Protocol):
-    def store(self, *, app_id: str, dependencies: list[PluginDependency]) -> None: ...
-
-    def delete(self, *, app_id: str) -> None: ...
-
-
-class _RedisDependencyState:
-    def store(self, *, app_id: str, dependencies: list[PluginDependency]) -> None:
-        if not dependencies:
-            return
-        redis_client.setex(
-            f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}",
-            IMPORT_INFO_REDIS_EXPIRY,
-            CheckDependenciesPendingData(app_id=app_id, dependencies=dependencies).model_dump_json(),
-        )
-
-    def delete(self, *, app_id: str) -> None:
-        redis_client.delete(f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}")
 
 
 @dataclass(frozen=True)
@@ -119,12 +91,12 @@ class RosterAgentPackageImporter:
         reader: RosterAgentPackageReader | None = None,
         skill_packages: SkillPackageService | None = None,
         storage_backend: _Storage = storage,
-        dependency_state: _DependencyState | None = None,
+        cleanup: RosterPackageCleanup | None = None,
     ) -> None:
         self._reader = reader or RosterAgentPackageReader()
         self._skill_packages = skill_packages or SkillPackageService()
         self._storage = storage_backend
-        self._dependency_state = dependency_state or _RedisDependencyState()
+        self._cleanup = cleanup or RosterPackageCleanup(storage_backend=storage_backend)
 
     def import_package(
         self,
@@ -145,7 +117,6 @@ class RosterAgentPackageImporter:
 
             app_id = str(uuid4())
             staged: list[_StagedResource] = []
-            database_committed = False
             try:
                 self._ensure_name_available(tenant_id=tenant_id, name=package.manifest.metadata.name)
                 soul = self._stage_resources(
@@ -163,7 +134,6 @@ class RosterAgentPackageImporter:
                     ComposerConfigValidator.validate_importable_agent_soul(resolved_soul)
                 except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
                     raise InvalidRosterAgentPackageError("Roster Agent package Soul is invalid") from exc
-                self._dependency_state.store(app_id=app_id, dependencies=package.manifest.dependencies)
                 app_id, agent_id = self._persist_import(
                     app_id=app_id,
                     tenant_id=tenant_id,
@@ -172,7 +142,6 @@ class RosterAgentPackageImporter:
                     soul=resolved_soul,
                     staged=staged,
                 )
-                database_committed = True
                 self._finalize_app(
                     app_id=app_id,
                     agent_id=agent_id,
@@ -185,24 +154,20 @@ class RosterAgentPackageImporter:
                     warnings=warnings,
                 )
             except IntegrityError as exc:
-                if database_committed:
-                    self._compensate_database(app_id=app_id, tenant_id=tenant_id, staged=staged)
-                self._cleanup_external_state(app_id=app_id, staged=staged)
+                self._cleanup_failed_import(app_id=app_id, tenant_id=tenant_id, staged=staged)
                 if "roster_unique_name" in str(exc):
                     raise AgentNameConflictError() from exc
                 raise RosterAgentPackageImportFailedError() from exc
-            except (AgentNameConflictError, InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError):
-                if database_committed:
-                    self._compensate_database(app_id=app_id, tenant_id=tenant_id, staged=staged)
-                self._cleanup_external_state(app_id=app_id, staged=staged)
-                raise
-            except RosterAgentPackageResourceUnavailableError:
-                self._cleanup_external_state(app_id=app_id, staged=staged)
+            except (
+                AgentNameConflictError,
+                InvalidRosterAgentPackageError,
+                RosterAgentPackageTooLargeError,
+                RosterAgentPackageResourceUnavailableError,
+            ):
+                self._cleanup_failed_import(app_id=app_id, tenant_id=tenant_id, staged=staged)
                 raise
             except Exception as exc:
-                if database_committed:
-                    self._compensate_database(app_id=app_id, tenant_id=tenant_id, staged=staged)
-                self._cleanup_external_state(app_id=app_id, staged=staged)
+                self._cleanup_failed_import(app_id=app_id, tenant_id=tenant_id, staged=staged)
                 raise RosterAgentPackageImportFailedError() from exc
 
     @classmethod
@@ -479,83 +444,30 @@ class RosterAgentPackageImporter:
                 created_records_initialized=True,
             )
 
-    @staticmethod
-    def _compensate_database(
-        *,
-        app_id: str,
-        tenant_id: str,
-        staged: Sequence[_StagedResource],
-    ) -> None:
-        tool_file_ids = [item.row.id for item in staged if isinstance(item.row, ToolFile)]
-        upload_file_ids = [item.row.id for item in staged if isinstance(item.row, UploadFile)]
-        try:
-            with session_factory.create_session() as session, session.begin():
-                agent_ids = list(
-                    session.scalars(
-                        select(Agent.id).where(
-                            Agent.tenant_id == tenant_id,
-                            Agent.app_id == app_id,
-                            Agent.scope == AgentScope.ROSTER,
-                        )
-                    ).all()
+    def _cleanup_failed_import(self, *, app_id: str, tenant_id: str, staged: Sequence[_StagedResource]) -> None:
+        job = PackageCleanupJob(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            resources=[
+                CleanupResource(
+                    id=item.row.id,
+                    kind="tool_file" if isinstance(item.row, ToolFile) else "upload_file",
+                    storage_key=item.storage_key,
                 )
-                if agent_ids:
-                    session.execute(
-                        delete(AgentDebugConversation).where(
-                            AgentDebugConversation.tenant_id == tenant_id,
-                            AgentDebugConversation.agent_id.in_(agent_ids),
-                        )
-                    )
-                    session.execute(
-                        delete(AgentConfigDraft).where(
-                            AgentConfigDraft.tenant_id == tenant_id,
-                            AgentConfigDraft.agent_id.in_(agent_ids),
-                        )
-                    )
-                    session.execute(
-                        delete(AgentConfigRevision).where(
-                            AgentConfigRevision.tenant_id == tenant_id,
-                            AgentConfigRevision.agent_id.in_(agent_ids),
-                        )
-                    )
-                    session.execute(
-                        delete(AgentConfigSnapshot).where(
-                            AgentConfigSnapshot.tenant_id == tenant_id,
-                            AgentConfigSnapshot.agent_id.in_(agent_ids),
-                        )
-                    )
-                    session.execute(delete(Agent).where(Agent.tenant_id == tenant_id, Agent.id.in_(agent_ids)))
-                session.execute(delete(Conversation).where(Conversation.app_id == app_id))
-                session.execute(delete(Site).where(Site.app_id == app_id))
-                session.execute(
-                    delete(InstalledApp).where(InstalledApp.tenant_id == tenant_id, InstalledApp.app_id == app_id)
-                )
-                session.execute(delete(AppModelConfig).where(AppModelConfig.app_id == app_id))
-                session.execute(delete(App).where(App.tenant_id == tenant_id, App.id == app_id))
-                if tool_file_ids:
-                    session.execute(
-                        delete(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id.in_(tool_file_ids))
-                    )
-                if upload_file_ids:
-                    session.execute(
-                        delete(UploadFile).where(
-                            UploadFile.tenant_id == tenant_id,
-                            UploadFile.id.in_(upload_file_ids),
-                        )
-                    )
-        except Exception:
-            logger.exception("Failed to compensate Roster Agent package database import: app_id=%s", app_id)
-
-    def _cleanup_external_state(self, *, app_id: str, staged: Sequence[_StagedResource]) -> None:
+                for item in staged
+            ],
+        )
         try:
-            self._dependency_state.delete(app_id=app_id)
+            self._cleanup.cache.save(job)
+            self._cleanup.run(job.key)
         except Exception:
-            logger.exception("Failed to clear Roster Agent package dependency state: app_id=%s", app_id)
-        for item in reversed(staged):
-            try:
-                self._storage.delete(item.storage_key)
-            except Exception:
-                logger.exception("Failed to delete staged Roster Agent package resource: key=%s", item.storage_key)
+            # The cached job is retried by the periodic worker. In particular,
+            # keep every blob when database deletion or its checkpoint fails.
+            logger.exception(
+                "Roster Agent package cleanup remains pending: tenant_id=%s app_id=%s",
+                tenant_id,
+                app_id,
+            )
 
     @staticmethod
     def _extension(filename: str) -> str:
