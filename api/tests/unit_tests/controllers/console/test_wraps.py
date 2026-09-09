@@ -751,18 +751,15 @@ class TestBillingPaidPlanRequired:
         assert result == "paid_success"
         get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
 
-    @pytest.mark.parametrize(
-        ("enabled", "plan"),
-        [(False, "professional"), (True, "sandbox"), (True, "unknown")],
-    )
-    def test_should_reject_non_paid_plan(self, enabled: bool, plan: str):
+    @pytest.mark.parametrize("plan", ["sandbox", "unknown"])
+    def test_should_reject_non_paid_plan(self, plan: str):
         app = create_app_with_login()
 
         @cloud_edition_billing_paid_plan_required
         def paid_view():
             return "paid_success"
 
-        billing_info = {"enabled": enabled, "subscription": {"plan": plan}}
+        billing_info = {"enabled": True, "subscription": {"plan": plan}}
         with app.test_request_context():
             with (
                 patch(

@@ -178,7 +178,7 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
         ValidationError,
     ) as exc:
         raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
-    return billing_info["enabled"] and billing_info["subscription"]["plan"] in (
+    return billing_info["subscription"]["plan"] in (
         CloudPlan.PROFESSIONAL,
         CloudPlan.TEAM,
     )
