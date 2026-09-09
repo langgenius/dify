@@ -64,13 +64,36 @@ function SortableVariables({
   )
 }
 
+it('tabs through each variable from the reorder handle to its name, value and remove button', async () => {
+  const user = userEvent.setup()
+  render(<SortableVariables onChange={vi.fn()} />)
+  const handles = screen.getAllByRole('button', { pressed: false })
+  const names = screen.getAllByRole('textbox')
+  const values = screen.getAllByRole('button', { name: 'Variable value' })
+  const removeButtons = screen.getAllByRole('button', { name: 'common.operation.remove' })
+
+  for (let index = 0; index < initialVariables.length; index++) {
+    for (const control of [handles[index], names[index], values[index], removeButtons[index]]) {
+      await user.tab()
+      expect(control).toHaveFocus()
+    }
+  }
+
+  await user.tab({ shift: true })
+  expect(values[2]).toHaveFocus()
+  await user.tab({ shift: true })
+  expect(names[2]).toHaveFocus()
+  await user.tab({ shift: true })
+  expect(handles[2]).toHaveFocus()
+})
+
 it('previews variable ordering, commits only on confirmation, and keeps the moved handle focused', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()
   render(<SortableVariables onChange={onChange} />)
   expect(onChange).not.toHaveBeenCalled()
   const handle = screen.getAllByRole('button', { pressed: false })[0]!
-  for (let index = 0; index < 10 && document.activeElement !== handle; index++) await user.tab()
+  await user.tab()
   expect(handle).toHaveFocus()
   await user.keyboard('{Enter}{ArrowDown}')
   expect(screen.getAllByRole('textbox').map((input) => (input as HTMLInputElement).value)).toEqual([
@@ -94,10 +117,12 @@ it('cancels a variable reorder and leaves arrow keys inside name inputs availabl
   const onChange = vi.fn()
   render(<SortableVariables onChange={onChange} />)
   await user.tab()
+  await user.tab()
+  expect(screen.getAllByRole('textbox')[0]).toHaveFocus()
   await user.keyboard('{ArrowDown}')
   expect(onChange).not.toHaveBeenCalled()
   const handle = screen.getAllByRole('button', { pressed: false })[0]!
-  for (let index = 0; index < 10 && document.activeElement !== handle; index++) await user.tab()
+  await user.tab({ shift: true })
   expect(handle).toHaveFocus()
   await user.keyboard(' {ArrowDown}{Escape}')
   expect(screen.getAllByRole('textbox').map((input) => (input as HTMLInputElement).value)).toEqual([
@@ -119,7 +144,7 @@ it('cancels a preview before deleting the variable whose remove button was activ
   const onChange = vi.fn()
   render(<SortableVariables onChange={onChange} />)
   const handle = screen.getAllByRole('button', { pressed: false })[0]!
-  for (let index = 0; index < 10 && document.activeElement !== handle; index++) await user.tab()
+  await user.tab()
   expect(handle).toHaveFocus()
   await user.keyboard('{Enter}{ArrowDown}')
   await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[1]!)

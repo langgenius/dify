@@ -124,6 +124,14 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
       >
         {listWithIds.map((itemWithId, index) => (
           <div key={itemWithId.id} className="group relative">
+            {canDrag && (
+              <IconButton
+                {...keyboardSort.getHandleProps(index)}
+                className="handle pointer-events-none absolute top-1 left-1.5 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+              >
+                <span aria-hidden="true" className="i-ri-draggable size-3" />
+              </IconButton>
+            )}
             <VarItem
               className={cn(canDrag && 'handle')}
               readonly={readonly}
@@ -133,14 +141,6 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
               varKeys={list.map((item) => item.variable)}
               canDrag={canDrag}
             />
-            {canDrag && (
-              <IconButton
-                {...keyboardSort.getHandleProps(index)}
-                className="handle pointer-events-none absolute top-1 left-1.5 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
-              >
-                <span aria-hidden="true" className="i-ri-draggable size-3" />
-              </IconButton>
-            )}
           </div>
         ))}
       </ReactSortable>

@@ -171,9 +171,17 @@ const VarList: FC<Props> = ({
           })()
           return (
             <div
-              className={cn('flex items-center space-x-1', 'group relative')}
+              className={cn('flex items-center gap-x-1', 'group relative')}
               key={keyboardSort.getItemKey(index)}
             >
+              {canDrag && (
+                <IconButton
+                  {...keyboardSort.getHandleProps(index)}
+                  className="handle pointer-events-none absolute top-1 -left-6 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                >
+                  <span aria-hidden="true" className="i-ri-draggable size-3" />
+                </IconButton>
+              )}
               <Input
                 aria-label={variableNameLabel}
                 className="w-30"
@@ -201,14 +209,6 @@ const VarList: FC<Props> = ({
               />
               {!readonly && (
                 <RemoveButton onClick={handleVarRemove(keyboardSort.getItemKey(index))} />
-              )}
-              {canDrag && (
-                <IconButton
-                  {...keyboardSort.getHandleProps(index)}
-                  className="handle pointer-events-none absolute top-1 -left-6 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
-                >
-                  <span aria-hidden="true" className="i-ri-draggable size-3" />
-                </IconButton>
               )}
             </div>
           )
