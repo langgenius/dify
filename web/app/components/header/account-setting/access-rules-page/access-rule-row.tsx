@@ -1,18 +1,18 @@
 'use client'
 
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { AccessRule } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRuleRowMenu from './access-rule-row-menu'
 
 type AccessRuleRowProps = {
-  rule: AccessPolicyWithBindings
+  rule: AccessRule
   canManage: boolean
   className?: string
   showMenu?: boolean
-  onView?: (rule: AccessPolicyWithBindings) => void
-  onEdit?: (rule: AccessPolicyWithBindings) => void
+  onView?: (rule: AccessRule) => void
+  onEdit?: (rule: AccessRule) => void
 }
 
 const AccessRuleRow = ({
@@ -26,7 +26,7 @@ const AccessRuleRow = ({
   const { t } = useTranslation()
   const { policy } = rule
   const description =
-    policy.description.trim() || t(($) => $['accessRule.noDescription'], { ns: 'permission' })
+    policy.description?.trim() || t(($) => $['accessRule.noDescription'], { ns: 'permission' })
 
   const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])

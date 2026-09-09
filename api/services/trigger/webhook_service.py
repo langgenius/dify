@@ -887,13 +887,17 @@ class WebhookService:
         return response_data, status_code
 
     @classmethod
-    def sync_webhook_relationships(cls, app: App, workflow: Workflow):
+    def sync_webhook_relationships(cls, app: App, workflow: Workflow, *, remove_stale: bool = True):
         """
         Sync webhook relationships in DB.
 
         1. Check if the workflow has any webhook trigger nodes
         2. Fetch the nodes from DB, see if there were any webhook records already
-        3. Diff the nodes and the webhook records, create/update/delete the webhook records as needed
+        3. Diff the nodes and the webhook records, creating missing records and optionally deleting stale records
+
+        Draft workflow synchronization preserves stale records so undo can restore a
+        webhook node without changing its URL. Published workflow synchronization
+        removes stale records after the deletion becomes effective.
 
         Approach:
         Frequent DB operations may cause performance issues, using Redis to cache it instead.
@@ -969,11 +973,12 @@ class WebhookService:
                         f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
                     )
 
-                # delete the nodes not found in the graph
-                for node_id in nodes_id_in_db:
-                    if node_id not in nodes_id_in_graph:
-                        session.delete(nodes_id_in_db[node_id])
-                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
+                if remove_stale:
+                    # Delete relationships only when reconciling an effective published workflow.
+                    for node_id in nodes_id_in_db:
+                        if node_id not in nodes_id_in_graph:
+                            session.delete(nodes_id_in_db[node_id])
+                            redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
         except Exception:
             logger.exception("Failed to sync webhook relationships for app %s", app.id)
             raise

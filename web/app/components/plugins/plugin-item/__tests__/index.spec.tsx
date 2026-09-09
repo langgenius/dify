@@ -195,7 +195,7 @@ describe('PluginItem', () => {
       expect(screen.getByTestId('version-badge')).toBeInTheDocument()
     })
 
-    it('should render plugin icon', () => {
+    it('should keep the plugin name visible without exposing a decorative image', () => {
       // Arrange
       const plugin = createPluginDetail()
 
@@ -203,12 +203,8 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
-      expect(img).toHaveAttribute('alt', `plugin-${plugin.plugin_unique_identifier}-logo`)
-      expect(img).toHaveAttribute('loading', 'lazy')
-      expect(img).toHaveAttribute('decoding', 'async')
-      expect(img).toHaveAttribute('width', '40')
-      expect(img).toHaveAttribute('height', '40')
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
+      expect(screen.getByText('Test Plugin')).toBeVisible()
     })
 
     it('should not render category label in corner mark', () => {
@@ -719,7 +715,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('dark-icon.png')
     })
 
@@ -737,7 +733,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('light-icon.png')
     })
 
@@ -755,7 +751,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img.getAttribute('src')).toContain('light-icon.png')
     })
 
@@ -771,7 +767,7 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
     })
   })
@@ -851,7 +847,7 @@ describe('PluginItem', () => {
       expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
 
       // The img element should still be rendered
-      const img = screen.getByRole('img')
+      const img = screen.getByRole('presentation')
       expect(img).toBeInTheDocument()
     })
 

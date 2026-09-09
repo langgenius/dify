@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'

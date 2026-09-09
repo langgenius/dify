@@ -2,6 +2,7 @@ import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/t
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
@@ -10,6 +11,14 @@ const mocks = vi.hoisted(() => ({
   pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
   replace: vi.fn(),
+}))
+
+vi.mock('@/features/agent-v2/permissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/agent-v2/permissions')>()),
+  useCanCreateAgents: () => true,
+}))
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
 
 vi.mock('@/app/components/app/use-export-app-dsl', () => ({
@@ -24,6 +33,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
   return {
     ...actual,
+    useSuspenseQuery: () => ({ data: { rbac_enabled: true } }),
     useQuery: () => ({
       data: mocks.queryData,
       isPending: !mocks.queryData,
@@ -81,6 +91,7 @@ vi.mock('@/service/console', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  permission_keys: Object.values(AgentPermission),
   app_id: 'app-1',
   description: 'Find and summarize market materials.',
   enable_api: true,

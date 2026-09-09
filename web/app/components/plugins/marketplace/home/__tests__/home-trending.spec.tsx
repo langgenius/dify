@@ -1,7 +1,7 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import HomeTrending from '../home-trending'
@@ -37,6 +37,10 @@ vi.mock('@/config', async (importOriginal) => ({
   MARKETPLACE_URL_PREFIX: 'https://marketplace.example.com',
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
   default: () => ({ installedInfo: {} }),
 }))
@@ -58,6 +62,21 @@ vi.mock('../../detail-dialog', () => ({
     open ? (
       <div role="dialog" aria-label="plugin-detail">
         {plugin.name}
+      </div>
+    ) : null,
+}))
+
+vi.mock('../../templates/template-detail-dialog', () => ({
+  default: ({
+    open,
+    template,
+  }: {
+    open: boolean
+    template: { id: string; template_name: string }
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="template-detail">
+        {template.template_name}
       </div>
     ) : null,
 }))
@@ -187,6 +206,18 @@ describe('HomeTrending', () => {
       'href',
       'https://marketplace.dify.ai/plugin/langgenius/duckduckgo',
     )
+  })
+
+  it('fits recommend card icons inside the frame instead of cover-cropping them', () => {
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    const icon = within(screen.getByRole('group', { name: 'Trending' }))
+      .getByRole('link', { name: 'Dropbox' })
+      .querySelector('img')
+
+    expect(icon?.getAttribute('src')).toContain('/plugins/langgenius/dropbox/icon')
+    expect(icon).toHaveClass('object-contain')
+    expect(icon).not.toHaveClass('object-cover')
   })
 
   it('marks inactive standalone slides so mobile CSS can collapse mixed banner heights', () => {
@@ -749,10 +780,7 @@ describe('HomeTrending', () => {
 
     expect(screen.queryByRole('link', { name: 'Dropbox' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Notion' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
-      'href',
-      '/templates?tid=tpl-1',
-    )
+    expect(screen.queryByRole('link', { name: 'Support Bot' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Dropbox' }))
 
@@ -766,6 +794,124 @@ describe('HomeTrending', () => {
         item_name: 'Dropbox',
       }),
     )
+  })
+
+  it('opens embedded recommend template cards in the template dialog', async () => {
+    const user = userEvent.setup()
+    const bannerWithTemplates: PluginBanner = {
+      id: 'recommend-templates-embedded',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'newest',
+        cards: [
+          {
+            item_type: 'template',
+            item_id: 'tpl-1',
+            display_name: 'Support Bot',
+            creator: 'aisa-team',
+            link: 'https://external.example.com/support-bot',
+            card_position: 0,
+          },
+        ],
+      },
+    }
+
+    render(
+      <HomeTrending
+        banners={[bannerWithTemplates]}
+        isMarketplacePlatform={false}
+        page="templates"
+      />,
+    )
+
+    expect(screen.queryByRole('link', { name: 'Support Bot' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Support Bot' }))
+
+    expect(screen.getByRole('dialog', { name: 'template-detail' })).toHaveTextContent('Support Bot')
+    expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
+      'marketplace_banner_click',
+      expect.objectContaining({
+        click_target: 'recommendation',
+        item_id: 'tpl-1',
+        item_type: 'template',
+        item_name: 'Support Bot',
+      }),
+    )
+  })
+
+  it('opens embedded recommend plugin cards from /plugins links when item_id is not org/name', async () => {
+    const user = userEvent.setup()
+    const banner: PluginBanner = {
+      id: 'recommend-plugin-href',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'hottest',
+        cards: [
+          {
+            item_type: 'plugin',
+            item_id: 'baserow',
+            display_name: 'Baserow',
+            link: '/plugins/langgenius/baserow',
+            card_position: 0,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[banner]} isMarketplacePlatform={false} page="plugins" />)
+
+    expect(screen.queryByRole('link', { name: 'Baserow' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Baserow' }))
+    expect(screen.getByRole('dialog', { name: 'plugin-detail' })).toHaveTextContent('baserow')
+  })
+
+  it('shows the served author on recommend template cards the same way as plugins', () => {
+    const banner: PluginBanner = {
+      id: 'recommend-templates',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'newest',
+        cards: [
+          {
+            item_type: 'template',
+            item_id: 'tpl-authored',
+            display_name: 'Go-to-Market',
+            creator: 'aisa-team',
+            link: '/templates/tpl-authored',
+            card_position: 0,
+          },
+          {
+            item_type: 'template',
+            item_id: 'tpl-anonymous',
+            display_name: 'Untitled Flow',
+            link: '/templates/tpl-anonymous',
+            card_position: 1,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[banner]} isMarketplacePlatform page="templates" />)
+
+    const authored = screen.getByRole('link', { name: 'Go-to-Market' })
+    const anonymous = screen.getByRole('link', { name: 'Untitled Flow' })
+
+    expect(
+      within(authored).getByText('plugin.marketplace.home.trendingByCreator'),
+    ).toBeInTheDocument()
+    expect(
+      within(anonymous).queryByText('plugin.marketplace.home.trendingByCreator'),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps standalone recommend plugin cards on local detail routes', () => {

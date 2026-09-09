@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPolicy } from '@/models/access-control'
+import type { AccessPolicy } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -19,12 +19,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCopyAccessRule,
-  useDeleteAccessRule,
-} from '@/service/access-control/use-workspace-access-rules'
+import { consoleQuery } from '@/service/console'
 
 type AccessRuleRowMenuProps = {
   rule: AccessPolicy
@@ -37,9 +35,11 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  const { mutateAsync: copyAccessRule } = useCopyAccessRule(rule.resource_type)
-  const { mutateAsync: deleteAccessRule, isPending: isDeletingAccessRule } = useDeleteAccessRule(
-    rule.resource_type,
+  const { mutate: copyAccessRule } = useMutation(
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.copy.post.mutationOptions(),
+  )
+  const { mutate: deleteAccessRule, isPending: isDeletingAccessRule } = useMutation(
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.delete.mutationOptions(),
   )
 
   const handleView = useCallback(() => {
@@ -47,12 +47,15 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
   }, [onView])
 
   const handleCopyRules = useCallback(() => {
-    copyAccessRule(rule.id, {
-      onSuccess: () => {
-        toast.success(t(($) => $['accessRule.copied'], { ns: 'permission' }))
-        setOpen(false)
+    copyAccessRule(
+      { params: { policy_id: rule.id } },
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['accessRule.copied'], { ns: 'permission' }))
+          setOpen(false)
+        },
       },
-    })
+    )
   }, [copyAccessRule, rule.id, t])
 
   const openDeleteConfirm = useCallback(() => {
@@ -61,12 +64,15 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
   }, [])
 
   const handleDelete = useCallback(() => {
-    deleteAccessRule(rule.id, {
-      onSuccess: () => {
-        toast.success(t(($) => $['accessRule.deleted'], { ns: 'permission' }))
-        setShowDeleteConfirm(false)
+    deleteAccessRule(
+      { params: { policy_id: rule.id } },
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['accessRule.deleted'], { ns: 'permission' }))
+          setShowDeleteConfirm(false)
+        },
       },
-    })
+    )
   }, [deleteAccessRule, rule.id, t])
 
   const isBuiltIn = rule.is_builtin

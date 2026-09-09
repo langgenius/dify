@@ -385,6 +385,7 @@ import {
   zPostWorkspacesCurrentPluginUploadGithubResponse,
   zPostWorkspacesCurrentPluginUploadPkgBody,
   zPostWorkspacesCurrentPluginUploadPkgResponse,
+  zPostWorkspacesCurrentRbacAccessPoliciesBody,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
   zPostWorkspacesCurrentRbacAccessPoliciesResponse,
@@ -491,6 +492,7 @@ import {
   zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdBody,
   zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdPath,
   zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse,
+  zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdBody,
   zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
   zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
   zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath,
@@ -2436,7 +2438,12 @@ export const put6 = oc
     path: '/workspaces/current/rbac/access-policies/{policy_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdBody,
+      params: zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
 
 export const byPolicyId = {
@@ -2462,8 +2469,10 @@ export const post46 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacAccessPolicies',
     path: '/workspaces/current/rbac/access-policies',
+    successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentRbacAccessPoliciesBody }))
   .output(zPostWorkspacesCurrentRbacAccessPoliciesResponse)
 
 export const accessPolicies = {

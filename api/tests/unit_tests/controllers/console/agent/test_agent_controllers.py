@@ -302,6 +302,16 @@ def test_agent_app_write_routes_do_not_reuse_app_billing_quota() -> None:
         assert '@cloud_edition_billing_resource_check("apps")' not in getsource(route_class)
 
 
+def test_agent_list_reads_do_not_require_workspace_preview() -> None:
+    for route_class in (AgentAppListApi, AgentInviteOptionsApi):
+        assert "RBACPermission.AGENT_PREVIEW, Workspace()" not in getsource(route_class.get)
+
+
+def test_agent_app_permission_keys_are_required_response_fields() -> None:
+    assert roster_controller.AgentAppPartial.model_fields["permission_keys"].is_required()
+    assert roster_controller.AgentAppDetailWithSite.model_fields["permission_keys"].is_required()
+
+
 @pytest.fixture
 def account_id() -> str:
     return "account-1"
@@ -311,6 +321,33 @@ def test_agent_app_list_and_create_use_agent_route(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
     captured: dict[str, object] = {}
+    permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse(
+        agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
+            overrides=[
+                roster_controller.enterprise_rbac_service.ResourcePermissionKeys(
+                    resource_id="agent-list",
+                    permission_keys=["agent.acl.preview"],
+                )
+            ]
+        )
+    )
+
+    class FakeAgentAccessFilter:
+        def apply_to_app_params(self, params, *, tenant_id: str, session: object) -> None:
+            captured["access_filter"] = {"tenant_id": tenant_id, "session": session}
+            params.accessible_app_ids = ["app-list"]
+
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda *_args, **_kwargs: permissions,
+    )
+    monkeypatch.setattr(
+        roster_controller,
+        "resolve_agent_access_filter",
+        lambda *_args, **_kwargs: FakeAgentAccessFilter(),
+    )
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
 
     class FakeAppService:
         def get_app(self, app_obj: object, *, session: object) -> object:
@@ -427,6 +464,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["id"] == "agent-list"
     assert listed["data"][0]["app_id"] == "app-list"
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
+    assert listed["data"][0]["permission_keys"] == ["agent.acl.preview"]
     assert listed["data"][0]["role"] == "List role"
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["reference_count"] == 2
@@ -448,6 +486,8 @@ def test_agent_app_list_and_create_use_agent_route(
     assert list_params.is_created_by_me is True
     assert list_params.agent_is_published is True
     assert list_params.status == "normal"
+    assert list_params.accessible_app_ids == ["app-list"]
+    assert captured["access_filter"] == {"tenant_id": "tenant-1", "session": sqlite_session}
     count_call = cast(dict[str, object], captured["counts"])
     count_params = cast(Any, count_call["params"])
     assert count_params.agent_is_published is True
@@ -574,6 +614,15 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "agent_has_workflow_callable_active_snapshot",
         lambda **_kwargs: False,
     )
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda *_args, **_kwargs: roster_controller.enterprise_rbac_service.MyPermissionsResponse(
+            agent=roster_controller.enterprise_rbac_service.ResourcePermissionSnapshot(
+                default_permission_keys=["agent.acl.preview"]
+            )
+        ),
+    )
 
     class FakeAppService:
         def get_app(self, app_obj: object, *, session: object) -> object:
@@ -597,6 +646,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["debug_conversation_has_messages"] is True
     assert detail["debug_conversation_message_count"] == 2
     assert detail["role"] == "Resolved role"
+    assert detail["permission_keys"] == ["agent.acl.preview"]
     assert detail["access_ready"] is False
     assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
@@ -1066,10 +1116,59 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
     with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10&app_id=app-1"):
         result = unwrap(AgentInviteOptionsApi.get)(
-            AgentInviteOptionsApi(), AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"), MagicMock(), "tenant-1"
+            AgentInviteOptionsApi(),
+            AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"),
+            MagicMock(),
+            "tenant-1",
+            _account(),
         )
     assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
-    assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "page": 1,
+        "limit": 10,
+        "keyword": None,
+        "app_id": "app-1",
+        "accessible_agent_ids": None,
+    }
+
+
+def test_invite_options_get_applies_resource_visibility(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    permissions = roster_controller.enterprise_rbac_service.MyPermissionsResponse()
+
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda *_args, **_kwargs: permissions,
+    )
+    monkeypatch.setattr(
+        roster_controller,
+        "resolve_agent_access_filter",
+        lambda *_args, **_kwargs: SimpleNamespace(accessible_agent_ids={"agent-2", "agent-1"}),
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "list_invite_options",
+        lambda _self, **kwargs: (
+            captured.update(kwargs) or {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
+        ),
+    )
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+
+    with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10"):
+        unwrap(AgentInviteOptionsApi.get)(
+            AgentInviteOptionsApi(),
+            AgentInviteOptionsQuery(page=1, limit=10),
+            MagicMock(),
+            "tenant-1",
+            _account(),
+        )
+
+    assert captured["accessible_agent_ids"] == ["agent-1", "agent-2"]
 
 
 def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

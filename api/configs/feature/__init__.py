@@ -1620,7 +1620,7 @@ class AccountConfig(BaseSettings):
     )
 
     EDUCATION_ENABLED: bool = Field(
-        description="whether to enable education identity",
+        description="whether to enable education identity (CLOUD deployments only)",
         default=False,
     )
 

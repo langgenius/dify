@@ -492,10 +492,6 @@ class App(Base):
 
         return None
 
-    @property
-    def bound_agent_id(self) -> str | None:
-        return self.bound_agent_id_with_session(session=db.session())
-
     def bound_agent_id_with_session(self, *, session: Session) -> str | None:
         """For an Agent App (mode=agent), the roster Agent it is backed by.
 
@@ -549,10 +545,6 @@ class App(Base):
     @property
     def tenant(self) -> Tenant | None:
         return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
-
-    @property
-    def is_agent(self) -> bool:
-        return self.is_agent_with_session(session=db.session())
 
     def is_agent_with_session(self, *, session: Session) -> bool:
         """Detect legacy agent mode, committing the compatible app mode through the supplied session."""
@@ -702,10 +694,6 @@ class App(Base):
         ).all()
 
         return tags or []
-
-    @property
-    def author_name(self) -> str | None:
-        return self.author_name_with_session(session=db.session())
 
     def author_name_with_session(self, *, session: Session) -> str | None:
         if self.created_by:
@@ -1018,10 +1006,6 @@ class InstalledApp(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
-
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
 
@@ -1170,7 +1154,7 @@ class Conversation(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
@@ -1180,8 +1164,8 @@ class Conversation(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
-    introduction = mapped_column(LongText)
-    system_instruction = mapped_column(LongText)
+    introduction: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    system_instruction: Mapped[str | None] = mapped_column(LongText, nullable=True)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     status: Mapped[ConversationStatus] = mapped_column(
         EnumText(ConversationStatus, length=255), nullable=False, default=ConversationStatus.NORMAL

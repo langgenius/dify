@@ -130,7 +130,6 @@ vi.mock('../actions/agent', () => ({
 
 const visibilityState = vi.hoisted(() => ({
   agentEnabled: true,
-  canManageAgents: true,
   datasetOperator: false,
   enableSkill: true,
 }))
@@ -145,10 +144,6 @@ vi.mock('jotai', async (importOriginal) => {
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => visibilityState.agentEnabled,
-}))
-
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => visibilityState.canManageAgents,
 }))
 
 vi.mock(
@@ -273,7 +268,6 @@ describe('GotoAnything', () => {
     previousRemoteData = {}
     matchActionMock.mockReset()
     visibilityState.agentEnabled = true
-    visibilityState.canManageAgents = true
     visibilityState.datasetOperator = false
     visibilityState.enableSkill = true
     mockFindCommand = null
@@ -419,26 +413,10 @@ describe('GotoAnything', () => {
 
   describe('search functionality', () => {
     it.each([
-      [
-        { agentEnabled: true, canManageAgents: true, datasetOperator: false, enableSkill: true },
-        true,
-        true,
-      ],
-      [
-        { agentEnabled: false, canManageAgents: true, datasetOperator: false, enableSkill: true },
-        false,
-        true,
-      ],
-      [
-        { agentEnabled: true, canManageAgents: false, datasetOperator: true, enableSkill: true },
-        false,
-        false,
-      ],
-      [
-        { agentEnabled: true, canManageAgents: true, datasetOperator: false, enableSkill: false },
-        true,
-        false,
-      ],
+      [{ agentEnabled: true, datasetOperator: false, enableSkill: true }, true, true],
+      [{ agentEnabled: false, datasetOperator: false, enableSkill: true }, false, true],
+      [{ agentEnabled: true, datasetOperator: true, enableSkill: true }, true, false],
+      [{ agentEnabled: true, datasetOperator: false, enableSkill: false }, true, false],
     ] as const)(
       'matches scope visibility to workspace capabilities',
       (visibility, agents, skills) => {
