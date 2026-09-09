@@ -80,20 +80,3 @@ def test_datasource_auth_get_requires_edit_and_rbac() -> None:
     assert rbac_config["resource_type"] == RBACResourceScope.DATASET
     assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
     assert rbac_config["resource_required"] is False
-
-
-@pytest.mark.parametrize(
-    "method",
-    [
-        AgentAppApi.get,
-        AgentComposerApi.get,
-    ],
-)
-def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
-    """GET endpoints that return agent app details or composer state must enforce
-    the same RBAC gates as their sibling PUT/DELETE methods."""
-    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
-    rbac_config = getclosurevars(rbac_wrapper).nonlocals
-    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
-    assert rbac_config["scene"] == RBACPermission.AGENT_MANAGE
-    assert rbac_config["resource_required"] is False

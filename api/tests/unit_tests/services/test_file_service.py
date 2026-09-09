@@ -16,7 +16,12 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import Account, EndUser, UploadFile
-from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from services.errors.file import (
+    BlockedFileExtensionError,
+    FileNotExistsError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
 from services.file_service import FileService
 
 
@@ -308,6 +313,15 @@ class TestFileService:
         assert result == "direct-url"
         get_presigned_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
 
+    def test_get_icon_url_maps_missing_cloud_file_to_service_error(self, file_service: FileService) -> None:
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
+            patch.object(file_service, "get_file_presigned_url", side_effect=NotFound("File not found")),
+            pytest.raises(FileNotExistsError, match="File reference not found"),
+        ):
+            file_service.get_icon_url("file_id", "tenant_id")
+
     @pytest.mark.parametrize(
         ("deployment_edition", "storage_type"),
         [
@@ -318,9 +332,11 @@ class TestFileService:
     def test_get_icon_url_uses_preview_url_outside_cloud_s3(
         self,
         file_service: FileService,
+        db_session: Session,
         deployment_edition: DeploymentEdition,
         storage_type: StorageType,
     ):
+        self._persist_upload_file(db_session)
         with (
             patch.object(dify_config, "DEPLOYMENT_EDITION", deployment_edition),
             patch.object(dify_config, "STORAGE_TYPE", storage_type),
@@ -330,6 +346,39 @@ class TestFileService:
 
         assert result == "preview-url"
         get_url.assert_called_once_with(upload_file_id="file_id")
+
+    @pytest.mark.parametrize(
+        ("deployment_edition", "storage_type"),
+        [
+            (DeploymentEdition.COMMUNITY, StorageType.S3),
+            (DeploymentEdition.CLOUD, StorageType.LOCAL),
+        ],
+    )
+    def test_get_icon_url_rejects_missing_file_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        deployment_edition: DeploymentEdition,
+        storage_type: StorageType,
+    ) -> None:
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", deployment_edition),
+            patch.object(dify_config, "STORAGE_TYPE", storage_type),
+            pytest.raises(FileNotExistsError, match="File reference not found"),
+        ):
+            file_service.get_icon_url("file_id", "tenant_id")
+
+    def test_get_icon_url_rejects_cross_tenant_file_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        db_session: Session,
+    ) -> None:
+        self._persist_upload_file(db_session, tenant_id="other_tenant_id")
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch.object(dify_config, "STORAGE_TYPE", StorageType.LOCAL),
+            pytest.raises(FileNotExistsError, match="File reference not found"),
+        ):
+            file_service.get_icon_url("file_id", "tenant_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup
@@ -489,6 +538,12 @@ class TestFileService:
     def test_get_upload_files_by_ids_empty(self, db_session: Session):
         result = FileService.get_upload_files_by_ids("tenant_id", [], session=db_session)
         assert result == {}
+
+    def test_get_upload_file_by_id_scopes_to_tenant(self, db_session: Session) -> None:
+        upload_file = self._persist_upload_file(db_session)
+
+        assert FileService.get_upload_file_by_id("tenant_id", "file_id", session=db_session) == upload_file
+        assert FileService.get_upload_file_by_id("other_tenant_id", "file_id", session=db_session) is None
 
     def test_get_upload_files_by_ids(self, db_session: Session):
         upload_file = self._persist_upload_file(db_session, file_id="550e8400-e29b-41d4-a716-446655440000")
