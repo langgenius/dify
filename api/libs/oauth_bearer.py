@@ -385,15 +385,18 @@ def extract_bearer(req) -> str | None:
     return value.strip()
 
 
-def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
-    """503 if ENABLE_OAUTH_BEARER is off — minted tokens would be unusable
-    without the authenticator, so fail fast instead of approving silently.
+def assert_bearer_feature_enabled() -> None:
+    """503 if ENABLE_OAUTH_BEARER is off: the authenticator is never bound then,
+    so minted tokens would be unusable and guarded routes would 500.
     """
+    if not dify_config.ENABLE_OAUTH_BEARER:
+        raise ServiceUnavailable("bearer_auth_disabled: set ENABLE_OAUTH_BEARER=true to enable")
 
+
+def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
     @wraps(fn)
     def inner(*args: P.args, **kwargs: P.kwargs) -> R:
-        if not dify_config.ENABLE_OAUTH_BEARER:
-            raise ServiceUnavailable("bearer_auth_disabled: set ENABLE_OAUTH_BEARER=true to enable")
+        assert_bearer_feature_enabled()
         return fn(*args, **kwargs)
 
     return inner
