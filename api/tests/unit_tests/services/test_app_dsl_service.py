@@ -10,12 +10,13 @@ import yaml
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode, Tenant
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow, WorkflowType
-from services.app_dsl_service import AppDslService, Import, PendingData
+from services.app_dsl_service import AppDslService, CheckDependenciesPendingData, Import, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.errors.account import NoPermissionError
@@ -876,3 +877,118 @@ def test_bundle_content_rejects_invalid_or_oversized_input_before_parsing(
     assert result.status == ImportStatus.FAILED
     parse_bundle.assert_not_called()
     assert not unbound_session.in_transaction()
+
+
+@pytest.mark.parametrize(
+    ("version", "has_tenant", "error"),
+    [
+        (1, True, "Every app DSL version must be a string"),
+        ("invalid", True, "Invalid app DSL version"),
+        ("99.0.0", False, "Current tenant is not set"),
+    ],
+)
+def test_bundle_import_rejects_invalid_metadata_before_creating_apps(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, version: str | int, has_tenant: bool, error: str
+) -> None:
+    bundle_service = Mock()
+    bundle_service.parse_bundle.return_value = SimpleNamespace(documents={"root": {"version": version}})
+    monkeypatch.setattr("services.app_dsl_service.AppDslBundleService", Mock(return_value=bundle_service))
+    account = _account()
+    if not has_tenant:
+        account._current_tenant = None
+
+    result = AppDslService(unbound_session).import_app(
+        account=account, import_mode=ImportMode.BUNDLE_CONTENT, yaml_content=base64.b64encode(b"archive").decode()
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == error
+    bundle_service.import_bundle.assert_not_called()
+    assert not unbound_session.in_transaction()
+
+
+@pytest.mark.parametrize("existing_mode", [None, AppMode.CHAT, AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+def test_bundle_overwrite_requires_an_existing_app_with_matching_workflow_mode(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, existing_mode: AppMode | None
+) -> None:
+    existing = _app(mode=existing_mode) if existing_mode is not None else None
+    bundle_service = Mock()
+    bundle_service.parse_bundle.return_value = SimpleNamespace(
+        documents={"root": {"version": CURRENT_APP_DSL_VERSION, "app": {"mode": "workflow"}}},
+        manifest=SimpleNamespace(entrypoint="root"),
+    )
+    bundle_service.import_bundle.return_value = existing
+    monkeypatch.setattr("services.app_dsl_service.AppDslBundleService", Mock(return_value=bundle_service))
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
+    service = AppDslService(unbound_session)
+    monkeypatch.setattr(service, "_load_app_for_overwrite", Mock(return_value=existing))
+
+    result = service.import_app(
+        account=_account(),
+        import_mode=ImportMode.BUNDLE_CONTENT,
+        yaml_content=base64.b64encode(b"archive").decode(),
+        app_id=_OVERWRITE_APP_ID,
+    )
+
+    if existing_mode == AppMode.WORKFLOW:
+        assert result.status == ImportStatus.COMPLETED
+        assert bundle_service.import_bundle.call_args.kwargs["app"] is existing
+    else:
+        assert result.status == ImportStatus.FAILED
+        assert result.error == (
+            "App not found" if existing is None else "The imported workflow app mode must match the overwritten app"
+        )
+        bundle_service.import_bundle.assert_not_called()
+
+
+def test_bundle_import_reraises_permission_denial(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    bundle_service = Mock()
+    bundle_service.parse_bundle.return_value = SimpleNamespace(documents={"root": {"version": CURRENT_APP_DSL_VERSION}})
+    bundle_service.import_bundle.side_effect = NoPermissionError("Cannot import this workspace's tools")
+    monkeypatch.setattr("services.app_dsl_service.AppDslBundleService", Mock(return_value=bundle_service))
+
+    with pytest.raises(NoPermissionError, match="Cannot import this workspace's tools"):
+        AppDslService(unbound_session).import_app(
+            account=_account(),
+            import_mode=ImportMode.BUNDLE_CONTENT,
+            yaml_content=base64.b64encode(b"archive").decode(),
+        )
+
+
+def test_bundle_import_caches_dependencies_from_every_app(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    bundle_service = Mock()
+    bundle_service.parse_bundle.return_value = SimpleNamespace(
+        documents={
+            name: {
+                "version": CURRENT_APP_DSL_VERSION,
+                "dependencies": [{"type": "package", "value": {"plugin_unique_identifier": name}}],
+            }
+            for name in ("root-plugin", "child-plugin")
+        }
+    )
+    imported_app = _app(mode=AppMode.WORKFLOW)
+    bundle_service.import_bundle.return_value = imported_app
+    monkeypatch.setattr("services.app_dsl_service.AppDslBundleService", Mock(return_value=bundle_service))
+    draft_variables = Mock()
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock(return_value=draft_variables))
+    cache_dependencies = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache_dependencies)
+
+    result = AppDslService(unbound_session).import_app(
+        account=_account(), import_mode=ImportMode.BUNDLE_CONTENT, yaml_content=base64.b64encode(b"archive").decode()
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    cache_dependencies.assert_called_once()
+    key, expiry, content = cache_dependencies.call_args.args
+    assert key == f"app_check_dependencies:{imported_app.id}"
+    assert expiry > 0
+    pending = CheckDependenciesPendingData.model_validate_json(content)
+    assert pending.app_id == imported_app.id
+    assert [dependency.value.plugin_unique_identifier for dependency in pending.dependencies] == [
+        "root-plugin",
+        "child-plugin",
+    ]
+    draft_variables.delete_app_workflow_variables.assert_called_once_with(app_id=imported_app.id)
