@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/console'
