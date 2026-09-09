@@ -60,7 +60,7 @@ export async function runExportApp(
   if (response.format === 'zip' && !opts.output)
     throw newError(
       ErrorCode.UsageInvalidFlag,
-      'exporting a workflow bundle requires --output <file.zip>',
+      'exporting an app bundle requires --output <file.zip>',
     )
 
   if (opts.output !== undefined && opts.output !== '') {

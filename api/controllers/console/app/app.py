@@ -55,6 +55,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import AppMode, IconType
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.app_dsl_bundle import AppDslBundleService
 from services.app_dsl_service import AppDslService
 from services.app_service import (
     AppListParams,
@@ -84,7 +85,6 @@ from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
 from services.ops_trace_service import get_app_trace_settings, update_app_trace_settings
 from services.system_feature_service import SystemFeatureService
-from services.workflow_dsl_bundle import WorkflowDslBundleService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -191,7 +191,7 @@ class AppExportQuery(BaseModel):
         default=None, description="Export format; defaults to ifpkg for Agent Apps and yaml for other Apps"
     )
     include_workflow_tools: bool = Field(
-        default=False, description="Package referenced workflow tools recursively in a ZIP"
+        default=False, description="Package the app and recursively referenced workflow tools in a ZIP"
     )
     include_secret: bool = Field(default=False, description="Include secrets in export")
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
@@ -1106,7 +1106,7 @@ class AppExportApi(Resource):
         if req_data.include_workflow_tools:
             account, _ = current_account_with_tenant()
             try:
-                bundle = WorkflowDslBundleService(db.session()).export_bundle(
+                bundle = AppDslBundleService(db.session()).export_bundle(
                     app_model=app_model,
                     account=account,
                     include_secret=req_data.include_secret,
@@ -1116,10 +1116,9 @@ class AppExportApi(Resource):
                 raise Forbidden(str(exc)) from exc
             except ValueError as exc:
                 raise BadRequest(str(exc)) from exc
-            if bundle is not None:
-                return AppExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip").model_dump(
-                    mode="json"
-                )
+            return AppExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip").model_dump(
+                mode="json"
+            )
 
         response = AppExportResponse(
             data=AppDslService.export_dsl(
