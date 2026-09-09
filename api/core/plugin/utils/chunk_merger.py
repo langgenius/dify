@@ -61,9 +61,7 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
                 # (or raise an unhandled MemoryError/OverflowError) before the
                 # size limit below is ever checked.
                 if total_length > max_file_size:
-                    raise ValueError(
-                        f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB"
-                    )
+                    raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
             # Check if file is too large (before appending)
