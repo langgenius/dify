@@ -78,7 +78,7 @@ dependencies = [
     "starlette>=1.3.1,<2.0.0",
     "tiktoken~=0.12.0",
     "transformers~=5.10.1",
-    "unstructured[docx,epub,md,ppt,pptx]~=0.21.5",
+    "unstructured[docx,epub,md,ppt,pptx]~=0.27.5",
     "pypandoc~=1.13",
     "yarl~=1.24.5",
     "webvtt-py~=0.5.1",
@@ -110,6 +110,9 @@ override-dependencies = [
     "python-dotenv==1.2.2",
     "pyarrow>=18.0.0",
     "cryptography>=50.0.0,<51.0.0",
+    # `tos` hard-pins `wrapt==1.16.0` without importing it, which blocks
+    # `unstructured>=0.24.0` (requires `wrapt>=2.1.1`).
+    "wrapt>=2.1.1,<3.0.0",
  ]
 
 [dependency-groups]
