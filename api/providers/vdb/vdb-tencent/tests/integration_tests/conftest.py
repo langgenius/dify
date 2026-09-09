@@ -99,19 +99,18 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 def setup_tcvectordb_mock(monkeypatch: MonkeyPatch):
     if MOCK:
         transport = InMemoryVdbTransport()
-        for method_name in (
-            "list_databases",
-            "create_database",
-            "create_collection",
-            "describe_collection",
-            "drop_collection",
-            "upsert",
-            "query",
-            "search",
-            "hybrid_search",
-            "delete",
-        ):
-            transport_method = getattr(transport, method_name)
+        for method_name, transport_method in {
+            "list_databases": transport.list_databases,
+            "create_database": transport.create_database,
+            "create_collection": transport.create_collection,
+            "describe_collection": transport.describe_collection,
+            "drop_collection": transport.drop_collection,
+            "upsert": transport.upsert,
+            "query": transport.query,
+            "search": transport.search,
+            "hybrid_search": transport.hybrid_search,
+            "delete": transport.delete,
+        }.items():
 
             def call_transport(client, *args, _method=transport_method, **kwargs):
                 return _method(*args, **kwargs)
