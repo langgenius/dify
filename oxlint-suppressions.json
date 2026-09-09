@@ -4708,14 +4708,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/chat-variable-panel/components/array-value-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-item.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -4732,11 +4724,6 @@
   "web/app/components/workflow/panel/chat-variable-panel/components/variable-item.tsx": {
     "jsx-a11y/mouse-events-have-key-events": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/panel/chat-variable-panel/components/variable-modal.sections.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
