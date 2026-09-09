@@ -525,3 +525,48 @@ it.each(['Suspense', 'Activity'] as const)(
     }
   },
 )
+
+it.each([
+  { destination: '/documents?page=9', expected: '9', fails: false },
+  { destination: '/documents?page=9', expected: '9', fails: true },
+  { destination: '/documents?page=2&other=keep', expected: '3', fails: false },
+])(
+  'reconciles deferred browser history after refresh ($destination, fails=$fails)',
+  async ({ destination, expected, fails }) => {
+    vi.useFakeTimers()
+    try {
+      window.history.replaceState(null, '', '/documents?page=1')
+      await Promise.resolve()
+      let store!: ReturnType<typeof createStore>
+      let draft: Promise<URLSearchParams> | undefined
+      const failure = new Error('refresh failed after navigation')
+      const adapter = createBrowserQueryAdapter({
+        initialUrl: new URL(window.location.href),
+        refresh() {
+          draft = store.set(pageAtom, 3, { limitUrlUpdates: debounce(300) })
+          window.history.replaceState(null, '', destination)
+          if (fails) throw failure
+        },
+      })
+      function Capture() {
+        store = useStore()
+        return null
+      }
+      render(
+        <QueryStateProvider adapter={adapter}>
+          <Capture />
+        </QueryStateProvider>,
+      )
+      const commit = store.set(pageAtom, 2, { shallow: false })
+      await vi.advanceTimersByTimeAsync(0)
+      if (fails) await expect(commit).rejects.toBe(failure)
+      else await commit
+      expect(store.get(pageAtom)).toBe(Number(expected))
+      await vi.runAllTimersAsync()
+      expect((await draft)?.get('page')).toBe(expected)
+      expect(window.location.search).toBe(expected === '9' ? '?page=9' : '?other=keep&page=3')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)

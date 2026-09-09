@@ -104,13 +104,17 @@ export function createQueryRuntime(adapter: QueryAdapter) {
         lastWrite = Date.now()
         adapter.write(next, options)
       }
-      confirmed = adapter.read()
+      // Reconcile before advancing confirmed: browser history notifications
+      // may still be queued, including an external navigation from refresh.
+      receive({ url: adapter.read() })
       // Adapter callbacks may have queued a new draft during this commit.
       publish(applyPending(confirmed))
       store.set(errorAtom, null)
       settled.forEach(({ resolve }) => resolve(new URLSearchParams(confirmed.searchParams)))
     } catch (error) {
-      confirmed = adapter.read()
+      // Reconcile before advancing confirmed: browser history notifications
+      // may still be queued, including an external navigation from refresh.
+      receive({ url: adapter.read() })
       // Adapter callbacks may have queued a new draft during this commit.
       publish(applyPending(confirmed))
       store.set(errorAtom, error)
