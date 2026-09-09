@@ -1,5 +1,7 @@
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuPopup,
@@ -13,7 +15,7 @@ import Operations from './operations'
 
 type ActionsProps = {
   onApplyTemplate: () => void
-  handleShowTemplateDetails: () => void
+  detailsDialogHandle: DialogHandle
   showMoreOperations: boolean
   openEditModal: () => void
   handleExportDSL: (includeSecret?: boolean) => void
@@ -22,7 +24,7 @@ type ActionsProps = {
 
 const Actions = ({
   onApplyTemplate,
-  handleShowTemplateDetails,
+  detailsDialogHandle,
   showMoreOperations,
   openEditModal,
   handleExportDSL,
@@ -34,18 +36,24 @@ const Actions = ({
   return (
     <div
       className={cn(
-        'absolute bottom-0 left-0 z-10 w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8',
-        isMoreOperationsOpen ? 'flex' : 'hidden group-hover:flex',
+        'absolute bottom-0 left-0 z-10 flex w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8',
+        !isMoreOperationsOpen &&
+          'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100',
       )}
     >
       <Button variant="primary" onClick={onApplyTemplate} className="grow">
         <span aria-hidden className="i-ri-add-line size-4" />
         <span>{t(($) => $['operations.choose'], { ns: 'datasetPipeline' })}</span>
       </Button>
-      <Button variant="secondary" onClick={handleShowTemplateDetails} className="grow">
-        <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-        <span>{t(($) => $['operations.details'], { ns: 'datasetPipeline' })}</span>
-      </Button>
+      <DialogTrigger
+        handle={detailsDialogHandle}
+        render={
+          <Button variant="secondary" className="grow">
+            <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
+            <span>{t(($) => $['operations.details'], { ns: 'datasetPipeline' })}</span>
+          </Button>
+        }
+      />
       {showMoreOperations && (
         <DropdownMenu open={isMoreOperationsOpen} onOpenChange={setIsMoreOperationsOpen}>
           <DropdownMenuTrigger

@@ -9,11 +9,13 @@ import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  createDrawerHandle,
   Drawer,
   DrawerBackdrop,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -42,6 +44,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
+  const [drawerHandle] = useState(() => createDrawerHandle())
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -187,9 +190,11 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
                   currentLog?.id !== log.id ? '' : 'bg-background-default-hover',
                 )}
-                onClick={() => {
-                  setCurrentLog(log)
-                  setShowDrawer(true)
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest('button, a')) return
+                  event.currentTarget
+                    .querySelector<HTMLButtonElement>('button[data-log-detail-trigger]')
+                    ?.click()
                 }}
               >
                 <td className="h-4">
@@ -200,10 +205,21 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   )}
                 </td>
                 <td className="w-45 p-3 pr-2">
-                  {formatTime(
-                    log.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  <DrawerTrigger
+                    data-log-detail-trigger
+                    handle={drawerHandle}
+                    className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setCurrentLog(log)
+                      setShowDrawer(true)
+                    }}
+                  >
+                    {formatTime(
+                      log.created_at,
+                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                    )}
+                  </DrawerTrigger>
                 </td>
                 <td className="p-3 pr-2">{statusTdRender(log.workflow_run.status)}</td>
                 <td className="p-3 pr-2">
@@ -238,6 +254,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </tbody>
       </table>
       <Drawer
+        handle={drawerHandle}
         open={showDrawer}
         modal
         swipeDirection="right"

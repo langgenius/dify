@@ -19,11 +19,13 @@ import type { App } from '@/types/app'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  createDrawerHandle,
   Drawer,
   DrawerBackdrop,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -776,6 +778,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
+  const [drawerHandle] = useState(() => createDrawerHandle())
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<
     ConversationSelection | undefined
@@ -964,7 +967,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
                   activeConversationId !== log.id ? '' : 'bg-background-default-hover',
                 )}
-                onClick={() => handleRowClick(log)}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest('button, a')) return
+                  event.currentTarget
+                    .querySelector<HTMLButtonElement>('button[data-log-detail-trigger]')
+                    ?.click()
+                }}
               >
                 <td className="h-4">
                   {!log.read_at && (
@@ -1037,10 +1045,20 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   )}
                 </td>
                 <td className="w-40 p-3 pr-2">
-                  {formatTime(
-                    log.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  <DrawerTrigger
+                    data-log-detail-trigger
+                    handle={drawerHandle}
+                    className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      handleRowClick(log)
+                    }}
+                  >
+                    {formatTime(
+                      log.created_at,
+                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                    )}
+                  </DrawerTrigger>
                 </td>
               </tr>
             )
@@ -1048,6 +1066,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </tbody>
       </table>
       <Drawer
+        handle={drawerHandle}
         open={showDrawer}
         modal
         swipeDirection="right"

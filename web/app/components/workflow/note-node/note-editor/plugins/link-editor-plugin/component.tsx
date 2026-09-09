@@ -14,7 +14,7 @@ type LinkEditorComponentProps = {
 }
 const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => {
   const { t } = useTranslation()
-  const { handleSaveLink, handleUnlink } = useLink()
+  const { handleSaveLink, handleUnlink, restoreEditorFocus } = useLink()
   const selectedLinkUrl = useStore((s) => s.selectedLinkUrl)
   const linkAnchorElement = useStore((s) => s.linkAnchorElement)
   const linkOperatorShow = useStore((s) => s.linkOperatorShow)
@@ -83,6 +83,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                       e.preventDefault()
                       e.stopPropagation()
                       handleCancelLinkEdit()
+                      restoreEditorFocus()
                     }
                   }}
                   placeholder={t(($) => $['nodes.note.editor.enterUrl'], { ns: 'workflow' }) || ''}

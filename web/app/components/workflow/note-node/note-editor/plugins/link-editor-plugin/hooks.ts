@@ -103,8 +103,12 @@ export const useLink = () => {
     const { setLinkAnchorElement } = noteEditorStore.getState()
     setLinkAnchorElement()
   }, [editor, noteEditorStore])
+  const restoreEditorFocus = useCallback(() => {
+    editor.focus()
+  }, [editor])
   return {
     handleSaveLink,
     handleUnlink,
+    restoreEditorFocus,
   }
 }
