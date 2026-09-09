@@ -42,7 +42,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepository,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.boundary import defer_human_input_edges_until_completion
+from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
@@ -61,6 +61,7 @@ from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_e
 from graphon.entities import GraphInitParams, WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.filters import GraphEventFilterContext, filter_graph_events
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
@@ -70,6 +71,7 @@ from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     NodeRunExceptionEvent,
+    NodeRunHumanInputFormFilledEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
@@ -81,7 +83,7 @@ from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -337,7 +339,19 @@ def test_human_input_callback_completes_on_timeout_handle():
 
 
 def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
-    return _publish_graph_events(node.run())
+    return _publish_graph_events(_filter_human_input_events(node.run(), node=node))
+
+
+def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: HumanInputNode | None = None):
+    node = node or _build_node()
+    return filter_graph_events(
+        events,
+        context=GraphEventFilterContext(
+            graph=Graph(root_node=node),
+            runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
+        ),
+        filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+    )
 
 
 def test_human_input_edge_deferral_does_not_block_other_branches():
@@ -348,12 +362,13 @@ def test_human_input_edge_deferral_does_not_block_other_branches():
     skipped = GraphEdgeSkippedEvent(edge_id="human-skipped", source_node_id="node-1", target_node_id="skipped")
     parallel_edge = GraphEdgeTakenEvent(edge_id="parallel-answer", source_node_id="parallel", target_node_id="answer-2")
     events = iter([started, loop_edge, human_edge, skipped, parallel_edge, succeeded])
-    adapted = defer_human_input_edges_until_completion(events)
+    adapted = _filter_human_input_events(events)
 
     assert next(adapted) == started
     assert next(adapted) == loop_edge
     assert next(adapted) == skipped
     assert next(adapted) == parallel_edge
+    assert isinstance(next(adapted), NodeRunHumanInputFormFilledEvent)
     assert next(adapted) == succeeded
     assert list(adapted) == [human_edge]
 
@@ -378,7 +393,12 @@ def test_human_input_edges_follow_their_own_completion_across_repeated_execution
         repeated_succeeded,
     ]
 
-    assert list(defer_human_input_edges_until_completion(events)) == [
+    adapted = list(_filter_human_input_events(events))
+    for index, event in enumerate(adapted):
+        if isinstance(event, NodeRunHumanInputFormFilledEvent):
+            assert isinstance(adapted[index + 1], NodeRunSucceededEvent)
+            assert adapted[index + 1].id == event.id
+    assert [event for event in adapted if not isinstance(event, NodeRunHumanInputFormFilledEvent)] == [
         started,
         other_started,
         other_succeeded,
@@ -396,7 +416,7 @@ def test_human_input_error_branch_follows_exception_completion():
     failed = NodeRunExceptionEvent(**succeeded.model_dump(), error="Form unavailable")
     edge = GraphEdgeTakenEvent(edge_id="human-error", source_node_id="node-1", target_node_id="error-answer")
 
-    assert list(defer_human_input_edges_until_completion([started, edge, failed])) == [started, failed, edge]
+    assert list(_filter_human_input_events([started, edge, failed])) == [started, failed, edge]
 
 
 @pytest.mark.parametrize("aborted", [False, True])
@@ -405,7 +425,7 @@ def test_interrupted_human_input_does_not_activate_downstream_response(aborted: 
     edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
     terminal_events = [GraphRunAbortedEvent()] if aborted else []
 
-    assert list(defer_human_input_edges_until_completion([started, edge, *terminal_events])) == [
+    assert list(_filter_human_input_events([started, edge, *terminal_events])) == [
         started,
         *terminal_events,
     ]
@@ -419,7 +439,9 @@ def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
     first_result = succeeded.model_copy(update={"id": "first", "in_loop_id": "loop-1"})
     second_result = succeeded.model_copy(update={"id": "second", "in_iteration_id": "iteration-2"})
 
-    events = _publish_graph_events([first_start, second_start, second_result, first_result])
+    events = _publish_graph_events(
+        _filter_human_input_events([first_start, second_start, second_result, first_result], node=node)
+    )
 
     filled = [event for event in events if isinstance(event, QueueHumanInputFormFilledEvent)]
     assert [(event.node_execution_id, event.node_title) for event in filled] == [

@@ -1,20 +1,25 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes
+from graphon.filters import GraphEventFilterContext
 from graphon.graph_events import (
     GraphEdgeTakenEvent,
     GraphEngineEvent,
     NodeRunExceptionEvent,
+    NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 
+from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
 from .pause_reason import HumanInputRequired, PauseReason
 from .session_binding import default_session_binding
 
@@ -23,31 +28,88 @@ class HumanInputPauseReasonResolutionError(LookupError):
     """Raised when a graph pause reason cannot be resolved into Dify-owned form state."""
 
 
-def defer_human_input_edges_until_completion(events: Iterable[GraphEngineEvent]) -> Iterator[GraphEngineEvent]:
-    """Keep Human Input completion ahead of dependent response text.
+class HumanInputFormEventFilter:
+    """Adapt HITL callback results into Dify's form lifecycle event stream."""
 
-    Graphon's dispatcher collects taken edges before their source node's result.
-    ResponseStreamFilter can turn those edges into Answer text immediately, so
-    defer Human Input's taken edges until the runner can publish its form and
-    node completion events. Other branches continue streaming independently.
+    def __init__(self, *, form_repository: HumanInputFormSubmissionRepository) -> None:
+        self._form_repository = form_repository
+        self._node_titles: dict[str, str] = {}
+        self._human_input_nodes: set[str] = set()
+        self._pending_edges: dict[str, list[GraphEdgeTakenEvent]] = {}
+        self._app_id: str | None = None
 
-    Traversal events have no execution ID. The dispatcher processes each result
-    and its edges serially, so a source node ID identifies the pending batch even
-    across repeated executions in containers. An interrupted batch is discarded:
-    it must not activate a response without its source node's completion.
-    """
-    human_input_nodes: set[str] = set()
-    pending_edges: dict[str, list[GraphEdgeTakenEvent]] = {}
-    for event in events:
+    @property
+    def filter_id(self) -> str:
+        return "dify-human-input-form-events"
+
+    def initialize(self, context: GraphEventFilterContext) -> None:
+        self._node_titles.clear()
+        self._human_input_nodes.clear()
+        self._pending_edges.clear()
+        self._app_id = get_system_text(context.runtime_state.variable_pool, SystemVariableKey.APP_ID)
+
+    def on_event(self, event: GraphEngineEvent) -> Iterable[GraphEngineEvent]:
+        if isinstance(event, GraphEdgeTakenEvent) and event.source_node_id in self._human_input_nodes:
+            # Graphon collects taken edges before their source node's result.
+            # Delay only Human Input's edges so dependent Answers cannot stream
+            # until both the form notification and node completion are emitted.
+            # The dispatcher processes each result and its edges serially, so
+            # source node IDs identify batches even across repeated executions.
+            self._pending_edges.setdefault(event.source_node_id, []).append(event)
+            return
+
         if isinstance(event, NodeRunStartedEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
-            human_input_nodes.add(event.node_id)
-        if isinstance(event, GraphEdgeTakenEvent) and event.source_node_id in human_input_nodes:
-            pending_edges.setdefault(event.source_node_id, []).append(event)
-            continue
+            self._human_input_nodes.add(event.node_id)
+            self._node_titles[event.id] = event.node_title
+        elif isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
+            yield self._completion_event(event)
 
         yield event
         if isinstance(event, NodeRunSucceededEvent | NodeRunExceptionEvent):
-            yield from pending_edges.pop(event.node_id, [])
+            yield from self._pending_edges.pop(event.node_id, [])
+
+    def flush(self) -> Iterable[GraphEngineEvent]:
+        # An interrupted batch must not activate responses without completion.
+        self._pending_edges.clear()
+        return ()
+
+    def _completion_event(
+        self, event: NodeRunSucceededEvent
+    ) -> NodeRunHumanInputFormFilledEvent | NodeRunHumanInputFormTimeoutEvent:
+        # Titles are present only on start events. Key by execution ID so loop
+        # iterations and concurrent executions do not share completion metadata.
+        node_title = self._node_titles.pop(event.id)
+        result = event.node_run_result
+        if result.edge_source_handle == TIMEOUT_HANDLE:
+            # The callback's timeout result omits the deadline. Resolve the form
+            # by its bound execution ID rather than choosing a form by node ID.
+            form = self._form_repository.get_by_form_id(event.id)
+            if form is None or form.app_id != self._app_id or form.node_id != event.node_id:
+                raise ValueError(f"Cannot resolve timed-out human input form for node execution {event.id}")
+            return NodeRunHumanInputFormTimeoutEvent(
+                id=event.id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                node_title=node_title,
+                node_version=event.node_version,
+                in_iteration_id=event.in_iteration_id,
+                in_loop_id=event.in_loop_id,
+                expiration_time=form.expiration_time,
+            )
+
+        return NodeRunHumanInputFormFilledEvent(
+            id=event.id,
+            node_id=event.node_id,
+            node_type=event.node_type,
+            node_title=node_title,
+            node_version=event.node_version,
+            in_iteration_id=event.in_iteration_id,
+            in_loop_id=event.in_loop_id,
+            rendered_content=result.outputs[OUTPUT_FIELD_RENDERED_CONTENT].text,
+            action_id=result.outputs[OUTPUT_FIELD_ACTION_ID].text,
+            action_text=result.outputs[OUTPUT_FIELD_ACTION_VALUE].text,
+            submitted_data=result.inputs,
+        )
 
 
 def enrich_graph_pause_reasons(
