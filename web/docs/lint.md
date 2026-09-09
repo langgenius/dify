@@ -113,7 +113,7 @@ Use `lint.config.ts` overrides only when a rule is intentionally inapplicable to
 
 Explain the concrete reason after `--`: which external contract, lifecycle, or rule limitation makes the exception necessary. A description that merely repeats the rule or says "fix lint" is insufficient. New or modified disables must include this explanation; existing test typing exceptions can be addressed incrementally.
 
-`dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `warn` while existing undescribed exceptions are reviewed; enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
+`dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `error`; existing undescribed exceptions are tracked in the bulk-suppression baseline for incremental cleanup. Enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
 
