@@ -3328,14 +3328,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/memory-config.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/next-step/operator.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -3796,19 +3788,9 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/iteration/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/iteration/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 6
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/knowledge-base/components/option-card.tsx": {
