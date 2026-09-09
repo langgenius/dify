@@ -4,10 +4,15 @@ import { TASK_DRAWER_LIMIT } from '../tasks/drawer-model'
 import { createTaskProgressStore } from '../tasks/progress-store'
 import { createTaskRuntimeState } from '../tasks/runtime-state'
 import { documentBulkPendingActionAtom } from './bulk'
+import {
+  documentsDownloadPermissionAtom,
+  documentsKnowledgeSpaceIdAtom,
+  documentsSpaceContextAtom,
+} from './inputs'
 import { documentRowPendingActionsAtom } from './row-actions'
 import {
   documentModelReadyActionAtom,
-  documentPermissionRuntimeAtom,
+  documentPermissionRecoveryStateOverrideAtom,
   documentTaskRuntimeBridgeAtom,
 } from './runtime'
 import { documentUploadingAtom } from './upload'
@@ -21,6 +26,9 @@ export const taskRuntimeStateAtom = atomWithLazy(createTaskRuntimeState)
 export const taskProgressStoreAtom = atomWithLazy(createTaskProgressStore)
 
 export const documentsScopedAtoms = [
+  documentsKnowledgeSpaceIdAtom,
+  documentsSpaceContextAtom,
+  documentsDownloadPermissionAtom,
   documentTasksOpenAtom,
   documentTaskDrawerVisibleLimitAtom,
   documentDependencyRetryRequestAtom,
@@ -28,7 +36,7 @@ export const documentsScopedAtoms = [
   selectedDocumentIdsAtom,
   taskRuntimeStateAtom,
   taskProgressStoreAtom,
-  documentPermissionRuntimeAtom,
+  documentPermissionRecoveryStateOverrideAtom,
   documentTaskRuntimeBridgeAtom,
   documentModelReadyActionAtom,
   documentUploadingAtom,

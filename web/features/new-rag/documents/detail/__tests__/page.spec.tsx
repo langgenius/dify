@@ -2269,6 +2269,26 @@ describe('DocumentDetailPage', () => {
     })
   })
 
+  it('offers retry when loading a later URL revision page fails', async () => {
+    const user = userEvent.setup()
+    revisionsQuery.data = {
+      pages: [{ items: [activeRevision({ revision: 3 })], nextCursor: 'older' }],
+    }
+    revisionsQuery.hasNextPage = true
+    revisionsQuery.isFetchNextPageError = true
+    revisionsQuery.error = new Error('Older revisions unavailable')
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      searchParams: '?revision=2',
+    })
+
+    expect(screen.getByText('knowledgeSpace.documentRevisionsLoadError')).toBeVisible()
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+    expect(revisionsQuery.fetchNextPage).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
   it('keeps document actions available when a URL revision is missing', () => {
     revisionsQuery.data = { pages: [{ items: [] }] }
 

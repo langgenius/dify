@@ -88,7 +88,12 @@ export function DocumentRevisionBrowser() {
     revision,
   ])
 
-  if (requestedRevision !== null && !revision && (isPending || isFetchingNextPage || hasNextPage))
+  if (
+    requestedRevision !== null &&
+    !revision &&
+    !error &&
+    (isPending || isFetchingNextPage || hasNextPage)
+  )
     return <RevisionLoadingState />
 
   if (requestedRevision !== null && !revision && error)

@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  KnowledgeFsSpaceCreatePayload,
-  KnowledgeFsSpaceCreateResponse,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsSpaceCreateResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { NewKnowledgeStartMode } from '../routes'
 import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import type {
@@ -36,7 +33,8 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
@@ -62,6 +60,7 @@ import {
 import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
 import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
 import { CreateSourceSetup } from './source-setup'
+import { createSourceSelectionAtom, useCreateInitialSource } from './source-state'
 import { CreateUploadQueue } from './upload-queue'
 import {
   createKnowledge,
@@ -72,14 +71,22 @@ import {
   waitForKnowledgeSpaceReady,
 } from './workflow'
 
-type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
-
 function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
   if (value === 'source' || value === 'upload') return value
   return 'empty'
 }
 
+const sourceSessionAtoms = [createSourceSelectionAtom]
+
 export function CreateKnowledgePage() {
+  return (
+    <ScopeProvider atoms={sourceSessionAtoms}>
+      <CreateKnowledgeSession />
+    </ScopeProvider>
+  )
+}
+
+function CreateKnowledgeSession() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
   const { t: tDatasetCreation } = useTranslation('datasetCreation')
@@ -108,8 +115,8 @@ export function CreateKnowledgePage() {
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
     createNewKnowledgeSourceDraft('websiteCrawl'),
   )
-  const [initialSource, setInitialSource] = useState<InitialSource>()
-  const initialSourceRef = useRef<InitialSource | undefined>(undefined)
+  const initialSource = useCreateInitialSource(sourceDraft, startMode === 'source')
+  const setSourceSelection = useSetAtom(createSourceSelectionAtom)
   const preservePreviewOnUnmountRef = useRef(false)
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
@@ -138,10 +145,6 @@ export function CreateKnowledgePage() {
       !validUploads.length ||
       validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
-  const updateInitialSource = useCallback((source?: InitialSource) => {
-    initialSourceRef.current = source
-    setInitialSource(source)
-  }, [])
   const shouldPreservePreviewOnUnmount = useCallback(() => preservePreviewOnUnmountRef.current, [])
 
   const resetUnsubmittedError = () => {
@@ -223,8 +226,7 @@ export function CreateKnowledgePage() {
 
     if (!normalizedName || nameLengthInvalid || descriptionLengthInvalid) return
 
-    const latestInitialSource = initialSourceRef.current ?? initialSource
-    if (startMode === 'source' && !latestInitialSource) return
+    if (startMode === 'source' && !initialSource) return
 
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
@@ -233,7 +235,7 @@ export function CreateKnowledgePage() {
         existingKnowledge: createdKnowledge,
         description: normalizedDescription,
         idempotencyKey: idempotencyKeyRef.current,
-        initialSource: startMode === 'source' ? latestInitialSource : undefined,
+        initialSource: startMode === 'source' ? initialSource : undefined,
         name: normalizedName,
         onCreated: (knowledgeSpace) => {
           setCreatedKnowledge(knowledgeSpace)
@@ -244,7 +246,7 @@ export function CreateKnowledgePage() {
         visibility,
       })
       const created = result.knowledgeSpace
-      if (startMode === 'source' && latestInitialSource && 'previewJobId' in latestInitialSource)
+      if (startMode === 'source' && initialSource && 'previewJobId' in initialSource)
         preservePreviewOnUnmountRef.current = true
       if (startMode === 'upload') {
         if (result.modelSetupRequired) {
@@ -457,6 +459,7 @@ export function CreateKnowledgePage() {
                       className="mt-2 flex-col items-stretch gap-2"
                       disabled={submissionLocked}
                       onValueChange={(value) => {
+                        setSourceSelection(undefined)
                         setStartMode(value)
                         resetUnsubmittedError()
                       }}
@@ -490,11 +493,10 @@ export function CreateKnowledgePage() {
                             setSourceDraft(value)
                             resetUnsubmittedError()
                           }}
-                          onInitialSourceChange={updateInitialSource}
                           shouldPreservePreviewOnUnmount={shouldPreservePreviewOnUnmount}
                           onSourceTypeChange={(value) => {
                             setSourceDraft(createNewKnowledgeSourceDraft(value))
-                            updateInitialSource(undefined)
+                            setSourceSelection(undefined)
                             resetUnsubmittedError()
                           }}
                         />

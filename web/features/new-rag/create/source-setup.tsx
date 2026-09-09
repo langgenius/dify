@@ -1,31 +1,18 @@
 'use client'
 
-import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import type { CrawlPreviewPage } from '../sources/source-models'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from '@/app/components/header/account-setting/data-source-page-new/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAtom } from 'jotai'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient } from '@/service/console'
-import { useGetDataSourceListAuth } from '@/service/use-datasource'
-import { useDataSourceList } from '@/service/use-pipeline'
 import { ConnectedSourceConfiguration } from '../sources/setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from '../sources/setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from '../sources/setup/datasource-parameter-form'
-import {
-  datasourceIncludeSubpages,
-  invalidDatasourceParameters,
-  missingRequiredDatasourceParameters,
-  websiteDatasourceParameterSchemas,
-  withDatasourceParameterDefaults,
-} from '../sources/setup/datasource-parameter-model'
 import {
   SourceNameField,
   SourceProviderCredentialRequiredCard,
@@ -35,11 +22,12 @@ import {
   SourceSyncPolicyField,
   SourceTypeSelector,
 } from '../sources/setup/fields'
+import { sourceDraftForProviderOption } from '../sources/setup/provider-options'
 import {
-  discoverSourceProviderOptions,
-  sourceDraftForProviderOption,
-  sourceProviderOptionForDraft,
-} from '../sources/setup/provider-options'
+  createSourceSelectionAtom,
+  providerIntegrationPath,
+  useSourceSetupInputs,
+} from './source-state'
 
 const CRAWL_PREVIEW_SKELETONS = [
   { id: 'short', sourceWidth: 'w-22.5', titleWidth: 'w-37.5' },
@@ -50,82 +38,19 @@ const CRAWL_PREVIEW_SKELETONS = [
 const CRAWL_POLL_INTERVAL_MS = 1500
 
 type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
-type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
 type CreateSourceSetupProps = {
   disabled: boolean
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onInitialSourceChange: (source?: InitialSource) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
   shouldPreservePreviewOnUnmount: () => boolean
-}
-
-function datasourceAuthForProvider(
-  authProviders: DataSourceAuth[],
-  pluginId: string,
-  provider: string,
-) {
-  return authProviders.find(
-    (candidate) => candidate.plugin_id === pluginId && candidate.provider === provider,
-  )
-}
-
-function preferredCredential(auth?: DataSourceAuth): DataSourceCredential | undefined {
-  return (
-    auth?.credentials_list.find((credential) => credential.is_default) ?? auth?.credentials_list[0]
-  )
-}
-
-function providerIntegrationPath(packageId?: string) {
-  const base = buildIntegrationPath('data-source')
-  if (!packageId) return base
-  const query = new URLSearchParams({ 'package-ids': JSON.stringify([packageId]) })
-  return `${base}?${query.toString()}`
-}
-
-function websiteSourceUri(parameters: Record<string, boolean | number | string>, fallback: string) {
-  const url = parameters.url
-  if (typeof url === 'string') {
-    try {
-      const parsed = new URL(url)
-      if (['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password)
-        return parsed.toString()
-    } catch {
-      // Non-URL website datasources use a stable synthetic URI.
-    }
-  }
-  return `datasource://${encodeURIComponent(fallback)}`
 }
 
 export function CreateSourceSetup(props: CreateSourceSetupProps) {
   const { disabled, draft, onDraftChange, onSourceTypeChange } = props
   const { t } = useTranslation('knowledgeSpace')
-  const datasourcePluginsQuery = useDataSourceList(true)
-  const datasourceAuthQuery = useGetDataSourceListAuth()
-  const providerOptions = useMemo(
-    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
-    [datasourcePluginsQuery.data, draft.sourceType],
-  )
-  const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
-  const providerDraft = useMemo(
-    () => (providerOption ? sourceDraftForProviderOption(draft, providerOption) : draft),
-    [draft, providerOption],
-  )
-  const datasourceAuth = providerOption
-    ? datasourceAuthForProvider(
-        datasourceAuthQuery.data?.result ?? [],
-        providerOption.plugin.plugin_id,
-        providerOption.plugin.provider,
-      )
-    : undefined
-  const credential = preferredCredential(datasourceAuth)
-  const sessionKey = [
-    draft.sourceType,
-    providerOption?.key ?? 'no-provider',
-    providerOption?.plugin.plugin_unique_identifier ?? 'no-plugin-version',
-    credential?.id ?? 'no-credential',
-  ].join(':')
-
+  const { datasourcePluginsQuery, providerOptions, providerOption, providerDraft, sessionKey } =
+    useSourceSetupInputs(draft)
   const selectProvider = (providerKey: string) => {
     const nextProvider = providerOptions.find((option) => option.key === providerKey)
     if (!nextProvider) return
@@ -191,58 +116,32 @@ function CreateSourceSetupSession({
   disabled,
   draft,
   onDraftChange,
-  onInitialSourceChange,
   shouldPreservePreviewOnUnmount,
 }: CreateSourceSetupProps) {
   const { t } = useTranslation('knowledgeSpace')
-  const datasourcePluginsQuery = useDataSourceList(true)
-  const datasourceAuthQuery = useGetDataSourceListAuth()
+  const {
+    datasourcePluginsQuery,
+    datasourceAuthQuery,
+    providerOption: installedProviderOption,
+    providerDraft,
+    credential,
+    sessionKey,
+    parameterSchemas,
+    parameters,
+    parametersValid,
+    sourceUri,
+  } = useSourceSetupInputs(draft)
+  const [selection, setSelection] = useAtom(createSourceSelectionAtom)
+  const currentSelection = selection?.sessionKey === sessionKey ? selection : undefined
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
   const [stoppingPreview, setStoppingPreview] = useState(false)
   const [previewPages, setPreviewPages] = useState<CrawlPreviewPage[]>([])
-  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
+  const selectedPageIds = new Set(
+    currentSelection?.kind === 'website' ? currentSelection.pages.map((page) => page.pageId) : [],
+  )
   const crawlAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
   const previewFingerprintRef = useRef<string | undefined>(undefined)
-  const providerOptions = useMemo(
-    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
-    [datasourcePluginsQuery.data, draft.sourceType],
-  )
-  const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
-  const providerDraft = useMemo(
-    () => (providerOption ? sourceDraftForProviderOption(draft, providerOption) : draft),
-    [draft, providerOption],
-  )
-  const installedProviderOption = providerOption
-  const datasourceAuth = installedProviderOption
-    ? datasourceAuthForProvider(
-        datasourceAuthQuery.data?.result ?? [],
-        installedProviderOption.plugin.plugin_id,
-        installedProviderOption.plugin.provider,
-      )
-    : undefined
-  const credential = preferredCredential(datasourceAuth)
-  const parameterSchemas = useMemo(
-    () =>
-      draft.sourceType === 'websiteCrawl' && installedProviderOption
-        ? websiteDatasourceParameterSchemas(installedProviderOption.datasource)
-        : [],
-    [draft.sourceType, installedProviderOption],
-  )
-  const parameters = useMemo(() => {
-    const current = withDatasourceParameterDefaults(parameterSchemas, providerDraft.parameters)
-    if (
-      providerDraft.sourceType === 'websiteCrawl' &&
-      providerDraft.rootUrl &&
-      parameterSchemas.some((parameter) => parameter.name === 'url') &&
-      current.url === undefined
-    )
-      current.url = providerDraft.rootUrl
-    return current
-  }, [parameterSchemas, providerDraft])
-  const parametersValid =
-    !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
-    !invalidDatasourceParameters(parameterSchemas, parameters).length
   const selectionPages = previewPages
   const previewReady = Boolean(
     providerDraft.sourceType === 'websiteCrawl' &&
@@ -251,9 +150,6 @@ function CreateSourceSetupSession({
     parametersValid &&
     providerDraft.sourceName.trim(),
   )
-  const sourceUri = installedProviderOption
-    ? websiteSourceUri(parameters, installedProviderOption.key)
-    : ''
   const selectionRootUrl =
     typeof parameters.url === 'string' && sourceUri.startsWith('http') ? sourceUri : undefined
   const cancelPreviewBestEffort = () => {
@@ -313,8 +209,7 @@ function CreateSourceSetupSession({
     cancelPreviewBestEffort()
     setCrawlState('idle')
     setPreviewPages([])
-    setSelectedPageIds(new Set())
-    onInitialSourceChange(undefined)
+    setSelection(undefined)
   }
   const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
@@ -333,9 +228,9 @@ function CreateSourceSetupSession({
             params: { job_id: jobId },
           })
           .catch(() => {})
-      onInitialSourceChange(undefined)
+      setSelection(undefined)
     },
-    [onInitialSourceChange, shouldPreservePreviewOnUnmount],
+    [setSelection, shouldPreservePreviewOnUnmount],
   )
 
   const startPreview = async () => {
@@ -349,7 +244,7 @@ function CreateSourceSetupSession({
     const attempt = crawlAttemptRef.current + 1
     crawlAttemptRef.current = attempt
     setPreviewPages([])
-    setSelectedPageIds(new Set())
+    setSelection(undefined)
     setCrawlState('running')
     try {
       const job = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.post({
@@ -418,67 +313,14 @@ function CreateSourceSetupSession({
   }
 
   const updateSelectedPageIds = (pageIds: Set<string>) => {
-    setSelectedPageIds(pageIds)
-  }
-
-  useEffect(() => {
-    if (providerDraft.sourceType !== 'websiteCrawl') {
-      if (!installedProviderOption || !credential) onInitialSourceChange(undefined)
-      return
-    }
-    if (
-      crawlState !== 'success' ||
-      !selectionPages.length ||
-      !installedProviderOption ||
-      !credential
-    ) {
-      onInitialSourceChange(undefined)
-      return
-    }
-    const selectedPages = selectionPages.filter((page) => selectedPageIds.has(page.pageId))
-    if (!selectedPages.length) {
-      onInitialSourceChange(undefined)
-      return
-    }
-    onInitialSourceChange({
-      crawl_options: {
-        include_subpages: datasourceIncludeSubpages(parameters),
-        limit: typeof parameters.limit === 'number' ? parameters.limit : 200,
-      },
-      credentialId: credential.id,
-      datasource: installedProviderOption.datasource.identity.name,
-      kind: 'website_crawl',
-      name: providerDraft.sourceName.trim(),
-      pluginId: installedProviderOption.plugin.plugin_id,
-      provider: installedProviderOption.plugin.provider,
-      providerDisplayName: installedProviderOption.label,
-      parameters,
-      ...(previewJobIdRef.current ? { previewJobId: previewJobIdRef.current } : {}),
-      ...(previewFingerprintRef.current
-        ? { previewConfigurationFingerprint: previewFingerprintRef.current }
-        : {}),
-      root_url: sourceUri,
-      selection: selectedPages.map((page) => ({
-        pageId: page.pageId,
-        source_url: page.sourceUrl,
-        ...(page.title ? { title: page.title } : {}),
-      })),
-      ...(providerDraft.syncPolicy === 'custom' && providerDraft.customIntervalSeconds
-        ? { custom_interval_seconds: providerDraft.customIntervalSeconds }
-        : {}),
-      sync_policy: providerDraft.syncPolicy,
+    setSelection({
+      sessionKey,
+      kind: 'website',
+      pages: selectionPages.filter((page) => pageIds.has(page.pageId)),
+      previewJobId: previewJobIdRef.current,
+      previewConfigurationFingerprint: previewFingerprintRef.current,
     })
-  }, [
-    crawlState,
-    credential,
-    installedProviderOption,
-    onInitialSourceChange,
-    parameters,
-    providerDraft,
-    selectedPageIds,
-    selectionPages,
-    sourceUri,
-  ])
+  }
 
   return (
     <>
@@ -667,7 +509,10 @@ function CreateSourceSetupSession({
           }}
           providerOption={installedProviderOption}
           onDraftChange={updateDraftWithoutReset}
-          onInitialSourceChange={onInitialSourceChange}
+          selection={currentSelection?.kind === 'connected' ? currentSelection.resources : []}
+          onSelectionChange={(resources) =>
+            setSelection({ sessionKey, kind: 'connected', resources })
+          }
         />
       ) : null}
     </>

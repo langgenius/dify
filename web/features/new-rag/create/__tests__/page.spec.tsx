@@ -2110,6 +2110,64 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
+  it('clears hidden drive selections when retry replaces the preview with the first page', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, googleDriveDatasourcePlugin]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, googleDriveDatasourceAuth],
+    }
+    const firstFile = {
+      bucket: null,
+      id: 'file-1',
+      mime_type: 'application/pdf',
+      name: 'First.pdf',
+      provider_item_id: '["","file-1"]',
+      size: 128,
+      type: 'application/pdf',
+    }
+    const firstPage = {
+      files: [firstFile],
+      kind: 'online_drive',
+      next_page_parameters: { cursor: 'second' },
+    }
+    serviceMock.previewInitialSource
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce({
+        files: [
+          { ...firstFile, id: 'file-2', name: 'Second.pdf', provider_item_id: '["","file-2"]' },
+        ],
+        kind: 'online_drive',
+        next_page_parameters: { cursor: 'third' },
+      })
+      .mockRejectedValueOnce(new Error('Page unavailable'))
+      .mockResolvedValueOnce(firstPage)
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeSpace.sourceNamePlaceholder'),
+      'Drive archive',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Second.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'knowledgeSpace.retryProviderLoad' }),
+    )
+
+    await screen.findByRole('checkbox', { name: 'First.pdf' })
+    expect(screen.queryByRole('checkbox', { name: 'Second.pdf' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' })).toBeDisabled()
+    await user.click(screen.getByRole('checkbox', { name: 'First.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.createTitle' }))
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source.selection).toEqual([
+      expect.objectContaining({ id: 'file-1' }),
+    ])
+  })
+
   it('limits a paginated drive selection to the backend maximum', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'

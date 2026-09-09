@@ -1,23 +1,22 @@
 'use client'
 
-import type {
-  KnowledgeFsInitialSourcePreviewDocumentResponse,
-  KnowledgeFsInitialSourcePreviewFileResponse,
-  KnowledgeFsSpaceCreatePayload,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
-import type { InstalledSourceProviderOption } from './provider-options'
 import type {
-  NewKnowledgeOnlineDocumentsSourceDraft,
-  NewKnowledgeOnlineDriveSourceDraft,
-  NewKnowledgeSourceDraft,
-} from './source-draft'
+  ConnectedDraft,
+  ConnectedInitialSource,
+  ConnectedSourceConfigurationBinding,
+  ConnectedSourceSelection,
+  PreviewResource,
+} from './connected-source-selection'
+import type { InstalledSourceProviderOption } from './provider-options'
+import type { NewKnowledgeSourceDraft } from './source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { consoleClient } from '@/service/console'
+import { connectedInitialSource } from './connected-source-selection'
 import { DatasourceParameterForm } from './datasource-parameter-form'
 import {
   datasourceParameterSchemas,
@@ -27,20 +26,6 @@ import {
 } from './datasource-parameter-model'
 import { SourceNameField, SourceSyncPolicyField } from './fields'
 
-type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
-type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
-type ConnectedInitialSource = Extract<InitialSource, { kind: 'online_document' | 'online_drive' }>
-type PreviewDocument = KnowledgeFsInitialSourcePreviewDocumentResponse
-type PreviewFile = KnowledgeFsInitialSourcePreviewFileResponse
-type PreviewResource =
-  | {
-      depth: number
-      document: PreviewDocument
-      key: string
-      kind: 'document'
-      parentKey?: string
-    }
-  | { depth: number; file: PreviewFile; key: string; kind: 'file'; parentKey?: string }
 type NextPageRequest = {
   bucket?: string
   depth: number
@@ -49,19 +34,11 @@ type NextPageRequest = {
   prefix?: string
 }
 
-export type ConnectedSourceConfigurationBinding = {
-  credentialId: string
-  datasource: string
-  pluginId: string
-  provider: string
-  providerDisplayName: string
-}
-
 const MAX_SELECTION = 200
 const ROOT_PAGE_SCOPE = 'root'
 const SELECTION_LIMIT_ID = 'create-connected-source-selection-limit'
 
-function isDriveContainer(file: PreviewFile) {
+function isDriveContainer(file: Extract<PreviewResource, { kind: 'file' }>['file']) {
   return /bucket|directory|folder|workspace/i.test(file.type)
 }
 
@@ -83,7 +60,8 @@ type ConnectedSourceConfigurationProps = {
   previewBinding: ConnectedSourceConfigurationBinding
   providerOption: InstalledSourceProviderOption
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onInitialSourceChange: (source?: InitialSource) => void
+  selection: ConnectedSourceSelection
+  onSelectionChange: (selection: ConnectedSourceSelection) => void
 }
 
 export function ConnectedSourceConfiguration(props: ConnectedSourceConfigurationProps) {
@@ -147,7 +125,8 @@ function ConnectedSourceConfigurationFields({
   providerOption,
   renderActions,
   onDraftChange,
-  onInitialSourceChange,
+  selection,
+  onSelectionChange,
 }: {
   disabled: boolean
   draft: ConnectedDraft
@@ -155,12 +134,20 @@ function ConnectedSourceConfigurationFields({
   providerOption: InstalledSourceProviderOption
   renderActions?: (source?: ConnectedInitialSource) => ReactNode
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onInitialSourceChange?: (source?: InitialSource) => void
+  selection?: ConnectedSourceSelection
+  onSelectionChange?: (selection: ConnectedSourceSelection) => void
 }) {
   const { t } = useTranslation('knowledgeSpace')
-  const { credentialId, datasource, pluginId, provider, providerDisplayName } = previewBinding
+  const { credentialId, datasource, pluginId, provider } = previewBinding
   const [resources, setResources] = useState<PreviewResource[]>([])
-  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [localSelection, setLocalSelection] = useState<ConnectedSourceSelection>([])
+  const selectedResources = selection ?? localSelection
+  const selected = new Set(selectedResources.map((resource) => resource.key))
+  const updateSelection = (keys: Set<string>) => {
+    const next = resources.filter((resource) => keys.has(resource.key))
+    if (onSelectionChange) onSelectionChange(next)
+    else setLocalSelection(next)
+  }
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -201,81 +188,13 @@ function ConnectedSourceConfigurationFields({
     })
   }, [expanded, resources])
 
-  const initialSource = useMemo<ConnectedInitialSource | undefined>(() => {
-    const selectedResources = selectableResources.filter((resource) => selected.has(resource.key))
-    const name = draft.sourceName.trim()
-    if (!name || !selectedResources.length) return undefined
-    const binding = {
-      credentialId,
-      datasource,
-      parameters,
-      pluginId,
-      provider,
-      providerDisplayName,
-    }
-    if (!driveTransport) {
-      return {
-        ...binding,
-        kind: 'online_document',
-        name,
-        selection: selectedResources.flatMap((resource) =>
-          resource.kind === 'document'
-            ? [
-                {
-                  lastEditedTime: resource.document.last_edited_time ?? undefined,
-                  name: resource.document.name,
-                  pageId: resource.document.page_id,
-                  providerItemId: resource.document.provider_item_id,
-                  type: resource.document.type,
-                  workspaceId: resource.document.workspace_id,
-                },
-              ]
-            : [],
-        ),
-        ...(draft.syncPolicy === 'custom' && draft.customIntervalSeconds
-          ? { custom_interval_seconds: draft.customIntervalSeconds }
-          : {}),
-        sync_policy: draft.syncPolicy,
-      }
-    }
-    return {
-      ...binding,
-      kind: 'online_drive',
-      name,
-      selection: selectedResources.flatMap((resource) =>
-        resource.kind === 'file'
-          ? [
-              {
-                bucket: resource.file.bucket ?? undefined,
-                id: resource.file.id,
-                mimeType: resource.file.mime_type ?? undefined,
-                name: resource.file.name,
-                providerItemId: resource.file.provider_item_id,
-              },
-            ]
-          : [],
-      ),
-      ...(draft.syncPolicy === 'custom' && draft.customIntervalSeconds
-        ? { custom_interval_seconds: draft.customIntervalSeconds }
-        : {}),
-      sync_policy: draft.syncPolicy,
-    }
-  }, [
+  const initialSource = connectedInitialSource(
     draft,
-    driveTransport,
+    previewBinding,
     parameters,
-    credentialId,
-    datasource,
-    pluginId,
-    provider,
-    providerDisplayName,
-    selectableResources,
-    selected,
-  ])
-
-  useEffect(() => {
-    onInitialSourceChange?.(initialSource)
-  }, [initialSource, onInitialSourceChange])
+    selectedResources,
+    driveTransport,
+  )
 
   const requestPreview = useCallback(
     async ({
@@ -294,6 +213,10 @@ function ConnectedSourceConfigurationFields({
       prefix?: string
     } = {}) => {
       if (!parametersValid) return
+      if (!append) {
+        if (onSelectionChange) onSelectionChange([])
+        else setLocalSelection([])
+      }
       append ? setLoadingMore(true) : setLoading(true)
       setError(false)
       try {
@@ -357,32 +280,37 @@ function ConnectedSourceConfigurationFields({
         setLoadingMore(false)
       }
     },
-    [driveTransport, parameters, parametersValid, credentialId, datasource, pluginId, provider],
+    [
+      driveTransport,
+      parameters,
+      parametersValid,
+      credentialId,
+      datasource,
+      pluginId,
+      provider,
+      onSelectionChange,
+    ],
   )
 
   const toggle = (key: string) => {
-    setSelected((current) => {
-      const next = new Set(current)
-      if (next.has(key)) next.delete(key)
-      else if (next.size < MAX_SELECTION) next.add(key)
-      return next
-    })
+    const next = new Set(selected)
+    if (next.has(key)) next.delete(key)
+    else if (next.size < MAX_SELECTION) next.add(key)
+    updateSelection(next)
   }
   const toggleAll = () => {
-    setSelected((current) => {
-      const next = new Set(current)
-      const allSelected =
-        selectableResources.length > 0 &&
-        selectableResources.every((resource) => current.has(resource.key))
-      for (const resource of selectableResources) {
-        if (allSelected) next.delete(resource.key)
-        else {
-          if (next.size >= MAX_SELECTION) break
-          next.add(resource.key)
-        }
+    const next = new Set(selected)
+    const allSelected =
+      selectableResources.length > 0 &&
+      selectableResources.every((resource) => selected.has(resource.key))
+    for (const resource of selectableResources) {
+      if (allSelected) next.delete(resource.key)
+      else {
+        if (next.size >= MAX_SELECTION) break
+        next.add(resource.key)
       }
-      return next
-    })
+    }
+    updateSelection(next)
   }
   const expandContainer = (resource: Extract<PreviewResource, { kind: 'file' }>) => {
     if (expanded.has(resource.key)) {
@@ -425,7 +353,7 @@ function ConnectedSourceConfigurationFields({
           schemas={parameterSchemas}
           onChange={(nextParameters) => {
             setResources([])
-            setSelected(new Set())
+            updateSelection(new Set())
             setExpanded(new Set())
             setNextPageRequests(new Map())
             setPreviewed(false)

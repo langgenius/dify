@@ -6,7 +6,16 @@ import type { ProcessingTaskEvent } from './events'
 import type { AuxiliaryTaskReadDenial } from './recovery'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useAtomCallback } from 'jotai/utils'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { taskIsActive, taskVersionIsAfter } from '../model'
 import { documentTasksInfiniteOptions } from '../queries'
 import { responseStatus } from '../request-error'
@@ -19,9 +28,8 @@ import {
 import { taskProgressStoreAtom, taskRuntimeStateAtom } from '../state/scoped'
 import { useQueryDataUpdateCount } from '../use-query-data-update-count'
 import { findBackgroundTask, findBackgroundTasks, taskSnapshotErrorIsTransient } from './recovery'
-import { transitionTaskRuntimeState } from './runtime-state'
 import { mergeTaskOverride } from './snapshot'
-import { activeTasksAtom, effectiveTasksAtom } from './state'
+import { activeTasksAtom, applyTaskRuntimeEventAtom, effectiveTasksAtom } from './state'
 
 const MAX_TASK_EVENT_STREAMS = 6
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
@@ -72,20 +80,8 @@ export function useTaskRuntimeController({
   const refetchTasks = tasksQuery.refetch
 
   const runtimeState = useAtomValue(taskRuntimeStateAtom)
-  const setRuntimeState = useSetAtom(taskRuntimeStateAtom)
-  const runtimeStateRef = useRef(runtimeState)
-  useLayoutEffect(() => {
-    runtimeStateRef.current = runtimeState
-  }, [runtimeState])
-  const applyRuntimeEvent = useCallback(
-    (event: Parameters<typeof transitionTaskRuntimeState>[1]) => {
-      const transition = transitionTaskRuntimeState(runtimeStateRef.current, event)
-      runtimeStateRef.current = transition.state
-      setRuntimeState(transition.state)
-      return transition
-    },
-    [setRuntimeState],
-  )
+  const applyRuntimeEvent = useSetAtom(applyTaskRuntimeEventAtom)
+  const readRuntimeState = useAtomCallback(useCallback((get) => get(taskRuntimeStateAtom), []))
 
   const taskProgressStore = useAtomValue(taskProgressStoreAtom)
   const taskListSnapshotRef = useRef<typeof listSnapshot | null>(null)
@@ -100,10 +96,12 @@ export function useTaskRuntimeController({
     applyRuntimeEvent({ tasks: baseTasks, type: 'list-snapshot' })
   }, [applyRuntimeEvent, baseTasks, listSnapshot])
 
-  const baseTaskByIdRef = useRef(new Map(baseTasks.map((task) => [task.id, task])))
-  useLayoutEffect(() => {
-    baseTaskByIdRef.current = new Map(baseTasks.map((task) => [task.id, task]))
-  }, [baseTasks])
+  const readBaseTask = useAtomCallback(
+    useCallback(
+      (get, _set, taskId: string) => get(baseTasksAtom).find((task) => task.id === taskId),
+      [],
+    ),
+  )
 
   const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
   const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
@@ -123,11 +121,6 @@ export function useTaskRuntimeController({
   const tasks = useAtomValue(effectiveTasksAtom)
   const activeTasks = useAtomValue(activeTasksAtom)
   const effectiveTaskById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
-  useEffect(() => {
-    for (const task of tasks) {
-      if (!taskIsActive(task)) applyRuntimeEvent({ taskId: task.id, type: 'task-inactive' })
-    }
-  }, [applyRuntimeEvent, tasks])
   const orderedActiveTasks = useMemo(
     () =>
       [...activeTasks].sort(
@@ -147,23 +140,20 @@ export function useTaskRuntimeController({
         }),
     [tasks],
   )
-  const orderedFailedTasksRef = useRef(orderedFailedTasks)
-  useLayoutEffect(() => {
-    orderedFailedTasksRef.current = orderedFailedTasks
-  }, [orderedFailedTasks])
+  const readOrderedFailedTasks = useEffectEvent(() => orderedFailedTasks)
 
   const observerVersion = useCallback(
     (task: DocumentProcessingTask) => {
       let latestVersion = task.updatedAt
       for (const candidate of [
-        runtimeStateRef.current.currentVersions.get(task.id),
+        runtimeState.currentVersions.get(task.id),
         taskProgressStore.get(task.id)?.updatedAt,
       ]) {
         if (candidate && taskVersionIsAfter(candidate, latestVersion)) latestVersion = candidate
       }
       return latestVersion
     },
-    [taskProgressStore],
+    [runtimeState.currentVersions, taskProgressStore],
   )
   const streamableActiveTasks = orderedActiveTasks.filter(
     (task) => !auxiliaryTaskReadGuard.isBlocked(task.id, observerVersion(task)),
@@ -262,7 +252,7 @@ export function useTaskRuntimeController({
       reconciliationGeneration: number,
       retryAttempt = 0,
     ) {
-      const currentTask = baseTaskByIdRef.current.get(taskId)
+      const currentTask = readBaseTask(taskId)
       if (!currentTask || auxiliaryTaskReadGuard.isBlocked(taskId, terminalVersion)) return
       cancelTerminalReconciliation(taskId)
       const controller = new AbortController()
@@ -280,7 +270,7 @@ export function useTaskRuntimeController({
         )
           return
         terminalReconciliationControllersRef.current.delete(taskId)
-        const currentTaskVersion = runtimeStateRef.current.currentVersions.get(taskId)
+        const currentTaskVersion = readRuntimeState().currentVersions.get(taskId)
         if (currentTaskVersion && taskVersionIsAfter(currentTaskVersion, snapshot.updatedAt)) return
         if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
         auxiliaryTaskReadGuard.clearTask(taskId)
@@ -303,13 +293,13 @@ export function useTaskRuntimeController({
         if (terminalReconciliationControllersRef.current.get(taskId) !== controller) return
         terminalReconciliationControllersRef.current.delete(taskId)
         if (responseStatus(error) === 403) {
-          const currentTaskVersion = runtimeStateRef.current.currentVersions.get(taskId)
+          const currentTaskVersion = readRuntimeState().currentVersions.get(taskId)
           const deniedVersion =
             currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
               ? currentTaskVersion
               : terminalVersion
           terminalConfirmableAuxiliaryDenialsRef.current.set(taskId, {
-            taskListGeneration: runtimeStateRef.current.listGeneration,
+            taskListGeneration: readRuntimeState().listGeneration,
             taskVersion: deniedVersion,
           })
           denyAuxiliaryTaskRead(taskId, deniedVersion)
@@ -342,6 +332,8 @@ export function useTaskRuntimeController({
       }
     },
     [
+      readBaseTask,
+      readRuntimeState,
       applyRuntimeEvent,
       auxiliaryTaskReadGuard,
       cancelTerminalReconciliation,
@@ -417,12 +409,12 @@ export function useTaskRuntimeController({
   const handleTaskStreamPermissionDenied = useCallback(
     (taskId: string, taskVersion: string) => {
       terminalConfirmableAuxiliaryDenialsRef.current.set(taskId, {
-        taskListGeneration: runtimeStateRef.current.listGeneration,
+        taskListGeneration: readRuntimeState().listGeneration,
         taskVersion,
       })
       denyAuxiliaryTaskRead(taskId, taskVersion)
     },
-    [denyAuxiliaryTaskRead],
+    [denyAuxiliaryTaskRead, readRuntimeState],
   )
 
   useEffect(() => {
@@ -579,12 +571,12 @@ export function useTaskRuntimeController({
   }, [activeTasks])
 
   useEffect(() => {
-    if (permissionDenied || !tasksOpen || !orderedFailedTasksRef.current.length) return
+    if (permissionDenied || !tasksOpen || !readOrderedFailedTasks().length) return
     let canceled = false
     let timeout: number | undefined
     const cancelRequests = new Set<() => void>()
     const pollNextBatch = async () => {
-      const pollableTasks = orderedFailedTasksRef.current.filter(
+      const pollableTasks = readOrderedFailedTasks().filter(
         (task) =>
           blockedFailedTaskPollVersionsRef.current.get(task.id) !== task.updatedAt &&
           !auxiliaryTaskReadGuard.isBlocked(task.id, task.updatedAt),
@@ -643,13 +635,13 @@ export function useTaskRuntimeController({
             )
               continue
             if (responseStatus(error) === 403) {
-              const currentTaskVersion = runtimeStateRef.current.currentVersions.get(task.id)
+              const currentTaskVersion = readRuntimeState().currentVersions.get(task.id)
               const deniedVersion =
                 currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
                   ? currentTaskVersion
                   : task.updatedAt
               failedPollAuxiliaryDenialsRef.current.set(task.id, {
-                taskListGeneration: runtimeStateRef.current.listGeneration,
+                taskListGeneration: readRuntimeState().listGeneration,
                 taskVersion: deniedVersion,
               })
               denyAuxiliaryTaskRead(task.id, deniedVersion)
@@ -674,6 +666,7 @@ export function useTaskRuntimeController({
     auxiliaryTaskReadGuard,
     denyAuxiliaryTaskRead,
     failedTaskPollSignature,
+    readRuntimeState,
     knowledgeSpaceId,
     permissionDenied,
     tasksOpen,

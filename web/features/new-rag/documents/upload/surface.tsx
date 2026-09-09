@@ -23,7 +23,6 @@ import {
   denyDocumentWriteAtom,
   documentCanReadAtom,
   documentCanWriteAtom,
-  documentPermissionInitializedAtom,
   ensureDocumentModelReadyAtom,
 } from '../state/runtime'
 import { documentBulkActionsVisibleAtom } from '../state/selection'
@@ -72,7 +71,6 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
-  const permissionInitialized = useAtomValue(documentPermissionInitializedAtom)
   const bulkActionsVisible = useAtomValue(documentBulkActionsVisibleAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
@@ -118,11 +116,11 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   }, [close, discardAllStagedFiles])
 
   useEffect(() => {
-    if (!permissionInitialized || uploadRequest !== '1' || canUpload) return
+    if (uploadRequest !== '1' || canUpload) return
     discardAllStagedFiles()
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the route-owned one-shot signal after authorization resolves.
     void setUploadRequest(null)
-  }, [canUpload, discardAllStagedFiles, permissionInitialized, setUploadRequest, uploadRequest])
+  }, [canUpload, discardAllStagedFiles, setUploadRequest, uploadRequest])
 
   const formatExclusionDetails = useCallback(
     (exclusions: Array<{ filename: string; reasonKey: UploadExclusionReasonKey }>) => {

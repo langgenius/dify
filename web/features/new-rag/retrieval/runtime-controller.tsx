@@ -130,16 +130,13 @@ export function RetrievalRuntimeController() {
   const consumedRetestTraceIdRef = useRef<string | undefined>(undefined)
   const runInFlightRef = useRef(false)
   const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
-  const selectedResearchActiveRef = useRef(selectedResearchActive)
   const refreshedTerminalPartialsTaskIdRef = useRef<string | undefined>(undefined)
   const previousSelectedResearchTaskRef = useRef<KnowledgeFsResearchTaskResponse | undefined>(
     undefined,
   )
   const retainedPreviewUrlsRef = useRef(new Set<string>())
 
-  useEffect(() => {
-    selectedResearchActiveRef.current = selectedResearchActive
-  }, [selectedResearchActive])
+  const isSelectedResearchActive = useEffectEvent(() => selectedResearchActive)
 
   // Preview URLs are object URLs. Release one only once neither the composer nor any run in
   // this session references it any more, and release everything when the page goes away.
@@ -228,7 +225,7 @@ export function RetrievalRuntimeController() {
                 event.stage === 'canceled' ||
                 event.stage === 'completed' ||
                 event.stage === 'failed'
-              if (!terminal || !selectedResearchActiveRef.current) return
+              if (!terminal || !isSelectedResearchActive()) return
               if (event.stage === 'completed')
                 refreshedTerminalPartialsTaskIdRef.current = selectedResearchTaskId
               void Promise.all([refetchResearchTasks(), refetchResearchPartials()])

@@ -8,8 +8,9 @@ import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'data-source-auth'
 
-export const useGetDataSourceListAuth = () => {
+export const useGetDataSourceListAuth = (enabled = true) => {
   return useQuery({
+    enabled,
     queryKey: [NAME_SPACE, 'list'],
     queryFn: () => get<{ result: DataSourceAuth[] }>('/auth/plugin/datasource/list'),
     retry: 0,
