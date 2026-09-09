@@ -75,13 +75,13 @@ export function QueryTestingAdapter({
 }) {
   const query = new URLSearchParams(searchParams).toString()
   const [session] = useState(() => ({
-    initial: query,
+    query,
     adapter: createMemoryQueryAdapter(`http://localhost/?${query}`, onUrlUpdate),
   }))
   // New consumers subscribe in passive effects before navigation is published.
   useEffect(() => {
-    if (session.initial !== query) {
-      session.initial = query
+    if (session.query !== query) {
+      session.query = query
       session.adapter.navigate(`?${query}`)
     }
   }, [query, session])

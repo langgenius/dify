@@ -7,8 +7,8 @@ export type PreparedUpdate = {
   options: UrlOptions
   debounceDelay: number
   throttleDelay: number
+  // Only batches containing exclusively debounced edits may postpone a commit.
   debounce: boolean
-  immediate: boolean
 }
 
 export type Patch<P extends UseQueryStatesKeysMap> = Partial<{
@@ -57,8 +57,7 @@ export function prepareUpdate<P extends UseQueryStatesKeysMap>(
     options: { history: 'replace', shallow: true, scroll: false },
     debounceDelay: 0,
     throttleDelay: 0,
-    debounce: false,
-    immediate: false,
+    debounce: true,
   }
   // Serialize the entire business update before publishing any state.
   for (const key of keys) {
@@ -81,10 +80,9 @@ export function prepareUpdate<P extends UseQueryStatesKeysMap>(
     if (settings.shallow === false) update.options.shallow = false
     if (settings.scroll) update.options.scroll = true
     if (settings.limitUrlUpdates?.method === 'debounce') {
-      update.debounce = true
       update.debounceDelay = Math.max(update.debounceDelay, settings.limitUrlUpdates.timeMs)
     } else {
-      update.immediate = true
+      update.debounce = false
       update.throttleDelay = Math.max(
         update.throttleDelay,
         settings.limitUrlUpdates?.timeMs ?? settings.throttleMs ?? 0,

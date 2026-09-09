@@ -147,7 +147,7 @@ export function QueryStateProvider({
 
 function RuntimeConnection({ runtime, children }: { runtime: Runtime; children: ReactNode }) {
   const store = useStore()
-  // Insertion cleanup marks actual removal; layout replay only reconnects.
+  // Unmount invalidates writes; hiding cancels drafts; passive setup subscribes.
   useInsertionEffect(() => () => runtime.dispose(), [runtime])
   useBrowserLayoutEffect(() => () => runtime.pause(), [runtime])
   // Reconcile after child Jotai passive subscriptions, including Activity reveal.

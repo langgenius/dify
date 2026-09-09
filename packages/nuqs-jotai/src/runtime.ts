@@ -17,7 +17,6 @@ export function createQueryRuntime(adapter: QueryAdapter) {
   let store: Pick<Store, 'set'> | undefined
   let active = true
   let writingHref: string | undefined
-  let connection = 0
   let timer: ReturnType<typeof setTimeout> | undefined
   let scheduledAt = Infinity
   let scheduledDebounce = false
@@ -32,8 +31,8 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     const next = new URL(url)
     for (const [key, values] of pending) {
       next.searchParams.delete(key)
-      // Native-array parsers distinguish an explicit empty collection (?key=)
-      // from an absent key, which restores the parser default.
+      // Preserve the native-array empty marker; its interpretation is owned
+      // by the parser (string arrays cannot distinguish [] from ['']).
       if (values?.length === 0) next.searchParams.append(key, '')
       else values?.forEach((value) => next.searchParams.append(key, value))
     }
@@ -83,6 +82,13 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     }
   }
 
+  function reconcileCommit() {
+    // Process delayed external navigation before advancing confirmed, then
+    // preserve any draft queued by synchronous adapter/subscriber callbacks.
+    receive({ url: adapter.read() })
+    publish(applyPending(confirmed))
+  }
+
   function flush() {
     timer = undefined
     if (!active || !store || pending.size === 0) return
@@ -107,19 +113,11 @@ export function createQueryRuntime(adapter: QueryAdapter) {
         lastWrite = Date.now()
         adapter.write(next, options)
       }
-      // Reconcile before advancing confirmed: browser history notifications
-      // may still be queued, including an external navigation from refresh.
-      receive({ url: adapter.read() })
-      // Adapter callbacks may have queued a new draft during this commit.
-      publish(applyPending(confirmed))
+      reconcileCommit()
       store.set(errorAtom, null)
       settled.forEach(({ resolve }) => resolve(new URLSearchParams(confirmed.searchParams)))
     } catch (error) {
-      // Reconcile before advancing confirmed: browser history notifications
-      // may still be queued, including an external navigation from refresh.
-      receive({ url: adapter.read() })
-      // Adapter callbacks may have queued a new draft during this commit.
-      publish(applyPending(confirmed))
+      reconcileCommit()
       store.set(errorAtom, error)
       settled.forEach(({ reject }) => reject(error))
     } finally {
@@ -131,23 +129,10 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     stateAtom,
     errorAtom,
     connect(nextStore: Store) {
-      const version = ++connection
       store = nextStore
-      active = true
       const unsubscribe = adapter.subscribe(receive)
       receive({ url: adapter.read() })
-      return () => {
-        unsubscribe()
-        // StrictMode reconnects before this microtask. Hidden Suspense/Activity
-        // trees do not, so discard their queued work. Keep writes valid for
-        // descendant layout effects during reveal, before connect runs again.
-        // Only insertion-effect disposal marks the provider truly unmounted.
-        queueMicrotask(() => {
-          if (connection !== version) return
-          cancel()
-          publish(adapter.read())
-        })
-      }
+      return unsubscribe
     },
     pause() {
       cancel()
@@ -178,7 +163,7 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       // Fire-and-forget callers use errorAtom; awaiting still propagates failure.
       void promise.catch(() => {})
       const minimum = Math.max(0, (adapter.minimumInterval ?? 0) - (Date.now() - lastWrite))
-      const debounced = update.debounce && !update.immediate && commitOptions.history !== 'push'
+      const debounced = update.debounce && commitOptions.history !== 'push'
       const delay = Math.max(minimum, update.throttleDelay, debounced ? update.debounceDelay : 0)
       const deadline = Date.now() + delay
       const reschedule =
