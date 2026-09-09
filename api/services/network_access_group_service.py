@@ -73,7 +73,7 @@ class NetworkAccessGroupService:
                 "id": str(app.id),
                 "name": app.name,
                 "icon": app.icon,
-                "icon_type": getattr(app.icon_type, "value", app.icon_type) if app.icon_type is not None else None,
+                "icon_type": app.icon_type.value if app.icon_type is not None else None,
                 "icon_background": app.icon_background,
             }
             for app in app_models
