@@ -67,14 +67,6 @@ export const getDocLanguage = (locale: string): DocLanguage => {
   return DOC_LANGUAGE[locale] || 'en'
 }
 
-const PRICING_PAGE_LANGUAGE: Record<string, string> = {
-  'ja-JP': 'jp',
-}
-
-export const getPricingPageLanguage = (locale: string) => {
-  return PRICING_PAGE_LANGUAGE[locale] || ''
-}
-
 export const getAccessControlTemplateLanguage = (locale: string): AccessControlTemplateLanguage => {
   return ACCESS_CONTROL_TEMPLATE_LANGUAGE[locale] || 'en'
 }

@@ -1,27 +1,21 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { defaultPlan } from '@/app/components/billing/config'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import WorkflowLogArchivesPage from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-  }
-})
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
   }
 })
 
@@ -32,9 +26,6 @@ vi.mock('@/context/modal-context', async (importOriginal) => {
     useModalContext: vi.fn(),
   }
 })
-
-const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseModalContext = vi.mocked(useModalContext)
 
 const archiveData: GetWorkflowRunArchivesResponse = {
   summary: {
@@ -57,43 +48,34 @@ const archiveData: GetWorkflowRunArchivesResponse = {
   ],
 }
 
-function mockPlan(planType: CloudPlan) {
-  mockUseProviderContext.mockReturnValue(
-    createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        ...defaultPlan,
-        type: planType,
-      },
-    }),
-  )
-}
+let plan: CloudPlan = 'professional'
 
 function renderPage() {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.workflowRunArchives.get.queryKey(), archiveData)
 
-  return renderWithConsoleQuery(<WorkflowLogArchivesPage />, {
+  return render(<WorkflowLogArchivesPage />, {
     queryClient,
     systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { billing: { subscription: { plan } } },
   })
 }
 
-describe('WorkflowLogArchivesPage', () => {
-  const setShowPricingModal = vi.fn()
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
+describe('WorkflowLogArchivesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlan('professional')
-    mockUseModalContext.mockReturnValue({
-      setShowPricingModal,
-    } as unknown as ReturnType<typeof useModalContext>)
+    plan = 'professional'
   })
 
   describe('Plan access', () => {
     it('should show upgrade guidance instead of archive content for sandbox workspaces', () => {
       // Arrange
-      mockPlan('sandbox')
+      plan = 'sandbox'
 
       // Act
       renderPage()
@@ -103,21 +85,23 @@ describe('WorkflowLogArchivesPage', () => {
       expect(screen.queryByText('2025-03')).not.toBeInTheDocument()
     })
 
-    it('should open pricing modal from the sandbox upgrade guidance', () => {
+    it('should open pricing modal from the sandbox upgrade guidance', async () => {
       // Arrange
-      mockPlan('sandbox')
+      plan = 'sandbox'
       renderPage()
 
       // Act
       fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
 
       // Assert
-      expect(setShowPricingModal).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+      )
     })
 
     it('should show archive content for paid workspaces', () => {
       // Arrange
-      mockPlan('professional')
+      plan = 'professional'
 
       // Act
       renderPage()

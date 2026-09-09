@@ -10,17 +10,20 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'
@@ -101,10 +104,15 @@ type ComplianceDocRowItemProps = {
 
 function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const { setShowPricingModal } = useModalContext()
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: docName !== DocName.GDPR,
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
-  const isFreePlan = plan.type === 'sandbox'
+  const isFreePlan = plan === 'sandbox'
 
   const { isPending, mutate: downloadCompliance } = useMutation({
     mutationKey: ['downloadCompliance', docName],
@@ -127,7 +135,9 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     [DocName.GDPR]: ['team', 'professional', 'sandbox'],
   }
 
-  const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[docName].includes(plan.type)
+  const isCurrentPlanCanDownload =
+    docName === DocName.GDPR ||
+    (plan !== undefined && whichPlanCanDownloadCompliance[docName].includes(plan))
 
   const handleSelect = useCallback(() => {
     if (isCurrentPlanCanDownload) {
@@ -135,7 +145,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
       return
     }
 
-    if (isFreePlan) setShowPricingModal()
+    if (isFreePlan) setPricing('open')
     else setSettingsDestination('billing')
   }, [
     downloadCompliance,
@@ -143,7 +153,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     isFreePlan,
     isPending,
     setSettingsDestination,
-    setShowPricingModal,
+    setPricing,
   ])
 
   const upgradeTooltip: Record<CloudPlan, string> = {
@@ -152,6 +162,8 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     team: '',
   }
   const labelTitle = typeof label === 'string' ? label : undefined
+
+  if (docName !== DocName.GDPR && plan === undefined) return null
 
   return (
     <DropdownMenuItem
@@ -167,7 +179,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
       <ComplianceDocActionVisual
         isCurrentPlanCanDownload={isCurrentPlanCanDownload}
         isPending={isPending}
-        tooltipText={upgradeTooltip[plan.type]}
+        tooltipText={plan ? upgradeTooltip[plan] : ''}
         downloadText={t(($) => $['operation.download'], { ns: 'common' })}
         upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       />

@@ -33,8 +33,24 @@
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost
 
-# Backend - Tests
+# Backend - Tests (default owners, domain-specific rules below will override)
 /api/tests/ @laipz8200 @QuantumGhost
+/api/tests/*/core/rag/ @JohnJyong
+/api/tests/*/services/rag_pipeline/ @JohnJyong
+/api/tests/*/services/dataset_service/ @JohnJyong
+/api/tests/*/controllers/console/datasets/ @JohnJyong
+/api/tests/*/controllers/service_api/dataset/ @JohnJyong
+/api/tests/*/vdb/ @JohnJyong
+/api/tests/*/core/plugin/ @WH-2099
+/api/tests/*/services/plugin/ @WH-2099
+/api/tests/*/controllers/inner_api/plugin/ @WH-2099
+/api/tests/*/plugin/ @WH-2099
+/api/tests/*/controllers/trigger/ @CourTeous33
+/api/tests/*/core/trigger/ @CourTeous33
+/api/tests/*/trigger/ @CourTeous33
+/api/tests/*/controllers/console/billing/ @hj24 @zyssyz123
+/api/tests/*/services/enterprise/ @GareArc
+/api/tests/*/migrations/ @snakevash @laipz8200 @MRZHUH
 
 # Backend - RAG (Retrieval Augmented Generation)
 /api/core/rag/ @JohnJyong

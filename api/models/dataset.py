@@ -243,10 +243,6 @@ class Dataset(Base):
         }
         return self.retrieval_model or default_retrieval_model
 
-    @property
-    def created_by_account(self):
-        return self.get_created_by_account(session=db.session())
-
     def get_created_by_account(self, *, session: Session) -> Account | None:
         return session.get(Account, self.created_by)
 
@@ -264,10 +260,6 @@ class Dataset(Base):
             .limit(1)
         )
 
-    @property
-    def app_count(self) -> int:
-        return self.get_app_count(session=db.session())
-
     def get_app_count(self, *, session: Session) -> int:
         return (
             session.scalar(
@@ -278,17 +270,12 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def document_count(self) -> int:
-        return self.get_document_count(session=db.session())
-
     def get_document_count(self, *, session: Session) -> int:
         return session.scalar(select(func.count(Document.id)).where(Document.dataset_id == self.id)) or 0
 
-    @property
-    def available_document_count(self):
+    def get_available_document_count(self, *, session: Session) -> int:
         return (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(Document.id)).where(
                     Document.dataset_id == self.id,
                     Document.indexing_status == "completed",
@@ -312,10 +299,6 @@ class Dataset(Base):
             or 0
         )
 
-    @property
-    def word_count(self) -> int:
-        return self.get_word_count(session=db.session())
-
     def get_word_count(self, *, session: Session) -> int:
         return (
             session.scalar(
@@ -323,10 +306,6 @@ class Dataset(Base):
             )
             or 0
         )
-
-    @property
-    def doc_form(self) -> str | None:
-        return self.get_doc_form(session=db.session())
 
     def get_doc_form(self, *, session: Session) -> str | None:
         if self.chunk_structure:
@@ -356,10 +335,6 @@ class Dataset(Base):
             return default_retrieval_model
 
         return {**default_retrieval_model, **self.retrieval_model}
-
-    @property
-    def tags(self) -> Sequence[Tag]:
-        return self.get_tags(session=db.session())
 
     def get_tags(self, *, session: Session) -> Sequence[Tag]:
         tags = session.scalars(
@@ -401,20 +376,12 @@ class Dataset(Base):
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
 
-    @property
-    def is_published(self) -> bool:
-        return self.get_is_published(session=db.session())
-
     def get_is_published(self, *, session: Session) -> bool:
         if self.pipeline_id:
             pipeline = session.scalar(select(Pipeline).where(Pipeline.id == self.pipeline_id))
             if pipeline:
                 return pipeline.is_published
         return False
-
-    @property
-    def doc_metadata(self) -> list[dict[str, str]]:
-        return self.get_doc_metadata(session=db.session())
 
     def get_doc_metadata(self, *, session: Session) -> list[dict[str, str]]:
         dataset_metadatas = session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)).all()
@@ -922,17 +889,9 @@ class DocumentSegment(TypeBase):
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
-    @property
-    def dataset(self) -> Dataset | None:
-        return self.get_dataset(session=db.session())
-
     def get_dataset(self, *, session: Session) -> Dataset | None:
         """Load the owning dataset with the caller-owned database session."""
         return session.get(Dataset, self.dataset_id)
-
-    @property
-    def document(self) -> Document | None:
-        return self.get_document(session=db.session())
 
     def get_document(self, *, session: Session) -> Document | None:
         """Load the owning document with the caller-owned database session."""
@@ -951,10 +910,6 @@ class DocumentSegment(TypeBase):
                 DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1
             )
         )
-
-    @property
-    def child_chunks(self):
-        return self.get_child_chunks(session=db.session(), include_full_doc=False)
 
     def get_child_chunks(self, *, session: Session, include_full_doc: bool = True) -> Sequence["ChildChunk"]:
         """Load hierarchical child chunks with the caller-owned database session."""
@@ -1041,10 +996,6 @@ class DocumentSegment(TypeBase):
             offset += len(signed_url) - (end - start)
 
         return text
-
-    @property
-    def attachments(self) -> list[AttachmentItem]:
-        return self.get_attachments(session=db.session())
 
     def get_attachments(self, *, session: Session) -> list[AttachmentItem]:
         """Load attachment metadata with the caller-owned database session."""
@@ -1194,10 +1145,6 @@ class DatasetQuery(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
-
-    @property
-    def queries(self) -> list[dict[str, Any]]:
-        return self.get_queries(session=db.session())
 
     def get_queries(self, *, session: Session) -> list[dict[str, Any]]:
         try:
@@ -1467,7 +1414,7 @@ class ExternalKnowledgeApis(TypeBase):
             return None
 
     @property
-    def dataset_bindings(self) -> list[DatasetBindingItem]:
+    def dataset_bindings(self):
         return self.get_dataset_bindings(session=db.session())
 
     def get_dataset_bindings(self, *, session: Session) -> list[DatasetBindingItem]:

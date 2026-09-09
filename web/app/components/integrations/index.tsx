@@ -12,7 +12,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -126,6 +126,7 @@ export default function IntegrationsPage({
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
+  const navigationTitleId = useId()
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
@@ -253,7 +254,7 @@ export default function IntegrationsPage({
       {syncDocumentTitle && (
         <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
       )}
-      <aside
+      <div
         className={cn(
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
           'w-50 items-end',
@@ -268,7 +269,10 @@ export default function IntegrationsPage({
             )}
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
-              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+              <div
+                id={navigationTitleId}
+                className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
+              >
                 {t(($) => $['settings.integrations'], { ns: 'common' })}
               </div>
             </div>
@@ -283,7 +287,10 @@ export default function IntegrationsPage({
           {!showInstallAction && reserveInstallActionSlot && (
             <div aria-hidden="true" className="h-8 w-full shrink-0" />
           )}
-          <nav className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}>
+          <nav
+            aria-labelledby={navigationTitleId}
+            className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
+          >
             <IntegrationSidebarNavItem
               item={providerItem}
               onSelect={onSectionChange}
@@ -337,7 +344,7 @@ export default function IntegrationsPage({
             onPermissionChange={handlePermissionChange}
           />
         )}
-      </aside>
+      </div>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {useFillLayout ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

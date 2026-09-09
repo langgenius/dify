@@ -211,7 +211,11 @@ def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
         ]
         if len(non_null_candidates) == 1:
             return {
-                **{key: value for key, value in property_schema.items() if key != "anyOf"},
+                **{
+                    key: value
+                    for key, value in property_schema.items()
+                    if key != "anyOf" and not (key == "default" and value is None)
+                },
                 **deepcopy(non_null_candidates[0]),
             }
 
@@ -246,7 +250,7 @@ class DocumentGetQuery(BaseModel):
         default="all",
         description=(
             "`all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and "
-            "`doc_metadata`. `without` returns all fields except `doc_metadata`."
+            "`doc_metadata`. `without` returns all fields except `doc_type` and `doc_metadata`."
         ),
     )
 
@@ -305,39 +309,53 @@ def _document_and_batch_response(document: Document, batch: str, *, session: Ses
     )
 
 
-# Use SkipJsonSchema to support 3 metadata modes
+def _omit_schema_default(schema: dict[str, Any]) -> None:
+    """Keep omission placeholders out of the public non-null field contract."""
+    schema.pop("default", None)
+
+
+# These fields are absent in metadata=only responses. None is an internal
+# validation default, not a value returned for these fields when present.
 class DocumentDetailResponse(ResponseModel):
     id: str
-    position: int | SkipJsonSchema[None] = None
-    data_source_type: str | SkipJsonSchema[None] = None
-    data_source_info: dict[str, Any] | SkipJsonSchema[None] = None
+    position: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    data_source_type: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    data_source_info: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: dict[str, Any] | SkipJsonSchema[None] = None
-    document_process_rule: dict[str, Any] | SkipJsonSchema[None] = None
-    name: str | SkipJsonSchema[None] = None
-    created_from: str | SkipJsonSchema[None] = None
-    created_by: str | SkipJsonSchema[None] = None
-    created_at: int | SkipJsonSchema[None] = None
+    dataset_process_rule: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    document_process_rule: dict[str, Any] | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    name: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_from: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_by: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    created_at: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     tokens: int | None = None
-    indexing_status: str | SkipJsonSchema[None] = None
+    indexing_status: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     completed_at: int | None = None
     updated_at: int | None = None
     indexing_latency: float | None = None
     error: str | None = None
-    enabled: bool | SkipJsonSchema[None] = None
+    enabled: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     disabled_at: int | None = None
     disabled_by: str | None = None
-    archived: bool | SkipJsonSchema[None] = None
+    archived: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     doc_type: str | None = None
     doc_metadata: list[DocumentMetadataResponse] | dict[str, Any] | None = None
-    segment_count: int | SkipJsonSchema[None] = None
-    average_segment_length: int | float | SkipJsonSchema[None] = None
-    hit_count: int | SkipJsonSchema[None] = None
+    segment_count: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
+    average_segment_length: int | float | SkipJsonSchema[None] = Field(
+        default=None, json_schema_extra=_omit_schema_default
+    )
+    hit_count: int | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     display_status: str | None = None
-    doc_form: str | SkipJsonSchema[None] = None
+    doc_form: str | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
     doc_language: str | None = None
     summary_index_status: str | None = None
-    need_summary: bool | SkipJsonSchema[None] = None
+    need_summary: bool | SkipJsonSchema[None] = Field(default=None, json_schema_extra=_omit_schema_default)
 
     @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
     @classmethod
@@ -1452,7 +1470,6 @@ class DocumentApi(DatasetApiResource):
         tags=["Documents"],
         responses={
             204: "Success.",
-            400: "`document_indexing` : Cannot delete document during indexing.",
             403: "`archived_document_immutable` : The archived document is not editable.",
             404: "`not_found` : Document Not Exists.",
         },

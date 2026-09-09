@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 
 type SaveInlineAgentToRosterDialogProps = {
