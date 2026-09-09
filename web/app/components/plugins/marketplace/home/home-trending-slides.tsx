@@ -6,6 +6,7 @@ import type {
   BannerEvent,
   BannerRecommend,
   BannerRecommendCard,
+  MarketplaceTemplate,
   PluginBanner,
 } from '@dify/contracts/marketplace'
 import type { MarketplaceBannerPage } from './banners'
@@ -20,13 +21,15 @@ import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import {
   rememberMarketplaceSiteReferrer,
   trackMarketplaceSiteEvent,
 } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
-import { getPluginLinkInMarketplace } from '../utils'
+import TemplateDetailDialog from '../templates/template-detail-dialog'
+import { getPluginLinkInMarketplace, getTemplateLinkInMarketplace } from '../utils'
 import background from './assets/background.webp'
 import difyUpdatesArt from './assets/dify-updates-art.png'
 import {
@@ -87,6 +90,23 @@ const pluginFromRecommendCard = (card: BannerRecommendCard): Plugin | null => {
       authorized_category: card.badges?.includes('partner') ? 'partner' : 'community',
     },
     from: 'marketplace',
+  }
+}
+
+const templateFromRecommendCard = (card: BannerRecommendCard): MarketplaceTemplate | null => {
+  if (card.item_type !== 'template' || !card.item_id) return null
+
+  return {
+    id: card.item_id,
+    template_name: card.display_name,
+    overview: '',
+    icon: card.icon ?? '',
+    icon_background: card.icon_background ?? '',
+    icon_file_key: '',
+    publisher_unique_handle: card.creator,
+    usage_count: 0,
+    categories: [],
+    badges: card.badges,
   }
 }
 
@@ -332,6 +352,47 @@ function EmbeddedRecommendPluginCard({
   )
 }
 
+function EmbeddedRecommendTemplateCard({
+  banner,
+  card,
+  template,
+  page,
+}: {
+  banner: BannerRecommend
+  card: BannerRecommendCard
+  template: MarketplaceTemplate
+  page: MarketplaceBannerPage
+}) {
+  const [open, setOpen] = useState(false)
+  const router = useRouter()
+  const href = getTemplateLinkInMarketplace(template)
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={card.display_name}
+        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
+        onClick={() => {
+          trackRecommendCardClick(banner, card, page, href)
+          setOpen(true)
+        }}
+      >
+        <RecommendCardFace card={card} />
+      </button>
+      <TemplateDetailDialog
+        open={open}
+        template={template}
+        onInstall={() => {
+          setOpen(false)
+          router.push(`/apps?template-id=${encodeURIComponent(template.id)}`)
+        }}
+        onOpenChange={setOpen}
+      />
+    </>
+  )
+}
+
 function TrendingCard({
   banner,
   card,
@@ -343,16 +404,30 @@ function TrendingCard({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
-  const embeddedPlugin = isMarketplacePlatform ? null : pluginFromRecommendCard(card)
-  if (embeddedPlugin) {
-    return (
-      <EmbeddedRecommendPluginCard
-        banner={banner}
-        card={card}
-        initialPlugin={embeddedPlugin}
-        page={page}
-      />
-    )
+  if (!isMarketplacePlatform) {
+    const embeddedPlugin = pluginFromRecommendCard(card)
+    if (embeddedPlugin) {
+      return (
+        <EmbeddedRecommendPluginCard
+          banner={banner}
+          card={card}
+          initialPlugin={embeddedPlugin}
+          page={page}
+        />
+      )
+    }
+
+    const embeddedTemplate = templateFromRecommendCard(card)
+    if (embeddedTemplate) {
+      return (
+        <EmbeddedRecommendTemplateCard
+          banner={banner}
+          card={card}
+          template={embeddedTemplate}
+          page={page}
+        />
+      )
+    }
   }
 
   const href = getCardHref(card, isMarketplacePlatform)
