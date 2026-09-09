@@ -1,6 +1,6 @@
 # nuqs-jotai
 
-Dify's URL atoms. `createQueryAtoms` accepts nuqs parsers, but the runtime does not
+Dify's URL atoms. `atomWithSearchParam` and `atomWithSearchParams` accept nuqs parsers, but the runtime does not
 use nuqs hooks, queues, or internal APIs. One `QueryStateProvider` owns the URL
 snapshot and commit queue for all query definitions beneath it. Definitions need
 no registration or per-page bridge.
@@ -12,22 +12,51 @@ application Jotai provider. It supplies the Next/Vinext adapter to the package
 provider. Features declare atoms independently:
 
 ```tsx
-const query = createQueryAtoms({
-  search: parseAsString.withDefault('').withOptions({
-    limitUrlUpdates: debounce(300),
-  }),
-  status: parseAsStringLiteral(['all', 'ready']).withDefault('all').withOptions({
-    history: 'push',
-  }),
+const searchAtom = atomWithSearchParam('query', parseAsString.withDefault(''), {
+  limitUrlUpdates: debounce(300),
 })
 
 function Search() {
-  const [value, setValue] = useAtom(query.atoms.search)
+  const [value, setValue] = useAtom(searchAtom)
   return <input value={value} onChange={(event) => void setValue(event.target.value)} />
 }
 ```
 
-Use `query.atom` for composite patches. Functional updates read the current
+Use `atomWithSearchParams` for related parameters that need composite patches:
+
+```ts
+const selectionAtom = atomWithSearchParams(
+  {
+    research: parseAsString,
+    retest: parseAsString,
+    trace: parseAsString,
+  },
+  { history: 'push' },
+)
+
+store.set(selectionAtom, { research: taskId, retest: null, trace: null })
+```
+
+For related parameters used by separate controls, return the field atoms directly:
+
+```ts
+const { search: searchAtom, filter: filterAtom } = atomsWithSearchParams(
+  {
+    search: parseAsString.withDefault(''),
+    filter: parseAsString.withDefault('all'),
+  },
+  { urlKeys: { search: 'query', filter: 'status' } },
+)
+```
+
+`atomWithSearchParam` and `atomWithSearchParams` return writable atoms;
+`atomsWithSearchParams` returns a map of writable field atoms backed by one
+composite atom. Field writes retain the whole group's owned URL keys for
+navigation conflict detection and support functional updates, null resets, and
+per-write options. `urlKeys` maps field names to URL parameter names. Options follow
+provider defaults, parser settings, factory options, then per-write overrides.
+
+Functional updates read the current
 optimistic URL state. `null` resets a parameter, or all parameters in that
 configuration for a composite write. Parser defaults are available on first
 render, including SSR, and are omitted from the URL unless `clearOnDefault` is
@@ -54,8 +83,7 @@ workflows when a knowledge space or document changes.
   model-readiness, planning, and research creation continuations accordingly.
 - Parse failures use defaults without rewriting the URL. Serialization completes
   before any state changes. A history failure reconciles to the actual address,
-  rejects the write promise, and is exposed by each configuration's `errorAtom`
-  (the commit error is shared by the provider).
+  rejects the write promise, and is exposed by the exported `queryStateErrorAtom`, scoped to the nearest provider.
 - Promise completion means the address has been written, not that server data
   has finished loading. The Dify adapter writes history once, then calls
   `router.replace` inside a transition for non-shallow updates.

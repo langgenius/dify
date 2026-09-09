@@ -2,7 +2,7 @@ import type { createStore } from 'jotai'
 import { act, render, screen } from '@testing-library/react'
 import { useAtomValue, useStore } from 'jotai'
 import { debounce, parseAsString } from 'nuqs'
-import { createQueryAtoms } from 'nuqs-jotai'
+import { atomWithSearchParam } from 'nuqs-jotai'
 import { AppRouterContext } from 'vinext/shims/internal/app-router-context'
 import { appRouterInstance, navigateClientSide, usePathname } from 'vinext/shims/navigation'
 import { QueryStateProvider } from '../query-state-provider'
@@ -10,13 +10,14 @@ import { QueryStateProvider } from '../query-state-provider'
 // Exercise Vinext's real hooks and navigation commit, including its saved history methods.
 vi.mock('@/next/navigation', async () => import('vinext/shims/navigation'))
 
-const query = createQueryAtoms({
-  search: parseAsString.withDefault('').withOptions({ limitUrlUpdates: debounce(300) }),
-})
+const searchAtom = atomWithSearchParam(
+  'search',
+  parseAsString.withDefault('').withOptions({ limitUrlUpdates: debounce(300) }),
+)
 let scopedStore: ReturnType<typeof createStore>
 function Search() {
   scopedStore = useStore()
-  const value = useAtomValue(query.atoms.search)
+  const value = useAtomValue(searchAtom)
   return <p>Search: {value || 'empty'}</p>
 }
 
@@ -49,7 +50,7 @@ it.each(['push', 'replace'] as const)(
     render(<TestApp />)
     expect(screen.getByText('Search: first')).toBeInTheDocument()
     act(() => {
-      void scopedStore.set(query.atoms.search, 'draft')
+      void scopedStore.set(searchAtom, 'draft')
     })
     expect(screen.getByText('Search: draft')).toBeInTheDocument()
     await act(async () => {
@@ -74,9 +75,9 @@ it('syncs same-path navigation without a pending write', async () => {
 it('retains a new draft when router hooks catch up with an atom URL commit', async () => {
   render(<TestApp />)
   await act(async () => {
-    void scopedStore.set(query.atoms.search, 'committed', { limitUrlUpdates: debounce(0) })
+    void scopedStore.set(searchAtom, 'committed', { limitUrlUpdates: debounce(0) })
     await vi.runAllTimersAsync()
-    void scopedStore.set(query.atoms.search, 'next draft')
+    void scopedStore.set(searchAtom, 'next draft')
   })
   expect(screen.getByText('Search: next draft')).toBeInTheDocument()
   await act(async () => {
@@ -97,7 +98,7 @@ it.each([
     expect(screen.getByText('Search: first')).toBeInTheDocument()
     if (draft) {
       act(() => {
-        void scopedStore.set(query.atoms.search, 'old draft')
+        void scopedStore.set(searchAtom, 'old draft')
       })
       expect(screen.getByText('Search: old draft')).toBeInTheDocument()
     }

@@ -3,23 +3,26 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtom, useSetAtom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { parseAsInteger } from 'nuqs'
+import { debounce, parseAsInteger } from 'nuqs'
 import { StrictMode, useLayoutEffect, useState } from 'react'
 import { renderToString } from 'react-dom/server'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test'
 import { createBrowserQueryAdapter } from './browser'
-import { createQueryAtoms, QueryStateProvider } from './index'
-import { QueryTestingAdapter } from './testing'
+import {
+  atomsWithSearchParams,
+  atomWithSearchParam,
+  atomWithSearchParams,
+  queryStateErrorAtom,
+  QueryStateProvider,
+} from './index'
+import { createMemoryQueryAdapter, QueryTestingAdapter } from './testing'
 
-const paginationQuery = createQueryAtoms(
-  {
-    page: parseAsInteger.withDefault(1),
-  },
-  { debugLabel: 'pagination' },
-)
+const pageAtom = atomWithSearchParam('page', parseAsInteger.withDefault(1), {
+  debugLabel: 'pagination',
+})
 
 function PageButton({ label }: { label: string }) {
-  const [page, setPage] = useAtom(paginationQuery.atoms.page)
+  const [page, setPage] = useAtom(pageAtom)
   return (
     <button type="button" onClick={() => void setPage((current) => current + 1)}>
       {`${label}:${page}`}
@@ -131,9 +134,7 @@ describe('nuqs-jotai', () => {
     rendered.unmount()
 
     expect(providerStore).toBeDefined()
-    expect(() => providerStore!.set(paginationQuery.atoms.page, 2)).toThrow(
-      /outside their mounted provider/,
-    )
+    expect(() => providerStore!.set(pageAtom, 2)).toThrow(/outside their mounted provider/)
   })
 })
 
@@ -149,9 +150,9 @@ it('supports consecutive functional updates without a value subscriber', async (
       <CaptureStore />
     </QueryTestingAdapter>,
   )
-  const first = scopedStore!.set(paginationQuery.atoms.page, (page) => page + 1)
-  const second = scopedStore!.set(paginationQuery.atoms.page, (page) => page + 1)
-  expect(scopedStore!.get(paginationQuery.atoms.page)).toBe(4)
+  const first = scopedStore!.set(pageAtom, (page) => page + 1)
+  const second = scopedStore!.set(pageAtom, (page) => page + 1)
+  expect(scopedStore!.get(pageAtom)).toBe(4)
   await Promise.all([first, second])
   expect(onUrlUpdate).toHaveBeenCalledOnce()
   expect(onUrlUpdate.mock.calls[0]?.[0].searchParams.get('page')).toBe('4')
@@ -161,7 +162,7 @@ it('initializes URL atoms for server rendering', () => {
   const seen: number[] = []
   function InitialRead() {
     const store = useStore()
-    const page = store.get(paginationQuery.atoms.page)
+    const page = store.get(pageAtom)
     seen.push(page)
     return <p>Page {page}</p>
   }
@@ -177,7 +178,7 @@ it('initializes URL atoms for server rendering', () => {
 it('accepts a descendant layout command during StrictMode mounting', async () => {
   const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
   function InitializePage() {
-    const setPage = useSetAtom(paginationQuery.atoms.page)
+    const setPage = useSetAtom(pageAtom)
     useLayoutEffect(() => {
       void setPage(3)
     }, [setPage])
@@ -195,7 +196,7 @@ it('accepts a descendant layout command during StrictMode mounting', async () =>
 })
 
 it('shares one commit queue across independently declared query atoms', async () => {
-  const filterQuery = createQueryAtoms({ status: parseAsInteger.withDefault(0) })
+  const statusAtom = atomWithSearchParam('status', parseAsInteger.withDefault(0))
   let scopedStore: ReturnType<typeof createStore> | undefined
   const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
   function CaptureStore() {
@@ -207,9 +208,9 @@ it('shares one commit queue across independently declared query atoms', async ()
       <CaptureStore />
     </QueryTestingAdapter>,
   )
-  const first = scopedStore!.set(paginationQuery.atoms.page, 2)
-  const second = scopedStore!.set(filterQuery.atoms.status, 1, { history: 'push' })
-  expect(scopedStore!.get(paginationQuery.atoms.page)).toBe(2)
+  const first = scopedStore!.set(pageAtom, 2)
+  const second = scopedStore!.set(statusAtom, 1, { history: 'push' })
+  expect(scopedStore!.get(pageAtom)).toBe(2)
   await Promise.all([first, second])
   expect(onUrlUpdate).toHaveBeenCalledOnce()
   expect(onUrlUpdate.mock.calls[0]?.[0].searchParams.toString()).toBe('page=2&status=1')
@@ -249,7 +250,144 @@ it('evaluates functional writes against history before its deferred notification
     </QueryStateProvider>,
   )
   window.history.replaceState(null, '', '/documents?page=5')
-  const result = scopedStore!.set(paginationQuery.atoms.page, (page) => page + 1)
-  expect(scopedStore!.get(paginationQuery.atoms.page)).toBe(6)
+  const result = scopedStore!.set(pageAtom, (page) => page + 1)
+  expect(scopedStore!.get(pageAtom)).toBe(6)
   expect((await result).get('page')).toBe('6')
+})
+
+it('supports typed composite patches, URL aliases, option overrides and reset', async () => {
+  const selectionAtom = atomWithSearchParams(
+    {
+      page: parseAsInteger.withDefault(1),
+      selected: parseAsInteger,
+    },
+    { urlKeys: { selected: 'id' }, history: 'push' },
+  )
+  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+  let store!: ReturnType<typeof createStore>
+  function Capture() {
+    store = useStore()
+    return null
+  }
+  render(
+    <QueryTestingAdapter searchParams="?page=2&id=5&other=keep" onUrlUpdate={onUrlUpdate}>
+      <Capture />
+    </QueryTestingAdapter>,
+  )
+  expectTypeOf(store.get(pageAtom)).toEqualTypeOf<number>()
+  expectTypeOf(store.get(selectionAtom)).toEqualTypeOf<{ page: number; selected: number | null }>()
+  await store.set(selectionAtom, (previous) => ({ page: previous.page + 1, selected: null }))
+  expect(store.get(selectionAtom)).toEqual({ page: 3, selected: null })
+  expect(onUrlUpdate).toHaveBeenCalledOnce()
+  expect(Object.fromEntries(onUrlUpdate.mock.calls[0]![0].searchParams)).toEqual({
+    page: '3',
+    other: 'keep',
+  })
+  expect(onUrlUpdate.mock.calls[0]?.[0].options.history).toBe('push')
+  await store.set(selectionAtom, null, { history: 'replace' })
+  expect(store.get(selectionAtom)).toEqual({ page: 1, selected: null })
+  expect(onUrlUpdate.mock.calls[1]?.[0].queryString).toBe('?other=keep')
+  expect(onUrlUpdate.mock.calls[1]?.[0].options.history).toBe('replace')
+})
+
+it('exposes write failures through the provider-scoped error atom', async () => {
+  const failure = new Error('history failed')
+  const adapter = createMemoryQueryAdapter('http://localhost/?page=2')
+  adapter.write = () => {
+    throw failure
+  }
+  let store!: ReturnType<typeof createStore>
+  function Capture() {
+    store = useStore()
+    return null
+  }
+  render(
+    <QueryStateProvider adapter={adapter}>
+      <Capture />
+    </QueryStateProvider>,
+  )
+  expect(store.get(queryStateErrorAtom)).toBe(null)
+  await expect(store.set(pageAtom, 3)).rejects.toBe(failure)
+  expect(store.get(queryStateErrorAtom)).toBe(failure)
+  expect(store.get(pageAtom)).toBe(2)
+})
+
+it('batches field atoms with aliases, functional updates, resets and write options', async () => {
+  const { page, selected } = atomsWithSearchParams(
+    {
+      page: parseAsInteger.withDefault(1),
+      selected: parseAsInteger,
+    },
+    { urlKeys: { selected: 'id' }, history: 'push' },
+  )
+  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+  let store!: ReturnType<typeof createStore>
+  function Capture() {
+    store = useStore()
+    return null
+  }
+  render(
+    <QueryTestingAdapter searchParams="?page=2&id=5" onUrlUpdate={onUrlUpdate}>
+      <Capture />
+    </QueryTestingAdapter>,
+  )
+  expectTypeOf(store.get(page)).toEqualTypeOf<number>()
+  expectTypeOf(store.get(selected)).toEqualTypeOf<number | null>()
+  await Promise.all([
+    store.set(page, (value) => value + 1),
+    store.set(page, (value) => value + 1),
+    store.set(selected, (value) => (value ?? 0) + 1),
+  ])
+  expect(store.get(page)).toBe(4)
+  expect(store.get(selected)).toBe(6)
+  expect(onUrlUpdate).toHaveBeenCalledOnce()
+  expect(Object.fromEntries(onUrlUpdate.mock.calls[0]![0].searchParams)).toEqual({
+    page: '4',
+    id: '6',
+  })
+  expect(onUrlUpdate.mock.calls[0]![0].options.history).toBe('push')
+  await store.set(selected, null, { history: 'replace' })
+  expect(store.get(selected)).toBe(null)
+  expect(store.get(page)).toBe(4)
+  expect(onUrlUpdate.mock.calls[1]![0].options.history).toBe('replace')
+  expect(onUrlUpdate.mock.calls[1]![0].searchParams.has('id')).toBe(false)
+})
+
+it('cancels a field draft when external history changes another key in its group', async () => {
+  vi.useFakeTimers()
+  try {
+    const { page, selected } = atomsWithSearchParams(
+      {
+        page: parseAsInteger.withDefault(1),
+        selected: parseAsInteger,
+      },
+      { limitUrlUpdates: debounce(300), urlKeys: { selected: 'id' } },
+    )
+    const adapter = createMemoryQueryAdapter('http://localhost/?page=2&id=5')
+    let store!: ReturnType<typeof createStore>
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    const pending = store.set(page, 9)
+    expect(store.get(page)).toBe(9)
+    // Ordinary history replacement, not a traversal; the sibling key must cancel the draft.
+    adapter.write(new URL('http://localhost/?page=2&id=6'), {
+      history: 'replace',
+      shallow: true,
+      scroll: false,
+    })
+    await vi.runAllTimersAsync()
+    await pending
+    expect(store.get(page)).toBe(2)
+    expect(store.get(selected)).toBe(6)
+    expect(adapter.read().search).toBe('?page=2&id=6')
+  } finally {
+    vi.useRealTimers()
+  }
 })

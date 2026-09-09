@@ -21,25 +21,31 @@ export type QueryAtom<Value> = WritableAtom<
   Promise<URLSearchParams>
 >
 
-export type QueryAtoms<P extends UseQueryStatesKeysMap> = {
-  readonly atom: WritableAtom<Values<P>, Parameters<SetValues<P>>, Promise<URLSearchParams>>
-  readonly atoms: { readonly [K in keyof P]: QueryAtom<Values<P>[K]> }
-  readonly errorAtom: Atom<unknown>
-}
+export type SearchParamsAtom<P extends UseQueryStatesKeysMap> = WritableAtom<
+  Values<P>,
+  Parameters<SetValues<P>>,
+  Promise<URLSearchParams>
+>
 
-export type CreateQueryAtomsOptions<P extends UseQueryStatesKeysMap> = {
+export type SearchParamsOptions<P extends UseQueryStatesKeysMap> = Options & {
   urlKeys?: UseQueryStatesOptions<P>['urlKeys']
   debugLabel?: string
 }
 
+export const queryStateErrorAtom: Atom<unknown> = atom((get) => {
+  const binding = get(runtimeAtom)
+  return binding ? get(binding.runtime.errorAtom) : null
+})
+queryStateErrorAtom.debugLabel = 'url.error'
+
 /** Definitions need no registration: every atom uses its nearest URL provider. */
-export function createQueryAtoms<P extends UseQueryStatesKeysMap>(
+export function atomWithSearchParams<P extends UseQueryStatesKeysMap>(
   parsers: P,
-  { urlKeys, debugLabel = 'query' }: CreateQueryAtomsOptions<P> = {},
-): QueryAtoms<P> {
+  { urlKeys, debugLabel = 'query', ...defaults }: SearchParamsOptions<P> = {},
+): SearchParamsAtom<P> {
   const initial = parseValues(parsers, urlKeys, new URLSearchParams())
   const cache = new WeakMap<Runtime, { href: string; values: Values<P> }>()
-  const queryAtom: QueryAtoms<P>['atom'] = atom<
+  const queryAtom: SearchParamsAtom<P> = atom<
     Values<P>,
     Parameters<SetValues<P>>,
     Promise<URLSearchParams>
@@ -60,51 +66,62 @@ export function createQueryAtoms<P extends UseQueryStatesKeysMap>(
       return binding.runtime.write(
         () => {
           const patch = typeof update === 'function' ? update(get(queryAtom)) : update
-          return prepareUpdate(parsers, urlKeys, patch, binding.defaults, options)
+          return prepareUpdate(parsers, urlKeys, patch, binding.defaults, {
+            ...defaults,
+            ...options,
+          })
         },
         { set },
       )
     },
   )
   queryAtom.debugLabel = debugLabel
+  return queryAtom
+}
+
+/** Related parameters exposed as individual atoms, sharing one ownership group. */
+export function atomsWithSearchParams<P extends UseQueryStatesKeysMap>(
+  parsers: P,
+  options: SearchParamsOptions<P> = {},
+): { readonly [K in keyof P]: QueryAtom<Values<P>[K]> } {
+  const group = atomWithSearchParams(parsers, options)
   function forKey<K extends keyof P>(key: K): QueryAtom<Values<P>[K]> {
-    const focused = atom<
-      Values<P>[K],
-      [ValueUpdate<Values<P>[K]>, Options?],
-      Promise<URLSearchParams>
-    >(
-      (get) => get(queryAtom)[key],
-      (_get, set, update, options) =>
+    const result: QueryAtom<Values<P>[K]> = atom(
+      (get) => get(group)[key],
+      (_get, set, update, writeOptions) =>
         set(
-          queryAtom,
-          (current) => {
-            const value =
-              typeof update === 'function'
-                ? (update as (previous: Values<P>[K]) => Values<P>[K] | null)(current[key])
-                : update
-            return { [key]: value } as Partial<Values<P>>
-          },
-          options,
+          group,
+          (current) =>
+            ({
+              [key]:
+                typeof update === 'function'
+                  ? (update as (previous: Values<P>[K]) => Values<P>[K] | null)(current[key])
+                  : update,
+            }) as Partial<Values<P>>,
+          writeOptions,
         ),
     )
-    focused.debugLabel = `${debugLabel}.${String(key)}`
-    return focused
+    result.debugLabel = `${options.debugLabel ?? 'query'}.${String(key)}`
+    return result
   }
-  const errorAtom = atom((get) => {
-    const binding = get(runtimeAtom)
-    return binding ? get(binding.runtime.errorAtom) : null
-  })
-  errorAtom.debugLabel = `${debugLabel}.error`
-  return {
-    atom: queryAtom,
-    atoms: Object.fromEntries(
-      Object.keys(parsers).map((key) => [key, forKey(key)]),
-    ) as QueryAtoms<P>['atoms'],
-    errorAtom,
+  return Object.fromEntries(Object.keys(parsers).map((key) => [key, forKey(key)])) as {
+    readonly [K in keyof P]: QueryAtom<Values<P>[K]>
   }
 }
 
-type ValueUpdate<T> = T | null | ((previous: T) => T | null)
+/** A single URL parameter, usable directly with useAtom or store.get/set. */
+export function atomWithSearchParam<P extends UseQueryStatesKeysMap[string]>(
+  key: string,
+  parser: P,
+  options: Options & { debugLabel?: string } = {},
+): QueryAtom<Values<{ value: P }>['value']> {
+  const { value } = atomsWithSearchParams(
+    { value: parser },
+    { ...options, urlKeys: { value: key } },
+  )
+  value.debugLabel = options.debugLabel ?? key
+  return value
+}
 
 /** One provider per URL: preserve parent application atoms and share one queue. */
 export function QueryStateProvider({

@@ -2,7 +2,7 @@ import type { createStore } from 'jotai'
 import { act, render, screen } from '@testing-library/react'
 import { useAtomValue, useStore } from 'jotai'
 import { debounce, parseAsString } from 'nuqs'
-import { createQueryAtoms } from 'nuqs-jotai'
+import { atomWithSearchParam } from 'nuqs-jotai'
 import { QueryStateProvider } from '../query-state-provider'
 
 const navigation = vi.hoisted(() => ({ pathname: '/first', replace: vi.fn() }))
@@ -12,14 +12,15 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: navigation.replace }),
 }))
 
-const query = createQueryAtoms({
-  search: parseAsString.withDefault('').withOptions({ limitUrlUpdates: debounce(300) }),
-})
+const searchAtom = atomWithSearchParam(
+  'search',
+  parseAsString.withDefault('').withOptions({ limitUrlUpdates: debounce(300) }),
+)
 
 let scopedStore: ReturnType<typeof createStore>
 function Search() {
   scopedStore = useStore()
-  const value = useAtomValue(query.atoms.search)
+  const value = useAtomValue(searchAtom)
   return <p>Search: {value || 'empty'}</p>
 }
 
@@ -38,7 +39,7 @@ it('cancels a draft when the router changes pathname before browser history comm
     </QueryStateProvider>,
   )
   act(() => {
-    void scopedStore.set(query.atoms.search, 'draft')
+    void scopedStore.set(searchAtom, 'draft')
   })
   expect(screen.getByText('Search: draft')).toBeInTheDocument()
   navigation.pathname = '/second'
@@ -66,7 +67,7 @@ it('pushes the address once and requests a non-shallow route refresh', async () 
     </QueryStateProvider>,
   )
   act(() => {
-    void scopedStore.set(query.atoms.search, 'draft', { history: 'push', shallow: false })
+    void scopedStore.set(searchAtom, 'draft', { history: 'push', shallow: false })
   })
   await act(async () => {
     await vi.runAllTimersAsync()
