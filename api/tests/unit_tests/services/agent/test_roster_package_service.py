@@ -168,6 +168,121 @@ def test_manifest_rejects_dangling_resource_references() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"path": "wrong.zip"}, "skill path must be"),
+        ({"scope": "workspace"}, "workspace skill priority is required"),
+        ({"priority": 0}, "agent config skill priority must be omitted"),
+        ({"sha256": "not-a-digest"}, "sha256 must be"),
+    ],
+)
+def test_skill_resource_rejects_invalid_metadata(overrides: dict[str, object], message: str) -> None:
+    values: dict[str, object] = {
+        "id": "s_000001",
+        "scope": "agent_config",
+        "name": "research",
+        "path": "s_000001.zip",
+        "size": 1,
+        "sha256": "0" * 64,
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValidationError, match=message):
+        RosterAgentPackageSkill.model_validate(values)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"path": "f_000001"}, "file path must start"),
+        ({"path": "f_000001.dir/file"}, "root-level archive member"),
+        ({"platform": "linux"}, "agent config files must not declare"),
+    ],
+)
+def test_file_resource_rejects_invalid_metadata(overrides: dict[str, object], message: str) -> None:
+    values: dict[str, object] = {
+        "id": "f_000001",
+        "role": "agent_config_file",
+        "path": "f_000001.pdf",
+        "original_name": "guide.pdf",
+        "mime_type": "application/pdf",
+        "size": 1,
+        "sha256": "0" * 64,
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValidationError, match=message):
+        RosterAgentPackageFile.model_validate(values)
+
+
+def test_manifest_rejects_unsupported_soul_version() -> None:
+    with pytest.raises(ValidationError, match="unsupported Agent Soul schema version"):
+        RosterAgentPackageManifest(
+            format=ROSTER_AGENT_PACKAGE_FORMAT,
+            format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
+            metadata=RosterAgentPackageMetadata(name="Research Agent"),
+            soul=AgentSoulConfig(schema_version=2),
+        )
+
+
+def test_manifest_rejects_duplicate_resource_ids() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    values = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    duplicate = {**values["skills"][0], "name": "duplicate"}
+    values["skills"].append(duplicate)
+
+    with pytest.raises(ValidationError, match="resource ids must be unique"):
+        RosterAgentPackageManifest.model_validate(values)
+
+
+def test_manifest_rejects_duplicate_localized_skill_names() -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    values = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    duplicate = {
+        **values["skills"][0],
+        "id": "s_000002",
+        "path": "s_000002.zip",
+        "scope": "workspace",
+        "priority": 0,
+    }
+    values["skills"].append(duplicate)
+
+    with pytest.raises(ValidationError, match="skill names must be unique"):
+        RosterAgentPackageManifest.model_validate(values)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("skill_name", "config skill name must match"),
+        ("unreferenced_skill", "agent_config skill resources must be referenced"),
+        ("missing_file", "config file reference must resolve"),
+        ("file_name", "config file name must match"),
+        ("unreferenced_file", "agent_config_file resources must be referenced"),
+    ],
+)
+def test_manifest_rejects_inconsistent_resource_index(mutation: str, message: str) -> None:
+    skill_payload = _skill_archive()
+    file_payload = b"pdf-content"
+    values = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    if mutation == "skill_name":
+        values["skills"][0]["name"] = "renamed"
+    elif mutation == "unreferenced_skill":
+        values["soul"]["config_skills"] = list[dict[str, object]]()
+    elif mutation == "missing_file":
+        values["files"] = list[dict[str, object]]()
+    elif mutation == "file_name":
+        values["files"][0]["original_name"] = "renamed.pdf"
+    else:
+        values["soul"]["config_files"] = list[dict[str, object]]()
+
+    with pytest.raises(ValidationError, match=message):
+        RosterAgentPackageManifest.model_validate(values)
+
+
 @pytest.mark.parametrize("missing_field", ["format", "format_version"])
 def test_reader_rejects_manifest_without_format_discriminator(missing_field: str) -> None:
     skill_payload = _skill_archive()
