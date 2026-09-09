@@ -159,7 +159,7 @@ const MemoryConfig: FC<Props> = ({
                   {windowSizeLabel}
                 </label>
               </div>
-              <Fieldset className="flex h-8 items-center space-x-2">
+              <Fieldset className="flex h-8 items-center gap-2">
                 <FieldsetLegend className="sr-only">{windowSizeLabel}</FieldsetLegend>
                 <Slider
                   className="w-36"
