@@ -14,6 +14,7 @@ from typing import BinaryIO, Literal, Protocol, cast
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_storage import storage
@@ -41,9 +42,6 @@ from services.agent.errors import (
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-    ROSTER_AGENT_PACKAGE_MAX_BYTES,
-    ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
-    ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageAudit,
     RosterAgentPackageExport,
     RosterAgentPackageFile,
@@ -193,7 +191,7 @@ class RosterAgentPackageExporter:
         dependencies: list[PluginDependency],
     ) -> RosterAgentPackageExport:
         required_entries = len(skill_sources) + len(file_sources) + 1
-        if required_entries > ROSTER_AGENT_PACKAGE_MAX_ENTRIES:
+        if required_entries > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
             raise RosterAgentPackageTooLargeError("Roster Agent package has too many members")
 
         # Ownership is transferred to RosterAgentPackageExport.
@@ -211,7 +209,7 @@ class RosterAgentPackageExporter:
                 ]:
                     member = self._write_storage_member(archive, payload)
                     total_size += member.size
-                    if total_size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+                    if total_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                         raise RosterAgentPackageTooLargeError("Roster Agent package payloads exceed the size limit")
                     member_metadata[payload.path] = member
 
@@ -251,14 +249,14 @@ class RosterAgentPackageExporter:
                     dependencies=dependencies,
                 )
                 manifest_bytes = manifest.model_dump_json(indent=2, exclude_none=True).encode("utf-8")
-                if len(manifest_bytes) > ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+                if len(manifest_bytes) > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
-                if total_size + len(manifest_bytes) > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+                if total_size + len(manifest_bytes) > dify_config.AGENT_PACKAGE_MAX_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the size limit")
                 archive.writestr("manifest.json", manifest_bytes)
 
             size = output.tell()
-            if size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+            if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                 raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the archive size limit")
             output.seek(0)
             return RosterAgentPackageExport(
@@ -398,7 +396,7 @@ class RosterAgentPackageExporter:
                     if not isinstance(chunk, bytes):
                         raise TypeError("storage stream returned a non-bytes chunk")
                     size += len(chunk)
-                    if size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+                    if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                         raise RosterAgentPackageTooLargeError("Roster Agent package payload exceeds the size limit")
                     digest.update(chunk)
                     target.write(chunk)

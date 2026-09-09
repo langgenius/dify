@@ -79,7 +79,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
-    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(20 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
   })
 
@@ -119,7 +119,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
-    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(20 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
   })
 })

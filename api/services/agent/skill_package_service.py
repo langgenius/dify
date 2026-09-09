@@ -27,10 +27,6 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from configs import dify_config
 
-# Bounds — generous but finite so a hostile upload can't exhaust memory/disk.
-_MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
-_MAX_SKILL_MD_BYTES = 1 * 1024 * 1024
-_MAX_ENTRIES = 5000
 _ALLOWED_EXTENSIONS = (".zip", ".skill")
 _SKILL_MD_NAME = "SKILL.md"
 _SKILL_NAME_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -218,16 +214,26 @@ class SkillPackageService:
             raise SkillPackageError("invalid_archive", "skill archive is not a valid zip", status_code=400) from exc
 
     def _collect_file_members(self, archive: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, str]]:
-        infos = [info for info in archive.infolist() if not info.is_dir()]
-        if len(infos) > _MAX_ENTRIES:
+        archive_infos = archive.infolist()
+        if len(archive_infos) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
             raise SkillPackageError("too_many_entries", "skill archive has too many files", status_code=400)
+        infos = [info for info in archive_infos if not info.is_dir()]
 
         members: list[tuple[zipfile.ZipInfo, str]] = []
         total_uncompressed = 0
         for info in infos:
             members.append((info, self._safe_member_path(info.filename)))
             total_uncompressed += max(info.file_size, 0)
-        if total_uncompressed > _MAX_UNCOMPRESSED_BYTES:
+            if info.file_size and (
+                info.compress_size == 0
+                or info.file_size / info.compress_size > dify_config.SKILL_PACKAGE_MAX_COMPRESSION_RATIO
+            ):
+                raise SkillPackageError(
+                    "invalid_archive",
+                    "skill package compression ratio exceeds the allowed limit",
+                    status_code=400,
+                )
+        if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
             raise SkillPackageError(
                 "archive_too_large",
                 "skill archive uncompressed size exceeds limit",
@@ -348,7 +354,7 @@ class SkillPackageService:
 
     @staticmethod
     def _validate_skill_md_size(member_info: zipfile.ZipInfo) -> None:
-        if member_info.file_size > _MAX_SKILL_MD_BYTES:
+        if member_info.file_size > dify_config.SKILL_PACKAGE_MAX_SKILL_MD_BYTES:
             raise SkillPackageError("skill_md_too_large", "SKILL.md exceeds size limit", status_code=400)
 
     @staticmethod

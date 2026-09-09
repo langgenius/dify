@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -26,7 +27,6 @@ from models.model import App, AppMode, IconType
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
-from services.agent import roster_package_reader as roster_package_reader_module
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
@@ -35,8 +35,6 @@ from services.agent.errors import (
 from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-    ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
-    ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     RosterAgentPackageFile,
     RosterAgentPackageManifest,
     RosterAgentPackageMetadata,
@@ -251,7 +249,7 @@ def test_reader_rejects_manifest_larger_than_five_mib() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
     manifest_data = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
-    manifest_data["soul"]["prompt"]["system_prompt"] = "x" * ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES
+    manifest_data["soul"]["prompt"]["system_prompt"] = "x" * dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
     manifest = RosterAgentPackageManifest.model_validate(manifest_data)
     package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
 
@@ -264,7 +262,7 @@ def test_reader_applies_the_whole_package_size_limit(monkeypatch: pytest.MonkeyP
     file_payload = b"pdf-content"
     manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload)
     package = _package_bytes(manifest, skill_payload=skill_payload, file_payload=file_payload)
-    monkeypatch.setattr(roster_package_reader_module, "ROSTER_AGENT_PACKAGE_MAX_BYTES", len(package) - 1)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=len(package) - 1)
 
     with pytest.raises(RosterAgentPackageTooLargeError):
         RosterAgentPackageReader().read(io.BytesIO(package))
@@ -303,6 +301,14 @@ def test_preflight_rejects_unsafe_member_path() -> None:
     package = _zip({"../manifest.json": b"{}"})
 
     with pytest.raises(InvalidRosterAgentPackageError, match="unsafe path"):
+        RosterAgentPackageReader().read(io.BytesIO(package))
+
+
+def test_preflight_applies_configured_compression_ratio(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_COMPRESSION_RATIO=1)
+    package = _zip({"manifest.json": b"x" * 1024})
+
+    with pytest.raises(InvalidRosterAgentPackageError, match="compression ratio is too high"):
         RosterAgentPackageReader().read(io.BytesIO(package))
 
 
@@ -386,7 +392,7 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
     )
     nested_limit = 12 * 1024
     assert len(package) < nested_limit
-    monkeypatch.setattr(roster_package_reader_module, "ROSTER_AGENT_PACKAGE_MAX_BYTES", nested_limit)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=nested_limit)
 
     with pytest.raises(RosterAgentPackageTooLargeError, match="nested Skill contents"):
         RosterAgentPackageReader().read(io.BytesIO(package))
@@ -562,36 +568,26 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     assert sqlite_session.in_transaction()
     assert sqlite_session.get(ToolFile, caller_owned_file.id) is caller_owned_file
 
-    monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_ENTRIES", 3)
+    max_entries = dify_config.AGENT_PACKAGE_MAX_ENTRIES
+    max_manifest_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=3)
     with exporter.export(tenant_id="tenant-1", agent_id=agent.id) as exported:
         with zipfile.ZipFile(exported.archive) as archive:
             assert len(archive.infolist()) == 3
 
     reads_before_limit_check = storage.read_count
-    monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_ENTRIES", 2)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=2)
     with pytest.raises(RosterAgentPackageTooLargeError):
         exporter.export(tenant_id="tenant-1", agent_id=agent.id)
     assert storage.read_count == reads_before_limit_check
-    monkeypatch.setattr(
-        roster_package_exporter_module,
-        "ROSTER_AGENT_PACKAGE_MAX_ENTRIES",
-        ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
-    )
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=max_entries)
 
-    monkeypatch.setattr(roster_package_exporter_module, "ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES", 1)
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=1)
     with pytest.raises(RosterAgentPackageTooLargeError):
         exporter.export(tenant_id="tenant-1", agent_id=agent.id)
-    monkeypatch.setattr(
-        roster_package_exporter_module,
-        "ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES",
-        ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
-    )
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_MANIFEST_BYTES=max_manifest_bytes)
 
-    monkeypatch.setattr(
-        roster_package_exporter_module,
-        "ROSTER_AGENT_PACKAGE_MAX_BYTES",
-        len(skill_payload) + len(file_payload),
-    )
+    apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_BYTES=len(skill_payload) + len(file_payload))
     with pytest.raises(RosterAgentPackageTooLargeError):
         exporter.export(tenant_id="tenant-1", agent_id=agent.id)
 

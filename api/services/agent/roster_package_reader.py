@@ -17,10 +17,6 @@ from pydantic import ValidationError
 from configs import dify_config
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.roster_package_entities import (
-    ROSTER_AGENT_PACKAGE_MAX_BYTES,
-    ROSTER_AGENT_PACKAGE_MAX_COMPRESSION_RATIO,
-    ROSTER_AGENT_PACKAGE_MAX_ENTRIES,
-    ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
     ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
     PreparedRosterAgentPackage,
     RosterAgentPackageManifest,
@@ -63,7 +59,7 @@ class RosterAgentPackageReader:
                 infos = archive.infolist()
                 if not infos:
                     raise InvalidRosterAgentPackageError("Roster Agent package is empty")
-                if len(infos) > ROSTER_AGENT_PACKAGE_MAX_ENTRIES:
+                if len(infos) > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
                     raise InvalidRosterAgentPackageError("Roster Agent package has too many members")
 
                 info_by_path: dict[str, zipfile.ZipInfo] = {}
@@ -76,19 +72,19 @@ class RosterAgentPackageReader:
                     info_by_path[path] = info
                     casefold_paths.add(path.casefold())
                     total_uncompressed += info.file_size
-                if total_uncompressed > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+                if total_uncompressed > dify_config.AGENT_PACKAGE_MAX_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package uncompressed size exceeds the limit")
 
                 manifest_info = info_by_path.get("manifest.json")
                 if manifest_info is None:
                     raise InvalidRosterAgentPackageError("Roster Agent package is missing manifest.json")
-                if manifest_info.file_size > ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES:
+                if manifest_info.file_size > dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES:
                     raise RosterAgentPackageTooLargeError("Roster Agent package manifest exceeds the size limit")
                 manifest_bytes, _, manifest_size = self._read_member(
                     archive,
                     manifest_info,
                     collect=True,
-                    max_bytes=ROSTER_AGENT_PACKAGE_MAX_MANIFEST_BYTES,
+                    max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES,
                     expected_size=manifest_info.file_size,
                 )
                 try:
@@ -121,7 +117,7 @@ class RosterAgentPackageReader:
                         collect=False,
                         max_bytes=min(
                             ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES,
-                            ROSTER_AGENT_PACKAGE_MAX_BYTES - streamed_size,
+                            dify_config.AGENT_PACKAGE_MAX_BYTES - streamed_size,
                         ),
                         expected_size=signature_info.file_size,
                     )
@@ -129,7 +125,7 @@ class RosterAgentPackageReader:
                 for resource in [*manifest.skills, *manifest.files]:
                     info = info_by_path[resource.path]
                     payload = b""
-                    remaining_package_bytes = ROSTER_AGENT_PACKAGE_MAX_BYTES - streamed_size
+                    remaining_package_bytes = dify_config.AGENT_PACKAGE_MAX_BYTES - streamed_size
                     if isinstance(resource, RosterAgentPackageSkill):
                         max_skill_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
                         if info.file_size > max_skill_bytes:
@@ -169,7 +165,7 @@ class RosterAgentPackageReader:
                                 f"Roster Agent package Skill {resource.name!r} is invalid"
                             ) from exc
                         nested_uncompressed_size += inspection.uncompressed_size
-                        if nested_uncompressed_size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+                        if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                             raise RosterAgentPackageTooLargeError(
                                 "Roster Agent package nested Skill contents exceed the size limit"
                             )
@@ -193,7 +189,7 @@ class RosterAgentPackageReader:
             if not isinstance(chunk, bytes):
                 raise InvalidRosterAgentPackageError("Roster Agent package must be binary")
             size += len(chunk)
-            if size > ROSTER_AGENT_PACKAGE_MAX_BYTES:
+            if size > dify_config.AGENT_PACKAGE_MAX_BYTES:
                 raise RosterAgentPackageTooLargeError("Roster Agent package exceeds the archive size limit")
             target.write(chunk)
 
@@ -216,7 +212,8 @@ class RosterAgentPackageReader:
         if info.file_size < 0 or info.compress_size < 0:
             raise InvalidRosterAgentPackageError("Roster Agent package contains invalid ZIP metadata")
         if info.file_size and (
-            info.compress_size == 0 or info.file_size / info.compress_size > ROSTER_AGENT_PACKAGE_MAX_COMPRESSION_RATIO
+            info.compress_size == 0
+            or info.file_size / info.compress_size > dify_config.AGENT_PACKAGE_MAX_COMPRESSION_RATIO
         ):
             raise InvalidRosterAgentPackageError("Roster Agent package compression ratio is too high")
         return normalized
