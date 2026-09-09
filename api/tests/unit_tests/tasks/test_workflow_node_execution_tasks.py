@@ -3,7 +3,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, cast
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -27,6 +27,12 @@ WORKFLOW_ID = "00000000-0000-0000-0000-000000000030"
 WORKFLOW_RUN_ID = "00000000-0000-0000-0000-000000000040"
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000050"
 EXECUTION_ID = "00000000-0000-0000-0000-000000000060"
+
+
+class _TaskWithRequestContext(Protocol):
+    def push_request(self, *, retries: int) -> None: ...
+
+    def pop_request(self) -> None: ...
 
 
 def _execution(
@@ -277,7 +283,7 @@ def test_task_retries_invalid_payload_without_committing(
 def test_task_uses_exponential_retry_delay_for_redelivery(monkeypatch: pytest.MonkeyPatch) -> None:
     retry = MagicMock(side_effect=RuntimeError("retry requested"))
     monkeypatch.setattr(save_workflow_node_execution_task, "retry", retry)
-    task = cast(Any, save_workflow_node_execution_task)
+    task = cast(_TaskWithRequestContext, save_workflow_node_execution_task)
 
     task.push_request(retries=2)
     try:
