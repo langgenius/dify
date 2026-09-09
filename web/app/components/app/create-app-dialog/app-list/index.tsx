@@ -5,25 +5,21 @@ import type { App } from '@/models/explore'
 import { RiRobot2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@/app/components/base/ui/toast'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
-import { useRouter } from '@/next/navigation'
-import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
-import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
@@ -44,7 +40,6 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const { push } = useRouter()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
@@ -106,7 +101,8 @@ const Apps = ({
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const { handleCheckPluginDependencies } = usePluginDependencies()
+  const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
+  const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -114,41 +110,46 @@ const Apps = ({
     icon_background,
     description,
   }) => {
-    const { export_data, mode } = await fetchAppDetail(
-      currApp?.app.id as string,
-    )
-    try {
-      const app = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
-      })
-
-      // Track app creation from template
+    const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
+    const payload = {
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: export_data,
+      name,
+      icon_type,
+      icon,
+      icon_background,
+      description,
+    }
+    const trackTemplateCreation = () => {
       trackEvent('create_app_with_template', {
         app_mode: mode,
         template_id: currApp?.app.id,
         template_name: currApp?.app.name,
         description,
       })
+    }
 
-      setIsShowCreateModal(false)
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
-      if (onSuccess)
-        onSuccess()
-      if (app.app_id)
-        await handleCheckPluginDependencies(app.app_id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
-    }
-    catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
-    }
+    await handleImportDSL(payload, {
+      onSuccess: () => {
+        trackTemplateCreation()
+        setIsShowCreateModal(false)
+        onSuccess?.()
+      },
+      onPending: () => {
+        trackTemplateCreation()
+        setShowDSLConfirmModal(true)
+      },
+    })
   }
+
+  const onConfirmDSL = useCallback(async () => {
+    await handleImportDSLConfirm({
+      onSuccess: () => {
+        setShowDSLConfirmModal(false)
+        onSuccess?.()
+      },
+    })
+  }, [handleImportDSLConfirm, onSuccess])
 
   if (isLoading) {
     return (
@@ -231,7 +232,16 @@ const Apps = ({
           appDescription={currApp?.app.description || ''}
           show={isShowCreateModal}
           onConfirm={onCreate}
+          confirmDisabled={isFetching}
           onHide={() => setIsShowCreateModal(false)}
+        />
+      )}
+      {showDSLConfirmModal && (
+        <DSLConfirmModal
+          versions={versions}
+          onCancel={() => setShowDSLConfirmModal(false)}
+          onConfirm={onConfirmDSL}
+          confirmDisabled={isFetching}
         />
       )}
     </div>
