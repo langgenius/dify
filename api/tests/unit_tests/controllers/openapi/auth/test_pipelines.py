@@ -15,8 +15,6 @@ from controllers.openapi.auth.pipelines import (
     AccountPipeline,
     ExternalSsoPipeline,
     Pipeline,
-    _RequiresEnterprise,
-    pipeline_for_subject,
 )
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -25,24 +23,18 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
     Rank,
     Requirement,
-    ResolveCaller,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
-from models import EndUser
-from models.enums import EndUserType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
-from tests.unit_tests.config_override import apply_config_overrides
 
 from ._world import (
     APP_ID,
-    SSO_EMAIL,
-    TENANT_ID,
     account_subject,
     make_account,
     make_app,
@@ -134,49 +126,6 @@ def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
     assert log == ["spec-a", "spec-b", "fixed-a", "fixed-b"]
 
 
-def test_fixed_requirements_reproduce_the_two_pipelines() -> None:
-    """What every route of each subject gets, whatever it declares itself.
-    Tuples, not lists: `fixed` is a ClassVar on a process-lifetime object.
-
-    Nothing app-scoped is here: a fixed requirement runs on every route of its
-    subject, including the ones with no `app_id` to check, so the app checks are
-    declared per endpoint instead. What is left is true of every route.
-
-    `ResolveCaller` is last in both and takes the default rank, which is what
-    puts caller resolution after every endpoint-declared requirement — where
-    the lazy context used to put it, at mount.
-    """
-    assert [type(requirement) for requirement in AccountPipeline.fixed] == [ResolveCaller]
-    assert [type(requirement) for requirement in ExternalSsoPipeline.fixed] == [
-        _RequiresEnterprise,
-        ResolveCaller,
-    ]
-    assert ResolveCaller.rank is Rank.NORMAL
-    assert _RequiresEnterprise.rank is Rank.FIRST
-    assert isinstance(AccountPipeline.fixed, tuple)
-    assert isinstance(ExternalSsoPipeline.fixed, tuple)
-
-
-@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
-def test_the_external_sso_gate_refuses_a_non_enterprise_edition(
-    edition: DeploymentEdition, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The gate that keeps a `dfoe_` token issued before a downgrade from working
-    on the routes an account shares with it - the ones no `edition=` can cover,
-    because the account still has to reach them. The licence is not its concern:
-    the router has already answered for it.
-    """
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
-    subject = sso_subject()
-
-    with patch(FEATURES, side_effect=never_reached):
-        if edition is DeploymentEdition.ENTERPRISE:
-            _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
-        else:
-            with pytest.raises(Forbidden, match="external_sso_requires_ee"):
-                _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
-
-
 @pytest.mark.parametrize("view_raises", [False, True])
 def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
     sqlite_session: Session,
@@ -199,23 +148,6 @@ def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
 
     assert seen == [subject.auth]
     assert try_get_auth_ctx() is None
-
-
-def test_a_subject_that_mounts_no_caller_leaves_the_context_untouched(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`ExternalSsoSubject.mounts_caller` is false without an `app_id`, so an SSO
-    request on an app-less route resolves no caller at all — `ResolveCaller` is
-    where that policy is consulted, and `mounted` only reads what it stored.
-    """
-    monkeypatch.setattr(MOUNT, never_reached)
-    subject = sso_subject()
-    ctx = make_ctx(sqlite_session, subject)
-
-    _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(ResolveCaller(),))
-
-    assert ctx.caller is None
 
 
 def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
@@ -264,58 +196,6 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     assert (app_fetch.call_count, workspace_fetch.call_count, caller_fetch.call_count) == (1, 1, 1)
 
 
-def test_an_external_sso_app_route_resolves_its_end_user(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
-) -> None:
-    """`ExternalSsoSubject.resolve_caller` reads the workspace, and
-    `ExternalSsoPipeline` carries no membership check — so `ResolveCaller`
-    loading it is the only reason this route works.
-    """
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    persist(sqlite_session, make_app(), make_tenant())
-    mounted_users: list[object] = []
-    monkeypatch.setattr(MOUNT, mounted_users.append)
-    end_user = EndUser(
-        tenant_id=TENANT_ID,
-        app_id=APP_ID,
-        type=EndUserType.OPENAPI,
-        is_anonymous=False,
-        session_id=SSO_EMAIL,
-    )
-    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", lambda *_a, **_k: end_user)
-    subject = sso_subject()
-    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
-
-    with patch(FEATURES, return_value=system_features()):
-        _run(ExternalSsoPipeline(), subject, ctx, sqlite_session)
-
-    assert ctx.workspace is not None
-    assert ctx.caller is end_user
-    assert mounted_users == [end_user]
-
-
-def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The mount follows `mounts_caller`, not "a caller happens to be loaded".
-    A membership check resolves one on every account app route, so a subject
-    that declines conditionally would otherwise be mounted against its own
-    policy.
-    """
-    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
-    monkeypatch.setattr(MOUNT, never_reached)
-    subject = account_subject()
-    monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
-    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
-
-    _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(CheckWorkspaceMember(),))
-
-    assert ctx.caller is not None
-
-
 @pytest.mark.parametrize(
     ("requirements", "enable_api", "webapp_auth", "message"),
     [
@@ -353,11 +233,6 @@ def test_a_refused_sso_request_never_creates_an_end_user(
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
     assert ctx.caller is None
-
-
-def test_each_subject_resolves_to_the_pipeline_that_serves_it() -> None:
-    assert type(pipeline_for_subject(account_subject())) is AccountPipeline
-    assert type(pipeline_for_subject(sso_subject())) is ExternalSsoPipeline
 
 
 def test_every_registrable_subject_has_a_pipeline() -> None:

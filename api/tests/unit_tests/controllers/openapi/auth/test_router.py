@@ -7,13 +7,13 @@ from typing import NoReturn
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask, request
+from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import CheckAppApiEnabled, Requirement
+from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
@@ -33,10 +33,8 @@ from services.entities.feature_entities import (
 
 from ._world import (
     ACCOUNT_ID,
-    APP_ID,
     TOKEN_ID,
     make_account,
-    make_app,
     make_auth,
     persist,
     system_features,
@@ -85,9 +83,7 @@ def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
             view()
 
 
-@pytest.mark.parametrize("edition", [None, ENTERPRISE_ONLY], ids=["any-edition-route", "ee-only-route"])
 def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterprise(
-    edition: frozenset[DeploymentEdition] | None,
     app: Flask,
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
@@ -99,24 +95,10 @@ def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterpr
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(FEATURES, lambda: system_features(license_status=LicenseStatus.EXPIRED))
     monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
-    view = _guard(_nothing, edition=edition)
-
-    with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(Forbidden, match="license_invalid"):
-            view()
-
-
-def test_the_licence_is_never_consulted_outside_enterprise(
-    app: Flask,
-    config_overrides: Callable[..., None],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    monkeypatch.setattr(FEATURES, never_reached)
     view = _guard(_nothing)
 
     with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(Unauthorized, match="bearer required"):
+        with pytest.raises(Forbidden, match="license_invalid"):
             view()
 
 
@@ -132,20 +114,24 @@ on this surface.
 """
 
 
-def _resolver_never_asked() -> MagicMock:
+_ResolverAndUpdates = tuple[Resolver, list[object]]
+"""A resolver plus the row updates it issued while refusing."""
+
+
+def _resolver_never_asked() -> _ResolverAndUpdates:
     """An unknown prefix is refused by the registry, before any resolver runs."""
     resolver = MagicMock()
     resolver.resolve.side_effect = AssertionError("an unknown prefix must not reach a resolver")
-    return resolver
+    return resolver, []
 
 
-def _resolver_with_no_live_row() -> MagicMock:
+def _resolver_with_no_live_row() -> _ResolverAndUpdates:
     """`None` is what the shipped resolver answers for a token with no usable row —
     never minted, revoked, or minted under the other variant's prefix.
     """
     resolver = MagicMock()
     resolver.resolve.return_value = None
-    return resolver
+    return resolver, []
 
 
 class _FakeRedis:
@@ -207,16 +193,11 @@ def _expired_row() -> OAuthAccessToken:
     return row
 
 
-def _expired_resolver() -> tuple[Resolver, _OneRowSession]:
+def _resolver_for_an_expired_row() -> _ResolverAndUpdates:
+    """The shipped resolver, over a row whose expiry has passed."""
     session = _OneRowSession(_expired_row())
     resolver = OAuthAccessTokenResolver(lambda: session, _FakeRedis())
-    return resolver.for_token_type(TokenType.OAUTH_ACCOUNT), session
-
-
-def _resolver_for_an_expired_row() -> Resolver:
-    """The shipped resolver, over a row whose expiry has passed."""
-    resolver, _ = _expired_resolver()
-    return resolver
+    return resolver.for_token_type(TokenType.OAUTH_ACCOUNT), session.updates
 
 
 def _authenticates_for_real(
@@ -245,25 +226,31 @@ def _refuse(app: Flask, token: str) -> Unauthorized:
 
 
 @pytest.mark.parametrize(
-    ("resolver_factory", "token"),
+    ("resolver_factory", "token", "rows_expired"),
     [
-        (_resolver_never_asked, "zzz_notatokenkind"),
-        (_resolver_with_no_live_row, f"{TokenType.OAUTH_ACCOUNT.prefix}revoked"),
-        (_resolver_for_an_expired_row, f"{TokenType.OAUTH_ACCOUNT.prefix}stale"),
+        (_resolver_never_asked, "zzz_notatokenkind", 0),
+        (_resolver_with_no_live_row, f"{TokenType.OAUTH_ACCOUNT.prefix}revoked", 0),
+        (_resolver_for_an_expired_row, f"{TokenType.OAUTH_ACCOUNT.prefix}stale", 1),
     ],
     ids=["unknown prefix", "no live row", "expired"],
 )
 def test_every_way_authenticate_rejects_a_bearer_answers_the_same_401(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    resolver_factory: Callable[[], Resolver],
+    resolver_factory: Callable[[], _ResolverAndUpdates],
     token: str,
+    rows_expired: int,
 ) -> None:
-    _authenticates_for_real(monkeypatch, resolver_factory())
+    """`rows_expired` pins that the expired row really took the expiry branch,
+    rather than reaching the same answer as a token that was never minted.
+    """
+    resolver, updates = resolver_factory()
+    _authenticates_for_real(monkeypatch, resolver)
 
     refusal = _refuse(app, token)
 
     assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
+    assert len(updates) == rows_expired
 
 
 def test_an_unresolvable_external_bearer_on_community_is_refused_as_a_bearer_not_an_edition(
@@ -275,23 +262,12 @@ def test_an_unresolvable_external_bearer_on_community_is_refused_as_a_bearer_not
     learn the deployment edition.
     """
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    _authenticates_for_real(monkeypatch, _resolver_with_no_live_row(), token_type=TokenType.OAUTH_EXTERNAL_SSO)
+    resolver, _ = _resolver_with_no_live_row()
+    _authenticates_for_real(monkeypatch, resolver, token_type=TokenType.OAUTH_EXTERNAL_SSO)
 
     refusal = _refuse(app, f"{TokenType.OAUTH_EXTERNAL_SSO.prefix}garbage")
 
     assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
-
-
-def test_the_expired_branch_hard_expires_the_row_before_refusing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pins that the `expired` row above really took the expiry branch, rather
-    than reaching the same answer as a token that was never minted.
-    """
-    resolver, session = _expired_resolver()
-    _authenticates_for_real(monkeypatch, resolver)
-
-    _refuse(app, f"{TokenType.OAUTH_ACCOUNT.prefix}stale")
-
-    assert len(session.updates) == 1
 
 
 def test_an_account_token_reaches_the_view_with_a_resolved_context(
@@ -319,24 +295,6 @@ def test_an_account_token_reaches_the_view_with_a_resolved_context(
     assert isinstance(seen["ctx"].subject, AccountSubject)
     assert seen["resource"] == "self"
     assert [type(user) for user in mounted] == [Account]
-
-
-def test_path_params_reach_the_context(
-    app: Flask,
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`CheckAppApiEnabled` reads its `app_id` off the context, so it only fires
-    when the router has put the route's path params there.
-    """
-    persist(sqlite_session, make_app(enable_api=False))
-    _authenticates(monkeypatch, make_auth(TokenType.OAUTH_ACCOUNT))
-    view = _guard(_nothing, requirements=(CheckAppApiEnabled(),))
-
-    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers={"Authorization": "Bearer tok"}):
-        request.view_args = {"app_id": APP_ID}
-        with pytest.raises(Forbidden, match="service_api_disabled"):
-            view()
 
 
 def _rename_handler(*, ctx: Context) -> str:

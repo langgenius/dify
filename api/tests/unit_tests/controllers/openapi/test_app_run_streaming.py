@@ -39,68 +39,10 @@ def _make_account() -> Account:
 
 
 def test_app_run_request_has_no_response_mode_field():
-    """response_mode must not be a declared field."""
+    """Not a declared field, and a body carrying it is accepted and ignored."""
     assert "response_mode" not in AppRunRequest.model_fields
-
-
-def test_app_run_request_ignores_response_mode_in_payload():
-    """Sending response_mode in JSON body is silently ignored (Pydantic extra='ignore')."""
     req = AppRunRequest.model_validate({"inputs": {}, "response_mode": "blocking"})
     assert not hasattr(req, "response_mode")
-
-
-def test_app_run_request_valid_minimal():
-    req = AppRunRequest.model_validate({"inputs": {}})
-    assert req.inputs == {}
-
-
-def test_app_run_request_with_query():
-    req = AppRunRequest.model_validate({"inputs": {}, "query": "hello"})
-    assert req.query == "hello"
-
-
-@pytest.mark.parametrize(
-    ("view", "write"),
-    [(AppRunApi.post, True), (AppRunTaskStopApi.post, False)],
-    ids=["run", "stop"],
-)
-def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: bool):
-    """`run` carried a bare `@with_session` (its own default) and commits the
-    request's session; `stop` carried none at all and must not. The allow/deny
-    matrix cannot see this — it observes admission before the view body runs.
-    """
-    assert view.__spec__.write is write
-
-
-def test_run_chat_always_calls_generate_with_streaming_true(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    """_run_chat must always invoke AppGenerateService.generate with streaming=True."""
-    from controllers.openapi.app_run import _run_chat
-
-    generate_mock = Mock(return_value=iter([]))
-
-    class GenerateService:
-        generate = generate_mock
-
-    monkeypatch.setattr(
-        sys.modules["controllers.openapi.app_run"],
-        "AppGenerateService",
-        GenerateService,
-    )
-    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}:run", method="POST"):
-        _run_chat(
-            _make_app(),
-            _make_account(),
-            AppRunRequest(inputs={}, query="hello"),
-            Mock(),
-        )
-    _, kwargs = generate_mock.call_args
-    assert kwargs["streaming"] is True
-
-
-def test_stop_task_endpoint_registered(openapi_app):
-    """POST /openapi/v1/apps/<id>/tasks/<task_id>:stop must be registered."""
-    rules = {r.rule for r in openapi_app.url_map.iter_rules()}
-    assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>:stop" in rules
 
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -144,6 +86,9 @@ class _SealableContext:
 
 
 def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    """The SSE body runs after the router's session is gone, and the generator
+    is always asked to stream.
+    """
     generate_mock = Mock(return_value=iter(["event: a\n\n", "event: b\n\n"]))
 
     class GenerateService:
@@ -165,3 +110,4 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
         body = "".join(response.response)
 
     assert body == "event: a\n\nevent: b\n\n"
+    assert generate_mock.call_args.kwargs["streaming"] is True

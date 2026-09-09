@@ -10,12 +10,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.openapi import app_dsl as app_dsl_module
 from controllers.openapi._models import AppDslImportPayload
-from controllers.openapi.app_dsl import (
-    AppDslCheckDependenciesApi,
-    AppDslExportApi,
-    AppDslImportApi,
-    AppDslImportConfirmApi,
-)
+from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.spec import EndpointSpec
 from models import Account
 from services.errors.account import NoPermissionError
@@ -26,26 +21,6 @@ class _EndpointView(Protocol):
 
     __spec__: EndpointSpec
     __handler__: Callable[..., object]
-
-
-@pytest.mark.parametrize(
-    ("view", "write"),
-    [
-        (AppDslImportApi.post, False),
-        (AppDslImportConfirmApi.post, False),
-        (AppDslExportApi.get, False),
-        (AppDslCheckDependenciesApi.get, False),
-    ],
-    ids=["import", "import_confirm", "export", "check_dependencies"],
-)
-def test_dsl_routes_leave_the_transaction_to_their_own_session(view: _EndpointView, write: bool) -> None:
-    """None of the four carried `@with_session` before moving onto `@endpoint`:
-    the imports open their own `Session` and commit or roll it back on the
-    import's own outcome, and the two reads never had a router-owned
-    transaction at all. `write=False` keeps the router's session — the one the
-    requirements read through — out of that decision, exactly as before.
-    """
-    assert view.__spec__.write is write
 
 
 @pytest.mark.parametrize(

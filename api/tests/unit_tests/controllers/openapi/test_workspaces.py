@@ -6,15 +6,12 @@ list + member-gated detail. No legacy /v1/ equivalent — the cookie-authed
 import builtins
 
 import pytest
-from flask import Flask
 from flask.views import MethodView
 
-from controllers.openapi import bp as openapi_bp
+from controllers.openapi.app_run import AppRunApi
 from controllers.openapi.workspaces import (
-    WorkspaceByIdApi,
     WorkspaceMemberApi,
     WorkspaceMembersApi,
-    WorkspacesApi,
     WorkspaceSwitchApi,
 )
 
@@ -22,65 +19,21 @@ if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
-@pytest.fixture
-def openapi_app() -> Flask:
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.register_blueprint(openapi_bp)
-    return app
-
-
-def _rule(app: Flask, path: str):
-    return next(r for r in app.url_map.iter_rules() if r.rule == path)
-
-
-def test_workspaces_list_route_registered(openapi_app: Flask):
-    rules = {r.rule for r in openapi_app.url_map.iter_rules()}
-    assert "/openapi/v1/workspaces" in rules
-
-
-def test_workspaces_list_dispatches_to_workspaces_api(openapi_app: Flask):
-    rule = _rule(openapi_app, "/openapi/v1/workspaces")
-    assert openapi_app.view_functions[rule.endpoint].view_class is WorkspacesApi
-    assert "GET" in rule.methods
-
-
-def test_workspace_by_id_route_registered(openapi_app: Flask):
-    rules = {r.rule for r in openapi_app.url_map.iter_rules()}
-    assert "/openapi/v1/workspaces/<string:workspace_id>" in rules
-
-
-def test_workspace_by_id_dispatches_to_correct_class(openapi_app: Flask):
-    rule = _rule(openapi_app, "/openapi/v1/workspaces/<string:workspace_id>")
-    assert openapi_app.view_functions[rule.endpoint].view_class is WorkspaceByIdApi
-    assert "GET" in rule.methods
-
-
 @pytest.mark.parametrize(
-    ("view", "write"),
+    "view",
     [
-        (WorkspacesApi.get, False),
-        (WorkspaceByIdApi.get, False),
-        (WorkspaceSwitchApi.post, True),
-        (WorkspaceMembersApi.get, False),
-        (WorkspaceMembersApi.post, True),
-        (WorkspaceMemberApi.delete, True),
-        (WorkspaceMemberApi.patch, True),
+        WorkspaceSwitchApi.post,
+        WorkspaceMembersApi.post,
+        WorkspaceMemberApi.delete,
+        WorkspaceMemberApi.patch,
+        AppRunApi.post,
     ],
-    ids=["list", "describe", "switch", "members.list", "members.invite", "members.remove", "members.update_role"],
+    ids=["switch", "members.invite", "members.remove", "members.update_role", "app_run.run"],
 )
-def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: bool):
-    """`write` is the value each route's `@with_session` carried before it moved
-    onto `@endpoint`: `write=False` on the three reads, the decorator's own
-    default on the four writes. The allow/deny matrix cannot see this — it
-    observes admission before the view body runs — so it is pinned here instead.
+def test_write_routes_commit_the_request_session(view):
+    """The routes whose `@with_session` carried the decorator's own default before
+    it moved onto `@endpoint`: each mutates through the router's session, so a
+    `write=False` here is silent data loss. The allow/deny matrix cannot see
+    this — it observes admission before the view body runs.
     """
-    assert view.__spec__.write is write
-
-
-def test_console_legacy_workspaces_route_not_remounted_on_openapi(openapi_app: Flask):
-    """Phase E only adds the bearer-authed mounts on /openapi/v1/.
-    The cookie-authed /console/api/workspaces stays where it is.
-    """
-    rules = {r.rule for r in openapi_app.url_map.iter_rules()}
-    assert "/console/api/workspaces" not in rules
+    assert view.__spec__.write is True

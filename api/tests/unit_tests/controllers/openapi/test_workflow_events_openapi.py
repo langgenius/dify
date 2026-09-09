@@ -107,15 +107,6 @@ def _make_end_user() -> EndUser:
     )
 
 
-def test_transaction_boundary_matches_the_pre_migration_decorator():
-    """`stream` carried no `@with_session`: its repository opens sessions of its
-    own, and a router commit would outlive the request anyway because the response
-    body is still being generated. The allow/deny matrix cannot see this — it
-    observes admission before the view body runs.
-    """
-    assert OpenApiWorkflowEventsApi.get.__spec__.write is False
-
-
 class TestOpenApiWorkflowEventsApi:
     def _bind_repo(self, monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
         module = sys.modules["controllers.openapi.workflow_events"]
@@ -166,24 +157,6 @@ class TestOpenApiWorkflowEventsApi:
                     task_id="wf-run-1",
                 )
 
-    def test_account_caller_checks_created_by_account(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        """Account caller must match created_by == caller.id and role == ACCOUNT."""
-        module = sys.modules["controllers.openapi.workflow_events"]
-        self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
-        self._bind_generators(monkeypatch)
-        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter([])))
-
-        api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            # Should not raise NotFound for matching caller
-            resp = api.get.__handler__(
-                api,
-                _context(_make_account(), CreatorUserRole.ACCOUNT),
-                app_id="app-1",
-                task_id="wf-run-1",
-            )
-        assert resp.mimetype == "text/event-stream"
-
     def test_account_caller_rejected_for_end_user_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
 
@@ -233,28 +206,12 @@ class TestOpenApiWorkflowEventsApi:
         converter_mock.workflow_run_result_to_finish_response.return_value = finish_response
         monkeypatch.setattr(module, "WorkflowResponseConverter", converter_mock)
 
-    def test_finished_run_returns_single_sse_event(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        """A finished run returns a single done-event SSE response without streaming."""
-        self._bind_finished_run(monkeypatch)
-
-        api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            resp = api.get.__handler__(
-                api,
-                _context(_make_account(), CreatorUserRole.ACCOUNT),
-                app_id="app-1",
-                task_id="wf-run-1",
-            )
-        assert resp.mimetype == "text/event-stream"
-        chunks = list(resp.response)
-        data = b"".join(c if isinstance(c, bytes) else c.encode() for c in chunks).decode()
-        assert "workflow_finished" in data
-
     def test_finished_run_reads_everything_off_the_context_before_streaming(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch
     ):
-        """The finished branch's body is a real generator, so it runs entirely after
-        the handler has returned and the router's session is gone.
+        """A finished run answers a single done event without streaming. Its body
+        is a real generator, so it runs entirely after the handler has returned
+        and the router's session is gone.
         """
         self._bind_finished_run(monkeypatch)
 
@@ -265,13 +222,15 @@ class TestOpenApiWorkflowEventsApi:
             ctx.seal()
             body = "".join(resp.response)
 
+        assert resp.mimetype == "text/event-stream"
         assert "workflow_finished" in body
 
     @pytest.mark.parametrize("include_state_snapshot", [False, True], ids=["events", "snapshot"])
     def test_stream_reads_everything_off_the_context_before_streaming(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, include_state_snapshot: bool
     ):
-        """Both stream shapes must be fully resolved before the handler returns.
+        """Both stream shapes must be fully resolved before the handler returns,
+        and an account caller whose id and role match `created_by` is admitted.
 
         The snapshot branch is the one that used to read `app_model.tenant_id` and
         `app_model.id` from inside the generator, which the router's closed session
@@ -296,4 +255,5 @@ class TestOpenApiWorkflowEventsApi:
             ctx.seal()
             body = "".join(resp.response)
 
+        assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"

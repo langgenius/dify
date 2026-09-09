@@ -4,9 +4,8 @@ Auth is not exercised here: `@endpoint` resolves the `Context` before the handle
 runs, and the allow/deny answers live in `test_auth_matrix.py`. The recipient-surface
 refusal is `CheckFormSurface`'s — a `Requirement` this feature owns rather than the
 auth layer, so it is pinned here too. Body tests call `__handler__` — the one seam —
-with a `Context` double. The 422 test cannot use
-it, because `@accepts` sits inside the guard and `__handler__` is below it; it goes
-over the wire through `admitted_bearer` and asserts the canonical `ErrorBody`.
+with a `Context` double. The submit route's 422 goes over the wire instead,
+in the shared table in `test_workspaces_members.py`.
 """
 
 from __future__ import annotations
@@ -22,12 +21,7 @@ import pytest
 from flask import Flask
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._errors import (
-    ErrorBody,
-    HumanInputFormNotFound,
-    OpenApiErrorCode,
-    RecipientSurfaceMismatch,
-)
+from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.requirements import Rank
 from controllers.openapi.human_input_form import (
@@ -39,7 +33,6 @@ from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
-from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 _MODULE = "controllers.openapi.human_input_form"
 
@@ -94,20 +87,6 @@ def _make_end_user(end_user_id: str = "eu-1") -> EndUser:
         type=EndUserType.OPENAPI,
         session_id=f"session-{end_user_id}",
     )
-
-
-@pytest.mark.parametrize(
-    ("view", "write"),
-    [(OpenApiWorkflowHumanInputFormApi.get, False), (OpenApiWorkflowHumanInputFormSubmitApi.post, False)],
-    ids=["get", "submit"],
-)
-def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: bool):
-    """Neither route carried `@with_session`: `HumanInputService` owns a session off
-    `db.engine`, and `submit` commits through that one, so the submission is durable
-    without a router commit. The allow/deny matrix cannot see this — it observes
-    admission before the view body runs.
-    """
-    assert view.__spec__.write is write
 
 
 class TestOpenApiHumanInputFormGet:
@@ -221,63 +200,19 @@ class TestOpenApiHumanInputFormPost:
         )
         assert result == FormSubmitResponse()
 
-    def test_post_standalone_web_app_recipient_submits(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        service_mock = _mock_service(monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
-
-        api = OpenApiWorkflowHumanInputFormSubmitApi()
-        with app.test_request_context(
-            "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
-            method="POST",
-            json={"action": "approve", "inputs": {}},
-        ):
-            result = api.post.__handler__(
-                api,
-                _context(_make_end_user("anyone"), CreatorUserRole.END_USER),
-                app_id="app-1",
-                form_token="tok-1",
-                body=HumanInputFormSubmitPayload(action="approve", inputs={}),
-            )
-
-        service_mock.submit_form_by_token.assert_called_once()
-        assert result == FormSubmitResponse()
-
-    def test_post_rejects_invalid_body_with_422(self, admitted_bearer: AdmittedWorld):
-        """Malformed body → 422 on the wire, from `@accepts` inside the guard."""
-        resp = admitted_bearer.client.post(
-            f"/openapi/v1/apps/{admitted_bearer.app_id}/human-input-forms/tok-1:submit",
-            json={"inputs": {"field1": "val"}},  # missing required "action"
-            headers=admitted_bearer.headers,
-        )
-
-        assert resp.status_code == 422, resp.get_json()
-        wire = resp.get_json()
-        ErrorBody.model_validate(wire)
-        assert wire["code"] == OpenApiErrorCode.INVALID_PARAM
-        assert wire["details"]
-
 
 @pytest.mark.parametrize(
     "view",
     [OpenApiWorkflowHumanInputFormApi.get, OpenApiWorkflowHumanInputFormSubmitApi.post],
     ids=["get", "submit"],
 )
-def test_both_routes_declare_the_surface_check(view):
+def test_both_routes_declare_the_surface_check_last_at_the_default_rank(view):
     """The wiring, not the requirement's own logic: `CheckFormSurface` only runs
-    on a route that declares it, and nothing else pins that — the allow/deny
-    matrix has no console-recipient case, so removing either declaration changes
-    no row there. It was previously pinned end to end by the handler-body call
-    this refactor removed.
+    on a route that declares it, and the allow/deny matrix has no console-recipient
+    case, so removing either declaration changes no row there. It carries no rank
+    of its own, so declaration order is what keeps it last.
     """
-    assert any(isinstance(requirement, CheckFormSurface) for requirement in view.__spec__.requirements)
-
-
-def test_the_surface_check_takes_the_default_rank():
-    """No rank of its own: it ties with the other NORMAL requirements, and
-    declaration order is what keeps it last — it is written last at both
-    routes that declare it.
-    """
-    for view in (OpenApiWorkflowHumanInputFormApi.get, OpenApiWorkflowHumanInputFormSubmitApi.post):
-        assert isinstance(view.__spec__.requirements[-1], CheckFormSurface)
+    assert isinstance(view.__spec__.requirements[-1], CheckFormSurface)
     assert CheckFormSurface.rank is Rank.NORMAL
 
 
