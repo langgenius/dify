@@ -1,6 +1,7 @@
 import os
 import re
-from typing import Any
+from collections.abc import Mapping
+from typing import TypedDict
 
 import orjson
 import pytest
@@ -9,16 +10,42 @@ from _pytest.monkeypatch import MonkeyPatch
 from pymochow.model.enum import ServerErrCode
 
 
+class MochowRow(TypedDict):
+    id: str
+
+
+class MochowIndex(TypedDict):
+    indexName: str
+
+
+class MochowSchema(TypedDict):
+    indexes: list[MochowIndex]
+
+
+class MochowRequest(TypedDict, total=False):
+    database: str
+    table: str
+    description: str
+    schema: MochowSchema
+    indexName: str
+    rows: list[MochowRow]
+    primaryKey: MochowRow
+    filter: str
+
+
+type MochowParams = Mapping[str | bytes, str | bytes | None]
+
+
 class InMemoryMochowHTTP:
     """Serve deterministic Mochow API responses at the requests boundary."""
 
     def __init__(self) -> None:
         self.databases = {"dify"}
-        self.tables: dict[str, dict[str, Any]] = {}
-        self.rows: dict[str, dict[str, dict[str, Any]]] = {}
+        self.tables: dict[str, MochowRequest] = {}
+        self.rows: dict[str, dict[str, MochowRow]] = {}
 
     @staticmethod
-    def _response(url: str, payload: dict[str, Any], status_code: int = 200) -> requests.Response:
+    def _response(url: str, payload: dict[str, object], status_code: int = 200) -> requests.Response:
         response = requests.Response()
         response.status_code = status_code
         response.url = url
@@ -27,7 +54,7 @@ class InMemoryMochowHTTP:
         return response
 
     @staticmethod
-    def _action(params: dict[Any, Any] | None) -> str:
+    def _action(params: MochowParams | None) -> str:
         if not params:
             return ""
         key = next(iter(params))
@@ -39,12 +66,12 @@ class InMemoryMochowHTTP:
         url: str | bytes,
         *,
         data: bytes | None = None,
-        params: dict[Any, Any] | None = None,
-        **_: Any,
+        params: MochowParams | None = None,
+        **_: object,
     ) -> requests.Response:
         if isinstance(url, bytes):
             url = url.decode()
-        body = orjson.loads(data) if data else {}
+        body: MochowRequest = orjson.loads(data) if data else {}
         action = self._action(params)
         resource = url.rstrip("/").rsplit("/", 1)[-1]
 
@@ -57,6 +84,7 @@ class InMemoryMochowHTTP:
 
         if resource == "table":
             table_name = body.get("table") or self._param(params, "table")
+            assert table_name is not None, "Mochow table requests must specify a table"
             if method == "DELETE":
                 if table_name not in self.tables:
                     return self._not_found(url)
@@ -122,7 +150,7 @@ class InMemoryMochowHTTP:
         raise AssertionError(f"Unhandled Mochow request: {method} {url} action={action} body={body}")
 
     @staticmethod
-    def _param(params: dict[Any, Any] | None, name: str) -> Any:
+    def _param(params: MochowParams | None, name: str) -> str | None:
         for key, value in (params or {}).items():
             normalized_key = key.decode() if isinstance(key, bytes) else str(key)
             if normalized_key == name:

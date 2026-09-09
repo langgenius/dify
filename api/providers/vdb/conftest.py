@@ -18,15 +18,16 @@ def _init_mock_redis():
 @pytest.fixture
 def setup_real_redis(monkeypatch: pytest.MonkeyPatch):
     """Use an isolated key prefix with the Redis service started for integration tests."""
-    client = redis.Redis(
+    pool = redis.ConnectionPool(
+        connection_class=redis.SSLConnection if dify_config.REDIS_USE_SSL else redis.Connection,
         host=dify_config.REDIS_HOST,
         port=dify_config.REDIS_PORT,
         username=dify_config.REDIS_USERNAME or None,
         password=dify_config.REDIS_PASSWORD or None,
         db=dify_config.REDIS_DB,
-        ssl=dify_config.REDIS_USE_SSL,
         protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
     )
+    client = redis.Redis(connection_pool=pool)
     client.ping()
 
     key_prefix = f"pytest:vdb:{uuid.uuid4().hex}"
@@ -45,4 +46,7 @@ def setup_real_redis(monkeypatch: pytest.MonkeyPatch):
             try:
                 client.close()
             finally:
-                ext_redis.redis_client._client = previous_client
+                try:
+                    pool.disconnect()
+                finally:
+                    ext_redis.redis_client._client = previous_client
