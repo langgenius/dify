@@ -453,6 +453,28 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session(
         assert [config.id for config in configs] == [app_model_config_id]
 
 
+def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_session: Session) -> None:
+    app = _app(tenant_id=_TENANT_ID)
+    service = AppDslService(session=sqlite_session)
+
+    result = service._create_or_update_app(
+        app=app,
+        data={
+            "app": {
+                "mode": AppMode.CHAT.value,
+                "icon_type": IconType.IMAGE.value,
+                "icon": "55555555-5555-4555-8555-555555555555",
+            },
+            "model_config": {"model": {}},
+        },
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    assert result.icon_type == IconType.EMOJI
+    assert result.icon == "🤖"
+    assert service._warnings == []
+
+
 def test_create_or_update_app_flushes_new_model_config_before_signal(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:

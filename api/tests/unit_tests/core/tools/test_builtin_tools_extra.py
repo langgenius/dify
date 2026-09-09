@@ -143,6 +143,23 @@ def test_weekday_tool(sqlite_session: Session):
     with pytest.raises(ValueError, match="Month is required"):
         list(weekday_tool.invoke(session=sqlite_session, user_id="u", tool_parameters={"year": 2024, "day": 1}))
 
+    # LLMs often send numeric parameters as strings; these must be accepted.
+    string_params = list(
+        weekday_tool.invoke(
+            session=sqlite_session, user_id="u", tool_parameters={"year": "2024", "month": "3", "day": "5"}
+        )
+    )[0].message.text
+    expected_date = date(2024, 3, 5)
+    assert string_params == (
+        f"{calendar.month_name[expected_date.month]} "
+        f"{expected_date.day}, {expected_date.year} "
+        f"is {calendar.day_name[expected_date.weekday()]}."
+    )
+    # Missing or non-numeric values must yield an "Invalid date" message, not crash.
+    for params in ({"year": 2024, "month": 3}, {"year": "abc", "month": 3, "day": 5}):
+        result = list(weekday_tool.invoke(session=sqlite_session, user_id="u", tool_parameters=params))[0].message.text
+        assert "Invalid date" in result
+
 
 def test_simple_code_valid_execution(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     simple_code = _build_builtin_tool(SimpleCode)
@@ -375,3 +392,18 @@ def test_provider_classes_and_builtin_sort(monkeypatch: pytest.MonkeyPatch):
     )
     sorted_providers = BuiltinToolProviderSort.sort(providers)
     assert [p.name for p in sorted_providers] == ["a", "b"]
+
+
+def test_localtime_to_timestamp_tool_epoch_zero(sqlite_session: Session):
+    localtime_tool = _build_builtin_tool(LocaltimeToTimestampTool)
+    # 1970-01-01 08:00:00 in Asia/Shanghai is exactly Unix epoch 0. A valid
+    # conversion to timestamp 0 must not be reported as "Invalid localtime"
+    # just because 0 is falsy.
+    epoch_message = list(
+        localtime_tool.invoke(
+            session=sqlite_session,
+            user_id="u",
+            tool_parameters={"localtime": "1970-01-01 08:00:00", "timezone": "Asia/Shanghai"},
+        )
+    )[0].message.text
+    assert epoch_message.strip() == "0"

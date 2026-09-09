@@ -10,11 +10,15 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import { API_PREFIX } from '@/config'
-import { useModalContext } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 
@@ -263,7 +267,7 @@ export default function WorkflowLogArchivesPage() {
 
 function ArchivedLogsUpgradeBanner() {
   const { t } = useTranslation()
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
@@ -278,7 +282,7 @@ function ArchivedLogsUpgradeBanner() {
       <button
         type="button"
         className="flex h-10 w-30 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
-        onClick={() => setShowPricingModal()}
+        onClick={() => setPricing('open')}
       >
         {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       </button>

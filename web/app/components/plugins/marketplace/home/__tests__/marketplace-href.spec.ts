@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { sanitizeMarketplaceHref } from '../marketplace-href'
 
 describe('sanitizeMarketplaceHref', () => {

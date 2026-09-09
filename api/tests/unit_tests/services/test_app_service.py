@@ -639,13 +639,15 @@ class TestAgentAppType:
         assert searched_counts.drafts == 1
 
     def test_bound_agent_id_is_none_for_non_agent_app(self):
-        """Non-agent apps short-circuit without touching the DB."""
+        """Non-agent apps short-circuit before the session is used."""
         from models.model import App, AppMode
 
         app = App(
             mode=AppMode.CHAT,
         )
-        assert app.bound_agent_id is None
+        # `agent_app_binding_with_session` returns before touching the session
+        # for a non-agent app, so passing None still exercises that path.
+        assert app.bound_agent_id_with_session(session=None) is None  # type: ignore[arg-type]
 
     def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)

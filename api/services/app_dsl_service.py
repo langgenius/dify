@@ -62,6 +62,11 @@ from services.entities.dsl_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.icon_configuration import (
+    DEFAULT_ICON,
+    DEFAULT_ICON_TYPE,
+    is_valid_image_icon,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -505,6 +510,10 @@ class AppDslService:
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
 
+        target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
+        if target_tenant_id is None:
+            raise ValueError("Current tenant is not set")
+
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         resolved_icon_type: IconType
@@ -513,6 +522,14 @@ class AppDslService:
         else:
             resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
+        if not is_valid_image_icon(
+            session=self._session,
+            tenant_id=target_tenant_id,
+            icon_type=resolved_icon_type,
+            icon=icon,
+        ):
+            resolved_icon_type = DEFAULT_ICON_TYPE
+            icon = DEFAULT_ICON
 
         if app:
             # Update existing app
@@ -524,13 +541,10 @@ class AppDslService:
             app.updated_by = account.id
             app.updated_at = naive_utc_now()
         else:
-            if account.current_tenant_id is None:
-                raise ValueError("Current tenant is not set")
-
             # Create new app
             app = App()
             app.id = import_app_id or str(uuid4())
-            app.tenant_id = account.current_tenant_id
+            app.tenant_id = target_tenant_id
             app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")

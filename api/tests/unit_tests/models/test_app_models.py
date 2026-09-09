@@ -16,9 +16,8 @@ from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
-from models import model as model_module
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
@@ -166,8 +165,8 @@ class TestAppModelValidation:
         assert result == ""
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-    def test_app_is_agent_property_false(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
-        """Test is_agent property returns False when not configured as agent."""
+    def test_app_is_agent_false_when_not_configured_as_agent(self, sqlite_session: Session):
+        """`is_agent_with_session` returns False when the config has no agent mode."""
         # Arrange
         app = App(
             tenant_id=str(uuid4()),
@@ -180,11 +179,9 @@ class TestAppModelValidation:
         )
         sqlite_session.add(app)
         sqlite_session.flush()
-        session_registry = scoped_session(lambda: sqlite_session)
-        monkeypatch.setattr(model_module.db, "session", session_registry)
 
         # Act
-        result = app.is_agent
+        result = app.is_agent_with_session(session=sqlite_session)
 
         # Assert
         assert result is False
@@ -240,6 +237,35 @@ class TestAppModelValidation:
 
         # Assert
         assert result == AppMode.CHAT
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_mode_compatible_with_agent_reports_agent_chat(self, sqlite_session: Session):
+        """A CHAT app whose own config enables agent mode reports AGENT_CHAT."""
+        # Arrange
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        app.app_model_config_id = str(uuid4())
+        config = AppModelConfig(
+            app_id=app.id,
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
+        config.id = app.app_model_config_id
+        sqlite_session.add(config)
+        sqlite_session.flush()
+
+        # Act
+        result = app.mode_compatible_with_agent_with_session(session=sqlite_session)
+
+        # Assert
+        assert result == AppMode.AGENT_CHAT
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
     def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, sqlite_session: Session):

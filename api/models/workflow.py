@@ -1100,22 +1100,20 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
             )
         )
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
         if created_by_role == CreatorUserRole.ACCOUNT:
             stmt = select(Account).where(Account.id == self.created_by)
-            return db.session.scalar(stmt)
+            return session.scalar(stmt)
         return None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: orm.Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         if created_by_role == CreatorUserRole.END_USER:
             stmt = select(EndUser).where(EndUser.id == self.created_by)
-            return db.session.scalar(stmt)
+            return session.scalar(stmt)
         return None
 
     @property
