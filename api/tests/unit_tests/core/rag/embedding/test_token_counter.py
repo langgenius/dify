@@ -1,4 +1,3 @@
-
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
