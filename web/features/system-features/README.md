@@ -1,9 +1,10 @@
 # System Features
 
-This feature owns the deployment-wide capability query contract and application bootstrap boundary. It is neither a
-cross-request server cache nor a general configuration registry.
+This feature owns the deployment-wide capability query contract, server cache policy, and application bootstrap boundary.
 
 - The generated System Features operation owns the shared query identity and response contract.
+- `server.ts` uses oRPC context to request an anonymous snapshot with 600-second server revalidation,
+  allowing separate RSC requests to reuse the cached response.
 - `server.ts` owns request-scoped imperative resolution and dehydration. Under the [TanStack Query prefetching] semantics,
   `'static'` accepts any successful request-local snapshot, even after invalidation. Optional access maps an initial
   no-data failure to `undefined` without another optional attempt; required access reuses a successful snapshot, starts
