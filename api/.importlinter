@@ -241,6 +241,29 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:installed-app-message-boundary]
+name = Installed app message service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.installed_app_message_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:installed-app-message-persistence-boundary]
+name = Installed app message persistence does not call the legacy message service
+type = forbidden
+source_modules =
+    repositories.installed_app_message_repository
+forbidden_modules =
+    services.message_service
+allow_indirect_imports = True
+
 [importlinter:contract:conversation-persistence-boundary]
 name = Conversation persistence does not call the legacy conversation application service
 type = forbidden
