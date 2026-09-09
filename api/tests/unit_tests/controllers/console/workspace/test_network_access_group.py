@@ -21,6 +21,7 @@ from controllers.console.workspace.network_access_group import (
     NetworkAccessGroupUpdatePayload,
     _available_access_points,
     _effective_entitlement,
+    _limit_binding_access_points,
     _translate_upstream_error,
 )
 from models import App, AppMode, TenantAccountRole
@@ -427,6 +428,21 @@ def test_binding_response_accepts_policy_id_alias() -> None:
         )
 
     assert result["binding"]["group_id"] == GROUP_ID
+
+
+def test_binding_response_hides_scopes_not_available_for_current_app_mode() -> None:
+    payload = {
+        "binding": _binding_payload(
+            enabled=True,
+            group_id=GROUP_ID,
+            access_points=["webapp", "service_api", "mcp", "trigger"],
+        )
+    }
+
+    _limit_binding_access_points(payload, ["webapp", "service_api"])
+
+    assert payload["binding"]["access_points"] == ["webapp", "service_api"]
+    assert "accessPoints" not in payload["binding"]
 
 
 @pytest.mark.parametrize(

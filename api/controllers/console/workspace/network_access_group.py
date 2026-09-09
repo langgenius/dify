@@ -217,6 +217,19 @@ def _normalize_app_binding_defaults(payload: dict) -> None:
         binding["access_points"] = []
 
 
+def _limit_binding_access_points(payload: dict, available: list[NetworkAccessPoint]) -> None:
+    """Hide stale scopes which are not real access points for the current App mode."""
+
+    binding = payload.get("binding")
+    if not isinstance(binding, dict):
+        return
+    raw_access_points = binding.get("access_points", binding.get("accessPoints", []))
+    if not isinstance(raw_access_points, list):
+        return
+    binding["access_points"] = [access_point for access_point in raw_access_points if access_point in available]
+    binding.pop("accessPoints", None)
+
+
 def _ensure_workspace_admin_or_owner(current_user: Account) -> None:
     """Authorize management against the persisted current-workspace membership."""
 
@@ -431,6 +444,7 @@ class AppNetworkAccessGroupApi(Resource):
         except NetworkAccessGroupUpstreamError as exc:
             raise _translate_upstream_error(exc) from exc
         _normalize_app_binding_defaults(payload)
+        _limit_binding_access_points(payload, available_access_points)
         payload["entitled"] = _effective_entitlement(current_tenant_id, payload.get("entitled"))
         payload["available_access_points"] = available_access_points
         return _serialize_response(AppNetworkAccessGroupResponse, payload)
@@ -473,5 +487,6 @@ class AppNetworkAccessGroupApi(Resource):
         except NetworkAccessGroupUpstreamError as exc:
             raise _translate_upstream_error(exc) from exc
         _normalize_app_binding_defaults(payload)
+        _limit_binding_access_points(payload, available_access_points)
         payload["available_access_points"] = available_access_points
         return _serialize_response(AppNetworkAccessGroupMutationResponse, payload)
