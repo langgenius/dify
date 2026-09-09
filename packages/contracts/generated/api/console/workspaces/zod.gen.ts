@@ -255,6 +255,32 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
+ * NetworkAccessGroupCreatePayload
+ */
+export const zNetworkAccessGroupCreatePayload = z.object({
+  allowed_cidrs: z.array(z.string()).min(1).max(100),
+  description: z.string().max(500).optional().default(''),
+  name: z.string().min(1).max(100),
+})
+
+/**
+ * NetworkAccessGroupDeleteResponse
+ */
+export const zNetworkAccessGroupDeleteResponse = z.object({
+  deleted: z.boolean(),
+})
+
+/**
+ * NetworkAccessGroupUpdatePayload
+ */
+export const zNetworkAccessGroupUpdatePayload = z.object({
+  allowed_cidrs: z.array(z.string()).min(1).max(100),
+  description: z.string().max(500).optional().default(''),
+  expected_version: z.int().gte(1),
+  name: z.string().min(1).max(100),
+})
+
+/**
  * WorkspacePermissionResponse
  */
 export const zWorkspacePermissionResponse = z.object({
@@ -2277,6 +2303,51 @@ export const zModelProviderSummaryResponse = z.object({
 export const zModelProviderSummaryListResponse = z.object({
   data: z.array(zModelProviderSummaryResponse),
   plugins: z.record(z.string(), zModelProviderPluginSummaryResponse),
+})
+
+/**
+ * NetworkAccessGroupAppResponse
+ */
+export const zNetworkAccessGroupAppResponse = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * NetworkAccessGroupResponse
+ */
+export const zNetworkAccessGroupResponse = z.object({
+  allowed_cidrs: z.array(z.string()).min(1).max(100),
+  app_ids: z.array(z.string()),
+  apps: z.array(zNetworkAccessGroupAppResponse),
+  created_at: z.iso.datetime(),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  name: z.string(),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  updated_by_account_id: z.string().nullish(),
+  used_by_count: z.int().gte(0),
+  version: z.int().gte(1),
+})
+
+/**
+ * NetworkAccessGroupListResponse
+ */
+export const zNetworkAccessGroupListResponse = z.object({
+  entitled: z.boolean(),
+  groups: z.array(zNetworkAccessGroupResponse),
+  tenant_id: z.string(),
+})
+
+/**
+ * NetworkAccessGroupMutationResponse
+ */
+export const zNetworkAccessGroupMutationResponse = z.object({
+  group: zNetworkAccessGroupResponse,
 })
 
 /**
@@ -4548,6 +4619,55 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
  * Available models retrieved successfully
  */
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse = zAvailableModelListResponse
+
+/**
+ * Workspace network access groups retrieved successfully
+ */
+export const zGetWorkspacesCurrentNetworkAccessGroupsResponse = zNetworkAccessGroupListResponse
+
+export const zPostWorkspacesCurrentNetworkAccessGroupsBody = zNetworkAccessGroupCreatePayload
+
+/**
+ * Workspace network access group created successfully
+ */
+export const zPostWorkspacesCurrentNetworkAccessGroupsResponse = zNetworkAccessGroupMutationResponse
+
+export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
+  group_id: z.uuid(),
+})
+
+export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdQuery = z.object({
+  expected_version: z.int().gte(1),
+})
+
+/**
+ * Workspace network access group deleted successfully
+ */
+export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  zNetworkAccessGroupDeleteResponse
+
+export const zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
+  group_id: z.uuid(),
+})
+
+/**
+ * Workspace network access group retrieved successfully
+ */
+export const zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  zNetworkAccessGroupMutationResponse
+
+export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdBody =
+  zNetworkAccessGroupUpdatePayload
+
+export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
+  group_id: z.uuid(),
+})
+
+/**
+ * Workspace network access group updated successfully
+ */
+export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  zNetworkAccessGroupMutationResponse
 
 /**
  * Success
