@@ -87,6 +87,10 @@ Every model, rerank, LLM, datasource, and object-storage call crosses the authen
 API. `KNOWLEDGE_INTEGRATED_MODE_ENABLED` is limited to Workspace rollout/provisioning and must not
 select a different runtime implementation.
 
+Online-drive connectors may use the optional
+[remote metadata contract](./online-drive-remote-metadata-contract.md) to avoid unchanged-file
+downloads without changing the fallback behavior of legacy plugins.
+
 ## KnowledgeFS Design
 
 KnowledgeFS is a virtual filesystem model and command API. It exposes filesystem-like paths and commands over knowledge resources, but it does not require the backing store to be POSIX compatible.

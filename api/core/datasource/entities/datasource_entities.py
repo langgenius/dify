@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import enum
+import re
+import string
+from datetime import datetime
 from enum import StrEnum
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
@@ -330,46 +333,125 @@ class WebsiteCrawlMessage(BaseModel):
     result: WebSiteInfo = WebSiteInfo(status="", web_info_list=[], total=0, completed=0)
 
 
-class DatasourceMessage(ToolInvokeMessage):
-    pass
-
-
 #########################
 # Online drive file
 #########################
 
 
+class OnlineDriveChecksum(TypedDict):
+    """Optional full-file checksum supplied by an online-drive provider."""
+
+    algorithm: Literal["md5", "sha256"]
+    value: str
+
+
+class OnlineDriveRemoteMetadata(TypedDict, total=False):
+    """Bounded wire metadata used as a hint for online-drive change detection."""
+
+    version_id: str
+    etag: str
+    checksum: OnlineDriveChecksum
+    modified_time: str
+
+
+_ONLINE_DRIVE_TIMESTAMP_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
+
+
+def _online_drive_token(value: Any) -> str | None:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or len(value) > 1024
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        return None
+    return value
+
+
+def _online_drive_timestamp(value: Any) -> str | None:
+    if not isinstance(value, str) or len(value) > 64 or not _ONLINE_DRIVE_TIMESTAMP_PATTERN.fullmatch(value):
+        return None
+    try:
+        datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return value
+
+
+def _bounded_online_drive_remote_metadata(value: Any) -> OnlineDriveRemoteMetadata | None:
+    """Keep only the optional, non-secret fields understood by KnowledgeFS."""
+    if not isinstance(value, dict):
+        return None
+
+    result: OnlineDriveRemoteMetadata = {}
+    version_id = _online_drive_token(value.get("version_id"))
+    if version_id and version_id != "null":
+        result["version_id"] = version_id
+    etag = _online_drive_token(value.get("etag"))
+    if etag and not etag.lower().startswith("w/"):
+        result["etag"] = etag
+    modified_time = _online_drive_timestamp(value.get("modified_time"))
+    if modified_time:
+        result["modified_time"] = modified_time
+
+    checksum = value.get("checksum")
+    if isinstance(checksum, dict):
+        algorithm, digest = checksum.get("algorithm"), checksum.get("value")
+        normalized_algorithm: Literal["md5", "sha256"] | None = None
+        if algorithm == "md5":
+            normalized_algorithm = "md5"
+        elif algorithm == "sha256":
+            normalized_algorithm = "sha256"
+        digest_length = 32 if normalized_algorithm == "md5" else 64 if normalized_algorithm == "sha256" else None
+        if (
+            normalized_algorithm is not None
+            and digest_length is not None
+            and isinstance(digest, str)
+            and len(digest) == digest_length
+            and all(character in string.hexdigits for character in digest)
+        ):
+            result["checksum"] = {"algorithm": normalized_algorithm, "value": digest.lower()}
+    return result or None
+
+
+class DatasourceMessage(ToolInvokeMessage):
+    pass
+
+
+class OnlineDriveDownloadMessage(DatasourceMessage):
+    """Datasource invoke message with a bounded online-drive download receipt."""
+
+    @field_validator("meta", mode="before")
+    @classmethod
+    def bounded_remote_metadata(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or "remote_metadata" not in value:
+            return value
+        result = dict(value)
+        remote_metadata = _bounded_online_drive_remote_metadata(value.get("remote_metadata"))
+        if remote_metadata:
+            result["remote_metadata"] = remote_metadata
+        else:
+            result.pop("remote_metadata", None)
+        return result
+
+
 class OnlineDriveFile(BaseModel):
-    """
-    Online drive file
-    """
+    """Online drive file."""
 
     id: str = Field(..., description="The file ID")
     name: str = Field(..., description="The file name")
     size: int = Field(..., description="The file size")
     type: str = Field(..., description="The file type: folder or file")
-    remote_metadata: dict[str, Any] | None = Field(
+    remote_metadata: OnlineDriveRemoteMetadata | None = Field(
         None,
         description="Optional provider version_id, etag, checksum and modified_time; not credentials",
     )
 
     @field_validator("remote_metadata", mode="before")
     @classmethod
-    def bounded_remote_metadata(cls, value: Any) -> dict[str, Any] | None:
+    def bounded_remote_metadata(cls, value: Any) -> OnlineDriveRemoteMetadata | None:
         """Keep the optional wire extension bounded without rejecting legacy file listings."""
-        if not isinstance(value, dict):
-            return None
-        result: dict[str, Any] = {
-            key: item
-            for key in ("version_id", "etag", "modified_time")
-            if isinstance(item := value.get(key), str) and len(item) <= 1024
-        }
-        checksum = value.get("checksum")
-        if isinstance(checksum, dict):
-            algorithm, digest = checksum.get("algorithm"), checksum.get("value")
-            if algorithm in ("md5", "sha256") and isinstance(digest, str) and len(digest) <= 64:
-                result["checksum"] = {"algorithm": algorithm, "value": digest}
-        return result or None
+        return _bounded_online_drive_remote_metadata(value)
 
 
 class OnlineDriveFileBucket(BaseModel):
