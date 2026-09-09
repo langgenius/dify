@@ -162,6 +162,8 @@ from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.installed_app_access_service import InstalledAppAccessService
+from services.installed_app_audio_adapters import InstalledAppAudioRuntime
+from services.installed_app_audio_service import InstalledAppAudio
 from services.installed_app_conversation_service import InstalledAppConversationService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
@@ -321,6 +323,7 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     installed_app_access: InstalledAppAccessService
+    installed_app_audio: InstalledAppAudio
     installed_app_conversations: InstalledAppConversationService
     installed_app_generation: InstalledAppGenerationService
     installed_app_messages: InstalledAppMessageService
@@ -701,6 +704,7 @@ def build_application_services(
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=webapp_access,
         installed_app_access=installed_app_access,
+        installed_app_audio=InstalledAppAudioRuntime(session_factory=database_client),
         installed_app_conversations=InstalledAppConversationService(
             conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
             generate_name=_generate_installed_app_conversation_name,

@@ -1,12 +1,17 @@
+"""Installed-app audio admission, error translation, and response serialization."""
+
 import logging
+from collections.abc import Callable
+from functools import wraps
 
-from flask import request
-from werkzeug.exceptions import InternalServerError
+from flask import Response, request, stream_with_context
+from flask_restx import Resource
+from werkzeug.exceptions import HTTPException, InternalServerError
 
-import services
 from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -15,28 +20,32 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.explore.error import InstalledAppNotFoundHTTPError
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
+from core.base.tts.audio_mime import inspect_audio_stream, resolve_audio_mime_type
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import current_account_with_tenant
-from models.model import InstalledApp
-from services.app_ref_service import AppRefService
-from services.audio_service import AudioService
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from .. import console_ns
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.installed_app_audio_service import AudioUpload
 
 logger = logging.getLogger(__name__)
 
@@ -44,111 +53,92 @@ register_schema_model(console_ns, TextToAudioPayload)
 register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscriptResponse)
 
 
+def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except InstalledAppNotFoundError as error:
+            raise InstalledAppNotFoundHTTPError() from error
+        except AppModelConfigBrokenError as error:
+            logger.exception("App model config broken")
+            raise AppUnavailableError() from error
+        except NoAudioUploadedServiceError as error:
+            raise NoAudioUploadedError() from error
+        except AudioTooLargeServiceError as error:
+            raise AudioTooLargeError(str(error)) from error
+        except UnsupportedAudioTypeServiceError as error:
+            raise UnsupportedAudioTypeError() from error
+        except ProviderNotSupportSpeechToTextServiceError as error:
+            raise ProviderNotSupportSpeechToTextError() from error
+        except ProviderNotSupportTextToSpeechServiceError as error:
+            raise ProviderNotSupportTextToSpeechError() from error
+        except SpeechToTextDisabledServiceError as error:
+            raise SpeechToTextDisabledError() from error
+        except ProviderTokenNotInitError as error:
+            raise ProviderNotInitializeError(error.description) from error
+        except QuotaExceededError as error:
+            raise ProviderQuotaExceededError() from error
+        except ModelCurrentlyNotSupportError as error:
+            raise ProviderModelCurrentlyNotSupportError() from error
+        except InvokeError as error:
+            raise CompletionRequestError(error.description) from error
+        except (HTTPException, ValueError):
+            raise
+        except Exception as error:
+            logger.exception("Installed-app audio operation failed")
+            raise InternalServerError() from error
+
+    return decorated
+
+
 @console_ns.route(
     "/installed-apps/<uuid:installed_app_id>/audio-to-text",
     endpoint="installed_app_audio",
 )
-class ChatAudioApi(InstalledAppResource):
+class ChatAudioApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
-    def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app_with_session(session=db.session())
-        if app_model is None:
-            raise AppUnavailableError()
-
-        file = request.files["file"]
-
-        try:
-            response = AudioService.transcript_asr(
-                app_model=app_model,
-                file=file,
-                session=db.session(),
-                end_user=None,
-            )
-
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except SpeechToTextDisabledServiceError:
-            raise SpeechToTextDisabledError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("internal server error.")
-            raise InternalServerError()
+    @console_account_admission()
+    @get_installed_app
+    @_audio_errors
+    def post(self, request_context: RequestContext, installed_app: InstalledAppRef) -> dict[str, object]:
+        file = request.files.get("file")
+        audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        transcript = application_services().installed_app_audio.transcript_asr(installed_app=installed_app, audio=audio)
+        return dump_response(AudioTranscriptResponse, transcript)
 
 
 @console_ns.route(
     "/installed-apps/<uuid:installed_app_id>/text-to-audio",
     endpoint="installed_app_text",
 )
-class ChatTextApi(InstalledAppResource):
+class ChatTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
     @model_validate(TextToAudioPayload)
-    def post(self, req_data: TextToAudioPayload, installed_app: InstalledApp):
-        app_model = installed_app.app_with_session(session=db.session())
-        if app_model is None:
-            raise AppUnavailableError()
-        try:
-            message_id = req_data.message_id
-            text = req_data.text
-            voice = req_data.voice
-            message_ref = None
-            if message_id:
-                current_user, _ = current_account_with_tenant()
-                app_ref = AppRefService.create_app_ref(app_model)
-                message_ref = AppRefService.create_message_ref(
-                    app_ref,
-                    message_id,
-                    account_id=current_user.id,
-                )
-
-            response = AudioService.transcript_tts(
-                app_model=app_model,
-                session=db.session(),
-                text=text,
-                voice=voice,
-                message_ref=message_ref,
-            )
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("internal server error.")
-            raise InternalServerError()
+    @_audio_errors
+    def post(
+        self, payload: TextToAudioPayload, request_context: RequestContext, installed_app: InstalledAppRef
+    ) -> Response | None:
+        output = application_services().installed_app_audio.transcript_tts(
+            installed_app=installed_app,
+            account_id=request_context.account_id,
+            text=payload.text,
+            voice=payload.voice,
+            message_id=payload.message_id,
+        )
+        # response-contract:ignore audio_binary_response
+        if output is None:
+            return None
+        if isinstance(output.data, (bytes, bytearray, memoryview)):
+            data = bytes(output.data)
+            return Response(data, content_type=resolve_audio_mime_type(data, output.mime_type))
+        audio_stream, mime_type = inspect_audio_stream(output.data, output.mime_type)
+        # Preserve the shared MIME and request context behavior. TODO: Make the
+        # shared MIME iterator propagate close() to the provider stream.
+        return Response(
+            stream_with_context(audio_stream),  # pyrefly: ignore[no-matching-overload]
+            content_type=mime_type,
+        )
