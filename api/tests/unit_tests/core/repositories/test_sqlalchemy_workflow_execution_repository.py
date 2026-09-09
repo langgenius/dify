@@ -1,17 +1,21 @@
 import json
 from datetime import UTC, datetime
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from kombu.utils import json as kombu_json
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.file import File, FileTransferMethod, FileType
 from models import Account, CreatorUserRole, EndUser, Tenant, WorkflowRun
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from tasks.workflow_execution_tasks import save_workflow_execution_task
 
 TABLES = (WorkflowRun,)
 
@@ -335,6 +339,174 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         assert sample_workflow_execution.id_ in repo._execution_cache
         cached_model = repo._execution_cache[sample_workflow_execution.id_]
         assert cached_model.id == sample_workflow_execution.id_
+
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_save_rejects_existing_run_from_other_tenant(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        existing_run = repo._to_db_model(sample_workflow_execution)
+        existing_run.tenant_id = "other-tenant"
+        sqlite_session.add(existing_run)
+        sqlite_session.commit()
+
+        with pytest.raises(ValueError, match="Unauthorized access to workflow run"):
+            repo.save(sample_workflow_execution)
+
+        sqlite_session.expire_all()
+        persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+        assert persisted_model is not None
+        assert persisted_model.tenant_id == "other-tenant"
+
+    @patch("core.repositories.sqlalchemy_workflow_execution_repository.save_workflow_execution_task")
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+    def test_async_persistence_commits_start_pause_and_resume_before_returning(
+        self,
+        mock_task,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_session: Session,
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        started_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+        sample_workflow_execution.started_at = started_at
+        sample_workflow_execution.finished_at = None
+
+        for status in (
+            WorkflowExecutionStatus.RUNNING,
+            WorkflowExecutionStatus.PAUSED,
+            WorkflowExecutionStatus.RUNNING,
+        ):
+            # A resumed graph uses a new repository and a new segment start time.
+            repo = SQLAlchemyWorkflowExecutionRepository(
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
+                user=account,
+                app_id="test_app",
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            )
+            repo.set_async_persistence(True)
+            sample_workflow_execution.status = status
+
+            repo.save(sample_workflow_execution)
+
+            sqlite_session.expire_all()
+            persisted_model = sqlite_session.get(WorkflowRun, sample_workflow_execution.id_)
+            assert persisted_model is not None
+            assert persisted_model.status == status
+            assert persisted_model.finished_at is None
+            assert persisted_model.created_at == started_at.replace(tzinfo=None)
+            sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 30, 0, tzinfo=UTC)
+
+        mock_task.delay.assert_not_called()
+
+    @patch("core.repositories.sqlalchemy_workflow_execution_repository.save_workflow_execution_task")
+    def test_save_queues_celery_task_when_async_persistence_enabled(
+        self,
+        mock_task,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        repo.set_async_persistence(True)
+
+        repo.save(sample_workflow_execution)
+
+        mock_task.delay.assert_called_once()
+        call_args = mock_task.delay.call_args.kwargs
+        assert call_args["execution_data"] == sample_workflow_execution.model_dump()
+        assert call_args["tenant_id"] == RESOURCE_TENANT_ID
+        assert call_args["app_id"] == "test_app"
+        assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN
+        assert call_args["creator_user_id"] == account.id
+
+    @patch("core.repositories.sqlalchemy_workflow_execution_repository.save_workflow_execution_task")
+    def test_queue_async_save_requires_context(
+        self,
+        mock_task,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        repo._triggered_from = None
+        with pytest.raises(ValueError, match="triggered_from is required"):
+            repo._queue_async_save(sample_workflow_execution)
+
+        repo._triggered_from = WorkflowRunTriggeredFrom.APP_RUN
+        repo._creator_user_id = None
+        with pytest.raises(ValueError, match="created_by is required"):
+            repo._queue_async_save(sample_workflow_execution)
+
+        repo._creator_user_id = "user-id"
+        repo._creator_user_role = None
+        with pytest.raises(ValueError, match="created_by_role is required"):
+            repo._queue_async_save(sample_workflow_execution)
+
+        mock_task.delay.assert_not_called()
+
+    def test_async_save_preserves_file_links_after_queue_round_trip(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ):
+        delay = Mock()
+        monkeypatch.setattr(save_workflow_execution_task, "delay", delay)
+        monkeypatch.setattr(File, "generate_url", lambda _self: "https://example.com/signed-file")
+        file = File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="upload-1",
+            filename="image.png",
+        )
+        sample_workflow_execution.outputs = {"nested": {"files": [file]}}
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        repo.set_async_persistence(True)
+
+        repo.save(sample_workflow_execution)
+
+        queued_kwargs = kombu_json.loads(kombu_json.dumps(delay.call_args.kwargs))
+        monkeypatch.setattr("tasks.workflow_execution_tasks.session_factory.create_session", sqlite_session_factory)
+        assert save_workflow_execution_task.run(**queued_kwargs)
+        with sqlite_session_factory() as session:
+            persisted = session.get(WorkflowRun, sample_workflow_execution.id_)
+            assert persisted is not None
+            persisted_file = persisted.outputs_dict["nested"]["files"][0]
+            assert persisted_file["related_id"] == "upload-1"
+            assert persisted_file["url"] == "https://example.com/signed-file"
+        assert sample_workflow_execution.outputs["nested"]["files"][0] is file
 
     @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
     def test_save_uses_execution_started_at_when_record_does_not_exist(
