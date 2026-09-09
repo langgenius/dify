@@ -261,7 +261,13 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(
                         "provider_type": "plugin",
                         "tool_name": "search",
                         "credential_type": "unauthorized",
-                    }
+                    },
+                    {
+                        "provider_id": "workflow-provider",
+                        "provider_type": "workflow",
+                        "tool_name": "run_workflow",
+                        "credential_type": "api-key",
+                    },
                 ],
                 "cli_tools": [{"name": "cli", "env": {"secret_refs": [{"name": "CLI_TOKEN"}]}}],
             },
@@ -271,7 +277,7 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(
     )
     monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", Mock(return_value={}))
 
-    _, warnings = AgentDslService(unbound_session)._resolve_package_soul(
+    resolved, warnings = AgentDslService(unbound_session)._resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
@@ -279,6 +285,8 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(
 
     codes = [warning.code for warning in warnings]
     assert codes.count("agent_tool_authorization_required") == 1
+    assert resolved.tools.dify_tools[1].credential_type == "unauthorized"
+    assert resolved.tools.dify_tools[1].credential_ref is None
     assert codes.count("agent_secret_required") == 2
     assert codes.count("agent_human_contact_unresolved") == 1
 

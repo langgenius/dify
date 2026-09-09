@@ -129,7 +129,7 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | include_secret | query | Include encrypted secret values in the exported DSL | No | boolean |
-| include_workflow_tools | query | Package referenced workflow tools recursively in a ZIP | No | boolean |
+| include_workflow_tools | query | Package the app and recursively referenced workflow tools in a ZIP | No | boolean |
 | workflow_id | query | Export a specific workflow version instead of the current draft | No | string (uuid) |
 | app_id | path |  | Yes | string |
 
@@ -556,7 +556,7 @@ Query parameters for GET /apps/<app_id>/dsl.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_secret | boolean | Include encrypted secret values in the exported DSL | No |
-| include_workflow_tools | boolean | Package referenced workflow tools recursively in a ZIP | No |
+| include_workflow_tools | boolean | Package the app and recursively referenced workflow tools in a ZIP | No |
 | workflow_id | string | Export a specific workflow version instead of the current draft | No |
 
 #### AppDslExportResponse

@@ -4,7 +4,7 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from configs import dify_config
-from controllers.common.rbac import enforce_rbac_checks
+from controllers.common.rbac import RBACCheck, enforce_rbac_checks
 from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
@@ -65,7 +65,7 @@ def check_rbac_permission(data: AuthData) -> None:
     enforce_rbac_checks(
         tenant_id=str(data.tenant.id),
         account_id=str(data.account_id),
-        checks=[req],
+        checks=[req] if isinstance(req, RBACCheck) else req,
         path_args=dict(data.path_params),
     )
 
