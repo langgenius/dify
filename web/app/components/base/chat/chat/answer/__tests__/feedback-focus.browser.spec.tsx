@@ -23,6 +23,69 @@ vi.mock('@/app/components/base/chat/chat/log', () => ({ default: () => null }))
 
 const item: ChatItem = { id: 'answer', content: 'An answer', isAnswer: true }
 
+// The exit transition is rendered by Chromium; the default test setup disables it.
+it.each(['cancel', 'submit'])(
+  'preserves the feedback draft during the %s exit animation',
+  async (close) => {
+    const settings = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
+    const animationsDisabled = settings.BASE_UI_ANIMATIONS_DISABLED
+    settings.BASE_UI_ANIMATIONS_DISABLED = false
+    feedback.admin = false
+    feedback.onFeedback.mockReset().mockResolvedValue(undefined)
+    try {
+      const screen = await render(
+        <article aria-label="Answer" className="group relative m-10 h-32 w-96">
+          <p>{item.content}</p>
+          <Operation
+            item={item}
+            question="Question"
+            index={0}
+            maxSize={500}
+            contentWidth={100}
+            hasWorkflowProcess={false}
+          />
+        </article>,
+      )
+      await screen.getByRole('article', { name: 'Answer' }).hover()
+      const trigger = screen.getByRole('button', {
+        name: 'appLog.table.header.userRate: appLog.detail.operation.dislike',
+      })
+      await trigger.click()
+      const dialog = screen.getByRole('dialog')
+      const popup = dialog.element()
+      const textbox = dialog.getByRole('textbox')
+      await textbox.fill('Please explain the answer')
+      await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+      const input = textbox.element() as HTMLTextAreaElement
+      const exitFrame = new Promise<{ draft: string; opacity: number }>((resolve) => {
+        const onTransition = (event: Event) => {
+          if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity')
+            return
+          popup.removeEventListener('transitionrun', onTransition)
+          resolve({ draft: input.value, opacity: Number(getComputedStyle(popup).opacity) })
+        }
+        popup.addEventListener('transitionrun', onTransition)
+      })
+
+      await dialog.getByRole('button', { name: `common.operation.${close}` }).click()
+
+      const closing = await exitFrame
+      expect(closing.opacity).toBeGreaterThan(0)
+      expect(closing.draft).toBe('Please explain the answer')
+      await expect.element(dialog).not.toBeInTheDocument()
+      await expect.element(trigger).toHaveFocus()
+      if (close === 'cancel') {
+        await trigger.click()
+        await expect.element(screen.getByRole('dialog').getByRole('textbox')).toHaveValue('')
+        await userEvent.keyboard('{Escape}')
+        await expect.element(dialog).not.toBeInTheDocument()
+      }
+    } finally {
+      settings.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+    }
+  },
+)
+
 describe('Feedback dialog focus', () => {
   beforeEach(() => {
     feedback.onFeedback.mockReset().mockResolvedValue(undefined)

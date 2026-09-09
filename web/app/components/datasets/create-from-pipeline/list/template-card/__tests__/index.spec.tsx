@@ -1,4 +1,3 @@
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -47,14 +46,12 @@ let _capturedOpenEditModal: (() => void) | undefined
 vi.mock('../actions', () => ({
   default: ({
     onApplyTemplate,
-    detailsDialogHandle,
     showMoreOperations,
     openEditModal,
     handleExportDSL,
     handleDelete,
   }: {
     onApplyTemplate: () => void
-    detailsDialogHandle: DialogHandle
     showMoreOperations: boolean
     openEditModal: () => void
     handleExportDSL: () => void
@@ -68,9 +65,7 @@ vi.mock('../actions', () => ({
         <button data-testid="action-choose" onClick={onApplyTemplate}>
           operations.choose
         </button>
-        <DialogTrigger handle={detailsDialogHandle} data-testid="action-details">
-          operations.details
-        </DialogTrigger>
+        <DialogTrigger data-testid="action-details">operations.details</DialogTrigger>
         {showMoreOperations && (
           <>
             <button data-testid="action-edit" onClick={openEditModal}>

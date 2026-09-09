@@ -87,7 +87,7 @@ describe('note editor store', () => {
 
       store.getState().setLinkAnchorElement(link)
       expect(store.getState().linkAnchorElement).toBe(link)
-      expect(store.getState().linkEditorDismissed).toBe(false)
+      expect(store.getState().dismissedLinkKey).toBeNull()
     } finally {
       vi.useRealTimers()
     }

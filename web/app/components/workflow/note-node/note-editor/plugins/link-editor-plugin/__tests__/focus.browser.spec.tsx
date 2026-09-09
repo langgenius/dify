@@ -10,7 +10,7 @@ import Editor from '../../../editor'
 import { createNoteEditorStore } from '../../../store'
 import theme from '../../../theme'
 
-function Harness() {
+function Harness({ secondLinkUrl }: { secondLinkUrl?: string }) {
   const [store] = useState(createNoteEditorStore)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
 
@@ -24,11 +24,16 @@ function Harness() {
           throw error
         },
         editorState: () => {
-          $getRoot().append(
-            $createParagraphNode().append(
-              $createLinkNode('https://example.com').append($createTextNode('hello')),
-            ),
+          const paragraph = $createParagraphNode().append(
+            $createLinkNode('https://example.com').append($createTextNode('hello')),
           )
+          if (secondLinkUrl) {
+            paragraph.append(
+              $createTextNode(' '),
+              $createLinkNode(secondLinkUrl).append($createTextNode('world')),
+            )
+          }
+          $getRoot().append(paragraph)
         },
       }}
     >
@@ -154,5 +159,27 @@ it.each(['{Enter}', '{Space}'])(
     await expect.element(note).toHaveFocus()
     await userEvent.keyboard('X')
     await expect.element(note).toHaveTextContent('heXllo')
+  },
+)
+
+it.each(['https://second.example.com', 'https://example.com'])(
+  'opens a different link after dismissing the first when its URL is %s',
+  async (secondLinkUrl) => {
+    await render(<Harness secondLinkUrl={secondLinkUrl} />)
+    const note = page.getByRole('region', { name: 'Note editor' }).getByRole('textbox')
+    const openLink = page.getByRole('link', { name: /workflow.nodes.note.editor.openLink/ })
+    await expect.element(page.getByRole('link', { name: 'hello', exact: true })).toBeVisible()
+    await expect.element(page.getByRole('link', { name: 'world', exact: true })).toBeVisible()
+    await note.click()
+    await userEvent.keyboard('{Home}{ArrowRight}')
+    await page.getByRole('button', { name: 'common.operation.edit', exact: true }).click()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(note).toHaveFocus()
+    await expect.element(openLink).not.toBeInTheDocument()
+
+    await userEvent.keyboard('{End}{ArrowLeft}')
+
+    await expect.element(openLink).toBeVisible()
+    await expect.element(openLink).toHaveAttribute('href', secondLinkUrl)
   },
 )

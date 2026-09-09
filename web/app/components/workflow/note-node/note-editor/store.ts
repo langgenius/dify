@@ -1,3 +1,4 @@
+import type { NodeKey } from 'lexical'
 import { use } from 'react'
 import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
@@ -5,7 +6,7 @@ import NoteEditorContext from './context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null
-  linkEditorDismissed: boolean
+  dismissedLinkKey: NodeKey | null
   dismissLinkEditor: () => void
   setLinkAnchorElement: (open?: boolean | HTMLElement | null) => void
   linkOperatorShow: boolean
@@ -17,6 +18,8 @@ type Shape = {
   selectedIsStrikeThrough: boolean
   setSelectedIsStrikeThrough: (selectedIsStrikeThrough: boolean) => void
   selectedLinkUrl: string
+  selectedLinkKey: NodeKey | null
+  setSelectedLinkKey: (selectedLinkKey: NodeKey | null) => void
   setSelectedLinkUrl: (selectedLinkUrl: string) => void
   selectedIsLink: boolean
   setSelectedIsLink: (selectedIsLink: boolean) => void
@@ -26,22 +29,26 @@ type Shape = {
 
 export const createNoteEditorStore = () => {
   let pendingAnchor: ReturnType<typeof setTimeout> | undefined
-  return createStore<Shape>((set) => ({
+  return createStore<Shape>((set, get) => ({
     linkAnchorElement: null,
-    linkEditorDismissed: false,
+    dismissedLinkKey: null,
     dismissLinkEditor: () => {
       clearTimeout(pendingAnchor)
-      set({ linkAnchorElement: null, linkOperatorShow: false, linkEditorDismissed: true })
+      set({
+        linkAnchorElement: null,
+        linkOperatorShow: false,
+        dismissedLinkKey: get().selectedLinkKey,
+      })
     },
     setLinkAnchorElement: (open) => {
       clearTimeout(pendingAnchor)
       if (open instanceof HTMLElement) {
-        set({ linkAnchorElement: open, linkEditorDismissed: false })
+        set({ linkAnchorElement: open, dismissedLinkKey: null })
         return
       }
 
       if (open) {
-        set({ linkEditorDismissed: false })
+        set({ dismissedLinkKey: null })
         pendingAnchor = setTimeout(() => {
           const nativeSelection = window.getSelection()
 
@@ -51,7 +58,7 @@ export const createNoteEditorStore = () => {
           }
         })
       } else {
-        set({ linkAnchorElement: null, linkEditorDismissed: false })
+        set({ linkAnchorElement: null, dismissedLinkKey: null })
       }
     },
     linkOperatorShow: false,
@@ -64,6 +71,13 @@ export const createNoteEditorStore = () => {
     setSelectedIsStrikeThrough: (selectedIsStrikeThrough) =>
       set(() => ({ selectedIsStrikeThrough })),
     selectedLinkUrl: '',
+    selectedLinkKey: null,
+    setSelectedLinkKey: (selectedLinkKey) =>
+      set((state) => ({
+        selectedLinkKey,
+        dismissedLinkKey:
+          selectedLinkKey === state.dismissedLinkKey ? state.dismissedLinkKey : null,
+      })),
     setSelectedLinkUrl: (selectedLinkUrl) => set(() => ({ selectedLinkUrl })),
     selectedIsLink: false,
     setSelectedIsLink: (selectedIsLink) => set(() => ({ selectedIsLink })),

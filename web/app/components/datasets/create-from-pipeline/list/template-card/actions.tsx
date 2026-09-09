@@ -1,4 +1,3 @@
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -15,7 +14,6 @@ import Operations from './operations'
 
 type ActionsProps = {
   onApplyTemplate: () => void
-  detailsDialogHandle: DialogHandle
   showMoreOperations: boolean
   openEditModal: () => void
   handleExportDSL: (includeSecret?: boolean) => void
@@ -24,7 +22,6 @@ type ActionsProps = {
 
 const Actions = ({
   onApplyTemplate,
-  detailsDialogHandle,
   showMoreOperations,
   openEditModal,
   handleExportDSL,
@@ -46,7 +43,6 @@ const Actions = ({
         <span>{t(($) => $['operations.choose'], { ns: 'datasetPipeline' })}</span>
       </Button>
       <DialogTrigger
-        handle={detailsDialogHandle}
         render={
           <Button variant="secondary" className="grow">
             <span aria-hidden className="i-ri-arrow-right-up-line size-4" />

@@ -3,7 +3,6 @@ import type { ChatItem, Feedback } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  createDialogHandle,
   Dialog,
   DialogClose,
   DialogContent,
@@ -103,7 +102,6 @@ function Operation({
     readonly,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const [feedbackDialogHandle] = useState(() => createDialogHandle())
   // Submitting replaces the dialog trigger with the current rating button.
   const userFeedbackRef = useRef<HTMLButtonElement>(null)
   const adminFeedbackRef = useRef<HTMLButtonElement>(null)
@@ -189,12 +187,10 @@ function Operation({
     const succeeded = await handleFeedback('dislike', feedbackContent, feedbackTarget)
     if (!succeeded) return
 
-    setFeedbackContent('')
     setIsShowFeedbackModal(false)
   }
 
   const handleFeedbackCancel = () => {
-    setFeedbackContent('')
     setIsShowFeedbackModal(false)
   }
 
@@ -238,166 +234,228 @@ function Operation({
         style={!hasWorkflowProcess && positionRight ? { left: contentWidth + 8 } : {}}
         data-testid="operation-bar"
       >
-        {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
-          <div
-            className={cn(
-              'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
-              hasUserFeedback ? 'flex' : feedbackActionsClassName,
-            )}
-          >
-            {hasUserFeedback ? (
-              <FeedbackTooltip
-                content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
-              >
-                <Toggle
-                  ref={userFeedbackRef}
-                  className={
-                    displayUserFeedback?.rating === 'like'
-                      ? accentPressedClassName
-                      : destructivePressedClassName
-                  }
-                  pressed
-                  onPressedChange={(pressed) =>
-                    !pressed && void handleFeedback(null, undefined, 'user')
-                  }
-                  render={
-                    <IconButton
-                      aria-label={`${userFeedbackLabel}: ${displayUserFeedback?.rating === 'like' ? likeLabel : dislikeLabel}`}
-                    >
-                      {displayUserFeedback?.rating === 'like' ? (
+        <Dialog
+          open={isShowFeedbackModal}
+          onOpenChange={setIsShowFeedbackModal}
+          onOpenChangeComplete={(open) => {
+            if (!open) setFeedbackContent('')
+          }}
+        >
+          {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
+            <div
+              className={cn(
+                'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+                hasUserFeedback ? 'flex' : feedbackActionsClassName,
+              )}
+            >
+              {hasUserFeedback ? (
+                <FeedbackTooltip
+                  content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
+                >
+                  <Toggle
+                    ref={userFeedbackRef}
+                    className={
+                      displayUserFeedback?.rating === 'like'
+                        ? accentPressedClassName
+                        : destructivePressedClassName
+                    }
+                    pressed
+                    onPressedChange={(pressed) =>
+                      !pressed && void handleFeedback(null, undefined, 'user')
+                    }
+                    render={
+                      <IconButton
+                        aria-label={`${userFeedbackLabel}: ${displayUserFeedback?.rating === 'like' ? likeLabel : dislikeLabel}`}
+                      >
+                        {displayUserFeedback?.rating === 'like' ? (
+                          <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                        ) : (
+                          <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                        )}
+                      </IconButton>
+                    }
+                  />
+                </FeedbackTooltip>
+              ) : (
+                <>
+                  <Toggle
+                    className={accentPressedClassName}
+                    pressed={false}
+                    onPressedChange={(pressed) => pressed && handleLikeClick('user')}
+                    render={
+                      <IconButton aria-label={`${userFeedbackLabel}: ${likeLabel}`}>
                         <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
-                      ) : (
+                      </IconButton>
+                    }
+                  />
+                  <DialogTrigger
+                    ref={userFeedbackRef}
+                    onClick={() => setFeedbackTarget('user')}
+                    render={
+                      <IconButton aria-label={`${userFeedbackLabel}: ${dislikeLabel}`}>
                         <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
-                      )}
-                    </IconButton>
-                  }
-                />
-              </FeedbackTooltip>
-            ) : (
-              <>
-                <Toggle
-                  className={accentPressedClassName}
-                  pressed={false}
-                  onPressedChange={(pressed) => pressed && handleLikeClick('user')}
-                  render={
-                    <IconButton aria-label={`${userFeedbackLabel}: ${likeLabel}`}>
-                      <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
-                    </IconButton>
-                  }
-                />
-                <DialogTrigger
-                  handle={feedbackDialogHandle}
-                  ref={userFeedbackRef}
-                  onClick={() => setFeedbackTarget('user')}
-                  render={
-                    <IconButton aria-label={`${userFeedbackLabel}: ${dislikeLabel}`}>
-                      <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
-                    </IconButton>
-                  }
-                />
-              </>
-            )}
-          </div>
-        )}
-        {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
-          <div
-            className={cn(
-              'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
-              hasAdminFeedback || hasUserFeedback ? 'flex' : feedbackActionsClassName,
-            )}
-          >
-            {displayUserFeedback?.rating && (
-              <FeedbackTooltip
-                content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
-              >
-                <span
-                  role="img"
-                  aria-label={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
-                  className={cn(
-                    'inline-flex size-6 items-center justify-center rounded-lg p-0.5',
-                    displayUserFeedback.rating === 'like'
-                      ? 'bg-state-accent-active text-text-accent'
-                      : 'bg-state-destructive-hover text-text-destructive',
-                  )}
+                      </IconButton>
+                    }
+                  />
+                </>
+              )}
+            </div>
+          )}
+          {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
+            <div
+              className={cn(
+                'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+                hasAdminFeedback || hasUserFeedback ? 'flex' : feedbackActionsClassName,
+              )}
+            >
+              {displayUserFeedback?.rating && (
+                <FeedbackTooltip
+                  content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
                 >
                   <span
-                    aria-hidden="true"
+                    role="img"
+                    aria-label={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
                     className={cn(
-                      'size-4',
+                      'inline-flex size-6 items-center justify-center rounded-lg p-0.5',
                       displayUserFeedback.rating === 'like'
-                        ? 'i-ri-thumb-up-line'
-                        : 'i-ri-thumb-down-line',
+                        ? 'bg-state-accent-active text-text-accent'
+                        : 'bg-state-destructive-hover text-text-destructive',
                     )}
-                  />
-                </span>
-              </FeedbackTooltip>
-            )}
-
-            {displayUserFeedback?.rating && (
-              <div className="mx-1 h-3 w-[0.5px] bg-components-actionbar-border" />
-            )}
-            {hasAdminFeedback ? (
-              <FeedbackTooltip
-                content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
-              >
-                <Toggle
-                  ref={adminFeedbackRef}
-                  className={
-                    displayAdminFeedback?.rating === 'like'
-                      ? accentPressedClassName
-                      : destructivePressedClassName
-                  }
-                  pressed
-                  onPressedChange={(pressed) =>
-                    !pressed && void handleFeedback(null, undefined, 'admin')
-                  }
-                  render={
-                    <IconButton
-                      aria-label={`${adminFeedbackLabel}: ${displayAdminFeedback?.rating === 'like' ? likeLabel : dislikeLabel}`}
-                    >
-                      {displayAdminFeedback?.rating === 'like' ? (
-                        <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
-                      ) : (
-                        <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'size-4',
+                        displayUserFeedback.rating === 'like'
+                          ? 'i-ri-thumb-up-line'
+                          : 'i-ri-thumb-down-line',
                       )}
-                    </IconButton>
-                  }
-                />
-              </FeedbackTooltip>
-            ) : (
-              <>
+                    />
+                  </span>
+                </FeedbackTooltip>
+              )}
+
+              {displayUserFeedback?.rating && (
+                <div className="mx-1 h-3 w-[0.5px] bg-components-actionbar-border" />
+              )}
+              {hasAdminFeedback ? (
                 <FeedbackTooltip
                   content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                 >
                   <Toggle
-                    className={accentPressedClassName}
-                    pressed={false}
-                    onPressedChange={(pressed) => pressed && handleLikeClick('admin')}
-                    render={
-                      <IconButton aria-label={`${adminFeedbackLabel}: ${likeLabel}`}>
-                        <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
-                      </IconButton>
-                    }
-                  />
-                </FeedbackTooltip>
-                <FeedbackTooltip
-                  content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
-                >
-                  <DialogTrigger
-                    handle={feedbackDialogHandle}
                     ref={adminFeedbackRef}
-                    onClick={() => setFeedbackTarget('admin')}
+                    className={
+                      displayAdminFeedback?.rating === 'like'
+                        ? accentPressedClassName
+                        : destructivePressedClassName
+                    }
+                    pressed
+                    onPressedChange={(pressed) =>
+                      !pressed && void handleFeedback(null, undefined, 'admin')
+                    }
                     render={
-                      <IconButton aria-label={`${adminFeedbackLabel}: ${dislikeLabel}`}>
-                        <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                      <IconButton
+                        aria-label={`${adminFeedbackLabel}: ${displayAdminFeedback?.rating === 'like' ? likeLabel : dislikeLabel}`}
+                      >
+                        {displayAdminFeedback?.rating === 'like' ? (
+                          <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                        ) : (
+                          <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                        )}
                       </IconButton>
                     }
                   />
                 </FeedbackTooltip>
-              </>
-            )}
-          </div>
-        )}
+              ) : (
+                <>
+                  <FeedbackTooltip
+                    content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
+                  >
+                    <Toggle
+                      className={accentPressedClassName}
+                      pressed={false}
+                      onPressedChange={(pressed) => pressed && handleLikeClick('admin')}
+                      render={
+                        <IconButton aria-label={`${adminFeedbackLabel}: ${likeLabel}`}>
+                          <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                        </IconButton>
+                      }
+                    />
+                  </FeedbackTooltip>
+                  <FeedbackTooltip
+                    content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
+                  >
+                    <DialogTrigger
+                      ref={adminFeedbackRef}
+                      onClick={() => setFeedbackTarget('admin')}
+                      render={
+                        <IconButton aria-label={`${adminFeedbackLabel}: ${dislikeLabel}`}>
+                          <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                        </IconButton>
+                      }
+                    />
+                  </FeedbackTooltip>
+                </>
+              )}
+            </div>
+          )}
+          <DialogContent
+            finalFocus={feedbackTarget === 'user' ? userFeedbackRef : adminFeedbackRef}
+            backdropProps={{ forceRender: true }}
+            className="p-0"
+          >
+            <div className="flex max-h-[80dvh] flex-col">
+              <div className="relative shrink-0 p-6 pr-14 pb-3">
+                <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                  {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
+                </DialogTitle>
+                <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
+                    'Please tell us what went wrong with this response'}
+                </DialogDescription>
+                <DialogClose
+                  render={
+                    <IconButton
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                      size="lg"
+                      className="absolute top-5 right-5"
+                    >
+                      <span aria-hidden className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+                <label
+                  htmlFor={feedbackTextareaId}
+                  className="mb-2 block system-sm-semibold text-text-secondary"
+                >
+                  {t(($) => $['feedback.content'], { ns: 'common' }) || 'Feedback Content'}
+                </label>
+                <Textarea
+                  id={feedbackTextareaId}
+                  name="feedback-content"
+                  value={feedbackContent}
+                  onValueChange={(value) => setFeedbackContent(value)}
+                  placeholder={
+                    t(($) => $['feedback.placeholder'], { ns: 'common' }) ||
+                    'Please describe what went wrong or how we can improve…'
+                  }
+                  rows={4}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex shrink-0 justify-end p-6 pt-5">
+                <Button onClick={handleFeedbackCancel}>
+                  {t(($) => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
+                </Button>
+                <Button className="ml-2" variant="primary" onClick={handleFeedbackSubmit}>
+                  {t(($) => $['operation.submit'], { ns: 'common' }) || 'Submit'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         {showPromptLog && !isOpeningStatement && (
           <div className={cn('hidden', answerActiveBlockClassName)}>
             <Log logItem={item} />
@@ -464,71 +522,6 @@ function Operation({
           onRemove={() => onAnnotationRemoved?.(index)}
         />
       )}
-      <Dialog
-        handle={feedbackDialogHandle}
-        open={isShowFeedbackModal}
-        onOpenChange={(open) => {
-          if (open) setIsShowFeedbackModal(true)
-          else handleFeedbackCancel()
-        }}
-      >
-        <DialogContent
-          finalFocus={feedbackTarget === 'user' ? userFeedbackRef : adminFeedbackRef}
-          backdropProps={{ forceRender: true }}
-          className="p-0"
-        >
-          <div className="flex max-h-[80dvh] flex-col">
-            <div className="relative shrink-0 p-6 pr-14 pb-3">
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
-              </DialogTitle>
-              <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
-                  'Please tell us what went wrong with this response'}
-              </DialogDescription>
-              <DialogClose
-                render={
-                  <IconButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    size="lg"
-                    className="absolute top-5 right-5"
-                  >
-                    <span aria-hidden className="i-ri-close-line size-4" />
-                  </IconButton>
-                }
-              />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-              <label
-                htmlFor={feedbackTextareaId}
-                className="mb-2 block system-sm-semibold text-text-secondary"
-              >
-                {t(($) => $['feedback.content'], { ns: 'common' }) || 'Feedback Content'}
-              </label>
-              <Textarea
-                id={feedbackTextareaId}
-                name="feedback-content"
-                value={feedbackContent}
-                onValueChange={(value) => setFeedbackContent(value)}
-                placeholder={
-                  t(($) => $['feedback.placeholder'], { ns: 'common' }) ||
-                  'Please describe what went wrong or how we can improve…'
-                }
-                rows={4}
-                className="w-full"
-              />
-            </div>
-            <div className="flex shrink-0 justify-end p-6 pt-5">
-              <Button onClick={handleFeedbackCancel}>
-                {t(($) => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
-              </Button>
-              <Button className="ml-2" variant="primary" onClick={handleFeedbackSubmit}>
-                {t(($) => $['operation.submit'], { ns: 'common' }) || 'Submit'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

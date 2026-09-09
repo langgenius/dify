@@ -25,13 +25,14 @@ export const useOpenLink = () => {
           const {
             selectedLinkUrl,
             selectedIsLink,
-            linkEditorDismissed,
+            selectedLinkKey,
+            dismissedLinkKey,
             setLinkAnchorElement,
             setLinkOperatorShow,
           } = noteEditorStore.getState()
           if (selectedIsLink) {
             // Restoring the editor selection must not reopen a dismissed surface.
-            if (linkEditorDismissed) return
+            if (dismissedLinkKey && dismissedLinkKey === selectedLinkKey) return
             setLinkAnchorElement(true)
             if (selectedLinkUrl) setLinkOperatorShow(true)
             else setLinkOperatorShow(false)
