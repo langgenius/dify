@@ -24,6 +24,7 @@ function agent(overrides: Partial<AgentAppPartial> = {}): AgentAppPartial {
     description: 'Investigates a topic',
     mode: 'agent-chat',
     icon_url: null,
+    permission_keys: [],
     ...overrides,
   }
 }

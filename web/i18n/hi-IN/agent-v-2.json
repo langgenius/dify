@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "एजेंट नेविगेशन",
   "agentDetail.publish": "प्रकाशित करें",
   "agentDetail.sections.access": "एक्सेस पॉइंट",
+  "agentDetail.sections.access-config": "संसाधन पहुँच",
   "agentDetail.sections.configure": "कॉन्फ़िगर करें",
   "agentDetail.sections.logs": "लॉग",
   "agentDetail.sections.monitoring": "निगरानी",

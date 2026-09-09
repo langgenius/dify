@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Agenten-Navigation",
   "agentDetail.publish": "Veröffentlichen",
   "agentDetail.sections.access": "Zugangspunkt",
+  "agentDetail.sections.access-config": "Ressourcenzugriff",
   "agentDetail.sections.configure": "Konfigurieren",
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",

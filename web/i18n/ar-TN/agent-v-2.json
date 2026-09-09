@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "تنقّل الوكيل",
   "agentDetail.publish": "نشر",
   "agentDetail.sections.access": "نقطة الوصول",
+  "agentDetail.sections.access-config": "الوصول إلى الموارد",
   "agentDetail.sections.configure": "تكوين",
   "agentDetail.sections.logs": "السجلات",
   "agentDetail.sections.monitoring": "المراقبة",

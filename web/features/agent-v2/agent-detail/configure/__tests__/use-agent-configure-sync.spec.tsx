@@ -7,6 +7,7 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { Suspense } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { AgentPermission } from '@/features/agent-v2/acl'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
@@ -15,6 +16,8 @@ import {
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { consoleQuery } from '@/service/console'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
 const toastMock = vi.hoisted(() => ({
@@ -235,12 +238,14 @@ function renderUseAgentConfigureSync({
   baseConfig,
   currentModel,
   enabled = true,
+  publishEnabled,
   suspend = false,
 }: {
   agentName?: Parameters<typeof useAgentConfigureSync>[0]['agentName']
   baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
   currentModel?: Parameters<typeof useAgentConfigureSync>[0]['currentModel']
   enabled?: boolean
+  publishEnabled?: boolean
   suspend?: boolean
 } = {}) {
   const queryClient = new QueryClient({
@@ -249,6 +254,10 @@ function renderUseAgentConfigureSync({
       mutations: { retry: false },
     },
   })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+    createAgentFixture(),
+  )
   const store = createStore()
   const pendingRender = new Promise<void>(() => {})
   const wrapper = ({ children }: PropsWithChildren) => (
@@ -268,6 +277,7 @@ function renderUseAgentConfigureSync({
           baseConfig: props.baseConfig,
           currentModel: props.currentModel,
           enabled: props.enabled,
+          publishEnabled: publishEnabled ?? props.enabled,
         })
         if (props.suspend) throw pendingRender
 
@@ -350,6 +360,7 @@ describe('useAgentConfigureSync', () => {
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
 
     act(() => {
@@ -362,6 +373,7 @@ describe('useAgentConfigureSync', () => {
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
     expect(composerPutMutationFn).not.toHaveBeenCalled()
 
@@ -388,6 +400,7 @@ describe('useAgentConfigureSync', () => {
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
   })
 
@@ -483,6 +496,7 @@ describe('useAgentConfigureSync', () => {
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
 
     act(() => {
@@ -503,6 +517,7 @@ describe('useAgentConfigureSync', () => {
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
   })
 
@@ -1001,6 +1016,7 @@ describe('useAgentConfigureSync', () => {
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
 
     await act(async () => {
@@ -1011,6 +1027,7 @@ describe('useAgentConfigureSync', () => {
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
       active_config_is_published: true,
       name: 'Agent',
+      permission_keys: Object.values(AgentPermission),
     })
   })
 
@@ -1627,5 +1644,77 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     )
+  })
+  it('runs with no draft writes when edit permission is absent', async () => {
+    const { queryClient, result, store, unmount } = renderUseAgentConfigureSync({
+      enabled: false,
+      currentModel: configuredModel,
+    })
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      permission_keys: [AgentPermission.TestAndRun],
+    })
+    act(() => {
+      store.set(agentComposerPromptAtom, 'Unsaved local changes')
+    })
+    await act(async () => {
+      await result.current.saveDraft()
+      await vi.advanceTimersByTimeAsync(5000)
+      window.dispatchEvent(new Event('beforeunload'))
+      unmount()
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('publishes the server draft without writing configuration when only release is granted', async () => {
+    const { queryClient, result } = renderUseAgentConfigureSync({
+      enabled: false,
+      publishEnabled: true,
+      currentModel: configuredModel,
+    })
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      permission_keys: [AgentPermission.ReleaseAndVersion],
+    })
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).toHaveBeenCalledOnce()
+    expect(toastMock.success).toHaveBeenCalledOnce()
+  })
+
+  it('does not flush dirty configuration after edit permission is revoked before unmount', async () => {
+    const { queryClient, store, unmount } = renderUseAgentConfigureSync()
+    act(() => {
+      store.set(agentComposerPromptAtom, 'Dirty before revocation')
+      queryClient.setQueryData(['agent-detail', 'agent-1'], { permission_keys: [] })
+      unmount()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('cancels publishing without a success toast if release permission is revoked during save', async () => {
+    const saving = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(saving.promise)
+    const { queryClient, result } = renderUseAgentConfigureSync({ currentModel: configuredModel })
+    let publishing!: Promise<void>
+    act(() => {
+      publishing = result.current.publishDraft()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      permission_keys: [AgentPermission.Edit],
+    })
+    await act(async () => {
+      saving.resolve({ agent_soul: {} })
+      await publishing
+    })
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 })

@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Navigasi agen",
   "agentDetail.publish": "Terbitkan",
   "agentDetail.sections.access": "Titik Akses",
+  "agentDetail.sections.access-config": "Akses Sumber Daya",
   "agentDetail.sections.configure": "Konfigurasikan",
   "agentDetail.sections.logs": "Log",
   "agentDetail.sections.monitoring": "Pemantauan",

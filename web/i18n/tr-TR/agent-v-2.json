@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Ajan gezinmesi",
   "agentDetail.publish": "Yayınla",
   "agentDetail.sections.access": "Erişim Noktası",
+  "agentDetail.sections.access-config": "Kaynak Erişimi",
   "agentDetail.sections.configure": "Yapılandır",
   "agentDetail.sections.logs": "Günlükler",
   "agentDetail.sections.monitoring": "İzleme",
