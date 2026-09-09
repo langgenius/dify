@@ -9,7 +9,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,

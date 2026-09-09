@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newKnowledgeAddSourcePath, newKnowledgeDocumentsPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import {

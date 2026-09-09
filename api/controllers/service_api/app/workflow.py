@@ -315,7 +315,7 @@ class WorkflowRunApi(Resource):
             ),
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
-                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+                "- `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached."
             ),
             500: "`internal_server_error` : Internal server error.",
         },
@@ -329,7 +329,6 @@ class WorkflowRunApi(Resource):
             200: "Workflow executed successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
-            404: "Workflow not found",
             429: "Rate limit exceeded",
             500: "Internal server error",
         }
@@ -430,7 +429,7 @@ class WorkflowRunByIdApi(Resource):
             404: "`not_found` : Workflow not found.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
-                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+                "- `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached."
             ),
             500: "`internal_server_error` : Internal server error.",
         },

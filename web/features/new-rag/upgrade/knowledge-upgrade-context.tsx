@@ -6,7 +6,7 @@ import type { KnowledgeUpgrade } from './knowledge-upgrade-context-value'
 import type { DatasetCardItem } from '@/app/components/datasets/list/dataset-card/types'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { KnowledgeUpgradeContext } from './knowledge-upgrade-context-value'
 import { KnowledgeUpgradeDialog } from './knowledge-upgrade-dialog'
 

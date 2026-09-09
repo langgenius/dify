@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiKeyModal } from '@/app/components/api-key/api-key-modal'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 export type KnowledgeFsApiAccessStatus = 'active' | 'inactive' | 'loading' | 'unavailable'

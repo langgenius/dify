@@ -94,7 +94,7 @@ vi.mock('@/service/use-pipeline', async () => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {

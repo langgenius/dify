@@ -183,7 +183,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: () => ({ data: toolProviderState.workflowTools }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       get: {

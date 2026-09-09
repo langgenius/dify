@@ -1,7 +1,7 @@
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { documentRevisionListFromApi } from '../../models'
 import { initialDocumentRevision } from '../model'
 import {

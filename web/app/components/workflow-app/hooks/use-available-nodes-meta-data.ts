@@ -14,7 +14,7 @@ import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-sche
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
-import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
 import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
 import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
@@ -31,8 +31,10 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
+  // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
+  // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
+  const shouldUseAgentV2 = agentV2Enabled && (!isChatMode || isAgentV2InChatflowEnabled())
   const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
-  const shouldUseAgentV2 = agentV2Enabled && !isChatMode
 
   const startNodeMetaData = useMemo(
     () => ({

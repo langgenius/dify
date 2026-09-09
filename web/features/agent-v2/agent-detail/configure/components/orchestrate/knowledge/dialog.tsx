@@ -20,7 +20,7 @@ import {
   useKnowledgeValidationMessage,
   validateKnowledgeRetrievals,
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type Props = {
   initialBindings: AgentKnowledgeRetrievalItem[]

@@ -3,7 +3,7 @@ import { knowledgeFsMetadataFieldsQueryOptions } from '../metadata'
 const metadataGet = vi.hoisted(() => vi.fn())
 const metadataQueryOptions = vi.hoisted(() => vi.fn(() => ({ queryKey: ['metadata'] })))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {

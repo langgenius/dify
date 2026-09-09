@@ -5,7 +5,7 @@ import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tan
 import { atomWithLazy, selectAtom } from 'jotai/utils'
 import { parseAsStringLiteral } from 'nuqs'
 import { createQueryAtoms } from 'nuqs-jotai'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { OVERVIEW_REFRESH_INTERVAL, overviewRefreshInterval } from './overview-format'
 
 export const OVERVIEW_WINDOWS = ['24h', '7d', '30d'] as const

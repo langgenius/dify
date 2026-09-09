@@ -9,7 +9,7 @@ import type {
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useKnowledgeSpace } from '../../space/context'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentPermissionQueryFactsAtom } from '../state/recovery'

@@ -2,24 +2,18 @@ import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
+let canReplaceLogo = true
+
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -82,12 +76,11 @@ vi.mock('@/service/use-common', async (importOriginal) => {
   return {
     ...actual,
     useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-    useProviderContext: vi.fn(),
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {
@@ -196,27 +189,31 @@ describe('AccountSetting', () => {
       )
     }
 
-    return renderWithConsoleQuery(<StatefulAccountSetting />, {
-      features: { billing: { subscription: { plan: 'sandbox' } } },
-      accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
-      systemFeatures: {
-        deployment_edition: deploymentEdition,
-        webapp_auth: { enabled: true },
-        branding: { enabled: false },
-        enable_marketplace: true,
-        enable_collaboration_mode: false,
-        rbac_enabled: rbacEnabled,
+    return renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <StatefulAccountSetting />
+      </NuqsTestingAdapter>,
+      {
+        features: {
+          billing: { subscription: { plan: 'sandbox' } },
+          can_replace_logo: canReplaceLogo,
+        },
+        accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
+        systemFeatures: {
+          deployment_edition: deploymentEdition,
+          webapp_auth: { enabled: true },
+          branding: { enabled: false },
+          enable_marketplace: true,
+          enable_collaboration_mode: false,
+          rbac_enabled: rbacEnabled,
+        },
       },
-    })
+    )
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-
-      enableReplaceWebAppLogo: true,
-    })
+    canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -442,11 +439,7 @@ describe('AccountSetting', () => {
 
     it('should hide billing and custom tabs when disabled', () => {
       // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-
-        enableReplaceWebAppLogo: false,
-      })
+      canReplaceLogo = false
 
       // Act
       renderAccountSetting({ deploymentEdition: 'COMMUNITY' })

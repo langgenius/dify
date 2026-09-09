@@ -2,21 +2,20 @@ import type {
   GetWorkspacesCurrentSummaryResponse,
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
-  renderWithConsoleQuery,
+  renderWithConsoleQuery as renderWithoutPricing,
   seedSystemFeaturesLicense,
 } from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 const {
   mockFetchWorkspaces,
@@ -35,21 +34,13 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
-
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
       if (prop === 'workspaces') {
@@ -106,11 +97,14 @@ const workspaceMenuAccessibleName = new RegExp(
   `${currentWorkspaceValue.name}.*common\\.mainNav\\.workspace\\.openMenu`,
 )
 
-const mockSetShowPricingModal = vi.fn()
 const mockSetSettingsDestination = vi.fn()
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+  return {
+    ...actual,
+    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
+      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
+  }
 })
 let mockCurrentWorkspace: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue
 let mockWorkspaces: TenantListItemResponse[] = []
@@ -122,7 +116,7 @@ const mockCurrentWorkspaceQuery = (
   mockCurrentWorkspace = isPending ? undefined : data
 }
 
-type RenderWorkspaceCardOptions = Parameters<typeof renderWithConsoleQuery>[1] & {
+type RenderWorkspaceCardOptions = Parameters<typeof renderWithoutPricing>[1] & {
   seedWorkspaces?: boolean
   systemFeaturesLicense?: Parameters<typeof seedSystemFeaturesLicense>[1]
 }
@@ -139,7 +133,7 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   if (systemFeaturesLicense) seedSystemFeaturesLicense(queryClient, systemFeaturesLicense)
 
-  return renderWithConsoleQuery(<WorkspaceCard />, {
+  return render(<WorkspaceCard />, {
     ...renderOptions,
     queryClient,
     currentWorkspace: mockCurrentWorkspace ? undefined : null,
@@ -150,6 +144,11 @@ const mockWorkspacePermissionKeys = (workspacePermissionKeys: string[]) => {
   mockConsoleState.current = {
     workspacePermissionKeys,
   }
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('WorkspaceCard', () => {
@@ -176,13 +175,7 @@ describe('WorkspaceCard', () => {
     mockFetchWorkspaces.mockResolvedValue({ workspaces: mockWorkspaces })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
     mockWorkspacePermissionKeys(['workspace.member.manage'])
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    } as unknown as ModalContextState)
   })
 
   it('includes the visible workspace name in the menu trigger accessible name', () => {
@@ -340,9 +333,6 @@ describe('WorkspaceCard', () => {
       ...currentWorkspaceValue,
       plan: 'team',
     })
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableEducationPlan: false,
-    } as ProviderContextState)
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText('team')).toBeInTheDocument()

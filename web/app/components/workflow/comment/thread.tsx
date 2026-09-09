@@ -236,15 +236,17 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       [setCommentPreviewHovering],
     )
 
-    // P0: Auto-focus reply input when thread opens or comment changes
+    const canReply = Boolean(onReply)
+
+    // Focus on thread transitions, not callback changes after position updates.
     useEffect(() => {
       const timer = setTimeout(() => {
-        if (replyInputRef.current && !editingReply.id && !isCommentEditing && onReply)
+        if (replyInputRef.current && !editingReply.id && !isCommentEditing && canReply)
           replyInputRef.current.focus()
       }, 100)
 
       return () => clearTimeout(timer)
-    }, [comment.id, editingReply.id, isCommentEditing, onReply])
+    }, [comment.id, editingReply.id, isCommentEditing, canReply])
 
     // P2: Handle Esc key to close thread
     useEffect(() => {

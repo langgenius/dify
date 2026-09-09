@@ -47,7 +47,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...original, useQueryClient: () => queryClientMock }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {

@@ -21,7 +21,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{

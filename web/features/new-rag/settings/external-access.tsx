@@ -8,7 +8,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { SettingsFieldRow } from './settings-field-row'
 import {
   invalidateKnowledgeSettingsAtom,

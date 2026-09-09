@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { createRequestId } from '../../request-id'
 import {

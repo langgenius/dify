@@ -338,7 +338,7 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     workspaces: {
       current: {

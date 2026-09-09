@@ -17,7 +17,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
 import {
   DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND,

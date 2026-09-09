@@ -586,7 +586,6 @@ export type DatasetDetailResponse = {
   maintainer?: string | null
   name: string
   permission: string
-  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -627,7 +626,6 @@ export type DatasetDetailWithPartialMembersResponse = {
   name: string
   partial_member_list?: Array<string> | null
   permission: string
-  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -3797,7 +3795,6 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
@@ -3973,7 +3970,6 @@ export type PostCompletionMessagesErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
   429: unknown
   500: unknown
 }
@@ -4328,7 +4324,6 @@ export type DeleteDatasetsByDatasetIdErrors = {
   401: unknown
   403: unknown
   404: unknown
-  409: unknown
 }
 
 export type DeleteDatasetsByDatasetIdResponses = {
@@ -4617,7 +4612,6 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -5467,9 +5461,9 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
+  400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetInfoResponses = {
@@ -6268,9 +6262,9 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
+  400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetMetaResponses = {
@@ -6290,7 +6284,6 @@ export type GetParametersErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type GetParametersResponses = {
@@ -6403,7 +6396,6 @@ export type PostWorkflowsRunErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
   429: unknown
   500: unknown
 }

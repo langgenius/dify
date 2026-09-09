@@ -33,18 +33,18 @@ export function QualityPage() {
 
   if (selectedEvaluationRunId)
     return (
-      <main className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
+      <div className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
         <EvaluationReport
           key={selectedEvaluationRunId}
           runId={selectedEvaluationRunId}
           onBack={() => void setQueryRunId(null)}
           onRunStarted={(runId) => void setQueryRunId(runId)}
         />
-      </main>
+      </div>
     )
 
   return (
-    <main className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
+    <div className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
       <header>
         <h1 className="system-xl-semibold text-text-primary">{t(($) => $['qualityPage.title'])}</h1>
         <p className="mt-1 system-xs-regular text-text-tertiary">
@@ -75,6 +75,6 @@ export function QualityPage() {
           )}
         </TabsPanel>
       </Tabs>
-    </main>
+    </div>
   )
 }

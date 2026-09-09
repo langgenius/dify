@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useDataSourceList } from '@/service/use-pipeline'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
@@ -1043,7 +1043,7 @@ function AddSourcePageContent({
 
   return (
     <>
-      <main className="h-full min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-6 pt-3 pb-6 sm:pb-8">
+      <div className="h-full min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-6 pt-3 pb-6 sm:pb-8">
         <header>
           <h2 className="system-xl-semibold text-text-primary">{t(($) => $.addSource)}</h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
@@ -1205,7 +1205,7 @@ function AddSourcePageContent({
             </div>
           )}
         </div>
-      </main>
+      </div>
     </>
   )
 }

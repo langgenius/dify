@@ -52,12 +52,14 @@ from repositories.installation_state_repository import InstallationStateReposito
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
+from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
+from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
@@ -167,6 +169,8 @@ from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
+from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
     BuiltinRecommendedAppCatalogGateway,
     RecommendedAppCatalogRouter,
@@ -186,7 +190,9 @@ from services.setup_service import SetupService
 from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
+from services.tool_file_download_service import ToolFileDownloadService
 from services.trial_app_usage import TrialAppUsageRecorder
+from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
@@ -267,6 +273,9 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
+    plugin_file_uploads: PluginFileUploadService
+    tool_file_downloads: ToolFileDownloadService
+    upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -668,6 +677,15 @@ def build_application_services(
         ),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
+            storage=storage,
+        ),
+        plugin_file_uploads=PluginFileUploadService(
+            owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
+            files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),
+        ),
+        tool_file_downloads=ToolFileDownloadService(tool_files=ToolFileManager()),
+        upload_file_delivery=UploadFileDeliveryService(
+            files=UploadFileDeliveryQueryRepository(session_factory=database_client),
             storage=storage,
         ),
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),

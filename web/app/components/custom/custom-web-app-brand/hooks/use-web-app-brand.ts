@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024

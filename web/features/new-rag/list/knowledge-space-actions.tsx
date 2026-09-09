@@ -24,7 +24,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newKnowledgeSettingsPath } from '../routes'
 
 export function KnowledgeSpaceActions({

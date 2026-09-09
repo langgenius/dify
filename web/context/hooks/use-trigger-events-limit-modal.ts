@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { getResetInDaysFromDate } from '@/app/components/billing/utils'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type TriggerEventsLimitModalContent = {
   usage: number
@@ -48,7 +48,7 @@ export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult =
     currentWorkspaceId &&
     quota &&
     quota.plan !== 'team' &&
-    quota.limit > 0 &&
+    quota.limit >= 0 &&
     quota.usage >= quota.limit
       ? `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${quota.plan}-${quota.limit}-${cycleTag}`
       : null

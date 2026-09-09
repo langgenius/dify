@@ -17,7 +17,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { taskCanCancel, taskCanRetry } from '../../model'
 import { logicalDocumentListFromApi } from '../../models'
 import {

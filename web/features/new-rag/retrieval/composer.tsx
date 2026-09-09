@@ -9,7 +9,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { QueryImageThumbnail } from './query-image-thumbnail'
 import {

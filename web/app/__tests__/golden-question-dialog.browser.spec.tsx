@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { GoldenQuestionDialog } from '@/features/new-rag/quality/golden-question-dialog'
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {

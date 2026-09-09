@@ -42,7 +42,7 @@ function KnowledgeOverviewContent() {
   const showIndexing = useAtomValue(overviewShowIndexingAtom)
 
   return (
-    <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
       <div className="w-full px-6 pt-3 pb-6">
         <OverviewTaskSync />
         <OverviewHeader />
@@ -67,7 +67,7 @@ function KnowledgeOverviewContent() {
           <InventoryPanel />
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 

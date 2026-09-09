@@ -33,7 +33,7 @@ Read this document when a component consumes generated contracts, nullable API v
 - Use generated `mutationOptions()` directly for owner-local mutations.
 - Keep a mutation in `useMutation` when pending and error state belong to one dialog or form. Use a mutation atom only when shared workflow orchestration or graph-derived state consumes it; query and mutation atoms remain unscoped.
 - Do not introduce deprecated `useInvalid` or `useReset` APIs.
-- Put shared invalidation, retries, and cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. Local callbacks may own toast, close, and navigation effects but must not replace shared cache policy.
+- Put shared invalidation, retries, and cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. In oRPC v1, caller options override defaults, including callbacks. Local callbacks may own toast, close, and navigation effects but must preserve shared cache behavior.
 - Workflow-specific invalidation belongs beside the mutation/command that understands which caches become stale. Construct generated query options or keys from graph identity there instead of receiving keys from a rendering parent.
 - Prefer `mutate(...)`. Use `mutateAsync(...)` only when Promise composition is required, and catch awaited failures.
 - Preserve intentional empty values and current list/detail ownership when updating data. Do not add optimistic updates without a verified owner contract.

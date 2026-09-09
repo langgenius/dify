@@ -11,7 +11,7 @@ import { useInfiniteScroll } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { toControlSpaceSummary } from '../config-helpers'
 
 const SPACE_PAGE_SIZE = 50

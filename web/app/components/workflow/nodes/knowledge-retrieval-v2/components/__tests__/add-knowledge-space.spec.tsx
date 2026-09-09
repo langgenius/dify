@@ -12,7 +12,7 @@ vi.mock('ahooks', () => ({
   useInfiniteScroll: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {

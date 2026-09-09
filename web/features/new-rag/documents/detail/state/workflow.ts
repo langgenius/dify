@@ -9,7 +9,7 @@ import {
   queryClientAtom,
 } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newestTaskByDocument } from '../../model'
 import { backgroundTaskListFromApi, documentTaskListFromApi } from '../../models'
 import { responseStatus } from '../model'

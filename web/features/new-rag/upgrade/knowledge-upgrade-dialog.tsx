@@ -16,7 +16,7 @@ import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { createRequestId } from '@/features/new-rag/request-id'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function KnowledgeUpgradeDialog({
   dataset,

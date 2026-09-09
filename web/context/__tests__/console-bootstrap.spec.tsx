@@ -110,7 +110,7 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     features: {
       get: {

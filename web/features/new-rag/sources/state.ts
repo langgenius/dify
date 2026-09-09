@@ -3,7 +3,7 @@ import type { Source } from './source-models'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
 import { atomWithLazy, selectAtom } from 'jotai/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   initialSourcePollingPhase,
   shouldHidePreviewSource,

@@ -16,8 +16,8 @@ const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/service/access-control/use-workspace-roles')
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleQuery: {

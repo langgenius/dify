@@ -9,7 +9,7 @@ import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotati
 import { ANNOTATION_DEFAULT } from '@/config'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
 
 type Params = {

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import PlanComp from '../plan'
 
 const Billing: FC = () => {

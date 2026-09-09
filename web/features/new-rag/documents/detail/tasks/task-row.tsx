@@ -8,7 +8,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import {
   knowledgeFsTaskFailureDetail,
   knowledgeFsTaskFailureMessageKey,

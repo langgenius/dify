@@ -1,6 +1,6 @@
 import { keepPreviousData, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type DatasetListQuery = {
   creatorIds: string[]

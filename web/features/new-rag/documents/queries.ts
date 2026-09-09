@@ -1,4 +1,4 @@
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { TASK_PAGE_SIZE } from './tasks/recovery'
 
 export function logicalDocumentsInfiniteOptions(knowledgeSpaceId: string) {

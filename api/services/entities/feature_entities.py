@@ -66,8 +66,10 @@ class LicenseLimitationModel(FeatureResponseModel):
 
 class Quota(FeatureResponseModel):
     usage: int = 0
-    limit: int = 0
-    reset_date: int = -1
+    limit: int = Field(default=0, description="Quota limit; -1 means unlimited and 0 means no quota")
+    reset_date: int = Field(
+        default=-1, description="Next quota reset as a Unix timestamp in seconds; -1 means no reset"
+    )
 
 
 class LicenseStatus(StrEnum):
@@ -142,19 +144,19 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
 
 
 class FeatureModel(FeatureResponseModel):
+    """Effective feature availability and limits for the current workspace."""
+
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
-    vector_space: LimitationModel | None = LimitationModel(size=0, limit=5)
-    knowledge_rate_limit: int = 10
+    # Indexing tasks still consume this internally; Console queries vector usage separately.
+    vector_space: LimitationModel | None = Field(default=LimitationModel(size=0, limit=5), exclude=True)
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
-    docs_processing: str = "standard"
     can_replace_logo: bool = False
     model_load_balancing_enabled: bool = False
-    dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     is_allow_transfer_workspace: bool = True
@@ -163,7 +165,8 @@ class FeatureModel(FeatureResponseModel):
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
-    next_credit_reset_date: int = 0
+    # Workspace and model-provider credit responses own the public reset-date contract.
+    next_credit_reset_date: int = Field(default=0, exclude=True)
 
 
 class KnowledgeRateLimitModel(FeatureResponseModel):

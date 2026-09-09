@@ -29,9 +29,8 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { KnowledgeModelReadinessNotice } from '../components/knowledge-model-readiness-notice'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import {
@@ -68,9 +67,24 @@ export function RetrievalSettingsSection() {
   const settings = useAtomValue(knowledgeSettingsSettingsAtom)
   const invalidateSettings = useSetAtom(invalidateKnowledgeSettingsAtom)
   const setSavePending = useSetAtom(setKnowledgeSettingsSavePendingAtom)
-  const { data: reasoningModelList } = useModelList(ModelTypeEnum.textGeneration)
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: reasoningModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const [draft, setDraft] = useState<RetrievalSettingsDraft>()
   const [pendingMigrationId, setPendingMigrationId] = useState<string>()
   const [pendingEmbeddingModel, setPendingEmbeddingModel] = useState<DefaultModel>()

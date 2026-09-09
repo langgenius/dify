@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import {
   knowledgeFsTaskFailureDetail,
   knowledgeFsTaskFailureMessageKey,

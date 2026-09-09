@@ -1,5 +1,5 @@
 import type { DocumentProcessingTask, DocumentProcessingTaskEvent } from '../models'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { documentTaskFromApi } from '../models'
 
 type ProcessingTaskEventWithId<T extends DocumentProcessingTaskEvent> = T & {

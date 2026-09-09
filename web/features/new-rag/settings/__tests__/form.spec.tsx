@@ -66,8 +66,31 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => membersQueryMock,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
+    workspaces: {
+      current: {
+        models: {
+          modelTypes: {
+            byModelType: {
+              get: {
+                queryOptions: ({
+                  input,
+                  select,
+                }: {
+                  input: { params: { model_type: string } }
+                  select: (response: { data: never[] }) => never[]
+                }) => ({
+                  queryKey: ['models', input.params.model_type],
+                  queryFn: async () => ({ data: [] }),
+                  select,
+                }),
+              },
+            },
+          },
+        },
+      },
+    },
     account: {
       profile: {
         get: { queryKey: () => queryKeys.accountProfile },
@@ -156,10 +179,6 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({

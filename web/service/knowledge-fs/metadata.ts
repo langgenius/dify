@@ -1,5 +1,5 @@
 import type { KnowledgeFsMetadataFieldResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 export type KnowledgeFsMetadataField = {
   count: number

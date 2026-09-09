@@ -51,7 +51,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQueries: mockUseQueries,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {

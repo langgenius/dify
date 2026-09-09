@@ -68,7 +68,7 @@ const settings = {
   revision: 1,
 }
 
-vi.mock('@/service/client', () => {
+vi.mock('@/service/console', () => {
   const query = (key: keyof typeof queryKeys, queryFn: () => Promise<unknown>) => ({
     queryOptions: () => {
       const options = { queryFn, queryKey: queryKeys[key] }

@@ -5,7 +5,7 @@ const { listBackgroundTasks } = vi.hoisted(() => ({
   listBackgroundTasks: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {

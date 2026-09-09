@@ -85,6 +85,13 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => permissionState)
 })
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-123' },
+  }))
+})
+
 const datasourcePluginsQuery = vi.hoisted(() => ({
   data: [] as DataSourceItem[] | undefined,
   isError: false,
@@ -254,7 +261,7 @@ vi.mock('@/next/navigation', () => ({
   },
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       sourceProviderPreview: {

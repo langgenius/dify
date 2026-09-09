@@ -15,7 +15,7 @@ import agentZh from '@/i18n/zh-Hans/agent-v-2.json'
 import appDebugZh from '@/i18n/zh-Hans/app-debug.json'
 import commonZh from '@/i18n/zh-Hans/common.json'
 import workflowZh from '@/i18n/zh-Hans/workflow.json'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentKnowledgeRetrievalDialog } from './dialog'
 
 const examples = [

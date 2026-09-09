@@ -1,7 +1,7 @@
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { knowledgeSettingsSpaceIdAtom } from './inputs'
 
 const spaceQueryAtom = atomWithQuery((get) =>

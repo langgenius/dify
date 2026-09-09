@@ -22,7 +22,7 @@ vi.mock('../../space/context', () => ({
   useKnowledgeSpacePermission: () => true,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {

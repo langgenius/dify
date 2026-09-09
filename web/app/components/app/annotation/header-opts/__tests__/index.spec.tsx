@@ -28,15 +28,6 @@ vi.mock('@/service/annotation', () => ({
   clearAllAnnotations: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: { annotatedResponse: 0 },
-      total: { annotatedResponse: 10 },
-    },
-  }),
-}))
-
 vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))

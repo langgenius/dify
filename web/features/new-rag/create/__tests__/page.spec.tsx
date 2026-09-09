@@ -125,7 +125,7 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       sourceProviderPreview: {

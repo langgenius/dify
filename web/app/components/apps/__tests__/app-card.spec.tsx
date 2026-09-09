@@ -48,8 +48,8 @@ const mockUnstarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const withMutation = (operation: object, mutationFn: typeof mockCopyApp) =>
     new Proxy(operation, {
       get(target, property, receiver) {

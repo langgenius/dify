@@ -16,7 +16,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useKnowledgeSpace } from '../space/context'
 import {
   maxGoldenQuestionCsvBytes,

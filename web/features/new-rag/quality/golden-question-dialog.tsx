@@ -24,7 +24,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type DialogMode = 'create' | 'edit' | 'promote'
 type MatchPolicy = GoldenQuestionDraft['matchPolicy']

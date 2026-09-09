@@ -11,7 +11,7 @@ import { overviewActivityPreviewDataAtom, overviewAttentionDataAtom } from '../s
 import { OverviewStateBoundary } from '../state-boundary'
 
 const service = vi.hoisted(() => ({ attention: vi.fn(), activity: vi.fn(), tasks: vi.fn() }))
-vi.mock('@/service/client', () => {
+vi.mock('@/service/console', () => {
   const endpoint = (name: 'attention' | 'activity') => ({
     get: {
       key: ({ input }: { input: { params: { control_space_id: string } } }) => [

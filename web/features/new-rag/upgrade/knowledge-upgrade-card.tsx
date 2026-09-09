@@ -9,7 +9,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatasetCardHeader from '@/app/components/datasets/list/dataset-card/components/dataset-card-header'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newKnowledgeOverviewPath } from '../routes'
 
 const UPGRADE_POLL_INTERVAL = 2_000

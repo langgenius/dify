@@ -4,7 +4,7 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { knowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
 import { timeValue } from '../history-utils'
 import {

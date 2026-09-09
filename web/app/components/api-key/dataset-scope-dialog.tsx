@@ -19,7 +19,7 @@ import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 
 type Scope = 'all' | 'specific'

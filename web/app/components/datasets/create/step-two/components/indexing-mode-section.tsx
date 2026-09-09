@@ -1,10 +1,7 @@
 'use client'
-
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
 import {
   AlertDialog,
@@ -40,7 +37,7 @@ type IndexingModeSectionProps = {
   hasSetIndexType: boolean
   docForm: ChunkingMode
   embeddingModel: DefaultModel
-  embeddingModelList?: Model[]
+  embeddingModelList?: ProviderWithModelsResponse[]
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   // Flags

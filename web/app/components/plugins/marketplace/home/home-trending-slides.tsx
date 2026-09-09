@@ -117,6 +117,7 @@ const recommendCardClassName = cn(
 
 const getCardCreator = (card: BannerRecommendCard) => {
   if (card.creator) return card.creator
+  // Template item_id is a UUID, not org/name, so author has to come from the payload.
   if (card.item_type !== 'plugin') return ''
 
   return card.item_id.split('/')[0] || ''
@@ -230,7 +231,7 @@ function RecommendCardFace({ card }: { card: BannerRecommendCard }) {
             height={40}
             alt=""
             aria-hidden
-            className="size-full object-cover"
+            className="size-full object-contain object-center"
           />
         ) : card.icon ? (
           <span className="text-xl leading-none">{card.icon}</span>

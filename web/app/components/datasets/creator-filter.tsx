@@ -12,7 +12,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { CREATOR_FILTER_MAX_SELECTION } from './creator-filter-query'
 
 type CreatorFilterProps = {

@@ -24,7 +24,7 @@ function RetrievalTestSurface() {
   const mode = useAtomValue(retrievalComposerModeAtom)
 
   return (
-    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-6 pt-3 pb-5">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-6 pt-3 pb-5">
       <header className="shrink-0">
         <h1 className="title-xl-semi-bold leading-6 text-text-primary">
           {t(($) => $['retrievalTest.title'])}
@@ -57,7 +57,7 @@ function RetrievalTestSurface() {
         </section>
         <RetrievalResultPanel />
       </div>
-    </main>
+    </div>
   )
 }
 

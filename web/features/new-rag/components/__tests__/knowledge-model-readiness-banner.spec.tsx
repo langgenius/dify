@@ -41,7 +41,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('status=failed'),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {

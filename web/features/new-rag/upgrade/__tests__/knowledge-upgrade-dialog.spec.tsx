@@ -18,7 +18,7 @@ const discoverUpgradeMock = vi.hoisted(() =>
   ),
 )
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       byDatasetId: {

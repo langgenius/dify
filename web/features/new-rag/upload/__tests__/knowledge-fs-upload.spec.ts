@@ -10,7 +10,7 @@ const serviceMock = vi.hoisted(() => ({
   uploadDocument: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {

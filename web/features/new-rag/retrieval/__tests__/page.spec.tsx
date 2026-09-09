@@ -270,7 +270,7 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       tasks: {

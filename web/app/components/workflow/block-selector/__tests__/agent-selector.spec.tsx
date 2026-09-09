@@ -16,7 +16,7 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: () => undefined,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       inviteOptions: {

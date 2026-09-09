@@ -11,13 +11,15 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import {
-  createConsoleQueryClient,
-  renderWithConsoleQuery as render,
-} from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
+
+const render = (
+  ui: React.ReactElement,
+  options: Parameters<typeof renderWithConsoleQuery>[1] = {},
+) => renderWithConsoleQuery(ui, { features: { enable_skill: true }, ...options })
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
@@ -202,11 +204,6 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-123' },
   }))
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
-    selector({ enableSkill: true }),
-}))
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),

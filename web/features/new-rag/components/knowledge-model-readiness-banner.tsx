@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newKnowledgeSettingsReturnPath } from '../routes'
 import {
   knowledgeModelReadinessActionClassName,

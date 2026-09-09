@@ -49,7 +49,7 @@ vi.mock('@/app/components/base/copy-feedback', () => ({
   ),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       apiBaseInfo: {

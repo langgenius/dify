@@ -21,7 +21,7 @@ import type { DeepPartial } from '@/test/console/system-features'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { noop } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
   currentWorkspaceQueryKey,

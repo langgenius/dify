@@ -1,4 +1,4 @@
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 type LogicalDocumentCitation = {
   documentId: string

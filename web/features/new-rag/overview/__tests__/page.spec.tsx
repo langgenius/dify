@@ -306,7 +306,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => {
+vi.mock('@/service/console', () => {
   const query = (name: keyof typeof queryOptionsMocks) => ({
     queryOptions: (options: unknown) => {
       queryOptionsMocks[name](options)

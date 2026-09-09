@@ -4,7 +4,7 @@ import { RiHardDrive3Line } from '@remixicon/react'
 import { useSuspenseQueries } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
 

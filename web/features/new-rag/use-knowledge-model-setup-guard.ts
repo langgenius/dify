@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { newKnowledgeSettingsReturnPath } from './routes'
 
 export type KnowledgeModelReadinessGuardResult =

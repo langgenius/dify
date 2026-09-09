@@ -1,5 +1,5 @@
 import type { DocumentProcessingTask } from '../models'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { documentTaskFromApi } from '../models'
 import { responseStatus } from '../request-error'
 

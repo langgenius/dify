@@ -12,14 +12,14 @@ import UsageInfo from '@/app/components/billing/usage-info'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import UpgradeBtn from '../upgrade-btn'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
-import { getResetInDaysFromDate, parseLimit, parseRateLimit } from '../utils'
+import { getResetInDaysFromDate, parseLimit } from '../utils'
 import { Professional, Sandbox, Team } from './assets'
 
 type Props = Readonly<{
@@ -49,8 +49,8 @@ const PlanComp: FC<Props> = ({ loc }) => {
   )
   const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const type = features.billing.subscription.plan
-  const triggerEventsLimit = parseRateLimit(features.trigger_event.limit)
-  const apiRateLimit = parseRateLimit(features.api_rate_limit.limit)
+  const triggerEventsLimit = features.trigger_event.limit
+  const apiRateLimit = features.api_rate_limit.limit
   const apiRateLimitReset = getResetInDaysFromDate(features.api_rate_limit.reset_date)
   const triggerEventsResetInDays =
     type === 'professional' && triggerEventsLimit !== NUM_INFINITE

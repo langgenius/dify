@@ -5,7 +5,7 @@ import type {
   KnowledgeFsSpaceCreateResponse,
   KnowledgeFsSpaceDetailResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../constants'
 
 export const NAME_MAX_LENGTH = KNOWLEDGE_NAME_MAX_LENGTH

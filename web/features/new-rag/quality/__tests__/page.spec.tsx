@@ -62,7 +62,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {

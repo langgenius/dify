@@ -9,7 +9,7 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import AddKnowledgeSpace from './components/add-knowledge-space'
 import KnowledgeSpaceList from './components/knowledge-space-list'

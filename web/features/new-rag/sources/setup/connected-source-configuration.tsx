@@ -17,7 +17,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { DatasourceParameterForm } from './datasource-parameter-form'
 import {
   datasourceParameterSchemas,
