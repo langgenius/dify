@@ -57,7 +57,7 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     snippets: {
       bySnippetId: {

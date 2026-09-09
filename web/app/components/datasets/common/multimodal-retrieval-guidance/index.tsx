@@ -1,9 +1,6 @@
 'use client'
-
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -18,14 +15,17 @@ type MultimodalRetrievalGuidanceVariant = 'create' | 'settings' | 'pipeline'
 type MultimodalRetrievalGuidanceProps = {
   variant: MultimodalRetrievalGuidanceVariant
   embeddingModel?: DefaultModel
-  embeddingModelList?: Model[]
+  embeddingModelList?: ProviderWithModelsResponse[]
   className?: string
 }
 
 const MULTIMODAL_RETRIEVAL_DOC_URL =
   'https://dify.ai/blog/multimodal-retrieval-is-now-available-in-the-knowledge-base'
 
-const isVisionEmbeddingModel = (embeddingModel?: DefaultModel, embeddingModelList?: Model[]) => {
+const isVisionEmbeddingModel = (
+  embeddingModel?: DefaultModel,
+  embeddingModelList?: ProviderWithModelsResponse[],
+) => {
   if (!embeddingModel?.provider || !embeddingModel.model) return false
 
   const provider = embeddingModelList?.find((item) => item.provider === embeddingModel.provider)

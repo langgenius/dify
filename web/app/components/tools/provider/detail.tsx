@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   Collection,
   CustomCollectionBackend,
@@ -29,7 +30,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,9 +46,9 @@ import ConfigCredential from '@/app/components/tools/setting/build-in/config-cre
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getLanguage } from '@/i18n-config/language'
+import { consoleQuery } from '@/service/console'
 import {
   deleteWorkflowTool,
   fetchBuiltInToolList,
@@ -92,20 +93,23 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
-  const { modelProviders: providers } = useProviderContext()
+  const { data: modelProvider } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data.find((provider) => provider.provider === collection?.id),
+    }),
+  )
   const queryClient = useQueryClient()
   const showSettingAuthModal = async () => {
     if (!canOpenCredentialSettings) return
 
     if (isModel) {
-      const summary = providers.find((item) => item.provider === collection?.id)
-      if (!summary) return
+      if (!modelProvider) return
       try {
         const response = await queryClient.query({
           ...modelProviderDetailsQueryOptions(),
           staleTime: 'static',
         })
-        const provider = response.data.find((item) => item.provider === summary.provider)
+        const provider = response.data.find((item) => item.provider === modelProvider.provider)
         if (!provider) return
         setShowModelModal({
           payload: {

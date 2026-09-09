@@ -1,14 +1,17 @@
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import ANY, Mock
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
+from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 
 
@@ -39,30 +42,31 @@ def _account(account_id: str = "account-1") -> Account:
     return account
 
 
-def _snippet(**overrides) -> SimpleNamespace:
-    data = {
-        "id": "snippet-1",
-        "tenant_id": "tenant-1",
-        "name": "Snippet",
-        "description": "Description",
-        "type": snippets_module.SnippetType.NODE,
-        "version": 1,
-        "use_count": 0,
-        "is_published": False,
-        "icon_info": None,
-        "graph_dict": {},
-        "input_fields_list": [],
-        "tags": [],
-        "created_by": None,
-        "author_name": None,
-        "created_by_account": None,
-        "created_at": datetime.fromtimestamp(1_704_067_200, UTC),
-        "updated_by": None,
-        "updated_by_account": None,
-        "updated_at": datetime.fromtimestamp(1_704_153_600, UTC),
-    }
-    data.update(overrides)
-    return SimpleNamespace(**data)
+def _snippet(**overrides) -> CustomizedSnippet:
+    """Build a real ``CustomizedSnippet`` row so session-backed accessors run against the test schema.
+
+    The SQLite fixtures in ``tests/unit_tests/conftest.py`` provide the full schema, so the
+    ``get_*(session=...)`` accessors resolve through real queries instead of hand-written stubs.
+    """
+    snippet = CustomizedSnippet(
+        tenant_id="tenant-1",
+        name="Snippet",
+        description="Description",
+        type=snippets_module.SnippetType.NODE,
+        version=1,
+        use_count=0,
+        is_published=False,
+        icon_info=None,
+        input_fields=None,
+        created_by=None,
+        created_at=datetime.fromtimestamp(1_704_067_200, UTC),
+        updated_by=None,
+        updated_at=datetime.fromtimestamp(1_704_153_600, UTC),
+    )
+    snippet.id = "snippet-1"
+    for name, value in overrides.items():
+        setattr(snippet, name, value)
+    return snippet
 
 
 def test_snippet_list_query_reads_repeated_values(app: Flask):
@@ -98,7 +102,7 @@ def test_snippet_list_query_ignores_indexed_values(app: Flask):
     assert query.creators is None
 
 
-def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     snippets = [_snippet()]
     tag_id = "11111111-1111-1111-1111-111111111111"
     get_snippets = Mock(return_value=(snippets, 1, False))
@@ -110,7 +114,7 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
     with app.test_request_context(
         f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids={tag_id}&creators=account-2"
     ):
-        response, status_code = handler(api, "tenant-1")
+        response, status_code = handler(api, sqlite_session, "tenant-1")
 
     assert status_code == 200
     assert response == {
@@ -139,7 +143,7 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
     }
     get_snippets.assert_called_once_with(
         tenant_id="tenant-1",
-        session=ANY,
+        session=sqlite_session,
         page=2,
         limit=10,
         keyword=None,
@@ -149,7 +153,9 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
     )
 
 
-def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_create_snippet_defaults_unknown_type_and_returns_created(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     user = _account("account-1")
     snippet = _snippet()
     create_snippet = Mock(return_value=snippet)
@@ -172,7 +178,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
         method="POST",
         json={"name": "Snippet", "type": "node", "description": "Description"},
     ):
-        response, status_code = handler(api, req_data, "tenant-1", user)
+        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user)
 
     assert status_code == 201
     assert response["id"] == "snippet-1"
@@ -180,7 +186,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
     assert create_snippet.call_args.kwargs["snippet_type"] == snippets_module.SnippetType.NODE
 
 
-def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     user = _account("account-1")
     create_snippet = Mock()
     monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
@@ -213,14 +219,14 @@ def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.
             },
         },
     ):
-        response, status_code = handler(api, req_data, "tenant-1", user)
+        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user)
 
     assert status_code == 400
     assert "knowledge-retrieval" in response["message"]
     create_snippet.assert_not_called()
 
 
-def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetDetailApi()
@@ -228,10 +234,10 @@ def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1"):
         with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
-def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     snippet = _snippet()
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
 
@@ -239,14 +245,38 @@ def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.Monk
     handler = unwrap(api.get)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1"):
-        response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
+        response, status_code = handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
     assert response["id"] == "snippet-1"
     assert response["name"] == "Snippet"
 
 
-def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_get_snippet_detail_resolves_creator_through_the_request_session(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    """The injected session is the one the accessors query, so a persisted creator resolves."""
+    author = _account("11111111-1111-1111-1111-111111111111")
+    sqlite_session.add(author)
+    sqlite_session.commit()
+
+    snippet = _snippet(created_by=author.id, updated_by=author.id)
+    monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+
+    api = snippets_module.CustomizedSnippetDetailApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1"):
+        response, status_code = handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
+
+    assert status_code == 200
+    assert response["created_by"] == {"id": author.id, "name": "Test User", "email": author.email}
+    assert response["updated_by"] == {"id": author.id, "name": "Test User", "email": author.email}
+
+
+def test_patch_snippet_returns_400_for_empty_payload(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     snippet = _snippet()
     user = _account("user-1")
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
@@ -261,27 +291,20 @@ def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: py
         method="PATCH",
         json={},
     ):
-        response, status_code = handler(api, req_data, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 400
     assert response == {"message": "No valid fields to update"}
 
 
-def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    _persist_snippet(sqlite_session)
     user = _account("account-1")
     snippet = _snippet()
-    updated_snippet = _snippet(name="New")
-    session = SimpleNamespace(merge=Mock(return_value=snippet), commit=Mock())
-    update_snippet = Mock(return_value=updated_snippet)
-
-    class SessionContext(_SessionContext):
-        def __init__(self, engine, *args, **kwargs):
-            super().__init__(engine, *args, session=session, **kwargs)
+    update_snippet = Mock(side_effect=_apply_update)
 
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
     monkeypatch.setattr(snippets_module.SnippetService, "update_snippet", update_snippet)
-    monkeypatch.setattr(snippets_module, "Session", SessionContext)
-    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
 
     req_data = snippets_module.UpdateSnippetPayload(name="New", icon_info={"icon": "star"})
 
@@ -293,17 +316,125 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
         method="PATCH",
         json={"name": "New", "icon_info": {"icon": "star"}},
     ):
-        response, status_code = handler(api, req_data, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 200
     assert response["id"] == "snippet-1"
     assert response["name"] == "New"
     update_snippet.assert_called_once()
+    assert update_snippet.call_args.kwargs["session"] is sqlite_session
     assert update_snippet.call_args.kwargs["data"] == {
         "name": "New",
         "icon_info": {"icon": "star", "icon_background": None, "icon_type": None, "icon_url": None},
     }
-    session.commit.assert_called_once()
+    assert _persisted_name(sqlite_session) == "New"
+
+
+def test_patch_snippet_does_not_report_a_committed_write_as_a_bad_request(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    """The ``except ValueError`` must scope the update call only, never the serialization.
+
+    ``ValidationError`` subclasses ``ValueError``. Both routes end at a 400 either way — the app
+    registers a ``ValueError`` handler in ``libs/external_api.py`` — so what matters is *where* it
+    is handled: covering the serialization would blame the client's payload for a write that already
+    succeeded, and swallow the failure before it ever reaches the error handlers. The committed row
+    must survive regardless.
+    """
+    _persist_snippet(sqlite_session)
+    user = _account("account-1")
+    snippet = _snippet()
+
+    monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+    monkeypatch.setattr(snippets_module.SnippetService, "update_snippet", Mock(side_effect=_apply_update))
+    monkeypatch.setattr(CustomizedSnippet, "get_graph_dict", _unserializable_graph)
+
+    req_data = snippets_module.UpdateSnippetPayload(name="New")
+
+    api = snippets_module.CustomizedSnippetDetailApi()
+    handler = unwrap(api.patch)
+
+    with app.test_request_context(
+        "/workspaces/current/customized-snippets/snippet-1",
+        method="PATCH",
+        json={"name": "New"},
+    ):
+        with pytest.raises(ValidationError):
+            handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
+
+    assert _persisted_name(sqlite_session) == "New"
+
+
+def test_patch_snippet_does_not_persist_a_rejected_update(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    """A rejected update must raise, not return a 400 tuple.
+
+    ``with_session`` commits on any normal return, so returning ``{"message": ...}, 400`` would
+    durably persist whatever ``update_snippet`` wrote before it rejected the payload; raising routes
+    through the decorator's rollback instead. That commit lives *in the decorator*, so this test runs
+    the handler through it rather than through ``unwrap`` — the autouse ``_sqlite_session_factory``
+    fixture already points ``with_session`` at the same database as ``sqlite_session``.
+    """
+    _persist_snippet(sqlite_session)
+    user = _account("account-1")
+    snippet = _snippet()
+
+    monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+    monkeypatch.setattr(snippets_module.SnippetService, "update_snippet", Mock(side_effect=_reject_update))
+
+    req_data = snippets_module.UpdateSnippetPayload(name="New")
+
+    api = snippets_module.CustomizedSnippetDetailApi()
+    view = unwrap(api.patch)
+
+    @snippets_module.with_session
+    def patch_through_decorator(resource, session: Session, snippet_id: str):
+        return view(resource, req_data, session, "tenant-1", user, snippet_id=snippet_id)
+
+    with app.test_request_context(
+        "/workspaces/current/customized-snippets/snippet-1",
+        method="PATCH",
+        json={"name": "New"},
+    ):
+        with pytest.raises(BadRequest, match="name already in use"):
+            patch_through_decorator(api, snippet_id="snippet-1")
+
+    assert _persisted_name(sqlite_session) == "Snippet"
+
+
+def _apply_update(*, session: Session, snippet: CustomizedSnippet, account_id: str, data: dict) -> CustomizedSnippet:
+    """Stand in for ``SnippetService.update_snippet``: write the payload onto the merged row."""
+    del session, account_id
+    for field, value in data.items():
+        setattr(snippet, field, value)
+    return snippet
+
+
+def _reject_update(*, session: Session, snippet: CustomizedSnippet, account_id: str, data: dict) -> CustomizedSnippet:
+    """Stand in for an ``update_snippet`` that writes some fields and then rejects the payload."""
+    _apply_update(session=session, snippet=snippet, account_id=account_id, data=data)
+    raise ValueError("name already in use")
+
+
+def _unserializable_graph(self: CustomizedSnippet, *, session: Session) -> str:
+    """Return a non-dict graph so response validation fails after the write is committed."""
+    del self, session
+    return "not-a-dict"
+
+
+def _persist_snippet(session: Session) -> None:
+    """Persist the baseline row so the handler's ``merge`` takes the UPDATE path, as in production."""
+    with Session(bind=session.get_bind()) as setup_session:
+        setup_session.add(_snippet())
+        setup_session.commit()
+
+
+def _persisted_name(session: Session) -> str | None:
+    """Read the snippet name back through a second session to prove what was committed."""
+    with Session(bind=session.get_bind()) as verification_session:
+        stored = verification_session.get(CustomizedSnippet, "snippet-1")
+        return stored.name if stored else None
 
 
 def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):

@@ -42,8 +42,8 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/marketplace')>()
 
   return {
     ...original,

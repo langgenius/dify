@@ -12,7 +12,7 @@ import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 

@@ -3,7 +3,7 @@ import { agentAction, agentSearchQueryOptions } from '../agent'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: { agent: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 

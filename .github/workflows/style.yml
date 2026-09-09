@@ -175,7 +175,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Static check
-        run: pnpm -w check
+        run: vp run -w check
 
   superlinter:
     name: SuperLinter

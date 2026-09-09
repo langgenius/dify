@@ -73,6 +73,12 @@ const clientSchema = {
   NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
+   * Surface the Agent v2 node inside Chatflow (advanced-chat) apps.
+   * Requires NEXT_PUBLIC_ENABLE_AGENT_V2. Disabled by default so Chatflow keeps
+   * showing only the legacy Agent node until this is explicitly turned on.
+   */
+  NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW: coercedBoolean.default(false),
+  /**
    * Enable preview features that are still in development.
    * Currently gates the `/create` and `/refine` slash commands in the
    * "Go to Anything" command palette (Cmd/Ctrl+K).
@@ -234,6 +240,9 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),
+    NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW
+      : getRuntimeEnvFromBody('enableAgentV2InChatflow'),
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),

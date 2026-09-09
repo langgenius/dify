@@ -226,7 +226,7 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
