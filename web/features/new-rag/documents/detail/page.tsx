@@ -1,6 +1,6 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentErrorState } from './error-state'
@@ -18,9 +18,9 @@ import { DocumentDetailWorkspace } from './workspace'
 function DocumentDetailContent() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const document = useAtomValue(documentDetailQueryDataAtom)
-  const documentError = useAtomValue(documentDetailQueryErrorAtom)
-  const documentIsPending = useAtomValue(documentDetailQueryIsPendingAtom)
+  const document = useAtomValueRawSync(documentDetailQueryDataAtom)
+  const documentError = useAtomValueRawSync(documentDetailQueryErrorAtom)
+  const documentIsPending = useAtomValueRawSync(documentDetailQueryIsPendingAtom)
   const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
   useDocumentDetailTitle()
   const documentErrorStatus = responseStatus(documentError)

@@ -6,7 +6,7 @@ import type { UploadExclusionReasonKey } from './model'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
@@ -31,10 +31,10 @@ import { useDocumentUploadSession } from './use-document-upload-session'
 
 function DocumentUploadHeader() {
   const { t } = useTranslation('knowledgeSpace')
-  const canRead = useAtomValue(documentCanReadAtom)
-  const canWrite = useAtomValue(documentCanWriteAtom)
-  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const uploadRequest = useAtomValue(documentUploadAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
+  const uploadRequest = useAtomValueRawSync(documentUploadAtom)
   const formOpen =
     documentUploadAvailability(canWrite, uploadAvailable).canUpload && uploadRequest === '1'
 
@@ -67,14 +67,15 @@ function DocumentUploadHeader() {
 export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
-  const canWrite = useAtomValue(documentCanWriteAtom)
-  const bulkActionsVisible = useAtomValue(documentBulkActionsVisibleAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const bulkActionsVisible = useAtomValueRawSync(documentBulkActionsVisibleAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const fileSizeLimitMb = useKnowledgeFileSizeLimit()
-  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const [uploadRequest, setUploadRequest] = useAtom(documentUploadAtom)
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
+  const uploadRequest = useAtomValueRawSync(documentUploadAtom)
+  const setUploadRequest = useSetAtom(documentUploadAtom)
   const [formInitialFiles, setFormInitialFiles] = useState<File[]>([])
   const [fileDragActive, setFileDragActive] = useState(false)
   const formRef = useRef<DocumentUploadFormHandle>(null)
@@ -116,7 +117,6 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (uploadRequest !== '1' || canUpload) return
     discardAllStagedFiles()
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the route-owned one-shot signal after authorization resolves.
     void setUploadRequest(null)
   }, [canUpload, discardAllStagedFiles, setUploadRequest, uploadRequest])
 

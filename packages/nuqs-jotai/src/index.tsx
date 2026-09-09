@@ -1,19 +1,25 @@
 'use client'
 
-import type { Atom, WritableAtom } from 'jotai'
+import type { WritableAtom } from 'jotai'
 import type { Options, SetValues, UseQueryStatesKeysMap, UseQueryStatesOptions, Values } from 'nuqs'
 import type { ReactNode } from 'react'
-import type { QueryAdapter } from './adapter'
-import { atom, useStore } from 'jotai'
+import type { Binding } from './binding'
+import { atom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useEffect, useInsertionEffect, useLayoutEffect, useState } from 'react'
-import { parseValues, prepareUpdate } from './query'
-import { createQueryRuntime } from './runtime'
+import { atomWithLazy, useHydrateAtoms } from 'jotai/utils'
+import { useQueryStates } from 'nuqs'
+import { useEffect, useInsertionEffect, useState } from 'react'
+import { createBinding } from './binding'
 
-const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
-type Runtime = ReturnType<typeof createQueryRuntime>
-const runtimeAtom = atom<{ runtime: Runtime; defaults: Options } | null>(null)
-runtimeAtom.debugLabel = 'url.runtime'
+const definitionKey = Symbol('nuqs-jotai.definition')
+type KeyMap = UseQueryStatesKeysMap
+type Definition = {
+  parsers: KeyMap
+  options: Partial<UseQueryStatesOptions<KeyMap>>
+  valueAtom: WritableAtom<Values<KeyMap>, [Values<KeyMap>], void>
+  bindingAtom: WritableAtom<Binding, [Binding], void>
+}
+type Registered = { readonly [definitionKey]: Definition }
 
 export type QueryAtom<Value> = WritableAtom<
   Value,
@@ -21,76 +27,56 @@ export type QueryAtom<Value> = WritableAtom<
   Promise<URLSearchParams>
 >
 
-export type SearchParamsAtom<P extends UseQueryStatesKeysMap> = WritableAtom<
+export type SearchParamsAtom<P extends KeyMap> = WritableAtom<
   Values<P>,
   Parameters<SetValues<P>>,
   Promise<URLSearchParams>
 >
 
-export type SearchParamsOptions<P extends UseQueryStatesKeysMap> = Options & {
+export type SearchParamsOptions<P extends KeyMap> = Options & {
   urlKeys?: UseQueryStatesOptions<P>['urlKeys']
   debugLabel?: string
 }
 
-export const queryStateErrorAtom: Atom<unknown> = atom((get) => {
-  const binding = get(runtimeAtom)
-  return binding ? get(binding.runtime.errorAtom) : null
-})
-queryStateErrorAtom.debugLabel = 'url.error'
+export type QueryGroup<P extends KeyMap> = Registered & {
+  readonly atom: SearchParamsAtom<P>
+  readonly fields: { readonly [K in keyof P]: QueryAtom<Values<P>[K]> }
+}
 
-/** Definitions need no registration: every atom uses its nearest URL provider. */
-export function atomWithSearchParams<P extends UseQueryStatesKeysMap>(
+/** One nuqs hook and snapshot shared by a composite atom and its field atoms. */
+export function createQueryGroup<P extends KeyMap>(
   parsers: P,
-  { urlKeys, debugLabel = 'query', ...defaults }: SearchParamsOptions<P> = {},
-): SearchParamsAtom<P> {
-  const initial = parseValues(parsers, urlKeys, new URLSearchParams())
-  const cache = new WeakMap<Runtime, { href: string; values: Values<P> }>()
-  const queryAtom: SearchParamsAtom<P> = atom<
-    Values<P>,
-    Parameters<SetValues<P>>,
-    Promise<URLSearchParams>
-  >(
+  { debugLabel = 'query', ...options }: SearchParamsOptions<P> = {},
+): QueryGroup<P> {
+  const valueAtom = atom<Values<KeyMap>>({})
+  const bindingAtom = atomWithLazy<Binding>(() => {
+    throw new Error('[nuqs-jotai] Register this group in QueryStateProvider')
+  })
+  const definition: Definition = { parsers, options, valueAtom, bindingAtom }
+  const queryAtom = atom(
     (get) => {
-      const binding = get(runtimeAtom)
-      if (!binding) return initial
-      const href = get(binding.runtime.stateAtom)
-      const previous = cache.get(binding.runtime)
-      if (previous?.href === href) return previous.values
-      const values = parseValues(parsers, urlKeys, new URL(href).searchParams, previous?.values)
-      cache.set(binding.runtime, { href, values })
-      return values
+      get(bindingAtom)
+      return get(valueAtom) as Values<P>
     },
-    (get, set, update, options) => {
-      const binding = get(runtimeAtom)
-      if (!binding) throw new Error('[nuqs-jotai] Missing QueryStateProvider')
-      return binding.runtime.write(
-        () => {
-          const patch = typeof update === 'function' ? update(get(queryAtom)) : update
-          return prepareUpdate(parsers, urlKeys, patch, binding.defaults, {
-            ...defaults,
-            ...options,
-          })
-        },
-        { set },
-      )
+    (get, _set, ...args: Parameters<SetValues<P>>) => {
+      const binding = get(bindingAtom)
+      return (binding.write as SetValues<P>)(...args)
     },
   )
   queryAtom.debugLabel = debugLabel
-  return queryAtom
-}
-
-/** Related parameters exposed as individual atoms, sharing one ownership group. */
-export function atomsWithSearchParams<P extends UseQueryStatesKeysMap>(
-  parsers: P,
-  options: SearchParamsOptions<P> = {},
-): { readonly [K in keyof P]: QueryAtom<Values<P>[K]> } {
-  const group = atomWithSearchParams(parsers, options)
+  valueAtom.debugLabel = `${debugLabel}.snapshot`
+  bindingAtom.debugLabel = `${debugLabel}.binding`
   function forKey<K extends keyof P>(key: K): QueryAtom<Values<P>[K]> {
-    const result: QueryAtom<Values<P>[K]> = atom(
-      (get) => get(group)[key],
-      (_get, set, update, writeOptions) =>
+    const field = atom(
+      (get) => get(queryAtom)[key],
+      (
+        _get,
+        set,
+        update: Values<P>[K] | null | ((previous: Values<P>[K]) => Values<P>[K] | null),
+        writeOptions?: Options,
+      ) =>
         set(
-          group,
+          queryAtom,
           (current) =>
             ({
               [key]:
@@ -101,56 +87,60 @@ export function atomsWithSearchParams<P extends UseQueryStatesKeysMap>(
           writeOptions,
         ),
     )
-    result.debugLabel = `${options.debugLabel ?? 'query'}.${String(key)}`
-    return result
+    field.debugLabel = `${debugLabel}.${String(key)}`
+    return field
   }
-  return Object.fromEntries(Object.keys(parsers).map((key) => [key, forKey(key)])) as {
-    readonly [K in keyof P]: QueryAtom<Values<P>[K]>
+  return {
+    atom: queryAtom,
+    fields: Object.fromEntries(
+      Object.keys(parsers).map((key) => [key, forKey(key)]),
+    ) as QueryGroup<P>['fields'],
+    [definitionKey]: definition,
   }
 }
 
-/** A single URL parameter, usable directly with useAtom or store.get/set. */
-export function atomWithSearchParam<P extends UseQueryStatesKeysMap[string]>(
-  key: string,
-  parser: P,
-  options: Options & { debugLabel?: string } = {},
-): QueryAtom<Values<{ value: P }>['value']> {
-  const { value } = atomsWithSearchParams(
-    { value: parser },
-    { ...options, urlKeys: { value: key } },
-  )
-  value.debugLabel = options.debugLabel ?? key
-  return value
-}
-
-/** One provider per URL: preserve parent application atoms and share one queue. */
+/** Mount beneath the framework's NuqsAdapter. Register groups once per URL scope. */
 export function QueryStateProvider({
-  adapter,
-  options = {},
+  groups,
   children,
 }: {
-  adapter: QueryAdapter
-  options?: Options
+  groups: readonly Registered[]
   children: ReactNode
 }) {
-  const [binding] = useState(() => ({ runtime: createQueryRuntime(adapter), defaults: options }))
-  const { runtime } = binding
+  const definitions = [...new Set(groups.map((group) => group[definitionKey]))]
   return (
     <ScopeProvider
-      atoms={[[runtimeAtom, binding], runtime.stateAtom, runtime.errorAtom]}
+      atoms={definitions.flatMap((definition) => [definition.valueAtom, definition.bindingAtom])}
       name="QueryState"
     >
-      <RuntimeConnection runtime={runtime}>{children}</RuntimeConnection>
+      {definitions.reduceRight<ReactNode>(
+        (content, definition) => (
+          <Bridge key={definition.valueAtom.toString()} definition={definition}>
+            {content}
+          </Bridge>
+        ),
+        children,
+      )}
     </ScopeProvider>
   )
 }
 
-function RuntimeConnection({ runtime, children }: { runtime: Runtime; children: ReactNode }) {
-  const store = useStore()
-  // Unmount invalidates writes; hiding cancels drafts; passive setup subscribes.
-  useInsertionEffect(() => () => runtime.dispose(), [runtime])
-  useBrowserLayoutEffect(() => () => runtime.pause(), [runtime])
-  // Reconcile after child Jotai passive subscriptions, including Activity reveal.
-  useEffect(() => runtime.connect(store), [runtime, store])
+function Bridge({ definition, children }: { definition: Definition; children: ReactNode }) {
+  const [values, write] = useQueryStates(definition.parsers, definition.options)
+  const [binding] = useState(createBinding)
+  // This scope owns only authoritative nuqs inputs. Never hydrate consumer drafts.
+  useHydrateAtoms(
+    [
+      [definition.valueAtom, values],
+      [definition.bindingAtom, binding],
+    ],
+    { dangerouslyForceHydrate: true },
+  )
+  useInsertionEffect(() => () => binding.dispose(), [binding])
+  // Refresh before descendant layout commands run, without publishing a
+  // speculative render's writer or attaching mount/reveal connections early.
+  useInsertionEffect(() => binding.refresh(write), [binding, write])
+  // Connect after this hook subscribes; held commands wait for the effect pass.
+  useEffect(() => binding.connect(write), [binding, write])
   return children
 }

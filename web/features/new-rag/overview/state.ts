@@ -3,12 +3,9 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { atomWithLazy, selectAtom } from 'jotai/utils'
-import { parseAsStringLiteral } from 'nuqs'
-import { atomWithSearchParam } from 'nuqs-jotai'
 import { consoleQuery } from '@/service/console'
 import { OVERVIEW_REFRESH_INTERVAL, overviewRefreshInterval } from './overview-format'
-
-export const OVERVIEW_WINDOWS = ['24h', '7d', '30d'] as const
+import { overviewQueryGroup } from './query-state'
 
 const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'queued',
@@ -20,11 +17,7 @@ const ACTIVITY_PREVIEW_PAGE_SIZE = 20
 export const overviewKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing overview knowledge space id')
 })
-export const overviewWindowAtom = atomWithSearchParam(
-  'window',
-  parseAsStringLiteral(OVERVIEW_WINDOWS).withDefault('24h'),
-  { history: 'push', debugLabel: 'overview.location' },
-)
+export const overviewWindowAtom = overviewQueryGroup.fields.window
 
 function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
   return (

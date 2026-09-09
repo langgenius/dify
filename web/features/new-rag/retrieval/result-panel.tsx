@@ -2,7 +2,7 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
@@ -26,8 +26,8 @@ type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
 function RetrievalResultSession() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const canQuery = useAtomValue(retrievalCanQueryAtom)
-  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
+  const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const {
     currentEvidence,
     currentEvidenceDocumentCount,
@@ -52,7 +52,7 @@ function RetrievalResultSession() {
     selectedResearchTask,
     traceHasNextPage,
     traceIsFetchingNextPage,
-  } = useAtomValue(retrievalResultFactsAtom)
+  } = useAtomValueRawSync(retrievalResultFactsAtom)
   const retryRetrieval = useSetAtom(retryRetrievalAtom)
   const retrySelectedData = useSetAtom(retrySelectedRetrievalDataAtom)
   const loadMoreEvidence = useSetAtom(loadMoreSelectedRetrievalEvidenceAtom)
@@ -315,7 +315,7 @@ function RetrievalResultSession() {
 
 export function RetrievalResultPanel() {
   const { t } = useTranslation('knowledgeSpace')
-  const { resultKey, selected } = useAtomValue(retrievalResultFactsAtom)
+  const { resultKey, selected } = useAtomValueRawSync(retrievalResultFactsAtom)
 
   return (
     <section className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-background-body p-5">

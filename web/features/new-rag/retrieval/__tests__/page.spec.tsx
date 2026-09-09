@@ -3,10 +3,10 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryTestingAdapter } from 'nuqs-jotai/testing'
 import { useState } from 'react'
 import { render } from '@/test/console/render'
 import { createQueryTestWrapper } from '@/test/query-state-testing'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { RetrievalTestPage } from '../page'
 
 const apiMock = vi.hoisted(() => ({

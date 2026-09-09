@@ -209,12 +209,14 @@ vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
     ...original,
-    useAtomValue: (atom: unknown) => {
+    useAtomValueRawSync: (atom: unknown) => {
       if (atom === permissionState.datasetKeysAtom) return permissionState.datasetKeys
       if (atom === permissionState.workspaceKeysAtom) return permissionState.workspaceKeys
       if (atom === systemFeaturesState.uploadAvailableAtom)
         return systemFeaturesState.uploadAvailable
-      return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
+      return original.useAtomValueRawSync(
+        atom as Parameters<typeof original.useAtomValueRawSync>[0],
+      )
     },
   }
 })

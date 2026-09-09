@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,13 +73,13 @@ function DocumentMetadataCardContent() {
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const router = useRouter()
-  const canEdit = useAtomValue(documentCanEditAtom)
-  const controlSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const document = useAtomValue(documentDetailDocumentAtom)
-  const drafts = useAtomValue(metadataDraftsAtom)
-  const editing = useAtomValue(metadataEditingAtom)
-  const editBaseline = useAtomValue(metadataEditBaselineAtom)
-  const retryableCreateName = useAtomValue(metadataRetryableCreateNameAtom)
+  const canEdit = useAtomValueRawSync(documentCanEditAtom)
+  const controlSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
+  const document = useAtomValueRawSync(documentDetailDocumentAtom)
+  const drafts = useAtomValueRawSync(metadataDraftsAtom)
+  const editing = useAtomValueRawSync(metadataEditingAtom)
+  const editBaseline = useAtomValueRawSync(metadataEditBaselineAtom)
+  const retryableCreateName = useAtomValueRawSync(metadataRetryableCreateNameAtom)
   const beginEditing = useSetAtom(startMetadataEditingAtom)
   const cancelEditing = useSetAtom(cancelMetadataEditingAtom)
   const markCreateRetryable = useSetAtom(markMetadataCreateRetryableAtom)
@@ -348,7 +348,7 @@ function DocumentMetadataCardContent() {
 }
 
 export function DocumentMetadataCard() {
-  const documentId = useAtomValue(documentDetailDocumentAtom).id
+  const documentId = useAtomValueRawSync(documentDetailDocumentAtom).id
 
   return (
     <ScopeProvider key={documentId} atoms={metadataEditorScopedAtoms} name="DocumentMetadata">

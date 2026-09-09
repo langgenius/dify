@@ -5,7 +5,7 @@ import type { RetrievalEvidence } from './model'
 import type { BadCaseReason, QualityDecision } from './results'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -47,7 +47,7 @@ export function RetrievalQualityWorkflow() {
   const { t } = useTranslation('knowledgeSpace')
   const queryClient = useQueryClient()
   const canEditQuality = useKnowledgeSpacePermission('knowledge_space_edit')
-  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const {
     currentEvidence,
     resultKey,
@@ -58,8 +58,8 @@ export function RetrievalQualityWorkflow() {
     selectedQuery,
     selectedResearchActive,
     selectedTraceId,
-  } = useAtomValue(retrievalResultFactsAtom)
-  const { refetchTraces } = useAtomValue(retrievalRuntimeQueryFactsAtom)
+  } = useAtomValueRawSync(retrievalResultFactsAtom)
+  const { refetchTraces } = useAtomValueRawSync(retrievalRuntimeQueryFactsAtom)
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()

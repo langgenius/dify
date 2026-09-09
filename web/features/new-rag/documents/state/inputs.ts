@@ -1,6 +1,6 @@
 import type { KnowledgeSpaceContextValue } from '../../space/context'
 import { atomWithLazy } from 'jotai/utils'
-import { atomsWithSearchParams } from 'nuqs-jotai'
+import { createQueryGroup } from 'nuqs-jotai'
 import {
   documentFilterParser,
   documentMetadataParser,
@@ -12,12 +12,7 @@ export const documentsKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing documents knowledge space id')
 })
 
-export const {
-  filter: documentFilterAtom,
-  search: documentSearchAtom,
-  upload: documentUploadAtom,
-  metadata: documentMetadataAtom,
-} = atomsWithSearchParams(
+export const documentsQueryGroup = createQueryGroup(
   {
     filter: documentFilterParser,
     search: documentSearchParser,
@@ -32,6 +27,13 @@ export const {
     },
   },
 )
+
+export const {
+  filter: documentFilterAtom,
+  search: documentSearchAtom,
+  upload: documentUploadAtom,
+  metadata: documentMetadataAtom,
+} = documentsQueryGroup.fields
 
 export const documentsSpaceContextAtom = atomWithLazy<KnowledgeSpaceContextValue>(() => {
   throw new Error('Missing documents knowledge space context')

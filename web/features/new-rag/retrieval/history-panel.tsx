@@ -3,7 +3,7 @@
 import type { RetrievalHistorySourceFilter } from './state/scoped'
 import { Button } from '@langgenius/dify-ui/button'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { RecordButton } from './history'
 import {
@@ -18,7 +18,7 @@ const sourceFilters = ['all', 'retrieval_test', 'workflow'] as const
 export function RetrievalHistoryPanel() {
   const { t } = useTranslation('knowledgeSpace')
   const { activeRecordKey, displayRecords, hasNextPage, isFetchingNextPage, sourceFilter } =
-    useAtomValue(retrievalHistoryFactsAtom)
+    useAtomValueRawSync(retrievalHistoryFactsAtom)
   const selectRecord = useSetAtom(selectRetrievalRecordAtom)
   const loadMore = useSetAtom(loadMoreRetrievalHistoryAtom)
   const setSourceFilter = useSetAtom(retrievalHistorySourceFilterAtom)

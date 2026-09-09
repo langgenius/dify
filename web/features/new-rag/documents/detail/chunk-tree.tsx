@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -69,14 +69,14 @@ export function DocumentChunkTreePanel() {
   const { t: tCommon } = useTranslation('common')
   const treeHeadingId = useId()
   const loadMoreLabelId = useId()
-  const chunkCount = useAtomValue(documentDetailChunksAtom).length
-  const error = Boolean(useAtomValue(documentChunksQueryErrorAtom))
-  const hasNextPage = useAtomValue(documentChunksQueryHasNextPageAtom)
-  const isFetchNextPageError = useAtomValue(documentChunksQueryIsFetchNextPageErrorAtom)
-  const isFetchingNextPage = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
-  const isPending = useAtomValue(documentChunksQueryIsPendingAtom)
-  const selectedChunkId = useAtomValue(documentDetailSelectedChunkIdAtom)
-  const tree = useAtomValue(documentDetailChunkTreeAtom)
+  const chunkCount = useAtomValueRawSync(documentDetailChunksAtom).length
+  const error = Boolean(useAtomValueRawSync(documentChunksQueryErrorAtom))
+  const hasNextPage = useAtomValueRawSync(documentChunksQueryHasNextPageAtom)
+  const isFetchNextPageError = useAtomValueRawSync(documentChunksQueryIsFetchNextPageErrorAtom)
+  const isFetchingNextPage = useAtomValueRawSync(documentChunksQueryIsFetchingNextPageAtom)
+  const isPending = useAtomValueRawSync(documentChunksQueryIsPendingAtom)
+  const selectedChunkId = useAtomValueRawSync(documentDetailSelectedChunkIdAtom)
+  const tree = useAtomValueRawSync(documentDetailChunkTreeAtom)
   const fetchNextPage = useSetAtom(loadNextDocumentChunkPageAtom)
   const retryChunks = useSetAtom(retryDocumentChunksAtom)
   const setRequestedChunkId = useSetAtom(documentDetailRequestedChunkIdAtom)

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
 import {
@@ -26,9 +26,9 @@ function DocumentsInputs({
   knowledgeSpaceId: string
 }) {
   const spaceContext = useKnowledgeSpace()
-  const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
-  const permissionsLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const permissionsError = useAtomValue(workspacePermissionKeysErrorAtom)
+  const permissionKeys = useAtomValueRawSync(datasetDefaultPermissionKeysAtom)
+  const permissionsLoading = useAtomValueRawSync(workspacePermissionKeysLoadingAtom)
+  const permissionsError = useAtomValueRawSync(workspacePermissionKeysErrorAtom)
   const canDownload =
     !permissionsLoading &&
     !permissionsError &&

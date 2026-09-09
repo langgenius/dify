@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useHydrateAtoms } from 'jotai/utils'
 import { useEffect } from 'react'
 import { useKnowledgeSpace } from '../../space/context'
@@ -30,15 +30,15 @@ export function DocumentWorkflowBoundary({ children }: { children: ReactNode }) 
     dangerouslyForceHydrate: true,
   })
 
-  const initialized = useAtomValue(documentWorkflowInitializedAtom)
-  const latestTask = useAtomValue(documentLatestTaskAtom)
-  const submissionPending = useAtomValue(documentSubmissionPendingAtom)
-  const submittedJobTerminal = useAtomValue(documentSubmittedJobTerminalAtom)
-  const submittedJobMissing = useAtomValue(documentSubmittedJobMissingAtom)
-  const taskError = useAtomValue(documentTasksQueryErrorAtom)
-  const taskIsLookingUp = useAtomValue(documentTaskIsLookingUpAtom)
-  const taskIsFetchingNextPage = useAtomValue(documentTasksQueryIsFetchingNextPageAtom)
-  const taskIsPending = useAtomValue(documentTasksQueryIsPendingAtom)
+  const initialized = useAtomValueRawSync(documentWorkflowInitializedAtom)
+  const latestTask = useAtomValueRawSync(documentLatestTaskAtom)
+  const submissionPending = useAtomValueRawSync(documentSubmissionPendingAtom)
+  const submittedJobTerminal = useAtomValueRawSync(documentSubmittedJobTerminalAtom)
+  const submittedJobMissing = useAtomValueRawSync(documentSubmittedJobMissingAtom)
+  const taskError = useAtomValueRawSync(documentTasksQueryErrorAtom)
+  const taskIsLookingUp = useAtomValueRawSync(documentTaskIsLookingUpAtom)
+  const taskIsFetchingNextPage = useAtomValueRawSync(documentTasksQueryIsFetchingNextPageAtom)
+  const taskIsPending = useAtomValueRawSync(documentTasksQueryIsPendingAtom)
   const initializeWorkflow = useSetAtom(initializeDocumentWorkflowAtom)
   const loadNextTaskPage = useSetAtom(loadNextDocumentTaskPageAtom)
   const persistWorkflow = useSetAtom(persistDocumentWorkflowAtom)

@@ -6,7 +6,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useMutation } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -27,7 +27,9 @@ const queryImageTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/
 
 export function RetrievalComposer() {
   const { t } = useTranslation('knowledgeSpace')
-  const { disabled, images, mode, query, runnable } = useAtomValue(retrievalComposerFactsAtom)
+  const { disabled, images, mode, query, runnable } = useAtomValueRawSync(
+    retrievalComposerFactsAtom,
+  )
   const updateQuery = useSetAtom(updateRetrievalComposerQueryAtom)
   const updateMode = useSetAtom(updateRetrievalComposerModeAtom)
   const updateImages = useSetAtom(updateRetrievalComposerImagesAtom)

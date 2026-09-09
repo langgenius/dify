@@ -13,7 +13,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -53,15 +53,15 @@ export function DocumentDetailTasksDrawer({
 }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const currentDocument = useAtomValue(documentDetailDocumentAtom)
-  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const canEdit = useAtomValue(documentCanEditAtom)
-  const tasks = useAtomValue(documentBackgroundTasksAtom)
-  const taskQueryError = Boolean(useAtomValue(documentTasksQueryErrorAtom))
-  const hasNextTaskPage = useAtomValue(documentTasksQueryHasNextPageAtom)
-  const taskQueryFetching = useAtomValue(documentTasksQueryIsFetchingAtom)
-  const isFetchingNextTaskPage = useAtomValue(documentTasksQueryIsFetchingNextPageAtom)
-  const taskQueryPending = useAtomValue(documentTasksQueryIsPendingAtom)
+  const currentDocument = useAtomValueRawSync(documentDetailDocumentAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
+  const canEdit = useAtomValueRawSync(documentCanEditAtom)
+  const tasks = useAtomValueRawSync(documentBackgroundTasksAtom)
+  const taskQueryError = Boolean(useAtomValueRawSync(documentTasksQueryErrorAtom))
+  const hasNextTaskPage = useAtomValueRawSync(documentTasksQueryHasNextPageAtom)
+  const taskQueryFetching = useAtomValueRawSync(documentTasksQueryIsFetchingAtom)
+  const isFetchingNextTaskPage = useAtomValueRawSync(documentTasksQueryIsFetchingNextPageAtom)
+  const taskQueryPending = useAtomValueRawSync(documentTasksQueryIsPendingAtom)
   const loadMoreTasks = useSetAtom(loadNextDocumentTaskPageAtom)
   const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
   const refreshTasks = useSetAtom(refreshDocumentTasksAtom)

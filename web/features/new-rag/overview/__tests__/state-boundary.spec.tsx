@@ -1,17 +1,17 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { atom, createStore, Provider, useAtomValue } from 'jotai'
-import { QueryTestingAdapter } from 'nuqs-jotai/testing'
+import { atom, createStore, Provider, useAtomValueRawSync } from 'jotai'
 import { useState } from 'react'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { overviewKnowledgeSpaceIdAtom, overviewWindowAtom } from '../state'
 import { OverviewStateBoundary } from '../state-boundary'
 
 const parentValueAtom = atom('missing')
 
 function OverviewInputs({ label }: { label: string }) {
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
-  const window = useAtomValue(overviewWindowAtom)
-  const parentValue = useAtomValue(parentValueAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
+  const window = useAtomValueRawSync(overviewWindowAtom)
+  const parentValue = useAtomValueRawSync(parentValueAtom)
   return <p>{`${label}:${knowledgeSpaceId}:${window}:${parentValue}`}</p>
 }
 

@@ -29,7 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -55,9 +55,9 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 }
 
 function useMetadataFields() {
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
-  const canRead = useAtomValue(documentCanReadAtom)
-  const metadataRequest = useAtomValue(documentMetadataAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   return useQuery({
     ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
     enabled: metadataRequest === '1' && canRead,
@@ -67,8 +67,8 @@ function useMetadataFields() {
 function useMetadataFieldMutation() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
-  const canWrite = useAtomValue(documentCanWriteAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const { isPending, mutateAsync } = useMutation({
     mutationFn: (mutation: () => Promise<unknown>) => mutation(),
@@ -308,8 +308,9 @@ function MetadataItem({
 
 export function DocumentMetadataDrawer() {
   const { t } = useTranslation()
-  const canRead = useAtomValue(documentCanReadAtom)
-  const [metadataRequest, setMetadataRequest] = useAtom(documentMetadataAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
+  const setMetadataRequest = useSetAtom(documentMetadataAtom)
   const open = metadataRequest === '1' && canRead
   const metadataFieldsQuery = useMetadataFields()
   const fields = metadataFieldsQuery.data ?? []

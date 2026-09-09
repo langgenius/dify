@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { OverviewActivity } from './overview-activity'
@@ -12,8 +12,8 @@ import { InventoryPanel } from './overview-inventory'
 import { OverviewMetrics, QueryOutcomesChart } from './overview-metrics'
 import { FirstSourceTaskFailureBanner, OverviewOnboarding } from './overview-onboarding'
 import { OverviewTaskSync } from './overview-task-sync'
+import { OVERVIEW_WINDOWS } from './query-state'
 import {
-  OVERVIEW_WINDOWS,
   overviewEmptyAtom,
   overviewFirstLoadFailedAtom,
   overviewKnowledgeSpaceIdAtom,
@@ -34,8 +34,8 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
 }
 
 function KnowledgeOverviewContent() {
-  const showEmptyModules = useAtomValue(overviewShowEmptyModulesAtom)
-  const showIndexing = useAtomValue(overviewShowIndexingAtom)
+  const showEmptyModules = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
 
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
@@ -69,9 +69,9 @@ function KnowledgeOverviewContent() {
 
 function OverviewHeader() {
   const { t } = useTranslation('knowledgeSpace')
-  const empty = useAtomValue(overviewEmptyAtom)
-  const showIndexing = useAtomValue(overviewShowIndexingAtom)
-  const window = useAtomValue(overviewWindowAtom)
+  const empty = useAtomValueRawSync(overviewEmptyAtom)
+  const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
+  const window = useAtomValueRawSync(overviewWindowAtom)
   const setWindow = useSetAtom(overviewWindowAtom)
 
   return (
@@ -105,7 +105,7 @@ function OverviewHeader() {
 }
 
 function OverviewKnowledgeModelReadinessBanner() {
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   return (
     <KnowledgeModelReadinessBanner
       capability="query"
@@ -118,8 +118,8 @@ function OverviewKnowledgeModelReadinessBanner() {
 function OverviewRecoveryStatus() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const pageLoading = useAtomValue(overviewPageLoadingAtom)
-  const firstLoadFailed = useAtomValue(overviewFirstLoadFailedAtom)
+  const pageLoading = useAtomValueRawSync(overviewPageLoadingAtom)
+  const firstLoadFailed = useAtomValueRawSync(overviewFirstLoadFailedAtom)
   const retry = useSetAtom(retryOverviewSnapshotsAtom)
 
   return (

@@ -16,8 +16,8 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { createStore, Provider } from 'jotai'
-import { QueryTestingAdapter } from 'nuqs-jotai/testing'
 import { render as renderWithConsole } from '@/test/console/render'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentDetailPage } from '../page'
 
 const knowledgeSpacePermissionState = vi.hoisted(() => ({

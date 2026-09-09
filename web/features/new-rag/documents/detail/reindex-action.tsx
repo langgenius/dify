@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
@@ -24,15 +24,15 @@ import { useRefreshDocumentWritePermission } from './write-permission'
 
 export function DocumentReindexAction() {
   const { t } = useTranslation('knowledgeSpace')
-  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const canCancel = useAtomValue(documentCanCancelReindexAtom)
-  const cancelBusy = useAtomValue(documentReindexCancelBusyAtom)
-  const disabled = useAtomValue(documentReindexDisabledAtom)
-  const disabledReasonId = useAtomValue(documentReindexDisabledReasonIdAtom)
-  const failed = useAtomValue(documentReindexFailedAtom)
-  const inProgress = useAtomValue(documentReindexInProgressAtom)
-  const reindexBusy = useAtomValue(documentReindexBusyAtom)
-  const submissionPending = useAtomValue(documentSubmissionPendingAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
+  const canCancel = useAtomValueRawSync(documentCanCancelReindexAtom)
+  const cancelBusy = useAtomValueRawSync(documentReindexCancelBusyAtom)
+  const disabled = useAtomValueRawSync(documentReindexDisabledAtom)
+  const disabledReasonId = useAtomValueRawSync(documentReindexDisabledReasonIdAtom)
+  const failed = useAtomValueRawSync(documentReindexFailedAtom)
+  const inProgress = useAtomValueRawSync(documentReindexInProgressAtom)
+  const reindexBusy = useAtomValueRawSync(documentReindexBusyAtom)
+  const submissionPending = useAtomValueRawSync(documentSubmissionPendingAtom)
   const reindexing = reindexBusy || submissionPending
   const cancelReindex = useSetAtom(cancelDocumentReindexAtom)
   const reindexDocument = useSetAtom(reindexDocumentAtom)

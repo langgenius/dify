@@ -1,6 +1,6 @@
 import { atomWithLazy } from 'jotai/utils'
 import { parseAsString } from 'nuqs'
-import { atomWithSearchParams } from 'nuqs-jotai'
+import { createQueryGroup } from 'nuqs-jotai'
 
 export const retrievalKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing retrieval knowledge space id')
@@ -8,7 +8,7 @@ export const retrievalKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
 
 export const retrievalCanQueryAtom = atomWithLazy<boolean>(() => false)
 
-export const retrievalLinkedSelectionAtom = atomWithSearchParams(
+export const retrievalQueryGroup = createQueryGroup(
   {
     research: parseAsString,
     retest: parseAsString,
@@ -18,3 +18,5 @@ export const retrievalLinkedSelectionAtom = atomWithSearchParams(
     debugLabel: 'retrieval.location',
   },
 )
+
+export const retrievalLinkedSelectionAtom = retrievalQueryGroup.atom

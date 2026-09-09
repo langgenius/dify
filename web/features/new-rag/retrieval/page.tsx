@@ -1,6 +1,6 @@
 'use client'
 
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { useKnowledgeSpacePermission } from '../space/context'
@@ -14,9 +14,9 @@ import { retrievalCanQueryAtom, retrievalKnowledgeSpaceIdAtom } from './state/in
 
 function RetrievalTestSurface() {
   const { t } = useTranslation('knowledgeSpace')
-  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
-  const canQuery = useAtomValue(retrievalCanQueryAtom)
-  const mode = useAtomValue(retrievalComposerModeAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
+  const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
+  const mode = useAtomValueRawSync(retrievalComposerModeAtom)
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-6 pt-3 pb-5">

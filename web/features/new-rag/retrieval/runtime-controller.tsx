@@ -5,7 +5,7 @@ import type { RetrievalTestMode } from './model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import type { RetrievalComposerImage } from './state/scoped'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient } from '@/service/console'
@@ -95,19 +95,19 @@ async function queryFailure(error: unknown) {
 
 export function RetrievalRuntimeController() {
   const { t } = useTranslation('knowledgeSpace')
-  const canQuery = useAtomValue(retrievalCanQueryAtom)
-  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
-  const linkedSelection = useAtomValue(retrievalLinkedSelectionAtom)
+  const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
+  const linkedSelection = useAtomValueRawSync(retrievalLinkedSelectionAtom)
   const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
-  const query = useAtomValue(retrievalComposerQueryAtom)
-  const queryImages = useAtomValue(retrievalComposerQueryImagesAtom)
-  const selectedQueryImages = useAtomValue(retrievalSelectedQueryImagesAtom)
-  const retainedImages = useAtomValue(retrievalRetainedImagesAtom)
-  const mode = useAtomValue(retrievalComposerModeAtom)
-  const localRun = useAtomValue(retrievalLocalRunAtom)
-  const selected = useAtomValue(retrievalSelectedAtom)
-  const selectedResearchTask = useAtomValue(retrievalSelectedResearchTaskAtom)
-  const { refetchResearchPartials, refetchResearchTasks, refetchTraces } = useAtomValue(
+  const query = useAtomValueRawSync(retrievalComposerQueryAtom)
+  const queryImages = useAtomValueRawSync(retrievalComposerQueryImagesAtom)
+  const selectedQueryImages = useAtomValueRawSync(retrievalSelectedQueryImagesAtom)
+  const retainedImages = useAtomValueRawSync(retrievalRetainedImagesAtom)
+  const mode = useAtomValueRawSync(retrievalComposerModeAtom)
+  const localRun = useAtomValueRawSync(retrievalLocalRunAtom)
+  const selected = useAtomValueRawSync(retrievalSelectedAtom)
+  const selectedResearchTask = useAtomValueRawSync(retrievalSelectedResearchTaskAtom)
+  const { refetchResearchPartials, refetchResearchTasks, refetchTraces } = useAtomValueRawSync(
     retrievalRuntimeQueryFactsAtom,
   )
   const setRuntimeBridge = useSetAtom(retrievalRuntimeBridgeAtom)

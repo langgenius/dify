@@ -1,9 +1,9 @@
-import type { UrlUpdateEvent } from 'nuqs-jotai/testing'
+import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
-import { QueryTestingAdapter } from 'nuqs-jotai/testing'
 import { vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
+import { QueryTestingAdapter } from './query-state-testing-adapter'
 
 type QueryOnUrlUpdate = (event: UrlUpdateEvent) => void
 

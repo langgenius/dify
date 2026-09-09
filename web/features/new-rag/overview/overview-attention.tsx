@@ -3,7 +3,7 @@
 import type { KnowledgeFsOverviewAttentionResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
@@ -67,12 +67,12 @@ function attentionPresentation(
 export function AttentionPanel() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const attention = useAtomValue(overviewAttentionDataAtom)
-  const empty = useAtomValue(overviewShowEmptyModulesAtom)
-  const failedTask = useAtomValue(overviewFailedFirstSourceTaskAtom)
-  const error = useAtomValue(overviewAttentionErrorAtom)
-  const knowledgeSpaceId = useAtomValue(overviewKnowledgeSpaceIdAtom)
-  const loading = useAtomValue(overviewAttentionPendingAtom)
+  const attention = useAtomValueRawSync(overviewAttentionDataAtom)
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const failedTask = useAtomValueRawSync(overviewFailedFirstSourceTaskAtom)
+  const error = useAtomValueRawSync(overviewAttentionErrorAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
+  const loading = useAtomValueRawSync(overviewAttentionPendingAtom)
   const [issuePage, setIssuePage] = useState(0)
   // Dify owns product authorization; ignore responses cached or served by an older backend that
   // still contain the retired KnowledgeFS-local permission readiness rule.

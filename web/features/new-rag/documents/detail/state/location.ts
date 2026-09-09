@@ -1,5 +1,5 @@
 import { createParser, parseAsString } from 'nuqs'
-import { atomsWithSearchParams } from 'nuqs-jotai'
+import { createQueryGroup } from 'nuqs-jotai'
 
 const documentDetailRevisionParser = createParser<number>({
   parse: (value) => {
@@ -11,10 +11,12 @@ const documentDetailRevisionParser = createParser<number>({
 
 const documentDetailChunkParser = parseAsString.withOptions({ history: 'replace' })
 
-export const documentDetailLocationAtoms = atomsWithSearchParams(
+export const documentDetailQueryGroup = createQueryGroup(
   {
     chunk: documentDetailChunkParser,
     revision: documentDetailRevisionParser,
   },
   { debugLabel: 'documentDetail.location' },
 )
+
+export const documentDetailLocationAtoms = documentDetailQueryGroup.fields

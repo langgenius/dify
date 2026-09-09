@@ -1,5 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DOCUMENT_DETAIL_TITLE_ID } from './header'
@@ -24,11 +24,11 @@ function focusDocumentDetailTitle() {
 export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const isLookingUpTask = useAtomValue(documentTaskIsLookingUpAtom)
-  const latestTask = useAtomValue(documentLatestTaskAtom)
-  const lookupExhausted = useAtomValue(documentTaskLookupExhaustedAtom)
-  const reindexInProgress = useAtomValue(documentReindexInProgressAtom)
-  const tasksError = useAtomValue(documentTasksQueryErrorAtom)
+  const isLookingUpTask = useAtomValueRawSync(documentTaskIsLookingUpAtom)
+  const latestTask = useAtomValueRawSync(documentLatestTaskAtom)
+  const lookupExhausted = useAtomValueRawSync(documentTaskLookupExhaustedAtom)
+  const reindexInProgress = useAtomValueRawSync(documentReindexInProgressAtom)
+  const tasksError = useAtomValueRawSync(documentTasksQueryErrorAtom)
   const continueLookup = useSetAtom(continueDocumentTaskLookupAtom)
   const retryTasks = useSetAtom(retryDocumentTasksAtom)
 
@@ -107,8 +107,8 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
 export function DocumentPermissionRecoveryNotice() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const permissionRecoveryBusy = useAtomValue(documentPermissionRecoveryBusyAtom)
-  const permissionRecoveryNeeded = useAtomValue(documentPermissionRecoveryNeededAtom)
+  const permissionRecoveryBusy = useAtomValueRawSync(documentPermissionRecoveryBusyAtom)
+  const permissionRecoveryNeeded = useAtomValueRawSync(documentPermissionRecoveryNeededAtom)
   const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
   const refreshWritePermission = useRefreshDocumentWritePermission()
   const permissionRetryRef = useRef<HTMLButtonElement>(null)

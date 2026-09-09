@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -30,10 +30,12 @@ import { documentCanReadAtom } from '../state/runtime'
 import { DocumentUploadSurface } from '../upload/surface'
 
 function ResultsAutoPagination() {
-  const canRead = useAtomValue(documentCanReadAtom)
-  const { shouldFetchDocuments, shouldFetchSources } = useAtomValue(resultsAutoPaginationFactsAtom)
-  const fetchNextDocumentPage = useAtomValue(documentsQueryFetchNextPageAtom)
-  const fetchNextSourcePage = useAtomValue(sourcesQueryFetchNextPageAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  const { shouldFetchDocuments, shouldFetchSources } = useAtomValueRawSync(
+    resultsAutoPaginationFactsAtom,
+  )
+  const fetchNextDocumentPage = useAtomValueRawSync(documentsQueryFetchNextPageAtom)
+  const fetchNextSourcePage = useAtomValueRawSync(sourcesQueryFetchNextPageAtom)
 
   useEffect(() => {
     if (canRead && shouldFetchDocuments) void fetchNextDocumentPage()
@@ -60,11 +62,11 @@ function focusNextRecoveryTarget() {
 function DocumentQueryRecoveryNotice() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const canRead = useAtomValue(documentCanReadAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
   const retryFocusRequestedRef = useRef(false)
   const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
-  const documentRecovery = useAtomValue(documentQueryRecoveryNoticeFactsAtom)
-  const refetchDocuments = useAtomValue(documentsQueryRefetchAtom)
+  const documentRecovery = useAtomValueRawSync(documentQueryRecoveryNoticeFactsAtom)
+  const refetchDocuments = useAtomValueRawSync(documentsQueryRefetchAtom)
 
   useEffect(() => {
     if (!retryFocusRequestedRef.current) return
@@ -121,10 +123,10 @@ function DocumentQueryRecoveryNotice() {
 function DependencyRecoveryBoundary({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const canRead = useAtomValue(documentCanReadAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
   const retryFocusRequestedRef = useRef(false)
   const retryButtonRef = useRef<HTMLButtonElement>(null)
-  const recovery = useAtomValue(dependencyRecoveryFactsAtom)
+  const recovery = useAtomValueRawSync(dependencyRecoveryFactsAtom)
   const retry = useSetAtom(retryDocumentDependenciesAtom)
   const { blocking, retryFetching, sourceBlocking, taskBlocking, warning } = recovery
   const identity = [
@@ -217,10 +219,10 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
 function DocumentCollectionState() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const canRead = useAtomValue(documentCanReadAtom)
-  const documents = useAtomValue(documentsAtom)
-  const recovery = useAtomValue(documentCollectionFactsAtom)
-  const refetchDocuments = useAtomValue(documentsQueryRefetchAtom)
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  const documents = useAtomValueRawSync(documentsAtom)
+  const recovery = useAtomValueRawSync(documentCollectionFactsAtom)
+  const refetchDocuments = useAtomValueRawSync(documentsQueryRefetchAtom)
   const retryFocusRequestedRef = useRef(false)
   const retryButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -276,7 +278,7 @@ function DocumentCollectionState() {
 }
 
 export function DocumentResultsSurface() {
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   return (
     <DocumentPermissionRecoveryBoundary>
       <DocumentUploadSurface>

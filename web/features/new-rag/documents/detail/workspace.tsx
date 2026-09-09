@@ -1,6 +1,6 @@
 'use client'
 
-import { useAtomValue } from 'jotai'
+import { useAtomValueRawSync } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { newKnowledgeDocumentsPath } from '../../routes'
@@ -20,10 +20,10 @@ import { DocumentWorkflowBoundary } from './workflow-boundary'
 
 function DocumentDetailWorkspaceContent() {
   const { t } = useTranslation('knowledgeSpace')
-  const document = useAtomValue(documentDetailDocumentAtom)
-  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const documentMissing = useAtomValue(documentMissingAtom)
-  const hasEditPermission = useAtomValue(documentHasEditPermissionAtom)
+  const document = useAtomValueRawSync(documentDetailDocumentAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
+  const documentMissing = useAtomValueRawSync(documentMissingAtom)
+  const hasEditPermission = useAtomValueRawSync(documentHasEditPermissionAtom)
 
   if (documentMissing)
     return (

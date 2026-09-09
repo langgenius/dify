@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -58,14 +58,14 @@ function RevisionErrorState({
 export function DocumentRevisionBrowser() {
   const { t } = useTranslation('knowledgeSpace')
   const { t: tCommon } = useTranslation('common')
-  const requestedRevision = useAtomValue(documentDetailRequestedRevisionAtom)
-  const revision = useAtomValue(documentDetailRevisionAtom)
-  const effectiveRevision = useAtomValue(documentDetailEffectiveRevisionAtom)
-  const error = useAtomValue(documentRevisionsQueryErrorAtom)
-  const hasNextPage = useAtomValue(documentRevisionsQueryHasNextPageAtom)
-  const isFetchNextPageError = useAtomValue(documentRevisionsQueryIsFetchNextPageErrorAtom)
-  const isFetchingNextPage = useAtomValue(documentRevisionsQueryIsFetchingNextPageAtom)
-  const isPending = useAtomValue(documentRevisionsQueryIsPendingAtom)
+  const requestedRevision = useAtomValueRawSync(documentDetailRequestedRevisionAtom)
+  const revision = useAtomValueRawSync(documentDetailRevisionAtom)
+  const effectiveRevision = useAtomValueRawSync(documentDetailEffectiveRevisionAtom)
+  const error = useAtomValueRawSync(documentRevisionsQueryErrorAtom)
+  const hasNextPage = useAtomValueRawSync(documentRevisionsQueryHasNextPageAtom)
+  const isFetchNextPageError = useAtomValueRawSync(documentRevisionsQueryIsFetchNextPageErrorAtom)
+  const isFetchingNextPage = useAtomValueRawSync(documentRevisionsQueryIsFetchingNextPageAtom)
+  const isPending = useAtomValueRawSync(documentRevisionsQueryIsPendingAtom)
   const loadNextPage = useSetAtom(loadNextDocumentRevisionPageAtom)
   const retryRevisions = useSetAtom(retryDocumentRevisionsAtom)
 

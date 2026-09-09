@@ -1,6 +1,6 @@
 import type { DocumentProcessingTask } from '../../models'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { taskRuntimeStateAtom } from '../../state/scoped'
 import { applyTaskRuntimeEventAtom, effectiveTasksAtom } from '../state'
@@ -28,8 +28,8 @@ vi.mock('../../state/queries', async () => {
 })
 
 function TaskProgress({ name }: { name: string }) {
-  const tasks = useAtomValue(effectiveTasksAtom)
-  const state = useAtomValue(taskRuntimeStateAtom)
+  const tasks = useAtomValueRawSync(effectiveTasksAtom)
+  const state = useAtomValueRawSync(taskRuntimeStateAtom)
   const apply = useSetAtom(applyTaskRuntimeEventAtom)
   return (
     <section aria-label={name}>
