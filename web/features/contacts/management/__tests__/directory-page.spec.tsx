@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ContactsMockScenarioDefinition } from '../mock/scenarios'
 import type { ContactsManagementRepository } from '../repository'
-import type { ContactView } from '../types'
+import type { ContactIMIdentity, ContactView } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,6 +10,7 @@ import { ContactsManagementMockProvider, ContactsManagementProvider } from '../c
 import { ContactsDirectoryPage } from '../directory-page'
 import { createContactsMockRepository } from '../mock/repository'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
+import { ContactIMRequestError } from '../repository'
 
 function renderDirectory(
   scenario: ContactsMockScenarioDefinition,
@@ -491,5 +492,195 @@ describe('ContactsDirectoryPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('contacts.directory.pageError')
     expect(screen.getByText('Ralph Edwards')).toBeInTheDocument()
+  })
+})
+
+describe('Contact IM binding controls', () => {
+  const identity: ContactIMIdentity = {
+    id: 'identity-1',
+    provider: 'feishu',
+    provider_user_id: 'feishu-user-1',
+    display_name: 'Synced Member',
+    binding_status: 'unbound',
+  }
+  function setup() {
+    const scenario = createContactsMockScenario(ContactsMockScenario.CeMixed)
+    let contact: ContactView = {
+      ...scenario.contacts.find((item) => item.type === 'workspace')!,
+      im_bindings: [],
+    }
+    const repository: ContactsManagementRepository = {
+      ...createContactsMockRepository({ scenario }),
+      supportsIMBindings: true,
+      getContact: vi.fn(async () => contact),
+      listIMIdentities: vi.fn(async ({ page, limit }) => ({
+        data: [identity],
+        page,
+        limit,
+        total: 1,
+        has_more: false,
+      })),
+      setIMBinding: vi.fn(async () => {
+        contact = {
+          ...contact,
+          im_bindings: [{ id: 'binding-1', provider: 'feishu', scope: 'organization' }],
+        }
+        return contact
+      }),
+      removeIMBinding: vi.fn(async () => {
+        contact = { ...contact, im_bindings: [] }
+      }),
+    }
+    return { scenario, repository, contact }
+  }
+
+  it('cannot submit a binding when the IM channel is not configured', async () => {
+    const { scenario, repository, contact } = setup()
+    vi.mocked(repository.listIMIdentities).mockRejectedValue(
+      new ContactIMRequestError('im_integration_not_configured'),
+    )
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+    const user = userEvent.setup()
+    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.add' }))
+    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.imBinding.notConfigured',
+    )
+    expect(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' })).toBeDisabled()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+  })
+
+  it('pages through identities, keeps selection on conflict, and refreshes detail only after a successful retry', async () => {
+    const { scenario, repository, contact } = setup()
+    const second = {
+      ...identity,
+      id: 'identity-2',
+      display_name: 'Second Member',
+      provider_user_id: 'feishu-user-2',
+    }
+    vi.mocked(repository.listIMIdentities).mockImplementation(async ({ page, limit }) => ({
+      data: [page === 1 ? identity : second],
+      page,
+      limit,
+      total: 21,
+      has_more: page === 1,
+    }))
+    vi.mocked(repository.setIMBinding).mockRejectedValueOnce(
+      new ContactIMRequestError('im_binding_conflict'),
+    )
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const user = userEvent.setup()
+    const details = await findLoadedDetails(contact.name)
+    await user.click(
+      within(details).getByRole('button', {
+        name: 'contacts.imBinding.add',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'contacts.imBinding.title' })
+    await user.type(
+      within(dialog).getByRole('searchbox', { name: 'contacts.imBinding.search' }),
+      'Member',
+    )
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'contacts.action.loadMore' }),
+    )
+    await user.click(await within(dialog).findByRole('button', { name: /Second Member/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.imBinding.conflict',
+    )
+    expect(within(dialog).getByRole('button', { name: /Second Member/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(within(await findLoadedDetails(contact.name)).getByText('Feishu')).toBeInTheDocument()
+    expect(repository.setIMBinding).toHaveBeenLastCalledWith({
+      contactId: contact.id,
+      identityId: 'identity-2',
+      override: false,
+    })
+    expect(repository.listIMIdentities).toHaveBeenCalledWith({
+      search: 'Member',
+      page: 2,
+      limit: 20,
+    })
+  })
+
+  it('retains a binding after failed removal and refreshes the channel after retry', async () => {
+    const { scenario, repository, contact } = setup()
+    await repository.setIMBinding({
+      contactId: contact.id,
+      identityId: identity.id,
+      override: false,
+    })
+    vi.mocked(repository.removeIMBinding).mockRejectedValueOnce(
+      new ContactIMRequestError('im_write_unavailable'),
+    )
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const user = userEvent.setup()
+    let details = await findLoadedDetails(contact.name)
+    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.remove' }))
+    expect(await within(details).findByRole('alert')).toHaveTextContent('contacts.imBinding.failed')
+    expect(within(details).getByText('Feishu')).toBeInTheDocument()
+    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.remove' }))
+    await waitFor(() => expect(within(details).queryByText('Feishu')).not.toBeInTheDocument())
+    details = await findLoadedDetails(contact.name)
+    expect(
+      within(details).getByRole('button', { name: 'contacts.imBinding.add' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps External contacts email-only and Enterprise bindings read-only', async () => {
+    const { scenario, repository } = setup()
+    const external = scenario.contacts.find((contact) => contact.type === 'external')!
+    vi.mocked(repository.getContact).mockResolvedValue(external)
+    const externalView = renderDirectory(scenario, `?contact_id=${external.id}`, repository)
+    let details = await findLoadedDetails(external.name)
+    expect(
+      within(details).queryByRole('button', { name: 'contacts.imBinding.add' }),
+    ).not.toBeInTheDocument()
+    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
+    externalView.unmount()
+    const member = scenario.contacts.find((contact) => contact.type === 'workspace')!
+    vi.mocked(repository.getContact).mockResolvedValue(member)
+    renderDirectory({ ...scenario, deployment: 'ee' }, `?contact_id=${member.id}`, repository)
+    details = await findLoadedDetails(member.name)
+    expect(within(details).getByText('contacts.imBinding.enterpriseReadOnly')).toBeInTheDocument()
+    expect(
+      within(details).queryByRole('button', { name: 'contacts.imBinding.edit' }),
+    ).not.toBeInTheDocument()
+    expect(repository.listIMIdentities).not.toHaveBeenCalled()
+  })
+
+  it('restores the default binding when removing a workspace override', async () => {
+    const { scenario, repository, contact } = setup()
+    const binding = {
+      id: 'workspace-override',
+      provider: 'feishu' as const,
+      scope: 'workspace' as const,
+    }
+    vi.mocked(repository.getContact).mockResolvedValue({ ...contact, im_bindings: [binding] })
+    vi.mocked(repository.removeIMBinding).mockImplementation(async () => {
+      vi.mocked(repository.getContact).mockResolvedValue({
+        ...contact,
+        im_bindings: [{ ...binding, id: 'default-binding', scope: 'organization' }],
+      })
+    })
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const user = userEvent.setup()
+    const details = await findLoadedDetails(contact.name)
+    await user.click(within(details).getByRole('button', { name: 'contacts.imBinding.reset' }))
+    expect(
+      await within(details).findByRole('button', { name: 'contacts.imBinding.remove' }),
+    ).toBeInTheDocument()
+    expect(within(details).getByText('Feishu')).toBeInTheDocument()
+    expect(
+      within(details).queryByRole('button', { name: 'contacts.imBinding.add' }),
+    ).not.toBeInTheDocument()
+    expect(repository.removeIMBinding).toHaveBeenCalledWith({ contactId: contact.id, binding })
   })
 })

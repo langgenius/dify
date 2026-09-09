@@ -5,17 +5,33 @@ import type {
   AuthorizeContactImProviderCommand,
   ContactImProviderCommand,
   ContactImSyncResult,
+  ContactImSyncRunView,
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
 } from './types'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  skipToken,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
+import {
+  invalidateHumanInputChannelQueries,
+  invalidateHumanInputContactQueries,
+} from '@/service/client'
 import {
   useContactsImPlatformOrganization,
   useContactsImPlatformRepository,
 } from './composition-context'
 import { contactImPlatformQueryKeys } from './query-keys'
-import { ContactImSyncStatus } from './types'
+import {
+  ContactImRepositoryError,
+  ContactImRepositoryErrorCode,
+  ContactImSyncStatus,
+} from './types'
 
 type SaveCredentialsInput = Omit<SaveContactImCredentialsCommand, 'organizationId'>
 type AuthorizeProviderInput = Omit<AuthorizeContactImProviderCommand, 'organizationId'>
@@ -52,35 +68,49 @@ const getProviderDefinitionsQueryOptions = (
 const getActiveSyncQueryOptions = (
   repository: ContactImPlatformRepository,
   organizationId: string,
+  workspaceId: string,
 ) => ({
+  enabled: Boolean(workspaceId),
   queryFn: () => repository.getActiveSync(organizationId),
   queryKey: [
     ...contactImPlatformQueryKeys.activeSync(organizationId, repository.queryKey),
+    { workspaceId },
     repository,
   ] as const,
 })
 
-const getSyncRunQueryOptions = (repository: ContactImPlatformRepository, runId: string | null) => ({
-  enabled: Boolean(runId),
-  queryFn: () => repository.getSyncRun(runId as string),
-  queryKey: [
-    ...contactImPlatformQueryKeys.syncRun(runId ?? 'none', repository.queryKey),
-    repository,
-  ] as const,
-})
+const getSyncRunQueryOptions = (
+  repository: ContactImPlatformRepository,
+  workspaceId: string,
+  runId: string | null,
+) =>
+  queryOptions({
+    enabled: Boolean(workspaceId && runId),
+    queryFn: runId ? () => repository.getSyncRun(runId) : skipToken,
+    queryKey: [
+      ...contactImPlatformQueryKeys.syncRun(runId ?? 'none', repository.queryKey),
+      { workspaceId },
+      repository,
+    ] as const,
+  })
 
 const getSyncItemsQueryOptions = (
   repository: ContactImPlatformRepository,
   {
+    enabled,
+    workspaceId,
     pageSize,
     result,
     runId,
   }: {
+    enabled: boolean
+    workspaceId: string
     pageSize: number
     result?: ContactImSyncResult
     runId: string
   },
 ) => ({
+  enabled: enabled && Boolean(workspaceId),
   getNextPageParam: (lastPage: Awaited<ReturnType<ContactImPlatformRepository['getSyncItems']>>) =>
     lastPage.nextCursor ?? undefined,
   initialPageParam: undefined as string | undefined,
@@ -93,6 +123,7 @@ const getSyncItemsQueryOptions = (
     }),
   queryKey: [
     ...contactImPlatformQueryKeys.syncItems(runId, repository.queryKey, result, pageSize),
+    { workspaceId },
     repository,
   ] as const,
 })
@@ -101,50 +132,49 @@ export const useContactImIntegrations = () => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
 
-  return useQuery(getIntegrationsQueryOptions(repository, organization.organizationId))
+  return useQuery({
+    ...getIntegrationsQueryOptions(repository, organization.organizationId),
+    enabled: Boolean(
+      organization.organizationId && organization.workspaceId && organization.canManage,
+    ),
+  })
 }
 
 export const useContactImProviderDefinitions = () => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
 
-  return useQuery(getProviderDefinitionsQueryOptions(repository, organization.organizationId))
+  return useQuery({
+    ...getProviderDefinitionsQueryOptions(repository, organization.organizationId),
+    enabled: Boolean(
+      organization.organizationId && organization.workspaceId && organization.canManage,
+    ),
+  })
 }
 
-export const useContactImActiveSync = () => {
-  const organization = useContactsImPlatformOrganization()
-  const repository = useContactsImPlatformRepository()
-
-  return useQuery(getActiveSyncQueryOptions(repository, organization.organizationId))
-}
-
-export const useContactImSyncRun = (runId: string | null) => {
+const useRefreshCompletedContactImSync = (run: ContactImSyncRunView | null | undefined) => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
   const queryClient = useQueryClient()
-  const refreshedTerminalRunIdRef = useRef<string | null>(null)
-  const query = useQuery({
-    ...getSyncRunQueryOptions(repository, runId),
-    refetchInterval: ({ state }) =>
-      isActiveSyncStatus(state.data?.status) ? CONTACT_IM_SYNC_POLL_INTERVAL_MS : false,
-  })
+  const refreshedRunRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const run = query.data
-
-    if (!run || isActiveSyncStatus(run.status) || refreshedTerminalRunIdRef.current === run.id)
+    if (
+      !organization.canManage ||
+      !organization.workspaceId ||
+      !organization.organizationId ||
+      !run ||
+      isActiveSyncStatus(run.status)
+    )
       return
+    const completedRunKey = `${organization.workspaceId}:${run.id}:${run.status}`
+    if (refreshedRunRef.current === completedRunKey) return
+    refreshedRunRef.current = completedRunKey
 
-    refreshedTerminalRunIdRef.current = run.id
     void Promise.all([
+      invalidateHumanInputContactQueries(queryClient, organization.workspaceId),
       queryClient.invalidateQueries({
         queryKey: contactImPlatformQueryKeys.integrations(
-          organization.organizationId,
-          repository.queryKey,
-        ),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: contactImPlatformQueryKeys.activeSync(
           organization.organizationId,
           repository.queryKey,
         ),
@@ -153,24 +183,64 @@ export const useContactImSyncRun = (runId: string | null) => {
         queryKey: [...contactImPlatformQueryKeys.syncRun(run.id, repository.queryKey), 'items'],
       }),
     ])
-  }, [organization.organizationId, query.data, queryClient, repository, repository.queryKey])
+  }, [
+    organization.canManage,
+    organization.organizationId,
+    organization.workspaceId,
+    run,
+    queryClient,
+    repository.queryKey,
+  ])
+}
 
+export const useContactImActiveSync = () => {
+  const organization = useContactsImPlatformOrganization()
+  const repository = useContactsImPlatformRepository()
+  const query = useQuery({
+    ...getActiveSyncQueryOptions(repository, organization.organizationId, organization.workspaceId),
+    enabled: Boolean(
+      organization.canManage && organization.workspaceId && organization.organizationId,
+    ),
+    refetchInterval: ({ state }) =>
+      isActiveSyncStatus(state.data?.status) ? CONTACT_IM_SYNC_POLL_INTERVAL_MS : false,
+  })
+  useRefreshCompletedContactImSync(query.data)
+  return query
+}
+
+export const useContactImSyncRun = (runId: string | null) => {
+  const organization = useContactsImPlatformOrganization()
+  const repository = useContactsImPlatformRepository()
+  const query = useQuery({
+    ...getSyncRunQueryOptions(repository, organization.workspaceId, runId),
+    enabled: Boolean(
+      organization.canManage && organization.workspaceId && organization.organizationId && runId,
+    ),
+    refetchInterval: ({ state }) =>
+      isActiveSyncStatus(state.data?.status) ? CONTACT_IM_SYNC_POLL_INTERVAL_MS : false,
+  })
+  useRefreshCompletedContactImSync(query.data)
   return query
 }
 
 export const useContactImSyncItems = ({
+  enabled = true,
   pageSize = 20,
   result,
   runId,
 }: {
+  enabled?: boolean
   pageSize?: number
   result?: ContactImSyncResult
   runId: string
 }) => {
+  const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
 
   return useInfiniteQuery(
     getSyncItemsQueryOptions(repository, {
+      enabled: enabled && organization.canManage && Boolean(organization.organizationId),
+      workspaceId: organization.workspaceId,
       pageSize,
       result,
       runId,
@@ -185,6 +255,7 @@ const useInvalidateOrganizationQueries = () => {
 
   return async () => {
     await Promise.all([
+      invalidateHumanInputChannelQueries(queryClient, organization.workspaceId),
       queryClient.invalidateQueries({
         queryKey: contactImPlatformQueryKeys.integrations(
           organization.organizationId,
@@ -261,7 +332,6 @@ export const useAuthorizeContactImProvider = () => {
 export const useTestContactImConnection = () => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
-  const invalidateOrganizationQueries = useInvalidateOrganizationQueries()
   const commandRef = useRef<TestConnectionInput | null>(null)
   const inFlightRef = useRef(false)
 
@@ -277,7 +347,6 @@ export const useTestContactImConnection = () => {
         organizationId: organization.organizationId,
       })
     },
-    onSuccess: invalidateOrganizationQueries,
   })
 
   const testConnection = async (input: TestConnectionInput) => {
@@ -318,23 +387,39 @@ export const useStartContactImSync = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => repository.startSync({ organizationId: organization.organizationId }),
-    onSuccess: async (run) => {
+    mutationFn: () => {
+      if (!organization.canManage || !organization.workspaceId || !organization.organizationId)
+        throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
+      return repository.startSync({ organizationId: organization.organizationId })
+    },
+    onMutate: () => ({ organization, repository }),
+    onSuccess: async (run, _variables, context) => {
+      if (!context) return
+      const { organization: currentOrganization, repository: currentRepository } = context
       queryClient.setQueryData(
-        [...contactImPlatformQueryKeys.syncRun(run.id, repository.queryKey), repository],
+        getActiveSyncQueryOptions(
+          currentRepository,
+          currentOrganization.organizationId,
+          currentOrganization.workspaceId,
+        ).queryKey,
+        run,
+      )
+      queryClient.setQueryData(
+        getSyncRunQueryOptions(currentRepository, currentOrganization.workspaceId, 'latest')
+          .queryKey,
         run,
       )
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: contactImPlatformQueryKeys.activeSync(
-            organization.organizationId,
-            repository.queryKey,
+            currentOrganization.organizationId,
+            currentRepository.queryKey,
           ),
         }),
         queryClient.invalidateQueries({
           queryKey: contactImPlatformQueryKeys.integrations(
-            organization.organizationId,
-            repository.queryKey,
+            currentOrganization.organizationId,
+            currentRepository.queryKey,
           ),
         }),
       ])

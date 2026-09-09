@@ -11,6 +11,7 @@ import {
 } from './composition-context'
 import { createContactImMockRepository } from './mock/repository'
 import { ContactImMockScenario as MockScenario } from './mock/scenarios'
+import { createContactImApiRepository } from './repository'
 
 export type ContactsImPlatformProviderProps = {
   children: ReactNode
@@ -48,6 +49,25 @@ export function ContactsImPlatformMockProvider({
 
   return (
     <ContactsImPlatformProvider organization={organization} repository={repository}>
+      {children}
+    </ContactsImPlatformProvider>
+  )
+}
+
+export function ContactsImPlatformRuntimeProvider({
+  children,
+  organization,
+}: {
+  children: ReactNode
+  organization: ContactsImPlatformOrganizationContext
+}) {
+  const repository = useMemo(() => createContactImApiRepository(organization), [organization])
+  return (
+    <ContactsImPlatformProvider
+      key={repository.queryKey}
+      organization={organization}
+      repository={repository}
+    >
       {children}
     </ContactsImPlatformProvider>
   )

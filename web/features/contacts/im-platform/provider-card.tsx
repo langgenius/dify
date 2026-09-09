@@ -9,6 +9,9 @@ const providerIconClassNames = {
   [ContactImProvider.DingTalk]: 'i-ri-message-3-line text-util-colors-blue-blue-600',
   [ContactImProvider.Email]: 'i-ri-mail-send-fill text-text-accent',
   [ContactImProvider.Feishu]: 'i-ri-flight-takeoff-line text-util-colors-cyan-cyan-600',
+  [ContactImProvider.Lark]: 'i-ri-flight-takeoff-line text-util-colors-cyan-cyan-600',
+  [ContactImProvider.MSTeams]: 'i-ri-microsoft-fill text-util-colors-purple-purple-600',
+  [ContactImProvider.WeCom]: 'i-ri-wechat-work-fill text-util-colors-green-green-600',
   [ContactImProvider.Slack]: 'i-ri-slack-line text-util-colors-purple-purple-600',
 } satisfies Record<ContactImProviderDefinition['provider'], string>
 

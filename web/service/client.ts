@@ -517,10 +517,102 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
   {
     path: ['console'],
     experimental_defaults: {
+      workspace: {
+        current: {
+          humanInput: {
+            v2: {
+              channels: {
+                email: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputChannelQueries(context.client),
+                    },
+                  },
+                  byChannelId: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(context.client),
+                      },
+                    },
+                  },
+                },
+                im: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputChannelQueries(context.client),
+                    },
+                  },
+                  byChannelId: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(context.client),
+                      },
+                    },
+                    replacement: {
+                      post: {
+                        mutationOptions: {
+                          onSuccess: (_data, _variables, _onMutateResult, context) =>
+                            invalidateHumanInputChannelQueries(context.client),
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       workspaces: {
         current: {
           humanInput: {
             contacts: {
+              byContactId: {
+                imBindings: {
+                  put: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(context.client),
+                    },
+                  },
+                  delete: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(context.client),
+                    },
+                  },
+                },
+                imOverride: {
+                  put: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(context.client),
+                    },
+                  },
+                  delete: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(context.client),
+                    },
+                  },
+                },
+              },
               external: {
                 post: {
                   mutationOptions: {
@@ -1791,5 +1883,18 @@ export function invalidateHumanInputContactQueries(client: QueryClient, workspac
     workspaceId ? ['contacts-management', workspaceId] : ['contacts-management'],
     consoleQuery.workspaces.current.humanInput.contacts.key(),
     consoleQuery.workspaces.current.humanInput.contactOptions.key(),
+    consoleQuery.workspaces.current.humanInput.imIdentities.key(),
+  ])
+}
+
+export function invalidateHumanInputChannelQueries(client: QueryClient, workspaceId?: string) {
+  return Promise.all([
+    invalidateHumanInputContactQueries(client, workspaceId),
+    invalidateQueryKeys(client, [
+      workspaceId ? ['contacts', 'im-platform', `api:${workspaceId}`] : ['contacts', 'im-platform'],
+      consoleQuery.workspace.current.humanInput.v2.channels.key(),
+      consoleQuery.workspaces.current.humanInput.imIdentities.key(),
+      consoleQuery.workspaces.current.humanInput.imSyncRuns.key(),
+    ]),
   ])
 }

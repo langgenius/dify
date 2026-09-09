@@ -4,6 +4,9 @@ export const ContactImProvider = {
   DingTalk: 'dingtalk',
   Email: 'email',
   Feishu: 'feishu',
+  Lark: 'lark',
+  MSTeams: 'ms_teams',
+  WeCom: 'we_com',
   Slack: 'slack',
 } as const
 
@@ -52,6 +55,9 @@ export const ContactImSyncStatus = {
 export type ContactImSyncStatus = ValueOf<typeof ContactImSyncStatus>
 
 export const ContactImSyncResult = {
+  Added: 'added',
+  NotMatched: 'not_matched',
+  Removed: 'removed',
   CreatedBinding: 'created_binding',
   Failed: 'failed',
   Matched: 'matched',
@@ -64,6 +70,13 @@ export type ContactImSyncResult = ValueOf<typeof ContactImSyncResult>
 
 export const ContactImProviderField = {
   AppId: 'appId',
+  CorpId: 'corpId',
+  AgentId: 'agentId',
+  SigningSecret: 'signingSecret',
+  BotToken: 'botToken',
+  AppToken: 'appToken',
+  VerificationToken: 'verificationToken',
+  EncryptKey: 'encryptKey',
   ClientId: 'clientId',
   SenderEmail: 'senderEmail',
   SenderName: 'senderName',
@@ -100,6 +113,7 @@ export type ContactImSafeReason = ValueOf<typeof ContactImSafeReason>
 
 export const ContactImRepositoryErrorCode = {
   ActiveProviderExists: 'active_provider_exists',
+  ConfigurationUpdated: 'configuration_updated',
   DetailLoadFailed: 'detail_load_failed',
   IntegrationLoadFailed: 'integration_load_failed',
   InvalidCommand: 'invalid_command',
@@ -119,11 +133,13 @@ export type ContactImRepositoryErrorCode = ValueOf<typeof ContactImRepositoryErr
 
 export class ContactImRepositoryError extends Error {
   code: ContactImRepositoryErrorCode
+  statusDescription?: string
 
-  constructor(code: ContactImRepositoryErrorCode) {
+  constructor(code: ContactImRepositoryErrorCode, statusDescription?: string) {
     super(code)
     this.name = 'ContactImRepositoryError'
     this.code = code
+    this.statusDescription = statusDescription
   }
 
   toJSON() {
@@ -141,6 +157,7 @@ export type ContactImProviderCapabilities = {
 export type ContactImProviderFieldDefinition = {
   field: ContactImProviderField
   required: boolean
+  secret?: boolean
 }
 
 export type ContactImProviderDefinition = {
@@ -152,10 +169,11 @@ export type ContactImProviderDefinition = {
   displayName: string
   provider: ContactImProvider
   requiredFields: ContactImProviderFieldDefinition[]
+  requiresFreshCredentials?: boolean
   unavailableReason: ContactImUnavailableReason | null
 }
 
-export type ContactImSyncCounts = Record<ContactImSyncResult, number>
+export type ContactImSyncCounts = Partial<Record<ContactImSyncResult, number>>
 
 export type ContactImSyncRunView = {
   completedAt: string | null
@@ -163,12 +181,17 @@ export type ContactImSyncRunView = {
   durationMs: number | null
   id: string
   safeError: ContactImSafeReason | null
-  startedAt: string
-  startedBy: string
+  startedAt: string | null
+  startedBy: string | null
+  errorMessage?: string | null
   status: ContactImSyncStatus
 }
 
 export type ContactImIntegrationView = {
+  channelId?: string
+  configVersion?: string
+  callbackUrl?: string | null
+  statusDescription?: string
   canManage: boolean
   capabilities: ContactImProviderCapabilities
   channelKind: ContactChannelKind
@@ -196,6 +219,7 @@ export type ContactImMatchedContactView = {
 }
 
 export type ContactImSyncItemView = {
+  reason?: string | null
   id: string
   matchedContact: ContactImMatchedContactView | null
   platformIdentity: ContactImPlatformIdentityView
@@ -209,6 +233,8 @@ export type ContactImPage<T> = {
 }
 
 export type SaveContactImCredentialsCommand = {
+  channelId?: string
+  expectedConfigVersion?: string
   organizationId: string
   provider: ContactImProvider
   replaceActiveProvider: boolean
@@ -228,6 +254,8 @@ export type ContactImOrganizationCommand = {
 }
 
 export type ContactImProviderCommand = ContactImOrganizationCommand & {
+  channelId?: string
+  expectedConfigVersion?: string
   provider: ContactImProvider
 }
 

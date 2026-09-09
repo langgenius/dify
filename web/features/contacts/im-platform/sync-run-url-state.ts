@@ -11,17 +11,17 @@ export const useContactImSyncRunUrlState = () => {
   const searchParams = useSearchParams()
   const serializedSearchParams = searchParams.toString()
   const [runId, setRunId] = useState<string | null>(() =>
-    searchParams.get(CONTACT_IM_SYNC_RUN_QUERY_PARAM),
+    searchParams.has(CONTACT_IM_SYNC_RUN_QUERY_PARAM) ? 'latest' : null,
   )
 
   const updateRunId = useCallback(
     (nextRunId: string | null) => {
       const nextSearchParams = new URLSearchParams(serializedSearchParams)
 
-      if (nextRunId) nextSearchParams.set(CONTACT_IM_SYNC_RUN_QUERY_PARAM, nextRunId)
+      if (nextRunId) nextSearchParams.set(CONTACT_IM_SYNC_RUN_QUERY_PARAM, 'latest')
       else nextSearchParams.delete(CONTACT_IM_SYNC_RUN_QUERY_PARAM)
 
-      setRunId(nextRunId)
+      setRunId(nextRunId ? 'latest' : null)
       const query = nextSearchParams.toString()
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
     },

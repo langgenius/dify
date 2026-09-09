@@ -98,7 +98,7 @@ export const createEmptyContactImSyncCounts = (): ContactImSyncCounts => ({
 export const countContactImSyncItems = (items: ContactImSyncItemView[]): ContactImSyncCounts => {
   const counts = createEmptyContactImSyncCounts()
 
-  for (const item of items) counts[item.result] += 1
+  for (const item of items) counts[item.result] = (counts[item.result] ?? 0) + 1
 
   return counts
 }
@@ -135,14 +135,17 @@ const createProviderDefinitions = (): ContactImProviderDefinition[] => [
     unavailableReason: null,
   },
   {
-    authMode: ContactImAuthMode.OAuth,
+    authMode: ContactImAuthMode.Credentials,
     availability: ContactImProviderAvailability.Available,
     callbackUrl: 'https://example.dify.test/contacts/im/feishu/callback',
     capabilities: { directorySync: true },
     channelKind: ContactChannelKind.Im,
     displayName: 'Feishu',
     provider: ContactImProvider.Feishu,
-    requiredFields: [],
+    requiredFields: [
+      { field: ContactImProviderField.AppId, required: true },
+      { field: ContactImProviderField.Secret, required: true },
+    ],
     unavailableReason: null,
   },
   {

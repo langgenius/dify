@@ -12,10 +12,15 @@ vi.mock('@/service/client', () => ({
         humanInput: {
           contacts: {
             get: vi.fn(),
-            byContactId: { get: vi.fn() },
+            byContactId: {
+              get: vi.fn(),
+              imBindings: { put: vi.fn(), delete: vi.fn() },
+              imOverride: { put: vi.fn(), delete: vi.fn() },
+            },
             external: { post: vi.fn(), byContactId: { patch: vi.fn() } },
             remove: { post: vi.fn() },
           },
+          imIdentities: { get: vi.fn() },
         },
       },
     },
@@ -408,5 +413,102 @@ describe('contacts API repository', () => {
     await expect(
       repository.updateExternalContact({ ...command, contactId: externalContact.id }),
     ).resolves.toEqual({ kind: 'duplicate_external_contact' })
+  })
+})
+
+describe('contacts IM API repository', () => {
+  const client = consoleClient.workspaces.current.humanInput
+  const contact = {
+    avatar_url: '',
+    id: 'contact-workspace',
+    name: 'Member',
+    type: 'workspace' as const,
+    created_at: 1,
+    im_bindings: [{ id: 'binding-1', provider: 'feishu' as const, scope: 'organization' as const }],
+  }
+  beforeEach(() => vi.resetAllMocks())
+
+  it('searches synced identities with server pagination and preserves binding status', async () => {
+    const identity = {
+      id: 'identity-1',
+      provider: 'feishu' as const,
+      provider_user_id: 'user-1',
+      binding_status: 'bound' as const,
+    }
+    vi.mocked(client.imIdentities.get).mockResolvedValue({
+      data: [identity],
+      page: 2,
+      limit: 20,
+      total: 21,
+    })
+    const result = await createContactsApiRepository().listIMIdentities({
+      search: ' Member ',
+      page: 2,
+      limit: 20,
+    })
+    expect(client.imIdentities.get).toHaveBeenCalledWith(
+      { query: { keyword: 'Member', page: 2, limit: 20 } },
+      { context: { silent: true } },
+    )
+    expect(result).toMatchObject({ data: [identity], has_more: false })
+  })
+
+  it('uses identity IDs for default bindings and workspace overrides', async () => {
+    vi.mocked(client.contacts.byContactId.imBindings.put).mockResolvedValue({ contact })
+    vi.mocked(client.contacts.byContactId.imOverride.put).mockResolvedValue({ contact })
+    const repository = createContactsApiRepository()
+    await repository.setIMBinding({
+      contactId: contact.id,
+      identityId: 'identity-1',
+      override: false,
+    })
+    await repository.setIMBinding({
+      contactId: contact.id,
+      identityId: 'identity-2',
+      override: true,
+    })
+    expect(client.contacts.byContactId.imBindings.put).toHaveBeenCalledWith(
+      { params: { contact_id: contact.id }, body: { identity_id: 'identity-1' } },
+      { context: { silent: true } },
+    )
+    expect(client.contacts.byContactId.imOverride.put).toHaveBeenCalledWith(
+      { params: { contact_id: contact.id }, body: { identity_id: 'identity-2' } },
+      { context: { silent: true } },
+    )
+  })
+
+  it('deletes default bindings by binding ID but resets workspace overrides by contact ID', async () => {
+    vi.mocked(client.contacts.byContactId.imBindings.delete).mockResolvedValue({})
+    vi.mocked(client.contacts.byContactId.imOverride.delete).mockResolvedValue({ contact })
+    const repository = createContactsApiRepository()
+    await repository.removeIMBinding({ contactId: contact.id, binding: contact.im_bindings[0]! })
+    await repository.removeIMBinding({
+      contactId: contact.id,
+      binding: { ...contact.im_bindings[0]!, scope: 'workspace' },
+    })
+    expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledWith(
+      { params: { contact_id: contact.id }, query: { binding_id: 'binding-1' } },
+      { context: { silent: true } },
+    )
+    expect(client.contacts.byContactId.imOverride.delete).toHaveBeenCalledWith(
+      { params: { contact_id: contact.id } },
+      { context: { silent: true } },
+    )
+  })
+
+  it('preserves missing-channel and binding-conflict errors without returning success', async () => {
+    const repository = createContactsApiRepository()
+    vi.mocked(client.imIdentities.get).mockRejectedValue(
+      new Response(JSON.stringify({ code: 'im_integration_not_configured' }), { status: 404 }),
+    )
+    await expect(
+      repository.listIMIdentities({ search: '', page: 1, limit: 20 }),
+    ).rejects.toMatchObject({ code: 'im_integration_not_configured' })
+    vi.mocked(client.contacts.byContactId.imOverride.put).mockRejectedValue({
+      data: { body: { code: 'im_binding_conflict', status: 409 } },
+    })
+    await expect(
+      repository.setIMBinding({ contactId: contact.id, identityId: 'identity-1', override: true }),
+    ).rejects.toMatchObject({ code: 'im_binding_conflict' })
   })
 })

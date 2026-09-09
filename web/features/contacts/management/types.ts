@@ -2,6 +2,7 @@ import type {
   HumanInputContact,
   HumanInputContactType,
   ImBinding,
+  ImIdentity,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 
 export type ContactsDeployment = 'ce' | 'saas' | 'ee'
@@ -22,6 +23,18 @@ export type ContactType = HumanInputContactType
 export type ContactTypeFilter = 'all' | ContactType
 
 export type ContactIMBinding = ImBinding
+export type ContactIMIdentity = ImIdentity
+
+export type SetContactIMBindingCommand = {
+  contactId: string
+  identityId: string
+  override: boolean
+}
+
+export type RemoveContactIMBindingCommand = {
+  contactId: string
+  binding: ContactIMBinding
+}
 
 export type ContactView = HumanInputContact & {
   avatar_url: string

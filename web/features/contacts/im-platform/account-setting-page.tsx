@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { ContactsImPlatformMockProvider } from './composition'
+import { ContactsImPlatformRuntimeProvider } from './composition'
 import { ContactsImPlatformManagementSurface } from './management-surface'
 
 export function ContactsImPlatformAccountSettingPage({
@@ -21,8 +21,8 @@ export function ContactsImPlatformAccountSettingPage({
   )
 
   return (
-    <ContactsImPlatformMockProvider organization={organization}>
+    <ContactsImPlatformRuntimeProvider organization={organization}>
       <ContactsImPlatformManagementSurface />
-    </ContactsImPlatformMockProvider>
+    </ContactsImPlatformRuntimeProvider>
   )
 }

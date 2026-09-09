@@ -4,6 +4,7 @@ import type {
   AddPlatformContactsResult,
   AvailablePlatformContact,
   AvailablePlatformContactsQuery,
+  ContactIMIdentity,
   ContactPage,
   ContactsListQuery,
   ContactView,
@@ -11,10 +12,12 @@ import type {
   CreateExternalContactResult,
   ExternalContactInviteConflict,
   FindExternalContactsByEmailsCommand,
+  RemoveContactIMBindingCommand,
   RemoveContactsCommand,
   RemoveContactsResult,
   RemoveMemberCommand,
   RemoveMemberResult,
+  SetContactIMBindingCommand,
   UpdateExternalContactCommand,
   UpdateExternalContactResult,
   UpgradeExternalContactsToWorkspaceCommand,
@@ -28,9 +31,17 @@ import { consoleClient } from '@/service/client'
  * contact_ids field.
  */
 export type ContactsManagementRepository = {
+  supportsIMBindings?: boolean
   supportsMemberManagement?: boolean
   supportsPlatformImport?: boolean
   getContact: (contactId: string) => Promise<ContactView | null>
+  listIMIdentities: (query: {
+    search: string
+    page: number
+    limit: number
+  }) => Promise<ContactPage<ContactIMIdentity>>
+  setIMBinding: (command: SetContactIMBindingCommand) => Promise<ContactView>
+  removeIMBinding: (command: RemoveContactIMBindingCommand) => Promise<void>
   addPlatformContacts: (command: AddPlatformContactsCommand) => Promise<AddPlatformContactsResult>
   createExternalContact: (
     command: CreateExternalContactCommand,
@@ -65,6 +76,42 @@ function hasStatus(error: unknown, status: number) {
   return typeof error === 'object' && error !== null && 'status' in error && error.status === status
 }
 
+export class ContactIMRequestError extends Error {
+  readonly code: string
+
+  constructor(code: string) {
+    super(code)
+    this.name = 'ContactIMRequestError'
+    this.code = code
+  }
+}
+
+function errorRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
+async function requestContactIM<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request()
+  } catch (error) {
+    const responseBody: unknown =
+      error instanceof Response
+        ? await error
+            .clone()
+            .json()
+            .catch(() => undefined)
+        : undefined
+    const record = errorRecord(error)
+    const data = errorRecord(record?.data)
+    const body = errorRecord(responseBody) ?? errorRecord(data?.body) ?? data ?? record
+    throw new ContactIMRequestError(
+      typeof body?.code === 'string' ? body.code : 'im_binding_failed',
+    )
+  }
+}
+
 export function createContactsApiRepository(
   client = consoleClient.workspaces.current.humanInput,
 ): ContactsManagementRepository {
@@ -73,8 +120,55 @@ export function createContactsApiRepository(
   }
 
   return {
+    supportsIMBindings: true,
     supportsMemberManagement: false,
     supportsPlatformImport: false,
+    async listIMIdentities(query) {
+      const result = await requestContactIM(() =>
+        client.imIdentities.get(
+          {
+            query: {
+              keyword: query.search.trim() || undefined,
+              page: query.page,
+              limit: query.limit,
+            },
+          },
+          { context: { silent: true } },
+        ),
+      )
+      return { ...result, has_more: result.page * result.limit < result.total }
+    },
+    async setIMBinding(command) {
+      const input = {
+        params: { contact_id: command.contactId },
+        body: { identity_id: command.identityId },
+      }
+      const result = await requestContactIM(() =>
+        command.override
+          ? client.contacts.byContactId.imOverride.put(input, { context: { silent: true } })
+          : client.contacts.byContactId.imBindings.put(input, { context: { silent: true } }),
+      )
+      return toContactView(result.contact)
+    },
+    async removeIMBinding(command) {
+      await requestContactIM(async () => {
+        const params = { contact_id: command.contactId }
+        if (command.binding.scope === 'workspace') {
+          await client.contacts.byContactId.imOverride.delete(
+            { params },
+            { context: { silent: true } },
+          )
+        } else {
+          await client.contacts.byContactId.imBindings.delete(
+            {
+              params,
+              query: { binding_id: command.binding.id },
+            },
+            { context: { silent: true } },
+          )
+        }
+      })
+    },
     async listContacts(query) {
       const result = await client.contacts.get(
         {

@@ -7,8 +7,10 @@ import type {
   ContactView,
   CreateExternalContactCommand,
   FindExternalContactsByEmailsCommand,
+  RemoveContactIMBindingCommand,
   RemoveContactsCommand,
   RemoveMemberCommand,
+  SetContactIMBindingCommand,
   UpdateExternalContactCommand,
   UpgradeExternalContactsToWorkspaceCommand,
 } from './types'
@@ -228,6 +230,50 @@ export function useRemoveContactMember() {
           queryKey: contactsManagementQueryKeys.all(context.workspaceId),
         })
       },
+    }),
+  )
+}
+
+export function useContactIMIdentities(search: string) {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  return useInfiniteQuery(
+    infiniteQueryOptions({
+      queryKey: [...contactsManagementQueryKeys.all(context.workspaceId), 'im-identities', search],
+      queryFn: ({ pageParam }) =>
+        repository.listIMIdentities({ search, page: pageParam, limit: 20 }),
+      initialPageParam: 1,
+      getNextPageParam: (page) => (page.has_more ? page.page + 1 : undefined),
+      enabled:
+        Boolean(context.workspaceId) &&
+        context.permissions.canManageContacts &&
+        repository.supportsIMBindings === true &&
+        context.deployment !== 'ee',
+      retry: false,
+    }),
+  )
+}
+
+export function useSetContactIMBinding() {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const queryClient = useQueryClient()
+  return useMutation(
+    mutationOptions({
+      mutationFn: (command: SetContactIMBindingCommand) => repository.setIMBinding(command),
+      onSuccess: () => invalidateHumanInputContactQueries(queryClient, context.workspaceId),
+    }),
+  )
+}
+
+export function useRemoveContactIMBinding() {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const queryClient = useQueryClient()
+  return useMutation(
+    mutationOptions({
+      mutationFn: (command: RemoveContactIMBindingCommand) => repository.removeIMBinding(command),
+      onSuccess: () => invalidateHumanInputContactQueries(queryClient, context.workspaceId),
     }),
   )
 }

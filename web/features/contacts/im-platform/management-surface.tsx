@@ -29,6 +29,8 @@ import {
   ContactImConnectionStatus,
   ContactImProvider,
   ContactImProviderAvailability,
+  ContactImRepositoryError,
+  ContactImRepositoryErrorCode,
   ContactImStatusReason,
   ContactImUnavailableReason,
 } from './types'
@@ -37,6 +39,7 @@ type BindingTarget = {
   integration: ContactImIntegrationView | null
   provider: ContactImProviderDefinition
   replaceActiveProvider: boolean
+  replacedIntegration?: ContactImIntegrationView
 }
 
 export function ContactsImPlatformManagementSurface() {
@@ -49,10 +52,31 @@ export function ContactsImPlatformManagementSurface() {
   const [bindingTarget, setBindingTarget] = useState<BindingTarget | null>(null)
   const [replacementProvider, setReplacementProvider] =
     useState<ContactImProviderDefinition | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<ContactImProviderDefinition | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<
+    | (ContactImProviderDefinition & Pick<ContactImIntegrationView, 'channelId' | 'configVersion'>)
+    | null
+  >(null)
   const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
 
-  if (integrationsQuery.isPending || providersQuery.isPending) {
+  if (organization.organizationId && organization.workspaceId && !organization.canManage) {
+    return (
+      <div className="mb-4 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
+        <div className="system-sm-semibold text-text-primary">
+          {t(($) => $['imPlatform.permission.title'])}
+        </div>
+        <div className="mt-1 system-sm-regular text-text-tertiary">
+          {t(($) => $['imPlatform.permission.description'])}
+        </div>
+      </div>
+    )
+  }
+
+  if (
+    !organization.organizationId ||
+    !organization.workspaceId ||
+    integrationsQuery.isPending ||
+    providersQuery.isPending
+  ) {
     return (
       <div
         role="status"
@@ -121,6 +145,9 @@ export function ContactsImPlatformManagementSurface() {
     [ContactImProvider.Email]: t(($) => $['imPlatform.provider.emailDescription']),
     [ContactImProvider.Feishu]: t(($) => $['imPlatform.provider.feishuDescription']),
     [ContactImProvider.Slack]: t(($) => $['imPlatform.provider.slackDescription']),
+    [ContactImProvider.Lark]: t(($) => $['imPlatform.provider.larkDescription']),
+    [ContactImProvider.MSTeams]: t(($) => $['imPlatform.provider.msTeamsDescription']),
+    [ContactImProvider.WeCom]: t(($) => $['imPlatform.provider.weComDescription']),
   }
   const statusLabels = {
     [ContactImConnectionStatus.CallbackError]: t(($) => $['imPlatform.status.callback_error']),
@@ -180,7 +207,12 @@ export function ContactsImPlatformManagementSurface() {
     if (!organization.canManage) return
 
     disconnectProvider.reset()
-    setDeleteTarget(provider)
+    const integration = integrationsByProvider.get(provider.provider)
+    setDeleteTarget({
+      ...provider,
+      channelId: integration?.channelId,
+      configVersion: integration?.configVersion,
+    })
   }
 
   const handleDeleteDialogOpenChange = (open: boolean) => {
@@ -193,7 +225,11 @@ export function ContactsImPlatformManagementSurface() {
     if (!deleteTarget || disconnectProvider.isPending) return
 
     disconnectProvider.mutate(
-      { provider: deleteTarget.provider },
+      {
+        provider: deleteTarget.provider,
+        channelId: deleteTarget.channelId,
+        expectedConfigVersion: deleteTarget.configVersion,
+      },
       { onSuccess: () => setDeleteTarget(null) },
     )
   }
@@ -202,6 +238,7 @@ export function ContactsImPlatformManagementSurface() {
     provider: ContactImProviderDefinition,
     integration: ContactImIntegrationView,
   ) => {
+    if (integration.statusDescription) return integration.statusDescription
     if (integration.statusReason) return statusReasonLabels[integration.statusReason]
     if (provider.provider === ContactImProvider.Email && integration.displayIdentifier)
       return t(($) => $['imPlatform.email.summary'], { email: integration.displayIdentifier })
@@ -213,17 +250,6 @@ export function ContactsImPlatformManagementSurface() {
       <h2 id="contacts-channels-title" className="sr-only">
         {t(($) => $['imPlatform.title'])}
       </h2>
-
-      {!organization.canManage && (
-        <div className="mb-4 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
-          <div className="system-sm-semibold text-text-primary">
-            {t(($) => $['imPlatform.permission.title'])}
-          </div>
-          <div className="mt-1 system-sm-regular text-text-tertiary">
-            {t(($) => $['imPlatform.permission.description'])}
-          </div>
-        </div>
-      )}
 
       {configuredProviders.length > 0 && (
         <div className="space-y-2">
@@ -329,6 +355,7 @@ export function ContactsImPlatformManagementSurface() {
           open
           provider={bindingTarget.provider}
           replaceActiveProvider={bindingTarget.replaceActiveProvider}
+          replacedIntegration={bindingTarget.replacedIntegration}
           onOpenChange={(open) => {
             if (!open) setBindingTarget(null)
           }}
@@ -365,6 +392,7 @@ export function ContactsImPlatformManagementSurface() {
                   integration: null,
                   provider: replacementProvider,
                   replaceActiveProvider: true,
+                  replacedIntegration: activeImIntegration,
                 })
                 setReplacementProvider(null)
               }}
@@ -388,7 +416,10 @@ export function ContactsImPlatformManagementSurface() {
             </AlertDialogDescription>
             {disconnectProvider.isError && (
               <div role="alert" className="system-sm-regular text-text-destructive">
-                {t(($) => $['imPlatform.delete.failed'])}
+                {disconnectProvider.error instanceof ContactImRepositoryError &&
+                disconnectProvider.error.code === ContactImRepositoryErrorCode.ConfigurationUpdated
+                  ? t(($) => $['imPlatform.configurationUpdated'])
+                  : t(($) => $['imPlatform.delete.failed'])}
               </div>
             )}
           </div>

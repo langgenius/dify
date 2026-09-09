@@ -20,9 +20,18 @@ import {
   ContactImSyncResult as SyncResult,
 } from './types'
 
-const ALL_RESULTS = 'all'
+const results = [
+  SyncResult.Added,
+  SyncResult.NotMatched,
+  SyncResult.Failed,
+  SyncResult.Removed,
+  SyncResult.Skipped,
+]
 
 const resultToneClassNames = {
+  [SyncResult.Added]: 'bg-state-success-hover text-text-success',
+  [SyncResult.NotMatched]: 'bg-state-warning-hover text-text-warning',
+  [SyncResult.Removed]: 'bg-state-destructive-hover text-text-destructive',
   [SyncResult.CreatedBinding]: 'bg-state-accent-hover text-text-accent',
   [SyncResult.Failed]: 'bg-state-destructive-hover text-text-destructive',
   [SyncResult.Matched]: 'bg-state-success-hover text-text-success',
@@ -42,12 +51,20 @@ export function ContactImSyncDetailsDialog({
 }) {
   const { t, i18n } = useTranslation('contacts')
   const { t: tCommon } = useTranslation('common')
-  const [resultFilter, setResultFilter] = useState<ContactImSyncResult | undefined>()
-  const runQuery = useContactImSyncRun(runId)
-  const itemsQuery = useContactImSyncItems({ pageSize: 2, result: resultFilter, runId })
+  const [resultFilter, setResultFilter] = useState<ContactImSyncResult>(SyncResult.Added)
+  const runQuery = useContactImSyncRun(open ? runId : null)
   const run = runQuery.data
+  const itemsQuery = useContactImSyncItems({
+    enabled: open && Boolean(run),
+    pageSize: 20,
+    result: resultFilter,
+    runId: run?.id ?? runId,
+  })
   const items = itemsQuery.data?.pages.flatMap((page) => page.items) ?? []
   const resultLabels = {
+    [SyncResult.Added]: t(($) => $['imPlatform.details.filter.added']),
+    [SyncResult.NotMatched]: t(($) => $['imPlatform.details.filter.not_matched']),
+    [SyncResult.Removed]: t(($) => $['imPlatform.details.filter.removed']),
     [SyncResult.CreatedBinding]: t(($) => $['imPlatform.details.filter.created_binding']),
     [SyncResult.Failed]: t(($) => $['imPlatform.details.filter.failed']),
     [SyncResult.Matched]: t(($) => $['imPlatform.details.filter.matched']),
@@ -76,11 +93,13 @@ export function ContactImSyncDetailsDialog({
     ),
   } satisfies Record<ContactImSafeReason, string>
   const missing = t(($) => $['imPlatform.details.missing'])
-  const formatDate = (value: string) =>
-    new Intl.DateTimeFormat(i18n.language, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value))
+  const formatDate = (value: string | null) =>
+    value
+      ? new Intl.DateTimeFormat(i18n.language, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(value))
+      : missing
   const initialLoadFailed =
     runQuery.isError || (itemsQuery.isError && !itemsQuery.data && !itemsQuery.isFetchNextPageError)
 
@@ -104,16 +123,15 @@ export function ContactImSyncDetailsDialog({
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
             {run
-              ? t(($) => $['imPlatform.details.metadata'], {
+              ? t(($) => $['imPlatform.details.latestMetadata'], {
                   date: formatDate(run.completedAt ?? run.startedAt),
                   status: statusLabels[run.status],
-                  user: run.startedBy,
                 })
               : t(($) => $['imPlatform.details.description'])}
           </DialogDescription>
-          {run?.safeError && (
+          {(run?.errorMessage || run?.safeError) && (
             <div role="alert" className="mt-3 system-xs-regular text-text-destructive">
-              {safeReasonLabels[run.safeError]}
+              {run.errorMessage ?? (run.safeError ? safeReasonLabels[run.safeError] : null)}
             </div>
           )}
         </div>
@@ -127,7 +145,7 @@ export function ContactImSyncDetailsDialog({
               className="mt-3"
               onClick={() => {
                 void runQuery.refetch()
-                void itemsQuery.refetch()
+                if (run) void itemsQuery.refetch()
               }}
             >
               {t(($) => $['imPlatform.action.retry'])}
@@ -144,20 +162,15 @@ export function ContactImSyncDetailsDialog({
             <div className="shrink-0 overflow-x-auto border-y border-divider-subtle px-6 py-3">
               <SegmentedControl
                 aria-label={t(($) => $['imPlatform.details.filters'])}
-                value={resultFilter ?? ALL_RESULTS}
+                value={resultFilter}
                 onValueChange={(value) => {
-                  setResultFilter(
-                    value === ALL_RESULTS ? undefined : (value as ContactImSyncResult),
-                  )
+                  const result = results.find((result) => result === value)
+                  if (result) setResultFilter(result)
                 }}
               >
-                <SegmentedControlItem value={ALL_RESULTS}>
-                  {t(($) => $['imPlatform.details.filter.all'])}{' '}
-                  {Object.values(run.counts).reduce((sum, count) => sum + count, 0)}
-                </SegmentedControlItem>
-                {Object.values(SyncResult).map((result) => (
+                {results.map((result) => (
                   <SegmentedControlItem key={result} value={result}>
-                    {resultLabels[result]} {run.counts[result]}
+                    {resultLabels[result]} {run.counts[result] ?? 0}
                   </SegmentedControlItem>
                 ))}
               </SegmentedControl>
@@ -205,9 +218,10 @@ export function ContactImSyncDetailsDialog({
                             {resultLabels[item.result]}
                           </span>
                         </div>
-                        {item.safeReason && (
+                        {(item.reason || item.safeReason) && (
                           <div className="mt-2 system-xs-regular text-text-tertiary">
-                            {safeReasonLabels[item.safeReason]}
+                            {item.reason ??
+                              (item.safeReason ? safeReasonLabels[item.safeReason] : null)}
                           </div>
                         )}
                       </td>

@@ -16,7 +16,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
-import { ContactImProvider } from './types'
+import { ContactImProvider, ContactImRepositoryError, ContactImRepositoryErrorCode } from './types'
 
 type EmailConfigValues = {
   senderEmail: string
@@ -48,7 +48,14 @@ export function ContactEmailConfigDialog({
   const [apiKey, setApiKey] = useState('')
   const [testSucceeded, setTestSucceeded] = useState(false)
   const isPending = saveCredentials.isPending || testConnection.isPending
-  const retainSecret = Boolean(integration?.secretConfigured && !apiKey.trim())
+  const canRetainSecret = !provider.requiresFreshCredentials && integration?.secretConfigured
+  const retainSecret = Boolean(canRetainSecret && !apiKey.trim())
+  const safeErrorMessage = (error: unknown, fallback: string) => {
+    if (!(error instanceof ContactImRepositoryError)) return fallback
+    if (error.code === ContactImRepositoryErrorCode.ConfigurationUpdated)
+      return t(($) => $['imPlatform.configurationUpdated'])
+    return error.statusDescription ?? fallback
+  }
 
   if (provider.provider !== ContactImProvider.Email)
     throw new Error('ContactEmailConfigDialog requires the Email provider definition')
@@ -59,7 +66,7 @@ export function ContactEmailConfigDialog({
     secret: apiKey.trim() || undefined,
     values: {
       senderEmail: values.senderEmail.trim(),
-      ...(values.senderName.trim() ? { senderName: values.senderName.trim() } : {}),
+      senderName: values.senderName.trim(),
     },
   })
 
@@ -72,7 +79,7 @@ export function ContactEmailConfigDialog({
   }
 
   const handleTestConnection = async () => {
-    if (testConnection.isPending || !validateForm()) return
+    if (isPending || !validateForm()) return
 
     setTestSucceeded(false)
     try {
@@ -84,12 +91,14 @@ export function ContactEmailConfigDialog({
   }
 
   const handleSave = async () => {
-    if (saveCredentials.isPending) return
-
+    if (isPending) return
+    setTestSucceeded(false)
     try {
       await saveCredentials.saveCredentials({
         ...command(),
         replaceActiveProvider: false,
+        channelId: integration?.channelId,
+        expectedConfigVersion: integration?.configVersion,
       })
       setApiKey('')
       onOpenChange(false)
@@ -165,6 +174,7 @@ export function ContactEmailConfigDialog({
               </FieldDescription>
               <Input
                 required
+                disabled={isPending}
                 autoComplete="email"
                 placeholder="sybil@dify.ai"
                 type="email"
@@ -172,6 +182,8 @@ export function ContactEmailConfigDialog({
                 onChange={(event) => {
                   const senderEmail = event.currentTarget.value
                   setTestSucceeded(false)
+                  testConnection.reset()
+                  saveCredentials.reset()
                   setValues((current) => ({ ...current, senderEmail }))
                 }}
               />
@@ -189,33 +201,46 @@ export function ContactEmailConfigDialog({
                 {t(($) => $['imPlatform.email.senderNameDescription'])}
               </FieldDescription>
               <Input
+                required
+                disabled={isPending}
+                maxLength={255}
                 autoComplete="organization"
                 placeholder="sybil"
                 value={values.senderName}
                 onChange={(event) => {
                   const senderName = event.currentTarget.value
                   setTestSucceeded(false)
+                  testConnection.reset()
+                  saveCredentials.reset()
                   setValues((current) => ({ ...current, senderName }))
                 }}
               />
+              <FieldError match="valueMissing">
+                {t(($) => $['imPlatform.bindingDialog.required'])}
+              </FieldError>
             </Field>
 
             <Field name="apiKey">
               <FieldLabel>{t(($) => $['imPlatform.email.apiKey'])}</FieldLabel>
               <FieldDescription>
-                {integration?.secretConfigured
-                  ? t(($) => $['imPlatform.email.apiKeyConfigured'])
-                  : t(($) => $['imPlatform.email.apiKeyDescription'])}
+                {integration && provider.requiresFreshCredentials
+                  ? t(($) => $['imPlatform.bindingDialog.freshCredentials'])
+                  : canRetainSecret
+                    ? t(($) => $['imPlatform.email.apiKeyConfigured'])
+                    : t(($) => $['imPlatform.email.apiKeyDescription'])}
               </FieldDescription>
               <Input
+                disabled={isPending}
                 autoComplete="new-password"
                 placeholder={t(($) => $['imPlatform.email.apiKeyPlaceholder'])}
-                required={!integration?.secretConfigured}
+                required={!canRetainSecret}
                 type="password"
                 value={apiKey}
                 onChange={(event) => {
                   const value = event.currentTarget.value
                   setTestSucceeded(false)
+                  testConnection.reset()
+                  saveCredentials.reset()
                   setApiKey(value)
                 }}
               />
@@ -231,12 +256,18 @@ export function ContactEmailConfigDialog({
             )}
             {testConnection.isError && (
               <div role="alert" className="system-xs-regular text-text-destructive">
-                {t(($) => $['imPlatform.bindingDialog.testFailed'])}
+                {safeErrorMessage(
+                  testConnection.error,
+                  t(($) => $['imPlatform.bindingDialog.testFailed']),
+                )}
               </div>
             )}
             {saveCredentials.isError && (
               <div role="alert" className="system-xs-regular text-text-destructive">
-                {t(($) => $['imPlatform.bindingDialog.saveFailed'])}
+                {safeErrorMessage(
+                  saveCredentials.error,
+                  t(($) => $['imPlatform.bindingDialog.saveFailed']),
+                )}
               </div>
             )}
           </div>
@@ -256,7 +287,12 @@ export function ContactEmailConfigDialog({
               <Button disabled={isPending} onClick={closeDialog}>
                 {tCommon(($) => $['operation.cancel'])}
               </Button>
-              <Button type="submit" variant="primary" loading={saveCredentials.isPending}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isPending}
+                loading={saveCredentials.isPending}
+              >
                 {saveCredentials.isPending
                   ? t(($) => $['imPlatform.action.saving'])
                   : t(($) => $['imPlatform.action.save'])}

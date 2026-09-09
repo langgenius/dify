@@ -3,7 +3,7 @@
 import type { ContactImIntegrationView, ContactImSyncRunView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { useContactImActiveSync, useContactImSyncRun, useStartContactImSync } from './hooks'
+import { useContactImActiveSync, useStartContactImSync } from './hooks'
 import {
   ContactImConnectionStatus,
   ContactImSafeReason,
@@ -26,17 +26,17 @@ export function ContactImDirectorySyncSection({
   const { t } = useTranslation('contacts')
   const activeSyncQuery = useContactImActiveSync()
   const startSync = useStartContactImSync()
-  const activeRunId = startSync.data?.id ?? activeSyncQuery.data?.id ?? null
-  const activeRunQuery = useContactImSyncRun(activeRunId)
-  const currentRun = activeRunQuery.data ?? startSync.data ?? activeSyncQuery.data
+  const currentRun = activeSyncQuery.data
   const displayedRun = currentRun ?? integration.lastSync
+  const displayedRunDate = displayedRun?.completedAt ?? displayedRun?.startedAt
   const syncIsActive = isActiveRun(currentRun)
   const canStart =
     integration.canManage &&
     integration.status === ContactImConnectionStatus.Connected &&
     integration.capabilities.directorySync
   const isSyncing = startSync.isPending || syncIsActive
-  const buttonDisabled = activeSyncQuery.isPending || !canStart || isSyncing
+  const buttonDisabled =
+    activeSyncQuery.isPending || activeSyncQuery.isError || !canStart || isSyncing
   const disabledReason = !integration.canManage
     ? t(($) => $['imPlatform.sync.noPermission'])
     : integration.status !== ContactImConnectionStatus.Connected
@@ -52,6 +52,9 @@ export function ContactImDirectorySyncSection({
     [ContactImSyncStatus.Success]: t(($) => $['imPlatform.sync.status.success']),
   }
   const countLabels = {
+    [ContactImSyncResult.Added]: t(($) => $['imPlatform.sync.count.added']),
+    [ContactImSyncResult.NotMatched]: t(($) => $['imPlatform.sync.count.not_matched']),
+    [ContactImSyncResult.Removed]: t(($) => $['imPlatform.sync.count.removed']),
     [ContactImSyncResult.CreatedBinding]: t(($) => $['imPlatform.sync.count.created_binding']),
     [ContactImSyncResult.Failed]: t(($) => $['imPlatform.sync.count.failed']),
     [ContactImSyncResult.Matched]: t(($) => $['imPlatform.sync.count.matched']),
@@ -111,9 +114,14 @@ export function ContactImDirectorySyncSection({
         </div>
       )}
 
-      {(activeSyncQuery.isError || startSync.isError || activeRunQuery.isError) && (
+      {(activeSyncQuery.isError || startSync.isError) && (
         <div role="alert" className="mt-3 system-xs-regular text-text-destructive">
           {t(($) => $['imPlatform.sync.startFailed'])}
+          {activeSyncQuery.isError && (
+            <Button className="ml-3" onClick={() => activeSyncQuery.refetch()}>
+              {t(($) => $['imPlatform.action.retry'])}
+            </Button>
+          )}
         </div>
       )}
 
@@ -125,9 +133,10 @@ export function ContactImDirectorySyncSection({
                 {statusLabels[displayedRun.status]}
               </div>
               <div className="mt-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['imPlatform.sync.lastSynced'], {
-                  date: formatDate(displayedRun.completedAt ?? displayedRun.startedAt),
-                  user: displayedRun.startedBy,
+                {t(($) => $['imPlatform.sync.latestSynced'], {
+                  date: displayedRunDate
+                    ? formatDate(displayedRunDate)
+                    : t(($) => $['imPlatform.details.missing']),
                 })}
               </div>
             </div>
@@ -138,19 +147,26 @@ export function ContactImDirectorySyncSection({
             )}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {Object.values(ContactImSyncResult).map((result) => (
+            {[
+              ContactImSyncResult.Added,
+              ContactImSyncResult.NotMatched,
+              ContactImSyncResult.Failed,
+              ContactImSyncResult.Removed,
+              ContactImSyncResult.Skipped,
+            ].map((result) => (
               <div
                 key={result}
                 className="rounded-lg border border-divider-subtle bg-background-default-subtle px-2 py-1 system-xs-regular text-text-secondary"
               >
                 {countLabels[result]}{' '}
-                <span className="font-semibold">{displayedRun.counts[result]}</span>
+                <span className="font-semibold">{displayedRun.counts[result] ?? 0}</span>
               </div>
             ))}
           </div>
-          {displayedRun.safeError && (
+          {(displayedRun.errorMessage || displayedRun.safeError) && (
             <div className="mt-3 system-xs-regular text-text-destructive">
-              {safeErrorLabels[displayedRun.safeError]}
+              {displayedRun.errorMessage ??
+                (displayedRun.safeError ? safeErrorLabels[displayedRun.safeError] : null)}
             </div>
           )}
         </div>
