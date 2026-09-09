@@ -4621,14 +4621,8 @@
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
       "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     },
     "no-restricted-imports": {
       "count": 1

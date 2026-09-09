@@ -267,13 +267,12 @@ describe('getMarketplacePluginsByCollectionId', () => {
     )
   })
 
-  it('should send the warmed preview limit when query is omitted', async () => {
+  it('should omit a preview limit when query is omitted', async () => {
     mockCollectionPlugins.mockResolvedValueOnce({
       data: { plugins: [] },
     })
 
-    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getMarketplacePluginsByCollectionId } =
-      await import('../utils')
+    const { getMarketplacePluginsByCollectionId } = await import('../utils')
     await getMarketplacePluginsByCollectionId('test-collection')
 
     expect(mockCollectionPlugins).toHaveBeenCalledWith(
@@ -281,7 +280,7 @@ describe('getMarketplacePluginsByCollectionId', () => {
         params: {
           collectionId: 'test-collection',
         },
-        body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT },
+        body: {},
       },
       expect.objectContaining({
         signal: undefined,
@@ -319,8 +318,7 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
     mockCollections.mockResolvedValueOnce({ data: { collections: mockCollectionData } })
     mockCollectionPlugins.mockResolvedValue({ data: { plugins: mockPluginData } })
 
-    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getMarketplaceCollectionsAndPlugins } =
-      await import('../utils')
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
     const result = await getMarketplaceCollectionsAndPlugins({
       condition: 'category=tool',
       type: 'plugin',
@@ -334,14 +332,13 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
         body: {
           condition: 'category=tool',
           type: 'plugin',
-          limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
         },
       }),
       expect.any(Object),
     )
   })
 
-  it('posts the warmed preview limit when the catalog has no extra filters', async () => {
+  it('posts without a preview limit when the catalog has no extra filters', async () => {
     mockCollections.mockResolvedValueOnce({
       data: {
         collections: [
@@ -358,14 +355,13 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
     })
     mockCollectionPlugins.mockResolvedValue({ data: { plugins: [] } })
 
-    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getMarketplaceCollectionsAndPlugins } =
-      await import('../utils')
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
     await getMarketplaceCollectionsAndPlugins()
 
     expect(mockCollectionPlugins).toHaveBeenCalledWith(
       expect.objectContaining({
         params: { collectionId: 'featured' },
-        body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT },
+        body: {},
       }),
       expect.any(Object),
     )
@@ -446,22 +442,18 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
 })
 
 describe('getCollectionsParams', () => {
-  it('should return the warmed preview limit for all category', async () => {
-    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getCollectionsParams } = await import('../utils')
-    expect(getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.all)).toEqual({
-      limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
-    })
-    expect(COLLECTION_PREVIEW_PLUGIN_LIMIT).toBe(20)
+  it('should return an empty query for all category', async () => {
+    const { getCollectionsParams } = await import('../utils')
+    expect(getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.all)).toEqual({})
   })
 
-  it('should return category, condition, type, and preview limit for tool category', async () => {
-    const { COLLECTION_PREVIEW_PLUGIN_LIMIT, getCollectionsParams } = await import('../utils')
+  it('should return category, condition, and type for tool category', async () => {
+    const { getCollectionsParams } = await import('../utils')
     const result = getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.tool)
     expect(result).toEqual({
       category: PluginCategoryEnum.tool,
       condition: 'category=tool',
       type: 'plugin',
-      limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
     })
   })
 })
