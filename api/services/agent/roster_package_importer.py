@@ -47,6 +47,7 @@ from services.agent.errors import (
     RosterAgentPackageTooLargeError,
 )
 from services.agent.roster_package_cleanup import CleanupResource, PackageCleanupJob, RosterPackageCleanup
+from services.agent.roster_package_dependencies import check_package_dependencies
 from services.agent.roster_package_entities import (
     PreparedRosterAgentPackage,
     RosterAgentPackageMetadata,
@@ -115,6 +116,7 @@ class RosterAgentPackageImporter:
             except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
                 raise InvalidRosterAgentPackageError("Roster Agent package Soul is invalid") from exc
 
+            check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=package.manifest.dependencies)
             app_id = str(uuid4())
             staged: list[_StagedResource] = []
             try:

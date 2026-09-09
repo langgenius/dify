@@ -48,6 +48,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.plugin.entities.plugin import PluginDependency
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -344,6 +345,13 @@ class RosterAgentPackageImportResponse(ResponseModel):
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
+class RosterAgentPackageConflictResponse(ResponseModel):
+    code: str
+    message: str
+    status: Literal[409] = 409
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
+
+
 class AgentAppPagination(GenericAppPagination):
     publication_counts: AgentPublicationCountsResponse
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
@@ -382,6 +390,7 @@ register_response_schema_models(
     AgentBuildDraftApplyResponse,
     AgentSimpleResultResponse,
     RosterAgentPackageImportResponse,
+    RosterAgentPackageConflictResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -747,7 +756,12 @@ class RosterAgentPackageImportApi(Resource):
         console_ns.models[RosterAgentPackageImportResponse.__name__],
     )
     @console_ns.response(400, "Invalid Roster Agent package")
-    @console_ns.response(409, "Agent name already exists")
+    @console_ns.response(403, "Insufficient import or plugin installation permissions")
+    @console_ns.response(
+        409,
+        "Agent name already exists or required plugins are missing",
+        console_ns.models[RosterAgentPackageConflictResponse.__name__],
+    )
     @console_ns.response(413, "Roster Agent package exceeds the size limit")
     @console_ns.response(500, "Roster Agent package import failed")
     @console_ns.response(503, "Roster Agent package resource storage unavailable")
