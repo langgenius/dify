@@ -55,6 +55,18 @@ on render and subscription, including the first render after Activity reveal.
 Jotai 3's default `useAtomValue` / `useAtom` subscription does not provide this
 check; use `useQueryAtom(atom)` for the combined value/setter form instead.
 
+These hooks retain the **Raw** API's semantics: an async derived atom returns a
+Promise, not its resolved value. Consume it with React's `use` beneath Suspense,
+for example `use(useQueryAtomValue(asyncResultAtom))`. Synchronous subscriptions
+also trade concurrent rendering for snapshot consistency. Passing `startTransition`
+to a URL write still delegates navigation to nuqs; it does not make these atom
+subscriptions concurrent.
+
+The bridge force-hydrates its scoped external inputs during render. Jotai warns
+that forced hydration can behave incorrectly during concurrent rendering. Scope
+isolation does not remove that limitation: interrupted renders and framework
+navigation with Suspense need application-level validation before migration.
+
 Use ordinary `useSetAtom`, `store.set`, and write atoms for commands. Writes are
 forwarded to nuqs; the atom snapshot reflects nuqs's next React render. Do not
 expect a `get` immediately following `set` in the same command to read a new
@@ -63,9 +75,13 @@ semantics. A write promise is nuqs's URL-commit promise, not a React-render or
 server-render completion signal.
 
 The bridge holds mount/reveal commands until nuqs's subscriptions are attached,
-then forwards them unchanged. It does not parse, normalize or schedule those URL
-updates itself. Saved writers throw after the bridge unmounts. Commands already
-forwarded to nuqs follow nuqs's lifetime and cancellation behavior.
+then forwards them unchanged in a microtask after the current effect pass. This
+allows other registered groups and native readers in that pass to subscribe before
+receiving typed updates. Commands arriving while a binding has buffered writes
+join that buffer in order. Cleanup cancels that connection's pending drain;
+unmount rejects any unforwarded commands. The bridge does not parse, normalize or
+schedule URL commits itself. Saved writers throw after the bridge unmounts.
+Commands already forwarded to nuqs follow nuqs's lifetime and cancellation behavior.
 
 ## Composite groups and field atoms
 

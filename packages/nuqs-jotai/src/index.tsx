@@ -139,19 +139,26 @@ function createBinding(): Binding {
   return {
     write(...args) {
       if (disposed) throw unavailable()
-      if (writer) return writer(...args)
+      if (writer && waiting.length === 0) return writer(...args)
       return new Promise((resolve, reject) => waiting.push({ args, resolve, reject }))
     },
     connect(write) {
       writer = write
-      for (const request of waiting.splice(0)) {
-        try {
-          request.resolve(write(...request.args))
-        } catch (error) {
-          request.reject(error)
+      let active = true
+      // Parent and sibling nuqs hooks may not have subscribed yet. Flush held
+      // commands after this effect pass, preserving their typed emitter payloads.
+      queueMicrotask(() => {
+        if (!active || disposed) return
+        for (const request of waiting.splice(0)) {
+          try {
+            request.resolve(write(...request.args))
+          } catch (error) {
+            request.reject(error)
+          }
         }
-      }
+      })
       return () => {
+        active = false
         writer = undefined
       }
     },
@@ -201,7 +208,7 @@ function Bridge({ definition, children }: { definition: Definition; children: Re
     { dangerouslyForceHydrate: true },
   )
   useInsertionEffect(() => () => binding.dispose(), [binding])
-  // nuqs's effects above subscribe before mount/reveal commands are forwarded.
+  // Connect after this hook subscribes; held commands wait for the effect pass.
   useEffect(() => binding.connect(write), [binding, write])
   return children
 }

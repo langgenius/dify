@@ -1,15 +1,122 @@
+import type { ReactNode } from 'react'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { useSetAtom } from 'jotai'
-import { debounce, parseAsInteger, parseAsString, throttle, useQueryState } from 'nuqs'
+import {
+  debounce,
+  parseAsInteger,
+  parseAsIsoDate,
+  parseAsString,
+  throttle,
+  useQueryState,
+} from 'nuqs'
 import { enableHistorySync, NuqsAdapter } from 'nuqs/adapters/react'
 import { Activity, StrictMode, useLayoutEffect } from 'react'
 import { afterEach, expect, it, vi } from 'vite-plus/test'
-import { atomWithSearchParam, QueryStateProvider, useQueryAtomValue } from './index'
+import {
+  atomWithSearchParam,
+  atomWithSearchParams,
+  QueryStateProvider,
+  useQueryAtomValue,
+} from './index'
+import { QueryTestingAdapter } from './testing'
 
 afterEach(() => {
   act(() => window.dispatchEvent(new PopStateEvent('popstate')))
   cleanup()
   vi.useRealTimers()
+})
+
+it.each([
+  { reverse: false, delay: 0 },
+  { reverse: true, delay: 0 },
+  { reverse: false, delay: Infinity },
+  { reverse: true, delay: Infinity },
+])(
+  'shares typed mount and reveal writes across groups ($reverse, $delay)',
+  async ({ reverse, delay }) => {
+    vi.useFakeTimers()
+    window.history.replaceState(null, '', '/?day=2026-09-09')
+    const first = atomWithSearchParams({ date: parseAsIsoDate }, { urlKeys: { date: 'day' } })
+    const second = atomWithSearchParam('day', parseAsIsoDate)
+    let date = new Date('2026-09-09T12:34:56.000Z')
+    function NativeReader({ children }: { children?: ReactNode }) {
+      const [value] = useQueryState('day', parseAsIsoDate)
+      return (
+        <>
+          <p data-testid="native">{value?.toISOString()}</p>
+          {children}
+        </>
+      )
+    }
+    function Consumer() {
+      const write = useSetAtom(second)
+      const a = useQueryAtomValue(first).date
+      const b = useQueryAtomValue(second)
+      useLayoutEffect(() => {
+        void write(date, { limitUrlUpdates: throttle(delay) })
+      }, [write])
+      return (
+        <>
+          <p data-testid="first">{a?.toISOString()}</p>
+          <p data-testid="second">{b?.toISOString()}</p>
+          <NativeReader />
+        </>
+      )
+    }
+    function App({ hidden }: { hidden: boolean }) {
+      return (
+        <StrictMode>
+          <Activity mode={hidden ? 'hidden' : 'visible'}>
+            <NuqsAdapter>
+              <NativeReader>
+                <QueryStateProvider atoms={reverse ? [second, first] : [first, second]}>
+                  <Consumer />
+                </QueryStateProvider>
+              </NativeReader>
+            </NuqsAdapter>
+          </Activity>
+        </StrictMode>
+      )
+    }
+    const view = render(<App hidden={false} />)
+    async function expectSharedDate() {
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(screen.getByTestId('first').textContent).toBe(date.toISOString())
+      expect(screen.getByTestId('second').textContent).toBe(date.toISOString())
+      for (const reader of screen.getAllByTestId('native'))
+        expect(reader.textContent).toBe(date.toISOString())
+    }
+    await expectSharedDate()
+    view.rerender(<App hidden />)
+    date = new Date('2026-09-10T15:00:00.000Z')
+    window.history.replaceState(null, '', '/?day=2026-09-10')
+    view.rerender(<App hidden={false} />)
+    await expectSharedDate()
+  },
+)
+
+it('rejects buffered mount commands when unmounted before the effect-pass drain', async () => {
+  const page = atomWithSearchParam('page', parseAsInteger)
+  const onUrlUpdate = vi.fn()
+  let command!: Promise<URLSearchParams>
+  function Writer() {
+    const write = useSetAtom(page)
+    useLayoutEffect(() => {
+      command = write(2)
+    }, [write])
+    return null
+  }
+  const view = render(
+    <QueryTestingAdapter atoms={[page]} onUrlUpdate={onUrlUpdate}>
+      <Writer />
+    </QueryTestingAdapter>,
+  )
+  const rejected = expect(command).rejects.toThrow('unmounts')
+  view.unmount()
+  await rejected
+  expect(onUrlUpdate).not.toHaveBeenCalled()
 })
 
 it.each([0, Infinity])(
