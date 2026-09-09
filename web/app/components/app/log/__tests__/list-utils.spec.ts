@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import {
   applyAnnotationAdded,

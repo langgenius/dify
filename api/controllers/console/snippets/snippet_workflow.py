@@ -10,6 +10,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
@@ -34,7 +35,6 @@ from controllers.console.snippets.payloads import (
 )
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -51,6 +51,7 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
+    node_execution_response_source,
 )
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
@@ -205,9 +206,7 @@ class SnippetDraftWorkflowApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @model_validate(SnippetDraftSyncPayload)
     def post(self, req_data: SnippetDraftSyncPayload, current_user: Account, snippet: CustomizedSnippet):
         """Sync draft workflow for snippet."""
@@ -294,9 +293,7 @@ class SnippetPublishedWorkflowApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     def post(self, current_user: Account, snippet: CustomizedSnippet):
         """Publish snippet workflow."""
         snippet_service = _snippet_service()
@@ -355,9 +352,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @model_validate(SnippetWorkflowListQuery)
     def get(self, req_data: SnippetWorkflowListQuery, snippet: CustomizedSnippet):
         """Get all published workflow versions for snippet."""
@@ -399,9 +394,7 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     def post(self, current_user: Account, snippet: CustomizedSnippet, workflow_id: str):
         """Restore a published snippet workflow version into the draft workflow."""
         snippet_service = _snippet_service()
@@ -441,9 +434,7 @@ class SnippetWorkflowByIdApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     @model_validate(WorkflowUpdatePayload)
     def patch(
         self,
@@ -487,9 +478,7 @@ class SnippetWorkflowByIdApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
     def delete(self, snippet: CustomizedSnippet, workflow_id: str):
         """Delete a published snippet workflow version."""
         snippet_service = _snippet_service()
@@ -647,7 +636,7 @@ class SnippetDraftNodeRunApi(Resource):
         )
 
         return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
+            node_execution_response_source(workflow_node_execution, session=db.session()), from_attributes=True
         ).model_dump(mode="json")
 
 
@@ -684,7 +673,9 @@ class SnippetDraftNodeLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("Node last run not found")
 
-        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            node_execution_response_source(node_exec, session=db.session()), from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/iteration/nodes/<string:node_id>/run")

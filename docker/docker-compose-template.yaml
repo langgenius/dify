@@ -706,6 +706,8 @@ services:
     environment:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
+      SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
     networks:
       # Needs to reach api and agent_backend as forward-proxy destinations.
       - default
@@ -807,7 +809,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.27.0
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2
     profiles:
       - weaviate
     restart: always

@@ -32,8 +32,8 @@ const rosterQueryState = vi.hoisted(() => ({
     | undefined,
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const agentQuery = actual.consoleQuery.agent
   const agentQueryWithInputCapture = new Proxy(agentQuery, {
     get(target, property, receiver) {

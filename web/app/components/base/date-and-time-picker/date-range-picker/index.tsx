@@ -49,45 +49,28 @@ const DateRangePicker: FC<DateRangePickerProps> = ({
     placeholder: string | undefined,
     onChange: (date?: Dayjs) => void,
   ): NonNullable<DatePickerProps['renderTrigger']> => {
-    return (props, _state, { value, handleClear, handleClickTrigger }: TriggerProps) => {
+    return (props, _state, { value, handleClear }: TriggerProps) => {
       const displayValue = value ? formatToLocalTime(value, locale, displayFormat) : ''
       const triggerLabel = placeholder
         ? `${placeholder}${displayValue ? `: ${displayValue}` : ''}`
         : displayValue
 
       return (
-        <div
-          {...props}
-          aria-disabled={disabled || undefined}
-          aria-label={triggerLabel}
-          className={cn(
-            'group/date-trigger relative flex h-7 min-w-0 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
-            disabled && 'cursor-default hover:bg-transparent',
-            props.className,
-          )}
-          role="button"
-          tabIndex={disabled ? -1 : 0}
-          onClick={(event) => {
-            if (disabled) {
-              event.preventDefault()
-              event.stopPropagation()
-              return
-            }
-            handleClickTrigger(event)
-            props.onClick?.(event)
-          }}
-          onKeyDown={(event) => {
-            if (disabled) {
-              event.preventDefault()
-              event.stopPropagation()
-              return
-            }
-            props.onKeyDown?.(event)
-          }}
-        >
-          <span className={cn('truncate', !value && 'text-components-input-text-placeholder')}>
-            {displayValue || placeholder}
-          </span>
+        <div className="group/date-trigger relative min-w-0">
+          <button
+            {...props}
+            type="button"
+            aria-label={triggerLabel}
+            className={cn(
+              'flex h-7 min-w-0 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover',
+              disabled && 'cursor-default hover:bg-transparent',
+              props.className,
+            )}
+          >
+            <span className={cn('truncate', !value && 'text-components-input-text-placeholder')}>
+              {displayValue || placeholder}
+            </span>
+          </button>
           {clearable && value && !disabled && (
             <button
               type="button"
@@ -122,6 +105,7 @@ const DateRangePicker: FC<DateRangePickerProps> = ({
         <span className="i-ri-calendar-line block size-3.5 text-text-tertiary" aria-hidden="true" />
       </div>
       <DatePicker
+        disabled={disabled}
         value={start}
         timezone={timezone}
         onChange={onStartChange}
@@ -136,6 +120,7 @@ const DateRangePicker: FC<DateRangePickerProps> = ({
         -
       </span>
       <DatePicker
+        disabled={disabled}
         value={end}
         timezone={timezone}
         onChange={onEndChange}

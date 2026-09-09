@@ -7,7 +7,6 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -162,15 +161,15 @@ describe('ModelParameterTrigger', () => {
       onDebugWithMultipleModelChange: vi.fn(),
     })
     mockProvidersSummary.mockReturnValue(
-      createMockProviderContextValue({
-        modelProviders: [
+      {
+        data: [
           {
             ...createModelProvider(),
             is_configured: true,
             plugin_id: 'langgenius/openai',
           } as unknown as ModelProviderSummaryResponse,
         ],
-      }).modelProviders,
+      }.data,
     )
     mockUseCredentialPanelState.mockReturnValue({
       variant: 'api-active',

@@ -5,19 +5,19 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
-  useModelList,
   useSystemDefaultModelAndModelList,
   useUpdateModelList,
 } from '../hooks'
@@ -66,7 +66,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
@@ -77,21 +82,34 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
   }
-  const { data: embeddingModelList, isLoading: isEmbeddingModelListLoading } = useModelList(
-    ModelTypeEnum.textEmbedding,
-    { enabled: open },
+  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
   )
-  const { data: rerankModelList, isLoading: isRerankModelListLoading } = useModelList(
-    ModelTypeEnum.rerank,
-    { enabled: open },
+  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
   )
-  const { data: speech2textModelList, isLoading: isSpeech2textModelListLoading } = useModelList(
-    ModelTypeEnum.speech2text,
-    { enabled: open },
+  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
   )
-  const { data: ttsModelList, isLoading: isTTSModelListLoading } = useModelList(ModelTypeEnum.tts, {
-    enabled: open,
-  })
+  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+      enabled: open,
+    }),
+  )
   const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
   const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] =
     useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)

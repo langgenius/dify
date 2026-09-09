@@ -39,8 +39,9 @@ class TestFeatureApi:
         from controllers.console.feature import FeatureApi
 
         features = FeatureModel(
-            knowledge_rate_limit=42,
+            apps=LimitationModel(size=3, limit=10),
             vector_space=LimitationModel(size=1, limit=2),
+            next_credit_reset_date=1775001600,
         )
         feature_queries = _install_application_services(mocker)
         get_features = feature_queries.get_features
@@ -52,9 +53,18 @@ class TestFeatureApi:
         request_context = _request_context()
         result = raw_get(api, request_context)
 
-        expected = features.model_dump()
-        expected.pop("vector_space")
-        assert result == expected
+        assert result == features.model_dump(mode="json")
+        assert result["apps"] == {"size": 3, "limit": 10}
+        retired_fields = {
+            "vector_space",
+            "next_credit_reset_date",
+            "docs_processing",
+            "knowledge_rate_limit",
+            "dataset_operator_enabled",
+        }
+        schema = FeatureModel.model_json_schema(mode="serialization")
+        assert retired_fields.isdisjoint(result)
+        assert set(schema["properties"]) == set(schema["required"]) == set(result)
         get_features.assert_called_once_with(request_context)
 
 

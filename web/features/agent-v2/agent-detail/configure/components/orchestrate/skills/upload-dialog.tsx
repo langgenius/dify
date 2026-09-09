@@ -21,7 +21,7 @@ import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 

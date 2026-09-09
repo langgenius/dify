@@ -150,7 +150,7 @@ vi.mock('../client', () => ({
   uploadSkillFile: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {

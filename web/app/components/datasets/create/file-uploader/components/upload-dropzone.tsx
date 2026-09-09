@@ -2,8 +2,9 @@
 import type { RefObject } from 'react'
 import type { FileUploadConfig } from '../hooks/use-file-upload'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 
 export type UploadDropzoneProps = {
   dropRef: RefObject<HTMLDivElement | null>
@@ -31,7 +32,7 @@ const UploadDropzone = ({
   onFileChange,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
     <>
@@ -58,14 +59,18 @@ const UploadDropzone = ({
               ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
               : t(($) => $['stepOne.uploader.buttonSingleFile'], { ns: 'datasetCreation' })}
             {acceptTypes.length > 0 && (
-              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>
+              <button
+                type="button"
+                className="font-inherit ml-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
+                onClick={onSelectFile}
+              >
                 {t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
-              </label>
+              </button>
             )}
           </span>
         </div>
         <div>
-          {enableBilling
+          {deploymentEdition === 'CLOUD'
             ? t(($) => $['stepOne.uploader.tipWithTotalLimit'], {
                 ns: 'datasetCreation',
                 size: fileUploadConfig.file_size_limit,

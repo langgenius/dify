@@ -8,12 +8,12 @@ import { isLegacyBase401 } from '@/features/account-profile/client'
 
 type Props = Readonly<{
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  retry: () => void
 }>
 
-export default function CommonLayoutError({ error, unstable_retry }: Props) {
+export default function CommonLayoutError({ error, retry }: Props) {
   const { t } = useTranslation('common')
-  const { reset } = useQueryErrorResetBoundary()
+  const { reset: resetQueries } = useQueryErrorResetBoundary()
 
   console.error(error)
 
@@ -32,8 +32,8 @@ export default function CommonLayoutError({ error, unstable_retry }: Props) {
         size="small"
         variant="secondary"
         onClick={() => {
-          reset()
-          unstable_retry()
+          resetQueries()
+          retry()
         }}
       >
         {t(($) => $['errorBoundary.tryAgain'])}

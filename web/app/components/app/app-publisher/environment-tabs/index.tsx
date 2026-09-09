@@ -144,9 +144,7 @@ export function PublisherEnvironmentTabs({
                   <TooltipTrigger
                     render={<span className="min-w-0 truncate">{triggerLabel}</span>}
                   />
-                  <TooltipContent role="tooltip">
-                    {selectedOverflowEnvironment?.name}
-                  </TooltipContent>
+                  <TooltipContent>{selectedOverflowEnvironment?.name}</TooltipContent>
                 </Tooltip>
                 <span aria-hidden className="i-ri-arrow-down-s-line size-3.5 shrink-0" />
               </button>

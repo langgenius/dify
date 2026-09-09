@@ -315,19 +315,20 @@ class TestAppMCPServerRefreshController:
                 "controllers.common.wraps.current_account_with_tenant",
                 return_value=(current_user, "tenant-1"),
             ),
+            patch("controllers.common.rbac.locators.agent_binding", return_value=None),
+            patch("controllers.common.rbac.locators.PlainApp.owner_id", return_value=None),
             patch(
-                "controllers.common.wraps.enforce_rbac_access",
+                "controllers.common.rbac.checks.RBACService.CheckAccess.check",
                 side_effect=PermissionCheckedError,
-            ) as enforce_rbac_access,
+            ) as check_access,
             pytest.raises(PermissionCheckedError),
         ):
             method(AppMCPServerRefreshController(), app_id="app-1")
 
-        enforce_rbac_access.assert_called_once_with(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            resource_type=RBACResourceScope.APP,
+        check_access.assert_called_once_with(
+            "tenant-1",
+            "account-1",
             scene=RBACPermission.APP_EDIT,
-            resource_required=True,
-            path_args={"app_id": "app-1"},
+            resource_type=RBACResourceScope.APP,
+            resource_id="app-1",
         )
