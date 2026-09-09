@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { debounce, parseAsInteger, throttle } from 'nuqs'
+import { debounce, parseAsInteger, parseAsNativeArrayOf, throttle } from 'nuqs'
 import { Activity, StrictMode, Suspense, useLayoutEffect, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test'
@@ -706,5 +706,55 @@ it.each([false, true])(
       </QueryTestingAdapter>,
     )
     expect(screen.getByText('Page 7')).toBeDefined()
+  },
+)
+
+it.each([
+  { defaultValue: [1], clearOnDefault: true },
+  { defaultValue: [1], clearOnDefault: false },
+  { defaultValue: [], clearOnDefault: true },
+  { defaultValue: [], clearOnDefault: false },
+])(
+  'distinguishes an empty native array from reset ($defaultValue, clearOnDefault=$clearOnDefault)',
+  async ({ defaultValue, clearOnDefault }) => {
+    const idsAtom = atomWithSearchParam(
+      'ids',
+      parseAsNativeArrayOf(parseAsInteger).withDefault(defaultValue),
+      { clearOnDefault },
+    )
+    const adapter = createMemoryQueryAdapter('http://localhost/?other=keep&ids=2&ids=3#anchor')
+    let store!: ReturnType<typeof createStore>
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    const rendered = render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    expect(store.get(idsAtom)).toEqual([2, 3])
+    const empty = store.set(idsAtom, [])
+    expect(store.get(idsAtom)).toEqual([])
+    await empty
+    expect(adapter.read().searchParams.getAll('ids')).toEqual(
+      defaultValue.length === 0 && clearOnDefault ? [] : [''],
+    )
+    // A fresh provider must parse the committed empty collection, not the default.
+    rendered.unmount()
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    expect(store.get(idsAtom)).toEqual([])
+    const reset = store.set(idsAtom, null)
+    expect(store.get(idsAtom)).toEqual(defaultValue)
+    await reset
+    expect(adapter.read().searchParams.has('ids')).toBe(false)
+    await store.set(idsAtom, [4, 5])
+    expect(adapter.read().searchParams.getAll('ids')).toEqual(['4', '5'])
+    expect(adapter.read().searchParams.get('other')).toBe('keep')
+    expect(adapter.read().hash).toBe('#anchor')
   },
 )

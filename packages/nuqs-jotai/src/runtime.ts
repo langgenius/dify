@@ -32,7 +32,10 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     const next = new URL(url)
     for (const [key, values] of pending) {
       next.searchParams.delete(key)
-      values?.forEach((value) => next.searchParams.append(key, value))
+      // Native-array parsers distinguish an explicit empty collection (?key=)
+      // from an absent key, which restores the parser default.
+      if (values?.length === 0) next.searchParams.append(key, '')
+      else values?.forEach((value) => next.searchParams.append(key, value))
     }
     return next
   }
