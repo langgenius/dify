@@ -326,6 +326,11 @@ class WorkflowToolContainerHandler:
         )
         if source is None:
             raise ValueError("Workflow Tool source was not found")
+        # Restored nodes are not bound until workers resume; use the checkpointed identity.
+        parent_execution_id = parent_frame.state.graph_execution.get_or_create_node_execution(
+            frame_id=run_state.frame_id,
+            node_id=run_state.node_id,
+        ).execution_id
         if self._workflow_trace is not None:
             self._workflow_trace.register_workflow_source(
                 tenant_id=run_context.tenant_id,
@@ -333,7 +338,7 @@ class WorkflowToolContainerHandler:
                 workflow_id=source.workflow_id,
                 workflow_version=payload.source_workflow_version,
                 invocation_id=run_state.invocation_id,
-                parent_execution_id=parent_node.execution_id or "",
+                parent_execution_id=parent_execution_id,
             )
         graph_config = source.graph_config
         root_node_id = get_default_root_node_id(graph_config)
@@ -379,10 +384,6 @@ class WorkflowToolContainerHandler:
         )
         if self._event_listener_factory is not None:
             listener = self._event_listener_factory(source)
-            parent_execution_id = parent_frame.state.graph_execution.get_or_create_node_execution(
-                frame_id=run_state.frame_id,
-                node_id=run_state.node_id,
-            ).execution_id
 
             def save_child_event(event: NodeEvent) -> None:
                 # Delivery runs after Graphon normalizes results and suppresses retry starts.
