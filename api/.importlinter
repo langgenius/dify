@@ -227,6 +227,20 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:installed-app-audio-boundary]
+name = Installed app audio contract is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.installed_app_audio_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:installed-app-conversation-boundary]
 name = Installed app conversation service is framework and persistence neutral
 type = forbidden

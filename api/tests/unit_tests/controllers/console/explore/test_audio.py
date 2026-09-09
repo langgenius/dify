@@ -1,461 +1,308 @@
+"""Explore audio HTTP contracts with real SQLite admission and an external runtime fake."""
+
+from collections.abc import Generator
+from dataclasses import dataclass, field
 from io import BytesIO
-from unittest.mock import MagicMock, patch
+from typing import Literal
+from uuid import uuid4
 
 import pytest
-from flask import Flask
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.exceptions import InternalServerError
+from flask import has_request_context, request
+from sqlalchemy import inspect
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.test import TestResponse
 
-import controllers.console.explore.audio as audio_module
-from controllers.console.app.error import (
-    AppUnavailableError,
-    AudioTooLargeError,
-    CompletionRequestError,
-    NoAudioUploadedError,
-    ProviderModelCurrentlyNotSupportError,
-    ProviderNotInitializeError,
-    ProviderQuotaExceededError,
-    SpeechToTextDisabledError,
-)
-from core.errors.error import (
-    ModelCurrentlyNotSupportError,
-    ProviderTokenNotInitError,
-    QuotaExceededError,
-)
+import controllers.console.explore.audio as module
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models import Account
-from models.model import App, AppMode, InstalledApp
-from services.app_ref_service import AppRef, MessageRef
+from models import App, AppMode, InstalledApp
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
+    ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
+    UnsupportedAudioTypeServiceError,
+)
+from services.installed_app_access_service import InstalledAppRef
+from services.installed_app_audio_service import AudioOutput, AudioUpload
+from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
+    _assert_json_response,
+    _Harness,
+    harness,
 )
 
+__all__ = ["harness"]
 
-def unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+type _Operation = Literal["audio-to-text", "text-to-audio"]
+_OPERATIONS: tuple[_Operation, ...] = ("audio-to-text", "text-to-audio")
+_WAV = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"
 
 
-@pytest.fixture
-def installed_app(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-):
-    app = App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Explore App",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=False,
-    )
-    installed = InstalledApp(
-        tenant_id="viewer-tenant",
-        app_id=app.id,
-        app_owner_tenant_id=app.tenant_id,
-        position=0,
-        is_pinned=False,
-        last_used_at=None,
-    )
-    sqlite_session.add_all([app, installed])
-    sqlite_session.commit()
-    session_proxy = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(audio_module.db, "session", session_proxy)
-    yield installed
-    session_proxy.remove()
+@dataclass
+class _Runtime:
+    harness: _Harness
+    factory: sessionmaker[Session]
+    error: Exception | None = None
+    transcript: dict[str, str] = field(default_factory=lambda: {"text": "识别完成"})
+    output: AudioOutput | None = field(default_factory=lambda: AudioOutput(data=_WAV, mime_type=None))
+    asr_calls: list[tuple[InstalledAppRef, bytes | None, str | None]] = field(default_factory=list)
+    tts_calls: list[tuple[InstalledAppRef, str, str | None, str | None, str | None]] = field(default_factory=list)
 
-
-@pytest.fixture
-def audio_file():
-    return (BytesIO(b"audio"), "audio.wav")
-
-
-class TestChatAudioApi:
-    def setup_method(self):
-        self.api = audio_module.ChatAudioApi()
-        self.method = unwrap(self.api.post)
-
-    def test_post_success(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                return_value={"text": "ok"},
-            ),
-        ):
-            resp = self.method(installed_app)
-
-        assert resp == {"text": "ok"}
-
-    def test_app_unavailable(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=audio_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),
-        ):
-            with pytest.raises(AppUnavailableError):
-                self.method(installed_app)
-
-    def test_no_audio_uploaded(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=NoAudioUploadedServiceError(),
-            ),
-        ):
-            with pytest.raises(NoAudioUploadedError):
-                self.method(installed_app)
-
-    def test_audio_too_large(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=AudioTooLargeServiceError("too big"),
-            ),
-        ):
-            with pytest.raises(AudioTooLargeError):
-                self.method(installed_app)
-
-    def test_provider_quota_exceeded(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=QuotaExceededError(),
-            ),
-        ):
-            with pytest.raises(ProviderQuotaExceededError):
-                self.method(installed_app)
-
-    def test_unknown_exception(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            with pytest.raises(InternalServerError):
-                self.method(installed_app)
-
-    def test_unsupported_audio_type(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=audio_module.UnsupportedAudioTypeServiceError(),
-            ),
-        ):
-            with pytest.raises(audio_module.UnsupportedAudioTypeError):
-                self.method(installed_app)
-
-    def test_provider_not_support_speech_to_text(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=audio_module.ProviderNotSupportSpeechToTextServiceError(),
-            ),
-        ):
-            with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
-                self.method(installed_app)
-
-    def test_speech_to_text_disabled(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=SpeechToTextDisabledServiceError(),
-            ),
-        ):
-            with pytest.raises(SpeechToTextDisabledError):
-                self.method(installed_app)
-
-    def test_provider_not_initialized(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=ProviderTokenNotInitError("not init"),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                self.method(installed_app)
-
-    def test_model_currently_not_supported(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=ModelCurrentlyNotSupportError(),
-            ),
-        ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                self.method(installed_app)
-
-    def test_invoke_error_asr(self, app: Flask, installed_app, audio_file):
-        with (
-            app.test_request_context(
-                "/",
-                data={"file": audio_file},
-                content_type="multipart/form-data",
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_asr",
-                side_effect=InvokeError("invoke failed"),
-            ),
-        ):
-            with pytest.raises(CompletionRequestError):
-                self.method(installed_app)
-
-
-class TestChatTextApi:
-    def setup_method(self):
-        self.api = audio_module.ChatTextApi()
-        self.method = unwrap(self.api.post)
-
-    def test_post_success(self, app: Flask, installed_app):
-        account = Account(name="User", email="user@example.com")
-        account.id = "account-1"
-        transcript_tts = MagicMock(return_value={"audio": "ok"})
-
-        with (
-            app.test_request_context(
-                "/",
-                json={"message_id": "m1", "text": "hello", "voice": "v1"},
-            ),
-            patch.object(
-                audio_module,
-                "current_account_with_tenant",
-                return_value=(account, "tenant-1"),
-            ),
-            patch.object(audio_module.AudioService, "transcript_tts", transcript_tts),
-        ):
-            resp = self.method(
-                audio_module.TextToAudioPayload.model_validate({"message_id": "m1", "text": "hello", "voice": "v1"}),
-                installed_app,
-            )
-
-        assert resp == {"audio": "ok"}
-        assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
-            app=AppRef(tenant_id="tenant-1", app_id="app-1"),
-            message_id="m1",
-            account_id="account-1",
+    def transcript_asr(self, *, installed_app: InstalledAppRef, audio: AudioUpload | None) -> dict[str, str]:
+        self._assert_reference(installed_app)
+        self.asr_calls.append(
+            (installed_app, audio.stream.read() if audio is not None else None, audio.mime_type if audio else None)
         )
+        if self.error is not None:
+            raise self.error
+        return self.transcript
 
-    def test_provider_not_initialized(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=ProviderTokenNotInitError("not init"),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+    def transcript_tts(
+        self,
+        *,
+        installed_app: InstalledAppRef,
+        account_id: str,
+        text: str | None,
+        voice: str | None,
+        message_id: str | None,
+    ) -> AudioOutput | None:
+        self._assert_reference(installed_app)
+        self.tts_calls.append((installed_app, account_id, text, voice, message_id))
+        if self.error is not None:
+            raise self.error
+        return self.output
 
-    def test_model_not_supported(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=ModelCurrentlyNotSupportError(),
-            ),
-        ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+    def _assert_reference(self, installed_app: InstalledAppRef) -> None:
+        assert inspect(installed_app, raiseerr=False) is None
+        assert installed_app.id == self.harness.installed_app.id
+        assert installed_app.tenant_id == self.harness.installed_app.tenant_id
+        assert installed_app.app_id == self.harness.target_app.id
+        assert installed_app.tenant_id != self.harness.target_app.tenant_id
+        with self.factory() as session:
+            installation = session.get(InstalledApp, installed_app.id)
+            assert installation is not None
+            assert installation.last_used_at is None
 
-    def test_invoke_error(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=InvokeError("invoke failed"),
-            ),
-        ):
-            with pytest.raises(CompletionRequestError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+    def request(
+        self,
+        operation: _Operation,
+        *,
+        body: dict[str, object] | None = None,
+        installed_app_id: str | None = None,
+        upload: bool = True,
+    ) -> TestResponse:
+        url = f"/installed-apps/{installed_app_id or self.harness.installed_app.id}/{operation}"
+        if operation == "audio-to-text":
+            return self.harness.app.test_client().post(
+                url,
+                data={"file": (BytesIO(_WAV), "recording.wav", "audio/wav")} if upload else {},
+                content_type="multipart/form-data",
+            )
+        return self.harness.app.test_client().post(url, json=body if body is not None else {"text": "你好"})
 
-    def test_unknown_exception(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            with pytest.raises(InternalServerError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
-    def test_app_unavailable_tts(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=audio_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),
-        ):
-            with pytest.raises(AppUnavailableError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+@dataclass(frozen=True)
+class _Services:
+    installed_app_audio: _Runtime
 
-    def test_no_audio_uploaded_tts(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=NoAudioUploadedServiceError(),
-            ),
-        ):
-            with pytest.raises(NoAudioUploadedError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
-    def test_audio_too_large_tts(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=AudioTooLargeServiceError("too big"),
-            ),
-        ):
-            with pytest.raises(AudioTooLargeError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+@pytest.fixture
+def runtime(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> _Runtime:
+    state = _Runtime(harness=harness, factory=sqlite_session_factory)
+    services = _Services(installed_app_audio=state)
+    monkeypatch.setattr(module, "application_services", lambda: services)
+    harness.api.add_resource(module.ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text")
+    harness.api.add_resource(module.ChatTextApi, "/installed-apps/<uuid:installed_app_id>/text-to-audio")
+    return state
 
-    def test_unsupported_audio_type_tts(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=audio_module.UnsupportedAudioTypeServiceError(),
-            ),
-        ):
-            with pytest.raises(audio_module.UnsupportedAudioTypeError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
-    def test_provider_not_support_speech_to_text_tts(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=audio_module.ProviderNotSupportSpeechToTextServiceError(),
-            ),
-        ):
-            with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+def _error(response: TestResponse, *, status: int, code: str, message: str | None = None) -> None:
+    assert response.status_code == status
+    body = response.get_json()
+    assert body["code"] == code
+    assert body["status"] == status
+    assert isinstance(body["message"], str)
+    assert body["message"]
+    if message is not None:
+        assert body["message"] == message
+    assert response.headers["Content-Type"] == "application/json"
+    assert int(response.headers["Content-Length"]) == len(response.data)
 
-    def test_quota_exceeded_tts(self, app: Flask, installed_app):
-        with (
-            app.test_request_context(
-                "/",
-                json={"text": "hi"},
-            ),
-            patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                side_effect=QuotaExceededError(),
-            ),
-        ):
-            with pytest.raises(ProviderQuotaExceededError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+
+@pytest.mark.parametrize("text", ["识别完成", ""])
+def test_asr_preserves_transcript_and_upload_stream_and_mime(runtime: _Runtime, text: str) -> None:
+    runtime.transcript = {"text": text}
+    _assert_json_response(runtime.request("audio-to-text"), status=200, body={"text": text})
+    assert len(runtime.asr_calls) == 1
+    installed_app, data, mime_type = runtime.asr_calls[0]
+    assert installed_app.app_mode == "completion"
+    assert data == _WAV
+    assert mime_type == "audio/wav"
+    assert runtime.tts_calls == []
+
+
+def test_missing_upload_reaches_runtime_and_returns_specific_error(runtime: _Runtime) -> None:
+    runtime.error = NoAudioUploadedServiceError()
+    _error(runtime.request("audio-to-text", upload=False), status=400, code="no_audio_uploaded")
+    assert len(runtime.asr_calls) == 1
+    assert runtime.asr_calls[0][1:] == (None, None)
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ({"text": "你好", "voice": "voice-1"}, ("你好", "voice-1", None)),
+        (
+            {"text": "ignored text", "voice": "", "message_id": "11111111-1111-4111-8111-111111111111"},
+            ("ignored text", "", "11111111-1111-4111-8111-111111111111"),
+        ),
+        ({}, (None, None, None)),
+        ({"text": "", "voice": None, "message_id": "malformed", "streaming": False}, ("", None, "malformed")),
+        ({"text": None, "streaming": True}, (None, None, None)),
+    ],
+)
+def test_tts_keeps_payload_values_and_authenticated_account(
+    runtime: _Runtime, body: dict[str, object], expected: tuple[str | None, str | None, str | None]
+) -> None:
+    response = runtime.request("text-to-audio", body=body)
+    assert response.status_code == 200
+    assert response.data == _WAV
+    assert response.headers["Content-Type"] == "audio/wav"
+    assert len(runtime.tts_calls) == 1
+    installed_app, account_id, text, voice, message_id = runtime.tts_calls[0]
+    assert installed_app.app_mode == "completion"
+    assert account_id == runtime.harness.account.id
+    assert (text, voice, message_id) == expected
+    assert runtime.asr_calls == []
+
+
+@pytest.mark.parametrize("data", [_WAV, bytearray(_WAV), memoryview(_WAV)])
+def test_tts_binary_carriers_preserve_bytes_and_audio_headers(
+    runtime: _Runtime, data: bytes | bytearray | memoryview
+) -> None:
+    runtime.output = AudioOutput(data=data, mime_type="audio/x-wav")
+    response = runtime.request("text-to-audio")
+    assert response.status_code == 200
+    assert response.data == _WAV
+    assert dict(response.headers) == {"Content-Type": "audio/wav", "Content-Length": str(len(_WAV))}
+
+
+def test_tts_stream_preserves_split_signature_and_all_chunks(runtime: _Runtime) -> None:
+    def chunks() -> Generator[bytes]:
+        yield _WAV[:2]
+        yield b""
+        yield _WAV[2:11]
+        yield _WAV[11:] + b"00"
+        # This tail is consumed after MIME probing and the controller return.
+        assert has_request_context()
+        assert request.path.endswith("/text-to-audio")
+        yield b"tail"
+
+    runtime.output = AudioOutput(data=chunks(), mime_type=None)
+    response = runtime.request("text-to-audio")
+    assert response.status_code == 200
+    assert response.data == _WAV + b"00tail"
+    assert dict(response.headers) == {"Content-Type": "audio/wav"}
+
+
+def test_tts_rejects_provider_mime_mismatch_with_specific_completion_error(runtime: _Runtime) -> None:
+    runtime.output = AudioOutput(data=_WAV, mime_type="audio/mpeg")
+    _error(
+        runtime.request("text-to-audio"),
+        status=400,
+        code="completion_request_error",
+        message="TTS provider output MIME does not match its audio bytes: declared audio/mpeg, detected audio/wav",
+    )
+
+
+def test_tts_no_result_remains_json_null(runtime: _Runtime) -> None:
+    runtime.output = None
+    response = runtime.request("text-to-audio", body={"message_id": "not-a-uuid"})
+    assert response.status_code == 200
+    assert response.get_json() is None
+    assert response.data == b"null\n"
+    assert response.headers["Content-Type"] == "application/json"
+    assert int(response.headers["Content-Length"]) == len(response.data)
+    assert runtime.tts_calls[0][-1] == "not-a-uuid"
+
+
+@pytest.mark.parametrize("body", [{"text": 123}, {"voice": []}, {"message_id": 123}, {"streaming": "invalid"}])
+def test_invalid_tts_body_uses_shared_422_before_runtime(runtime: _Runtime, body: dict[str, object]) -> None:
+    _error(runtime.request("text-to-audio", body=body), status=422, code="unprocessable_entity")
+    assert runtime.tts_calls == []
+
+
+@pytest.mark.parametrize("operation", _OPERATIONS)
+@pytest.mark.parametrize("mode", list(AppMode))
+def test_audio_endpoints_have_no_app_mode_gate(runtime: _Runtime, operation: _Operation, mode: AppMode) -> None:
+    with runtime.factory.begin() as session:
+        app = session.get(App, runtime.harness.target_app.id)
+        assert app is not None
+        app.mode = mode
+    assert runtime.request(operation).status_code == 200
+    calls = runtime.asr_calls if operation == "audio-to-text" else runtime.tts_calls
+    assert len(calls) == 1
+    assert calls[0][0].app_mode == mode.value
+
+
+@pytest.mark.parametrize("operation", _OPERATIONS)
+@pytest.mark.parametrize("admission", ["missing", "denied", "orphan"])
+def test_audio_endpoints_apply_admission_before_reading_or_generating_audio(
+    runtime: _Runtime, operation: _Operation, admission: str
+) -> None:
+    if admission == "denied":
+        runtime.harness.state.allowed = False
+    elif admission == "orphan":
+        with runtime.factory.begin() as session:
+            app = session.get(App, runtime.harness.target_app.id)
+            assert app is not None
+            session.delete(app)
+    _error(
+        runtime.request(operation, installed_app_id=str(uuid4()) if admission == "missing" else None),
+        status=403 if admission == "denied" else 404,
+        code="access_denied" if admission == "denied" else "installed_app_not_found",
+    )
+    assert runtime.asr_calls == runtime.tts_calls == []
+    if admission == "orphan":
+        assert runtime.harness.state.permission_calls == []
+        with runtime.factory() as session:
+            assert session.get(InstalledApp, runtime.harness.installed_app.id) is None
+
+
+@pytest.mark.parametrize("operation", _OPERATIONS)
+@pytest.mark.parametrize(
+    ("failure", "status", "code", "description"),
+    [
+        (AppModelConfigBrokenError(), 400, "app_unavailable", None),
+        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded", None),
+        (AudioTooLargeServiceError("30 MB limit exceeded"), 413, "audio_too_large", "30 MB limit exceeded"),
+        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type", None),
+        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text", None),
+        (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
+        (QuotaExceededError(), 400, "provider_quota_exceeded", None),
+        (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", None),
+        (InvokeError("Provider rejected audio"), 400, "completion_request_error", "Provider rejected audio"),
+        (ValueError("Invalid audio arguments"), 400, "invalid_param", "Invalid audio arguments"),
+        (RuntimeError("Unexpected provider failure"), 500, "internal_server_error", None),
+    ],
+)
+def test_audio_and_provider_failures_keep_precise_http_contract(
+    runtime: _Runtime, operation: _Operation, failure: Exception, status: int, code: str, description: str | None
+) -> None:
+    runtime.error = failure
+    _error(runtime.request(operation), status=status, code=code, message=description)
+    assert len(runtime.asr_calls) + len(runtime.tts_calls) == 1
+
+
+def test_asr_disabled_feature_preserves_400(runtime: _Runtime) -> None:
+    runtime.error = SpeechToTextDisabledServiceError()
+    _error(runtime.request("audio-to-text"), status=400, code="speech_to_text_disabled")
+
+
+def test_unsupported_tts_provider_has_specific_error(runtime: _Runtime) -> None:
+    runtime.error = ProviderNotSupportTextToSpeechServiceError()
+    _error(runtime.request("text-to-audio"), status=400, code="provider_not_support_text_to_speech")
