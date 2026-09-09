@@ -61,6 +61,11 @@ class _Runtime:
             raise self.error
         return self.response
 
+    def generate_more_like_this(
+        self, *, app_id: str, account_id: str, message_id: str, streaming: bool
+    ) -> GenerationResponse:
+        pytest.fail(f"Unexpected more-like-this call: {app_id=}, {account_id=}, {message_id=}, {streaming=}")
+
 
 @dataclass(frozen=True)
 class _Services:
