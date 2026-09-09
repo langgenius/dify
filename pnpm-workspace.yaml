@@ -20,6 +20,8 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
+  # MIT release: registry integrity and source verified against the official 1.0.41 tag.
+  - ua-parser-js@1.0.41
 verifyDepsBeforeRun: install
 packages:
   - web
@@ -124,6 +126,7 @@ catalog:
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.5
   '@types/sortablejs': 1.15.9
+  '@types/ua-parser-js': 0.7.39
   '@typescript-eslint/parser': 8.69.0
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.1
@@ -239,6 +242,7 @@ catalog:
   tldts: 7.4.11
   tsx: 4.23.13
   typescript: npm:@typescript/typescript6@6.0.2
+  ua-parser-js: 1.0.41
   uglify-js: 3.19.3
   undici: 7.29.0
   unist-util-visit: 5.1.0
