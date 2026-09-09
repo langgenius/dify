@@ -61,6 +61,7 @@ const deletionJobCapabilityProvenanceMigrationId = "0050_deletion_job_capability
 const failedQueryTraceOutcomeIndexMigrationId = "0051_failed_query_trace_outcome_index";
 const namespaceSourcePreviewsMigrationId = "0052_namespace_source_previews";
 const answerTraceSourceMigrationId = "0053_answer_trace_source";
+const graphSemanticProjectionsMigrationId = "0054_graph_semantic_projections";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -98,6 +99,7 @@ const migrationsAfterDurableDeletion = [
   failedQueryTraceOutcomeIndexMigrationId,
   namespaceSourcePreviewsMigrationId,
   answerTraceSourceMigrationId,
+  graphSemanticProjectionsMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,
