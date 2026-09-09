@@ -25,10 +25,15 @@ import { useTranslation } from 'react-i18next'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
-import { useContactsFeatureContext } from './composition-context'
+import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
 import { ContactDetailsPanel } from './contact-details-panel'
 import { ExternalContactDialog } from './external-contact-dialog'
-import { useContactsDirectory, useRemoveContacts } from './hooks'
+import {
+  useContactCounts,
+  useContactDetails,
+  useContactsDirectory,
+  useRemoveContacts,
+} from './hooks'
 import { PlatformContactPickerDialog } from './platform-contact-picker-dialog'
 import { formatContactRelativeTime } from './relative-time'
 
@@ -155,6 +160,7 @@ function DirectoryState({
 export function ContactsDirectoryPage() {
   const { t } = useTranslation('contacts')
   const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
   const [browsing, setBrowsing] = useQueryStates({
     contact_kind: kindParser,
     contact_pages: loadedPagesParser,
@@ -172,6 +178,8 @@ export function ContactsDirectoryPage() {
   const rowTriggersRef = useRef(new Map<string, HTMLButtonElement>())
   const selectedContactIdRef = useRef<string | null>(null)
   const directoryQuery = useContactsDirectory({ kind, limit: 20, search })
+  const detailsQuery = useContactDetails(contactId)
+  const contactCounts = useContactCounts()
   const removeContacts = useRemoveContacts()
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
@@ -179,9 +187,7 @@ export function ContactsDirectoryPage() {
   )
   const hasFilters = Boolean(search) || kind !== 'all'
   const currentPageCount = directoryQuery.data?.pages.length ?? 0
-  const selectedContact = contactId
-    ? directoryQuery.contacts.find((contact) => contact.id === contactId)
-    : undefined
+  const selectedContact = detailsQuery.data
   const removableContactIds = directoryQuery.contacts
     .filter((contact) => contact.type !== 'workspace')
     .map((contact) => contact.id)
@@ -191,16 +197,6 @@ export function ContactsDirectoryPage() {
   const allRemovableSelected =
     removableContactIds.length > 0 && selectedRemovableCount === removableContactIds.length
   const someRemovableSelected = selectedRemovableCount > 0 && !allRemovableSelected
-  const contactCounts = contactKindFilters.reduce<Record<ContactTypeFilter, number>>(
-    (counts, filter) => {
-      counts[filter] =
-        filter === 'all'
-          ? directoryQuery.contacts.length
-          : directoryQuery.contacts.filter((contact) => contact.type === filter).length
-      return counts
-    },
-    { all: 0, external: 0, platform: 0, workspace: 0 },
-  )
 
   useEffect(() => {
     if (
@@ -275,6 +271,7 @@ export function ContactsDirectoryPage() {
     setRemovalError(false)
     const result = await removeContacts.mutateAsync({ contactIds: selectedContactIds })
     if (result.kind === 'removed') {
+      if (contactId && result.removedContactIds.includes(contactId)) closeDetails()
       setSelectedContactIds([])
       return
     }
@@ -282,11 +279,16 @@ export function ContactsDirectoryPage() {
   }
 
   async function removeContact(contactId: string) {
+    if (removeContacts.isPending) return
+    setRemovalError(false)
     const result = await removeContacts.mutateAsync({ contactIds: [contactId] })
     if (result.kind !== 'removed') {
       setRemovalError(true)
       return
     }
+    setSelectedContactIds((current) =>
+      current.filter((id) => !result.removedContactIds.includes(id)),
+    )
     closeDetails()
   }
 
@@ -338,7 +340,7 @@ export function ContactsDirectoryPage() {
               >
                 <span>{t(($) => $[`filter.${filter}`])}</span>
                 {filter !== 'all' && (
-                  <span className="ml-1 text-text-quaternary">{contactCounts[filter]}</span>
+                  <span className="ml-1 text-text-quaternary">{contactCounts[filter] ?? '—'}</span>
                 )}
               </button>
             ))}
@@ -358,7 +360,7 @@ export function ContactsDirectoryPage() {
           </div>
           {context.permissions.canManageContacts && (
             <div className="flex shrink-0 lg:ml-auto">
-              {context.deployment === 'ee' ? (
+              {context.deployment === 'ee' && repository.supportsPlatformImport !== false ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="primary" />}>
                     <span aria-hidden className="mr-1 i-ri-add-line size-4" />
@@ -536,6 +538,8 @@ export function ContactsDirectoryPage() {
         {selectedContact && (
           <ContactDetailsPanel
             contact={selectedContact}
+            canManage={context.permissions.canManageContacts}
+            removing={removeContacts.isPending}
             onClose={closeDetails}
             onEdit={() => {
               setEditingContact(selectedContact)
@@ -544,8 +548,36 @@ export function ContactsDirectoryPage() {
             onRemove={() => void removeContact(selectedContact.id)}
           />
         )}
+        {contactId && !selectedContact && (
+          <aside
+            aria-label={t(($) => $['details.title'])}
+            className="flex h-full w-80 max-w-full shrink-0 flex-col rounded-xl border border-divider-subtle bg-components-panel-bg p-4"
+          >
+            <Button className="self-end" variant="ghost" onClick={closeDetails}>
+              {t(($) => $['action.close'])}
+            </Button>
+            <p
+              role={detailsQuery.isError ? 'alert' : 'status'}
+              className="my-auto text-center system-sm-regular text-text-tertiary"
+            >
+              {t(
+                ($) =>
+                  $[
+                    detailsQuery.isPending
+                      ? 'details.loading'
+                      : detailsQuery.isError
+                        ? 'details.error'
+                        : 'details.notFound'
+                  ],
+              )}
+            </p>
+            {detailsQuery.isError && (
+              <Button onClick={() => detailsQuery.refetch()}>{t(($) => $['action.retry'])}</Button>
+            )}
+          </aside>
+        )}
       </div>
-      {selectedContactIds.length > 0 && (
+      {(selectedContactIds.length > 0 || removalError) && (
         <div className="pointer-events-none absolute right-0 bottom-6 left-0 z-20 flex justify-center px-4">
           <div className="pointer-events-auto flex flex-col items-center gap-1">
             {removalError && (
@@ -556,41 +588,43 @@ export function ContactsDirectoryPage() {
                 {t(($) => $['directory.removalFailed'])}
               </p>
             )}
-            <div
-              aria-live="polite"
-              className="flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]"
-            >
-              <div className="inline-flex items-center gap-2 py-1 pr-3 pl-2">
-                <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
-                  {selectedContactIds.length}
-                </span>
-                <span className="system-sm-semibold text-text-accent">
-                  {t(($) => $['directory.selected'])}
-                </span>
+            {selectedContactIds.length > 0 && (
+              <div
+                aria-live="polite"
+                className="flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]"
+              >
+                <div className="inline-flex items-center gap-2 py-1 pr-3 pl-2">
+                  <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
+                    {selectedContactIds.length}
+                  </span>
+                  <span className="system-sm-semibold text-text-accent">
+                    {t(($) => $['directory.selected'])}
+                  </span>
+                </div>
+                <span aria-hidden className="mx-0.5 h-3.5 w-px bg-divider-regular" />
+                <Button
+                  variant="ghost"
+                  tone="destructive"
+                  className="gap-0.5 px-3"
+                  loading={removeContacts.isPending}
+                  onClick={removeSelectedContacts}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  {t(($) => $['directory.removeSelected'])}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="px-3"
+                  disabled={removeContacts.isPending}
+                  onClick={() => {
+                    setSelectedContactIds([])
+                    setRemovalError(false)
+                  }}
+                >
+                  {t(($) => $['directory.cancelSelection'])}
+                </Button>
               </div>
-              <span aria-hidden className="mx-0.5 h-3.5 w-px bg-divider-regular" />
-              <Button
-                variant="ghost"
-                tone="destructive"
-                className="gap-0.5 px-3"
-                loading={removeContacts.isPending}
-                onClick={removeSelectedContacts}
-              >
-                <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                {t(($) => $['directory.removeSelected'])}
-              </Button>
-              <Button
-                variant="ghost"
-                className="px-3"
-                disabled={removeContacts.isPending}
-                onClick={() => {
-                  setSelectedContactIds([])
-                  setRemovalError(false)
-                }}
-              >
-                {t(($) => $['directory.cancelSelection'])}
-              </Button>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -602,9 +636,9 @@ export function ContactsDirectoryPage() {
           setExternalDialogOpen(open)
           if (!open) setEditingContact(null)
         }}
-        onCreated={() => {}}
+        onCreated={openDetails}
       />
-      {context.deployment === 'ee' && (
+      {context.deployment === 'ee' && repository.supportsPlatformImport !== false && (
         <PlatformContactPickerDialog
           open={platformDialogOpen}
           onOpenChange={setPlatformDialogOpen}

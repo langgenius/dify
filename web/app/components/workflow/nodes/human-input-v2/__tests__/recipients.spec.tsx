@@ -1,6 +1,6 @@
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import Recipients from '../components/recipients'
@@ -65,6 +65,58 @@ const Harness = ({
 }
 
 describe('Human Input v2 Recipients', () => {
+  it('loads later contact pages without losing already loaded recipients', async () => {
+    const user = userEvent.setup()
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [contact], page: 1, hasMore: true })
+      .mockResolvedValueOnce({ data: [organizationContact], page: 2, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    expect(await screen.findByText('Evan Zhang')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+
+    expect(await screen.findByText('Amanda Lin')).toBeInTheDocument()
+    expect(screen.getByText('Evan Zhang')).toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('', 2)
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.loadMore' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the latest search results when an older response arrives last', async () => {
+    const user = userEvent.setup()
+    let finishInitial: (options: ContactRecipientOption[]) => void = () => undefined
+    const search = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishInitial = resolve
+          }),
+      )
+      .mockResolvedValue([organizationContact])
+    render(<Harness optionProvider={provider({ search })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.recipients.search' }),
+      'Amanda',
+    )
+    expect(await screen.findByText('Amanda Lin')).toBeInTheDocument()
+    await act(async () => {
+      finishInitial([contact])
+    })
+
+    expect(screen.getByText('Amanda Lin')).toBeInTheDocument()
+    expect(screen.queryByText('Evan Zhang')).not.toBeInTheDocument()
+  })
+
   it('adds Contact, one-time email, Dynamic Email and Initiator in order', async () => {
     const user = userEvent.setup()
     const observe = vi.fn()

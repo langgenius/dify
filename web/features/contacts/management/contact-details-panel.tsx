@@ -16,11 +16,15 @@ import { formatContactRelativeTime } from './relative-time'
 
 export function ContactDetailsPanel({
   contact,
+  canManage = true,
+  removing = false,
   onEdit,
   onClose,
   onRemove,
 }: {
   contact: ContactView
+  canManage?: boolean
+  removing?: boolean
   onEdit: () => void
   onClose: () => void
   onRemove: () => void
@@ -40,11 +44,11 @@ export function ContactDetailsPanel({
       className="relative z-20 flex h-full w-80 max-w-full shrink-0 flex-col overflow-hidden rounded-xl border border-divider-subtle bg-components-panel-bg shadow-xl"
     >
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
-        {contact.type !== 'workspace' && (
+        {canManage && contact.type !== 'workspace' && (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <IconButton aria-label={t(($) => $['details.more'])} size="sm">
+                <IconButton aria-label={t(($) => $['details.more'])} size="sm" disabled={removing}>
                   <span aria-hidden className="i-ri-more-fill size-4" />
                 </IconButton>
               }

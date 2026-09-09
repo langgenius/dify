@@ -1,4 +1,4 @@
-import type { ContactRecipientOption } from './contact-provider'
+import type { ContactRecipientOption, ContactRecipientOptionProvider } from './contact-provider'
 import type { HumanInputV2NodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -6,10 +6,15 @@ import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import HumanInputNodeBranches from '@/app/components/workflow/nodes/human-input/shared/node-branches'
-import { mockContactRecipientOptionProvider } from './contact-provider'
+import { useContactRecipientOptionProvider } from './contact-provider'
 import { deriveRecipientSummary } from './recipient-utils'
 
-export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
+const HumanInputV2NodeContent = ({
+  provider,
+  ...props
+}: NodeProps<HumanInputV2NodeType> & {
+  provider: ContactRecipientOptionProvider
+}) => {
   const { t } = useTranslation()
   const { data } = props
   const [contacts, setContacts] = useState<ContactRecipientOption[]>([])
@@ -28,20 +33,18 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
     if (!contactIds.length) return
 
     let active = true
-    void mockContactRecipientOptionProvider.resolve({ contact_ids: contactIds }).then((options) => {
-      if (active) {
-        setContacts((current) =>
-          current.length === options.length &&
-          current.every((contact, index) => contact.id === options[index]?.id)
-            ? current
-            : options,
-        )
-      }
-    })
+    void provider
+      .resolve({ contact_ids: contactIds })
+      .then((options) => {
+        if (active) setContacts(options)
+      })
+      .catch(() => {
+        if (active) setContacts([])
+      })
     return () => {
       active = false
     }
-  }, [contactIds])
+  }, [contactIds, provider])
 
   const summary = deriveRecipientSummary(
     data.recipients_spec,
@@ -120,6 +123,11 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
       <HumanInputNodeBranches {...props} />
     </>
   )
+}
+
+export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
+  const { provider, workspaceId } = useContactRecipientOptionProvider()
+  return <HumanInputV2NodeContent key={workspaceId} {...props} provider={provider} />
 }
 
 export default React.memo(HumanInputV2Node)

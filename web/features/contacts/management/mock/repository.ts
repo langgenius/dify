@@ -53,6 +53,11 @@ export function createContactsMockRepository({
   }
 
   return {
+    async getContact(contactId) {
+      await wait()
+      const contact = contacts.find((item) => item.id === contactId)
+      return contact ? structuredClone(contact) : null
+    },
     async findExternalContactsByEmails(command) {
       await wait()
       const emails = new Set(command.emails.map(normalizeEmail))

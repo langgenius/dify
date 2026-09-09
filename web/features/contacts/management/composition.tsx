@@ -10,7 +10,7 @@ import { currentWorkspaceIdAtom, isCurrentWorkspaceManagerAtom } from '@/context
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { ContactsFeatureContext, ContactsManagementRepositoryContext } from './composition-context'
 import { createContactsMockRepository } from './mock/repository'
-import { createDefaultContactsScenario } from './mock/scenarios'
+import { createContactsApiRepository } from './repository'
 
 export function ContactsManagementProvider({
   children,
@@ -69,12 +69,23 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
       : deploymentEdition === 'CLOUD'
         ? 'saas'
         : ('ce' as const)
-  const scenario = useMemo(() => {
-    const defaultScenario = createDefaultContactsScenario(deployment, canManage)
-    return { ...defaultScenario, workspaceId: workspaceId || defaultScenario.workspaceId }
-  }, [canManage, deployment, workspaceId])
+  const repository = useMemo(() => createContactsApiRepository(), [])
+  const context = useMemo<ContactsFeatureContextValue>(
+    () => ({
+      deployment,
+      workspaceId,
+      permissions: {
+        canViewContacts: Boolean(workspaceId) && canManage,
+        canManageContacts: Boolean(workspaceId) && canManage,
+        canManageMembers: Boolean(workspaceId) && canManage,
+      },
+    }),
+    [canManage, deployment, workspaceId],
+  )
 
   return (
-    <ContactsManagementMockProvider scenario={scenario}>{children}</ContactsManagementMockProvider>
+    <ContactsManagementProvider key={workspaceId} context={context} repository={repository}>
+      {children}
+    </ContactsManagementProvider>
   )
 }

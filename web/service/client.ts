@@ -517,6 +517,38 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
   {
     path: ['console'],
     experimental_defaults: {
+      workspaces: {
+        current: {
+          humanInput: {
+            contacts: {
+              external: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _onMutateResult, context) =>
+                      invalidateHumanInputContactQueries(context.client),
+                  },
+                },
+                byContactId: {
+                  patch: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(context.client),
+                    },
+                  },
+                },
+              },
+              remove: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _onMutateResult, context) =>
+                      invalidateHumanInputContactQueries(context.client),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       account: {
         education: {
           get: {
@@ -1753,3 +1785,11 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
     },
   },
 )
+
+export function invalidateHumanInputContactQueries(client: QueryClient, workspaceId?: string) {
+  return invalidateQueryKeys(client, [
+    workspaceId ? ['contacts-management', workspaceId] : ['contacts-management'],
+    consoleQuery.workspaces.current.humanInput.contacts.key(),
+    consoleQuery.workspaces.current.humanInput.contactOptions.key(),
+  ])
+}

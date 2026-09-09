@@ -4,6 +4,17 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { UserActionButtonType } from '../../human-input/shared/types'
 import { HumanInputV2Node } from '../node'
 
+vi.mock('../contact-provider', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../contact-provider')>()
+  return {
+    ...actual,
+    useContactRecipientOptionProvider: () => ({
+      provider: actual.mockContactRecipientOptionProvider,
+      workspaceId: 'workspace-1',
+    }),
+  }
+})
+
 vi.mock('../../_base/components/node-handle', () => ({
   NodeSourceHandle: (props: { handleId: string }) => <div>{`handle:${props.handleId}`}</div>,
 }))

@@ -1,3 +1,9 @@
+import type {
+  HumanInputContact,
+  HumanInputContactType,
+  ImBinding,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+
 export type ContactsDeployment = 'ce' | 'saas' | 'ee'
 
 export type ContactsPermissions = {
@@ -12,23 +18,15 @@ export type ContactsFeatureContextValue = {
   workspaceId: string
 }
 
-export type ContactType = 'workspace' | 'platform' | 'external'
+export type ContactType = HumanInputContactType
 export type ContactTypeFilter = 'all' | ContactType
 
-export type ContactIMBinding = {
-  id: string
-  provider: string
-  scope: 'organization' | 'workspace'
-}
+export type ContactIMBinding = ImBinding
 
-export type ContactView = {
+export type ContactView = HumanInputContact & {
   avatar_url: string
-  created_at: number
   email: string | null
-  id: string
   im_bindings: ContactIMBinding[]
-  name: string
-  type: ContactType
 }
 
 export type AvailablePlatformContact = {
@@ -68,7 +66,7 @@ export type CreateExternalContactCommand = {
 
 export type CreateExternalContactResult =
   | { contactId: string; kind: 'created' }
-  | { contactId: string; kind: 'duplicate_external_contact' }
+  | { contactId?: string; kind: 'duplicate_external_contact' }
   | { contactId: string; kind: 'matches_workspace_contact' }
   | { contactId: string; kind: 'matches_platform_contact' }
   | { kind: 'failed' }
@@ -79,7 +77,7 @@ export type UpdateExternalContactCommand = CreateExternalContactCommand & {
 
 export type UpdateExternalContactResult =
   | { contactId: string; kind: 'updated' }
-  | { contactId: string; kind: 'duplicate_external_contact' }
+  | { contactId?: string; kind: 'duplicate_external_contact' }
   | { contactId: string; kind: 'matches_workspace_contact' }
   | { contactId: string; kind: 'matches_platform_contact' }
   | { kind: 'failed' }
