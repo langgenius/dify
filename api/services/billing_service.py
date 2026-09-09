@@ -10,6 +10,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
@@ -647,9 +648,10 @@ class BillingService:
         params: dict[str, Any] | None = None,
     ) -> httpx.Response:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
+        network_access_base_url = dify_config.NETWORK_ACCESS_API_URL.strip() or cls.base_url
         return _http_client.request(
             method,
-            f"{cls.base_url}{endpoint}",
+            f"{network_access_base_url.rstrip('/')}{endpoint}",
             json=payload_json,
             params=params,
             headers=headers,

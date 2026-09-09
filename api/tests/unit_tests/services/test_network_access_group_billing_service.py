@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call, patch
 import httpx
 import pytest
 
+from configs import dify_config
 from services.billing_service import BillingService, NetworkAccessGroupUpstreamError
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -18,8 +19,69 @@ def billing_config() -> Iterator[None]:
     with (
         patch.object(BillingService, "base_url", "https://billing.internal/v1"),
         patch.object(BillingService, "secret_key", "test-secret"),
+        patch.object(dify_config, "NETWORK_ACCESS_API_URL", ""),
     ):
         yield
+
+
+@pytest.mark.usefixtures("billing_config")
+def test_network_access_requests_use_independent_api_url_when_configured() -> None:
+    response = MagicMock(status_code=httpx.codes.OK)
+    response.json.return_value = {"tenant_id": TENANT_ID, "entitled": True, "groups": []}
+
+    with (
+        patch.object(dify_config, "NETWORK_ACCESS_API_URL", "https://saas.internal/v1/"),
+        patch("services.billing_service._http_client.request", return_value=response) as request,
+    ):
+        BillingService.list_network_access_groups(TENANT_ID, ACCOUNT_ID)
+
+    request.assert_called_once_with(
+        "GET",
+        f"https://saas.internal/v1/tenants/{TENANT_ID}/network-access-groups",
+        json=None,
+        params={"actor_account_id": ACCOUNT_ID},
+        headers=HEADERS,
+        follow_redirects=True,
+    )
+
+
+@pytest.mark.usefixtures("billing_config")
+def test_network_access_requests_fall_back_to_billing_api_url_at_request_time() -> None:
+    response = MagicMock(status_code=httpx.codes.OK)
+    response.json.return_value = {"tenant_id": TENANT_ID, "entitled": True, "groups": []}
+
+    with patch("services.billing_service._http_client.request", return_value=response) as request:
+        BillingService.list_network_access_groups(TENANT_ID, ACCOUNT_ID)
+
+    request.assert_called_once_with(
+        "GET",
+        f"https://billing.internal/v1/tenants/{TENANT_ID}/network-access-groups",
+        json=None,
+        params={"actor_account_id": ACCOUNT_ID},
+        headers=HEADERS,
+        follow_redirects=True,
+    )
+
+
+@pytest.mark.usefixtures("billing_config")
+def test_subscription_requests_keep_using_billing_api_url() -> None:
+    response = MagicMock(status_code=httpx.codes.OK)
+    response.json.return_value = {"subscription": {"plan": "professional"}}
+
+    with (
+        patch.object(dify_config, "NETWORK_ACCESS_API_URL", "https://saas.internal/v1"),
+        patch("services.billing_service._http_client.request", return_value=response) as request,
+    ):
+        BillingService._send_request("GET", "/subscription/info", params={"tenant_id": TENANT_ID})
+
+    request.assert_called_once_with(
+        "GET",
+        "https://billing.internal/v1/subscription/info",
+        json=None,
+        params={"tenant_id": TENANT_ID},
+        headers=HEADERS,
+        follow_redirects=True,
+    )
 
 
 @pytest.mark.usefixtures("billing_config")
