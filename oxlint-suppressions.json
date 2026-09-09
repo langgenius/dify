@@ -5497,11 +5497,6 @@
       "count": 6
     }
   },
-  "web/service/fetch.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/service/fetch.ts": {
     "no-restricted-imports": {
       "count": 1
