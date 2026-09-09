@@ -17,7 +17,7 @@ from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_account, load_app, load_end_user
+from controllers.openapi.auth.loaders import PathParam, load_account, load_app, load_end_user
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -55,7 +55,7 @@ class CheckFormSurface(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        form_token = ctx.view_args["form_token"]
+        form_token = ctx.view_args[PathParam.FORM_TOKEN]
         app = load_app(ctx)
         # `HumanInputService` takes an engine or a maker, never a `Session`, so this
         # read is a separate transaction from the handler's — as it was before the move.

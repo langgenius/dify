@@ -349,8 +349,8 @@ def mint_oauth_token(
     index predicate so re-login INSERTs fresh. Pre-rotate Redis entry is
     deleted so stale AuthContext drops immediately.
     """
-    if token_type.subject is SubjectType.ACCOUNT:
-        # Account flow always writes the sentinel — caller may pass None
+    if token_type.subject.bound_to_account:
+        # Account-bound flows always write the sentinel — caller may pass None
         # (for clarity) or the sentinel itself; nothing else is valid.
         if subject_issuer not in (None, ACCOUNT_ISSUER_SENTINEL):
             raise ValueError(f"account-flow token must use ACCOUNT_ISSUER_SENTINEL, got {subject_issuer!r}")
