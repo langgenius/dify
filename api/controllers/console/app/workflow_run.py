@@ -16,6 +16,7 @@ from controllers.console.wraps import (
     model_validate,
 )
 from extensions.ext_application_services import application_services
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.workflow_run_fields import (
     AdvancedChatWorkflowRunPaginationResponse,
@@ -24,6 +25,8 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
+    workflow_run_pagination_response_source,
+    workflow_run_response_source,
 )
 from libs.custom_inputs import time_duration
 from libs.helper import dump_response, uuid_value
@@ -158,7 +161,10 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
             triggered_from=_triggered_from(req_data.triggered_from),
         )
 
-        return dump_response(AdvancedChatWorkflowRunPaginationResponse, result)
+        return dump_response(
+            AdvancedChatWorkflowRunPaginationResponse,
+            workflow_run_pagination_response_source(result, session=db.session()),
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
@@ -219,7 +225,9 @@ class WorkflowRunListApi(Resource):
             triggered_from=_triggered_from(req_data.triggered_from),
         )
 
-        return dump_response(WorkflowRunPaginationResponse, result)
+        return dump_response(
+            WorkflowRunPaginationResponse, workflow_run_pagination_response_source(result, session=db.session())
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
@@ -280,7 +288,9 @@ class WorkflowRunDetailApi(Resource):
         if workflow_run is None:
             raise NotFoundError("Workflow run not found")
 
-        return dump_response(WorkflowRunDetailResponse, workflow_run)
+        return dump_response(
+            WorkflowRunDetailResponse, workflow_run_response_source(workflow_run, session=db.session())
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
