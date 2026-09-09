@@ -81,7 +81,7 @@ Internal trace and span IDs are UUID5 values derived from tenant, operation and 
 
 ### Destination and asynchronous work
 
-`TraceProviderSettings` contains tenant/app, `destination_type` (`app_provider` or `enterprise`), provider name, configuration ID/revision and a settings fingerprint. The fingerprint is HMAC-SHA256 over the tenant ID and canonical settings, keyed by the deployment's `SECRET_KEY`; it does not expose a plain hash that could be used to guess credentials. It contains no decrypted credentials. An app-provider destination requires the same app as its trace source.
+`TraceProviderSettings` contains tenant/app, `destination_type` (`app_provider` or `enterprise`), provider name, configuration ID/revision and a settings fingerprint. The fingerprint is HMAC-SHA256 over the tenant ID and canonical settings, keyed by the deployment's `SECRET_KEY`; it does not expose a plain hash that could be used to guess credentials. This MAC identifies configuration changes and is compared in constant time before export; it is never used to store or verify passwords. It contains no decrypted credentials. An app-provider destination requires the same app as its trace source.
 
 `QueuedTrace` contains `trace_json: bytes`, `provider_settings` and a deterministic `export_id` derived from source operation, root span and destination identity/revision. One trace with app and enterprise destinations becomes two independent work items, each with its own payload and delivery status.
 

@@ -19,7 +19,11 @@ if TYPE_CHECKING:
 
 
 def _settings_hash(tenant_id: str, settings: dict[str, Any]) -> str:
-    """Identify one configuration without publishing a guessable hash of its credentials."""
+    """Detect configuration changes with a tenant-scoped MAC, never authenticate passwords.
+
+    SECRET_KEY prevents guesses of low-entropy credentials from a leaked digest.
+    The digest only binds queued deliveries to the configuration they captured.
+    """
     from configs import dify_config
 
     if not dify_config.SECRET_KEY:
@@ -133,9 +137,8 @@ def load_trace_provider_config(settings: TraceProviderSettings) -> dict[str, Any
             ):
                 raise ValueError("configuration_changed")
         enterprise_config = _enterprise_config()
-        if (
-            enterprise_config is None
-            or _settings_hash(settings.tenant_id, enterprise_config) != settings.destination_settings_hash
+        if enterprise_config is None or not hmac.compare_digest(
+            _settings_hash(settings.tenant_id, enterprise_config).encode(), settings.destination_settings_hash.encode()
         ):
             raise ValueError("configuration_changed")
         return enterprise_config
@@ -159,7 +162,9 @@ def load_trace_provider_config(settings: TraceProviderSettings) -> dict[str, Any
         if not selected.get("enabled") or selected.get("tracing_provider") != settings.provider_name:
             raise ValueError("configuration_changed")
         encrypted = dict(config.tracing_config or {})
-        if _settings_hash(settings.tenant_id, encrypted) != settings.destination_settings_hash:
+        if not hmac.compare_digest(
+            _settings_hash(settings.tenant_id, encrypted).encode(), settings.destination_settings_hash.encode()
+        ):
             raise ValueError("configuration_changed")
     return decrypt_provider_config(settings.tenant_id, settings.provider_name, encrypted)
 
