@@ -97,9 +97,6 @@ from services.file_service import FileService
 logger = logging.getLogger(__name__)
 
 _SKILL_MD = "SKILL.md"
-_MAX_SKILL_BYTES = 200 * 1024 * 1024
-_MAX_FILES_PER_SKILL = 5000
-_MAX_ZIP_COMPRESSION_RATIO = 1000
 _MAX_FILE_CHECK_ITEMS = 100
 _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
@@ -3943,7 +3940,7 @@ class SkillManagementService:
     def _validate_archive_limits(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
         """Validate ZIP metadata before any member is decompressed or persisted."""
         infos = archive.infolist()
-        if len(infos) > _MAX_FILES_PER_SKILL:
+        if len(infos) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
             raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
 
         total_uncompressed = 0
@@ -3952,12 +3949,15 @@ class SkillManagementService:
                 raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
 
             total_uncompressed += info.file_size
-            if total_uncompressed > _MAX_SKILL_BYTES:
-                raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+            if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+                raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
 
             if info.is_dir() or info.file_size == 0:
                 continue
-            if info.compress_size == 0 or info.file_size / info.compress_size > _MAX_ZIP_COMPRESSION_RATIO:
+            if (
+                info.compress_size == 0
+                or info.file_size / info.compress_size > dify_config.SKILL_PACKAGE_MAX_COMPRESSION_RATIO
+            ):
                 raise SkillManagementServiceError(
                     "invalid_skill_package",
                     "skill package compression ratio exceeds the allowed limit",
@@ -4151,7 +4151,7 @@ class SkillManagementService:
                     )
                 parent = posixpath.dirname(parent)
 
-        if len(entries_by_path) > _MAX_FILES_PER_SKILL:
+        if len(entries_by_path) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
             raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
 
         rows: list[SkillDraftFile] = []
@@ -4184,8 +4184,8 @@ class SkillManagementService:
                 )
             )
 
-        if total_size > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+        if total_size > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+            raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
         return rows
 
     def _sync_skill_metadata_from_draft_skill_md(self, *, skill: Skill, content: str) -> None:
@@ -4445,8 +4445,8 @@ class SkillManagementService:
     @staticmethod
     def _enforce_total_size(files: list[SkillDraftFile]) -> None:
         total = sum(file.size or 0 for file in {file.path: file for file in files}.values())
-        if total > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+        if total > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+            raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
 
     @staticmethod
     def _load_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:

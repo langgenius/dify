@@ -9,8 +9,8 @@ import zlib
 
 import pytest
 
-from services.agent import skill_package_service as skill_package_service_module
 from services.agent.skill_package_service import NormalizedSkillPackage, SkillPackageError, SkillPackageService
+from tests.unit_tests.config_override import apply_config_overrides
 
 _SKILL_MD = """---
 name: pdf-toolkit
@@ -221,7 +221,7 @@ def test_empty_archive_rejected():
 
 
 def test_validate_and_normalize_rejects_skill_md_too_large(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(skill_package_service_module, "_MAX_SKILL_MD_BYTES", 8)
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_SKILL_MD_BYTES=8)
 
     with pytest.raises(SkillPackageError) as exc_info:
         _normalize({"SKILL.md": _SKILL_MD.encode()})
@@ -229,15 +229,15 @@ def test_validate_and_normalize_rejects_skill_md_too_large(monkeypatch: pytest.M
 
 
 def test_validate_and_normalize_rejects_too_many_entries(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(skill_package_service_module, "_MAX_ENTRIES", 1)
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_ENTRIES=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('x')\n"})
+        _normalize({"SKILL.md": _SKILL_MD.encode(), "assets/": b""})
     assert exc_info.value.code == "too_many_entries"
 
 
 def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(skill_package_service_module, "_MAX_UNCOMPRESSED_BYTES", 32)
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=32)
 
     with pytest.raises(SkillPackageError) as exc_info:
         _normalize({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"x" * 33})
@@ -245,13 +245,19 @@ def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypat
 
 
 def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeypatch: pytest.MonkeyPatch):
-    from tests.unit_tests.config_override import apply_config_overrides
-
     apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"x" * (1024 * 1024 + 1), filename="skill.zip")
     assert exc_info.value.code == "archive_too_large"
+
+
+def test_validate_and_normalize_applies_configured_compression_ratio(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_COMPRESSION_RATIO=1)
+
+    with pytest.raises(SkillPackageError) as exc_info:
+        _normalize({"SKILL.md": _SKILL_MD.encode(), "data.bin": b"x" * 1024})
+    assert exc_info.value.code == "invalid_archive"
 
 
 def test_bad_frontmatter_yaml_rejected():
