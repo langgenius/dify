@@ -644,3 +644,67 @@ it.each([false, true])('keeps throttle(Infinity) local (existing timer: %s)', as
     vi.useRealTimers()
   }
 })
+
+it.each(['push', 'replace'] as const)(
+  'refreshes an unchanged URL on explicit non-shallow %s submission',
+  async (history) => {
+    vi.useFakeTimers()
+    try {
+      window.history.replaceState(null, '', '/documents?page=1')
+      await Promise.resolve()
+      const refresh = vi.fn()
+      const adapter = createBrowserQueryAdapter({
+        initialUrl: new URL(window.location.href),
+        refresh,
+      })
+      let store!: ReturnType<typeof createStore>
+      function Capture() {
+        store = useStore()
+        return null
+      }
+      render(
+        <QueryStateProvider adapter={adapter}>
+          <Capture />
+        </QueryStateProvider>,
+      )
+      const typing = store.set(pageAtom, 2)
+      await vi.runAllTimersAsync()
+      await typing
+      expect(refresh).not.toHaveBeenCalled()
+      const historyLength = window.history.length
+      const submit = store.set(pageAtom, 2, { shallow: false, history })
+      await vi.runAllTimersAsync()
+      expect((await submit).get('page')).toBe('2')
+      expect(refresh).toHaveBeenCalledOnce()
+      expect(refresh.mock.calls[0]![0].search).toBe('?page=2')
+      expect(window.history.length).toBe(historyLength)
+      const noop = store.set(pageAtom, 2)
+      await vi.runAllTimersAsync()
+      await noop
+      expect(refresh).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+
+it.each([false, true])(
+  'initializes a new consumer during testing-adapter navigation (remount: %s)',
+  (remount) => {
+    function ReadPage() {
+      const page = useAtomValue(pageAtom)
+      return <p>Page {page}</p>
+    }
+    const rendered = render(
+      <QueryTestingAdapter searchParams="?page=1">
+        {remount ? <ReadPage key="first" /> : null}
+      </QueryTestingAdapter>,
+    )
+    rendered.rerender(
+      <QueryTestingAdapter searchParams="?page=7">
+        <ReadPage key="second" />
+      </QueryTestingAdapter>,
+    )
+    expect(screen.getByText('Page 7')).toBeDefined()
+  },
+)

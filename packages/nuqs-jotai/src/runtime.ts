@@ -99,7 +99,7 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     const settled = reset()
     writingHref = next.href
     try {
-      if (next.href !== latest.href) {
+      if (next.href !== latest.href || !options.shallow) {
         // Reserve the interval before adapter callbacks can enqueue another write.
         lastWrite = Date.now()
         adapter.write(next, options)
