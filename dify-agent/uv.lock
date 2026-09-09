@@ -636,7 +636,7 @@ docs = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.38.0,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=15756729691f65ed764d90bc6c7dd3e77bd59729" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.8.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
@@ -867,8 +867,8 @@ wheels = [
 
 [[package]]
 name = "graphon"
-version = "0.7.0"
-source = { git = "https://github.com/langgenius/graphon?rev=15756729691f65ed764d90bc6c7dd3e77bd59729#15756729691f65ed764d90bc6c7dd3e77bd59729" }
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },
@@ -889,6 +889,10 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unstructured", extra = ["docx", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/82/a2ded2b6a7879e7ee855936db7410014cd41c1c709155a1ccfe07e208633/graphon-0.8.0.tar.gz", hash = "sha256:654ad8f5cb7ff1711cf6b09e68a6afc7fe1e552b2f8306babdb848142d0a6bf7", size = 281821, upload-time = "2026-09-09T20:03:19.606Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/8d/64552a2dc8ef4d1b0c43d927301000533be75d6c51664d5a33fb1ead00ff/graphon-0.8.0-py3-none-any.whl", hash = "sha256:183b668cdd2b1b6c39e75e68778994855400c9a8e314e0bda3b59a2b0fe7e8a0", size = 400203, upload-time = "2026-09-09T20:03:18.198Z" },
 ]
 
 [[package]]
