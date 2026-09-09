@@ -122,7 +122,7 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
 
 def test_cloud_app_cleanup_schedules_independent_binding_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_async = MagicMock()
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
         "apply_async",
@@ -139,7 +139,7 @@ def test_cloud_app_cleanup_schedules_independent_binding_cleanup(monkeypatch: py
 
 def test_community_app_cleanup_does_not_schedule_binding_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_async = MagicMock()
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
         "apply_async",
@@ -153,7 +153,7 @@ def test_community_app_cleanup_does_not_schedule_binding_cleanup(monkeypatch: py
 
 def test_independent_binding_cleanup_task_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = MagicMock(return_value={"deleted": True})
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         remove_app_task_module.BillingService,
         "cleanup_app_network_access_group_binding",
@@ -172,7 +172,7 @@ def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
     upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_APP_STILL_EXISTS")
     retry_error = RuntimeError("retry scheduled")
     retry = MagicMock(side_effect=retry_error)
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         remove_app_task_module.BillingService,
         "cleanup_app_network_access_group_binding",
@@ -196,7 +196,7 @@ def test_parent_local_cleanup_failure_happens_after_binding_cleanup_is_scheduled
     retry_error = RuntimeError("parent retry scheduled")
     apply_async = MagicMock()
     retry = MagicMock(side_effect=retry_error)
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
         "apply_async",
@@ -220,7 +220,7 @@ def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(monkeyp
     retry_error = RuntimeError("parent retry scheduled")
     retry = MagicMock(side_effect=retry_error)
     first_local_cleanup = MagicMock()
-    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
         "apply_async",

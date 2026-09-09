@@ -821,11 +821,11 @@ class TestBillingPaidPlanRequired:
         assert exc_info.value.code == 403
         assert "requires a paid plan" in str(exc_info.value.description)
 
-    def test_should_return_service_unavailable_when_billing_lookup_fails(self):
+    def test_should_return_service_unavailable_when_billing_lookup_fails(self) -> None:
         app = create_app_with_login()
 
         @cloud_edition_billing_paid_plan_required
-        def paid_view():
+        def paid_view() -> str:
             return "paid_success"
 
         with app.test_request_context():
