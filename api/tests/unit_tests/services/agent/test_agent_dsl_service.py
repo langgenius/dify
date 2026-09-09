@@ -573,9 +573,49 @@ def test_extract_package_dependencies_covers_models_features_tools_and_knowledge
                         "retrieval": {
                             "mode": "single",
                             "model": {"provider": "provider/retrieval", "name": "embed", "mode": "embedding"},
+                        },
+                        "metadata_filtering": {
+                            "mode": "automatic",
+                            "model_config": {
+                                "provider": "provider/metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    },
+                    {
+                        "id": "set-2",
+                        "name": "Reranked Set",
+                        "datasets": [{"id": "dataset-2", "name": "Reranked Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "reranking_model",
                             "reranking_model": {"provider": "provider/rerank", "model": "rerank"},
                         },
-                    }
+                    },
+                    {
+                        "id": "set-3",
+                        "name": "Weighted Set",
+                        "datasets": [{"id": "dataset-3", "name": "Weighted Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": True,
+                            "reranking_mode": "weighted_score",
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/embedding",
+                                    "embedding_model_name": "embedding-model",
+                                    "vector_weight": 0.7,
+                                },
+                                "keyword_setting": {"keyword_weight": 0.3},
+                            },
+                        },
+                    },
                 ]
             },
         }
@@ -591,8 +631,66 @@ def test_extract_package_dependencies_covers_models_features_tools_and_knowledge
         "tool:provider/tool",
         "tool:plugin-id/fallback-provider",
         "model:provider/retrieval",
+        "model:provider/metadata",
         "model:provider/rerank",
+        "model:provider/embedding",
     ]
+
+
+def test_extract_package_dependencies_ignores_inactive_knowledge_models(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
+    monkeypatch.setattr(
+        "services.agent.dependency_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        model_dependency,
+    )
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "set-1",
+                        "name": "Set",
+                        "datasets": [{"id": "dataset-1", "name": "Docs"}],
+                        "query": {"mode": "user_query", "value": "query"},
+                        "retrieval": {
+                            "mode": "multiple",
+                            "top_k": 5,
+                            "reranking_enable": False,
+                            "reranking_mode": "weighted_score",
+                            "reranking_model": {"provider": "provider/inactive-rerank", "model": "rerank"},
+                            "weights": {
+                                "vector_setting": {
+                                    "embedding_provider_name": "provider/inactive-embedding",
+                                }
+                            },
+                            "model": {
+                                "provider": "provider/inactive-retrieval",
+                                "name": "retrieval-model",
+                                "mode": "chat",
+                            },
+                        },
+                        "metadata_filtering": {
+                            "mode": "disabled",
+                            "model_config": {
+                                "provider": "provider/inactive-metadata",
+                                "name": "metadata-model",
+                                "mode": "chat",
+                            },
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    dependencies = AgentDslService(unbound_session).extract_package_dependencies(
+        {"agent_1": make_portable_agent_package(_agent(), soul)}
+    )
+
+    assert dependencies == []
+    model_dependency.assert_not_called()
 
 
 def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Session) -> None:
