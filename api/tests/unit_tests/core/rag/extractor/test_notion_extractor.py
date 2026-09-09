@@ -626,3 +626,18 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceFound)
 
         assert notion_extractor.NotionExtractor._get_access_token("tenant", "cred") == "token-from-credential"
+
+
+def test_get_cell_text_uses_plain_text_for_mention_and_equation_segments():
+    # Notion rich text segments of type mention or equation carry plain_text
+    # but no "text" object; they must not be dropped from the cell content.
+    cell = [
+        {"type": "text", "text": {"content": "see "}, "plain_text": "see "},
+        {"type": "mention", "mention": {"type": "user", "user": {}}, "plain_text": "@alice"},
+        {"type": "equation", "equation": {"expression": "e=mc^2"}, "plain_text": "e=mc^2"},
+    ]
+    assert notion_extractor.NotionExtractor._get_cell_text(cell) == "see @alicee=mc^2"
+    # Empty cell stays an empty column.
+    assert notion_extractor.NotionExtractor._get_cell_text([]) == ""
+    # Fall back to text.content when plain_text is absent.
+    assert notion_extractor.NotionExtractor._get_cell_text([{"text": {"content": "x"}}]) == "x"

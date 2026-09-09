@@ -290,6 +290,13 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
+    @staticmethod
+    def _get_cell_text(cell: list[dict[str, Any]]) -> str:
+        # A cell is an array of rich text segments (text, mention, equation);
+        # join them so one cell always maps to one Markdown column, keeping
+        # empty cells as empty columns so the column count stays stable.
+        return "".join(segment.get("plain_text") or segment.get("text", {}).get("content", "") for segment in cell)
+
     def _read_table_rows(self, block_id: str) -> str:
         """Read table rows."""
         assert self._notion_access_token is not None, "Notion access token is required"
@@ -316,14 +323,7 @@ class NotionExtractor(BaseExtractor):
             table_header_cell_texts = []
             table_header_cells = data["results"][0]["table_row"]["cells"]
             for table_header_cell in table_header_cells:
-                # A cell is an array of rich text segments; join them so one
-                # cell always maps to one Markdown column.
-                text = "".join(
-                    table_header_cell_text["text"]["content"]
-                    for table_header_cell_text in table_header_cell
-                    if "text" in table_header_cell_text
-                )
-                table_header_cell_texts.append(text)
+                table_header_cell_texts.append(self._get_cell_text(table_header_cell))
             # Initialize Markdown table with headers
             markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
             markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
@@ -334,14 +334,7 @@ class NotionExtractor(BaseExtractor):
                 column_texts = []
                 table_column_cells = data["results"][i + 1]["table_row"]["cells"]
                 for table_column_cell in table_column_cells:
-                    # Join the rich text segments of each cell and keep empty
-                    # cells as empty columns so the column count stays stable.
-                    column_text = "".join(
-                        table_column_cell_text["text"]["content"]
-                        for table_column_cell_text in table_column_cell
-                        if "text" in table_column_cell_text
-                    )
-                    column_texts.append(column_text)
+                    column_texts.append(self._get_cell_text(table_column_cell))
                 # Add row to Markdown table
                 markdown_table += "| " + " | ".join(column_texts) + " |\n"
             result_lines_arr.append(markdown_table)
