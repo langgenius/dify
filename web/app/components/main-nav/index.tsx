@@ -28,7 +28,7 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
 const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
 
-export function MainNav({ className }: MainNavProps) {
+export function MainNav({ className, initialPlatform }: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
@@ -109,7 +109,7 @@ export function MainNav({ className }: MainNavProps) {
       <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
           {renderLogo()}
-          <MainNavSearchButton />
+          <MainNavSearchButton initialPlatform={initialPlatform} />
         </div>
         <div className="p-2">
           <WorkspaceCard />

@@ -323,6 +323,9 @@ catalogs:
     '@types/sortablejs':
       specifier: 1.15.9
       version: 1.15.9
+    '@types/ua-parser-js':
+      specifier: 0.7.39
+      version: 0.7.39
     '@typescript-eslint/parser':
       specifier: 8.69.0
       version: 8.69.0
@@ -668,6 +671,9 @@ catalogs:
     typescript:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
+    ua-parser-js:
+      specifier: 1.0.41
+      version: 1.0.41
     uglify-js:
       specifier: 3.19.3
       version: 3.19.3
@@ -1582,6 +1588,9 @@ importers:
       tldts:
         specifier: 'catalog:'
         version: 7.4.11
+      ua-parser-js:
+        specifier: 'catalog:'
+        version: 1.0.41
       unist-util-visit:
         specifier: 'catalog:'
         version: 5.1.0
@@ -1697,6 +1706,9 @@ importers:
       '@types/sortablejs':
         specifier: 'catalog:'
         version: 1.15.9
+      '@types/ua-parser-js':
+        specifier: 'catalog:'
+        version: 0.7.39
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2
@@ -4764,6 +4776,9 @@ packages:
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
+  '@types/ua-parser-js@0.7.39':
+    resolution: {integrity: sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==}
 
   '@types/unist@2.0.11':
     resolution: {integrity: sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA==}
@@ -8935,6 +8950,10 @@ packages:
     engines: {node: '>=16.20.0'}
     hasBin: true
 
+  ua-parser-js@1.0.41:
+    resolution: {integrity: sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==}
+    hasBin: true
+
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
@@ -12191,6 +12210,8 @@ snapshots:
   '@types/sortablejs@1.15.9': {}
 
   '@types/trusted-types@2.0.7': {}
+
+  '@types/ua-parser-js@0.7.39': {}
 
   '@types/unist@2.0.11': {}
 
@@ -16805,6 +16826,8 @@ snapshots:
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
 
+  ua-parser-js@1.0.41: {}
+
   ufo@1.6.4: {}
 
   uglify-js@3.19.3: {}
@@ -17427,6 +17450,7 @@ time:
   '@hey-api/openapi-ts@0.98.2': '2026-06-08T05:37:17.524Z'
   '@hono/node-server@2.1.1': '2026-08-14T01:14:02.732Z'
   '@iconify-json/heroicons@1.2.3': '2025-09-20T05:33:02.364Z'
+  '@iconify-json/logos@1.2.12': '2026-08-03T04:14:33.604Z'
   '@iconify-json/ri@1.2.10': '2026-02-10T08:41:46.666Z'
   '@lexical/link@0.47.0': '2026-07-09T21:13:20.917Z'
   '@lexical/list@0.47.0': '2026-07-09T21:13:25.619Z'
@@ -17482,6 +17506,7 @@ time:
   '@types/react-dom@19.2.5': '2026-08-23T21:05:23.671Z'
   '@types/react@19.2.18': '2026-07-30T21:54:03.456Z'
   '@types/sortablejs@1.15.9': '2025-10-24T04:31:45.132Z'
+  '@types/ua-parser-js@0.7.39': '2023-11-07T18:19:09.796Z'
   '@typescript-eslint/parser@8.69.0': '2026-08-31T17:09:13.713Z'
   '@typescript/typescript6@6.0.2': '2026-07-06T18:06:47.459Z'
   '@vitejs/plugin-react@6.1.1': '2026-08-28T03:30:56.619Z'
@@ -17599,6 +17624,7 @@ time:
   tldts@7.4.11: '2026-08-24T07:31:22.093Z'
   tsx@4.23.13: '2026-08-30T00:46:16.265Z'
   typescript@7.0.2: '2026-07-08T15:55:18.431Z'
+  ua-parser-js@1.0.41: '2025-08-19T12:45:30.307Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
   undici@7.29.0: '2026-07-24T12:52:58.701Z'
   unist-util-visit@5.1.0: '2026-01-22T19:02:58.977Z'
