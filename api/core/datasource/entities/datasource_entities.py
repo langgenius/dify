@@ -348,6 +348,28 @@ class OnlineDriveFile(BaseModel):
     name: str = Field(..., description="The file name")
     size: int = Field(..., description="The file size")
     type: str = Field(..., description="The file type: folder or file")
+    remote_metadata: dict[str, Any] | None = Field(
+        None,
+        description="Optional provider version_id, etag, checksum and modified_time; not credentials",
+    )
+
+    @field_validator("remote_metadata", mode="before")
+    @classmethod
+    def bounded_remote_metadata(cls, value: Any) -> dict[str, Any] | None:
+        """Keep the optional wire extension bounded without rejecting legacy file listings."""
+        if not isinstance(value, dict):
+            return None
+        result: dict[str, Any] = {
+            key: item
+            for key in ("version_id", "etag", "modified_time")
+            if isinstance(item := value.get(key), str) and len(item) <= 1024
+        }
+        checksum = value.get("checksum")
+        if isinstance(checksum, dict):
+            algorithm, digest = checksum.get("algorithm"), checksum.get("value")
+            if algorithm in ("md5", "sha256") and isinstance(digest, str) and len(digest) <= 64:
+                result["checksum"] = {"algorithm": algorithm, "value": digest}
+        return result or None
 
 
 class OnlineDriveFileBucket(BaseModel):

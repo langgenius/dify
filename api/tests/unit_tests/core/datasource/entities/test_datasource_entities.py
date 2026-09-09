@@ -31,6 +31,54 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolLabelEnum
 
 
+def test_online_drive_remote_metadata_survives_runtime_serialization():
+    response = OnlineDriveBrowseFilesResponse.model_validate(
+        {
+            "result": [
+                {
+                    "files": [
+                        {
+                            "id": "file-1",
+                            "name": "a.pdf",
+                            "size": 10,
+                            "type": "file",
+                            "remote_metadata": {
+                                "version_id": "900719925474099312345",
+                                "etag": '"opaque-2"',
+                                "checksum": {"algorithm": "sha256", "value": "a" * 64},
+                                "modified_time": "2026-09-09T00:00:00Z",
+                                "credentials": "must not pass through",
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+    remote = response.model_dump()["result"][0]["files"][0]["remote_metadata"]
+    assert remote == {
+        "version_id": "900719925474099312345",
+        "etag": '"opaque-2"',
+        "checksum": {"algorithm": "sha256", "value": "a" * 64},
+        "modified_time": "2026-09-09T00:00:00Z",
+    }
+
+
+@pytest.mark.parametrize("metadata", [None, [], "bad", {"etag": "x" * 1025}, {"checksum": []}])
+def test_online_drive_optional_metadata_does_not_break_legacy_files(metadata):
+    file = OnlineDriveFile.model_validate(
+        {
+            "id": "f1",
+            "name": "a.pdf",
+            "size": 10,
+            "type": "file",
+            "remote_metadata": metadata,
+        }
+    )
+    assert file.remote_metadata is None
+    assert file.id == "f1"
+
+
 def test_datasource_provider_type():
     assert DatasourceProviderType.value_of("online_document") == DatasourceProviderType.ONLINE_DOCUMENT
     assert DatasourceProviderType.value_of("local_file") == DatasourceProviderType.LOCAL_FILE

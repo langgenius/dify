@@ -34,6 +34,11 @@ import {
   type SourceDocumentWorkflowOwnership,
   sourceWorkflowOwnershipMatches,
 } from "./source-document-workflow-ownership";
+import {
+  SOURCE_FILE_VERIFICATION_KEY,
+  type SourceFileVerification,
+  readSourceFileVerification,
+} from "./source-file-verification";
 
 import {
   type DatabaseAdapter,
@@ -204,6 +209,7 @@ export interface SourceActiveDocumentInventoryItem {
   readonly revision: number;
   readonly rowVersion: number;
   readonly systemMetadata: Readonly<Record<string, unknown>>;
+  readonly fileVerification?: SourceFileVerification | undefined;
 }
 
 export interface LogicalDocumentRepository {
@@ -291,6 +297,18 @@ export interface LogicalDocumentRepository {
     readonly items: SourceActiveDocumentInventoryItem[];
     readonly nextCursor?: SourceActiveDocumentInventoryCursor | undefined;
   }>;
+  /**
+   * Internal, content-fenced cache of a provider download already matched to published bytes.
+   * Does not mutate immutable revisions, ACLs, user metadata, or the document's row version.
+   * A failed/concurrent publication must never advance this successful-sync baseline.
+   */
+  recordSourceFileVerification?(
+    input: LogicalDocumentScope & {
+      readonly sourceId: string;
+      readonly providerItemId: string;
+      readonly verification: SourceFileVerification;
+    },
+  ): Promise<boolean>;
   patchUserMetadata(input: PatchDocumentUserMetadataInput): Promise<LogicalDocument>;
   patchAvailability?(input: PatchDocumentAvailabilityInput): Promise<LogicalDocument>;
 }
@@ -769,6 +787,9 @@ export function createInMemoryLogicalDocumentRepository({
         }
         const etag =
           typeof active.systemMetadata.etag === "string" ? active.systemMetadata.etag : undefined;
+        const fileVerification = readSourceFileVerification(
+          document.systemMetadata[SOURCE_FILE_VERIFICATION_KEY],
+        );
         return {
           contentHash: active.contentHash,
           documentId: document.id,
@@ -778,6 +799,7 @@ export function createInMemoryLogicalDocumentRepository({
           revision: active.revision,
           rowVersion: document.rowVersion,
           systemMetadata: cloneJsonObject(active.systemMetadata),
+          ...(fileVerification ? { fileVerification } : {}),
         };
       });
       const last = items.at(-1);
@@ -787,6 +809,37 @@ export function createInMemoryLogicalDocumentRepository({
           ? { nextCursor: { documentId: last.documentId, providerItemId: last.providerItemId } }
           : {}),
       };
+    },
+    recordSourceFileVerification: async (input) => {
+      const verification = readSourceFileVerification(input.verification);
+      if (!verification)
+        throw new LogicalDocumentValidationError("Invalid source file verification");
+      const id = providerKeys.get(sourceProviderKey(input) ?? "");
+      const document = id ? documents.get(id) : undefined;
+      const active = document
+        ? (revisions.get(document.id) ?? []).find(
+            (revision) =>
+              revision.revision === document.activeRevision && revision.state === "active",
+          )
+        : undefined;
+      if (
+        !document ||
+        document.status !== "ready" ||
+        document.enabled === false ||
+        active?.contentHash !== verification.contentHash
+      )
+        return false;
+      documents.set(
+        document.id,
+        cloneDocument({
+          ...document,
+          systemMetadata: {
+            ...document.systemMetadata,
+            [SOURCE_FILE_VERIFICATION_KEY]: verification,
+          },
+        }),
+      );
+      return true;
     },
     patchUserMetadata: async (input) => {
       if (
@@ -1645,12 +1698,17 @@ export function createDatabaseLogicalDocumentRepository({
         maxRows: input.limit + 1,
         operation: "select",
         params,
-        sql: `SELECT document.${q(database, "id")} AS ${q(database, "document_id")}, document.${q(database, "provider_item_id")}, document.${q(database, "row_version")}, document.${q(database, "enabled")}, revision.${q(database, "revision")}, revision.${q(database, "content_hash")}, revision.${q(database, "system_metadata")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} AND revision.${q(database, "revision")} = document.${q(database, "active_revision")} AND revision.${q(database, "state")} = 'active' WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND document.${q(database, "source_id")} = ${p(database, 3)} AND document.${q(database, "status")} = 'ready'${cursorFilter} ORDER BY document.${q(database, "provider_item_id")} ASC, document.${q(database, "id")} ASC LIMIT ${p(database, params.length)};`,
+        sql: `SELECT document.${q(database, "id")} AS ${q(database, "document_id")}, document.${q(database, "provider_item_id")}, document.${q(database, "row_version")}, document.${q(database, "enabled")}, revision.${q(database, "revision")}, revision.${q(database, "content_hash")}, revision.${q(database, "system_metadata")}, document.${q(database, "system_metadata")} AS ${q(database, "document_system_metadata")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} AND revision.${q(database, "revision")} = document.${q(database, "active_revision")} AND revision.${q(database, "state")} = 'active' WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND document.${q(database, "source_id")} = ${p(database, 3)} AND document.${q(database, "status")} = 'ready'${cursorFilter} ORDER BY document.${q(database, "provider_item_id")} ASC, document.${q(database, "id")} ASC LIMIT ${p(database, params.length)};`,
         tableName: "logical_documents",
       });
       const items = result.rows.slice(0, input.limit).map((row) => {
         const systemMetadata = jsonObjectColumn(row, "system_metadata");
         const etag = typeof systemMetadata.etag === "string" ? systemMetadata.etag : undefined;
+        const fileVerification = readSourceFileVerification(
+          row.document_system_metadata === undefined
+            ? undefined
+            : jsonObjectColumn(row, "document_system_metadata")[SOURCE_FILE_VERIFICATION_KEY],
+        );
         return {
           contentHash: stringColumn(row, "content_hash"),
           documentId: stringColumn(row, "document_id"),
@@ -1660,6 +1718,7 @@ export function createDatabaseLogicalDocumentRepository({
           revision: numberColumn(row, "revision"),
           rowVersion: numberColumn(row, "row_version"),
           systemMetadata,
+          ...(fileVerification ? { fileVerification } : {}),
         };
       });
       const last = items.at(-1);
@@ -1670,6 +1729,48 @@ export function createDatabaseLogicalDocumentRepository({
           : {}),
       };
     },
+    recordSourceFileVerification: (input) =>
+      database.transaction(async (transaction) => {
+        const verification = readSourceFileVerification(input.verification);
+        if (!verification)
+          throw new LogicalDocumentValidationError("Invalid source file verification");
+        await requireWritableSpace(database, transaction, input);
+        const selected = await transaction.execute({
+          maxRows: 1,
+          operation: "select",
+          params: [input.tenantId, input.knowledgeSpaceId, input.sourceId, input.providerItemId],
+          sql: `SELECT * FROM ${q(database, "logical_documents")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "source_id")} = ${p(database, 3)} AND ${q(database, "provider_item_id")} = ${p(database, 4)} AND ${q(database, "status")} = 'ready' AND ${q(database, "deletion_job_id")} IS NULL LIMIT 1 FOR UPDATE;`,
+          tableName: "logical_documents",
+        });
+        const document = selected.rows[0] ? mapDocument(selected.rows[0]) : undefined;
+        if (!document || document.enabled === false || document.activeRevision === undefined)
+          return false;
+        const active = await readRevision(transaction, {
+          ...input,
+          documentId: document.id,
+          revision: document.activeRevision,
+        });
+        if (active?.state !== "active" || active.contentHash !== verification.contentHash)
+          return false;
+        const updated = await transaction.execute({
+          maxRows: 0,
+          operation: "update",
+          params: [
+            JSON.stringify({
+              ...document.systemMetadata,
+              [SOURCE_FILE_VERIFICATION_KEY]: verification,
+            }),
+            input.tenantId,
+            input.knowledgeSpaceId,
+            document.id,
+            document.activeRevision,
+            document.rowVersion,
+          ],
+          sql: `UPDATE ${q(database, "logical_documents")} SET ${q(database, "system_metadata")} = ${jsonP(database, 1)} WHERE ${q(database, "tenant_id")} = ${p(database, 2)} AND ${q(database, "knowledge_space_id")} = ${p(database, 3)} AND ${q(database, "id")} = ${p(database, 4)} AND ${q(database, "active_revision")} = ${p(database, 5)} AND ${q(database, "row_version")} = ${p(database, 6)} AND ${q(database, "status")} = 'ready' AND ${q(database, "deletion_job_id")} IS NULL;`,
+          tableName: "logical_documents",
+        });
+        return updated.rowsAffected === 1;
+      }),
     patchUserMetadata: (input) =>
       database.transaction(async (transaction) => {
         await requireWritableSpace(database, transaction, input);

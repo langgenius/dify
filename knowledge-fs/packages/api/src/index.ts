@@ -666,6 +666,10 @@ import {
 import { createInMemorySourceRepository } from "./source-repository";
 import { createSourceSyncPolicyRuntime } from "./source-sync-policy-runtime";
 import { createSourceSyncRunner } from "./source-sync-runner";
+export {
+  parseOnlineDriveRemoteMetadata,
+  type OnlineDriveRemoteMetadata,
+} from "./source-file-verification";
 import { createSourceSyncScheduler } from "./source-sync-scheduler";
 import { createInMemoryStagedCommitRepository } from "./staged-commit-repository";
 import { type StorageQuotaRepository, createStaticStorageQuotaRepository } from "./storage-quota";

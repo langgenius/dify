@@ -2,7 +2,9 @@ import type {
   OnlineDriveBrowseResult,
   OnlineDriveConnector,
   OnlineDriveFile,
+  OnlineDriveRemoteMetadata,
 } from "@knowledge/api";
+import { parseOnlineDriveRemoteMetadata } from "@knowledge/api";
 
 import type { ApiDatasourceInvocationClient } from "./datasource-invocation-client";
 
@@ -48,7 +50,15 @@ export function createApiOnlineDriveConnector(input: {
     },
     download: async ({ file, signal, source, tenantId, userId }) => {
       const chunks: { bytes: Uint8Array; sequence: number }[] = [];
+      const receipts: {
+        sequence: number;
+        id: unknown;
+        totalLength: unknown;
+        end: unknown;
+        metadata: OnlineDriveRemoteMetadata | undefined;
+      }[] = [];
       let single: Uint8Array | undefined;
+      let singleMetadata: OnlineDriveRemoteMetadata | undefined;
 
       for await (const raw of input.client.dispatch({
         file,
@@ -66,12 +76,39 @@ export function createApiOnlineDriveConnector(input: {
 
         if (blob.sequence === undefined) {
           single = blob.bytes;
+          singleMetadata = downloadReceipt(raw);
         } else {
           chunks.push({ bytes: blob.bytes, sequence: blob.sequence });
+          const message = (raw as { message: Record<string, unknown> }).message;
+          receipts.push({
+            sequence: blob.sequence,
+            id: message.id,
+            totalLength: message.total_length,
+            end: message.end,
+            metadata: downloadReceipt(raw),
+          });
         }
       }
 
-      return { body: chunks.length > 0 ? concatChunks(chunks) : (single ?? new Uint8Array()) };
+      const body = chunks.length > 0 ? concatChunks(chunks) : (single ?? new Uint8Array());
+      const ordered = receipts.sort((left, right) => left.sequence - right.sequence);
+      const first = ordered[0];
+      // Never bind a version marker to a mixed, partial, or unverifiable chunk stream. Legacy
+      // blob streams still work, but cannot establish a version-based download shortcut.
+      const completeReceipt =
+        first?.metadata &&
+        typeof first.id === "string" &&
+        ordered.every(
+          (receipt, index) =>
+            receipt.sequence === index &&
+            receipt.id === first.id &&
+            receipt.totalLength === body.byteLength &&
+            receipt.end === (index === ordered.length - 1) &&
+            JSON.stringify(receipt.metadata) === JSON.stringify(first.metadata),
+        );
+      const remoteMetadata =
+        chunks.length > 0 ? (completeReceipt ? first.metadata : undefined) : singleMetadata;
+      return { body, ...(remoteMetadata ? { remoteMetadata } : {}) };
     },
   };
 }
@@ -157,12 +194,22 @@ function parseFile(raw: unknown): OnlineDriveFile | undefined {
     return undefined;
   }
 
+  const remoteMetadata = parseOnlineDriveRemoteMetadata(record.remote_metadata);
   return {
     id: record.id,
     name: record.name,
     ...(typeof record.size === "number" ? { size: record.size } : {}),
     type: typeof record.type === "string" ? record.type : "file",
+    ...(remoteMetadata ? { remoteMetadata } : {}),
   };
+}
+
+function downloadReceipt(raw: unknown): OnlineDriveRemoteMetadata | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const meta = (raw as { meta?: unknown }).meta;
+  return meta && typeof meta === "object"
+    ? parseOnlineDriveRemoteMetadata((meta as Record<string, unknown>).remote_metadata)
+    : undefined;
 }
 
 function readBlobMessage(raw: unknown): { bytes: Uint8Array; sequence?: number } | undefined {
