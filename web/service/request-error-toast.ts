@@ -1,6 +1,6 @@
 import { toast } from '@langgenius/dify-ui/toast'
 
-const DEDUPE_WINDOW_MS = 5000
+const DEDUPE_WINDOW_MS = 10000
 
 type RequestIdentity = Pick<Request, 'method' | 'url'>
 type ErrorNotification = {

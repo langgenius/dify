@@ -24,7 +24,7 @@ describe('request error toast timer lifecycle', () => {
   it('expires by wall clock even when the timer callback has not run', () => {
     notifyRequestError(request, 'A')
 
-    vi.setSystemTime(Date.now() + 5000)
+    vi.setSystemTime(Date.now() + 10000)
     notifyRequestError(request, 'A')
 
     expect(vi.mocked(toast.error).mock.calls).toEqual([['A'], ['A']])
@@ -36,7 +36,7 @@ describe('request error toast timer lifecycle', () => {
     clearRequestErrorToasts(request)
     notifyRequestError(request, 'A')
 
-    await vi.advanceTimersByTimeAsync(3000)
+    await vi.advanceTimersByTimeAsync(8000)
     notifyRequestError(request, 'A')
     expect(toast.error).toHaveBeenCalledTimes(2)
 
@@ -50,7 +50,7 @@ describe('request error toast timer lifecycle', () => {
     await vi.advanceTimersByTimeAsync(2000)
     notifyRequestError(request, 'B')
 
-    await vi.advanceTimersByTimeAsync(3000)
+    await vi.advanceTimersByTimeAsync(8000)
     notifyRequestError(request, 'A')
     notifyRequestError(request, 'B')
     expect(vi.mocked(toast.error).mock.calls).toEqual([['A'], ['B'], ['A']])
@@ -89,10 +89,15 @@ describe('request error toast deduplication', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows immediately and again at 5000ms without extending the window for suppressed errors', async () => {
+  it('shows immediately and again at 10000ms without extending the window for suppressed errors', async () => {
     await expectError('/apps')
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('Unavailable')
 
+    await vi.advanceTimersByTimeAsync(5000)
+    await expectError('/apps')
+    expect(toast.error).toHaveBeenCalledTimes(1)
+
+    // Reach 9999ms from the last displayed toast.
     await vi.advanceTimersByTimeAsync(4999)
     await expectError('/apps')
     expect(toast.error).toHaveBeenCalledTimes(1)
@@ -103,7 +108,7 @@ describe('request error toast deduplication', () => {
 
     await expectError('/apps')
     expect(toast.error).toHaveBeenCalledTimes(2)
-    expect(network).toHaveBeenCalledTimes(4)
+    expect(network).toHaveBeenCalledTimes(5)
   })
 
   it('shows each distinct message while suppressing a previously shown message', async () => {
