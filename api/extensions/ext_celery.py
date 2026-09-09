@@ -178,6 +178,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
+        "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 

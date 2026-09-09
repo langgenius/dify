@@ -197,7 +197,7 @@ class TestCelerySSLConfiguration:
             assert "redis_backend_use_ssl" in celery_app.conf
             assert celery_app.conf["redis_backend_use_ssl"] is not None
 
-    def test_celery_init_registers_required_agent_and_conversation_tasks(self):
+    def test_celery_init_registers_required_worker_tasks(self):
         mock_config = MagicMock()
         mock_config.BROKER_USE_SSL = False
         mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -246,6 +246,9 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+        assert "tasks.im_contact_sync_tasks" in celery_app.conf["imports"]
+        celery_app.loader.import_default_modules()
+        assert "tasks.im_contact_sync_tasks.reconcile_im_contacts_task" in celery_app.tasks
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )

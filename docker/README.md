@@ -108,7 +108,8 @@ The root `.env.example` file contains the essential startup settings. Optional a
 
    - `CELERY_BROKER_URL`: Configuration for Celery message broker.
    - `CELERY_QUEUES` / `CELERY_WORKER_QUEUES`: Custom worker queue lists must include
-     `human_input_delivery` to process durable Human Input IM inbox events.
+     `human_input_delivery` to process durable Human Input IM inbox events and
+     `human_input_contact_sync` to process manual IM Contact directory synchronization.
 
 6. **Storage Configuration**:
 
