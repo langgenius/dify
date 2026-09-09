@@ -1086,7 +1086,7 @@
   },
   "web/app/components/base/icons/src/vender/line/others/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 4
     }
   },
   "web/app/components/base/icons/src/vender/line/time/index.ts": {
@@ -2359,6 +2359,11 @@
       "count": 5
     }
   },
+  "web/app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -2478,6 +2483,11 @@
   },
   "web/app/components/plugins/install-plugin/utils.ts": {
     "import/no-duplicates": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/marketplace/home/home-trending.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -3318,14 +3328,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/memory-config.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/next-step/operator.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -3786,19 +3788,9 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/iteration/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/iteration/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 6
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/knowledge-base/components/option-card.tsx": {
@@ -4428,6 +4420,11 @@
       "count": 4
     }
   },
+  "web/app/components/workflow/panel/version-history-panel/version-history-item.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 4
@@ -4829,6 +4826,11 @@
   },
   "web/features/skills/detail/file-editor.tsx": {
     "@tanstack/query/prefer-query-options": {
+      "count": 2
+    }
+  },
+  "web/features/skills/detail/file-tree-items.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
       "count": 2
     }
   },
