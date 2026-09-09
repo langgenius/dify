@@ -40,6 +40,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepository,
     HumanInputFormSubmissionRepository,
 )
+from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
@@ -53,19 +54,21 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import DifyHumanInputNode as HumanInputNode
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from graphon.entities import GraphInitParams, WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.filters import GraphEventFilterContext, filter_graph_events
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
+    GraphEdgeSkippedEvent,
+    GraphEdgeTakenEvent,
     GraphEngineEvent,
+    GraphRunAbortedEvent,
     NodeRunHumanInputFormFilledEvent,
-    NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
@@ -73,10 +76,11 @@ from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -293,16 +297,15 @@ def _build_timeout_node(
     )
 
 
-def test_human_input_node_emits_form_filled_event_before_succeeded():
+def test_human_input_callback_completes_with_submitted_form_outputs():
     node = _build_node()
 
     events = list(node.run())
 
     assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunHumanInputFormFilledEvent)
-    assert isinstance(events[2], NodeRunSucceededEvent)
+    assert isinstance(events[1], NodeRunSucceededEvent)
 
-    completed_event = events[2]
+    completed_event = events[1]
     assert completed_event.node_run_result.outputs["__rendered_content"] == StringSegment(
         value="Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
     )
@@ -321,26 +324,97 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     assert completed_event.node_run_result.inputs["attachments"].value[0].type == FileType.IMAGE
 
 
-def test_human_input_node_emits_timeout_event_before_succeeded(monkeypatch: pytest.MonkeyPatch):
+def test_human_input_callback_completes_on_timeout_handle():
     expiration_time = datetime.datetime(2025, 1, 1)
-    form = MagicMock(spec=HumanInputFormRecord)
-    form.app_id = "app"
-    form.node_id = "node-1"
-    form.expiration_time = expiration_time
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", lambda _self, _form_id: form)
     node = _build_timeout_node(expiration_time)
 
     events = list(node.run())
 
     assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunHumanInputFormTimeoutEvent)
-    assert events[1].expiration_time == expiration_time
-    assert isinstance(events[2], NodeRunSucceededEvent)
-    assert events[2].node_run_result.edge_source_handle == "__timeout"
+    assert isinstance(events[1], NodeRunSucceededEvent)
+    assert events[1].node_run_result.edge_source_handle == "__timeout"
+
+
+def _form_event_filter_context(node: HumanInputNode) -> GraphEventFilterContext:
+    return GraphEventFilterContext(
+        graph=Graph(root_node=node),
+        runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
+    )
 
 
 def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
-    return _publish_graph_events(node.run())
+    return _publish_graph_events(
+        filter_graph_events(
+            node.run(),
+            context=_form_event_filter_context(node),
+            filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        )
+    )
+
+
+def test_form_event_precedes_taken_and_skipped_branches():
+    node = _build_node()
+    started, succeeded = list(node.run())
+    skipped = GraphEdgeSkippedEvent(edge_id="reject", source_node_id=node.id, target_node_id="rejected")
+    taken = GraphEdgeTakenEvent(edge_id="accept", source_node_id=node.id, target_node_id="accepted")
+
+    events = list(
+        filter_graph_events(
+            [started, skipped, taken, succeeded],
+            context=_form_event_filter_context(node),
+            filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        )
+    )
+
+    assert events[0] is started
+    assert isinstance(events[1], NodeRunHumanInputFormFilledEvent)
+    assert events[2:] == [skipped, taken, succeeded]
+
+
+def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
+    node = _build_node()
+    started, succeeded = list(node.run())
+    first_start = started.model_copy(update={"id": "first", "node_title": "First approval"})
+    second_start = started.model_copy(update={"id": "second", "node_title": "Second approval"})
+    first_result = succeeded.model_copy(update={"id": "first", "in_loop_id": "loop-1"})
+    second_result = succeeded.model_copy(update={"id": "second", "in_iteration_id": "iteration-2"})
+
+    events = list(
+        filter_graph_events(
+            [first_start, second_start, second_result, first_result],
+            context=_form_event_filter_context(node),
+            filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        )
+    )
+
+    filled = [event for event in events if isinstance(event, NodeRunHumanInputFormFilledEvent)]
+    assert [(event.id, event.node_title, event.in_loop_id, event.in_iteration_id) for event in filled] == [
+        ("second", "Second approval", None, "iteration-2"),
+        ("first", "First approval", "loop-1", None),
+    ]
+
+
+@pytest.mark.parametrize("abort", [False, True])
+def test_form_event_filter_preserves_other_events_and_trailing_traversals(abort: bool):
+    node = _build_node()
+    started, succeeded = list(node.run())
+    started.node_type = BuiltinNodeTypes.START
+    succeeded.node_type = BuiltinNodeTypes.START
+    taken = GraphEdgeTakenEvent(edge_id="next", source_node_id=node.id, target_node_id="next")
+    skipped = GraphEdgeSkippedEvent(edge_id="skip", source_node_id=node.id, target_node_id="skipped")
+    original = [started, taken, succeeded, skipped]
+    if abort:
+        original.append(GraphRunAbortedEvent(reason="Cancelled", outputs={}))
+
+    events = list(
+        filter_graph_events(
+            original,
+            context=_form_event_filter_context(node),
+            filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        )
+    )
+
+    assert events == original
 
 
 def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
