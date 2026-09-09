@@ -2,16 +2,16 @@
 import type { FC } from 'react'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiDraggable } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { v4 as uuid4 } from 'uuid'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
@@ -43,16 +43,20 @@ const VarList: FC<Props> = ({
   const { t } = useTranslation()
   const variableNameLabel = t(($) => $['common.variableNamePlaceholder'], { ns: 'workflow' })
 
+  const keyboardSort = useKeyboardSortable({
+    items: list,
+    onChange,
+    disabled: readonly,
+    getItemLabel: (item) => item.variable,
+  })
+
   const listWithIds = useMemo(
     () =>
-      list.map((item) => {
-        const id = uuid4()
-        return {
-          id,
-          variable: { ...item },
-        }
-      }),
-    [list],
+      keyboardSort.items.map((item, index) => ({
+        id: index,
+        variable: { ...item },
+      })),
+    [keyboardSort.items],
   )
 
   const { run: validateVarInput } = useDebounceFn(
@@ -142,61 +146,75 @@ const VarList: FC<Props> = ({
   const varCount = list.length
 
   return (
-    <ReactSortable
-      className="space-y-2"
-      list={listWithIds}
-      setList={(list) => {
-        onChange(list.map((item) => item.variable))
-      }}
-      handle=".handle"
-      ghostClass="opacity-50"
-      animation={150}
-    >
-      {list.map((variable, index) => {
-        const canDrag = (() => {
-          if (readonly) return false
-          return varCount > 1
-        })()
-        return (
-          <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
-            <Input
-              aria-label={variableNameLabel}
-              className="w-30"
-              disabled={readonly}
-              value={variable.variable}
-              onChange={handleVarNameChange(index)}
-              placeholder={variableNameLabel}
-            />
-            <VarReferencePicker
-              nodeId={nodeId}
-              readonly={readonly}
-              isShowNodeName
-              className="grow"
-              value={
-                variable.variable_type === VarKindType.constant
-                  ? variable.value || ''
-                  : variable.value_selector || []
-              }
-              isSupportConstantValue={isSupportConstantValue}
-              onChange={handleVarReferenceChange(index)}
-              defaultVarKindType={variable.variable_type}
-              onlyLeafNodeVar={onlyLeafNodeVar}
-              filterVar={filterVar}
-              isSupportFileVar={isSupportFileVar}
-            />
-            {!readonly && <RemoveButton onClick={handleVarRemove(index)} />}
-            {canDrag && (
-              <RiDraggable
-                className={cn(
-                  'handle absolute top-2.5 -left-4 hidden size-3 cursor-pointer text-text-quaternary',
-                  'group-hover:block',
-                )}
+    <>
+      {keyboardSort.announcement}
+      <ReactSortable
+        className="space-y-2"
+        list={listWithIds}
+        disabled={readonly || keyboardSort.isSorting}
+        setList={(list) => {
+          if (
+            keyboardSort.isSorting ||
+            list.every((item, index) => item.id === listWithIds[index]?.id)
+          )
+            return
+          onChange(list.map((item) => item.variable))
+        }}
+        handle=".handle"
+        ghostClass="opacity-50"
+        animation={150}
+      >
+        {keyboardSort.items.map((variable, index) => {
+          const canDrag = (() => {
+            if (readonly) return false
+            return varCount > 1
+          })()
+          return (
+            <div
+              className={cn('flex items-center gap-x-1', 'group relative')}
+              key={keyboardSort.getItemKey(index)}
+            >
+              {canDrag && (
+                <IconButton
+                  {...keyboardSort.getHandleProps(index)}
+                  className="handle pointer-events-none absolute top-1 -left-6 size-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                >
+                  <span aria-hidden="true" className="i-ri-draggable size-3" />
+                </IconButton>
+              )}
+              <Input
+                aria-label={variableNameLabel}
+                className="w-30"
+                disabled={readonly}
+                value={variable.variable}
+                onChange={handleVarNameChange(keyboardSort.getItemKey(index))}
+                placeholder={variableNameLabel}
               />
-            )}
-          </div>
-        )
-      })}
-    </ReactSortable>
+              <VarReferencePicker
+                nodeId={nodeId}
+                readonly={readonly}
+                isShowNodeName
+                className="grow"
+                value={
+                  variable.variable_type === VarKindType.constant
+                    ? variable.value || ''
+                    : variable.value_selector || []
+                }
+                isSupportConstantValue={isSupportConstantValue}
+                onChange={handleVarReferenceChange(keyboardSort.getItemKey(index))}
+                defaultVarKindType={variable.variable_type}
+                onlyLeafNodeVar={onlyLeafNodeVar}
+                filterVar={filterVar}
+                isSupportFileVar={isSupportFileVar}
+              />
+              {!readonly && (
+                <RemoveButton onClick={handleVarRemove(keyboardSort.getItemKey(index))} />
+              )}
+            </div>
+          )
+        })}
+      </ReactSortable>
+    </>
   )
 }
 export default React.memo(VarList)

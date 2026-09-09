@@ -467,10 +467,6 @@ class App(Base):
             else:
                 return ""
 
-    @property
-    def site(self) -> Site | None:
-        return self.site_with_session(session=db.session())
-
     def site_with_session(self, *, session: Session) -> Site | None:
         return session.scalar(select(Site).where(Site.app_id == self.id))
 
@@ -495,10 +491,6 @@ class App(Base):
             return session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
         return None
-
-    @property
-    def bound_agent_id(self) -> str | None:
-        return self.bound_agent_id_with_session(session=db.session())
 
     def bound_agent_id_with_session(self, *, session: Session) -> str | None:
         """For an Agent App (mode=agent), the roster Agent it is backed by.
@@ -554,10 +546,6 @@ class App(Base):
     def tenant(self) -> Tenant | None:
         return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
-    @property
-    def is_agent(self) -> bool:
-        return self.is_agent_with_session(session=db.session())
-
     def is_agent_with_session(self, *, session: Session) -> bool:
         """Detect legacy agent mode, committing the compatible app mode through the supplied session."""
         app_model_config = session.get(AppModelConfig, self.app_model_config_id) if self.app_model_config_id else None
@@ -575,19 +563,11 @@ class App(Base):
             return True
         return False
 
-    @property
-    def mode_compatible_with_agent(self) -> str:
-        return self.mode_compatible_with_agent_with_session(session=db.session())
-
     def mode_compatible_with_agent_with_session(self, *, session: Session) -> str:
         if self.mode == AppMode.CHAT and self.is_agent_with_session(session=session):
             return AppMode.AGENT_CHAT
 
         return str(self.mode)
-
-    @property
-    def deleted_tools(self) -> list[DeletedToolInfo]:
-        return self.deleted_tools_with_session(session=db.session())
 
     def deleted_tools_with_session(self, *, session: Session) -> list[DeletedToolInfo]:
         from core.plugin.plugin_service import PluginService
@@ -701,10 +681,6 @@ class App(Base):
 
         return deleted_tools
 
-    @property
-    def tags(self) -> Sequence[Tag]:
-        return self.tags_with_session(session=db.session())
-
     def tags_with_session(self, *, session: Session) -> Sequence[Tag]:
         tags = session.scalars(
             select(Tag)
@@ -718,10 +694,6 @@ class App(Base):
         ).all()
 
         return tags or []
-
-    @property
-    def author_name(self) -> str | None:
-        return self.author_name_with_session(session=db.session())
 
     def author_name_with_session(self, *, session: Session) -> str | None:
         if self.created_by:
@@ -801,10 +773,6 @@ class AppModelConfig(TypeBase):
     dataset_configs: Mapped[str | None] = mapped_column(LongText, default=None)
     external_data_tools: Mapped[str | None] = mapped_column(LongText, default=None)
     file_upload: Mapped[str | None] = mapped_column(LongText, default=None)
-
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
 
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
@@ -1038,10 +1006,6 @@ class InstalledApp(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
-
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
 
@@ -1067,10 +1031,6 @@ class TrialApp(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     trial_limit: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=3)
-
-    @property
-    def app(self) -> App | None:
-        return self.app_with_session(session=db.session())
 
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
@@ -1194,7 +1154,7 @@ class Conversation(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
@@ -1204,8 +1164,8 @@ class Conversation(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
-    introduction = mapped_column(LongText)
-    system_instruction = mapped_column(LongText)
+    introduction: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    system_instruction: Mapped[str | None] = mapped_column(LongText, nullable=True)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     status: Mapped[ConversationStatus] = mapped_column(
         EnumText(ConversationStatus, length=255), nullable=False, default=ConversationStatus.NORMAL

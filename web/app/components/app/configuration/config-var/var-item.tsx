@@ -1,7 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { IInputTypeIconProps } from './input-type-icon'
+import type { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDeleteBinLine, RiDraggable, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -20,6 +22,7 @@ type ItemProps = {
   onEdit: () => void
   onRemove: () => void
   canDrag?: boolean
+  dragHandleProps?: ReturnType<ReturnType<typeof useKeyboardSortable>['getHandleProps']>
 }
 
 const VarItem: FC<ItemProps> = ({
@@ -32,6 +35,7 @@ const VarItem: FC<ItemProps> = ({
   onEdit,
   onRemove,
   canDrag,
+  dragHandleProps,
 }) => {
   const { t } = useTranslation()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -46,10 +50,19 @@ const VarItem: FC<ItemProps> = ({
       )}
     >
       <VarIcon
-        className={cn('mr-1 size-4 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')}
+        className={cn(
+          'mr-1 size-4 shrink-0 text-text-accent',
+          canDrag && 'group-focus-within:opacity-0 group-hover:opacity-0',
+        )}
       />
       {canDrag && (
-        <RiDraggable className="absolute top-3 left-3 hidden size-3 cursor-pointer text-text-tertiary group-hover:block" />
+        <IconButton
+          {...dragHandleProps}
+          aria-label={dragHandleProps?.['aria-label'] ?? name}
+          className="handle pointer-events-none absolute left-1.5 size-6 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
+        >
+          <RiDraggable aria-hidden="true" className="size-4 text-text-tertiary" />
+        </IconButton>
       )}
       <div className="flex w-0 grow items-center">
         <div className="truncate" title={`${name} · ${label}`}>

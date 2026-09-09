@@ -1,15 +1,19 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import { generateMailToLink, mailToSupport } from '@/app/components/header/utils/util'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
-import { useModalContext } from '@/context/modal-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
@@ -33,7 +37,7 @@ export default function SupportMenu() {
       currentVersion: data.meta.currentVersion,
     }),
   })
-  const { setShowPricingModal } = useModalContext()
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const hasDedicatedChannel =
     (deploymentEdition === 'CLOUD' && (plan === 'professional' || plan === 'team')) ||
     Boolean(SUPPORT_EMAIL_ADDRESS.trim())
@@ -56,10 +60,9 @@ export default function SupportMenu() {
     <>
       {shouldShowUpgradeContact && (
         <DropdownMenuItem
-          aria-label={`${t(($) => $['userProfile.contactUs'], { ns: 'common' })} ${t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}`}
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
-            setShowPricingModal()
+            setPricing('open')
           }}
         >
           <MenuItemContent
@@ -70,10 +73,7 @@ export default function SupportMenu() {
               </span>
             }
             trailing={
-              <span
-                aria-hidden
-                className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible"
-              >
+              <span className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible">
                 {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
               </span>
             }

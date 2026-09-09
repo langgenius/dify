@@ -148,7 +148,7 @@ export const CheckboxList = ({
               <div className="px-3 py-6 text-center text-sm text-text-tertiary">
                 {searchQuery ? (
                   <div className="flex flex-col items-center justify-center gap-2">
-                    <img alt="search menu" src={SearchMenu.src} width={32} />
+                    <img alt="" src={SearchMenu.src} width={32} />
                     <span className="system-sm-regular text-text-secondary">
                       {t(($) => $['operation.noSearchResults'], { ns: 'common', content: title })}
                     </span>
