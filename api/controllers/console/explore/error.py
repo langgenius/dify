@@ -65,6 +65,24 @@ class ConversationNameRequiredHTTPError(InstalledAppHTTPError):
     code = 400
 
 
+class MessageNotFoundHTTPError(InstalledAppHTTPError):
+    error_code = "message_not_found"
+    description = "The message was not found for this account and app."
+    code = 404
+
+
+class MessageCursorNotFoundHTTPError(InstalledAppHTTPError):
+    error_code = "message_cursor_not_found"
+    description = "The message cursor is not in this conversation. Refresh the list and try again."
+    code = 404
+
+
+class MessageFeedbackRatingRequiredHTTPError(InstalledAppHTTPError):
+    error_code = "message_feedback_rating_required"
+    description = "A rating is required when there is no existing feedback to remove."
+    code = 400
+
+
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Not Completion App"
