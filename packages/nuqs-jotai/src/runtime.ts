@@ -16,8 +16,7 @@ export function createQueryRuntime(adapter: QueryAdapter) {
   const errorAtom = atom<unknown>(null)
   let store: Pick<Store, 'set'> | undefined
   let active = true
-  let writing = false
-  let connection = 0
+  let writingHref: string | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
   let scheduledAt = Infinity
   let scheduledDebounce = false
@@ -32,7 +31,10 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     const next = new URL(url)
     for (const [key, values] of pending) {
       next.searchParams.delete(key)
-      values?.forEach((value) => next.searchParams.append(key, value))
+      // Preserve the native-array empty marker; its interpretation is owned
+      // by the parser (string arrays cannot distinguish [] from ['']).
+      if (values?.length === 0) next.searchParams.append(key, '')
+      else values?.forEach((value) => next.searchParams.append(key, value))
     }
     return next
   }
@@ -63,7 +65,9 @@ export function createQueryRuntime(adapter: QueryAdapter) {
   function receive({ url, traversal }: UrlChange) {
     const previous = confirmed
     confirmed = new URL(url)
-    if (writing) return
+    // Suppress only the current write's echo. Reentrant traversal or another
+    // address remains authoritative and must reconcile/cancel new drafts.
+    if (!traversal && url.href === writingHref) return
     const relevantChange = [...ownedKeys].some(
       (key) =>
         JSON.stringify(previous.searchParams.getAll(key)) !==
@@ -78,6 +82,13 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     }
   }
 
+  function reconcileCommit() {
+    // Process delayed external navigation before advancing confirmed, then
+    // preserve any draft queued by synchronous adapter/subscriber callbacks.
+    receive({ url: adapter.read() })
+    publish(applyPending(confirmed))
+  }
+
   function flush() {
     timer = undefined
     if (!active || !store || pending.size === 0) return
@@ -86,26 +97,31 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       receive({ url: latest, traversal: true })
       return
     }
+    const minimum = Math.max(0, (adapter.minimumInterval ?? 0) - (Date.now() - lastWrite))
+    if (minimum > 0) {
+      scheduledAt = Date.now() + minimum
+      timer = setTimeout(flush, minimum)
+      return
+    }
     const next = applyPending(latest)
     const options = commitOptions
     const settled = reset()
-    writing = true
+    writingHref = next.href
     try {
-      if (next.href !== latest.href) {
-        adapter.write(next, options)
+      if (next.href !== latest.href || !options.shallow) {
+        // Reserve the interval before adapter callbacks can enqueue another write.
         lastWrite = Date.now()
+        adapter.write(next, options)
       }
-      confirmed = adapter.read()
-      publish(confirmed)
+      reconcileCommit()
       store.set(errorAtom, null)
       settled.forEach(({ resolve }) => resolve(new URLSearchParams(confirmed.searchParams)))
     } catch (error) {
-      confirmed = adapter.read()
-      publish(confirmed)
+      reconcileCommit()
       store.set(errorAtom, error)
       settled.forEach(({ reject }) => reject(error))
     } finally {
-      writing = false
+      writingHref = undefined
     }
   }
 
@@ -113,21 +129,14 @@ export function createQueryRuntime(adapter: QueryAdapter) {
     stateAtom,
     errorAtom,
     connect(nextStore: Store) {
-      const version = ++connection
       store = nextStore
-      active = true
       const unsubscribe = adapter.subscribe(receive)
       receive({ url: adapter.read() })
-      return () => {
-        unsubscribe()
-        // StrictMode reconnects before this microtask. A detached provider
-        // does not, and must not leave delayed writes behind.
-        queueMicrotask(() => {
-          if (connection !== version) return
-          active = false
-          cancel()
-        })
-      }
+      return unsubscribe
+    },
+    pause() {
+      cancel()
+      publish(adapter.read())
     },
     dispose() {
       active = false
@@ -148,28 +157,41 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       if (update.options.history === 'push') commitOptions.history = 'push'
       if (!update.options.shallow) commitOptions.shallow = false
       if (update.options.scroll) commitOptions.scroll = true
-      publish(applyPending(latest))
-      store.set(errorAtom, null)
       const promise = new Promise<URLSearchParams>((resolve, reject) =>
         waiters.push({ resolve, reject }),
       )
       // Fire-and-forget callers use errorAtom; awaiting still propagates failure.
       void promise.catch(() => {})
       const minimum = Math.max(0, (adapter.minimumInterval ?? 0) - (Date.now() - lastWrite))
-      const debounced = update.debounce && !update.immediate && commitOptions.history !== 'push'
-      const delay = Math.max(minimum, !debounced && update.debounce ? 0 : update.delay)
+      const debounced = update.debounce && commitOptions.history !== 'push'
+      const delay = Math.max(minimum, update.throttleDelay, debounced ? update.debounceDelay : 0)
       const deadline = Date.now() + delay
       const reschedule =
         timer === undefined || (debounced ? scheduledDebounce : deadline < scheduledAt)
       // Once an immediate/throttled action joins the batch, subsequent updates
       // may advance its deadline but must never postpone it, including typing.
       if (!debounced) scheduledDebounce = false
-      if (reschedule) {
+      if (delay === Infinity) {
+        // An infinite throttle disables URL/server writes, not optimistic state.
+        // Keep the draft for a later finite update, but never give Infinity to
+        // setTimeout or leave callers waiting for a commit we will not perform.
+        clearTimeout(timer)
+        timer = undefined
+        scheduledAt = Infinity
+        scheduledDebounce = false
+        const skipped = waiters
+        waiters = []
+        skipped.forEach(({ resolve }) => resolve(new URLSearchParams(adapter.read().searchParams)))
+      } else if (reschedule) {
         clearTimeout(timer)
         scheduledAt = deadline
         scheduledDebounce = debounced
         timer = setTimeout(flush, delay)
       }
+      // Register and schedule before publishing: synchronous subscribers may
+      // cancel this batch or start a new one. No old scheduling may follow them.
+      publish(applyPending(latest))
+      store.set(errorAtom, null)
       return promise
     },
   }

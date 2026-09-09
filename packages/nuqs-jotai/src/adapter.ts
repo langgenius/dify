@@ -14,6 +14,7 @@ export type QueryAdapter = {
   read: () => URL
   subscribe: (listener: (change: UrlChange) => void) => () => void
   // Commits the address synchronously; server data may still be loading.
+  // Non-shallow writes must refresh even when the address is unchanged.
   write: (url: URL, options: UrlOptions) => void
   minimumInterval?: number
 }

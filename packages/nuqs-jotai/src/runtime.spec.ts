@@ -281,3 +281,127 @@ describe('URL rate limiting', () => {
     expect(onUpdate.mock.calls[1]![0].options.history).toBe('push')
   })
 })
+
+it.each(['navigate', 'dispose'] as const)(
+  'settles a write cancelled synchronously by a %s subscriber',
+  async (action) => {
+    const { runtime, store, adapter, write, onUpdate } = setup()
+    const settled = vi.fn()
+    let cancelled = false
+    const stop = store.sub(runtime.stateAtom, () => {
+      if (cancelled) return
+      cancelled = true
+      if (action === 'navigate') adapter.navigate('/next?query=destination')
+      else runtime.dispose()
+    })
+    const pending = write({ query: 'draft' }).then(settled)
+    await vi.runAllTimersAsync()
+    expect(settled).toHaveBeenCalledOnce()
+    expect(settled.mock.calls[0]![0].toString()).toBe(
+      action === 'navigate' ? 'query=destination' : 'other=keep',
+    )
+    expect(onUpdate).not.toHaveBeenCalled()
+    await pending
+    stop()
+  },
+)
+
+it('preserves a new write issued by a subscriber after cancelling the old batch', async () => {
+  const { runtime, store, adapter, write, onUpdate } = setup()
+  let navigated = false
+  let next: Promise<URLSearchParams> | undefined
+  const stop = store.sub(runtime.stateAtom, () => {
+    if (navigated) return
+    navigated = true
+    adapter.navigate('/next')
+    next = write({ query: 'next draft' })
+  })
+  const settled = vi.fn()
+  const previous = write({ page: 2 }).then(settled)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(settled).toHaveBeenCalledOnce()
+  expect(onUpdate).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(300)
+  await previous
+  expect((await next)?.get('query')).toBe('next draft')
+  expect(onUpdate).toHaveBeenCalledOnce()
+  stop()
+})
+
+it.each([
+  { delay: 100, minimum: 0, history: 'replace' as const },
+  { delay: 100, minimum: 0, history: 'push' as const },
+  { delay: 800, minimum: 400, history: 'replace' as const },
+  { delay: 800, minimum: 400, history: 'push' as const },
+])(
+  'retains throttle($delay) in a mixed patch ($history, browser interval $minimum)',
+  async ({ delay, minimum, history }) => {
+    const { runtime, store, adapter, write, onUpdate } = setup()
+    Object.assign(adapter, { minimumInterval: minimum })
+    const initial = write({ page: 2 })
+    await vi.advanceTimersByTimeAsync(0)
+    await initial
+    onUpdate.mockClear()
+    const mixed = {
+      query: parseAsString.withOptions({ limitUrlUpdates: debounce(300) }),
+      page: parseAsInteger.withOptions({ limitUrlUpdates: throttle(delay) }),
+    }
+    const pending = runtime.write(
+      () => prepareUpdate(mixed, undefined, { query: 'draft', page: 3 }, {}, { history }),
+      store,
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onUpdate).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(delay - 1)
+    expect(onUpdate).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(onUpdate).toHaveBeenCalledOnce()
+    expect((await pending).get('query')).toBe('draft')
+    expect(adapter.read().searchParams.get('page')).toBe('3')
+  },
+)
+
+it.each(['traversal', 'replace'] as const)(
+  'cancels a callback draft on external %s during a commit',
+  async (navigation) => {
+    const { write, adapter, runtime, store, onUpdate } = setup()
+    let draft: Promise<URLSearchParams> | undefined
+    onUpdate.mockImplementationOnce(() => {
+      draft = write({ page: 3 })
+      if (navigation === 'traversal') adapter.navigate('/documents?page=9')
+      else
+        adapter.write(new URL('http://localhost/documents?page=9'), {
+          history: 'replace',
+          shallow: true,
+          scroll: false,
+        })
+    })
+    const initial = write({ page: 2 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(new URL(store.get(runtime.stateAtom)).searchParams.get('page')).toBe('9')
+    await vi.runAllTimersAsync()
+    await initial
+    expect((await draft)?.get('page')).toBe('9')
+    expect(adapter.read().searchParams.get('page')).toBe('9')
+  },
+)
+
+it('enforces the browser interval for writes queued inside a commit callback', async () => {
+  const { write, adapter, onUpdate } = setup()
+  Object.assign(adapter, { minimumInterval: 400 })
+  const timestamps: number[] = []
+  let draft: Promise<URLSearchParams> | undefined
+  onUpdate.mockImplementation(() => {
+    timestamps.push(Date.now())
+    if (timestamps.length === 1) draft = write({ page: 3 })
+  })
+  const initial = write({ page: 2 })
+  await vi.advanceTimersByTimeAsync(0)
+  await initial
+  await vi.advanceTimersByTimeAsync(399)
+  expect(timestamps).toHaveLength(1)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(timestamps).toHaveLength(2)
+  expect(timestamps[1]! - timestamps[0]!).toBe(400)
+  expect((await draft)?.get('page')).toBe('3')
+})

@@ -64,7 +64,8 @@ export function createBrowserQueryAdapter({
       const method = options.history === 'push' ? 'pushState' : 'replaceState'
       // Let the framework history wrapper attach its router metadata and
       // update useSearchParams; passing its internal state can bypass that wrapper.
-      window.history[method](null, '', url)
+      // An explicit refresh of the current URL must not add a duplicate entry.
+      if (url.href !== window.location.href) window.history[method](null, '', url)
       if (options.scroll) window.scrollTo(0, 0)
       if (!options.shallow) refresh(url)
     },

@@ -1,15 +1,12 @@
 # nuqs-jotai
 
-Dify's URL atoms. `atomWithSearchParam` and `atomWithSearchParams` accept nuqs parsers, but the runtime does not
-use nuqs hooks, queues, or internal APIs. One `QueryStateProvider` owns the URL
-snapshot and commit queue for all query definitions beneath it. Definitions need
-no registration or per-page bridge.
+URL search parameters as Jotai atoms, using nuqs parsers with an independent
+commit queue. Mount one `QueryStateProvider` beneath the application Jotai
+provider and supply a stable adapter. Atom definitions need no registration.
 
-## Usage
+## Atoms
 
-Dify mounts its app `QueryStateProvider` once in the root layout, beneath the
-application Jotai provider. It supplies the Next/Vinext adapter to the package
-provider. Features declare atoms independently:
+Use a single atom for one parameter:
 
 ```tsx
 const searchAtom = atomWithSearchParam('query', parseAsString.withDefault(''), {
@@ -22,94 +19,82 @@ function Search() {
 }
 ```
 
-Use `atomWithSearchParams` for related parameters that need composite patches:
+Use a composite atom to update related parameters together:
 
 ```ts
 const selectionAtom = atomWithSearchParams(
-  {
-    research: parseAsString,
-    retest: parseAsString,
-    trace: parseAsString,
-  },
+  { research: parseAsString, retest: parseAsString, trace: parseAsString },
   { history: 'push' },
 )
 
 store.set(selectionAtom, { research: taskId, retest: null, trace: null })
 ```
 
-For related parameters used by separate controls, return the field atoms directly:
+Use a map of field atoms when separate controls share the same parameter group:
 
 ```ts
 const { search: searchAtom, filter: filterAtom } = atomsWithSearchParams(
-  {
-    search: parseAsString.withDefault(''),
-    filter: parseAsString.withDefault('all'),
-  },
+  { search: parseAsString.withDefault(''), filter: parseAsString.withDefault('all') },
   { urlKeys: { search: 'query', filter: 'status' } },
 )
 ```
 
-`atomWithSearchParam` and `atomWithSearchParams` return writable atoms;
-`atomsWithSearchParams` returns a map of writable field atoms backed by one
-composite atom. Field writes retain the whole group's owned URL keys for
-navigation conflict detection and support functional updates, null resets, and
-per-write options. `urlKeys` maps field names to URL parameter names. Options follow
-provider defaults, parser settings, factory options, then per-write overrides.
+All three support functional updates and per-write options. Field writes retain
+ownership of the whole group's URL keys for navigation conflict detection.
+`null` removes a parameter (or the whole composite group), restoring parser
+defaults. Defaults are omitted unless `clearOnDefault: false`. Option precedence
+is provider defaults, parser settings, factory options, then write options.
 
-Functional updates read the current
-optimistic URL state. `null` resets a parameter, or all parameters in that
-configuration for a composite write. Parser defaults are available on first
-render, including SSR, and are omitted from the URL unless `clearOnDefault` is
-false. The provider scopes only its runtime primitives; parent auth, permissions,
-and query caches remain visible. Existing business scopes still reset page-local
-workflows when a knowledge space or document changes.
+## Provider and routing
 
-## Commit rules
+`QueryStateProvider` owns the URL snapshot, pending edits, and commit errors. It
+scopes only these primitives; parent application atoms remain visible. Each
+provider has an independent runtime. Its adapter and default options are fixed
+for its lifetime. SSR reads use the adapter's initial URL.
 
-- URL writes batch within a task, with optional debounce. An immediate action
-  includes the current pending draft, even across different query definitions.
-  A filter push commits the current search too and creates one history entry.
-- In a batch, `push`, `shallow: false`, and `scroll: true` take precedence. The
-  browser adapter leaves a conservative 400ms interval between provider writes.
-  Atom state updates immediately while the URL commit waits.
-- Commits merge changed keys into the latest browser URL. Unknown parameters and
-  the hash survive. Unrelated history writes retain pending drafts.
-- Back/forward, changes to a pending configuration's URL keys, or a different
-  pathname cancel pending work. Dify also cancels when the router exposes a new
-  pathname before browser history commits. A cancelled promise resolves with
-  the current URL. Provider disposal prevents subsequent writes.
-- The provider survives page changes. Page-owned async work must cancel on page
-  disposal; a newly issued command is not an old queued command. Retrieval guards
-  model-readiness, planning, and research creation continuations accordingly.
-- Parse failures use defaults without rewriting the URL. Serialization completes
-  before any state changes. A history failure reconciles to the actual address,
-  rejects the write promise, and is exposed by the exported `queryStateErrorAtom`, scoped to the nearest provider.
-- Promise completion means the address has been written, not that server data
-  has finished loading. The Dify adapter writes history once, then calls
-  `router.replace` inside a transition for non-shallow updates.
+The browser adapter is exported from `nuqs-jotai/browser`. Supply `initialUrl` and
+a `refresh(url)` callback. Non-shallow writes call `refresh`, even when the URL
+is unchanged; unchanged addresses do not add history entries. The browser
+adapter observes native history methods and popstate. Routers that bypass those
+methods must call `adapter.notifyUrlChange()` after committing their URL.
 
-The browser observer defers history notifications to a microtask because routers
-can update history from insertion effects. Popstate cancels synchronously. A
-shared observer watches other history owners, including nuqs; provider disposal
-removes its subscriptions.
+Call `adapter.notifyUrlChange(true)` to cancel drafts when a router announces a
+pathname change before history commits, then notify normally after the commit.
+Publish router notifications after child passive subscriptions have mounted.
+The provider subscribes in a passive effect for the same reason: Jotai's default
+React subscription can miss updates between render and subscription.
 
-Prefer codecs for parse defaults and user commands for changes rather than
-normalizing URL state in descendant mount effects. Jotai 3's default React
-subscription is passive and can miss a value changed between initial render and
-subscription.
+Hiding a provider cancels queued drafts; revealing it reconciles the current
+URL. Unmounting rejects subsequent writes. Page-owned async commands must guard
+against writing after their page unmounts, since an app provider can outlive it.
+
+## Commits
+
+- Atom values update optimistically. URL writes batch; debounce postpones typing
+  while immediate or throttled actions can advance the batch. `push`,
+  `shallow: false`, and `scroll: true` take precedence within a batch.
+- The browser adapter enforces a 400ms minimum interval between commits.
+  `throttle(Infinity)` keeps the draft without writing or refreshing, resolves
+  promises with the current URL, and lets a later finite-rate write resume it.
+- Commits preserve unknown parameters and hashes. Traversal, pathname changes,
+  or changes to a pending group's keys cancel drafts. Unrelated changes retain
+  them. Cancelled promises resolve with the current URL.
+- Parsing failures use defaults without rewriting the URL. Serialization
+  completes before state changes. Write failures reconcile state, reject the
+  promise, and update the provider-scoped `queryStateErrorAtom`.
+- A resolved write promise does not imply server data has finished loading.
 
 ## Scope and verification
 
-Supports Dify's current parsers, `urlKeys`, defaults, `clearOnDefault`,
-push/replace, scroll, shallow routing and debounce/throttle. It does not implement
-all nuqs options, including per-write `startTransition`, `processUrlSearchParams`,
-or dynamic provider configuration. Keep nuqs parsers/types as a compatibility
-dependency. Documents uses atoms for search, status, upload, and metadata; other
-Dify routes outside this migration continue using nuqs.
+Supports nuqs parsers, URL aliases, defaults, history, scroll, shallow routing,
+and debounce/throttle. Per-write `startTransition`, `processUrlSearchParams`, and
+dynamic provider options are not implemented. Native arrays use `?key=` as the
+empty marker; string-array parsers interpret that marker as `['']`. This package
+does not introduce a different URL encoding to resolve that ambiguity.
 
-Run `pnpm --filter nuqs-jotai test run` and
-`pnpm --filter nuqs-jotai type-check` from the repository root. Memory tests cover
-history and queue behavior; React tests cover first render, SSR, scopes,
-StrictMode, and writes without value subscribers. Browser-adapter unit tests
-exercise history and route-refresh callbacks. Running-app navigation and server
-refresh still require Next/Vinext integration validation.
+Memory and React adapters are exported from `nuqs-jotai/testing`. Run
+`pnpm --filter nuqs-jotai test run` and `pnpm --filter nuqs-jotai type-check` from
+the repository root. Tests cover runtime commits, browser callbacks, parser
+round trips, provider isolation, SSR, StrictMode, Suspense, and Activity.
+Running-app Next/Vinext navigation and server refresh require integration
+validation in the consuming application.

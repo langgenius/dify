@@ -1,10 +1,10 @@
 import type { UrlUpdateEvent } from './testing'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider, useAtom, useSetAtom, useStore } from 'jotai'
+import { createStore, Provider, useAtom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { debounce, parseAsInteger } from 'nuqs'
-import { StrictMode, useLayoutEffect, useState } from 'react'
+import { debounce, parseAsInteger, parseAsNativeArrayOf, throttle } from 'nuqs'
+import { Activity, StrictMode, Suspense, useLayoutEffect, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test'
 import { createBrowserQueryAdapter } from './browser'
@@ -391,3 +391,370 @@ it('cancels a field draft when external history changes another key in its group
     vi.useRealTimers()
   }
 })
+
+it.each([false, true])(
+  'preserves callback drafts after a commit (functional update: %s)',
+  async (increment) => {
+    vi.useFakeTimers()
+    try {
+      let store!: ReturnType<typeof createStore>
+      let callbackWrite: Promise<URLSearchParams> | undefined
+      const adapter = createMemoryQueryAdapter('http://localhost/?page=1', ({ searchParams }) => {
+        if (searchParams.get('page') === '2') {
+          callbackWrite = store.set(pageAtom, 3, { limitUrlUpdates: debounce(300) })
+        }
+      })
+      function Capture() {
+        store = useStore()
+        return null
+      }
+      render(
+        <QueryStateProvider adapter={adapter}>
+          <Capture />
+        </QueryStateProvider>,
+      )
+      const initial = store.set(pageAtom, 2)
+      await vi.advanceTimersByTimeAsync(0)
+      expect((await initial).get('page')).toBe('2')
+      if (!increment) expect(store.get(pageAtom)).toBe(3)
+      const functionalWrite = increment ? store.set(pageAtom, (page) => page + 1) : undefined
+      await vi.runAllTimersAsync()
+      await Promise.all([callbackWrite, functionalWrite])
+      expect(store.get(pageAtom)).toBe(increment ? 4 : 3)
+      expect(adapter.read().searchParams.get('page')).toBe(increment ? '4' : '3')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+
+it('retains a callback draft when the preceding adapter write throws', async () => {
+  vi.useFakeTimers()
+  try {
+    let store!: ReturnType<typeof createStore>
+    let callbackWrite: Promise<URLSearchParams> | undefined
+    const failure = new Error('refresh failed')
+    const adapter = createMemoryQueryAdapter('http://localhost/?page=1', ({ searchParams }) => {
+      if (searchParams.get('page') === '2') {
+        callbackWrite = store.set(pageAtom, 3, { limitUrlUpdates: debounce(300) })
+        throw failure
+      }
+    })
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    const initial = store.set(pageAtom, 2)
+    await vi.advanceTimersByTimeAsync(0)
+    await expect(initial).rejects.toBe(failure)
+    expect(store.get(pageAtom)).toBe(3)
+    await vi.runAllTimersAsync()
+    expect((await callbackWrite)?.get('page')).toBe('3')
+    expect(store.get(queryStateErrorAtom)).toBe(null)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it.each(['Suspense', 'Activity'] as const)(
+  'accepts descendant layout writes when %s reveals its provider',
+  async (boundary) => {
+    vi.useFakeTimers()
+    try {
+      const adapter = createMemoryQueryAdapter('http://localhost/?page=1')
+      let scopedStore!: ReturnType<typeof createStore>
+      const suspended = new Promise<never>(() => {})
+      function Page({ hidden }: { hidden: boolean }) {
+        scopedStore = useStore()
+        const setPage = useSetAtom(pageAtom)
+        useLayoutEffect(() => {
+          void setPage((page) => page + 1)
+        }, [setPage])
+        if (boundary === 'Suspense' && hidden) throw suspended
+        return <p>Page ready</p>
+      }
+      function App({ hidden }: { hidden: boolean }) {
+        const content = (
+          <QueryStateProvider adapter={adapter}>
+            <Page hidden={hidden} />
+          </QueryStateProvider>
+        )
+        return boundary === 'Activity' ? (
+          <Activity mode={hidden ? 'hidden' : 'visible'}>{content}</Activity>
+        ) : (
+          <Suspense fallback={<p>Loading</p>}>{content}</Suspense>
+        )
+      }
+      const rendered = render(<App hidden={false} />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(adapter.read().searchParams.get('page')).toBe('2')
+      rendered.rerender(<App hidden />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      adapter.navigate('/?page=7')
+      rendered.rerender(<App hidden={false} />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(screen.getByText('Page ready')).toBeDefined()
+      expect(adapter.read().searchParams.get('page')).toBe('8')
+      let cancelled!: Promise<URLSearchParams>
+      act(() => {
+        cancelled = scopedStore.set(pageAtom, 99, { limitUrlUpdates: debounce(300) })
+      })
+      rendered.rerender(<App hidden />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect((await cancelled).get('page')).toBe('8')
+      rendered.rerender(<App hidden={false} />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(adapter.read().searchParams.get('page')).toBe('9')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+
+it.each([
+  { destination: '/documents?page=9', expected: '9', fails: false },
+  { destination: '/documents?page=9', expected: '9', fails: true },
+  { destination: '/documents?page=2&other=keep', expected: '3', fails: false },
+])(
+  'reconciles deferred browser history after refresh ($destination, fails=$fails)',
+  async ({ destination, expected, fails }) => {
+    vi.useFakeTimers()
+    try {
+      window.history.replaceState(null, '', '/documents?page=1')
+      await Promise.resolve()
+      let store!: ReturnType<typeof createStore>
+      let draft: Promise<URLSearchParams> | undefined
+      const failure = new Error('refresh failed after navigation')
+      const adapter = createBrowserQueryAdapter({
+        initialUrl: new URL(window.location.href),
+        refresh() {
+          draft = store.set(pageAtom, 3, { limitUrlUpdates: debounce(300) })
+          window.history.replaceState(null, '', destination)
+          if (fails) throw failure
+        },
+      })
+      function Capture() {
+        store = useStore()
+        return null
+      }
+      render(
+        <QueryStateProvider adapter={adapter}>
+          <Capture />
+        </QueryStateProvider>,
+      )
+      const commit = store.set(pageAtom, 2, { shallow: false })
+      await vi.advanceTimersByTimeAsync(0)
+      if (fails) await expect(commit).rejects.toBe(failure)
+      else await commit
+      expect(store.get(pageAtom)).toBe(Number(expected))
+      await vi.runAllTimersAsync()
+      expect((await draft)?.get('page')).toBe(expected)
+      expect(window.location.search).toBe(expected === '9' ? '?page=9' : '?other=keep&page=3')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+
+it.each(['Activity', 'Suspense'] as const)(
+  'refreshes a read-only consumer after %s reveals',
+  async (boundary) => {
+    const adapter = createMemoryQueryAdapter('http://localhost/?page=1')
+    const suspended = new Promise<never>(() => {})
+    function ReadPage({ hidden }: { hidden: boolean }) {
+      const page = useAtomValue(pageAtom)
+      if (boundary === 'Suspense' && hidden) throw suspended
+      return <p>Page {page}</p>
+    }
+    function App({ hidden }: { hidden: boolean }) {
+      const children = (
+        <QueryStateProvider adapter={adapter}>
+          <ReadPage hidden={hidden} />
+        </QueryStateProvider>
+      )
+      return boundary === 'Activity' ? (
+        <Activity mode={hidden ? 'hidden' : 'visible'}>{children}</Activity>
+      ) : (
+        <Suspense fallback={<p>Loading</p>}>{children}</Suspense>
+      )
+    }
+    const rendered = render(<App hidden={false} />)
+    expect(screen.getByText('Page 1')).toBeDefined()
+    rendered.rerender(<App hidden />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    act(() => {
+      adapter.navigate('/?page=7')
+    })
+    rendered.rerender(<App hidden={false} />)
+    expect(screen.getByText('Page 7')).toBeDefined()
+  },
+)
+
+it.each([false, true])('keeps throttle(Infinity) local (existing timer: %s)', async (queued) => {
+  vi.useFakeTimers()
+  try {
+    window.history.replaceState(null, '', '/documents?page=1')
+    await Promise.resolve()
+    const refresh = vi.fn()
+    const adapter = createBrowserQueryAdapter({
+      initialUrl: new URL(window.location.href),
+      refresh,
+    })
+    let store!: ReturnType<typeof createStore>
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    const previous = queued ? store.set(pageAtom, 5, { limitUrlUpdates: debounce(300) }) : undefined
+    const pending = store.set(pageAtom, 2, { limitUrlUpdates: throttle(Infinity), shallow: false })
+    expect(store.get(pageAtom)).toBe(2)
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(window.location.search).toBe('?page=1')
+    expect(refresh).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+    expect((await pending).get('page')).toBe('1')
+    await previous
+    const resumed = store.set(pageAtom, (page) => page + 1, { limitUrlUpdates: throttle(100) })
+    await vi.advanceTimersByTimeAsync(100)
+    expect((await resumed).get('page')).toBe('3')
+    expect(refresh).toHaveBeenCalledOnce()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it.each(['push', 'replace'] as const)(
+  'refreshes an unchanged URL on explicit non-shallow %s submission',
+  async (history) => {
+    vi.useFakeTimers()
+    try {
+      window.history.replaceState(null, '', '/documents?page=1')
+      await Promise.resolve()
+      const refresh = vi.fn()
+      const adapter = createBrowserQueryAdapter({
+        initialUrl: new URL(window.location.href),
+        refresh,
+      })
+      let store!: ReturnType<typeof createStore>
+      function Capture() {
+        store = useStore()
+        return null
+      }
+      render(
+        <QueryStateProvider adapter={adapter}>
+          <Capture />
+        </QueryStateProvider>,
+      )
+      const typing = store.set(pageAtom, 2)
+      await vi.runAllTimersAsync()
+      await typing
+      expect(refresh).not.toHaveBeenCalled()
+      const historyLength = window.history.length
+      const submit = store.set(pageAtom, 2, { shallow: false, history })
+      await vi.runAllTimersAsync()
+      expect((await submit).get('page')).toBe('2')
+      expect(refresh).toHaveBeenCalledOnce()
+      expect(refresh.mock.calls[0]![0].search).toBe('?page=2')
+      expect(window.history.length).toBe(historyLength)
+      const noop = store.set(pageAtom, 2)
+      await vi.runAllTimersAsync()
+      await noop
+      expect(refresh).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+
+it.each([false, true])(
+  'initializes a new consumer during testing-adapter navigation (remount: %s)',
+  (remount) => {
+    function ReadPage() {
+      const page = useAtomValue(pageAtom)
+      return <p>Page {page}</p>
+    }
+    const rendered = render(
+      <QueryTestingAdapter searchParams="?page=1">
+        {remount ? <ReadPage key="first" /> : null}
+      </QueryTestingAdapter>,
+    )
+    rendered.rerender(
+      <QueryTestingAdapter searchParams="?page=7">
+        <ReadPage key="second" />
+      </QueryTestingAdapter>,
+    )
+    expect(screen.getByText('Page 7')).toBeDefined()
+  },
+)
+
+it.each([
+  { defaultValue: [1], clearOnDefault: true },
+  { defaultValue: [1], clearOnDefault: false },
+  { defaultValue: [], clearOnDefault: true },
+  { defaultValue: [], clearOnDefault: false },
+])(
+  'distinguishes an empty native array from reset ($defaultValue, clearOnDefault=$clearOnDefault)',
+  async ({ defaultValue, clearOnDefault }) => {
+    const idsAtom = atomWithSearchParam(
+      'ids',
+      parseAsNativeArrayOf(parseAsInteger).withDefault(defaultValue),
+      { clearOnDefault },
+    )
+    const adapter = createMemoryQueryAdapter('http://localhost/?other=keep&ids=2&ids=3#anchor')
+    let store!: ReturnType<typeof createStore>
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    const rendered = render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    expect(store.get(idsAtom)).toEqual([2, 3])
+    const empty = store.set(idsAtom, [])
+    expect(store.get(idsAtom)).toEqual([])
+    await empty
+    expect(adapter.read().searchParams.getAll('ids')).toEqual(
+      defaultValue.length === 0 && clearOnDefault ? [] : [''],
+    )
+    // A fresh provider must parse the committed empty collection, not the default.
+    rendered.unmount()
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    expect(store.get(idsAtom)).toEqual([])
+    const reset = store.set(idsAtom, null)
+    expect(store.get(idsAtom)).toEqual(defaultValue)
+    await reset
+    expect(adapter.read().searchParams.has('ids')).toBe(false)
+    await store.set(idsAtom, [4, 5])
+    expect(adapter.read().searchParams.getAll('ids')).toEqual(['4', '5'])
+    expect(adapter.read().searchParams.get('other')).toBe('keep')
+    expect(adapter.read().hash).toBe('#anchor')
+  },
+)

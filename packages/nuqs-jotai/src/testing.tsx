@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { QueryAdapter, UrlChange, UrlOptions } from './adapter'
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QueryStateProvider } from './index'
 
 export type UrlUpdateEvent = {
@@ -28,7 +28,7 @@ export function createMemoryQueryAdapter(
       }
     },
     write(url, options) {
-      if (options.history === 'push') {
+      if (url.href !== read().href && options.history === 'push') {
         entries.splice(index + 1)
         entries.push(new URL(url))
         index++
@@ -75,12 +75,13 @@ export function QueryTestingAdapter({
 }) {
   const query = new URLSearchParams(searchParams).toString()
   const [session] = useState(() => ({
-    initial: query,
+    query,
     adapter: createMemoryQueryAdapter(`http://localhost/?${query}`, onUrlUpdate),
   }))
-  useLayoutEffect(() => {
-    if (session.initial !== query) {
-      session.initial = query
+  // New consumers subscribe in passive effects before navigation is published.
+  useEffect(() => {
+    if (session.query !== query) {
+      session.query = query
       session.adapter.navigate(`?${query}`)
     }
   }, [query, session])
