@@ -161,8 +161,8 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
                 <NumberFieldGroup>
                   <NumberFieldInput aria-label={maxParallelismLabel} className="px-2" />
                   <NumberFieldControls>
-                    <NumberFieldIncrement className="pt-0.75" />
-                    <NumberFieldDecrement className="pb-0.75" />
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
                   </NumberFieldControls>
                 </NumberFieldGroup>
               </NumberField>

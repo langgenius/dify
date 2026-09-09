@@ -143,8 +143,8 @@ const IndexMethod = ({
                 <NumberFieldGroup>
                   <NumberFieldInput className="px-2" />
                   <NumberFieldControls>
-                    <NumberFieldIncrement className="pt-0.75" />
-                    <NumberFieldDecrement className="pb-0.75" />
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
                   </NumberFieldControls>
                 </NumberFieldGroup>
               </NumberField>
