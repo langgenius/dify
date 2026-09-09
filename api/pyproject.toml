@@ -114,6 +114,10 @@ override-dependencies = [
     "pyarrow>=23.0.1,<24.0.0",
     "cryptography>=50.0.0,<51.0.0",
     "setuptools>=80.10.2,<81",
+    # `tos` hard-pins `wrapt==1.16.0` without importing it, which blocks
+    # `unstructured>=0.24.0` (requires `wrapt>=2.1.1`). Every other consumer
+    # accepts `wrapt<3`, so override the pin instead of holding `unstructured` back.
+    "wrapt>=2.1.1,<3.0.0",
 ]
 
 [dependency-groups]
