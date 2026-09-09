@@ -59,6 +59,7 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
     try {
       await Promise.all([
         queryClient.query(serverUserProfileQueryOptions()),
+        queryClient.query(consoleQuery.features.get.queryOptions({ retry: false })).catch(noop),
         queryClient
           .query(
             consoleQuery.workspaces.current.summary.get.queryOptions({
