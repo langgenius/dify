@@ -186,6 +186,38 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
 
 
 @dataclass(frozen=True)
+class WorkflowRunResponseSource:
+    """Expose session-backed workflow-run accessors during response validation."""
+
+    workflow_run: Any
+    session: Session
+
+    @property
+    def created_by_account(self) -> Any:
+        return self.workflow_run.created_by_account(self.session)
+
+    @property
+    def created_by_end_user(self) -> Any:
+        return self.workflow_run.created_by_end_user(self.session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.workflow_run, name)  # guard-ignore: no-new-getattr -- delegates model fields
+
+
+def workflow_run_response_source(workflow_run: Any, *, session: Session) -> WorkflowRunResponseSource:
+    return WorkflowRunResponseSource(workflow_run=workflow_run, session=session)
+
+
+def workflow_run_pagination_response_source(pagination: Any, *, session: Session) -> dict[str, Any]:
+    """Wrap each run in a pagination payload so list responses resolve accessors via the session."""
+    return {
+        "limit": pagination.limit,
+        "has_more": pagination.has_more,
+        "data": [workflow_run_response_source(run, session=session) for run in pagination.data],
+    }
+
+
+@dataclass(frozen=True)
 class WorkflowNodeExecutionResponseSource:
     """Expose session-backed node-execution accessors during response validation."""
 
