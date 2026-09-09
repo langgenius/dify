@@ -1,5 +1,5 @@
+import re
 from collections.abc import Generator
-from datetime import datetime
 from typing import Any, TypedDict
 
 from core.rag.extractor.watercrawl.client import PageOptions, SpiderOptions, WaterCrawlAPIClient
@@ -62,6 +62,33 @@ class WaterCrawlProvider:
 
         return {"status": "active", "job_id": result.get("uuid")}
 
+    @staticmethod
+    def _parse_duration_seconds(duration: str) -> float:
+        """Convert a WaterCrawl duration string to seconds.
+
+        WaterCrawl reports durations in Python ``str(timedelta)`` shape, which
+        omits the fractional part when it is zero and prefixes a day count for
+        durations of 24 hours or more, e.g. ``"0:00:05"``, ``"0:00:05.123456"``
+        or ``"1 day, 0:00:05"``.
+        """
+        match = re.fullmatch(
+            r"(?:(?P<days>\d+) days?, )?(?P<hours>\d+):(?P<minutes>\d{2}):(?P<seconds>\d{2})(?:\.(?P<fraction>\d+))?",
+            duration.strip(),
+        )
+        if not match:
+            raise ValueError(f"Unrecognized crawl duration format: {duration}")
+        parts = match.groupdict()
+        seconds = (
+            int(parts["days"] or 0) * 86400
+            + int(parts["hours"]) * 3600
+            + int(parts["minutes"]) * 60
+            + int(parts["seconds"])
+        )
+        fraction = parts["fraction"] or ""
+        if fraction:
+            seconds += int(fraction) / 10 ** len(fraction)
+        return seconds
+
     def get_crawl_status(self, crawl_request_id: str) -> WatercrawlCrawlStatusResponse:
         response = self.client.get_crawl_request(crawl_request_id)
         data: list[WatercrawlDocumentData] = []
@@ -74,10 +101,7 @@ class WaterCrawlProvider:
         time_str = response.get("duration")
         time_consuming: float = 0
         if time_str:
-            time_obj = datetime.strptime(time_str, "%H:%M:%S.%f")
-            time_consuming = (
-                time_obj.hour * 3600 + time_obj.minute * 60 + time_obj.second + time_obj.microsecond / 1_000_000
-            )
+            time_consuming = self._parse_duration_seconds(time_str)
 
         return {
             "status": status,

@@ -386,6 +386,32 @@ class TestWaterCrawlProvider:
         assert completed["status"] == "completed"
         assert completed["data"] == [{"url": "u"}]
 
+    def test_get_crawl_status_parses_duration_shapes(self, monkeypatch: pytest.MonkeyPatch):
+        """Durations without a fraction or with a day prefix must not crash status polling."""
+        provider = WaterCrawlProvider(api_key="k")
+
+        cases = [
+            ("0:00:05", 5.0),
+            ("00:00:05", 5.0),
+            ("0:00:05.123456", 5.123456),
+            ("1 day, 0:00:05", 86405.0),
+            ("2 days, 3:04:05.5", 2 * 86400 + 3 * 3600 + 4 * 60 + 5.5),
+        ]
+        for duration, expected_seconds in cases:
+            monkeypatch.setattr(
+                provider.client,
+                "get_crawl_request",
+                lambda job_id, duration=duration: {
+                    "status": "running",
+                    "uuid": job_id,
+                    "options": {"spider_options": {"page_limit": 1}},
+                    "number_of_documents": 0,
+                    "duration": duration,
+                },
+            )
+            status = provider.get_crawl_status("job")
+            assert status["time_consuming"] == pytest.approx(expected_seconds), duration
+
     def test_get_crawl_url_data_and_scrape(self, monkeypatch: pytest.MonkeyPatch):
         provider = WaterCrawlProvider(api_key="k")
 
