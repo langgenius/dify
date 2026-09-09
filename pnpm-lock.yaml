@@ -413,6 +413,9 @@ catalogs:
     eslint:
       specifier: 10.9.1
       version: 10.9.1
+    eslint-config-flat-gitignore:
+      specifier: 2.4.0
+      version: 2.4.0
     eslint-markdown:
       specifier: 0.12.1
       version: 0.12.1
@@ -771,6 +774,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
+      eslint-config-flat-gitignore:
+        specifier: 'catalog:'
+        version: 2.4.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))
       eslint-markdown:
         specifier: 'catalog:'
         version: 0.12.1(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
@@ -2286,6 +2292,15 @@ packages:
     peerDependencies:
       eslint: '*'
       typescript: '*'
+
+  '@eslint/compat@2.1.1':
+    resolution: {integrity: sha512-rMcy8GSrwNzcISX/BlTDY/GLB4eCopEuy9woIls3To+15OLxykZrxxq+WUcylCPCQ6F4MujjBM1DX5V1aqI3Vw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+    peerDependencies:
+      eslint: ^8.40 || 9 || 10
+    peerDependenciesMeta:
+      eslint:
+        optional: true
 
   '@eslint/config-array@0.23.5':
     resolution: {integrity: sha512-Y3kKLvC1dvTOT+oGlqNQ1XLqK6D1HU2YXPc52NmAlJZbMMWDzGYXMiPRJ8TYD39muD/OTjlZmNJ4ib7dvSrMBA==}
@@ -6196,6 +6211,11 @@ packages:
     peerDependencies:
       eslint: '>=6.0.0'
 
+  eslint-config-flat-gitignore@2.4.0:
+    resolution: {integrity: sha512-JhYC+V7qEDiCDsbJcVP8fxNc62fk4+i91YLP/YvmVHlkaQ8Xo99olYN8MO5COdxl7onGlsrfZVONe5NYsZP1UA==}
+    peerDependencies:
+      eslint: ^9.5.0 || ^10.0.0
+
   eslint-json-compat-utils@0.2.3:
     resolution: {integrity: sha512-RbBmDFyu7FqnjE8F0ZxPNzx5UaptdeS9Uu50r7A+D7s/+FCX+ybiyViYEgFUaFIFqSWJgZRTpL5d8Kanxxl2lQ==}
     engines: {node: '>=12'}
@@ -10066,6 +10086,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@eslint/compat@2.1.1(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))':
+    dependencies:
+      '@eslint/core': 1.2.1
+    optionalDependencies:
+      eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
+
   '@eslint/config-array@0.23.5(supports-color@11.0.0)':
     dependencies:
       '@eslint/object-schema': 3.0.5
@@ -13564,6 +13590,11 @@ snapshots:
     dependencies:
       eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
       semver: 7.8.5
+
+  eslint-config-flat-gitignore@2.4.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0)):
+    dependencies:
+      '@eslint/compat': 2.1.1(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))
+      eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
 
   eslint-json-compat-utils@0.2.3(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(jsonc-eslint-parser@3.3.0):
     dependencies:
@@ -17433,6 +17464,7 @@ time:
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
   emoji-mart@5.6.0: '2024-04-25T14:22:21.440Z'
   es-toolkit@1.52.0: '2026-08-28T07:22:17.687Z'
+  eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
   eslint-markdown@0.12.1: '2026-07-10T23:35:26.055Z'
   eslint-plugin-antfu@3.2.3: '2026-05-11T02:24:38.348Z'
   eslint-plugin-better-tailwindcss@4.7.0: '2026-07-19T13:26:01.366Z'
