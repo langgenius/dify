@@ -1,0 +1,52 @@
+{
+  "name": "nuqs-jotai",
+  "version": "0.0.0-private",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx"
+    },
+    "./adapter": {
+      "types": "./src/adapter.ts",
+      "import": "./src/adapter.ts"
+    },
+    "./browser": {
+      "types": "./src/browser.ts",
+      "import": "./src/browser.ts"
+    },
+    "./testing": {
+      "types": "./src/testing.tsx",
+      "import": "./src/testing.tsx"
+    }
+  },
+  "scripts": {
+    "test": "vp test",
+    "type-check": "tsc"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@typescript/native": "catalog:",
+    "happy-dom": "catalog:",
+    "jotai": "catalog:",
+    "jotai-scope": "catalog:",
+    "nuqs": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "jotai": "catalog:",
+    "jotai-scope": "catalog:",
+    "nuqs": "catalog:",
+    "react": "catalog:"
+  }
+}
