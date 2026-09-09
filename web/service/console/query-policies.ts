@@ -17,6 +17,8 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         education: {
           get: {
             queryOptions: {
+              // Passive probe: every callsite degrades to "not a student", so no toast.
+              context: { silent: true },
               retry: false,
             },
           },
