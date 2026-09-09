@@ -153,7 +153,7 @@ class AppListApi(Resource):
     def get(self, session: Session, *, auth_data: AuthData, query: AppListQuery):
         workspace_id = query.workspace_id
 
-        empty = AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[])
+        empty = AppListResponse.build(page=query.page, limit=query.limit, total=0, items=[])
 
         if query.name:
             try:
@@ -203,7 +203,7 @@ class AppListApi(Resource):
                 workspace_id=str(workspace_id),
                 workspace_name=tenant_name,
             )
-            env = AppListResponse(page=1, limit=1, total=1, has_more=False, data=[item])
+            env = AppListResponse.build(page=1, limit=1, total=1, items=[item])
             return env
 
         params = AppListParams(
@@ -242,11 +242,5 @@ class AppListApi(Resource):
             if _is_listable(r)
         ]
 
-        env = AppListResponse(
-            page=query.page,
-            limit=query.limit,
-            total=pagination.total,
-            has_more=query.page * query.limit < pagination.total,
-            data=items,
-        )
+        env = AppListResponse.build(page=query.page, limit=query.limit, total=pagination.total, items=items)
         return env

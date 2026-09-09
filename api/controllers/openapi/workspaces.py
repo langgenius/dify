@@ -163,12 +163,11 @@ class WorkspaceMembersApi(Resource):
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
-        return MemberListResponse(
+        return MemberListResponse.build(
             page=query.page,
             limit=query.limit,
             total=total,
-            has_more=query.page * query.limit < total,
-            data=[_member_response(m) for m in page_items],
+            items=[_member_response(m) for m in page_items],
         )
 
     @auth_router.guard_workspace(
