@@ -147,21 +147,21 @@ class TestCodeNodeCheckMethods:
     def test_check_boolean_none_value(self):
         """Test _check_boolean with None value."""
         node = CodeNode.__new__(CodeNode)
-        result = node._check_boolean(None, "test_var")
+        result = node._check_boolean(None)
 
         assert result is None
 
     def test_check_boolean_true_value(self):
         """Test _check_boolean with True value."""
         node = CodeNode.__new__(CodeNode)
-        result = node._check_boolean(True, "test_var")
+        result = node._check_boolean(True)
 
         assert result is True
 
     def test_check_boolean_false_value(self):
         """Test _check_boolean with False value."""
         node = CodeNode.__new__(CodeNode)
-        result = node._check_boolean(False, "test_var")
+        result = node._check_boolean(False)
 
         assert result is False
 
