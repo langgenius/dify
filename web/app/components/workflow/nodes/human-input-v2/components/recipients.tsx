@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
-import { mockContactRecipientOptionProvider } from '../contact-provider'
+import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
   addRecipient,
   createRecipientDraft,
@@ -32,7 +32,8 @@ type RecipientsProps = {
   provider?: ContactRecipientOptionProvider
 }
 
-const getOptionLabel = (option: ContactRecipientOption) => `${option.name} · ${option.email}`
+const getOptionLabel = (option: ContactRecipientOption) =>
+  option.email ? `${option.name} · ${option.email}` : option.name
 
 type RecipientEditorState = {
   index?: number
@@ -55,13 +56,13 @@ const cloneRecipient = (recipient: HumanInputV2Recipient): HumanInputV2Recipient
   return { ...recipient }
 }
 
-const Recipients = ({
+const RecipientsContent = ({
   nodeId,
   value,
   onChange,
   readonly,
-  provider = mockContactRecipientOptionProvider,
-}: RecipientsProps) => {
+  provider,
+}: RecipientsProps & { provider: ContactRecipientOptionProvider }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -70,6 +71,11 @@ const Recipients = ({
   const [resolvedOptions, setResolvedOptions] = useState<ContactRecipientOption[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  const [searchPage, setSearchPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const searchRequestRef = useRef(0)
+  const searchQueryRef = useRef('')
   const [emailDraft, setEmailDraft] = useState('')
   const [emailError, setEmailError] = useState(false)
   const [editor, setEditor] = useState<RecipientEditorState>()
@@ -128,20 +134,49 @@ const Recipients = ({
   }, [provider, value])
 
   const loadOptions = useCallback(
-    async (nextQuery: string) => {
-      setLoading(true)
+    async (nextQuery: string, page = 1) => {
+      const requestId = ++searchRequestRef.current
+      searchQueryRef.current = nextQuery
+      setLoading(page === 1)
+      setLoadingMore(page > 1)
       setLoadError(false)
-      try {
-        setOptions(await provider.search(nextQuery))
-      } catch {
+      if (page === 1) {
         setOptions([])
+        setHasMore(false)
+      }
+      try {
+        const result = provider.searchPage
+          ? await provider.searchPage(nextQuery, page)
+          : { data: await provider.search(nextQuery), page: 1, hasMore: false }
+        if (requestId !== searchRequestRef.current) return
+        setOptions((current) =>
+          page === 1
+            ? result.data
+            : [
+                ...new Map(
+                  [...current, ...result.data].map((option) => [option.id, option]),
+                ).values(),
+              ],
+        )
+        setSearchPage(result.page)
+        setHasMore(result.hasMore)
+      } catch {
+        if (requestId !== searchRequestRef.current) return
         setLoadError(true)
       } finally {
-        setLoading(false)
+        if (requestId === searchRequestRef.current) {
+          setLoading(false)
+          setLoadingMore(false)
+        }
       }
     },
     [provider],
   )
+
+  const loadMore = () => {
+    if (!hasMore || loading || loadingMore) return
+    void loadOptions(searchQueryRef.current, searchPage + 1)
+  }
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (readonly) return
@@ -456,7 +491,6 @@ const Recipients = ({
                   </div>
                 )}
                 {!loading &&
-                  !loadError &&
                   options.map((option) => (
                     <button
                       key={option.id}
@@ -479,6 +513,16 @@ const Recipients = ({
                       <span>{getOptionLabel(option)}</span>
                     </button>
                   ))}
+                {hasMore && !loading && (
+                  <Button
+                    size="small"
+                    loading={loadingMore}
+                    disabled={loadingMore}
+                    onClick={loadMore}
+                  >
+                    {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -638,13 +682,12 @@ const Recipients = ({
                     {t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' })}
                   </div>
                 )}
-                {!loading && !loadError && !visibleOptions.length && (
+                {!loading && !loadError && !visibleOptions.length && !hasMore && (
                   <div className="p-3 system-xs-regular text-text-tertiary">
                     {t(($) => $['nodes.humanInputV2.recipients.noResults'], { ns: 'workflow' })}
                   </div>
                 )}
                 {!loading &&
-                  !loadError &&
                   visibleOptions.map((option, index) => {
                     const added = selectedKeys.has(`contact:${option.id}`)
                     return (
@@ -675,6 +718,16 @@ const Recipients = ({
                       </button>
                     )
                   })}
+                {hasMore && !loading && (
+                  <Button
+                    size="small"
+                    loading={loadingMore}
+                    disabled={loadingMore}
+                    onClick={loadMore}
+                  >
+                    {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                  </Button>
+                )}
                 <div className="my-1 h-px bg-divider-subtle" />
                 <button
                   type="button"
@@ -717,5 +770,24 @@ const Recipients = ({
     </section>
   )
 }
+
+const RuntimeRecipients = (props: RecipientsProps) => {
+  const { provider, workspaceId } = useContactRecipientOptionProvider()
+  return (
+    <RecipientsContent
+      key={workspaceId}
+      {...props}
+      readonly={props.readonly || !workspaceId}
+      provider={provider}
+    />
+  )
+}
+
+const Recipients = (props: RecipientsProps) =>
+  props.provider ? (
+    <RecipientsContent {...props} provider={props.provider} />
+  ) : (
+    <RuntimeRecipients {...props} />
+  )
 
 export default Recipients

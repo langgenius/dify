@@ -14,9 +14,11 @@ export function ContactChannelIcon({
   const normalizedProvider = provider.toLocaleLowerCase()
 
   const icon = {
+    ding_talk: DingTalkIcon,
     dingtalk: DingTalkIcon,
     email: EmailIcon,
     feishu: FeishuIcon,
+    lark: FeishuIcon,
     slack: SlackIcon,
   }[normalizedProvider]
 
@@ -31,6 +33,15 @@ export function ContactChannelIcon({
           className,
         )}
         src={icon.src}
+      />
+    )
+  }
+
+  if (normalizedProvider === 'ms_teams' || normalizedProvider === 'teams') {
+    return (
+      <span
+        aria-hidden
+        className={cn('i-custom-public-other-teams block size-5 shrink-0', className)}
       />
     )
   }

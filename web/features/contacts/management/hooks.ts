@@ -15,10 +15,15 @@ import type {
 import {
   infiniteQueryOptions,
   mutationOptions,
+  queryOptions,
+  skipToken,
   useInfiniteQuery,
   useMutation,
+  useQueries,
+  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { invalidateHumanInputContactQueries } from '@/service/client'
 import {
   useContactsFeatureContext,
   useContactsManagementRepository,
@@ -39,6 +44,7 @@ export function useContactsDirectory(query: Omit<ContactsListQuery, 'deployment'
   const repository = useContactsManagementRepository()
   const result = useInfiniteQuery(
     infiniteQueryOptions({
+      enabled: Boolean(context.workspaceId) && context.permissions.canViewContacts,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
         repository.listContacts({ ...query, deployment: context.deployment, page: pageParam }),
@@ -61,6 +67,53 @@ export function useContactsDirectory(query: Omit<ContactsListQuery, 'deployment'
   }
 }
 
+export function useContactDetails(contactId: string | null) {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  return useQuery(
+    queryOptions({
+      queryKey: contactsManagementQueryKeys.detail(context.workspaceId, contactId),
+      queryFn:
+        contactId && context.workspaceId && context.permissions.canViewContacts
+          ? () => repository.getContact(contactId)
+          : skipToken,
+      retry: false,
+    }),
+  )
+}
+
+export function useContactCounts() {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const kinds = ['workspace', 'platform', 'external'] as const
+  const results = useQueries({
+    queries: kinds.map((kind) =>
+      queryOptions({
+        queryKey: [
+          ...contactsManagementQueryKeys.all(context.workspaceId),
+          'count',
+          context.deployment,
+          kind,
+        ],
+        queryFn: () =>
+          repository.listContacts({
+            deployment: context.deployment,
+            kind,
+            page: 1,
+            limit: 1,
+            search: '',
+          }),
+        enabled:
+          Boolean(context.workspaceId) &&
+          context.permissions.canViewContacts &&
+          (kind !== 'platform' || context.deployment === 'ee'),
+        select: (page) => page.total,
+      }),
+    ),
+  })
+  return { workspace: results[0]?.data, platform: results[1]?.data, external: results[2]?.data }
+}
+
 export function useAvailablePlatformContacts(
   query: Omit<AvailablePlatformContactsQuery, 'page'>,
   enabled: boolean,
@@ -69,7 +122,8 @@ export function useAvailablePlatformContacts(
   const repository = useContactsManagementRepository()
   const result = useInfiniteQuery(
     infiniteQueryOptions({
-      enabled: enabled && context.deployment === 'ee',
+      enabled:
+        enabled && context.deployment === 'ee' && repository.supportsPlatformImport !== false,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
         repository.listAvailablePlatformContacts({ ...query, page: pageParam }),
@@ -104,9 +158,7 @@ export function useCreateExternalContact() {
         repository.createExternalContact(command),
       onSuccess: (result) => {
         if (result.kind !== 'created') return
-        void queryClient.invalidateQueries({
-          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
-        })
+        return invalidateHumanInputContactQueries(queryClient, context.workspaceId)
       },
     }),
   )
@@ -123,9 +175,7 @@ export function useUpdateExternalContact() {
         repository.updateExternalContact(command),
       onSuccess: (result) => {
         if (result.kind !== 'updated') return
-        void queryClient.invalidateQueries({
-          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
-        })
+        return invalidateHumanInputContactQueries(queryClient, context.workspaceId)
       },
     }),
   )
@@ -159,9 +209,7 @@ export function useRemoveContacts() {
       mutationFn: (command: RemoveContactsCommand) => repository.removeContacts(command),
       onSuccess: (result) => {
         if (result.kind !== 'removed') return
-        void queryClient.invalidateQueries({
-          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
-        })
+        return invalidateHumanInputContactQueries(queryClient, context.workspaceId)
       },
     }),
   )
@@ -211,7 +259,11 @@ export function useOptionalMemberInviteContactUpgrade() {
   )
 
   return {
-    available: Boolean(contactsManagement.context && contactsManagement.repository),
+    available: Boolean(
+      contactsManagement.context &&
+      contactsManagement.repository &&
+      contactsManagement.repository.supportsMemberManagement !== false,
+    ),
     findConflicts: findConflicts.mutateAsync,
     isChecking: findConflicts.isPending,
     isUpgrading: upgradeContacts.isPending,

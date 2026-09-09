@@ -26,6 +26,7 @@ import { useOptionalContactsManagement } from '@/features/contacts/management/co
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { MemberRemovalContactImpactDialog } from '@/features/contacts/management/member-removal-dialog'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
+import { invalidateHumanInputContactQueries } from '@/service/client'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
 import AssignRolesModal from './assign-roles-modal'
@@ -65,7 +66,8 @@ const MemberMenu = ({
     isContactsManagementEnabled() &&
     member.status !== 'pending' &&
     contactsManagement.context &&
-    contactsManagement.repository,
+    contactsManagement.repository &&
+    contactsManagement.repository.supportsMemberManagement !== false,
   )
 
   const selectedRoles = member.roles || []
@@ -112,13 +114,14 @@ const MemberMenu = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
+      void invalidateHumanInputContactQueries(queryClient, contactsManagement.context?.workspaceId)
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
     } catch {
     } finally {
       setRemoving(false)
     }
-  }, [member.id, queryClient, t])
+  }, [contactsManagement.context?.workspaceId, member.id, queryClient, t])
 
   const handleContactsRemovalSuccess = useCallback(() => {
     queryClient.setQueriesData<MembersCache>(

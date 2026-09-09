@@ -1,14 +1,21 @@
 import type { ReactNode } from 'react'
 import type { ContactsMockScenarioDefinition } from '../mock/scenarios'
+import type { ContactsManagementRepository } from '../repository'
+import type { ContactView } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { ContactsManagementMockProvider } from '../composition'
+import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
 import { ContactsDirectoryPage } from '../directory-page'
+import { createContactsMockRepository } from '../mock/repository'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 
-function renderDirectory(scenario: ContactsMockScenarioDefinition, searchParams = '') {
+function renderDirectory(
+  scenario: ContactsMockScenarioDefinition,
+  searchParams = '',
+  repository?: ContactsManagementRepository,
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
@@ -20,15 +27,37 @@ function renderDirectory(scenario: ContactsMockScenarioDefinition, searchParams 
     return (
       <QueryClientProvider client={queryClient}>
         <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-          <ContactsManagementMockProvider scenario={scenario}>
-            {children}
-          </ContactsManagementMockProvider>
+          {repository ? (
+            <ContactsManagementProvider
+              context={{
+                deployment: scenario.deployment,
+                permissions: scenario.permissions,
+                workspaceId: scenario.workspaceId,
+              }}
+              repository={repository}
+            >
+              {children}
+            </ContactsManagementProvider>
+          ) : (
+            <ContactsManagementMockProvider scenario={scenario}>
+              {children}
+            </ContactsManagementMockProvider>
+          )}
         </NuqsTestingAdapter>
       </QueryClientProvider>
     )
   }
 
   return { onUrlUpdate, queryClient, ...render(<ContactsDirectoryPage />, { wrapper: Wrapper }) }
+}
+
+async function findLoadedDetails(content: string) {
+  await waitFor(() => {
+    expect(screen.getByRole('complementary', { name: 'contacts.details.title' })).toHaveTextContent(
+      content,
+    )
+  })
+  return screen.getByRole('complementary', { name: 'contacts.details.title' })
 }
 
 describe('ContactsDirectoryPage', () => {
@@ -51,9 +80,7 @@ describe('ContactsDirectoryPage', () => {
     expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()
     expect(screen.getAllByText('Leslie Alexander')).toHaveLength(2)
     expect(screen.getByText('Courtney Henry')).toBeInTheDocument()
-    const details = await screen.findByRole('complementary', {
-      name: 'contacts.details.title',
-    })
+    const details = await findLoadedDetails('Leslie Alexander')
     expect(details).toHaveTextContent('contacts.type.platform')
     expect(details).not.toHaveTextContent('org-user-platform')
     expect(details).not.toHaveTextContent('contacts.imPlatform.title')
@@ -64,7 +91,7 @@ describe('ContactsDirectoryPage', () => {
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-owner',
     )
-    let details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
+    let details = await findLoadedDetails('owner@example.com')
     expect(details).toHaveTextContent('owner@example.com')
     expect(details).toHaveTextContent('contacts.type.workspace')
     expect(details).toHaveTextContent('Slack')
@@ -75,7 +102,7 @@ describe('ContactsDirectoryPage', () => {
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-external',
     )
-    details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
+    details = await findLoadedDetails('external@example.com')
     expect(details).toHaveTextContent('external@example.com')
     expect(details).toHaveTextContent('contacts.type.external')
     expect(details).not.toHaveTextContent('contacts.details.emailOnly')
@@ -87,7 +114,7 @@ describe('ContactsDirectoryPage', () => {
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-external',
     )
-    const details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
+    const details = await findLoadedDetails('Courtney Henry')
 
     await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.details.edit' }))
@@ -112,7 +139,7 @@ describe('ContactsDirectoryPage', () => {
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-external',
     )
-    const details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
+    const details = await findLoadedDetails('Courtney Henry')
 
     await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.details.remove' }))
@@ -143,15 +170,91 @@ describe('ContactsDirectoryPage', () => {
     )
   })
 
-  it('does not open details when contact_id is absent from the loaded list', async () => {
+  it('does not resend an ID removed from details in the next batch removal', async () => {
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    const repository = createContactsMockRepository({ scenario })
+    const removeContacts = vi.spyOn(repository, 'removeContacts')
+    const user = userEvent.setup()
+    renderDirectory(scenario, '', repository)
+    await screen.findByText('Courtney Henry')
+
+    await user.click(screen.getByRole('checkbox', { name: /Courtney Henry/ }))
+    await user.click(screen.getByRole('button', { name: /Courtney Henry/ }))
+    const details = await findLoadedDetails('Courtney Henry')
+    await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'contacts.details.remove' }))
+    await waitFor(() => expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('checkbox', { name: /Leslie Alexander/ }))
+    await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+
+    await waitFor(() => expect(removeContacts).toHaveBeenCalledTimes(2))
+    expect(removeContacts).toHaveBeenNthCalledWith(1, { contactIds: ['contact-external'] })
+    expect(removeContacts).toHaveBeenNthCalledWith(2, { contactIds: ['contact-platform'] })
+  })
+
+  it('shows not-found details for a deleted contact while retaining the directory', async () => {
     renderDirectory(
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-missing',
     )
     expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('complementary', { name: 'contacts.details.title' }),
-    ).not.toBeInTheDocument()
+    expect(await screen.findByText('contacts.details.notFound')).toBeInTheDocument()
+    expect(screen.getByText('Courtney Henry')).toBeInTheDocument()
+  })
+
+  it('loads a URL-selected contact independently of filtered rows and shows its loading state', async () => {
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    const repository = createContactsMockRepository({ scenario })
+    let finishDetails: ((contact: ContactView | null) => void) | undefined
+    const getContact = vi.spyOn(repository, 'getContact').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishDetails = resolve
+        }),
+    )
+    const platform = scenario.contacts.find((contact) => contact.id === 'contact-platform')!
+    renderDirectory(
+      scenario,
+      '?contact_id=contact-platform&contact_kind=external&contact_search=Courtney',
+      repository,
+    )
+
+    await waitFor(() => expect(getContact).toHaveBeenCalledWith('contact-platform'))
+    expect(await screen.findByText('Courtney Henry')).toBeInTheDocument()
+    expect(screen.getByText('contacts.details.loading')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Leslie Alexander/ })).not.toBeInTheDocument()
+
+    await act(async () => finishDetails?.(platform))
+
+    const details = await findLoadedDetails('Leslie Alexander')
+    expect(within(details).getByText('Leslie Alexander')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'contacts.directory.search' })).toHaveValue(
+      'Courtney',
+    )
+    expect(screen.getByRole('button', { name: 'contacts.filter.external' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('retries unavailable contact details without replacing the error with stale list data', async () => {
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    const repository = createContactsMockRepository({ scenario })
+    const platform = scenario.contacts.find((contact) => contact.id === 'contact-platform')!
+    const getContact = vi
+      .spyOn(repository, 'getContact')
+      .mockRejectedValueOnce(new Error('Details unavailable'))
+      .mockResolvedValueOnce(platform)
+    const user = userEvent.setup()
+    renderDirectory(scenario, '?contact_id=contact-platform&contact_kind=external', repository)
+
+    expect(await screen.findByText('contacts.details.error')).toBeInTheDocument()
+    expect(screen.getByText('Courtney Henry')).toBeInTheDocument()
+    expect(screen.queryByText('contacts.details.notFound')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'contacts.action.retry' }))
+
+    expect(await screen.findByText('Leslie Alexander')).toBeInTheDocument()
+    expect(getContact).toHaveBeenCalledTimes(2)
   })
 
   it('filters the directory and exposes a recoverable no-result state', async () => {
@@ -209,7 +312,7 @@ describe('ContactsDirectoryPage', () => {
         screen.queryByRole('dialog', { name: 'contacts.external.title' }),
       ).not.toBeInTheDocument(),
     )
-    expect(await screen.findByText('New Partner')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /New Partner/ })).toBeInTheDocument()
   })
 
   it('associates External contact validation and restores focus after cancel', async () => {

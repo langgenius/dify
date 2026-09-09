@@ -126,7 +126,9 @@ export function ExternalContactDialog({
       case 'matches_platform_contact':
         return t(($) => $['external.result.matches_platform_contact'])
       case 'failed':
-        return t(($) => $['external.result.failed'])
+        return contact
+          ? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })
+          : t(($) => $['external.result.failed'])
       default:
         return null
     }

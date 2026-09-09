@@ -490,6 +490,28 @@ describe('consoleQuery transport context', () => {
 
 // Scenario: console OpenAPI query arrays follow backend parser expectations.
 describe('normalizeConsoleOpenAPIURL', () => {
+  it.each(['contact-options', 'contacts'])(
+    'serializes %s batch IDs as repeated parameters for the backend getlist parser',
+    (resource) => {
+      const url = normalizeConsoleOpenAPIURL(
+        `https://example.com/console/api/workspaces/current/human-input/${resource}/batch?contact_ids%5B1%5D=contact-2&contact_ids%5B0%5D=contact-1&keyword=kept`,
+      )
+      const searchParams = new URL(url).searchParams
+
+      expect(searchParams.getAll('contact_ids')).toEqual(['contact-1', 'contact-2'])
+      expect(searchParams.has('contact_ids[0]')).toBe(false)
+      expect(searchParams.has('contact_ids[1]')).toBe(false)
+      expect(searchParams.get('keyword')).toBe('kept')
+    },
+  )
+
+  it('does not rewrite contact IDs on other endpoints', () => {
+    const url =
+      'https://example.com/console/api/workspaces/current/human-input/contacts?contact_ids%5B0%5D=contact-1'
+
+    expect(normalizeConsoleOpenAPIURL(url)).toBe(url)
+  })
+
   it('should serialize repeated-only query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/agent/agent-1/logs?sources%5B1%5D=debug&sources%5B0%5D=api&statuses%5B0%5D=success&keyword=test',
