@@ -949,7 +949,8 @@ class WorkflowConfig(BaseSettings):
 
     DIFY_BUILDER_ENABLED: bool = Field(
         description="Expose the Dify Builder feature (console routes + UI flag).",
-        default=False,
+        # TODO: Restore this to False before the production release; it is enabled by default for testing only.
+        default=True,
     )
 
     DIFY_BUILDER_SKILL_LEARNING_POLICY: str = Field(
