@@ -27,9 +27,9 @@ class TestWorkspaceService:
             # Setup default mock returns
             feature = mock_feature_service.get_features.return_value
             feature.can_replace_logo = True
-            feature.billing.enabled = True
             feature.billing.subscription.plan = "professional"
             mock_tenant_service.has_roles.return_value = True
+            mock_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_dify_config.FILES_URL = "https://example.com/files"
 
             yield {
@@ -611,7 +611,6 @@ class TestWorkspaceService:
         mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
-        feature.billing.enabled = False
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         with patch("services.workspace_service.current_user", account):

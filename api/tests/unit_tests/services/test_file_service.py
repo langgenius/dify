@@ -15,7 +15,12 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import Account, EndUser, UploadFile
-from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from services.errors.file import (
+    BlockedFileExtensionError,
+    FileNotExistsError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
 from services.file_service import FileService
 
 
@@ -258,6 +263,20 @@ class TestFileService:
             is False
         )
 
+    def test_file_size_limit(self, config_overrides: Callable[..., None]):
+        config_overrides(
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+            UPLOAD_FILE_SIZE_LIMIT=5,
+        )
+
+        assert FileService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
+        assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
+        assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
+        assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
+        assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
+
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")
 
@@ -314,6 +333,16 @@ class TestFileService:
         assert result == "direct-url"
         get_presigned_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
 
+    def test_get_icon_url_maps_missing_cloud_file_to_service_error(
+        self, file_service: FileService, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, STORAGE_TYPE=StorageType.S3)
+        with (
+            patch.object(file_service, "get_file_presigned_url", side_effect=NotFound("File not found")),
+            pytest.raises(FileNotExistsError, match="File reference not found"),
+        ):
+            file_service.get_icon_url("file_id", "tenant_id")
+
     @pytest.mark.parametrize(
         ("deployment_edition", "storage_type"),
         [
@@ -324,16 +353,49 @@ class TestFileService:
     def test_get_icon_url_uses_preview_url_outside_cloud_s3(
         self,
         file_service: FileService,
+        db_session: Session,
         deployment_edition: DeploymentEdition,
         storage_type: StorageType,
         config_overrides: Callable[..., None],
     ):
+        self._persist_upload_file(db_session)
         config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
         with patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url:
             result = file_service.get_icon_url("file_id", "tenant_id")
 
         assert result == "preview-url"
         get_url.assert_called_once_with(upload_file_id="file_id")
+
+    @pytest.mark.parametrize(
+        ("deployment_edition", "storage_type"),
+        [
+            (DeploymentEdition.COMMUNITY, StorageType.S3),
+            (DeploymentEdition.CLOUD, StorageType.LOCAL),
+        ],
+    )
+    def test_get_icon_url_rejects_missing_file_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        deployment_edition: DeploymentEdition,
+        storage_type: StorageType,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
+
+        with pytest.raises(FileNotExistsError, match="File reference not found"):
+            file_service.get_icon_url("file_id", "tenant_id")
+
+    def test_get_icon_url_rejects_cross_tenant_file_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        self._persist_upload_file(db_session, tenant_id="other_tenant_id")
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, STORAGE_TYPE=StorageType.LOCAL)
+
+        with pytest.raises(FileNotExistsError, match="File reference not found"):
+            file_service.get_icon_url("file_id", "tenant_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup
@@ -384,87 +446,6 @@ class TestFileService:
         with pytest.raises(UnsupportedFileTypeError):
             file_service.get_file_preview("file_id", "tenant_id")
 
-    def test_get_image_preview_success(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session, extension="jpg", mime_type="image/jpeg")
-
-        with (
-            patch("services.file_service.file_helpers.verify_image_signature") as mock_verify,
-            patch("services.file_service.storage") as mock_storage,
-        ):
-            mock_verify.return_value = True
-            mock_storage.load.return_value = iter([b"chunk1"])
-
-            # Execute
-            gen, mime = file_service.get_image_preview("file_id", "ts", "nonce", "sign")
-
-            # Assert
-            assert list(gen) == [b"chunk1"]
-            assert mime == "image/jpeg"
-
-    def test_get_image_preview_invalid_sig(self, file_service):
-        with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
-            mock_verify.return_value = False
-            with pytest.raises(NotFound, match="File not found or signature is invalid"):
-                file_service.get_image_preview("file_id", "ts", "nonce", "sign")
-
-    def test_get_image_preview_not_found(self, file_service: FileService):
-        with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
-            mock_verify.return_value = True
-            with pytest.raises(NotFound, match="File not found or signature is invalid"):
-                file_service.get_image_preview("file_id", "ts", "nonce", "sign")
-
-    def test_get_image_preview_unsupported_type(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session)
-        with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
-            mock_verify.return_value = True
-            with pytest.raises(UnsupportedFileTypeError):
-                file_service.get_image_preview("file_id", "ts", "nonce", "sign")
-
-    def test_get_file_generator_by_file_id_success(self, file_service: FileService, db_session: Session):
-        upload_file = self._persist_upload_file(db_session)
-
-        with (
-            patch("services.file_service.file_helpers.verify_file_signature") as mock_verify,
-            patch("services.file_service.storage") as mock_storage,
-        ):
-            mock_verify.return_value = True
-            mock_storage.load.return_value = iter([b"chunk"])
-
-            gen, file = file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
-            assert list(gen) == [b"chunk"]
-            assert file.id == upload_file.id
-            assert file.key == upload_file.key
-
-    def test_get_file_generator_by_file_id_invalid_sig(self, file_service):
-        with patch("services.file_service.file_helpers.verify_file_signature") as mock_verify:
-            mock_verify.return_value = False
-            with pytest.raises(NotFound, match="File not found or signature is invalid"):
-                file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
-
-    def test_get_file_generator_by_file_id_not_found(self, file_service: FileService):
-        with patch("services.file_service.file_helpers.verify_file_signature") as mock_verify:
-            mock_verify.return_value = True
-            with pytest.raises(NotFound, match="File not found or signature is invalid"):
-                file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
-
-    def test_get_public_image_preview_success(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session, extension="png", mime_type="image/png")
-
-        with patch("services.file_service.storage") as mock_storage:
-            mock_storage.load.return_value = b"image content"
-            gen, mime = file_service.get_public_image_preview("file_id")
-            assert gen == b"image content"
-            assert mime == "image/png"
-
-    def test_get_public_image_preview_not_found(self, file_service: FileService):
-        with pytest.raises(NotFound, match="File not found or signature is invalid"):
-            file_service.get_public_image_preview("file_id")
-
-    def test_get_public_image_preview_unsupported_type(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session)
-        with pytest.raises(UnsupportedFileTypeError):
-            file_service.get_public_image_preview("file_id")
-
     def test_get_file_content_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session)
 
@@ -493,6 +474,12 @@ class TestFileService:
     def test_get_upload_files_by_ids_empty(self, db_session: Session):
         result = FileService.get_upload_files_by_ids("tenant_id", [], session=db_session)
         assert result == {}
+
+    def test_get_upload_file_by_id_scopes_to_tenant(self, db_session: Session) -> None:
+        upload_file = self._persist_upload_file(db_session)
+
+        assert FileService.get_upload_file_by_id("tenant_id", "file_id", session=db_session) == upload_file
+        assert FileService.get_upload_file_by_id("other_tenant_id", "file_id", session=db_session) is None
 
     def test_get_upload_files_by_ids(self, db_session: Session):
         upload_file = self._persist_upload_file(db_session, file_id="550e8400-e29b-41d4-a716-446655440000")

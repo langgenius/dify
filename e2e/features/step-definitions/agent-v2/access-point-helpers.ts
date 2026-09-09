@@ -28,7 +28,7 @@ export const getAccessRegion = (world: DifyWorld) =>
 export type AccessSurfaceName = 'Web app' | 'Backend service API'
 
 export const getAccessSurfaceCard = (world: DifyWorld, surface: AccessSurfaceName) =>
-  getAccessRegion(world).getByRole('article', { name: surface }).first()
+  getAccessRegion(world).getByRole('region', { name: surface }).first()
 
 export const getWebAppCard = (world: DifyWorld) => getAccessSurfaceCard(world, 'Web app')
 

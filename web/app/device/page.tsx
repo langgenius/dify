@@ -11,7 +11,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { deviceLookup } from '@/service/device-flow'
 import AuthorizeAccount from './components/authorize-account'
 import AuthorizeSSO from './components/authorize-sso'
@@ -109,8 +109,7 @@ export default function DevicePage() {
       setView({ kind: 'authorize_sso' }) // oxlint-disable-line eslint-react/set-state-in-effect
       consumed = true
     } else if (urlUserCode && isValidUserCode(urlUserCode)) {
-      if (account)
-        setView({ kind: 'authorize_account', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
+      if (account) setView({ kind: 'authorize_account', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       else setView({ kind: 'chooser', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       consumed = true
     }

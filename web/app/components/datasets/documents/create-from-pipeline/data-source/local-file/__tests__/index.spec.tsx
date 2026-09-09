@@ -1,6 +1,7 @@
 import type { FileItem } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import LocalFile from '../index'
 
 // Mock the hook
@@ -16,9 +17,6 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 // Mock theme types
-vi.mock('@/types/app', () => ({
-  Theme: { dark: 'dark', light: 'light' },
-}))
 
 // Mock DocumentFileIcon
 vi.mock('@/app/components/datasets/common/document-file-icon', () => ({

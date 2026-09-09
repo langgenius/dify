@@ -2,6 +2,9 @@ from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
+from flask import Flask
+
 from controllers.console.notification import (
     DismissNotificationPayload,
     NotificationApi,
@@ -20,7 +23,15 @@ def _request_context() -> RequestContext:
     )
 
 
-def test_get_notification_delegates_and_serializes_result() -> None:
+@pytest.mark.parametrize(
+    ("query_string", "expected_language"),
+    [({}, "en-US"), ({"language": "zh-Hans"}, "zh-Hans")],
+)
+def test_get_notification_validates_language_query_and_serializes_result(
+    app: Flask,
+    query_string: dict[str, str],
+    expected_language: str,
+) -> None:
     service = Mock()
     service.get_active.return_value = NotificationResult(
         should_show=True,
@@ -38,10 +49,13 @@ def test_get_notification_delegates_and_serializes_result() -> None:
     )
     services = SimpleNamespace(notifications=service)
     api = NotificationApi()
-    method = unwrap(api.get)
+    method = api.get.__wrapped__
     context = _request_context()
 
-    with patch("controllers.console.notification.application_services", return_value=services):
+    with (
+        app.test_request_context("/notification", query_string=query_string),
+        patch("controllers.console.notification.application_services", return_value=services),
+    ):
         result, status = method(api, context)
 
     assert status == 200
@@ -59,7 +73,7 @@ def test_get_notification_delegates_and_serializes_result() -> None:
             }
         ],
     }
-    service.get_active.assert_called_once_with(context)
+    service.get_active.assert_called_once_with(context, expected_language)
 
 
 def test_dismiss_notification_delegates_with_stable_account_context() -> None:

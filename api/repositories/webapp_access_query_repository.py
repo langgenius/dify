@@ -19,6 +19,6 @@ class WebAppAccessQueryRepository(WebAppAccessQuery):
         try:
             with self._session_factory() as session:
                 app_id = session.scalar(select(Site.app_id).where(Site.code == app_code).limit(1))
-                return str(app_id) if app_id is not None else None
+                return app_id if app_id is not None else None
         except (DBAPIError, TimeoutError) as e:
             raise WebAppAccessUnavailableError from e

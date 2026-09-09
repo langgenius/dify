@@ -1,4 +1,6 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -7,7 +9,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
@@ -77,10 +79,6 @@ vi.mock('@/service/use-triggers', async () =>
 
 vi.mock('@/service/use-strategy', () => ({
   useStrategyProviders: () => ({ data: [] }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
 }))
 
 type CheckValidFn = (data: CommonNodeType, t: unknown, extra?: unknown) => { errorMessage: string }
@@ -154,12 +152,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en',
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelProviders: Array<{ provider: string }> }) => unknown,
-  ) => selector({ modelProviders: mockModelProviders }),
 }))
 
 // useWorkflowNodes reads from WorkflowContext (real store via renderWorkflowHook)
@@ -854,4 +846,22 @@ describe('useWorkflowRunValidation', () => {
     expect(typeof result.current.validateBeforeRun).toBe('function')
     expect(result.current.validateBeforeRun()).toBe(true)
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
+        return { data: mockModelProviders }
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  }
 })

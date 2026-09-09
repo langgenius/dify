@@ -195,6 +195,19 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     assert "default" in conversation_id
     assert conversation_id["default"] is None
 
+    schemas = service_payload["components"]["schemas"]
+    document_detail = schemas["DocumentDetailResponse"]
+    validator = Draft202012Validator(service_payload)
+    for schema in (document_detail, *schemas["DocumentTextUpdate"]["anyOf"]):
+        for property_schema in schema["properties"].values():
+            if "default" in property_schema:
+                validator.evolve(schema=property_schema).validate(property_schema["default"])
+
+    assert document_detail["required"] == ["id"]
+    assert document_detail["properties"]["enabled"]["type"] == "boolean"
+    assert "default" not in document_detail["properties"]["enabled"]
+    assert document_detail["properties"]["tokens"]["default"] is None
+
 
 def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
@@ -329,6 +342,9 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     chat_success_content = chat_operation["responses"]["200"]["content"]
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
+
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
 
     schemas = payload["components"]["schemas"]
     expected_property_descriptions = {
@@ -600,6 +616,17 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         "remote_url",
         "local_file",
     }
+
+
+def test_generate_specs_writes_web_file_upload_error_codes(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    web_path = next(path for path in written_paths if path.name == "web-openapi.json")
+    payload = json.loads(web_path.read_text(encoding="utf-8"))
+
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
 
 
 def test_standalone_inline_model_name_includes_list_constraints():

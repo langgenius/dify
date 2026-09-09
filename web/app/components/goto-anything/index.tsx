@@ -40,11 +40,10 @@ import { useTranslation } from 'react-i18next'
 import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
@@ -226,16 +225,19 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
   return rows
 }
 
-function GotoAnythingDialog() {
+export function GotoAnything() {
   const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
-  const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
-  const agentsAvailable = isAgentV2Enabled() && canManageAgents
-  const skillsAvailable = enableSkill && !isCurrentWorkspaceDatasetOperator
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
+  const agentsAvailable = isAgentV2Enabled()
+  const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -375,8 +377,8 @@ function GotoAnythingDialog() {
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
-  function resetSearch() {
-    setSearchQuery('')
+  function handleDialogOpenChangeComplete(open: boolean) {
+    if (!open) setSearchQuery('')
   }
 
   useHotkey(
@@ -426,13 +428,6 @@ function GotoAnythingDialog() {
       default:
         if (result.path) router.push(result.path)
     }
-  }
-
-  function handleAutocompleteOpenChange(
-    nextOpen: boolean,
-    eventDetails: AutocompleteChangeEventDetails,
-  ) {
-    if (!nextOpen && eventDetails.reason === 'escape-key') gotoAnythingDialogHandle.close()
   }
 
   function handleAutocompleteValueChange(
@@ -496,7 +491,10 @@ function GotoAnythingDialog() {
   return (
     <>
       <SlashCommandProvider />
-      <Dialog handle={gotoAnythingDialogHandle} onOpenChange={resetSearch}>
+      <Dialog
+        handle={gotoAnythingDialogHandle}
+        onOpenChangeComplete={handleDialogOpenChangeComplete}
+      >
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
@@ -518,7 +516,6 @@ function GotoAnythingDialog() {
               items={visibleOptions}
               value={searchQuery}
               onValueChange={handleAutocompleteValueChange}
-              onOpenChange={handleAutocompleteOpenChange}
               itemToStringValue={optionToInputValue}
               filter={null}
               grid={isCommandsMode}
@@ -585,15 +582,22 @@ function GotoAnythingDialog() {
                       />
                     )}
 
-                    <AutocompleteList className="max-h-none overflow-visible p-0">
+                    <AutocompleteList
+                      aria-label={
+                        isCommandsMode
+                          ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
+                          : undefined
+                      }
+                      className="max-h-none overflow-visible p-0"
+                    >
                       {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
-                        <AutocompleteGroup items={commandOptions} role="rowgroup">
+                        <AutocompleteGroup items={commandOptions}>
                           <AutocompleteGroupLabel className="px-4 pt-4 pb-2 text-left font-mono text-[11px] font-medium tracking-[0.12em] text-text-tertiary uppercase">
                             {isSlashMode
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <div className="px-4 pb-4" role="presentation">
+                          <div className="px-4 pb-4">
                             {commandRows.map((row) => (
                               <AutocompleteRow
                                 key={row.map((option) => option.shortcut).join(':')}
@@ -697,8 +701,4 @@ function GotoAnythingDialog() {
       )}
     </>
   )
-}
-
-export function GotoAnything() {
-  return <GotoAnythingDialog />
 }

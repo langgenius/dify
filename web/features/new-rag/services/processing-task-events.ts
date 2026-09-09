@@ -1,6 +1,6 @@
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import { getEventMeta } from '@orpc/client'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 type ProcessingTaskEventWithId<T extends DocumentProcessingTaskEvent> = T & {
   id: string
