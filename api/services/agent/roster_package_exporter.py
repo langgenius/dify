@@ -283,24 +283,24 @@ class RosterAgentPackageExporter:
 
         skill_file_ids = [item.file_id for item in soul.config_skills if not item.is_missing]
         tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=skill_file_ids)
-        for ref, portable_ref in zip(soul.config_skills, portable_data["config_skills"]):
-            if ref.is_missing:
+        for skill_ref, portable_skill_ref in zip(soul.config_skills, portable_data["config_skills"]):
+            if skill_ref.is_missing:
                 continue
             resource_id = f"s_{len(skill_sources) + 1:06d}"
-            tool_file = tool_files.get(ref.file_id)
+            tool_file = tool_files.get(skill_ref.file_id)
             if tool_file is None:
-                raise RosterAgentPackageExportFailedError(f"Config skill {ref.name!r} payload is unavailable")
+                raise RosterAgentPackageExportFailedError(f"Config skill {skill_ref.name!r} payload is unavailable")
             path = f"{resource_id}.zip"
-            portable_ref["file_id"] = resource_id
-            portable_ref["is_missing"] = False
+            portable_skill_ref["file_id"] = resource_id
+            portable_skill_ref["is_missing"] = False
             skill_sources.append(
                 _SkillSource(
                     payload=_PayloadSource(path, tool_file.file_key),
                     id=resource_id,
                     scope="agent_config",
-                    name=ref.name,
+                    name=skill_ref.name,
                     display_name=None,
-                    description=ref.description,
+                    description=skill_ref.description,
                     priority=None,
                     audit_ref=tool_file.id,
                 )
@@ -314,31 +314,35 @@ class RosterAgentPackageExporter:
         ]
         file_tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=tool_file_refs)
         upload_files = self._upload_files(session=session, tenant_id=tenant_id, file_ids=upload_file_refs)
-        for ref, portable_ref in zip(soul.config_files, portable_data["config_files"]):
-            if ref.is_missing:
+        for file_ref, portable_file_ref in zip(soul.config_files, portable_data["config_files"]):
+            if file_ref.is_missing:
                 continue
             resource_id = f"f_{len(file_sources) + 1:06d}"
-            extension = self._safe_extension(ref.name)
+            extension = self._safe_extension(file_ref.name)
             path = f"{resource_id}{extension}"
-            if ref.file_kind == "tool_file":
-                record = file_tool_files.get(ref.file_id)
-                storage_key = record.file_key if record else None
-                mime_type = ref.mime_type or (record.mimetype if record else None)
+            if file_ref.file_kind == "tool_file":
+                tool_file = file_tool_files.get(file_ref.file_id)
+                if tool_file is None:
+                    raise RosterAgentPackageExportFailedError(f"Config file {file_ref.name!r} payload is unavailable")
+                storage_key = tool_file.file_key
+                mime_type = file_ref.mime_type or tool_file.mimetype
+                audit_ref = tool_file.id
             else:
-                record = upload_files.get(ref.file_id)
-                storage_key = record.key if record else None
-                mime_type = ref.mime_type or (record.mime_type if record else None)
-            if record is None or storage_key is None:
-                raise RosterAgentPackageExportFailedError(f"Config file {ref.name!r} payload is unavailable")
-            portable_ref["file_id"] = resource_id
-            portable_ref["is_missing"] = False
+                upload_file = upload_files.get(file_ref.file_id)
+                if upload_file is None:
+                    raise RosterAgentPackageExportFailedError(f"Config file {file_ref.name!r} payload is unavailable")
+                storage_key = upload_file.key
+                mime_type = file_ref.mime_type or upload_file.mime_type
+                audit_ref = upload_file.id
+            portable_file_ref["file_id"] = resource_id
+            portable_file_ref["is_missing"] = False
             file_sources.append(
                 _FileSource(
                     payload=_PayloadSource(path, storage_key),
                     id=resource_id,
-                    original_name=ref.name,
+                    original_name=file_ref.name,
                     mime_type=mime_type or "application/octet-stream",
-                    audit_ref=record.id,
+                    audit_ref=audit_ref,
                 )
             )
 

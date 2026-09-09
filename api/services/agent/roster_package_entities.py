@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import BinaryIO, Literal, Self
+from typing import BinaryIO, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.plugin.entities.plugin import PluginDependency
 from models.agent_config_entities import AgentSoulConfig
 
-ROSTER_AGENT_PACKAGE_FORMAT = "dify.roster-agent"
-ROSTER_AGENT_PACKAGE_FORMAT_VERSION = 1
+ROSTER_AGENT_PACKAGE_FORMAT: Final[Literal["dify.roster-agent"]] = "dify.roster-agent"
+ROSTER_AGENT_PACKAGE_FORMAT_VERSION: Final[Literal[1]] = 1
 ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES = 64 * 1024
 
 _RESOURCE_ID_PATTERN = re.compile(r"^[sf]_[0-9]{6}$")
@@ -136,15 +136,15 @@ class RosterAgentPackageManifest(BaseModel):
 
         skill_by_id = {item.id: item for item in self.skills}
         referenced_skill_ids: set[str] = set()
-        for ref in self.soul.config_skills:
-            if ref.is_missing:
+        for skill_ref in self.soul.config_skills:
+            if skill_ref.is_missing:
                 continue
-            resource = skill_by_id.get(ref.file_id)
-            if resource is None or resource.scope != "agent_config":
+            skill_resource = skill_by_id.get(skill_ref.file_id)
+            if skill_resource is None or skill_resource.scope != "agent_config":
                 raise ValueError("config skill reference must resolve to an agent_config skill")
-            if resource.name != ref.name:
+            if skill_resource.name != skill_ref.name:
                 raise ValueError("config skill name must match its resource metadata")
-            referenced_skill_ids.add(resource.id)
+            referenced_skill_ids.add(skill_resource.id)
         unreferenced_skills = {
             item.id for item in self.skills if item.scope == "agent_config" and item.id not in referenced_skill_ids
         }
@@ -153,15 +153,15 @@ class RosterAgentPackageManifest(BaseModel):
 
         file_by_id = {item.id: item for item in self.files}
         referenced_file_ids: set[str] = set()
-        for ref in self.soul.config_files:
-            if ref.is_missing:
+        for file_ref in self.soul.config_files:
+            if file_ref.is_missing:
                 continue
-            resource = file_by_id.get(ref.file_id)
-            if resource is None or resource.role != "agent_config_file":
+            file_resource = file_by_id.get(file_ref.file_id)
+            if file_resource is None or file_resource.role != "agent_config_file":
                 raise ValueError("config file reference must resolve to an agent_config_file resource")
-            if resource.original_name != ref.name:
+            if file_resource.original_name != file_ref.name:
                 raise ValueError("config file name must match its resource metadata")
-            referenced_file_ids.add(resource.id)
+            referenced_file_ids.add(file_resource.id)
         unreferenced_files = {
             item.id for item in self.files if item.role == "agent_config_file" and item.id not in referenced_file_ids
         }
