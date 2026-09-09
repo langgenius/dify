@@ -11,12 +11,13 @@ from models import Account, App
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
-from services.installed_app_completion_service import CompletionResponse, InstalledAppCompletionRuntime
+from services.conversation_service import ConversationService
+from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationRuntime
 
 logger = logging.getLogger(__name__)
 
 
-class AppGenerateServiceCompletionRuntime(InstalledAppCompletionRuntime):
+class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
 
@@ -28,7 +29,7 @@ class AppGenerateServiceCompletionRuntime(InstalledAppCompletionRuntime):
         account_id: str,
         args: Mapping[str, object],
         streaming: bool,
-    ) -> CompletionResponse:
+    ) -> GenerationResponse:
         with self._session_factory(expire_on_commit=False) as read_session:
             app = read_session.get(App, app_id)
             if app is None:
@@ -37,9 +38,20 @@ class AppGenerateServiceCompletionRuntime(InstalledAppCompletionRuntime):
             if account is None:
                 raise AccountNotFoundError(f"Account {account_id} no longer exists")
 
+            # Resolve the validated chat conversation before a streaming generator
+            # is created, preserving the legacy eager 404 and ownership checks.
+            conversation_id = args.get("conversation_id")
+            if isinstance(conversation_id, str) and conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app,
+                    conversation_id=conversation_id,
+                    user=account,
+                    session=read_session,
+                )
+
         # Release actor/app reads before the runtime's quota and rate-limit checks.
         # Legacy generators still own their internal database and external I/O.
-        response: CompletionResponse | None = None
+        response: GenerationResponse | None = None
         try:
             with self._session_factory(expire_on_commit=False) as session:
                 response = AppGenerateService.generate(

@@ -1,367 +1,362 @@
-import uuid
-from inspect import unwrap
-from unittest.mock import MagicMock, PropertyMock, patch
+import json
+from collections.abc import Generator
+from uuid import uuid4
 
 import pytest
-from flask import Flask
-from sqlalchemy.orm import Session, object_session
-from werkzeug.exceptions import InternalServerError
+from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.console.explore.completion as completion_module
-from controllers.console.app.error import (
-    ConversationCompletedError,
-)
-from controllers.console.explore.error import NotChatAppError
-from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from models import Account
-from models.model import App, AppMode, InstalledApp
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
+from models import AppMode, Conversation, Tenant
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from services.account_errors import AccountNotFoundError
+from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_generate_service import AppGenerateService
+from services.errors.app_model_config import AppModelConfigBrokenError
+from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from services.installed_app_generation_adapters import AppGenerateServiceRuntime
+from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
+from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
+    _assert_json_response,
+    _Harness,
+    _set_app_mode,
+    harness,
+)
+from tests.unit_tests.controllers.console.explore.test_installed_app_completion import (
+    _USED_AT,
+    _last_used_at,
+    _Runtime,
+    _RuntimeCall,
+    _Services,
+    runtime,
+)
+
+__all__ = ["harness", "runtime"]
+
+_CONVERSATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+_PARENT_MESSAGE_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 
 
 @pytest.fixture
-def user():
-    account = Account(name="User", email="user.com")
-    account.id = "uid"
-    return account
+def chat_runtime(
+    harness: _Harness,
+    runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+) -> _Runtime:
+    _set_app_mode(harness, sqlite_session_factory, AppMode.CHAT)
+    harness.api.add_resource(completion_module.ChatApi, "/installed-apps/<uuid:installed_app_id>/chat-messages")
+    return runtime
 
 
-@pytest.fixture(autouse=True)
-def bind_database(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(completion_module.db, "session", sqlite_session)
+def _url(harness: _Harness) -> str:
+    return f"/installed-apps/{harness.installed_app.id}/chat-messages"
 
 
-@pytest.fixture
-def chat_app(sqlite_session: Session) -> InstalledApp:
-    return _installed_app(AppMode.CHAT, sqlite_session)
+@pytest.mark.parametrize(
+    ("payload", "expected_args"),
+    [
+        (
+            {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}, "query": ""},
+            {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}, "query": ""},
+        ),
+        (
+            {"inputs": {}, "query": "Hi", "files": None, "conversation_id": None, "parent_message_id": None},
+            {"inputs": {}, "query": "Hi"},
+        ),
+        (
+            {
+                "inputs": {},
+                "query": "Hi",
+                "files": [],
+                "conversation_id": "",
+                "parent_message_id": "",
+                "response_mode": "blocking",
+                "auto_generate_name": True,
+            },
+            {"inputs": {}, "query": "Hi", "files": []},
+        ),
+        (
+            {
+                "inputs": {},
+                "query": "Hi",
+                "files": [{"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}],
+                "conversation_id": _CONVERSATION_ID.upper(),
+                "parent_message_id": _PARENT_MESSAGE_ID.replace("-", ""),
+                "retriever_from": "custom-source",
+            },
+            {
+                "inputs": {},
+                "query": "Hi",
+                "files": [{"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}],
+                "conversation_id": _CONVERSATION_ID,
+                "parent_message_id": _PARENT_MESSAGE_ID,
+                "retriever_from": "custom-source",
+            },
+        ),
+    ],
+)
+def test_chat_preserves_payload_defaults_and_always_requests_streaming(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    payload: dict[str, object],
+    expected_args: dict[str, object],
+) -> None:
+    def chunks() -> Generator[str]:
+        yield 'data: {"answer":"你好","metadata":{},"usage":null}\n\n'
+
+    chat_runtime.response = chunks()
+    response = harness.app.test_client().post(_url(harness), json=payload)
+
+    assert response.status_code == 200
+    assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
+    assert response.data == 'data: {"answer":"你好","metadata":{},"usage":null}\n\n'.encode()
+    response.close()
+    expected_args = {"retriever_from": "explore_app", **expected_args, "auto_generate_name": False}
+    assert chat_runtime.calls == [_RuntimeCall(harness.target_app.id, harness.account.id, expected_args, True)]
+    assert harness.installed_app.tenant_id != harness.target_app.tenant_id
 
 
-def _installed_app(mode: AppMode, session: Session) -> InstalledApp:
-    app = App(
-        tenant_id="owner-tenant",
-        name=f"{mode.value} App",
-        mode=mode,
-        enable_site=True,
-        enable_api=False,
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("consume_all", [False, True])
+def test_chat_modes_preserve_stream_bytes_headers_and_close_on_completion_or_disconnect(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+    mode: AppMode,
+    consume_all: bool,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+    closed: list[bool] = []
+
+    def chunks() -> Generator[str]:
+        try:
+            yield 'data: {"answer":"Hello"}\n\n'
+            yield "data: [DONE]\n\n"
+        finally:
+            closed.append(True)
+
+    chat_runtime.response = chunks()
+    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"}, buffered=False)
+
+    assert response.status_code == 200
+    assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
+    if consume_all:
+        assert response.data == b'data: {"answer":"Hello"}\n\ndata: [DONE]\n\n'
+    else:
+        assert next(iter(response.response)) == b'data: {"answer":"Hello"}\n\n'
+        assert closed == []
+    response.close()
+    assert closed == [True]
+    assert len(chat_runtime.calls) == 1
+    assert chat_runtime.calls[0].streaming is True
+    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
+
+
+@pytest.mark.parametrize(
+    ("failure", "status", "code", "message"),
+    [
+        (ConversationNotExistsError(), 404, "not_found", "Conversation Not Exists."),
+        (
+            ConversationCompletedError(),
+            400,
+            "conversation_completed",
+            "The conversation has ended. Please start a new conversation.",
+        ),
+        (AppModelConfigBrokenError(), 400, "app_unavailable", "App unavailable, please check your app configurations."),
+        (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
+        (
+            QuotaExceededError(),
+            400,
+            "provider_quota_exceeded",
+            "Your quota for Dify Hosted Model Provider has been exhausted. "
+            "Please go to Settings -> Model Provider to complete your own provider credentials.",
+        ),
+        (
+            ModelCurrentlyNotSupportError(),
+            400,
+            "model_currently_not_support",
+            "Dify Hosted OpenAI trial currently not support the GPT-4 model.",
+        ),
+        (InvokeError("Provider rejected input"), 400, "completion_request_error", "Provider rejected input"),
+        (
+            InvokeRateLimitError("Concurrent request limit exceeded"),
+            429,
+            "rate_limit_error",
+            "Concurrent request limit exceeded",
+        ),
+        (ValueError("Invalid runtime arguments"), 400, "invalid_param", "Invalid runtime arguments"),
+        (AccountNotFoundError(), 401, "unauthorized", "Account no longer exists."),
+        (
+            RuntimeError("Unexpected runtime failure"),
+            500,
+            "internal_server_error",
+            "The server encountered an internal error and was unable to complete your request. "
+            "Either the server is overloaded or there is an error in the application.",
+        ),
+    ],
+)
+def test_chat_preserves_precise_errors_and_committed_usage_when_generation_fails(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+    failure: Exception,
+    status: int,
+    code: str,
+    message: str,
+) -> None:
+    chat_runtime.error = failure
+
+    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"})
+
+    _assert_json_response(response, status=status, body={"code": code, "message": message, "status": status})
+    assert len(chat_runtime.calls) == 1
+    assert chat_runtime.calls[0].streaming is True
+    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
+    if status == 401:
+        assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
+
+
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    [
+        ({"inputs": {}}, {"type": "missing", "loc": ["query"], "msg": "Field required"}),
+        (
+            {"inputs": {}, "query": None},
+            {"type": "string_type", "loc": ["query"], "msg": "Input should be a valid string"},
+        ),
+        (
+            {"inputs": None, "query": "Hi"},
+            {"type": "dict_type", "loc": ["inputs"], "msg": "Input should be a valid dictionary"},
+        ),
+        (
+            {"inputs": {}, "query": "Hi", "conversation_id": "invalid"},
+            {"type": "value_error", "loc": ["conversation_id"], "msg": "Value error, must be a valid UUID"},
+        ),
+        (
+            {"inputs": {}, "query": "Hi", "parent_message_id": "invalid"},
+            {"type": "value_error", "loc": ["parent_message_id"], "msg": "Value error, must be a valid UUID"},
+        ),
+    ],
+)
+def test_chat_validates_payload_before_mode_and_never_records_usage_for_invalid_input(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+    payload: dict[str, object],
+    error: dict[str, object],
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, AppMode.COMPLETION)
+
+    response = harness.app.test_client().post(_url(harness), json=payload)
+
+    _assert_json_response(
+        response,
+        status=422,
+        body={"code": "unprocessable_entity", "message": json.dumps([error]), "status": 422},
     )
-    session.add(app)
-    session.flush()
-    installed_app = InstalledApp(
-        tenant_id="viewer-tenant",
-        app_id=app.id,
-        app_owner_tenant_id=app.tenant_id,
-        position=0,
-        is_pinned=False,
-        last_used_at=None,
+    assert chat_runtime.calls == []
+    assert _last_used_at(harness, sqlite_session_factory) is None
+
+
+@pytest.mark.parametrize(
+    "mode", [AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE]
+)
+def test_chat_rejects_other_modes_before_recording_usage(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+    mode: AppMode,
+) -> None:
+    _set_app_mode(harness, sqlite_session_factory, mode)
+
+    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"})
+
+    _assert_json_response(
+        response, status=400, body={"code": "not_chat_app", "message": "App mode is invalid.", "status": 400}
     )
-    session.add(installed_app)
-    session.commit()
-    return installed_app
+    assert chat_runtime.calls == []
+    assert _last_used_at(harness, sqlite_session_factory) is None
 
 
-def _session(installed_app: InstalledApp) -> Session:
-    session = object_session(installed_app)
-    assert session is not None
-    return session
+@pytest.mark.parametrize("rejection", ["permission", "tenant"])
+def test_chat_enforces_admission_before_payload_validation(
+    harness: _Harness,
+    chat_runtime: _Runtime,
+    sqlite_session_factory: sessionmaker[Session],
+    rejection: str,
+) -> None:
+    if rejection == "permission":
+        harness.state.allowed = False
+    else:
+        harness.account._current_tenant = Tenant(name="Other workspace")
+
+    response = harness.app.test_client().post(_url(harness), json={})
+
+    if rejection == "permission":
+        _assert_json_response(
+            response, status=403, body={"code": "access_denied", "message": "App access denied.", "status": 403}
+        )
+    else:
+        _assert_json_response(
+            response, status=404, body={"code": "not_found", "message": "Installed app not found", "status": 404}
+        )
+    assert chat_runtime.calls == []
+    assert _last_used_at(harness, sqlite_session_factory) is None
 
 
-@pytest.fixture
-def payload_data():
-    return {"inputs": {}, "query": "hi"}
-
-
-@pytest.fixture
-def payload_patch(payload_data):
-    return patch.object(
-        type(completion_module.console_ns),
-        "payload",
-        new_callable=PropertyMock,
-        return_value=payload_data,
-    )
-
-
-class TestChatApi:
-    def test_post_success(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                return_value={"ok": True},
-            ),
-            patch.object(
-                completion_module.helper,
-                "compact_generate_response",
-                return_value=("ok", 200),
-            ),
-        ):
-            result = method(
-                api,
-                completion_module.ChatMessagePayload.model_validate(payload_data),
-                _session(chat_app),
-                user,
-                chat_app,
+@pytest.mark.parametrize("rejection", ["missing", "other_app", "other_account", "api", "deleted"])
+@pytest.mark.usefixtures("chat_runtime")
+def test_chat_conversation_preflight_returns_404_before_starting_generation_and_preserves_usage(
+    harness: _Harness,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    rejection: str,
+) -> None:
+    conversation_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add(harness.account)
+        if rejection != "missing":
+            session.add(
+                Conversation(
+                    id=conversation_id,
+                    app_id=str(uuid4()) if rejection == "other_app" else harness.target_app.id,
+                    from_account_id=str(uuid4()) if rejection == "other_account" else harness.account.id,
+                    from_source="api" if rejection == "api" else "console",
+                    mode=AppMode.CHAT,
+                    name="Existing conversation",
+                    _inputs={},
+                    is_deleted=rejection == "deleted",
+                )
             )
 
-        assert result == ("ok", 200)
-
-    def test_post_not_chat_app(self, user, sqlite_session: Session):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        installed_app = _installed_app(AppMode.COMPLETION, sqlite_session)
-
-        with pytest.raises(NotChatAppError):
-            method(
-                api,
-                completion_module.ChatMessagePayload.model_validate({"inputs": {}, "query": "hi"}),
-                sqlite_session,
-                user,
-                installed_app,
-            )
-
-    def test_rate_limit_error(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=InvokeRateLimitError("limit"),
+    services = _Services(
+        installed_app_generation=InstalledAppGenerationService(
+            app_definitions=AppDefinitionQueryService(
+                definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
+                builtin_icon_url_prefix="/tools/icons",
             ),
-        ):
-            with pytest.raises(InvokeRateLimitHttpError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_conversation_completed_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.services.errors.conversation.ConversationCompletedError(),
-            ),
-        ):
-            with pytest.raises(ConversationCompletedError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_conversation_not_exists_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.services.errors.conversation.ConversationNotExistsError(),
-            ),
-        ):
-            with pytest.raises(completion_module.NotFound):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_invalid_conversation_id_fails_fast_as_not_found(self, app: Flask, chat_app, user) -> None:
-        # A nonexistent conversation_id must fail fast as 404, before the streaming
-        # generator is created. Previously the lookup only ran inside the generator,
-        # so an invalid id surfaced as a hang instead of a clean error.
-        conversation_id = str(uuid.uuid4())
-        payload_patch = patch.object(
-            type(completion_module.console_ns),
-            "payload",
-            new_callable=PropertyMock,
-            return_value={"inputs": {}, "query": "hi", "conversation_id": conversation_id},
+            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+            runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
         )
-        generate_mock = MagicMock(return_value={"ok": True})
-        get_conversation_mock = MagicMock(
-            side_effect=completion_module.services.errors.conversation.ConversationNotExistsError()
-        )
-        session = _session(chat_app)
+    )
+    monkeypatch.setattr(completion_module, "application_services", lambda: services)
+    generation_started: list[bool] = []
 
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
+    def generate(**_kwargs: object) -> GenerationResponse:
+        generation_started.append(True)
+        pytest.fail("The generation runtime must not start for an inaccessible conversation")
 
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.ConversationService,
-                "get_conversation",
-                get_conversation_mock,
-            ),
-            patch.object(completion_module.AppGenerateService, "generate", generate_mock),
-        ):
-            with pytest.raises(completion_module.NotFound):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(
-                        {"inputs": {}, "query": "hi", "conversation_id": conversation_id}
-                    ),
-                    session,
-                    user,
-                    chat_app,
-                )
+    monkeypatch.setattr(AppGenerateService, "generate", generate)
 
-        # The lookup must run before generation, so the generator is never started.
-        generate_mock.assert_not_called()
-        assert get_conversation_mock.call_args.kwargs["session"] is session
+    response = harness.app.test_client().post(
+        _url(harness), json={"inputs": {}, "query": "Hi", "conversation_id": conversation_id}, buffered=False
+    )
 
-    def test_app_unavailable_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),
-        ):
-            with pytest.raises(completion_module.AppUnavailableError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_provider_not_initialized_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.ProviderTokenNotInitError("not init"),
-            ),
-        ):
-            with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_quota_exceeded_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.QuotaExceededError(),
-            ),
-        ):
-            with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_model_not_supported_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.ModelCurrentlyNotSupportError(),
-            ),
-        ):
-            with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_invoke_error_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=completion_module.InvokeError("invoke failed"),
-            ),
-        ):
-            with pytest.raises(completion_module.CompletionRequestError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
-
-    def test_internal_error_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
-        api = completion_module.ChatApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={}),
-            payload_patch,
-            patch.object(
-                completion_module.AppGenerateService,
-                "generate",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            with pytest.raises(InternalServerError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+    _assert_json_response(
+        response, status=404, body={"code": "not_found", "message": "Conversation Not Exists.", "status": 404}
+    )
+    assert generation_started == []
+    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
