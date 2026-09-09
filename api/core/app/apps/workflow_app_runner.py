@@ -758,8 +758,7 @@ class WorkflowBasedAppRunner:
 
     def _publish_human_input_completion(self, event: NodeRunSucceededEvent) -> None:
         # The callback's Completed and Expired decisions both become generic
-        # success events. Notify clients before publishing node/run completion;
-        # Answer text may already have been emitted by the response filter.
+        # success events. Notify clients before publishing node completion.
         result = event.node_run_result
         node_title = self._human_input_node_titles.pop(event.id)
         if result.edge_source_handle == TIMEOUT_HANDLE:

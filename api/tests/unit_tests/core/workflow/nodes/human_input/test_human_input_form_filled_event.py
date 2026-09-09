@@ -42,6 +42,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepository,
     HumanInputFormSubmissionRepository,
 )
+from core.workflow.nodes.human_input.boundary import defer_human_input_edges_until_completion
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
@@ -64,7 +65,11 @@ from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
+    GraphEdgeSkippedEvent,
+    GraphEdgeTakenEvent,
     GraphEngineEvent,
+    GraphRunAbortedEvent,
+    NodeRunExceptionEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
@@ -333,6 +338,77 @@ def test_human_input_callback_completes_on_timeout_handle():
 
 def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
     return _publish_graph_events(node.run())
+
+
+def test_human_input_edge_deferral_does_not_block_other_branches():
+    started, succeeded = list(_build_node().run())
+    human_edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
+    # Container-start results are hidden by Graphon, but their edges are visible.
+    loop_edge = GraphEdgeTakenEvent(edge_id="loop-body", source_node_id="loop-start", target_node_id="loop-body")
+    skipped = GraphEdgeSkippedEvent(edge_id="human-skipped", source_node_id="node-1", target_node_id="skipped")
+    parallel_edge = GraphEdgeTakenEvent(edge_id="parallel-answer", source_node_id="parallel", target_node_id="answer-2")
+    events = iter([started, loop_edge, human_edge, skipped, parallel_edge, succeeded])
+    adapted = defer_human_input_edges_until_completion(events)
+
+    assert next(adapted) == started
+    assert next(adapted) == loop_edge
+    assert next(adapted) == skipped
+    assert next(adapted) == parallel_edge
+    assert next(adapted) == succeeded
+    assert list(adapted) == [human_edge]
+
+
+def test_human_input_edges_follow_their_own_completion_across_repeated_executions():
+    started, succeeded = list(_build_node().run())
+    other_started = started.model_copy(update={"id": "other", "node_id": "other-human"})
+    other_succeeded = succeeded.model_copy(update={"id": "other", "node_id": "other-human"})
+    repeated_started = started.model_copy(update={"id": "repeated"})
+    repeated_succeeded = succeeded.model_copy(update={"id": "repeated"})
+    edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
+    other_edge = edge.model_copy(update={"edge_id": "other-answer", "source_node_id": "other-human"})
+    events = [
+        started,
+        other_started,
+        other_edge,
+        other_succeeded,
+        edge,
+        succeeded,
+        repeated_started,
+        edge,
+        repeated_succeeded,
+    ]
+
+    assert list(defer_human_input_edges_until_completion(events)) == [
+        started,
+        other_started,
+        other_succeeded,
+        other_edge,
+        succeeded,
+        edge,
+        repeated_started,
+        repeated_succeeded,
+        edge,
+    ]
+
+
+def test_human_input_error_branch_follows_exception_completion():
+    started, succeeded = list(_build_node().run())
+    failed = NodeRunExceptionEvent(**succeeded.model_dump(), error="Form unavailable")
+    edge = GraphEdgeTakenEvent(edge_id="human-error", source_node_id="node-1", target_node_id="error-answer")
+
+    assert list(defer_human_input_edges_until_completion([started, edge, failed])) == [started, failed, edge]
+
+
+@pytest.mark.parametrize("aborted", [False, True])
+def test_interrupted_human_input_does_not_activate_downstream_response(aborted: bool):
+    started, _ = list(_build_node().run())
+    edge = GraphEdgeTakenEvent(edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
+    terminal_events = [GraphRunAbortedEvent()] if aborted else []
+
+    assert list(defer_human_input_edges_until_completion([started, edge, *terminal_events])) == [
+        started,
+        *terminal_events,
+    ]
 
 
 def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
@@ -605,8 +681,13 @@ def test_human_input_completion_precedes_downstream_and_workflow_finish(
     payloads = _sse_payloads(events, invoke_from, app, runtime_state)
 
     form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
-    # Preserve lifecycle ordering without imposing an order on text chunks.
-    # The response filter may emit Answer text before the form notification.
+    # A dependent Answer must not stream before Human Input has finished.
+    human_finished = next(
+        index
+        for index, payload in enumerate(payloads)
+        if payload["event"] == "node_finished" and payload["data"]["node_id"] == node.id
+    )
+    assert all(index > human_finished for index, payload in enumerate(payloads) if payload["event"] == "message")
     lifecycle_events = [payload for payload in payloads if payload["event"] != "message"]
     assert [(payload["event"], payload.get("data", {}).get("node_id")) for payload in lifecycle_events] == [
         ("workflow_started", None),

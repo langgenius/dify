@@ -2,7 +2,7 @@ import json
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import ANY, MagicMock, patch, sentinel
 
 import pytest
 
@@ -203,10 +203,11 @@ class TestWorkflowEntryRun:
         from_engine.assert_called_once_with(graph_engine)
         response_stream_filter_cls.assert_called_once_with()
         filter_graph_events.assert_called_once_with(
-            graph_engine.run.return_value,
+            ANY,
             context=sentinel.filter_context,
             filters=[sentinel.response_stream_filter],
         )
+        assert list(filter_graph_events.call_args.args[0]) == [sentinel.raw_event]
 
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)

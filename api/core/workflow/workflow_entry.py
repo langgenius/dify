@@ -21,6 +21,7 @@ from core.workflow.node_factory import (
     is_start_node_type,
     resolve_workflow_node_class,
 )
+from core.workflow.nodes.human_input.boundary import defer_human_input_edges_until_completion
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -68,7 +69,7 @@ def iter_dify_graph_engine_events(
     streamed for this run.
     """
     yield from filter_graph_events(
-        engine.run(),
+        defer_human_input_edges_until_completion(engine.run()),
         context=GraphEventFilterContext.from_engine(engine),
         filters=[response_stream_filter or ResponseStreamFilter()],
     )
