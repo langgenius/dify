@@ -442,6 +442,89 @@ class TestNotionBlocks:
         assert "| H1 |  |" in markdown
         assert "| R2C1 | R2C2 |" in markdown
 
+    def test_read_table_rows_joins_rich_text_segments_within_cell(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        # A cell with mixed formatting arrives as multiple rich text segments.
+        page = {
+            "results": [
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "Name"}}],
+                            [{"text": {"content": "Desc"}}],
+                        ]
+                    }
+                },
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "item1"}}],
+                            [{"text": {"content": "plain "}}, {"text": {"content": "bold"}}],
+                        ]
+                    }
+                },
+            ],
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.request", side_effect=[_mock_response(page)])
+
+        markdown = extractor._read_table_rows("tbl-1")
+
+        assert "| item1 | plain bold |" in markdown
+        # Every row must keep the same column count as the header.
+        for line in markdown.splitlines():
+            if line.startswith("|"):
+                assert line.count("|") == 3
+
+    def test_read_table_rows_preserves_empty_data_cells_as_columns(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "A"}}],
+                            [{"text": {"content": "B"}}],
+                            [{"text": {"content": "C"}}],
+                        ]
+                    }
+                },
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "a1"}}],
+                            [],
+                            [{"text": {"content": "c1"}}],
+                        ]
+                    }
+                },
+            ],
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.request", side_effect=[_mock_response(page)])
+
+        markdown = extractor._read_table_rows("tbl-1")
+
+        # The empty middle cell must remain an empty column instead of
+        # collapsing and shifting the following cell left.
+        assert "| a1 |  | c1 |" in markdown
+
 
 class TestNotionMetadataAndCredentialMethods:
     def test_update_last_edited_time_no_document_model(self):
@@ -543,3 +626,18 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceFound)
 
         assert notion_extractor.NotionExtractor._get_access_token("tenant", "cred") == "token-from-credential"
+
+
+def test_get_cell_text_uses_plain_text_for_mention_and_equation_segments():
+    # Notion rich text segments of type mention or equation carry plain_text
+    # but no "text" object; they must not be dropped from the cell content.
+    cell = [
+        {"type": "text", "text": {"content": "see "}, "plain_text": "see "},
+        {"type": "mention", "mention": {"type": "user", "user": {}}, "plain_text": "@alice"},
+        {"type": "equation", "equation": {"expression": "e=mc^2"}, "plain_text": "e=mc^2"},
+    ]
+    assert notion_extractor.NotionExtractor._get_cell_text(cell) == "see @alicee=mc^2"
+    # Empty cell stays an empty column.
+    assert notion_extractor.NotionExtractor._get_cell_text([]) == ""
+    # Fall back to text.content when plain_text is absent.
+    assert notion_extractor.NotionExtractor._get_cell_text([{"text": {"content": "x"}}]) == "x"
