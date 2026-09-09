@@ -15,7 +15,6 @@ ROSTER_AGENT_PACKAGE_FORMAT: Final[Literal["dify.roster-agent"]] = "dify.roster-
 ROSTER_AGENT_PACKAGE_FORMAT_VERSION: Final[Literal[1]] = 1
 ROSTER_AGENT_PACKAGE_MAX_SIGNATURE_BYTES = 64 * 1024
 
-_RESOURCE_ID_PATTERN = re.compile(r"^[sf]_[0-9]{6}$")
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -49,13 +48,6 @@ class _RosterAgentPackageResource(BaseModel):
     size: int = Field(ge=0)
     sha256: str
     audit: RosterAgentPackageAudit | None = None
-
-    @field_validator("id")
-    @classmethod
-    def validate_resource_id(cls, value: str) -> str:
-        if _RESOURCE_ID_PATTERN.fullmatch(value) is None:
-            raise ValueError("resource id must use an s_000001 or f_000001 package-local identifier")
-        return value
 
     @field_validator("sha256")
     @classmethod
@@ -125,11 +117,8 @@ class RosterAgentPackageManifest(BaseModel):
             raise ValueError("unsupported Agent Soul schema version")
         resources = [*self.skills, *self.files]
         ids = [item.id for item in resources]
-        paths = [item.path for item in resources]
         if len(ids) != len(set(ids)):
             raise ValueError("resource ids must be unique")
-        if len(paths) != len(set(paths)):
-            raise ValueError("resource paths must be unique")
         skill_names = [item.name for item in self.skills]
         if len(skill_names) != len(set(skill_names)):
             raise ValueError("skill names must be unique after workspace Skills are localized")
