@@ -492,10 +492,6 @@ class App(Base):
 
         return None
 
-    @property
-    def bound_agent_id(self) -> str | None:
-        return self.bound_agent_id_with_session(session=db.session())
-
     def bound_agent_id_with_session(self, *, session: Session) -> str | None:
         """For an Agent App (mode=agent), the roster Agent it is backed by.
 
@@ -549,10 +545,6 @@ class App(Base):
     @property
     def tenant(self) -> Tenant | None:
         return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
-
-    @property
-    def is_agent(self) -> bool:
-        return self.is_agent_with_session(session=db.session())
 
     def is_agent_with_session(self, *, session: Session) -> bool:
         """Detect legacy agent mode, committing the compatible app mode through the supplied session."""
