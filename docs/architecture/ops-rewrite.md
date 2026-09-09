@@ -4,7 +4,7 @@ Status: implementation architecture. This document describes the replacement in 
 
 This rewrite addresses [issue #41409](https://github.com/langgenius/dify/issues/41409). A logical operation owns its recorder, a worker's Flask application owns its queue, and a tenant-owned database row owns each delivery attempt. Source identity and destination are explicit at every boundary.
 
-The branch was created from Dify commit `94309f00c9f179214ea42da3c3043904db71fb46`. GraphOn remains pinned to `0.7.0`, commit `3b01649d0251e1e2dc3743da71fd3c8438a71f25`; this implementation does not patch or vendor the engine. There is one OPS implementation, with no old/new routing switch or compatibility wrapper.
+OPS uses GraphOn's container-node events through Dify's engine integration. There is one OPS implementation, with no old/new routing switch or compatibility wrapper.
 
 ## 1. Ownership and files
 
@@ -89,7 +89,7 @@ Internal trace and span IDs are UUID5 values derived from tenant, operation and 
 
 ## 3. Workflow capture
 
-The pinned engine exposes normalized public events to `Layer.on_event` and execution-parent identity to `node_run_context`. `WorkflowTraceRecorder` is the first layer registered by [WorkflowEntry](../../api/core/workflow/workflow_entry.py). Existing Dify [workflow-tool container callbacks](../../api/core/workflow/workflow_tool_container_handler.py) forward hidden descendant events to the same `record_workflow_event` method before persistence. The loop/iteration wrapper also forwards suppressed synthetic start-node events. No engine monkeypatch or new upstream hook is required.
+GraphOn exposes normalized public events to `Layer.on_event` and execution-parent identity to `node_run_context`. `WorkflowTraceRecorder` is the first layer registered by [WorkflowEntry](../../api/core/workflow/workflow_entry.py). Existing Dify [workflow-tool container callbacks](../../api/core/workflow/workflow_tool_container_handler.py) forward hidden descendant events to the same `record_workflow_event` method before persistence. The loop/iteration wrapper also forwards suppressed synthetic start-node events. No engine monkeypatch or new upstream hook is required.
 
 GraphOn publishes public events before notifying layers. Dify therefore deep-copies each outgoing public event before exposing it to response consumers; those consumers cannot mutate the original while the recorder reads it. Response filtering remains unchanged. The recorder immediately makes its own bounded copies before later persistence layers can alter event contents.
 
@@ -253,7 +253,7 @@ Rollback is an operational deployment decision, not a runtime fallback after exp
 
 ## 11. Verification and limits
 
-Focused tests exercise real pinned GraphOn public/hidden event capture, nested workflow and loop executions with reused node IDs, retry identity/results, immutable copies, concurrent finish, foreign state rejection, destination restoration, pause/resume and related application integration. Queue/repository/provider tests cover bounded admission, payload ownership, deterministic requests, parent receipts and stale local claims. Test output for the current change is recorded in the implementation handoff; this document does not claim live-service verification.
+Focused tests exercise real GraphOn public/hidden event capture, nested workflow and loop executions with reused node IDs, retry identity/results, immutable copies, concurrent finish, foreign state rejection, destination restoration, pause/resume and related application integration. Queue/repository/provider tests cover bounded admission, payload ownership, deterministic requests, parent receipts and stale local claims. Test output for the current change is recorded in the implementation handoff; this document does not claim live-service verification.
 
 Before release, require:
 
@@ -273,6 +273,6 @@ Before release, require:
 
 Backend database integration tests run in CI, as required by this repository. Local unit and fake-transport checks do not substitute for those concurrency tests, live provider credentials or representative memory measurements. Queue counters and sanitized delivery diagnostics are available; a new dashboard and a complete production metrics/alert suite are outside this change.
 
-The engine contract can be inspected in its pinned [event processing](https://github.com/langgenius/graphon/blob/3b01649d0251e1e2dc3743da71fd3c8438a71f25/src/graphon/engine/event/processor.py), [event stream](https://github.com/langgenius/graphon/blob/3b01649d0251e1e2dc3743da71fd3c8438a71f25/src/graphon/engine/event/stream.py) and [layer API](https://github.com/langgenius/graphon/blob/3b01649d0251e1e2dc3743da71fd3c8438a71f25/src/graphon/engine/layer/base.py). Public publication still precedes layer notification; the Dify response-copy and hidden-callback integration is intentional.
+The GraphOn dependency is declared in [api/pyproject.toml](../../api/pyproject.toml) and resolved in [api/uv.lock](../../api/uv.lock).
 
 The design adds no broker, tracing database, per-token journal, recursive manager, global cache or subprocess escape hatch. It guarantees explicit local ownership and bounded collection/delivery behavior. It does not promise unlimited capture, crash-proof collection before durable acceptance/checkpoint, strict tenant scheduling fairness or exactly-once remote export.
