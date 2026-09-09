@@ -6,7 +6,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.rbac import PlainApp, RBACCheck
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.verify import (
     check_acl,
@@ -19,9 +19,10 @@ from controllers.openapi.auth.verify import (
     check_workspace_mismatch,
     check_workspace_role,
 )
-from core.rbac import RBACPermission
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantAccountRole
+from models.agent import Agent, AgentScope
 from models.model import App
 from services.enterprise.enterprise_service import WebAppAccessMode
 
@@ -139,6 +140,41 @@ def test_check_rbac_enforces_for_account_caller():
     assert isinstance(check, RBACCheck)
     assert check.scene is RBACPermission.APP_VIEW_LAYOUT
     assert isinstance(check.locator, PlainApp)
+
+
+@pytest.mark.parametrize("allowed", [True, False])
+def test_app_dsl_rbac_resolves_agent_permission(allowed: bool):
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = "tenant-1"
+    account_id = uuid.uuid4()
+    agent = Agent(id="agent-1", scope=AgentScope.ROSTER)
+    data = _data(
+        rbac=(
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+        ),
+        caller_kind="account",
+        account_id=account_id,
+        tenant=tenant,
+        path_params={"app_id": "app-1"},
+    )
+    with (
+        patch("controllers.common.rbac.locators.agent_binding", return_value=agent),
+        patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=allowed) as check,
+    ):
+        if allowed:
+            check_rbac_permission(data)
+        else:
+            with pytest.raises(Forbidden):
+                check_rbac_permission(data)
+
+    check.assert_called_once_with(
+        "tenant-1",
+        str(account_id),
+        scene=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+        resource_type=RBACResourceScope.AGENT,
+        resource_id="agent-1",
+    )
 
 
 def test_check_acl_raises_when_app_or_mode_missing():

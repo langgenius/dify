@@ -27,10 +27,10 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from models import Account, App
 from models.account import AccountStatus
+from services.app_dsl_bundle import AppDslBundleService
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
-from services.workflow_dsl_bundle import WorkflowDslBundleService
 
 
 class InnerAppDSLImportPayload(BaseModel):
@@ -43,7 +43,7 @@ class InnerAppDSLImportPayload(BaseModel):
 
 class EnterpriseAppDSLExportQuery(BaseModel):
     include_workflow_tools: bool = Field(
-        default=False, description="Package referenced workflow tools recursively in a ZIP"
+        default=False, description="Package the app and recursively referenced workflow tools in a ZIP"
     )
     include_secret: bool = Field(default=False, description="Whether to include secret values in the exported DSL")
     workflow_id: UUID | None = Field(default=None, description="Published workflow version ID to export")
@@ -142,7 +142,7 @@ class EnterpriseAppDSLExport(Resource):
 
         if query.include_workflow_tools:
             try:
-                bundle = WorkflowDslBundleService(db.session()).export_bundle(
+                bundle = AppDslBundleService(db.session()).export_bundle(
                     app_model=app_model,
                     account=None,
                     include_secret=query.include_secret,
@@ -153,11 +153,10 @@ class EnterpriseAppDSLExport(Resource):
             except IsDraftWorkflowError as exc:
                 return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
             except ValueError as exc:
-                return {"code": "invalid_workflow_bundle", "message": str(exc), "status": 400}, 400
-            if bundle is not None:
-                return InnerAppDSLExportResponse(
-                    data=base64.b64encode(bundle).decode("ascii"), format="zip"
-                ).model_dump(mode="json"), 200
+                return {"code": "invalid_app_bundle", "message": str(exc), "status": 400}, 400
+            return InnerAppDSLExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip").model_dump(
+                mode="json"
+            ), 200
 
         if not workflow_id:
             data = AppDslService.export_dsl(

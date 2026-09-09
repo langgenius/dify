@@ -7,7 +7,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
@@ -17,11 +17,11 @@ from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
 from models.account import TenantAccountRole
+from services.app_dsl_bundle import AppDslBundleService
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
-from services.workflow_dsl_bundle import WorkflowDslBundleService
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
@@ -124,15 +124,16 @@ class AppDslImportConfirmApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/dsl")
 class AppDslExportApi(Resource):
-    """Export an app's current draft configuration as a DSL YAML string.
+    """Export an app's current configuration as DSL YAML or a ZIP bundle.
 
     The auth pipeline resolves the app and its tenant from ``app_id``.  Pass
     ``include_secret=true`` to embed encrypted credential values (e.g. tool
     node secrets); omit it to produce a portable, sharable DSL safe to share.
 
-    Pass ``include_workflow_tools=true`` to recursively package referenced workflows
-    as separate DSL files. The response is base64 ZIP with ``format=zip`` when
-    workflow tools are present, otherwise YAML with ``format=yaml``.
+    Pass ``include_workflow_tools=true`` to package the app and recursively
+    referenced workflow tools as separate DSL files. The response is base64 ZIP
+    with ``format=zip``, including when the app has no workflow tools. Omit the
+    flag to return YAML with ``format=yaml``.
 
     Note: the pipeline enforces ``app.enable_api`` for all ``/apps/<app_id>``
     routes in the openapi group.  Apps with the service API disabled will
@@ -143,7 +144,10 @@ class AppDslExportApi(Resource):
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        rbac=(
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+        ),
     )
     @accepts(query=AppDslExportQuery)
     @returns(200, AppDslExportResponse, "Export successful")
@@ -151,14 +155,13 @@ class AppDslExportApi(Resource):
         app = cast(App, auth_data.app)
         try:
             if query.include_workflow_tools:
-                bundle = WorkflowDslBundleService(db.session()).export_bundle(
+                bundle = AppDslBundleService(db.session()).export_bundle(
                     app_model=app,
                     account=cast(Account, auth_data.caller),
                     include_secret=query.include_secret,
                     workflow_id=query.workflow_id,
                 )
-                if bundle is not None:
-                    return AppDslExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip"), 200
+                return AppDslExportResponse(data=base64.b64encode(bundle).decode("ascii"), format="zip"), 200
             data = AppDslService.export_dsl(
                 app_model=app,
                 session=db.session(),
@@ -188,7 +191,10 @@ class AppDslCheckDependenciesApi(Resource):
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        rbac=(
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+        ),
     )
     @returns(200, CheckDependenciesResult, "Dependencies checked")
     def get(self, app_id: str, *, auth_data: AuthData):

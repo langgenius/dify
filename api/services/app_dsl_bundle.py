@@ -1,4 +1,4 @@
-"""Portable workflow files and their published workflow-tool deployments."""
+"""Portable app DSL files, typed resources and their deployment relationships."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import io
 import json
 import zipfile
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import uuid4
 
 import yaml
@@ -48,24 +48,35 @@ if TYPE_CHECKING:
     from services.app_dsl_service import AppDslService
 
 
-MAX_BUNDLE_WORKFLOWS = 128
+MAX_BUNDLE_APPS = 128
+APP_DSL_MODES = frozenset(
+    {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.AGENT}
+)
 
 
 class BundleWorkflow(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file: str
     published: bool = False
     marked_name: str = ""
     marked_comment: str = ""
+
+
+class BundleApp(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["app"] = "app"
+    file: str
     enable_api: bool = True
     enable_site: bool = True
+    workflow: BundleWorkflow | None = None
 
 
 class BundleTool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    workflow: str
+    kind: Literal["workflow_tool"] = "workflow_tool"
+    app: str
     name: str = Field(min_length=1, max_length=255)
     label: str = Field(max_length=255)
     icon: EmojiIconDict
@@ -80,20 +91,64 @@ class BundleTool(BaseModel):
         return alphanumeric(value)
 
 
+class BundleRelationship(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["uses_tool"] = "uses_tool"
+    source: str
+    target: str
+
+
 class BundleManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["workflow_bundle"] = "workflow_bundle"
+    kind: Literal["app_bundle"] = "app_bundle"
     version: Literal["1"] = "1"
     entrypoint: str
-    workflows: dict[str, BundleWorkflow]
-    tools: dict[str, BundleTool]
-    relationships: dict[str, list[str]]
+    resources: dict[str, Annotated[BundleApp | BundleTool, Field(discriminator="kind")]]
+    relationships: list[BundleRelationship]
+
+    @property
+    def apps(self) -> dict[str, BundleApp]:
+        return {marker: resource for marker, resource in self.resources.items() if isinstance(resource, BundleApp)}
+
+    @property
+    def tools(self) -> dict[str, BundleTool]:
+        return {marker: resource for marker, resource in self.resources.items() if isinstance(resource, BundleTool)}
 
 
-class WorkflowDslBundle(BaseModel):
+class AppDslBundle(BaseModel):
     manifest: BundleManifest
     documents: dict[str, dict[str, Any]]
+
+
+def _upgrade_workflow_manifest(data: dict[str, Any]) -> dict[str, Any]:
+    """Read workflow bundles exported before the app-neutral manifest was introduced."""
+    workflows = data.pop("workflows")
+    tools = data.pop("tools")
+    relationships = data.pop("relationships")
+    if set(workflows) != set(relationships) or set(workflows) & set(tools):
+        raise ValueError("Invalid legacy workflow bundle resources or relationships")
+    resources: dict[str, Any] = {}
+    for marker, workflow in workflows.items():
+        resources[marker] = BundleApp(
+            file=workflow.pop("file"),
+            enable_api=workflow.pop("enable_api", True),
+            enable_site=workflow.pop("enable_site", True),
+            workflow=BundleWorkflow.model_validate(workflow),
+        ).model_dump(mode="json")
+    for marker, tool in tools.items():
+        resources[marker] = BundleTool(app=tool.pop("workflow"), **tool).model_dump(mode="json")
+    return {
+        **data,
+        "kind": "app_bundle",
+        "resources": resources,
+        "relationships": [
+            BundleRelationship(source=source, target=target).model_dump(mode="json")
+            for source, targets in relationships.items()
+            for target in targets
+        ],
+    }
 
 
 def _validate_document_tree(document: dict[str, Any]) -> None:
@@ -104,7 +159,7 @@ def _validate_document_tree(document: dict[str, Any]) -> None:
         if not isinstance(value, dict | list):
             continue
         if id(value) in seen or len(seen) >= 100_000:
-            raise ValueError("Workflow bundle YAML must be a bounded tree without aliases")
+            raise ValueError("App bundle YAML must be a bounded tree without aliases")
         seen.add(id(value))
         if isinstance(value, list):
             pending.extend(value)
@@ -136,6 +191,9 @@ def _tool_references(document: dict[str, Any]) -> Iterator[dict[str, Any]]:
         for tool in package.get("soul", {}).get("tools", {}).get("dify_tools", []):
             if tool.get("provider_type") == "workflow":
                 references.append(tool)
+    for tool in document.get("model_config", {}).get("agent_mode", {}).get("tools", []):
+        if tool.get("provider_type") == "workflow":
+            references.append(tool)
     for reference in references:
         provider_id = _provider_id(reference)
         if not isinstance(provider_id, str) or not provider_id:
@@ -154,10 +212,12 @@ def _rewrite_reference(reference: dict[str, Any], provider_id: str, name: str) -
     for key in ("provider_id", "provider_name"):
         if key in reference:
             reference[key] = provider_id
+    if "name" in reference and reference["name"] == reference.get("tool_name"):
+        reference["name"] = name
     reference["tool_name"] = name
 
 
-class WorkflowDslBundleService:
+class AppDslBundleService:
     def __init__(self, session: Session):
         self._session = session
 
@@ -168,27 +228,33 @@ class WorkflowDslBundleService:
         account: Account | None = None,
         include_secret: bool = False,
         workflow_id: str | None = None,
-    ) -> bytes | None:
-        """Export referenced snapshots once; leave ordinary DSL exports unchanged."""
+    ) -> bytes:
+        """Bundle any supported app and export each referenced workflow snapshot once."""
         from services.app_dsl_service import AppDslService
 
-        if app_model.mode not in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-            return None
+        if app_model.mode not in APP_DSL_MODES:
+            raise ValueError("App mode does not support DSL bundles")
         if account is not None and account.current_tenant_id != app_model.tenant_id:
             raise NoPermissionError("App is not in the current workspace")
-        workflow = WorkflowService().get_draft_workflow(app_model, workflow_id, session=self._session)
-        if workflow is None:
-            raise ValueError("Workflow not found")
-        manifest = BundleManifest(entrypoint="workflow_1", workflows={}, tools={}, relationships={})
+        workflow = None
+        if app_model.mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+            workflow = WorkflowService().get_draft_workflow(app_model, workflow_id, session=self._session)
+            if workflow is None:
+                raise ValueError("Workflow not found")
+        elif workflow_id is not None:
+            raise ValueError("Only workflow and chatflow apps support workflow versions")
+        manifest = BundleManifest(entrypoint="app_1", resources={}, relationships=[])
         documents: dict[str, dict[str, Any]] = {}
-        snapshots = {(app_model.id, workflow.id): manifest.entrypoint}
+        snapshots = {(app_model.id, workflow.id if workflow else None): manifest.entrypoint}
         providers: dict[str, str] = {}
         pending = [(manifest.entrypoint, app_model, workflow)]
         checked_apps: set[str] = set()
         while pending:
             marker, app, snapshot = pending.pop(0)
             if account is not None and app.id not in checked_apps:
-                if dify_config.RBAC_ENABLED and app.maintainer != account.id:
+                if app.mode == AppMode.AGENT:
+                    AppDslService(self._session)._ensure_agent_dsl_permission(account, app=app)
+                elif dify_config.RBAC_ENABLED and app.maintainer != account.id:
                     if not RBACService.CheckAccess.check(
                         app.tenant_id,
                         account.id,
@@ -196,29 +262,32 @@ class WorkflowDslBundleService:
                         resource_type=RBACResourceScope.APP,
                         resource_id=app.id,
                     ):
-                        raise NoPermissionError("You do not have permission to export a referenced workflow")
+                        raise NoPermissionError("You do not have permission to export a bundled app")
                 checked_apps.add(app.id)
             document = yaml.safe_load(
                 AppDslService.export_dsl(
                     app,
                     session=self._session,
                     include_secret=include_secret,
-                    workflow_id=snapshot.id if snapshot.version != Workflow.VERSION_DRAFT else None,
+                    workflow_id=(snapshot.id if snapshot and snapshot.version != Workflow.VERSION_DRAFT else None),
                 )
             )
             _validate_document_tree(document)
             references = list(_tool_references(document))
-            if marker == manifest.entrypoint and not references:
-                return None
             document["bundle_id"] = marker
             documents[marker] = document
-            manifest.workflows[marker] = BundleWorkflow(
-                file=f"workflows/{marker}.yaml",
-                published=snapshot.version != Workflow.VERSION_DRAFT,
-                marked_name=snapshot.marked_name or "",
-                marked_comment=snapshot.marked_comment or "",
-                enable_api=app.enable_api,
-                enable_site=app.enable_site,
+            manifest.resources[marker] = BundleApp(
+                file=f"apps/{marker}.yaml",
+                workflow=BundleWorkflow(
+                    published=snapshot.version != Workflow.VERSION_DRAFT,
+                    marked_name=snapshot.marked_name or "",
+                    marked_comment=snapshot.marked_comment or "",
+                )
+                if snapshot
+                else None,
+                # Agent DSL transfers an editable draft, not a published Agent snapshot.
+                enable_api=app.enable_api if app.mode != AppMode.AGENT else False,
+                enable_site=app.enable_site if app.mode != AppMode.AGENT else False,
             )
             relationships: set[str] = set()
             for reference in references:
@@ -252,14 +321,14 @@ class WorkflowDslBundleService:
                         raise ValueError("Referenced workflow tool deployment is missing")
                     key = (child_app.id, child_workflow.id)
                     if key not in snapshots:
-                        if len(snapshots) >= MAX_BUNDLE_WORKFLOWS:
-                            raise ValueError("Workflow bundle contains too many workflows")
-                        snapshots[key] = f"workflow_{len(snapshots) + 1}"
+                        if len(snapshots) >= MAX_BUNDLE_APPS:
+                            raise ValueError("App bundle contains too many apps")
+                        snapshots[key] = f"app_{len(snapshots) + 1}"
                         pending.append((snapshots[key], child_app, child_workflow))
                     tool_marker = f"tool_{len(providers) + 1}"
                     providers[source_id] = tool_marker
-                    manifest.tools[tool_marker] = BundleTool(
-                        workflow=snapshots[key],
+                    manifest.resources[tool_marker] = BundleTool(
+                        app=snapshots[key],
                         name=provider.name,
                         label=provider.label,
                         icon=json.loads(provider.icon),
@@ -279,60 +348,84 @@ class WorkflowDslBundleService:
                 relationships.add(tool_marker)
                 rewrite_workflow_tool_mentions(document, {source_id: (tool_marker, manifest.tools[tool_marker].name)})
                 _rewrite_reference(reference, tool_marker, manifest.tools[tool_marker].name)
-            manifest.relationships[marker] = sorted(relationships)
+            manifest.relationships.extend(
+                BundleRelationship(source=marker, target=tool) for tool in sorted(relationships)
+            )
         output = io.BytesIO()
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("manifest.yaml", yaml.safe_dump(manifest.model_dump(mode="json"), allow_unicode=True))
             for marker, document in documents.items():
-                archive.writestr(manifest.workflows[marker].file, yaml.safe_dump(document, allow_unicode=True))
+                archive.writestr(manifest.apps[marker].file, yaml.safe_dump(document, allow_unicode=True))
         result = output.getvalue()
         # Enforce the same archive constraints on both sides of the round trip.
         self.parse_bundle(result)
         return result
 
     @staticmethod
-    def parse_bundle(content: bytes) -> WorkflowDslBundle:
+    def parse_bundle(content: bytes) -> AppDslBundle:
         """Read in memory, bounding expansion and rejecting ambiguous archive members."""
         if len(content) > DSL_MAX_SIZE:
-            raise ValueError("Workflow bundle exceeds the 10MB size limit")
+            raise ValueError("App bundle exceeds the 10MB size limit")
         try:
             with zipfile.ZipFile(io.BytesIO(content)) as archive:
                 entries = archive.infolist()
                 names = {entry.filename for entry in entries}
                 if (
-                    len(entries) > MAX_BUNDLE_WORKFLOWS + 1
+                    len(entries) > MAX_BUNDLE_APPS + 1
                     or len(names) != len(entries)
                     or sum(entry.file_size for entry in entries) > DSL_MAX_SIZE
                     or any(entry.flag_bits & 1 or entry.is_dir() for entry in entries)
                 ):
-                    raise ValueError("Invalid or oversized workflow bundle archive")
+                    raise ValueError("Invalid or oversized app bundle archive")
                 if "manifest.yaml" not in names:
-                    raise ValueError("Workflow bundle is missing manifest.yaml")
-                manifest = BundleManifest.model_validate(yaml.safe_load(archive.read("manifest.yaml")))
-                if not manifest.workflows or manifest.entrypoint not in manifest.workflows:
-                    raise ValueError("Workflow bundle entrypoint is missing")
+                    raise ValueError("App bundle is missing manifest.yaml")
+                raw_manifest = yaml.safe_load(archive.read("manifest.yaml"))
+                if not isinstance(raw_manifest, dict):
+                    raise ValueError("App bundle manifest must be a mapping")
+                _validate_document_tree(raw_manifest)
+                legacy = raw_manifest.get("kind") == "workflow_bundle" and raw_manifest.get("version") == "1"
+                manifest = BundleManifest.model_validate(
+                    _upgrade_workflow_manifest(raw_manifest) if legacy else raw_manifest
+                )
+                apps, tools = manifest.apps, manifest.tools
+                if not apps or manifest.entrypoint not in apps:
+                    raise ValueError("App bundle entrypoint is missing")
+                if any(not marker.isascii() or not marker.replace("_", "").isalnum() for marker in manifest.resources):
+                    raise ValueError("Invalid app bundle marker")
                 expected_names = {"manifest.yaml"}
                 documents: dict[str, dict[str, Any]] = {}
-                for marker, workflow in manifest.workflows.items():
-                    if not marker.isascii() or not marker.replace("_", "").isalnum():
-                        raise ValueError("Invalid workflow bundle marker")
-                    if workflow.file != f"workflows/{marker}.yaml" or workflow.file not in names:
-                        raise ValueError("Workflow bundle file does not match its marker")
-                    expected_names.add(workflow.file)
-                    document = yaml.safe_load(archive.read(workflow.file))
+                for marker, app in apps.items():
+                    directory = "workflows" if legacy else "apps"
+                    if app.file != f"{directory}/{marker}.yaml" or app.file not in names:
+                        raise ValueError("App bundle file does not match its marker")
+                    expected_names.add(app.file)
+                    document = yaml.safe_load(archive.read(app.file))
                     if not isinstance(document, dict) or document.get("bundle_id") != marker:
-                        raise ValueError("Workflow DSL is missing its independent bundle marker")
+                        raise ValueError("App DSL is missing its independent bundle marker")
                     _validate_document_tree(document)
-                    if document.get("kind") != "app" or not isinstance(document.get("workflow"), dict):
-                        raise ValueError("Workflow bundle must contain workflow app DSL files")
+                    if document.get("kind") != "app":
+                        raise ValueError("App bundle must contain app DSL files")
                     app_data = document.get("app")
                     if not isinstance(app_data, dict):
-                        raise ValueError("Workflow bundle is missing app metadata")
+                        raise ValueError("App bundle is missing app metadata")
                     mode = app_data.get("mode")
-                    if mode != AppMode.WORKFLOW and not (
-                        marker == manifest.entrypoint and mode == AppMode.ADVANCED_CHAT
-                    ):
-                        raise ValueError("Invalid app mode in workflow bundle")
+                    if mode not in APP_DSL_MODES:
+                        raise ValueError("Invalid app mode in app bundle")
+                    documents[marker] = document
+                    if mode not in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+                        if app.workflow is not None:
+                            raise ValueError("Only workflow and chatflow apps support workflow deployments")
+                        if mode == AppMode.AGENT:
+                            if app.enable_api or app.enable_site:
+                                raise ValueError("Agent DSL bundles import unpublished drafts")
+                            agent = document.get("agent", {})
+                            if agent.get("package_ref") not in document.get("agent_packages", {}):
+                                raise ValueError("Agent bundle is missing its package")
+                        elif not isinstance(document.get("model_config"), dict) or not document["model_config"]:
+                            raise ValueError("App bundle is missing its model configuration")
+                        continue
+                    if app.workflow is None or not isinstance(document.get("workflow"), dict):
+                        raise ValueError("Workflow app is missing its workflow deployment or DSL")
                     graph = document["workflow"].get("graph")
                     if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), list):
                         raise ValueError("Workflow bundle is missing its graph")
@@ -349,39 +442,46 @@ class WorkflowDslBundleService:
                             or (mode == AppMode.WORKFLOW and node_type == "answer")
                         ):
                             raise ValueError("Workflow graph contains a node incompatible with its app mode")
-                    documents[marker] = document
-                if names != expected_names or set(manifest.relationships) != set(documents):
-                    raise ValueError("Workflow bundle files or relationships do not match its manifest")
+                if names != expected_names:
+                    raise ValueError("App bundle files do not match its manifest")
                 deployed_workflows: set[str] = set()
-                for tool in manifest.tools.values():
-                    if tool.workflow not in documents or tool.workflow in deployed_workflows:
+                for tool in tools.values():
+                    if tool.app not in documents or tool.app in deployed_workflows:
                         raise ValueError("Workflow tool deployment must identify one unique bundled workflow")
-                    if not manifest.workflows[tool.workflow].published:
+                    workflow = apps[tool.app].workflow
+                    if documents[tool.app]["app"]["mode"] != AppMode.WORKFLOW or not workflow or not workflow.published:
                         raise ValueError("Workflow tool deployment requires a published workflow")
-                    deployed_workflows.add(tool.workflow)
+                    deployed_workflows.add(tool.app)
+                relationships: dict[str, set[str]] = {marker: set() for marker in apps}
+                for relationship in manifest.relationships:
+                    if relationship.source not in apps or relationship.target not in tools:
+                        raise ValueError("App bundle relationship refers to an incompatible or missing resource")
+                    targets = relationships[relationship.source]
+                    if relationship.target in targets:
+                        raise ValueError("App bundle contains duplicate relationships")
+                    targets.add(relationship.target)
                 for marker, document in documents.items():
                     references = list(_tool_references(document))
                     tool_ids = {_provider_id(reference) for reference in references}
-                    if tool_ids != set(manifest.relationships[marker]) or not tool_ids <= manifest.tools.keys():
+                    if tool_ids != relationships[marker]:
                         raise ValueError("Workflow tool references do not match the bundle relationships")
                     if any(
-                        reference.get("tool_name") != manifest.tools[_provider_id(reference)].name
-                        for reference in references
+                        reference.get("tool_name") != tools[_provider_id(reference)].name for reference in references
                     ):
                         raise ValueError("Workflow tool names do not match their deployments")
                 reachable = {manifest.entrypoint}
                 pending = [manifest.entrypoint]
                 used_tools: set[str] = set()
                 while pending:
-                    for tool_id in manifest.relationships[pending.pop()]:
+                    for tool_id in relationships[pending.pop()]:
                         used_tools.add(tool_id)
-                        target = manifest.tools[tool_id].workflow
+                        target = tools[tool_id].app
                         if target not in reachable:
                             reachable.add(target)
                             pending.append(target)
-                if reachable != documents.keys() or used_tools != manifest.tools.keys():
-                    raise ValueError("Workflow bundle contains unreachable workflows or tools")
-                return WorkflowDslBundle(manifest=manifest, documents=documents)
+                if reachable != documents.keys() or used_tools != tools.keys():
+                    raise ValueError("App bundle contains unreachable apps or tools")
+                return AppDslBundle(manifest=manifest, documents=documents)
         except (
             zipfile.BadZipFile,
             KeyError,
@@ -391,11 +491,11 @@ class WorkflowDslBundleService:
             yaml.YAMLError,
             RecursionError,
         ) as exc:
-            raise ValueError("Invalid workflow bundle archive") from exc
+            raise ValueError("Invalid app bundle archive") from exc
 
     def import_bundle(
         self,
-        bundle: WorkflowDslBundle,
+        bundle: AppDslBundle,
         *,
         account: Account,
         dsl_service: AppDslService,
@@ -412,12 +512,15 @@ class WorkflowDslBundleService:
         if tenant_id is None or (app is not None and app.tenant_id != tenant_id):
             raise NoPermissionError("App is not in the current workspace")
         if dify_config.RBAC_ENABLED:
-            for permission in (RBACPermission.APP_CREATE_AND_MANAGEMENT, RBACPermission.TOOL_MANAGE):
+            permissions = (
+                [RBACPermission.APP_CREATE_AND_MANAGEMENT, RBACPermission.TOOL_MANAGE] if bundle.manifest.tools else []
+            )
+            for permission in permissions:
                 if not RBACService.CheckAccess.check(tenant_id, account.id, scene=permission):
                     raise NoPermissionError("Creating bundled apps and workflow tools requires workspace permission")
-            deployment = bundle.manifest.workflows[bundle.manifest.entrypoint]
+            deployment = bundle.manifest.apps[bundle.manifest.entrypoint]
             if app is not None and (
-                deployment.published
+                (deployment.workflow is not None and deployment.workflow.published)
                 or deployment.enable_api != app.enable_api
                 or deployment.enable_site != app.enable_site
             ):
@@ -429,7 +532,7 @@ class WorkflowDslBundleService:
                     resource_id=app.id,
                 ):
                     raise NoPermissionError("Publishing the imported workflow requires app release permission")
-        elif not account.is_admin_or_owner:
+        elif bundle.manifest.tools and not account.is_admin_or_owner:
             raise NoPermissionError("Only workspace administrators can import workflow tool deployments")
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             quota = FeatureService.get_features(tenant_id, exclude_vector_space=True).apps
@@ -449,7 +552,7 @@ class WorkflowDslBundleService:
             else None
         )
         entrypoint_tool = next(
-            (marker for marker, tool in bundle.manifest.tools.items() if tool.workflow == bundle.manifest.entrypoint),
+            (marker for marker, tool in bundle.manifest.tools.items() if tool.app == bundle.manifest.entrypoint),
             None,
         )
         if existing_provider is not None and entrypoint_tool is not None:
@@ -493,18 +596,19 @@ class WorkflowDslBundleService:
                 dependencies=[PluginDependency.model_validate(item) for item in document.get("dependencies", [])],
                 commit=False,
             )
-            deployment = bundle.manifest.workflows[marker]
+            deployment = bundle.manifest.apps[marker]
             apps[marker].enable_api = deployment.enable_api
             apps[marker].enable_site = deployment.enable_site
         published: dict[str, Workflow] = {}
-        for marker, deployment in bundle.manifest.workflows.items():
-            if deployment.published:
+        for marker, resource in bundle.manifest.apps.items():
+            workflow_deployment = resource.workflow
+            if workflow_deployment is not None and workflow_deployment.published:
                 published[marker] = WorkflowService().publish_workflow(
                     session=self._session,
                     app_model=apps[marker],
                     account=account,
-                    marked_name=deployment.marked_name,
-                    marked_comment=deployment.marked_comment,
+                    marked_name=workflow_deployment.marked_name,
+                    marked_comment=workflow_deployment.marked_comment,
                     emit_event=False,
                 )
                 apps[marker].workflow_id = published[marker].id
@@ -512,8 +616,8 @@ class WorkflowDslBundleService:
             provider = WorkflowToolProvider(
                 tenant_id=tenant_id,
                 user_id=account.id,
-                app_id=apps[tool.workflow].id,
-                version=published[tool.workflow].version,
+                app_id=apps[tool.app].id,
+                version=published[tool.app].version,
                 name=tool_names[marker],
                 label=tool.label,
                 icon=json.dumps(tool.icon),
@@ -538,7 +642,7 @@ class WorkflowDslBundleService:
                 ),
                 provider_id=provider.id,
             )
-            controller._get_db_provider_tool(provider, apps[tool.workflow], session=self._session, user=account)
+            controller._get_db_provider_tool(provider, apps[tool.app], session=self._session, user=account)
             if marker == entrypoint_tool and existing_provider is not None:
                 self._session.merge(provider)
                 self._session.execute(

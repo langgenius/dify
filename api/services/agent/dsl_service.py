@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models import Account
@@ -612,6 +613,8 @@ class AgentDslService:
             for asset in package.omitted_assets
         ]
         for tool_index, tool in enumerate(package.soul.tools.dify_tools):
+            if tool.provider_type == ToolProviderType.WORKFLOW:
+                continue
             tool_label = tool.tool_name or tool.provider or tool.provider_id
             warnings.append(
                 DslImportWarning(

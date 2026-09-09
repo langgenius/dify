@@ -481,7 +481,9 @@ class AppDslImportPayload(BaseModel):
 class AppDslExportQuery(BaseModel):
     """Query parameters for GET /apps/<app_id>/dsl."""
 
-    include_workflow_tools: bool = Field(False, description="Package referenced workflow tools recursively in a ZIP")
+    include_workflow_tools: bool = Field(
+        False, description="Package the app and recursively referenced workflow tools in a ZIP"
+    )
     include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
     workflow_id: UUIDStr | None = Field(
         None, description="Export a specific workflow version instead of the current draft"

@@ -50,6 +50,7 @@ from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_dsl_bundle import AppDslBundleService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.enterprise_service import EnterpriseService
@@ -71,7 +72,6 @@ from services.icon_configuration import (
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
-from services.workflow_dsl_bundle import WorkflowDslBundleService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -428,14 +428,14 @@ class AppDslService:
         try:
             if len(content) > 4 * ((DSL_MAX_SIZE + 2) // 3):
                 raise ValueError("File size exceeds the limit of 10MB")
-            bundle_service = WorkflowDslBundleService(self._session)
+            bundle_service = AppDslBundleService(self._session)
             bundle = bundle_service.parse_bundle(base64.b64decode(content, validate=True))
             versions = [document.get("version", "0.1.0") for document in bundle.documents.values()]
             if not all(isinstance(version, str) for version in versions):
-                raise ValueError("Every workflow DSL version must be a string")
+                raise ValueError("Every app DSL version must be a string")
             statuses = [check_version_compatibility(version, CURRENT_DSL_VERSION) for version in versions]
             if ImportStatus.FAILED in statuses:
-                raise ValueError("Invalid workflow DSL version")
+                raise ValueError("Invalid app DSL version")
             imported_version = max(versions, key=parse_version)
             app = self._load_app_for_overwrite(account, app_id) if app_id else None
             if app_id and app is None:
@@ -656,7 +656,7 @@ class AppDslService:
             raise NoPermissionError("You do not have permission to overwrite this app")
         return app
 
-    def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
+    def _ensure_agent_dsl_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:
             return
         if account.current_tenant_id is None:
@@ -667,7 +667,7 @@ class AppDslService:
             else None
         )
         if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
-            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL permission is required for this Agent App")
         allowed = RBACService.CheckAccess.check(
             account.current_tenant_id,
             account.id,
@@ -676,7 +676,7 @@ class AppDslService:
             resource_id=str(binding.id) if binding is not None else None,
         )
         if not allowed:
-            raise NoPermissionError("Agent DSL import permission is required to import an Agent App")
+            raise NoPermissionError("Agent DSL permission is required for this Agent App")
 
     def _create_or_update_app(
         self,
@@ -700,7 +700,7 @@ class AppDslService:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         if app_mode == AppMode.AGENT:
-            self._ensure_agent_import_permission(account, app=app)
+            self._ensure_agent_dsl_permission(account, app=app)
 
         target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
         if target_tenant_id is None:

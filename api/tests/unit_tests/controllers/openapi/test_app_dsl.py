@@ -50,32 +50,36 @@ def test_permission_denial_maps_to_forbidden(
     assert isinstance(exc_info.value.__cause__, NoPermissionError)
 
 
-@pytest.mark.parametrize("bundle", [None, b"PK\x03\x04bundle"])
-def test_export_workflow_tools_returns_zip_or_yaml(monkeypatch: pytest.MonkeyPatch, bundle: bytes | None) -> None:
+@pytest.mark.parametrize("include_workflow_tools", [False, True])
+def test_export_returns_requested_format(monkeypatch: pytest.MonkeyPatch, include_workflow_tools: bool) -> None:
     session = Mock()
     account = Mock()
     app_model = Mock()
+    bundle = b"PK\x03\x04bundle"
     bundle_service = Mock()
     bundle_service.export_bundle.return_value = bundle
-    monkeypatch.setattr(app_dsl_module, "WorkflowDslBundleService", Mock(return_value=bundle_service))
+    monkeypatch.setattr(app_dsl_module, "AppDslBundleService", Mock(return_value=bundle_service))
     dsl_service = Mock()
     dsl_service.export_dsl.return_value = "app: {}"
     monkeypatch.setattr(app_dsl_module, "AppDslService", dsl_service)
     monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(session=Mock(return_value=session)))
     api = AppDslExportApi()
-    query = AppDslExportQuery(include_workflow_tools=True, include_secret=True)
+    query = AppDslExportQuery(include_workflow_tools=include_workflow_tools, include_secret=True)
 
     response, status = unwrap(api.get)(
         api, "app-1", auth_data=SimpleNamespace(caller=account, app=app_model), query=query
     )
 
     assert status == 200
-    assert response.format == ("zip" if bundle is not None else "yaml")
-    assert response.data == (base64.b64encode(bundle).decode("ascii") if bundle is not None else "app: {}")
-    bundle_service.export_bundle.assert_called_once_with(
-        app_model=app_model, account=account, include_secret=True, workflow_id=None
-    )
-    assert dsl_service.export_dsl.called is (bundle is None)
+    assert response.format == ("zip" if include_workflow_tools else "yaml")
+    assert response.data == (base64.b64encode(bundle).decode("ascii") if include_workflow_tools else "app: {}")
+    if include_workflow_tools:
+        bundle_service.export_bundle.assert_called_once_with(
+            app_model=app_model, account=account, include_secret=True, workflow_id=None
+        )
+    else:
+        bundle_service.export_bundle.assert_not_called()
+    assert dsl_service.export_dsl.called is not include_workflow_tools
 
 
 def test_bundle_import_payload_requires_base64_content() -> None:
@@ -95,7 +99,7 @@ def test_bundle_export_maps_errors(
 ) -> None:
     bundle_service = Mock()
     bundle_service.export_bundle.side_effect = error
-    monkeypatch.setattr(app_dsl_module, "WorkflowDslBundleService", Mock(return_value=bundle_service))
+    monkeypatch.setattr(app_dsl_module, "AppDslBundleService", Mock(return_value=bundle_service))
     monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(session=Mock()))
     api = AppDslExportApi()
     with pytest.raises(response_error, match=str(error)):

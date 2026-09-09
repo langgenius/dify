@@ -5,8 +5,10 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
+from core.rbac import RBACPermission
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from tests.unit_tests.config_override import config_overrides_context
@@ -51,7 +53,18 @@ def _fake_identity():
 # --- PipelineRouter.guard ---
 
 
-def test_guard_passes_auth_data_to_view(app):
+@pytest.mark.parametrize(
+    "rbac",
+    [
+        None,
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        (
+            RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+        ),
+    ],
+)
+def test_guard_passes_auth_data_to_view(app, rbac):
     router = _make_router()
     received = {}
 
@@ -64,13 +77,14 @@ def test_guard_passes_auth_data_to_view(app):
         ):
             mock_auth.return_value.authenticate.return_value = _fake_identity()
 
-            @router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+            @router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}), rbac=rbac)
             def view(*, auth_data):
                 received["data"] = auth_data
 
             view()
 
     assert isinstance(received["data"], AuthData)
+    assert received["data"].rbac == rbac
 
 
 def test_guard_edition_gate_returns_404(app):

@@ -2671,7 +2671,7 @@ Export application configuration as DSL
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID to export | Yes | string (uuid) |
 | include_secret | query | Include secrets in export | No | boolean |
-| include_workflow_tools | query | Package referenced workflow tools recursively in a ZIP | No | boolean |
+| include_workflow_tools | query | Package the app and recursively referenced workflow tools in a ZIP | No | boolean |
 | workflow_id | query | Specific workflow ID to export | No | string |
 
 #### Responses
@@ -15801,7 +15801,7 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_secret | boolean | Include secrets in export | No |
-| include_workflow_tools | boolean | Package referenced workflow tools recursively in a ZIP | No |
+| include_workflow_tools | boolean | Package the app and recursively referenced workflow tools in a ZIP | No |
 | workflow_id | string | Specific workflow ID to export | No |
 
 #### AppExportResponse

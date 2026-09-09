@@ -743,7 +743,7 @@ def test_agent_import_of_new_agent_checks_function_scope(
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
     account = _account()
 
-    AppDslService(session=unbound_session)._ensure_agent_import_permission(account, app=None)
+    AppDslService(session=unbound_session)._ensure_agent_dsl_permission(account, app=None)
 
     check.assert_called_once_with(
         account.current_tenant_id,
@@ -822,7 +822,7 @@ def test_bundle_import_checks_every_version_and_preserves_pending_owner(
     bundle_service = Mock()
     bundle_service.parse_bundle.return_value = bundle
     bundle_service.import_bundle.return_value = _app(mode=AppMode.WORKFLOW)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowDslBundleService", Mock(return_value=bundle_service))
+    monkeypatch.setattr("services.app_dsl_service.AppDslBundleService", Mock(return_value=bundle_service))
     monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
     pending: dict[str, str] = {}
     monkeypatch.setattr(
@@ -867,7 +867,7 @@ def test_bundle_content_rejects_invalid_or_oversized_input_before_parsing(
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 6)
     parse_bundle = Mock()
-    monkeypatch.setattr("services.app_dsl_service.WorkflowDslBundleService.parse_bundle", parse_bundle)
+    monkeypatch.setattr("services.app_dsl_service.AppDslBundleService.parse_bundle", parse_bundle)
 
     result = AppDslService(unbound_session).import_app(
         account=_account(), import_mode=ImportMode.BUNDLE_CONTENT, yaml_content=content
