@@ -24,6 +24,7 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -912,141 +913,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   return (
     <div className="relative mt-2 grow overflow-x-auto">
-      <table className={cn('w-full min-w-110 border-collapse border-0')}>
-        <thead className="system-xs-medium-uppercase text-text-tertiary">
-          <tr>
-            <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {isChatMode
-                ? t(($) => $['table.header.summary'], { ns: 'appLog' })
-                : t(($) => $['table.header.input'], { ns: 'appLog' })}
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.endUser'], { ns: 'appLog' })}
-            </td>
-            {isChatflow && (
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-                {t(($) => $['table.header.status'], { ns: 'appLog' })}
-              </td>
-            )}
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {isChatMode
-                ? t(($) => $['table.header.messageCount'], { ns: 'appLog' })
-                : t(($) => $['table.header.output'], { ns: 'appLog' })}
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.userRate'], { ns: 'appLog' })}
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.adminRate'], { ns: 'appLog' })}
-            </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.updatedTime'], { ns: 'appLog' })}
-            </td>
-            <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              {t(($) => $['table.header.time'], { ns: 'appLog' })}
-            </td>
-          </tr>
-        </thead>
-        <tbody className="system-sm-regular text-text-secondary">
-          {logs.data.map((log: any) => {
-            const { endUser, isLeftEmpty, isRightEmpty, leftValue, rightValue } =
-              getConversationRowValues({
-                isChatMode,
-                log,
-                noChatLabel: t(($) => $['table.empty.noChat'], { ns: 'appLog' }),
-                noOutputLabel: t(($) => $['table.empty.noOutput'], { ns: 'appLog' }),
-              })
-            return (
-              <tr
-                key={log.id}
-                className={cn(
-                  'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
-                  activeConversationId !== log.id ? '' : 'bg-background-default-hover',
-                )}
-                onClick={() => handleRowClick(log)}
-              >
-                <td className="h-4">
-                  {!log.read_at && (
-                    <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
-                    </div>
-                  )}
-                </td>
-                <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                  {renderTdValue(leftValue, isLeftEmpty, isChatMode && log.annotated)}
-                </td>
-                <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
-                {isChatflow && (
-                  <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                    {statusTdRender(log.status_count)}
-                  </td>
-                )}
-                <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
-                  {renderTdValue(
-                    rightValue,
-                    isRightEmpty,
-                    !isChatMode && !!log.annotation?.content,
-                    log.annotation,
-                  )}
-                </td>
-                <td className="p-3 pr-2">
-                  {!log.user_feedback_stats.like && !log.user_feedback_stats.dislike ? (
-                    renderTdValue(defaultValue, true)
-                  ) : (
-                    <>
-                      {!!log.user_feedback_stats.like && (
-                        <HandThumbIconWithCount
-                          iconType="up"
-                          count={log.user_feedback_stats.like}
-                        />
-                      )}
-                      {!!log.user_feedback_stats.dislike && (
-                        <HandThumbIconWithCount
-                          iconType="down"
-                          count={log.user_feedback_stats.dislike}
-                        />
-                      )}
-                    </>
-                  )}
-                </td>
-                <td className="p-3 pr-2">
-                  {!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike ? (
-                    renderTdValue(defaultValue, true)
-                  ) : (
-                    <>
-                      {!!log.admin_feedback_stats.like && (
-                        <HandThumbIconWithCount
-                          iconType="up"
-                          count={log.admin_feedback_stats.like}
-                        />
-                      )}
-                      {!!log.admin_feedback_stats.dislike && (
-                        <HandThumbIconWithCount
-                          iconType="down"
-                          count={log.admin_feedback_stats.dislike}
-                        />
-                      )}
-                    </>
-                  )}
-                </td>
-                <td className="w-40 p-3 pr-2">
-                  {formatTime(
-                    log.updated_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
-                </td>
-                <td className="w-40 p-3 pr-2">
-                  {formatTime(
-                    log.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
       <Drawer
         open={showDrawer}
         modal
@@ -1055,6 +921,155 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           if (!open) onCloseDrawer()
         }}
       >
+        <table className={cn('w-full min-w-110 border-collapse border-0')}>
+          <thead className="system-xs-medium-uppercase text-text-tertiary">
+            <tr>
+              <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {isChatMode
+                  ? t(($) => $['table.header.summary'], { ns: 'appLog' })
+                  : t(($) => $['table.header.input'], { ns: 'appLog' })}
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.endUser'], { ns: 'appLog' })}
+              </td>
+              {isChatflow && (
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                  {t(($) => $['table.header.status'], { ns: 'appLog' })}
+                </td>
+              )}
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {isChatMode
+                  ? t(($) => $['table.header.messageCount'], { ns: 'appLog' })
+                  : t(($) => $['table.header.output'], { ns: 'appLog' })}
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.userRate'], { ns: 'appLog' })}
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.adminRate'], { ns: 'appLog' })}
+              </td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.updatedTime'], { ns: 'appLog' })}
+              </td>
+              <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                {t(($) => $['table.header.time'], { ns: 'appLog' })}
+              </td>
+            </tr>
+          </thead>
+          <tbody className="system-sm-regular text-text-secondary">
+            {logs.data.map((log: any) => {
+              const { endUser, isLeftEmpty, isRightEmpty, leftValue, rightValue } =
+                getConversationRowValues({
+                  isChatMode,
+                  log,
+                  noChatLabel: t(($) => $['table.empty.noChat'], { ns: 'appLog' }),
+                  noOutputLabel: t(($) => $['table.empty.noOutput'], { ns: 'appLog' }),
+                })
+              return (
+                <tr
+                  key={log.id}
+                  className={cn(
+                    'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
+                    activeConversationId !== log.id ? '' : 'bg-background-default-hover',
+                  )}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('button, a')) return
+                    event.currentTarget
+                      .querySelector<HTMLButtonElement>('button[data-log-detail-trigger]')
+                      ?.click()
+                  }}
+                >
+                  <td className="h-4">
+                    {!log.read_at && (
+                      <div className="flex items-center p-3 pr-0.5">
+                        <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                    {renderTdValue(leftValue, isLeftEmpty, isChatMode && log.annotated)}
+                  </td>
+                  <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
+                  {isChatflow && (
+                    <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                      {statusTdRender(log.status_count)}
+                    </td>
+                  )}
+                  <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
+                    {renderTdValue(
+                      rightValue,
+                      isRightEmpty,
+                      !isChatMode && !!log.annotation?.content,
+                      log.annotation,
+                    )}
+                  </td>
+                  <td className="p-3 pr-2">
+                    {!log.user_feedback_stats.like && !log.user_feedback_stats.dislike ? (
+                      renderTdValue(defaultValue, true)
+                    ) : (
+                      <>
+                        {!!log.user_feedback_stats.like && (
+                          <HandThumbIconWithCount
+                            iconType="up"
+                            count={log.user_feedback_stats.like}
+                          />
+                        )}
+                        {!!log.user_feedback_stats.dislike && (
+                          <HandThumbIconWithCount
+                            iconType="down"
+                            count={log.user_feedback_stats.dislike}
+                          />
+                        )}
+                      </>
+                    )}
+                  </td>
+                  <td className="p-3 pr-2">
+                    {!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike ? (
+                      renderTdValue(defaultValue, true)
+                    ) : (
+                      <>
+                        {!!log.admin_feedback_stats.like && (
+                          <HandThumbIconWithCount
+                            iconType="up"
+                            count={log.admin_feedback_stats.like}
+                          />
+                        )}
+                        {!!log.admin_feedback_stats.dislike && (
+                          <HandThumbIconWithCount
+                            iconType="down"
+                            count={log.admin_feedback_stats.dislike}
+                          />
+                        )}
+                      </>
+                    )}
+                  </td>
+                  <td className="w-40 p-3 pr-2">
+                    {formatTime(
+                      log.updated_at,
+                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                    )}
+                  </td>
+                  <td className="w-40 p-3 pr-2">
+                    <DrawerTrigger
+                      data-log-detail-trigger
+                      className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleRowClick(log)
+                      }}
+                    >
+                      {formatTime(
+                        log.created_at,
+                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      )}
+                    </DrawerTrigger>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
         <DrawerPortal>
           <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
           <DrawerViewport>
