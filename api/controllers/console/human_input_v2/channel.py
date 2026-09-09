@@ -80,6 +80,7 @@ class WorkspaceChannelResource(Resource):
 
 
 class ChannelStatus(StrEnum):
+    CONFIGURED = "configured"
     CONNECTED = "connected"
     INVALID_CREDENTIALS = "invalid_credentials"
     CONNECTION_FAILURE = "connection_failure"
@@ -124,7 +125,7 @@ class ChannelSummary(ResponseModel):
     )
     status: ChannelStatus
     status_description: str = Field(
-        description="Human-readable status description. Empty when the status is `connected`."
+        description="Human-readable status description. Empty when the status is `configured` or `connected`."
     )
     display_identifier: str = Field(description="The display identifier of the Channel.")
     webhook_url: str | None = Field(
@@ -241,7 +242,7 @@ def _email_channel_summary_response(view: EmailChannelView) -> ChannelSummary:
         updated_at=view.updated_at,
         kind=HumanInputDeliveryChannel.EMAIL,
         provider=view.provider,
-        status=ChannelStatus.CONNECTED,
+        status=ChannelStatus.CONFIGURED,
         status_description="",
         display_identifier=" ".join(part for part in (view.sender_name, view.sender_email) if part),
         webhook_url=None,
@@ -343,7 +344,6 @@ class EmailChannelTestApi(WorkspaceChannelResource):
             build_human_input_email_channel_management_service().test(
                 _workspace_scope(tenant_id),
                 candidate,
-                candidate.sender_email,
             )
         except ChannelProviderError as error:
             return ChannelTestResponse(

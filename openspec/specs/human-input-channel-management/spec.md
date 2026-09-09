@@ -41,8 +41,9 @@ The Console controller MUST call the Email Management owner and `IMChannelServic
 #### Scenario: Channel status is projected
 
 - **WHEN** an Email or IM owner state is converted to `ChannelSummary`
-- **THEN** status MUST be `connected`、`invalid_credentials` or `connection_failure`
-- **AND** `status_description` MUST be empty for `connected` and contain only a safe explanation for an error
+- **THEN** status MUST be `configured`、`connected`、`invalid_credentials` or `connection_failure`
+- **AND** a persisted Email configuration whose connectivity is not asserted MUST use `configured`
+- **AND** `status_description` MUST be empty for `configured` or `connected` and contain only a safe explanation for an error
 - **AND** the summary MUST NOT contain `last_checked_at` or an asynchronous creation state
 
 #### Scenario: Display identity is projected

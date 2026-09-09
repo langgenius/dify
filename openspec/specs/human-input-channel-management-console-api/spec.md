@@ -46,7 +46,7 @@ Every Community and Cloud Channels route MUST require an authenticated, initiali
 #### Scenario: Owner manages a channel
 
 - **WHEN** a Workspace Owner calls a Channels route
-- **THEN** the operation MUST use the current Workspace, authenticated account ID and authenticated account Email
+- **THEN** the operation MUST use the current Workspace and the authenticated account ID where mutation audit requires it
 
 #### Scenario: Non-admin member accesses Channels
 
@@ -123,31 +123,30 @@ Functional support in this change MUST target Community and Cloud. One pre-dispa
 
 ### Requirement: Resend save and test MUST be functional and safely separated
 
-Resend save MUST validate the complete candidate without sending Email before persisting it. Resend test MUST validate the complete candidate and send exactly one test Email to the authenticated operator without persisting it.
+Resend save MUST protect and persist the structurally valid complete candidate without provider I/O. Resend test MUST verify the submitted candidate's sending capability through exactly one test Email without persisting it.
 
 #### Scenario: Resend candidate is saved
 
-- **WHEN** a Full access API key can list domains and the exact sender domain is verified with sending enabled
-- **THEN** save MUST persist the protected candidate through the existing Email repository
+- **WHEN** a complete Resend candidate passes request validation
+- **THEN** save MUST persist the protected candidate through the existing Email repository without calling Resend
 - **AND** it MUST return the resulting credential-free `ChannelSummary`
-- **AND** it MUST NOT send an Email
+- **AND** the summary status MUST be `configured`
 
 #### Scenario: Sending-only key is submitted
 
-- **WHEN** Resend reports that the candidate key is restricted to sending and cannot inspect domains
-- **THEN** save or test MUST return a validation failure with code `provider_full_access_required`
-- **AND** no configuration MUST be created or replaced
+- **WHEN** a Resend API key has sending access and Resend accepts the test message
+- **THEN** test MUST succeed without requiring the key to list Domains or access another Resend resource
 
 #### Scenario: Sender domain is unusable
 
-- **WHEN** the exact sender domain is absent, not verified or has sending disabled
-- **THEN** save or test MUST return the corresponding stable sender-domain failure
-- **AND** no configuration MUST be created or replaced
+- **WHEN** Resend rejects the test message because the sender domain is absent, not verified, disabled or outside the API key's domain restriction
+- **THEN** test MUST return a safe validation failure
+- **AND** the current configuration MUST remain unchanged
 
 #### Scenario: Resend candidate is tested
 
-- **WHEN** the candidate validates and Resend accepts the test message
-- **THEN** test MUST send exactly one Email to the authenticated operator Email
+- **WHEN** Resend accepts the candidate test message
+- **THEN** test MUST send exactly one Email to `delivered@resend.dev`
 - **AND** the provider request MUST carry a unique idempotency key
 - **AND** the response MUST be a credential-free candidate-test result
 - **AND** no part of the candidate MUST be persisted
@@ -207,9 +206,15 @@ Resend save MUST validate the complete candidate without sending Email before pe
 - **THEN** the API MUST return `409` with conflict code `provider_configuration_updated`
 - **AND** it MUST leave current state unchanged
 
-### Requirement: Configured Channel status MUST use the synchronous three-state contract
+### Requirement: Channel status MUST distinguish configured state from verified connectivity
 
-`ChannelSummary.status` MUST be one of `connected`、`invalid_credentials` or `connection_failure`。`status_description` MUST be empty when status is `connected` and MUST contain only a safe human-readable explanation for an error status。The response MUST NOT expose `last_checked_at` or an asynchronous creation status。
+`ChannelSummary.status` MUST be one of `configured`、`connected`、`invalid_credentials` or `connection_failure`。`configured` MUST mean the configuration is persisted but its current connectivity is not asserted。`status_description` MUST be empty when status is `configured` or `connected` and MUST contain only a safe human-readable explanation for an error status。The response MUST NOT expose `last_checked_at` or an asynchronous creation status。
+
+#### Scenario: Email Channel is configured
+
+- **WHEN** a persisted Resend Email Channel is returned
+- **THEN** its status MUST be `configured`
+- **AND** `status_description` MUST be empty
 
 #### Scenario: Configured Channel is healthy
 

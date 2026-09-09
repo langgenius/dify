@@ -40,7 +40,6 @@ _NOW = datetime(2026, 8, 20, 8)
 _LATER = datetime(2026, 8, 20, 9)
 _SCOPE = WorkspaceScope(TenantId("workspace-1"))
 _ACTOR_ID = AccountId("account-1")
-_RECIPIENT = NormalizedEmail("operator@example.com")
 
 
 class FakeRepository:
@@ -97,16 +96,9 @@ class FakeProviderGateway:
         self.failure: Exception | None = None
         self.settings: list[ResendCandidate] = []
 
-    def validate(self, candidate: ResendCandidate) -> None:
-        self._events.append("validate")
-        self.settings.append(candidate)
-        if self.failure is not None:
-            raise self.failure
-
-    def send_test(self, candidate: ResendCandidate, recipient: NormalizedEmail) -> None:
+    def send_test(self, candidate: ResendCandidate) -> None:
         self._events.append("send_test")
         self.settings.append(candidate)
-        assert recipient == _RECIPIENT
         if self.failure is not None:
             raise self.failure
 
@@ -178,7 +170,7 @@ def test_email_configuration_requires_a_protected_api_key() -> None:
         replace(_configuration(), protected_api_key="")
 
 
-def test_create_validates_then_protects_before_persistence_and_returns_safe_owner_view(
+def test_create_protects_without_provider_io_and_returns_safe_owner_view(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[str] = []
@@ -192,7 +184,7 @@ def test_create_validates_then_protects_before_persistence_and_returns_safe_owne
 
     view = _service(repository, provider_gateway).create(_SCOPE, _ACTOR_ID, _candidate())
 
-    assert events == ["validate", "protect"]
+    assert events == ["protect"]
     assert repository.events == ["load", "create"]
     assert view.id == EmailProviderId("email-new")
     assert view.provider is EmailProviderType.RESEND
@@ -261,7 +253,7 @@ def test_update_uses_repository_cas_and_advances_the_owner_revision(
         _candidate("rotated-api-key"),
     )
 
-    assert events == ["validate", "protect"]
+    assert events == ["protect"]
     assert repository.events == ["load", "load", "update"]
     assert updated.id == current.id
     assert updated.revision != current.revision
@@ -327,10 +319,10 @@ def test_candidate_test_uses_only_submitted_credentials_and_never_persists() -> 
     repository = FakeRepository(current)
     provider_gateway = FakeProviderGateway(events)
 
-    result = _service(repository, provider_gateway).test(_SCOPE, _candidate(), _RECIPIENT)
+    result = _service(repository, provider_gateway).test(_SCOPE, _candidate())
 
     assert result is None
-    assert events == ["validate", "send_test"]
+    assert events == ["send_test"]
     assert repository.events == []
     assert repository.current == current
     assert provider_gateway.settings[0].api_key == "new-api-key"
@@ -353,12 +345,12 @@ def test_expected_provider_failures_are_safely_classified(
     provider_gateway.failure = provider_error
 
     with pytest.raises(ChannelProviderError) as captured:
-        _service(repository, provider_gateway).create(_SCOPE, _ACTOR_ID, _candidate("sensitive-api-key"))
+        _service(repository, provider_gateway).test(_SCOPE, _candidate("sensitive-api-key"))
 
     assert captured.value.kind is expected_kind
     assert "raw-" not in str(captured.value)
     assert "sensitive-api-key" not in repr(captured.value)
-    assert repository.events == ["load"]
+    assert repository.events == []
 
 
 def test_unexpected_provider_failure_is_detail_free_and_preserves_state() -> None:
@@ -368,22 +360,13 @@ def test_unexpected_provider_failure_is_detail_free_and_preserves_state() -> Non
     provider_gateway = FakeProviderGateway(events)
     provider_gateway.failure = RuntimeError("raw provider response with sensitive-api-key")
     service = _service(repository, provider_gateway)
-    snapshot = service.get_current(_SCOPE)
-    assert snapshot is not None
-
     with pytest.raises(UnexpectedChannelProviderError) as captured:
-        service.update(
-            _SCOPE,
-            snapshot.id,
-            snapshot.revision,
-            _ACTOR_ID,
-            _candidate("sensitive-api-key"),
-        )
+        service.test(_SCOPE, _candidate("sensitive-api-key"))
 
     assert "raw provider response" not in str(captured.value)
     assert "sensitive-api-key" not in repr(captured.value)
     assert repository.current == current
-    assert repository.events == ["load", "load"]
+    assert repository.events == []
 
 
 def test_credential_protection_failure_is_detail_free_and_never_persists(
@@ -406,6 +389,6 @@ def test_credential_protection_failure_is_detail_free_and_never_persists(
 
     assert "raw encryption failure" not in str(captured.value)
     assert "sensitive-api-key" not in repr(captured.value)
-    assert events == ["validate"]
+    assert events == []
     assert repository.events == ["load"]
     assert repository.current is None

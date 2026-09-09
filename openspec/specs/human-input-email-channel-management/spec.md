@@ -37,7 +37,7 @@ Candidate configurations MUST identify Resend as the provider. SMTP and other Em
 #### Scenario: Resend candidate is submitted
 
 - **WHEN** a candidate identifies Resend and contains the required sender and credential inputs
-- **THEN** management MUST allow the candidate to proceed to validation
+- **THEN** management MUST allow the candidate to proceed to the requested save or test operation
 
 #### Scenario: Unsupported provider is submitted
 
@@ -46,42 +46,42 @@ Candidate configurations MUST identify Resend as the provider. SMTP and other Em
 - **AND** it MUST NOT invoke provider validation or persistence
 - **AND** management MUST NOT define an unsupported provider, candidate or result variant solely to represent that input
 
-### Requirement: Candidate configuration MUST validate before persistence
+### Requirement: Candidate configuration MUST be protected before persistence
 
-Saving a configuration MUST validate the complete candidate provider settings before any current configuration is created or replaced.
+Saving a configuration MUST protect the complete candidate credential before any current configuration is created or replaced. Save MUST NOT perform provider I/O; remote credential and sender validation belongs to the explicit connection test.
 
-#### Scenario: New candidate validates successfully
+#### Scenario: New candidate is structurally valid
 
-- **WHEN** the API key is valid, has sending permission and the sender domain is usable
-- **THEN** the complete candidate MUST be eligible for persistence
-- **AND** save validation MUST NOT send a test email
+- **WHEN** the complete candidate passes request-boundary and domain-value validation
+- **THEN** management MUST protect and persist the candidate without calling Resend
+- **AND** the resulting Email Channel status MUST be `configured`
 
-#### Scenario: Candidate validation fails
+#### Scenario: Candidate input validation fails
 
-- **WHEN** provider validation reports an invalid API key, missing sending permission, unusable sender domain, invalid sender, rate limit or provider failure
-- **THEN** management MUST return the corresponding safe failure code
+- **WHEN** request-boundary or domain-value validation rejects the candidate
+- **THEN** management MUST return the corresponding validation failure
 - **AND** it MUST NOT create, replace or delete the current configuration
 
-#### Scenario: Provider validation raises an unexpected failure
+#### Scenario: Credential protection raises an unexpected failure
 
-- **WHEN** provider validation cannot classify an unexpected provider or transport failure
-- **THEN** management MUST return a generic safe provider failure
-- **AND** no raw provider response or credential material MUST escape the validation boundary
+- **WHEN** credential protection fails before persistence
+- **THEN** management MUST return a generic safe failure
+- **AND** no credential material MUST escape the management boundary
 
-### Requirement: Test connection MUST be non-persistent and operator-targeted
+### Requirement: Test connection MUST be non-persistent and sending-capability-targeted
 
-Testing a candidate MUST validate the complete candidate and send exactly one test email to the authenticated operator account email without saving the configuration.
+Testing a candidate MUST send exactly one email to Resend's `delivered@resend.dev` test address through the submitted candidate without saving the configuration.
 
 #### Scenario: Test connection succeeds
 
-- **WHEN** the candidate validates and the provider accepts the test message
-- **THEN** management MUST return a credential-free candidate test result containing the operator account email and candidate sender identity
+- **WHEN** Resend accepts the test message
+- **THEN** management MUST return a credential-free candidate test result
 - **AND** the result MUST NOT claim that the candidate is the persisted configuration or that its API key is persisted
 - **AND** the current persisted configuration MUST remain unchanged
 
 #### Scenario: Test connection fails
 
-- **WHEN** candidate validation or test delivery fails
+- **WHEN** Resend rejects the credential, sender or test delivery, or the provider request fails
 - **THEN** management MUST return a safe classified failure
 - **AND** it MUST NOT persist any part of the candidate
 
@@ -93,11 +93,11 @@ Testing a candidate MUST validate the complete candidate and send exactly one te
 
 ### Requirement: Credentials MUST remain protected throughout management
 
-Plaintext API keys MUST exist only for the minimum duration required to validate a command and MUST be protected before persistence.
+Plaintext API keys MUST exist only for the minimum duration required to handle a command and MUST be protected before persistence.
 
 #### Scenario: New API key is persisted
 
-- **WHEN** a validated candidate contains a new API key
+- **WHEN** a candidate contains a new API key
 - **THEN** the key MUST be protected using Workspace-scoped credential protection before the repository write
 - **AND** persistence MUST receive only the protected value
 
@@ -111,19 +111,19 @@ Plaintext API keys MUST exist only for the minimum duration required to validate
 - **WHEN** a caller reads a configured Email channel
 - **THEN** the caller MUST receive only an `api_key_configured` state for the credential
 
-### Requirement: Validated updates MUST not overwrite concurrent configuration changes
+### Requirement: Updates MUST not overwrite concurrent configuration changes
 
-Management MUST compare the configuration identity and update timestamp captured before provider validation with the current persisted row before applying a validated update. This persistence snapshot MUST remain internal to the service and repository boundary.
+Management MUST compare the submitted configuration identity and version with the current persisted row before applying an update. This persistence snapshot MUST remain internal to the service and repository boundary.
 
 #### Scenario: Current snapshot is updated
 
-- **WHEN** provider validation completes and the current configuration still matches the captured identity and update timestamp
-- **THEN** the validated replacement MUST be committed atomically
+- **WHEN** the current configuration still matches the submitted identity and version
+- **THEN** the replacement MUST be committed atomically
 - **AND** its update timestamp MUST advance to a strictly later value
 
 #### Scenario: Stale update is attempted
 
-- **WHEN** the configuration identity or update timestamp changed during provider validation
+- **WHEN** the configuration identity or version changed before the write
 - **THEN** the current configuration MUST remain unchanged
 - **AND** management MUST return a stable stale-configuration result
 
@@ -132,10 +132,10 @@ Management MUST compare the configuration identity and update timestamp captured
 - **WHEN** a configuration is deleted and another configuration is later created for the same Workspace
 - **THEN** the captured identity for the deleted configuration MUST not match the recreated row
 
-#### Scenario: Concurrent update occurs during provider validation
+#### Scenario: Concurrent update occurs before persistence
 
-- **WHEN** another command changes the current configuration after a candidate was loaded but before its validated write
-- **THEN** the validated write MUST be rejected as stale
+- **WHEN** another command changes the current configuration after a candidate was loaded but before its write
+- **THEN** the write MUST be rejected as stale
 - **AND** it MUST NOT overwrite the newer configuration
 
 #### Scenario: Application clock does not advance
@@ -192,12 +192,12 @@ Resend create、update and connection test MUST require the same complete candid
 
 - **WHEN** an administrator updates an existing Resend configuration
 - **THEN** the command MUST contain required `sender_email`、required `sender_name` and a newly submitted API key
-- **AND** management MUST validate and protect that complete candidate before persistence
+- **AND** management MUST protect that complete candidate before persistence
 
 #### Scenario: Resend update omits the API key
 
 - **WHEN** an update omits the API key, submits `null`, submits a blank value or submits a retention marker
-- **THEN** management MUST reject the request before provider validation or persistence
+- **THEN** management MUST reject the request before credential protection or persistence
 - **AND** the current configuration MUST remain unchanged
 
 #### Scenario: Resend connection test is requested

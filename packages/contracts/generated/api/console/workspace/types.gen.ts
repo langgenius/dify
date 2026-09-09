@@ -99,7 +99,11 @@ export type EmailProviderCredentials = {
   provider: 'resend'
 } & ResendCredentials
 
-export type ChannelStatus = 'connected' | 'connection_failure' | 'invalid_credentials'
+export type ChannelStatus =
+  | 'configured'
+  | 'connected'
+  | 'connection_failure'
+  | 'invalid_credentials'
 
 export type ChannelId = string
 

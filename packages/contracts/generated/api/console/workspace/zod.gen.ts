@@ -14,7 +14,12 @@ export const zChannelConflictResponse = z.object({
 /**
  * ChannelStatus
  */
-export const zChannelStatus = z.enum(['connected', 'connection_failure', 'invalid_credentials'])
+export const zChannelStatus = z.enum([
+  'configured',
+  'connected',
+  'connection_failure',
+  'invalid_credentials',
+])
 
 /**
  * ChannelTestResponse

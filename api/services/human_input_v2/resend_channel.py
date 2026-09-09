@@ -1,4 +1,4 @@
-"""Request-scoped Resend validation and test-delivery adapter for Human Input v2."""
+"""Request-scoped Resend test-delivery adapter for Human Input v2."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Any, Never, Protocol
 import httpx
 
 from core.helper import ssrf_proxy
-from core.human_input_v2.shared import NormalizedEmail
 from libs.uuid_utils import uuidv7
 from repositories.human_input_v2.email_channel import (
     EmailProviderOperationError,
@@ -18,6 +17,7 @@ from repositories.human_input_v2.email_channel import (
 
 _RESEND_API_ORIGIN = "https://api.resend.com"
 _USER_AGENT = "Dify-Human-Input/1.0"
+_TEST_RECIPIENT = "delivered@resend.dev"
 _TEST_SUBJECT = "Dify Human Input channel test"
 _TEST_HTML = (
     "<p>Your Resend channel is connected to Dify Human Input.</p>"
@@ -32,8 +32,6 @@ class ResendHTTPResponse(Protocol):
 
 
 class ResendHTTPClient(Protocol):
-    def get(self, url: str, **kwargs: Any) -> ResendHTTPResponse: ...
-
     def post(self, url: str, **kwargs: Any) -> ResendHTTPResponse: ...
 
 
@@ -53,44 +51,16 @@ class ResendProviderGateway:
         self._timeout_seconds = timeout_seconds
         self._id_factory = id_factory
 
-    def validate(self, candidate: ResendCandidate) -> None:
-        """Verify the credential and exact sender domain without sending Email."""
-
-        body = self._request("get", "/domains", candidate.api_key)
-        domains = body.get("data")
-        if not isinstance(domains, list):
-            raise EmailProviderOperationError("provider_response_malformed")
-
-        sender_domain = str(candidate.sender_email).rsplit("@", maxsplit=1)[-1].casefold()
-        matching_domain = next(
-            (
-                domain
-                for domain in domains
-                if isinstance(domain, Mapping)
-                and isinstance(domain.get("name"), str)
-                and domain["name"].casefold() == sender_domain
-            ),
-            None,
-        )
-        if matching_domain is None:
-            raise EmailProviderValidationError("sender_domain_not_found")
-        if matching_domain.get("status") != "verified":
-            raise EmailProviderValidationError("sender_domain_not_verified")
-        capabilities = matching_domain.get("capabilities")
-        if not isinstance(capabilities, Mapping) or capabilities.get("sending") != "enabled":
-            raise EmailProviderValidationError("sender_domain_sending_disabled")
-
-    def send_test(self, candidate: ResendCandidate, recipient: NormalizedEmail) -> None:
-        """Send one idempotent test message to the authenticated operator."""
+    def send_test(self, candidate: ResendCandidate) -> None:
+        """Verify the candidate through one idempotent Resend test delivery."""
 
         sender = f"{candidate.sender_name} <{candidate.sender_email}>"
         body = self._request(
-            "post",
             "/emails",
             candidate.api_key,
             json={
                 "from": sender,
-                "to": [str(recipient)],
+                "to": [_TEST_RECIPIENT],
                 "subject": _TEST_SUBJECT,
                 "html": _TEST_HTML,
             },
@@ -102,7 +72,6 @@ class ResendProviderGateway:
 
     def _request(
         self,
-        method: str,
         path: str,
         api_key: str,
         *,
@@ -115,9 +84,8 @@ class ResendProviderGateway:
         }
         if idempotency_key is not None:
             headers["Idempotency-Key"] = idempotency_key
-        request = self._http_client.get if method == "get" else self._http_client.post
         try:
-            response = request(
+            response = self._http_client.post(
                 f"{_RESEND_API_ORIGIN}{path}",
                 headers=headers,
                 json=json,
@@ -146,10 +114,8 @@ class ResendProviderGateway:
     def _raise_provider_error(status_code: int, body: Mapping[str, Any]) -> Never:
         error_name = body.get("name")
         safe_name = error_name if isinstance(error_name, str) else None
-        if safe_name in {"missing_api_key", "invalid_api_key"}:
+        if safe_name in {"missing_api_key", "invalid_api_key", "restricted_api_key"}:
             raise EmailProviderValidationError("invalid_api_key")
-        if safe_name == "restricted_api_key":
-            raise EmailProviderValidationError("provider_full_access_required")
         if safe_name == "invalid_from_address":
             raise EmailProviderValidationError("invalid_sender")
         if safe_name == "validation_error":

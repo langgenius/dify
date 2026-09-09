@@ -10,7 +10,7 @@ from pydantic import NaiveDatetime
 
 from core.helper import encrypter
 from core.human_input_v2.entities import EmailProviderType
-from core.human_input_v2.shared import AccountId, EmailProviderId, NormalizedEmail, TenantId, WorkspaceScope
+from core.human_input_v2.shared import AccountId, EmailProviderId, TenantId, WorkspaceScope
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from repositories.human_input_v2.email_channel import (
@@ -41,17 +41,13 @@ _CONNECTION_FAILURE_DESCRIPTION = "The provider connection could not be establis
 class _ResendProviderGateway(Protocol):
     """Provider I/O required by the Resend management use cases."""
 
-    def validate(self, candidate: ResendCandidate) -> None:
-        """Validate credentials, permissions, sender, and domain without sending."""
-        ...
-
-    def send_test(self, candidate: ResendCandidate, recipient: NormalizedEmail) -> None:
-        """Send exactly one test message through the candidate settings."""
+    def send_test(self, candidate: ResendCandidate) -> None:
+        """Verify the candidate through exactly one test delivery."""
         ...
 
 
 class HumanInputEmailChannelManagementService:
-    """Own Resend validation, protection, singleton persistence, and CAS."""
+    """Own Resend test delivery, protection, singleton persistence, and CAS."""
 
     def __init__(
         self,
@@ -81,10 +77,9 @@ class HumanInputEmailChannelManagementService:
         self,
         scope: WorkspaceScope,
         candidate: ResendCandidate,
-        recipient: NormalizedEmail,
     ) -> None:
         del scope
-        self._validate(candidate, recipient=recipient)
+        self._send_test(candidate)
 
     def create(
         self,
@@ -95,7 +90,6 @@ class HumanInputEmailChannelManagementService:
         if self._load_current(scope.id) is not None:
             raise ChannelAlreadyConfiguredError("email channel is already configured")
 
-        self._validate(candidate)
         protected_api_key = self._protect(scope.id, candidate.api_key)
         now = self._clock()
         configuration = EmailChannelConfiguration(
@@ -123,7 +117,6 @@ class HumanInputEmailChannelManagementService:
     ) -> EmailChannelView:
         current = self._load_addressed(scope, channel_id)
         self._ensure_current_revision(current, expected_revision)
-        self._validate(candidate)
         replacement = replace(
             current,
             sender_email=candidate.sender_email,
@@ -153,16 +146,9 @@ class HumanInputEmailChannelManagementService:
             raise ProviderConfigurationUpdatedError("email configuration was updated")
         return current.id
 
-    def _validate(
-        self,
-        candidate: ResendCandidate,
-        *,
-        recipient: NormalizedEmail | None = None,
-    ) -> None:
+    def _send_test(self, candidate: ResendCandidate) -> None:
         try:
-            self._provider_gateway.validate(candidate)
-            if recipient is not None:
-                self._provider_gateway.send_test(candidate, recipient)
+            self._provider_gateway.send_test(candidate)
         except EmailProviderValidationError:
             raise ChannelProviderError(
                 ProviderFailureKind.INVALID_CREDENTIALS,

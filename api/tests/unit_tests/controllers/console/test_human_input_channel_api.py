@@ -88,6 +88,7 @@ def test_channel_transport_models_match_the_canonical_schema() -> None:
         "config_version",
     }
     assert {status.value for status in module.ChannelStatus} == {
+        "configured",
         "connected",
         "invalid_credentials",
         "connection_failure",
@@ -468,7 +469,7 @@ def test_create_returns_the_resulting_canonical_summary(
             "updated_at": 1787187600,
             "kind": "email",
             "provider": "resend",
-            "status": "connected",
+            "status": "configured",
             "status_description": "",
             "display_identifier": "Dify sender@example.com",
             "webhook_url": None,
@@ -476,6 +477,40 @@ def test_create_returns_the_resulting_canonical_summary(
         }
     }
     assert "resend-secret" not in repr(response)
+
+
+def test_email_candidate_test_delegates_the_submitted_candidate_without_a_recipient(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module("controllers.console.human_input_v2.channel")
+
+    class EmailOwner:
+        def test(self, scope, candidate):
+            assert str(scope.id) == "workspace-1"
+            assert str(candidate.sender_email) == "sender@example.com"
+            assert candidate.sender_name == "Dify"
+            assert candidate.api_key == "resend-secret"
+
+    monkeypatch.setattr(module, "build_human_input_email_channel_management_service", EmailOwner)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "credentials": {
+                "provider": "resend",
+                "sender_email": "sender@example.com",
+                "sender_name": "Dify",
+                "api_key": "resend-secret",
+            }
+        },
+    ):
+        response = unwrap(module.EmailChannelTestApi.post)(
+            module.EmailChannelTestApi(),
+            "workspace-1",
+        )
+
+    assert response == {"status": "connected", "status_description": ""}
 
 
 def test_channel_collection_aggregates_configured_owner_snapshots(

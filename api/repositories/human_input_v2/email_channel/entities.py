@@ -34,7 +34,7 @@ class ResendCandidate:
 
 @dataclass(frozen=True, slots=True)
 class EmailConfigurationSnapshot:
-    """Complete internal token guarding a validated configuration write."""
+    """Complete internal token guarding a configuration write."""
 
     configuration_id: EmailProviderId
     config_version: int
