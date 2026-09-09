@@ -4,11 +4,11 @@ from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import GraphRunSucceededEvent, NodeRunStreamChunkEvent
-from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfigBuilder
+from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
 
 
-def _build_issue_170_mock_config():
+def _build_issue_170_mock_config() -> tuple[WorkflowRunner, MockConfig]:
     runner = WorkflowRunner()
     mock_config = (
         MockConfigBuilder()
@@ -71,5 +71,7 @@ def test_dify_response_stream_filter_handles_issue_170_shape() -> None:
     actual_answer = "".join(event.chunk for event in stream_chunk_events)
     assert actual_answer.strip() == expected_answer
     assert stream_chunk_events[-1].is_final is True
-    assert success_events[-1].outputs["answer"].strip() == expected_answer
-    assert actual_answer.strip() == success_events[-1].outputs["answer"].strip()
+    final_answer = success_events[-1].outputs["answer"]
+    assert isinstance(final_answer, str)
+    assert final_answer.strip() == expected_answer
+    assert actual_answer.strip() == final_answer.strip()

@@ -10,7 +10,11 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
+from core.repositories.human_input_repository import (
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -23,6 +27,7 @@ from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunStreamChunkEvent
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.if_else.entities import IfElseNodeData
 from graphon.nodes.if_else.if_else_node import IfElseNode
@@ -41,7 +46,7 @@ def _mock_repo_paused() -> HumanInputFormRepository:
     form = MagicMock(spec=HumanInputFormEntity)
     form.id = "form-1"
     form.submission_token = "token-1"
-    form.recipients = []
+    form.recipients = list[HumanInputFormRecipientEntity]()
     form.rendered_content = "rendered"
     form.submitted = False
     repo.create_form.return_value = form
@@ -54,11 +59,11 @@ def _mock_repo_resumed(action_id: str = "continue") -> HumanInputFormRepository:
     form = MagicMock(spec=HumanInputFormEntity)
     form.id = "form-1"
     form.submission_token = "token-1"
-    form.recipients = []
+    form.recipients = list[HumanInputFormRecipientEntity]()
     form.rendered_content = "rendered"
     form.submitted = True
     form.selected_action_id = action_id
-    form.submitted_data = {}
+    form.submitted_data = dict[str, object]()
     form.status = HumanInputFormStatus.WAITING
     form.expiration_time = naive_utc_now() + timedelta(hours=1)
     repo.get_form.return_value = form
@@ -110,7 +115,7 @@ def _build_graph(runtime_state: GraphRuntimeState, form_repository: HumanInputFo
     )
     human_node = HumanInputNode(
         node_id="human_input",
-        data=human_data,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         hitl_callback=DifyHITLCallback(form_repository=form_repository, node_data=human_data),
