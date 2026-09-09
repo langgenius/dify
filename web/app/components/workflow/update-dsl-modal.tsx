@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
@@ -15,7 +16,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
@@ -44,6 +45,10 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
+  const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())
+  const { mutateAsync: confirmImport } = useMutation(
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+  )
 
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
@@ -126,7 +131,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         (source.mode === 'bundle-content' ||
           validateDSLContent(source.yaml_content ?? '', appDetail.mode))
       ) {
-        const response = await consoleClient.apps.imports.post({
+        const response = await importApp({
           body: { ...source, app_id: appDetail.id },
         })
         const { id, status, app_id, imported_dsl_version, current_dsl_version, warnings } = response
@@ -148,12 +153,12 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       setLoading(false)
       isCreatingRef.current = false
     }
-  }, [currentFile, t, appDetail, handleCompletedImport, handlePendingImport])
+  }, [currentFile, t, appDetail, handleCompletedImport, handlePendingImport, importApp])
 
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {
       if (!importId) return
-      const response = await consoleClient.apps.imports.byImportId.confirm.post({
+      const response = await confirmImport({
         params: { import_id: importId },
       })
 

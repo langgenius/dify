@@ -1,6 +1,7 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { toast } from '@langgenius/dify-ui/toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EventEmitterContext } from '@/context/event-emitter'
@@ -9,6 +10,7 @@ import UpdateDSLModal from '../update-dsl-modal'
 
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
+const workflowToolsKey = ['tools', 'workflowTools']
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -21,18 +23,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    apps: {
-      imports: {
-        post: ({ body }: { body: unknown }) => mockImportDSL(body),
-        byImportId: {
-          confirm: {
-            post: ({ params }: { params: { import_id: string } }) => mockImportDSLConfirm(params),
-          },
-        },
-      },
-    },
+vi.mock('@/service/base', () => ({
+  request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+    const response = url.endsWith('/confirm')
+      ? await mockImportDSLConfirm({ import_id: url.split('/').at(-2) })
+      : await mockImportDSL(await options.request.json())
+    return Response.json(response)
   },
 }))
 
@@ -107,11 +103,19 @@ describe('UpdateDSLModal', () => {
   const renderModal = (props = defaultProps) => {
     const eventEmitter = { emit: mockEmit } as unknown as EventEmitter<EventEmitterValue>
 
-    return render(
-      <EventEmitterContext.Provider value={{ eventEmitter }}>
-        <UpdateDSLModal {...props} />
-      </EventEmitterContext.Provider>,
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { staleTime: 5 * 60 * 1000 } },
+    })
+    queryClient.setQueryData(workflowToolsKey, [])
+
+    const result = render(
+      <QueryClientProvider client={queryClient}>
+        <EventEmitterContext.Provider value={{ eventEmitter }}>
+          <UpdateDSLModal {...props} />
+        </EventEmitterContext.Provider>
+      </QueryClientProvider>,
     )
+    return { ...result, queryClient }
   }
 
   it('should keep import disabled until a file is selected', () => {
@@ -178,7 +182,7 @@ describe('UpdateDSLModal', () => {
 
   it('overwrites the current app from a ZIP bundle and refreshes its workflow', async () => {
     const user = userEvent.setup()
-    renderModal()
+    const { queryClient } = renderModal()
     await user.upload(
       screen.getByTestId('dsl-file-input'),
       new File(['PK\u0003\u0004'], 'workflow.zip'),
@@ -193,6 +197,7 @@ describe('UpdateDSLModal', () => {
       }),
     )
     await waitFor(() => expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1'))
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(true)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
@@ -259,7 +264,7 @@ describe('UpdateDSLModal', () => {
       current_dsl_version: '2.0.0',
     })
 
-    renderModal()
+    const { queryClient } = renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
       target: { files: [new File(['workflow: {}'], 'workflow.yml', { type: 'text/yaml' })] },
@@ -270,13 +275,15 @@ describe('UpdateDSLModal', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     })
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
     })
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+    await waitFor(() => expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1'))
+    expect(queryClient.getQueryState(workflowToolsKey)?.isInvalidated).toBe(true)
   })
 
   it('should show Agent package warnings returned after confirming a pending import', async () => {

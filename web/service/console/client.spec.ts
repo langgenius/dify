@@ -715,27 +715,59 @@ describe('consoleQuery app mutation defaults', () => {
     },
   )
 
-  it('should keep app lists intact while an import awaits confirmation', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    const mutationOptions = consoleQuery.apps.imports.post.mutationOptions()
-
-    mutationOptions.onSuccess?.(
-      {
+  it.each(['completed', 'completed-with-warnings', 'pending', 'failed'] as const)(
+    'should refresh workflow tool catalogues only after a completed import (status: %s)',
+    async (status) => {
+      const consoleQuery = await loadConsoleQuery()
+      const response = {
         id: 'import-1',
-        status: 'pending',
+        status,
         current_dsl_version: '1.0.0',
         imported_dsl_version: '2.0.0',
         error: '',
-      },
-      { body: { mode: 'yaml-content', yaml_content: 'app: demo' } },
-      undefined,
-      createMutationContext(queryClient),
-    )
+      }
+      const completed = status === 'completed' || status === 'completed-with-warnings'
+      const toolKeys = [
+        ['tools', 'workflowTools'],
+        ['tools', 'allToolProviders'],
+        ['tools', 'allToolProviders', 'workflow'],
+      ]
 
-    expect(invalidateQueries).not.toHaveBeenCalled()
-  })
+      for (const confirmed of [false, true]) {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { staleTime: Infinity } },
+        })
+        const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+        const unrelatedKey = ['tools', 'builtIn']
+        for (const queryKey of [...toolKeys, unrelatedKey]) queryClient.setQueryData(queryKey, [])
+
+        if (confirmed) {
+          await consoleQuery.apps.imports.byImportId.confirm.post
+            .mutationOptions()
+            .onSuccess?.(
+              response,
+              { params: { import_id: response.id } },
+              undefined,
+              createMutationContext(queryClient),
+            )
+        } else {
+          await consoleQuery.apps.imports.post
+            .mutationOptions()
+            .onSuccess?.(
+              response,
+              { body: { mode: 'bundle-content', yaml_content: 'archive' } },
+              undefined,
+              createMutationContext(queryClient),
+            )
+        }
+
+        for (const queryKey of toolKeys)
+          expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(completed)
+        expect(queryClient.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
+        if (!completed) expect(invalidateQueries).not.toHaveBeenCalled()
+      }
+    },
+  )
 
   it('should keep a star mutation pending until visible app lists synchronize', async () => {
     const consoleQuery = await loadConsoleQuery()
