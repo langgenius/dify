@@ -22,9 +22,16 @@ export const useOpenLink = () => {
     return mergeRegister(
       editor.registerUpdateListener(() => {
         setTimeout(() => {
-          const { selectedLinkUrl, selectedIsLink, setLinkAnchorElement, setLinkOperatorShow } =
-            noteEditorStore.getState()
+          const {
+            selectedLinkUrl,
+            selectedIsLink,
+            linkEditorDismissed,
+            setLinkAnchorElement,
+            setLinkOperatorShow,
+          } = noteEditorStore.getState()
           if (selectedIsLink) {
+            // Restoring the editor selection must not reopen a dismissed surface.
+            if (linkEditorDismissed) return
             setLinkAnchorElement(true)
             if (selectedLinkUrl) setLinkOperatorShow(true)
             else setLinkOperatorShow(false)

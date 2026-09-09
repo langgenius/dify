@@ -1,4 +1,12 @@
-import { flip, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react'
+import {
+  flip,
+  FloatingPortal,
+  offset,
+  shift,
+  useDismiss,
+  useFloating,
+  useInteractions,
+} from '@floating-ui/react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiExternalLinkLine } from '@remixicon/react'
@@ -18,24 +26,31 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
   const selectedLinkUrl = useStore((s) => s.selectedLinkUrl)
   const linkAnchorElement = useStore((s) => s.linkAnchorElement)
   const linkOperatorShow = useStore((s) => s.linkOperatorShow)
-  const setLinkAnchorElement = useStore((s) => s.setLinkAnchorElement)
+  const dismissLinkEditor = useStore((s) => s.dismissLinkEditor)
   const setLinkOperatorShow = useStore((s) => s.setLinkOperatorShow)
   const [url, setUrl] = useState(selectedLinkUrl)
   const floatingRef = useRef<HTMLDivElement | null>(null)
-  const { refs, floatingStyles, elements } = useFloating({
-    placement: 'top',
-    middleware: [offset(4), shift(), flip()],
-  })
-
   const handleCancelLinkEdit = useCallback(() => {
     if (!linkOperatorShow && !selectedLinkUrl) {
       handleUnlink()
       return
     }
 
-    setLinkAnchorElement()
-    setLinkOperatorShow(false)
-  }, [handleUnlink, linkOperatorShow, selectedLinkUrl, setLinkAnchorElement, setLinkOperatorShow])
+    dismissLinkEditor()
+  }, [handleUnlink, linkOperatorShow, selectedLinkUrl, dismissLinkEditor])
+
+  const { refs, floatingStyles, elements, context } = useFloating({
+    open: !!linkAnchorElement,
+    onOpenChange: (open, _event, reason) => {
+      if (open) return
+      handleCancelLinkEdit()
+      if (reason === 'escape-key') restoreEditorFocus()
+    },
+    placement: 'top',
+    middleware: [offset(4), shift(), flip()],
+  })
+  const dismiss = useDismiss(context, { outsidePress: false })
+  const { getFloatingProps } = useInteractions([dismiss])
 
   useClickAway(() => {
     handleCancelLinkEdit()
@@ -54,6 +69,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
       {elements.reference && (
         <FloatingPortal root={containerElement}>
           <div
+            {...getFloatingProps()}
             className={cn(
               'nodrag nopan z-10 inline-flex w-max items-center rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg',
               !linkOperatorShow && 'p-1 shadow-md',
@@ -76,14 +92,6 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                       e.preventDefault()
                       e.stopPropagation()
                       if (url) handleSaveLink(url)
-                      return
-                    }
-
-                    if (e.key === 'Escape') {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleCancelLinkEdit()
-                      restoreEditorFocus()
                     }
                   }}
                   placeholder={t(($) => $['nodes.note.editor.enterUrl'], { ns: 'workflow' }) || ''}

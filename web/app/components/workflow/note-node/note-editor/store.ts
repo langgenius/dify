@@ -5,6 +5,8 @@ import NoteEditorContext from './context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null
+  linkEditorDismissed: boolean
+  dismissLinkEditor: () => void
   setLinkAnchorElement: (open?: boolean | HTMLElement | null) => void
   linkOperatorShow: boolean
   setLinkOperatorShow: (linkOperatorShow: boolean) => void
@@ -23,16 +25,24 @@ type Shape = {
 }
 
 export const createNoteEditorStore = () => {
+  let pendingAnchor: ReturnType<typeof setTimeout> | undefined
   return createStore<Shape>((set) => ({
     linkAnchorElement: null,
+    linkEditorDismissed: false,
+    dismissLinkEditor: () => {
+      clearTimeout(pendingAnchor)
+      set({ linkAnchorElement: null, linkOperatorShow: false, linkEditorDismissed: true })
+    },
     setLinkAnchorElement: (open) => {
+      clearTimeout(pendingAnchor)
       if (open instanceof HTMLElement) {
-        set(() => ({ linkAnchorElement: open }))
+        set({ linkAnchorElement: open, linkEditorDismissed: false })
         return
       }
 
       if (open) {
-        setTimeout(() => {
+        set({ linkEditorDismissed: false })
+        pendingAnchor = setTimeout(() => {
           const nativeSelection = window.getSelection()
 
           if (nativeSelection?.focusNode) {
@@ -41,7 +51,7 @@ export const createNoteEditorStore = () => {
           }
         })
       } else {
-        set(() => ({ linkAnchorElement: null }))
+        set({ linkAnchorElement: null, linkEditorDismissed: false })
       }
     },
     linkOperatorShow: false,
