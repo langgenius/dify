@@ -36,7 +36,6 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_account, load_workspace
 from controllers.openapi.auth.requirements import (
     CheckRBACPermission,
     CheckScope,
@@ -134,7 +133,7 @@ class WorkspaceSwitchApi(Resource):
     )
     def post(self, ctx: Context, workspace_id: str):
         try:
-            TenantService.switch_tenant(load_account(ctx), workspace_id, session=ctx.session)
+            TenantService.switch_tenant(ctx.account, workspace_id, session=ctx.session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
@@ -164,7 +163,7 @@ class WorkspaceMembersApi(Resource):
         write=False,
     )
     def get(self, ctx: Context, workspace_id: str, *, query: MemberListQuery):
-        members = TenantService.get_tenant_members(load_workspace(ctx), session=ctx.session)
+        members = TenantService.get_tenant_members(ctx.workspace, session=ctx.session)
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
@@ -187,7 +186,7 @@ class WorkspaceMembersApi(Resource):
         returns=(201, MemberInviteResponse, "Member invited"),
     )
     def post(self, ctx: Context, workspace_id: str, *, body: MemberInvitePayload):
-        tenant = load_workspace(ctx)
+        tenant = ctx.workspace
 
         _check_member_invite_quota(str(tenant.id))
 
@@ -197,7 +196,7 @@ class WorkspaceMembersApi(Resource):
                 email=body.email,
                 language=None,
                 role=body.role,
-                inviter=load_account(ctx),
+                inviter=ctx.account,
                 session=ctx.session,
             )
         except AccountAlreadyInTenantError as exc:
@@ -251,7 +250,7 @@ class WorkspaceMemberApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.remove_member_from_tenant(load_workspace(ctx), member, load_account(ctx), session=ctx.session)
+            TenantService.remove_member_from_tenant(ctx.workspace, member, ctx.account, session=ctx.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -278,9 +277,7 @@ class WorkspaceMemberApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.update_member_role(
-                load_workspace(ctx), member, body.role, load_account(ctx), session=ctx.session
-            )
+            TenantService.update_member_role(ctx.workspace, member, body.role, ctx.account, session=ctx.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:

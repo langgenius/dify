@@ -22,7 +22,6 @@ from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -70,8 +69,8 @@ class OpenApiWorkflowEventsApi(Resource):
         # The router's session closes as soon as this returns, so everything the SSE
         # body needs is read off `ctx` here and the generators below close over plain
         # values only.
-        app_model = load_app(ctx)
-        caller = load_caller(ctx)
+        app_model = ctx.app
+        caller = ctx.caller
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:

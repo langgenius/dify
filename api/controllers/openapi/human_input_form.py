@@ -17,7 +17,7 @@ from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import PathParam, load_account, load_app, load_end_user
+from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -104,7 +104,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         if form is None:
             raise HumanInputFormNotFound()
 
-        _ensure_form_belongs_to_app(form, load_app(ctx))
+        _ensure_form_belongs_to_app(form, ctx.app)
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
@@ -131,14 +131,14 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         if form is None:
             raise HumanInputFormNotFound()
 
-        _ensure_form_belongs_to_app(form, load_app(ctx))
+        _ensure_form_belongs_to_app(form, ctx.app)
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None
         if ctx.subject.caller_role is CreatorUserRole.ACCOUNT:
-            submission_user_id = load_account(ctx).id
+            submission_user_id = ctx.account.id
         else:
-            submission_end_user_id = load_end_user(ctx).id
+            submission_end_user_id = ctx.end_user.id
 
         if form.recipient_type is None:
             logger.warning("Recipient type is None for form, form_token=%s", form_token)

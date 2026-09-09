@@ -18,7 +18,6 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -73,7 +72,7 @@ class AppFileUploadApi(Resource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=load_caller(ctx),
+                user=ctx.caller,
             )
         except services.errors.file.FileTooLargeError as exc:
             raise FileTooLargeError(exc.description) from exc

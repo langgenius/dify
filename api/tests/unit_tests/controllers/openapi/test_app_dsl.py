@@ -54,6 +54,6 @@ def test_permission_denial_maps_to_forbidden(
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
         with pytest.raises(Forbidden, match="denied") as exc_info:
-            cast(_EndpointView, api.post).__handler__(api, SimpleNamespace(caller=Mock(spec=Account)), **kwargs)
+            cast(_EndpointView, api.post).__handler__(api, SimpleNamespace(account=Mock(spec=Account)), **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)

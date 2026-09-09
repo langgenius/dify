@@ -298,7 +298,6 @@ def test_an_account_token_reaches_the_view_with_a_resolved_context(
 
 
 def _rename_handler(*, ctx: Context) -> str:
-    assert ctx.caller is not None
     ctx.caller.name = "renamed"
     return "ok"
 

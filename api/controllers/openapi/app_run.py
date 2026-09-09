@@ -26,7 +26,6 @@ from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -167,8 +166,8 @@ class AppRunApi(Resource):
         returns=(200, EventStreamResponse, "Run result (SSE stream)"),
     )
     def post(self, ctx: Context, app_id: str, *, body: AppRunRequest):
-        app_model = load_app(ctx)
-        caller = load_caller(ctx)
+        app_model = ctx.app
+        caller = ctx.caller
 
         handler = _DISPATCH.get(app_model.mode)
         if handler is None:

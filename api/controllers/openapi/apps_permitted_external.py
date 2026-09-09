@@ -20,7 +20,6 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -110,4 +109,4 @@ class PermittedExternalAppDescribeApi(Resource):
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
         # The pipeline has already loaded and ACL-checked the app; project it.
-        return build_app_describe_response(load_app(ctx), query.fields, session=ctx.session)
+        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)

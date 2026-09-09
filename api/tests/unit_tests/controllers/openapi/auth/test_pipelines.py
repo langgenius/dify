@@ -232,7 +232,7 @@ def test_a_refused_sso_request_never_creates_an_end_user(
                 with pytest.raises(Forbidden, match=message):
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
-    assert ctx.caller is None
+    assert ctx._caller is None
 
 
 def test_every_registrable_subject_has_a_pipeline() -> None:
