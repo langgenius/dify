@@ -1,5 +1,8 @@
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Model, ModelItem } from '../../declarations'
 import { Popover } from '@langgenius/dify-ui/popover'
 import { render as renderComponent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -23,7 +26,9 @@ vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockUseCredentialPanelState,
 }))
 
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const createModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -35,7 +40,10 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const createModel = (overrides: Partial<Model> = {}): Model => ({
+const createModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: {
     en_US: 'https://example.com/openai-light.png',

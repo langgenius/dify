@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy.orm import Session
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.db.session_factory import session_factory
+from core.model_context import use_credit_usage_metadata
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
@@ -150,14 +152,17 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
     ):
         if not document_id:
             raise KnowledgeIndexNodeError("document_id is required.")
-        rst = self.index_processor.index_and_clean(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session=session
-        )
-        # Summary generation opens independent sessions and must see the indexed rows.
-        session.commit()
-        self.summary_index_service.generate_and_vectorize_summary(
-            dataset_id, document_id, is_preview, summary_index_setting
-        )
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        request_metadata = {"app_type": dify_ctx.app_type} if dify_ctx.app_type is not None else None
+        with use_credit_usage_metadata(request_metadata):
+            rst = self.index_processor.index_and_clean(
+                dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session=session
+            )
+            # Summary generation opens independent sessions and must see the indexed rows.
+            session.commit()
+            self.summary_index_service.generate_and_vectorize_summary(
+                dataset_id, document_id, is_preview, summary_index_setting
+            )
         return rst
 
     @classmethod

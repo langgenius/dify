@@ -54,7 +54,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {

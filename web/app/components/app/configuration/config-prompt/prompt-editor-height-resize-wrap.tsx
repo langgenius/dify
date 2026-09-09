@@ -1,9 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 
 type Props = Readonly<{
   className?: string
@@ -24,6 +27,10 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
   footer,
   hideResize,
 }) => {
+  const { t } = useTranslation('common')
+  const editorId = useId()
+  const resizeDescriptionId = useId()
+  const didDragRef = useRef(false)
   const [clientY, setClientY] = useState(0)
   const [isResizing, setIsResizing] = useState(false)
   const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(
@@ -33,6 +40,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
 
   const handleStartResize = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
+      didDragRef.current = false
       setClientY(e.clientY)
       setIsResizing(true)
       setOldHeight(height)
@@ -61,7 +69,13 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
     },
   )
 
-  const handleResize = useCallback(didHandleResize, [isResizing, height, minHeight, clientY])
+  const handleResize = useCallback(
+    (event: MouseEvent) => {
+      if (isResizing && event.clientY !== clientY) didDragRef.current = true
+      didHandleResize(event)
+    },
+    [didHandleResize, isResizing, clientY],
+  )
 
   useEffect(() => {
     document.addEventListener('mousemove', handleResize)
@@ -80,6 +94,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
   return (
     <div className="relative">
       <div
+        id={editorId}
         className={cn(className, 'overflow-y-auto')}
         style={{
           height,
@@ -90,12 +105,40 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
       {/* resize handler */}
       {footer}
       {!hideResize && (
-        <div
-          className="absolute bottom-0 left-0 flex h-2 w-full cursor-row-resize justify-center"
-          onMouseDown={handleStartResize}
-        >
-          <div className="h-0.75 w-5 rounded-xs bg-gray-300"></div>
-        </div>
+        <>
+          <IconButton
+            aria-label={t(($) => $['resize.editor'])}
+            aria-controls={editorId}
+            aria-describedby={resizeDescriptionId}
+            className="group/resize absolute bottom-0 left-0 h-2 w-full cursor-row-resize"
+            onMouseDown={handleStartResize}
+            onClick={(event) => {
+              if (event.detail === 0 || !didDragRef.current) onHeightChange(minHeight)
+              didDragRef.current = false
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') event.stopPropagation()
+              const next = getKeyboardResizeValue(event, {
+                side: 'bottom',
+                value: height,
+                min: minHeight,
+              })
+              if (next === undefined) return
+              event.preventDefault()
+              event.stopPropagation()
+              onHeightChange(next)
+            }}
+          >
+            <span
+              aria-hidden="true"
+              className="h-0.75 w-5 rounded-xs bg-state-base-handle group-focus-visible/resize:w-full group-focus-visible/resize:bg-state-accent-solid"
+            />
+          </IconButton>
+          <span id={resizeDescriptionId} className="sr-only" aria-live="polite">
+            {t(($) => $['resize.height'], { height: Math.round(height) })}{' '}
+            {t(($) => $['resize.editorHelp'])}
+          </span>
+        </>
       )}
     </div>
   )

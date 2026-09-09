@@ -41,11 +41,15 @@ class WorkspaceInvitePolicy(Protocol):
 
 
 class AccountActivationEligibility(Protocol):
-    def is_frozen(self, email: str) -> bool: ...
+    def get_freeze_type(self, email: str) -> str | None: ...
 
 
 class WorkspaceMembershipCache(Protocol):
     def invalidate(self, workspace_id: str) -> None: ...
+
+
+class WorkspaceMemberAccessSync(Protocol):
+    def sync(self, workspace_id: str, account_id: str) -> None: ...
 
 
 class InvalidInvitationError(Exception):
@@ -60,6 +64,10 @@ class FrozenAccountError(Exception):
     """The invited account is temporarily ineligible for activation."""
 
 
+class EmailDomainSuspendedError(Exception):
+    """The invited account uses a suspended email domain."""
+
+
 class AccountActivationService:
     def __init__(
         self,
@@ -69,12 +77,14 @@ class AccountActivationService:
         workspace_policy: WorkspaceInvitePolicy,
         eligibility: AccountActivationEligibility,
         membership_cache: WorkspaceMembershipCache,
+        member_access_sync: WorkspaceMemberAccessSync,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
         self._workspace_policy = workspace_policy
         self._eligibility = eligibility
         self._membership_cache = membership_cache
+        self._member_access_sync = member_access_sync
 
     def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
@@ -101,7 +111,10 @@ class AccountActivationService:
         if authenticated_account_id is not None and authenticated_account_id != invitation.account_id:
             raise InvitationAccountMismatchError
 
-        if self._eligibility.is_frozen(invitation.account_email):
+        freeze_type = self._eligibility.get_freeze_type(invitation.account_email)
+        if freeze_type == "email_domain_suspended":
+            raise EmailDomainSuspendedError
+        if freeze_type:
             raise FrozenAccountError
 
         setup = self._resolve_setup(invitation, command)
@@ -121,6 +134,7 @@ class AccountActivationService:
             raise InvalidInvitationError
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
+        self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)

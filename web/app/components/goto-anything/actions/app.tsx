@@ -1,7 +1,7 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ActionItem, AppSearchResult, SearchResult } from './types'
 import type { AppIconType, AppModeEnum as AppMode } from '@/types/app'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { AppTypeIcon } from '../../app/type-selector'
@@ -71,12 +71,6 @@ const getAppSections = (app: AppPartial): AppSection[] => {
       label: 'Logs',
       path: `${base}/logs`,
       iconClassName: 'i-ri-file-list-line size-4 text-text-tertiary',
-    },
-    {
-      id: 'develop',
-      label: 'Develop',
-      path: `${base}/develop`,
-      iconClassName: 'i-ri-terminal-box-line size-4 text-text-tertiary',
     },
   ]
 }

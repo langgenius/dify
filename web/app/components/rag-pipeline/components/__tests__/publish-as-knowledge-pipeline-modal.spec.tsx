@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
@@ -16,25 +17,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({ value, onChange, ...props }: Record<string, unknown>) => (
-    <input
-      data-testid="name-input"
-      value={value as string}
-      onChange={onChange as () => void}
-      {...props}
-    />
-  ),
-}))
-
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <div data-testid="app-icon" onClick={onClick} />
-  ),
-}))
-
-vi.mock('es-toolkit/function', () => ({
-  noop: () => {},
+  default: () => <div />,
 }))
 
 describe('PublishAsKnowledgePipelineModal', () => {
@@ -45,6 +29,12 @@ describe('PublishAsKnowledgePipelineModal', () => {
     onCancel: mockOnCancel,
     onConfirm: mockOnConfirm,
   }
+  const getNameInput = () =>
+    screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.name' })
+  const getIconButton = () =>
+    screen.getByRole('button', {
+      name: 'common.operation.edit pipeline.common.publishAsPipeline.name',
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -57,14 +47,13 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should render modal with title', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'pipeline.common.publishAs' })).toBeInTheDocument()
   })
 
   it('should initialize with knowledgeName from store', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const nameInput = screen.getByTestId('name-input') as HTMLInputElement
+    const nameInput = getNameInput() as HTMLInputElement
     expect(nameInput.value).toBe('Test Pipeline')
   })
 
@@ -93,6 +82,15 @@ describe('PublishAsKnowledgePipelineModal', () => {
     expect(mockOnCancel).toHaveBeenCalled()
   })
 
+  it('should call onCancel when Escape is pressed', async () => {
+    const user = userEvent.setup()
+    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
+
+    await user.keyboard('{Escape}')
+
+    expect(mockOnCancel).toHaveBeenCalled()
+  })
+
   it('should call onConfirm with name, icon, and description when confirm clicked', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
@@ -108,7 +106,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should update pipeline name when input changes', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const nameInput = screen.getByTestId('name-input')
+    const nameInput = getNameInput()
     fireEvent.change(nameInput, { target: { value: 'New Name' } })
 
     expect((nameInput as HTMLInputElement).value).toBe('New Name')
@@ -125,14 +123,20 @@ describe('PublishAsKnowledgePipelineModal', () => {
     expect((textarea as HTMLTextAreaElement).value).toBe('My description')
   })
 
-  it('should disable confirm button when name is empty', () => {
+  it('should not submit with Enter when name is empty', async () => {
+    const user = userEvent.setup()
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const nameInput = screen.getByTestId('name-input')
-    fireEvent.change(nameInput, { target: { value: '' } })
+    const nameInput = getNameInput()
+    await user.clear(nameInput)
 
     const confirmBtn = screen.getByText('workflow.common.publish')
     expect(confirmBtn).toBeDisabled()
+
+    await user.click(nameInput)
+    await user.keyboard('{Enter}')
+
+    expect(mockOnConfirm).not.toHaveBeenCalled()
   })
 
   it('should disable confirm button when confirmDisabled is true', () => {
@@ -155,7 +159,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
 
     expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('app-icon'))
+    fireEvent.click(getIconButton())
 
     expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
   })
@@ -163,7 +167,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should update icon when emoji style is selected', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByTestId('app-icon'))
+    fireEvent.click(getIconButton())
     fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
@@ -175,7 +179,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should keep icon picker open until confirmation', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByTestId('app-icon'))
+    fireEvent.click(getIconButton())
     fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
 
     expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
@@ -184,7 +188,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should close icon picker when cancel is clicked', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByTestId('app-icon'))
+    fireEvent.click(getIconButton())
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
     await waitFor(() => {
@@ -192,18 +196,21 @@ describe('PublishAsKnowledgePipelineModal', () => {
     })
   })
 
-  it('should trim name and description before submitting', () => {
+  it('should trim name and description when submitted with Enter', async () => {
+    const user = userEvent.setup()
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const nameInput = screen.getByTestId('name-input')
-    fireEvent.change(nameInput, { target: { value: '  Trimmed Name  ' } })
+    const nameInput = getNameInput()
+    await user.clear(nameInput)
+    await user.type(nameInput, '  Trimmed Name  ')
 
     const textarea = screen.getByRole('textbox', {
       name: 'pipeline.common.publishAsPipeline.description',
     })
-    fireEvent.change(textarea, { target: { value: '  Some desc  ' } })
+    await user.type(textarea, '  Some desc  ')
 
-    fireEvent.click(screen.getByText('workflow.common.publish'))
+    await user.click(nameInput)
+    await user.keyboard('{Enter}')
 
     expect(mockOnConfirm).toHaveBeenCalledWith('Trimmed Name', expect.any(Object), 'Some desc')
   })

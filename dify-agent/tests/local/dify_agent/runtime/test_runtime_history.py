@@ -13,7 +13,7 @@ from dify_agent.protocol.schemas import RunComposition, RunLayerSpec
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.history import (
     get_history_layer,
-    replace_successful_run_history,
+    replace_run_history,
     validate_history_layer_composition,
 )
 
@@ -88,7 +88,7 @@ def test_get_history_layer_returns_optional_active_history_layer() -> None:
     asyncio.run(scenario())
 
 
-def test_replace_successful_run_history_persists_full_history_without_instructions() -> None:
+def test_replace_run_history_persists_full_history_without_instructions() -> None:
     history_layer = PydanticAIHistoryLayer()
     history_layer.replace_messages([ModelRequest(parts=[UserPromptPart(content="stale")])])
     messages = [
@@ -100,7 +100,7 @@ def test_replace_successful_run_history_persists_full_history_without_instructio
         ModelResponse(parts=[TextPart(content="new assistant")]),
     ]
 
-    replace_successful_run_history(history_layer, messages)
+    replace_run_history(history_layer, messages)
 
     persisted = history_layer.message_history
     assert len(persisted) == 3

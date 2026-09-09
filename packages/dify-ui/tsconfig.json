@@ -9,7 +9,6 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "vite.config.ts",
-    "vitest.config.ts",
     "vitest.setup.ts"
   ],
   "exclude": ["node_modules", "dist", "storybook-static", "coverage"]

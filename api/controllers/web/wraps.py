@@ -6,11 +6,11 @@ from typing import Concatenate
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_database import db
 from libs.passport import PassportService
@@ -18,7 +18,8 @@ from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
+from services.web_passport_gateways import resolve_web_app_auth_type
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -44,7 +45,7 @@ def validate_jwt_token[**P, R](
 
 
 def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
-    system_features = FeatureService.get_system_features()
+    webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
     if not app_code:
         app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
     try:
@@ -54,7 +55,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with session_factory.create_session() as session:
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
             if not app_model:
@@ -75,21 +76,19 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         # for enterprise webapp auth
         app_web_auth_enabled = False
         webapp_settings = None
-        if system_features.webapp_auth.enabled:
+        if webapp_auth_enabled:
             app_id = AppService.get_app_id_by_code(app_code, session=db.session())
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
             app_web_auth_enabled = webapp_settings.access_mode != WebAppAccessMode.PUBLIC
 
-        _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
-        _validate_user_accessibility(
-            decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled, webapp_settings
-        )
+        _validate_webapp_token(decoded, app_web_auth_enabled, webapp_auth_enabled)
+        _validate_user_accessibility(decoded, app_code, app_web_auth_enabled, webapp_auth_enabled, webapp_settings)
 
         return app_model, end_user
     except Unauthorized as e:
-        if system_features.webapp_auth.enabled:
+        if webapp_auth_enabled:
             if not app_code:
                 raise Unauthorized("Please re-login to access the web app.")
             app_id = AppService.get_app_id_by_code(app_code, session=db.session())
@@ -135,6 +134,14 @@ def _validate_user_accessibility(
         if not webapp_settings:
             raise WebAppAuthRequiredError("Web app settings not found.")
 
+        auth_type = decoded.get("auth_type")
+        if not auth_type:
+            raise WebAppAuthRequiredError("Missing auth_type in the token.")
+
+        expected_auth_type = resolve_web_app_auth_type(webapp_settings.access_mode)
+        if auth_type != expected_auth_type:
+            raise WebAppAuthRequiredError()
+
         if WebAppAuthService.is_app_require_permission_check(
             access_mode=webapp_settings.access_mode, session=db.session()
         ):
@@ -142,10 +149,7 @@ def _validate_user_accessibility(
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
 
-        auth_type = decoded.get("auth_type")
         granted_at = decoded.get("granted_at")
-        if not auth_type:
-            raise WebAppAuthAccessDeniedError("Missing auth_type in the token.")
         if not granted_at:
             raise WebAppAuthAccessDeniedError("Missing granted_at in the token.")
         # check if sso has been updated

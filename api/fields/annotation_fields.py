@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated
 
-from pydantic import Field, field_validator
+from pydantic import Field, WithJsonSchema, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+
 
 class Annotation(ResponseModel):
-    id: str
+    id: UUIDString
     question: str | None = None
     answer: str | None = Field(default=None, validation_alias="content")
     hit_count: int | None = None
-    created_at: int | None = None
+    created_at: Int64 | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -31,8 +34,8 @@ class AnnotationList(ResponseModel):
 
 
 class AnnotationJobStatusResponse(ResponseModel):
-    job_id: str
-    job_status: Literal["waiting", "processing", "completed", "error"] | str
+    job_id: UUIDString
+    job_status: str
 
 
 class AnnotationJobStatusDetailResponse(AnnotationJobStatusResponse):

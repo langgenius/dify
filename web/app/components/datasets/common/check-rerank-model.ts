@@ -1,4 +1,4 @@
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RetrievalConfig } from '@/types/app'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -9,7 +9,7 @@ export const isReRankModelSelected = ({
   indexMethod,
 }: {
   retrievalConfig: RetrievalConfig
-  rerankModelList: Model[]
+  rerankModelList: ProviderWithModelsResponse[]
   indexMethod?: string
 }) => {
   const rerankModelSelected = (() => {

@@ -20,6 +20,12 @@ import (
 
 const fifoTestDeadline = 3 * time.Second
 
+func TestDefaultUploadRequestTimeout(t *testing.T) {
+	if defaultUploadRequestTimeout != 180*time.Second {
+		t.Fatalf("defaultUploadRequestTimeout = %s, want 180s", defaultUploadRequestTimeout)
+	}
+}
+
 func receiveWithin[T any](ch <-chan T, timeout time.Duration) (T, bool) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()

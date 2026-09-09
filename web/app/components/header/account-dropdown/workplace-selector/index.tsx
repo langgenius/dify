@@ -42,7 +42,7 @@ export const WorkplaceSelectorContent = memo(
     const { t } = useTranslation()
 
     return (
-      <SelectContent popupClassName={popupClassName}>
+      <SelectContent className={popupClassName}>
         <SelectGroup>
           <SelectGroupLabel>
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}

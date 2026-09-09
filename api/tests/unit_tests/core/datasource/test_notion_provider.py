@@ -137,13 +137,12 @@ class TestNotionExtractorAuthentication:
             plugin_id="langgenius/notion_datasource",
         )
 
-    @patch("core.rag.extractor.notion_extractor.dify_config")
     @patch("core.rag.extractor.notion_extractor.NotionExtractor._get_access_token")
-    def test_init_with_integration_token_fallback(self, mock_get_token, mock_config, mock_document_model):
+    def test_init_with_integration_token_fallback(self, mock_get_token, mock_document_model, config_overrides):
         """Test NotionExtractor falls back to integration token when credential not found."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
-        mock_config.NOTION_INTEGRATION_TOKEN = "integration-token-fallback"
+        config_overrides(NOTION_INTEGRATION_TOKEN="integration-token-fallback")
 
         # Act
         extractor = NotionExtractor(
@@ -158,13 +157,12 @@ class TestNotionExtractorAuthentication:
         # Assert
         assert extractor._notion_access_token == "integration-token-fallback"
 
-    @patch("core.rag.extractor.notion_extractor.dify_config")
     @patch("core.rag.extractor.notion_extractor.NotionExtractor._get_access_token")
-    def test_init_missing_credentials_raises_error(self, mock_get_token, mock_config, mock_document_model):
+    def test_init_missing_credentials_raises_error(self, mock_get_token, mock_document_model, config_overrides):
         """Test NotionExtractor raises error when no credentials available."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
-        mock_config.NOTION_INTEGRATION_TOKEN = None
+        config_overrides(NOTION_INTEGRATION_TOKEN=None)
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:

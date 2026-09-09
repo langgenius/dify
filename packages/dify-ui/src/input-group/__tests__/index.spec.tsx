@@ -2,7 +2,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Button } from '../../button'
 import { Field, FieldLabel } from '../../field'
-import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '../../popover'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../index'
 
 function InputGroupInputTypeExamples() {
@@ -108,7 +108,8 @@ describe('InputGroup', () => {
         <InputGroupAddon align="inline-end">
           <Popover>
             <PopoverTrigger>More</PopoverTrigger>
-            <PopoverContent popupProps={{ 'aria-label': 'File actions' }}>
+            <PopoverContent>
+              <PopoverTitle className="sr-only">File actions</PopoverTitle>
               <span>File details</span>
             </PopoverContent>
           </Popover>

@@ -6,11 +6,13 @@ from services.account_activation_service import (
     AccountActivationEligibility,
     AccountActivationRepository,
     AccountActivationService,
+    EmailDomainSuspendedError,
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
     InvitationTokenStore,
     WorkspaceInvitePolicy,
+    WorkspaceMemberAccessSync,
     WorkspaceMembershipCache,
 )
 from services.entities.account_activation_entities import (
@@ -54,26 +56,28 @@ def _invitation(
     )
 
 
-def _service() -> tuple[AccountActivationService, Mock, Mock, Mock, Mock, Mock]:
+def _service() -> tuple[AccountActivationService, Mock, Mock, Mock, Mock, Mock, Mock]:
     tokens = Mock(spec=InvitationTokenStore)
     accounts = Mock(spec=AccountActivationRepository)
     policy = Mock(spec=WorkspaceInvitePolicy)
     eligibility = Mock(spec=AccountActivationEligibility)
     membership_cache = Mock(spec=WorkspaceMembershipCache)
-    eligibility.is_frozen.return_value = False
+    member_access_sync = Mock(spec=WorkspaceMemberAccessSync)
+    eligibility.get_freeze_type.return_value = None
     service = AccountActivationService(
         tokens=tokens,
         accounts=accounts,
         workspace_policy=policy,
         eligibility=eligibility,
         membership_cache=membership_cache,
+        member_access_sync=member_access_sync,
     )
-    return service, tokens, accounts, policy, eligibility, membership_cache
+    return service, tokens, accounts, policy, eligibility, membership_cache, member_access_sync
 
 
 class TestCheckInvitation:
     def test_returns_invalid_without_touching_database_when_token_is_missing(self) -> None:
-        service, tokens, accounts, policy, _, _ = _service()
+        service, tokens, accounts, policy, _, _, _ = _service()
         tokens.find.return_value = None
 
         result = service.check(_lookup())
@@ -84,7 +88,7 @@ class TestCheckInvitation:
         policy.ensure_allowed.assert_not_called()
 
     def test_does_not_repeat_database_lookup_for_normalized_email(self) -> None:
-        service, tokens, accounts, policy, _, _ = _service()
+        service, tokens, accounts, policy, _, _, _ = _service()
         token = _token()
         tokens.find.return_value = token
         accounts.resolve.return_value = None
@@ -96,7 +100,7 @@ class TestCheckInvitation:
         policy.ensure_allowed.assert_not_called()
 
     def test_falls_back_to_normalized_email_and_applies_workspace_policy(self) -> None:
-        service, tokens, accounts, policy, _, _ = _service()
+        service, tokens, accounts, policy, _, _, _ = _service()
         upper_case_token = InvitationToken(
             account_id="account-1",
             email="Invitee@Example.com",
@@ -123,7 +127,7 @@ class TestCheckInvitation:
 
 class TestActivateInvitation:
     def test_rejects_authenticated_account_mismatch_before_side_effects(self) -> None:
-        service, tokens, accounts, _, eligibility, _ = _service()
+        service, tokens, accounts, _, eligibility, _, member_access_sync = _service()
         tokens.find.return_value = _token()
         accounts.resolve.return_value = _invitation()
 
@@ -133,25 +137,27 @@ class TestActivateInvitation:
                 authenticated_account_id="different-account",
             )
 
-        eligibility.is_frozen.assert_not_called()
+        eligibility.get_freeze_type.assert_not_called()
         tokens.revoke.assert_not_called()
         accounts.activate.assert_not_called()
+        member_access_sync.sync.assert_not_called()
 
     def test_rejects_frozen_account_without_consuming_token(self) -> None:
-        service, tokens, accounts, _, eligibility, _ = _service()
+        service, tokens, accounts, _, eligibility, _, member_access_sync = _service()
         tokens.find.return_value = _token()
         accounts.resolve.return_value = _invitation()
-        eligibility.is_frozen.return_value = True
+        eligibility.get_freeze_type.return_value = "freeze"
 
         with pytest.raises(FrozenAccountError):
             service.activate(ActivationCommand(invitation=_lookup()), authenticated_account_id=None)
 
-        eligibility.is_frozen.assert_called_once_with("invitee@example.com")
+        eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_not_called()
         accounts.activate.assert_not_called()
+        member_access_sync.sync.assert_not_called()
 
     def test_requires_all_setup_fields_before_consuming_token(self) -> None:
-        service, tokens, accounts, _, _, _ = _service()
+        service, tokens, accounts, _, _, _, member_access_sync = _service()
         tokens.find.return_value = _token()
         accounts.resolve.return_value = _invitation()
 
@@ -163,9 +169,24 @@ class TestActivateInvitation:
 
         tokens.revoke.assert_not_called()
         accounts.activate.assert_not_called()
+        member_access_sync.sync.assert_not_called()
+
+    def test_rejects_suspended_email_domain_without_consuming_token(self) -> None:
+        service, tokens, accounts, _, eligibility, _, member_access_sync = _service()
+        tokens.find.return_value = _token()
+        accounts.resolve.return_value = _invitation()
+        eligibility.get_freeze_type.return_value = "email_domain_suspended"
+
+        with pytest.raises(EmailDomainSuspendedError):
+            service.activate(ActivationCommand(invitation=_lookup()), authenticated_account_id=None)
+
+        eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
+        tokens.revoke.assert_not_called()
+        accounts.activate.assert_not_called()
+        member_access_sync.sync.assert_not_called()
 
     def test_activates_anonymous_invitation_and_invalidates_new_membership_cache(self) -> None:
-        service, tokens, accounts, _, eligibility, membership_cache = _service()
+        service, tokens, accounts, _, eligibility, membership_cache, member_access_sync = _service()
         tokens.find.return_value = _token()
         invitation = _invitation(role="owner")
         accounts.resolve.return_value = invitation
@@ -179,7 +200,7 @@ class TestActivateInvitation:
 
         service.activate(command, authenticated_account_id=None)
 
-        eligibility.is_frozen.assert_called_once_with("invitee@example.com")
+        eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_called_once_with(_lookup("invitee@example.com"))
         accounts.activate.assert_called_once_with(
             invitation,
@@ -187,9 +208,10 @@ class TestActivateInvitation:
             setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
         )
         membership_cache.invalidate.assert_called_once_with("workspace-1")
+        member_access_sync.sync.assert_called_once_with("workspace-1", "account-1")
 
     def test_preserves_existing_membership_cache_and_ignores_setup_fields(self) -> None:
-        service, tokens, accounts, _, _, membership_cache = _service()
+        service, tokens, accounts, _, _, membership_cache, member_access_sync = _service()
         tokens.find.return_value = _token()
         invitation = _invitation(
             account_status="active",
@@ -211,3 +233,4 @@ class TestActivateInvitation:
 
         accounts.activate.assert_called_once_with(invitation, role="editor", setup=None)
         membership_cache.invalidate.assert_not_called()
+        member_access_sync.sync.assert_called_once_with("workspace-1", "account-1")

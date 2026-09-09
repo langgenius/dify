@@ -73,10 +73,8 @@ import {
   zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
   zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
   zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
-  zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
-  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
   zPostRagPipelineCustomizedTemplatesByTemplateIdPath,
@@ -91,7 +89,6 @@ import {
   zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse,
-  zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse,
@@ -927,10 +924,7 @@ export const patch2 = oc
     tags: ['console'],
   })
   .input(
-    z.object({
-      body: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
-      params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
-    }),
+    z.object({ params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
@@ -1006,12 +1000,7 @@ export const post15 = oc
     summary: 'Sync draft workflow',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      body: zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
-      params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath,
-    }),
-  )
+  .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
 
 export const draft = {
@@ -1255,12 +1244,7 @@ export const patch3 = oc
     summary: 'Update workflow attributes',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      body: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
-      params: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
-    }),
-  )
+  .input(z.object({ params: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
   .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
 
 export const byWorkflowId = {

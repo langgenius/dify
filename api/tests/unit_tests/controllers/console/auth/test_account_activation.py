@@ -9,12 +9,21 @@ from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AlreadyActivateError,
+)
+from controllers.console.error import (
+    EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
+)
 from services.account_activation_service import (
     AccountActivationService,
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
+)
+from services.account_activation_service import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
 )
 from services.entities.account_activation_entities import (
     ActivationCheckData,
@@ -172,6 +181,7 @@ class TestActivateApi:
             (InvalidInvitationError(), AlreadyActivateError),
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
         ],
     )
     def test_translates_application_errors(

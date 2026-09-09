@@ -42,7 +42,7 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
       >
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-40">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
         {visibleGroups.map((group, groupIndex) => (
           <Fragment key={group.map((operation) => operation.id).join('-')}>
             {groupIndex > 0 && <DropdownMenuSeparator />}

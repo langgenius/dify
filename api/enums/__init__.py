@@ -14,6 +14,10 @@ class CloudPlan(StrEnum):
     PROFESSIONAL = auto()
     TEAM = auto()
 
+    @property
+    def is_paid(self) -> bool:
+        return self in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+
 
 class DeploymentEdition(StrEnum):
     """Enum representing the deployment edition of the platform."""
@@ -21,6 +25,13 @@ class DeploymentEdition(StrEnum):
     COMMUNITY = "COMMUNITY"
     ENTERPRISE = "ENTERPRISE"
     CLOUD = "CLOUD"
+
+
+class WebAppAccessMode(StrEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    PRIVATE_ALL = "private_all"
+    SSO_VERIFIED = "sso_verified"
 
 
 class HostedTrialProvider(StrEnum):

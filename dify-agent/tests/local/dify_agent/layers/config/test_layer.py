@@ -19,7 +19,7 @@ from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShell
 
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
+        DifyShellLayerConfig(),
     )
 
 

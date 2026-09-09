@@ -186,6 +186,7 @@ async def emit_run_failed(
     error_type: RunFailureType | None = None,
     reason: str | None = None,
     session_snapshot: CompositorSessionSnapshot | None = None,
+    usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
     """Finalize a run with a failed terminal event."""
     return await sink.finalize_run(
@@ -196,6 +197,7 @@ async def emit_run_failed(
                 error_type=error_type,
                 reason=reason,
                 session_snapshot=session_snapshot,
+                usage=usage,
             ),
             created_at=utc_now(),
         ),

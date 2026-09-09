@@ -21,9 +21,13 @@ from typing import Protocol
 import httpx
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
-from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
+from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.runtime.event_coalescer import (
+    DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
+    DEFAULT_TEXT_DELTA_MAX_CHARS,
+)
 from dify_agent.runtime.event_sink import RunEventSink, RunFinalizationResult, emit_run_failed
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
 from dify_agent.server.schemas import RunRecord
@@ -64,6 +68,7 @@ class RunStore(RunEventSink, Protocol):
         intent: RunCancellationIntent,
         *,
         session_snapshot: CompositorSessionSnapshot | None = None,
+        usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult:
         """Publish cancellation after the owner runner has exited."""
         ...
@@ -75,6 +80,11 @@ class RunnableRun(Protocol):
     @property
     def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
         """Return the post-exit snapshot for the current invocation, if available."""
+        ...
+
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        """Return usage accumulated before this run exited, if available."""
         ...
 
     async def run(self) -> None:
@@ -100,6 +110,9 @@ class RunScheduler:
     store: RunStore
     shutdown_grace_seconds: float
     run_timeout_seconds: float
+    stream_text_delta_coalescing_enabled: bool
+    stream_text_delta_flush_interval_seconds: float
+    stream_text_delta_max_chars: int
     active_tasks: dict[str, asyncio.Task[None]]
     stopping: bool
     runner_factory: RunRunnerFactory | None
@@ -116,12 +129,18 @@ class RunScheduler:
         dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
         run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
+        stream_text_delta_coalescing_enabled: bool = True,
+        stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
+        stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
         runner_factory: RunRunnerFactory | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.run_timeout_seconds = run_timeout_seconds
+        self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
+        self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
+        self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.active_tasks = {}
         self.stopping = False
         self.plugin_daemon_http_client = plugin_daemon_http_client
@@ -198,6 +217,7 @@ class RunScheduler:
                         error=f"run cancellation observer failed: {exc}",
                         reason="cancellation_observer",
                         session_snapshot=runner.terminal_session_snapshot,
+                        usage=runner.terminal_usage,
                     )
                     if not finalization.applied and finalization.status == "running":
                         intent = await self.store.get_cancellation_intent(record.run_id)
@@ -206,6 +226,7 @@ class RunScheduler:
                                 record.run_id,
                                 intent,
                                 session_snapshot=runner.terminal_session_snapshot,
+                                usage=runner.terminal_usage,
                             )
                     raise
 
@@ -214,6 +235,7 @@ class RunScheduler:
                     record.run_id,
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
+                    usage=runner.terminal_usage,
                 )
             else:
                 runner_error: Exception | None = None
@@ -228,6 +250,7 @@ class RunScheduler:
                         record.run_id,
                         intent,
                         session_snapshot=runner.terminal_session_snapshot,
+                        usage=runner.terminal_usage,
                     )
                 if runner_error is not None:
                     raise runner_error
@@ -240,11 +263,13 @@ class RunScheduler:
                     record.run_id,
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
+                    usage=runner.terminal_usage,
                 )
             else:
                 finalization = await self._mark_cancelled_run_failed(
                     record.run_id,
                     session_snapshot=runner.terminal_session_snapshot,
+                    usage=runner.terminal_usage,
                 )
                 if finalization is not None and not finalization.applied and finalization.status == "running":
                     intent = await self.store.get_cancellation_intent(record.run_id)
@@ -253,6 +278,7 @@ class RunScheduler:
                             record.run_id,
                             intent,
                             session_snapshot=runner.terminal_session_snapshot,
+                            usage=runner.terminal_usage,
                         )
             raise
         except Exception:
@@ -291,6 +317,9 @@ class RunScheduler:
             layer_providers=self.layer_providers,
             is_cancelled=is_cancelled,
             run_timeout_seconds=self.run_timeout_seconds,
+            stream_text_delta_coalescing_enabled=self.stream_text_delta_coalescing_enabled,
+            stream_text_delta_flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
+            stream_text_delta_max_chars=self.stream_text_delta_max_chars,
         )
 
     def _discard_active_run(self, run_id: str) -> None:
@@ -308,6 +337,7 @@ class RunScheduler:
         run_id: str,
         *,
         session_snapshot: CompositorSessionSnapshot | None = None,
+        usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult | None:
         """Best-effort failure event/status for shutdown-cancelled runs."""
         message = "run cancelled during server shutdown"
@@ -318,6 +348,7 @@ class RunScheduler:
                 error=message,
                 reason="shutdown",
                 session_snapshot=session_snapshot,
+                usage=usage,
             )
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})

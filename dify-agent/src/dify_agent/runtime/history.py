@@ -2,8 +2,10 @@
 
 Dify Agent keeps pydantic-ai conversation history as an optional Agenton layer
 named ``history``. Current system instructions belong to each run and are never
-stored; successful runs replace the layer with Pydantic AI's complete, possibly
-compacted history.
+stored. Once Pydantic AI binds and builds messages in the run capture, its
+complete captured history replaces the layer for every terminal outcome,
+including interrupted runs. A failure or cancellation before the capture
+contains messages preserves the previously restored history.
 """
 
 from __future__ import annotations
@@ -63,11 +65,11 @@ def get_history_layer(run: SupportsHistoryLayerLookup) -> PydanticAIHistoryLayer
         return None
 
 
-def replace_successful_run_history(
+def replace_run_history(
     history_layer: PydanticAIHistoryLayer | None,
     messages: Sequence[ModelMessage],
 ) -> None:
-    """Persist a successful run's complete history without transient instructions."""
+    """Persist a run's captured history without transient instructions."""
     if history_layer is None:
         return
     persistent_messages = [
@@ -79,6 +81,6 @@ def replace_successful_run_history(
 __all__ = [
     "SupportsHistoryLayerLookup",
     "get_history_layer",
-    "replace_successful_run_history",
+    "replace_run_history",
     "validate_history_layer_composition",
 ]

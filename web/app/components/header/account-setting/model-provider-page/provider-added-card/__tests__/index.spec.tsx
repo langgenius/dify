@@ -4,6 +4,7 @@ import type { ModelProviderPluginSummary } from '../../index'
 import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { commonQueryKeys } from '@/service/use-common'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -12,17 +13,19 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
+let mockRbacEnabled = false
 let mockWorkspacePermissionKeys: string[] = [
+  'plugin.plugin_preferences',
   'plugin.model_config',
   'credential.use',
   'credential.create',
   'credential.manage',
 ]
-const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockRefreshModelProviders } =
+const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockInvalidateQueries } =
   vi.hoisted(() => ({
     mockInvalidateInstalledPluginList: vi.fn(),
     mockProviderCardActions: vi.fn(),
-    mockRefreshModelProviders: vi.fn(),
+    mockInvalidateQueries: vi.fn(),
   }))
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(
@@ -33,7 +36,7 @@ const mockQueryOptions = vi.fn(
   }),
 )
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
@@ -47,6 +50,7 @@ vi.mock('@/service/client', () => ({
     workspaces: {
       current: {
         modelProviders: {
+          summary: { get: { key: () => ['model-provider-summary'] } },
           byProvider: {
             models: {
               get: {
@@ -77,11 +81,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: object) => unknown) =>
-    selector({ refreshModelProviders: mockRefreshModelProviders }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
@@ -140,7 +139,8 @@ const createConsoleQueryClient = () =>
 
 const renderWithQueryClient = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  seedSystemFeatures(queryClient)
+  vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
+  seedSystemFeatures(queryClient, { rbac_enabled: mockRbacEnabled })
   return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
 
@@ -190,7 +190,7 @@ const modelProviderModelsResponse = {
 describe('ProviderAddedCard', () => {
   const mockProvider = {
     provider: 'langgenius/openai/openai',
-    configurate_methods: ['predefinedModel'],
+    configurate_methods: [ConfigurationMethodEnum.predefinedModel],
     system_configuration: { enabled: true },
     supported_model_types: ['llm'],
   } as unknown as ModelProvider
@@ -198,7 +198,9 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
+    mockRbacEnabled = false
     mockWorkspacePermissionKeys = [
+      'plugin.plugin_preferences',
       'plugin.model_config',
       'credential.use',
       'credential.create',
@@ -210,12 +212,42 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
     expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
     expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
+  })
+
+  it('should hide credential controls from legacy use-only members', () => {
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    renderWithQueryClient(
+      <>
+        <ProviderAddedCard provider={mockProvider} />
+        <ExternalExpandControls />
+      </>,
+    )
+
+    expect(screen.queryByTestId('credential-panel')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /modelProvider\.showModels/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('expand-current-provider'))
+
+    expect(mockFetchModelProviderModels).not.toHaveBeenCalled()
+  })
+
+  it('should use credential permissions when RBAC is enabled', () => {
+    mockRbacEnabled = true
+    mockWorkspacePermissionKeys = ['credential.use']
+
+    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
+
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
   })
 
   it('refreshes provider data and installed plugin details after an update', async () => {
     let resolveProviderRefresh: (() => void) | undefined
     let resolveInstalledPluginRefresh: (() => void) | undefined
-    mockRefreshModelProviders.mockReturnValue(
+    mockInvalidateQueries.mockReturnValue(
       new Promise<void>((resolve) => {
         resolveProviderRefresh = resolve
       }),
@@ -245,7 +277,10 @@ describe('ProviderAddedCard', () => {
     })
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
-    expect(mockRefreshModelProviders).toHaveBeenCalledOnce()
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-provider-summary'] })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: commonQueryKeys.modelProviderDetails,
+    })
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
 
     resolveProviderRefresh?.()

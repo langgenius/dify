@@ -13,6 +13,7 @@ from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYP
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID, RunFailureType
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     CancelRunRequest,
     CreateRunRequest,
     RunCancelledEvent,
@@ -174,6 +175,7 @@ class FakeStore:
         intent: RunCancellationIntent,
         *,
         session_snapshot: CompositorSessionSnapshot | None = None,
+        usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult:
         current_status = self.statuses[run_id]
         if current_status != "running":
@@ -186,6 +188,7 @@ class FakeStore:
                 reason=intent.reason,
                 message=intent.message,
                 session_snapshot=session_snapshot,
+                usage=usage,
             ),
         )
         event_id = str(len(self.events[run_id]) + 1)
@@ -267,12 +270,17 @@ class SnapshotlessRunner:
     def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
         return None
 
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        return None
+
 
 class ControlledRunner:
     started: asyncio.Event
     release: asyncio.Event
     finished: asyncio.Event | None
     _terminal_session_snapshot: CompositorSessionSnapshot
+    _terminal_usage: AgentRunUsage | None
 
     def __init__(
         self,
@@ -280,15 +288,21 @@ class ControlledRunner:
         started: asyncio.Event,
         release: asyncio.Event,
         finished: asyncio.Event | None = None,
+        usage: AgentRunUsage | None = None,
     ) -> None:
         self.started = started
         self.release = release
         self.finished = finished
         self._terminal_session_snapshot = CompositorSessionSnapshot(layers=[])
+        self._terminal_usage = usage
 
     @property
     def terminal_session_snapshot(self) -> CompositorSessionSnapshot:
         return self._terminal_session_snapshot
+
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        return self._terminal_usage
 
     async def run(self) -> None:
         _ = self.started.set()
@@ -447,7 +461,7 @@ class FinalizeSuccessOnCancellationRunner(SnapshotlessRunner):
             assert result.applied is True
 
 
-def test_default_runner_factory_passes_run_timeout_to_runner() -> None:
+def test_default_runner_factory_passes_runtime_limits_to_runner() -> None:
     async def scenario() -> None:
         store = FakeStore()
         record = await store.create_run()
@@ -457,12 +471,18 @@ def test_default_runner_factory_passes_run_timeout_to_runner() -> None:
                 plugin_daemon_http_client=client,
                 dify_api_http_client=client,
                 run_timeout_seconds=17,
+                stream_text_delta_coalescing_enabled=False,
+                stream_text_delta_flush_interval_seconds=0.25,
+                stream_text_delta_max_chars=2048,
             )
 
             runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
 
         assert isinstance(runner, AgentRunRunner)
         assert runner.run_timeout_seconds == 17
+        assert runner.stream_text_delta_coalescing_enabled is False
+        assert runner.stream_text_delta_flush_interval_seconds == 0.25
+        assert runner.stream_text_delta_max_chars == 2048
 
     asyncio.run(scenario())
 
@@ -639,6 +659,7 @@ def test_non_owner_cancel_run_stops_owner_task_and_persists_cancelled_terminal()
                     started=started,
                     release=asyncio.Event(),
                     finished=runner_finished,
+                    usage=AgentRunUsage(prompt_tokens=13, completion_tokens=8),
                 ),
             )
             remote_scheduler = RunScheduler(
@@ -665,6 +686,10 @@ def test_non_owner_cancel_run_stops_owner_task_and_persists_cancelled_terminal()
             terminal = store.events[record.run_id][0]
             assert isinstance(terminal, RunCancelledEvent)
             assert terminal.data.session_snapshot == CompositorSessionSnapshot(layers=[])
+            assert terminal.data.usage is not None
+            assert terminal.data.usage.prompt_tokens == 13
+            assert terminal.data.usage.completion_tokens == 8
+            assert terminal.data.usage.total_tokens == 21
             assert runner_finished.is_set()
             assert store.observer_finished.is_set()
             await asyncio.sleep(0)

@@ -6,7 +6,7 @@ This is a [Next.js] application with [vinext] as the default local development s
 
 ### Run by source code
 
-The required Node.js and pnpm versions are pinned by the repository root `.nvmrc` and `packageManager` field. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
+The required Node.js and pnpm versions are pinned by the repository root `devEngines.runtime` and `packageManager` fields. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
 
 - [Node.js]
 - [pnpm]
@@ -18,10 +18,6 @@ First, install the dependencies:
 ```bash
 pnpm install
 ```
-
-> [!NOTE]
-> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `.nvmrc`.
-> Install dependencies and run the commands below from the repository root.
 
 Then, configure the environment variables.
 Create `web/.env.local` and copy the contents from `web/.env.example`.
@@ -97,23 +93,14 @@ Then follow the [Lint Documentation] to lint the code.
 
 ## Test
 
-We use [Vitest] and [React Testing Library] for Unit Testing.
-
-**📖 Frontend Testing Guide**: See [web/docs/test.md] for the canonical testing policy and workflow.
-
-> [!IMPORTANT]
-> As we are using Vite+, the `vitest` command is not available.
-> Please make sure to run tests with `vp` commands.
-> For example, use `npx vp test` instead of `npx vitest`.
-
-Run test:
+We use [Vitest] and [React Testing Library] through Vite+. Run unit tests in `happy-dom` with:
 
 ```bash
 cd web
-vp test run
+vp test run --project unit
 ```
 
-If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
+Select a project explicitly; bare `vp test` also runs Browser Mode. Use `vp` instead of the standalone `vitest` command. The [Frontend Testing Guide] owns test policy, Browser Mode admission, and diagnostic commands.
 
 ## Documentation
 
@@ -124,6 +111,7 @@ Visit <https://docs.dify.ai> to view the full documentation.
 The Dify community can be found on [Discord community], where you can ask questions, voice ideas, and share your projects.
 
 [Discord community]: https://discord.gg/5AEfbxcd9k
+[Frontend Testing Guide]: ./docs/test.md
 [Lint Documentation]: ./docs/lint.md
 [Next.js]: https://nextjs.org
 [Node.js]: https://nodejs.org
@@ -133,4 +121,3 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Vitest]: https://vitest.dev
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
-[web/docs/test.md]: ./docs/test.md

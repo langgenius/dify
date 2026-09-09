@@ -75,7 +75,7 @@ const IndexMethod = ({
           <PopoverContent
             placement="right"
             sideOffset={4}
-            popupClassName="rounded-lg border-0 bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg"
+            className="rounded-lg border-0 bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg"
           >
             {t(($) => $['form.indexMethodChangeToEconomyDisabledTip'], { ns: 'datasetSettings' })}
           </PopoverContent>

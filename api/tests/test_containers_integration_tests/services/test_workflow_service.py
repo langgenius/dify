@@ -871,13 +871,12 @@ class TestWorkflowService:
         from unittest.mock import patch
 
         with patch("flask_login.utils._get_user", return_value=account, autospec=True):
-            result, retirement_candidates = workflow_service.publish_workflow(
+            result = workflow_service.publish_workflow(
                 session=db_session_with_containers, app_model=app, account=account
             )
 
         # Assert
         assert result is not None
-        assert retirement_candidates == set()
         assert result.version != Workflow.VERSION_DRAFT
         # Version should be a timestamp format like '2025-08-22 00:10:24.722051'
         assert isinstance(result.version, str)
@@ -1435,7 +1434,7 @@ class TestWorkflowService:
         )
 
         # Assert
-        assert result is True
+        assert result == []
 
         # Verify workflow is actually deleted
         deleted_workflow = db_session_with_containers.query(Workflow).filter_by(id=workflow.id).first()

@@ -10,10 +10,6 @@ type StubClient interface {
 	CreateToolFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
 	CreateFileDownloadURL(ctx context.Context, transferMethod string, reference, url *string, forFrontend bool) (*FileDownloadResponse, error)
 
-	// Drive operations (HTTP-only control-plane)
-	GetDriveManifest(ctx context.Context, prefix string, includeDownloadURL bool) (*DriveManifestResponse, error)
-	CommitDrive(ctx context.Context, items []DriveCommitItem) ([]byte, error)
-
 	// Config operations (HTTP-only control-plane)
 	GetConfigManifest(ctx context.Context) ([]byte, error)
 	CreateConfigDownloadURL(ctx context.Context, kind, name string) (*FileDownloadResponse, error)

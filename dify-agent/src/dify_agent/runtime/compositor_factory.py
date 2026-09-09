@@ -10,6 +10,7 @@ layer, and the Dify plugin/knowledge business-layer family:
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
 - ``dify.runtime`` for operation-scoped RuntimeLease acquisition,
 - ``dify.shell`` for command/file capabilities from the active RuntimeLease,
+- ``dify.user_prompt`` for structured text-plus-image user turns,
 - ``dify.plugin.llm`` for plugin-backed model selection,
 - ``dify.plugin.tools`` for prepared plugin tool exposure, and
 - ``dify.core.tools`` for API-routed Dify tool exposure, and
@@ -29,7 +30,7 @@ snapshots.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from pydantic_ai.messages import UserContent
 
@@ -46,7 +47,6 @@ from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
-from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
@@ -56,6 +56,7 @@ from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
 from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.user_prompt.layer import DifyUserPromptLayer
 from dify_agent.runtime_backend import RuntimeBackendProfile
 
 type DifyAgentLayerProvider = LayerProvider[Any]
@@ -75,11 +76,11 @@ def create_default_layer_providers(
     """Return the server provider set of safe config-constructible layers."""
     providers: list[DifyAgentLayerProvider] = [
         LayerProvider.from_layer_type(PromptLayer),
+        LayerProvider.from_layer_type(DifyUserPromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
         LayerProvider.from_layer_type(DifyConfigLayer),
-        LayerProvider.from_layer_type(DifyDriveLayer),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,
             create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
@@ -166,21 +167,18 @@ def build_pydantic_ai_compositor(
     selected provider set explicitly so provider defaulting stays at outer runtime
     boundaries rather than being duplicated here.
     """
-    return cast(
-        Compositor[
-            PydanticAIPrompt[object],
-            PydanticAITool[object],
-            AllPromptTypes,
-            AllToolTypes,
-            UserContent,
-            AllUserPromptTypes,
-        ],
-        Compositor.from_config(
-            config,
-            providers=providers,
-            node_providers=node_providers,
-            **PYDANTIC_AI_TRANSFORMERS,  # pyright: ignore[reportArgumentType]
-        ),
+    return Compositor[
+        PydanticAIPrompt[object],
+        PydanticAITool[object],
+        AllPromptTypes,
+        AllToolTypes,
+        UserContent,
+        AllUserPromptTypes,
+    ].from_config(
+        config,
+        providers=providers,
+        node_providers=node_providers,
+        **PYDANTIC_AI_TRANSFORMERS,
     )
 
 

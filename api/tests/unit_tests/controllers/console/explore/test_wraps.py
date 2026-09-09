@@ -1,15 +1,15 @@
-from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, scoped_session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.wraps as wraps_module
 import models.model as model_module
 from controllers.console.explore.error import (
     AppAccessDeniedError,
+    TrialAppFeatureDisabledError,
     TrialAppLimitExceeded,
     TrialAppNotAllowed,
 )
@@ -128,8 +128,9 @@ def test_installed_app_required_success(
         result = view(installed_app.id)
 
     assert result.id == installed_app.id
-    assert result.app is not None
-    assert result.app.id == app.id
+    app_model = result.app_with_session(session=sqlite_session)
+    assert app_model is not None
+    assert app_model.id == app.id
 
 
 def test_user_allowed_to_access_app_denied():
@@ -139,16 +140,14 @@ def test_user_allowed_to_access_app_denied():
     def view(installed_app):
         return "ok"
 
-    feature = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(_account(account_id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -166,16 +165,14 @@ def test_user_allowed_to_access_app_success():
     def view(installed_app):
         return "ok"
 
-    feature = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(_account(account_id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -260,12 +257,17 @@ def test_trial_feature_enable_disabled():
     def view():
         return "ok"
 
-    with patch(
-        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
-        return_value=False,
-    ):
-        with pytest.raises(Forbidden):
+    services = MagicMock()
+    services.recommended_app_queries.is_trial_enabled.return_value = False
+    with patch("controllers.console.explore.wraps.application_services", return_value=services):
+        with pytest.raises(TrialAppFeatureDisabledError) as exc_info:
             view()
+
+    assert exc_info.value.data == {
+        "code": "trial_app_feature_disabled",
+        "message": "Trial app feature is not enabled.",
+        "status": 403,
+    }
 
 
 def test_trial_feature_enable_enabled():
@@ -273,10 +275,9 @@ def test_trial_feature_enable_enabled():
     def view():
         return "ok"
 
-    with patch(
-        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
-        return_value=True,
-    ):
+    services = MagicMock()
+    services.recommended_app_queries.is_trial_enabled.return_value = True
+    with patch("controllers.console.explore.wraps.application_services", return_value=services):
         assert view() == "ok"
 
 

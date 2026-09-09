@@ -1,5 +1,5 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'

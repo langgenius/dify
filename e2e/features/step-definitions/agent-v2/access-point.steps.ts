@@ -11,6 +11,34 @@ import {
   getWebAppCard,
 } from './access-point-helpers'
 
+const toggleAgentAccess = async (
+  world: DifyWorld,
+  surface: AccessSurfaceName,
+  enabled: boolean,
+) => {
+  const agentId = getCurrentAgentId(world)
+  const client = world.getConsoleClient()
+  const toggle = getAccessSurfaceCard(world, surface).getByLabel(`Toggle ${surface} access`)
+
+  await expect(toggle).toBeEnabled()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', String(enabled))
+
+  await expect
+    .poll(async () => {
+      if (surface === 'Web app') {
+        const agent = await client.agent.byAgentId.get({ params: { agent_id: agentId } })
+        return agent.enable_site
+      }
+
+      const apiAccess = await client.agent.byAgentId.apiAccess.get({
+        params: { agent_id: agentId },
+      })
+      return apiAccess.enabled
+    })
+    .toBe(enabled)
+}
+
 Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
   await publishAgentWithPublishableDraft(this.getConsoleClient(), getCurrentAgentId(this))
 })
@@ -53,7 +81,7 @@ Then(
 
     await expect(webAppCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
     await expect(webAppCard.getByLabel('Toggle Web app access')).toBeDisabled()
-    await expect(webAppCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
+    await expect(webAppCard.getByRole('button', { name: 'Open' })).toBeDisabled()
     await expect(serviceApiCard.getByText('Out of service')).toBeVisible()
     await expect(serviceApiCard.getByLabel('Toggle Backend service API access')).toBeDisabled()
     await expect(serviceApiCard.getByRole('button', { name: /^API Key\b/ })).toBeDisabled()
@@ -66,21 +94,21 @@ When(
     const accessSurfaceCard = getAccessSurfaceCard(this, surface)
 
     if (surface === 'Web app') {
-      const launchLink = accessSurfaceCard.getByRole('link', { name: 'Launch' })
-      const href = await launchLink.getAttribute('href')
-      if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
+      const openLink = accessSurfaceCard.getByRole('link', { name: 'Open' })
+      const href = await openLink.getAttribute('href')
+      if (!href) throw new Error('Agent v2 Web app Open link does not expose an href.')
 
       this.agentBuilder.accessPoint.webAppURL = href
     }
 
-    await accessSurfaceCard.getByLabel(`Toggle ${surface} access`).click()
+    await toggleAgentAccess(this, surface, false)
   },
 )
 
 When(
   /^I enable Agent v2 (Web app|Backend service API) access$/,
   async function (this: DifyWorld, surface: AccessSurfaceName) {
-    await getAccessSurfaceCard(this, surface).getByLabel(`Toggle ${surface} access`).click()
+    await toggleAgentAccess(this, surface, true)
   },
 )
 
@@ -88,10 +116,13 @@ Then(
   /^Agent v2 (Web app|Backend service API) access should be out of service$/,
   async function (this: DifyWorld, surface: AccessSurfaceName) {
     const accessSurfaceCard = getAccessSurfaceCard(this, surface)
+    const toggle = accessSurfaceCard.getByLabel(`Toggle ${surface} access`)
 
     await expect(accessSurfaceCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
+    await expect(toggle).toBeEnabled()
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
     if (surface === 'Web app')
-      await expect(accessSurfaceCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
+      await expect(accessSurfaceCard.getByRole('button', { name: 'Open' })).toBeDisabled()
   },
 )
 
@@ -99,9 +130,12 @@ Then(
   /^Agent v2 (Web app|Backend service API) access should be in service$/,
   async function (this: DifyWorld, surface: AccessSurfaceName) {
     const accessSurfaceCard = getAccessSurfaceCard(this, surface)
+    const toggle = accessSurfaceCard.getByLabel(`Toggle ${surface} access`)
 
     await expect(accessSurfaceCard.getByText('In service')).toBeVisible({ timeout: 30_000 })
+    await expect(toggle).toBeEnabled()
+    await expect(toggle).toHaveAttribute('aria-checked', 'true')
     if (surface === 'Web app')
-      await expect(accessSurfaceCard.getByRole('link', { name: 'Launch' })).toBeVisible()
+      await expect(accessSurfaceCard.getByRole('link', { name: 'Open' })).toBeVisible()
   },
 )

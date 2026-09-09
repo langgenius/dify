@@ -132,6 +132,7 @@ class MessageAudioStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.TTS_MESSAGE
     audio: str
+    audio_type: str | None = None
 
 
 class MessageAudioEndStreamResponse(StreamResponse):

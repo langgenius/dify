@@ -1,10 +1,10 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 import { textControlCompoundInputFocusClassName } from '../form-control-shared'
 import {
@@ -38,7 +38,8 @@ function Autocomplete(props: AutocompleteProps<unknown>): React.JSX.Element {
 const AutocompleteValue = BaseAutocomplete.Value
 const AutocompleteRow = BaseAutocomplete.Row
 const useAutocompleteFilter = BaseAutocomplete.useFilter
-const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
+const useAutocompleteFilteredItems: <Value>() => readonly Value[] =
+  BaseAutocomplete.useFilteredItems
 
 type AutocompleteValueProps = BaseAutocomplete.Value.Props
 type AutocompleteRowProps = BaseAutocomplete.Row.Props

@@ -7,11 +7,13 @@ kept only for workflow app-log endpoints that still build legacy log models.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from flask_restx import Namespace, fields
 from pydantic import AliasChoices, Field, field_validator
+from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
@@ -35,19 +37,6 @@ workflow_run_for_log_fields = {
 
 def build_workflow_run_for_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
-
-
-workflow_run_for_archived_log_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "triggered_from": fields.String,
-    "elapsed_time": fields.Float,
-    "total_tokens": fields.Integer,
-}
-
-
-def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
-    return api_or_ns.model("WorkflowRunForArchivedLog", workflow_run_for_archived_log_fields)
 
 
 class WorkflowRunForLogResponse(ResponseModel):
@@ -74,21 +63,6 @@ class WorkflowRunForLogResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
-
-
-class WorkflowRunForArchivedLogResponse(ResponseModel):
-    id: str
-    status: str | None = None
-    triggered_from: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-
-    @field_validator("status", mode="before")
-    @classmethod
-    def _normalize_status(cls, value: Any) -> str | None:
-        if value is None or isinstance(value, str):
-            return value
-        return str(getattr(value, "value", value))
 
 
 class WorkflowRunForListResponse(ResponseModel):
@@ -213,6 +187,29 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+
+@dataclass(frozen=True)
+class WorkflowNodeExecutionResponseSource:
+    """Expose session-backed node-execution accessors during response validation."""
+
+    node_execution: Any
+    session: Session
+
+    @property
+    def created_by_account(self) -> Any:
+        return self.node_execution.created_by_account(self.session)
+
+    @property
+    def created_by_end_user(self) -> Any:
+        return self.node_execution.created_by_end_user(self.session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.node_execution, name)  # guard-ignore: no-new-getattr -- delegates model fields
+
+
+def node_execution_response_source(node_execution: Any, *, session: Session) -> WorkflowNodeExecutionResponseSource:
+    return WorkflowNodeExecutionResponseSource(node_execution=node_execution, session=session)
 
 
 class WorkflowRunNodeExecutionListResponse(ResponseModel):

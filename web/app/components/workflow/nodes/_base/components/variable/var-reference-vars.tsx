@@ -295,7 +295,7 @@ const Item: FC<ItemProps> = ({
       <PopoverContent
         placement="left-start"
         sideOffset={0}
-        popupClassName={cn(
+        className={cn(
           VAR_REFERENCE_CHILD_POPUP_CLASS_NAME,
           'border-none bg-transparent p-0 shadow-none backdrop-blur-none',
         )}

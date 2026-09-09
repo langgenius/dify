@@ -331,6 +331,7 @@ class RunFailedEventData(BaseModel):
     error_type: RunFailureType | None = None
     reason: str | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -341,6 +342,7 @@ class RunCancelledEventData(BaseModel):
     reason: str | None = None
     message: str | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
