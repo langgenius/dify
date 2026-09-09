@@ -147,7 +147,10 @@ class NotionExtractor(BaseExtractor):
                     else:
                         value = property_value[type]
                     data[property_name] = value
-                row_dict = {k: v for k, v in data.items() if v}
+                # Keep falsy-but-real values (0, 0.0, False); drop only empty
+                # ones (None, "", [], {}). `False == 0` in Python, so `v == 0`
+                # covers booleans too.
+                row_dict = {k: v for k, v in data.items() if v or v == 0}
                 row_content = ""
                 for key, value in sorted(row_dict.items(), key=operator.itemgetter(0)):
                     if isinstance(value, dict):

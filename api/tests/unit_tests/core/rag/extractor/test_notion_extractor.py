@@ -208,6 +208,44 @@ class TestNotionDatabase:
         mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
         assert extractor._get_notion_database_data("db-1") == []
 
+    def test_get_notion_database_data_keeps_zero_and_false_values(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="database",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "properties": {
+                        "name": {"type": "title", "title": [{"plain_text": "Gadget"}]},
+                        "price": {"type": "number", "number": 0},
+                        "rating": {"type": "number", "number": 0.0},
+                        "in_stock": {"type": "checkbox", "checkbox": False},
+                        "note": {"type": "rich_text", "rich_text": []},
+                    },
+                    "url": "https://notion.so/page-1",
+                }
+            ],
+            "has_more": False,
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.post", return_value=_mock_response(page))
+
+        docs = extractor._get_notion_database_data("db-1")
+
+        assert len(docs) == 1
+        content = docs[0].page_content
+        # Falsy but real values must be indexed; empty ones must still be dropped.
+        assert "price:0" in content
+        assert "rating:0.0" in content
+        assert "in_stock:False" in content
+        assert "note:" not in content
+
     def test_requests_use_bounded_timeout(self, mocker: MockerFixture):
         """All outbound Notion API calls must carry a bounded timeout so a hanging endpoint cannot block extraction."""
         extractor = notion_extractor.NotionExtractor(
