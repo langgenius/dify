@@ -7,8 +7,6 @@ import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal from '../index'
 import { CreateFromDSLModalTab } from '../types'
 
-/* oxlint-disable typescript/no-explicit-any */
-
 const mockPush = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()

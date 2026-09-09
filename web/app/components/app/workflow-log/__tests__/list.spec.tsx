@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 /**
  * WorkflowAppLogList Component Tests
  *

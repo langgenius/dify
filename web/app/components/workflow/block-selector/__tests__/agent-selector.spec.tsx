@@ -4,12 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { AgentSelectorContent } from '../agent-selector'
 
 const mocks = vi.hoisted(() => ({
-  canManageAgents: true,
   agents: [] as Array<{ id: string; name: string }>,
-}))
-
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => mocks.canManageAgents,
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
@@ -59,11 +54,10 @@ const renderSelector = async ({
 
 describe('AgentSelectorContent', () => {
   beforeEach(() => {
-    mocks.canManageAgents = true
     mocks.agents = []
   })
 
-  it('offers the Agent Console link with agent.acl.preview', async () => {
+  it('offers the Agent Console link without a workspace preview gate', async () => {
     await renderSelector({ onStartFromScratch: vi.fn() })
 
     const listbox = screen.getByRole('listbox')
@@ -99,26 +93,6 @@ describe('AgentSelectorContent', () => {
     expect(listbox.querySelector('.overflow-y-auto')).not.toBeInTheDocument()
   })
 
-  it('hides the Agent Console link without agent.acl.preview', async () => {
-    mocks.canManageAgents = false
-
-    await renderSelector()
-
-    expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
-  })
-
-  it('keeps start from scratch without agent.acl.preview', async () => {
-    mocks.canManageAgents = false
-
-    await renderSelector({ onStartFromScratch: vi.fn() })
-
-    const listbox = screen.getByRole('listbox')
-    const startButton = screen.getByRole('button', { name: startFromScratchLabel })
-
-    expect(listbox).not.toContainElement(startButton)
-    expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
-  })
-
   it('should move focus from the combobox to actions outside the listbox', async () => {
     const user = userEvent.setup()
     await renderSelector({ onStartFromScratch: vi.fn() })
@@ -149,14 +123,5 @@ describe('AgentSelectorContent', () => {
     await user.pointer({ keys: '[/MouseLeft]', target: startButton })
 
     expect(onStartFromScratch).toHaveBeenCalledOnce()
-  })
-
-  it('renders no action row when neither action is available', async () => {
-    mocks.canManageAgents = false
-
-    await renderSelector()
-
-    expect(screen.queryByText(startFromScratchLabel)).not.toBeInTheDocument()
-    expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
   })
 })

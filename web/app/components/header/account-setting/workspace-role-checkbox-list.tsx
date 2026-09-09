@@ -271,7 +271,7 @@ const WorkspaceRoleCheckboxList = ({
                       const disabled = disabledRoleIdSet.has(role.id)
 
                       return (
-                        <li key={role.id}>
+                        <li key={role.id} role="presentation">
                           <RadioItem
                             value={role.id}
                             disabled={disabled}

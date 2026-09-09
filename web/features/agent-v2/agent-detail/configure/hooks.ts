@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentConfigSnapshotDetailResponse,
-  AgentSoulConfig,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue } from 'jotai'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -11,11 +8,12 @@ import {
   useDefaultModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { consoleQuery } from '@/service/console'
 
-export function useAgentConfigureData(agentId: string, selectedVersionId: string | null) {
+export function useAgentConfigureData(agentId: string, requestedVersionId: string | null) {
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({
       input: {
@@ -34,8 +32,11 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
       },
     }),
   )
+  const capabilities = getAgentACLCapabilities(agentQuery.data?.permission_keys)
+  const selectedVersionId = capabilities.canReleaseAndVersion ? requestedVersionId : null
   const publishedVersionId = composerQuery.data?.active_config_snapshot?.id
-  const shouldLoadPublishedVersion = !selectedVersionId && !composerQuery.data?.agent_soul
+  const shouldLoadPublishedVersion =
+    capabilities.canReleaseAndVersion && !selectedVersionId && !composerQuery.data?.agent_soul
   const versionIdToLoad =
     selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : undefined)
   const shouldLoadVersion = !!versionIdToLoad
@@ -51,7 +52,7 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
         : skipToken,
     }),
   )
-  const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
+  const versionDetail = versionQuery.data
   const activeVersionId =
     selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : null)
   const activeConfigSnapshot = selectedVersionId
@@ -64,6 +65,7 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
     agentQuery.isPending || composerQuery.isPending || (shouldLoadVersion && versionQuery.isPending)
 
   return {
+    capabilities,
     agentQuery,
     composerQuery,
     versionQuery,

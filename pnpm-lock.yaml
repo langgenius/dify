@@ -416,6 +416,9 @@ catalogs:
     eslint:
       specifier: 10.9.1
       version: 10.9.1
+    eslint-config-flat-gitignore:
+      specifier: 2.4.0
+      version: 2.4.0
     eslint-markdown:
       specifier: 0.12.1
       version: 0.12.1
@@ -507,11 +510,11 @@ catalogs:
       specifier: 11.1.18
       version: 11.1.18
     jotai:
-      specifier: 2.20.3
-      version: 2.20.3
+      specifier: 3.0.0
+      version: 3.0.0
     jotai-scope:
-      specifier: 0.11.0
-      version: 0.11.0
+      specifier: 0.12.2
+      version: 0.12.2
     jotai-tanstack-query:
       specifier: 0.11.0
       version: 0.11.0
@@ -777,6 +780,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
+      eslint-config-flat-gitignore:
+        specifier: 'catalog:'
+        version: 2.4.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))
       eslint-markdown:
         specifier: 'catalog:'
         version: 0.12.1(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
@@ -1176,7 +1182,7 @@ importers:
         version: typescript@7.0.2
       jotai:
         specifier: 'catalog:'
-        version: 2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
+        version: 3.0.0(@types/react@19.2.18)(react@19.2.8)
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1458,13 +1464,13 @@ importers:
         version: 11.1.18
       jotai:
         specifier: 'catalog:'
-        version: 2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
+        version: 3.0.0(@types/react@19.2.18)(react@19.2.8)
       jotai-scope:
         specifier: 'catalog:'
-        version: 0.11.0(jotai@2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
+        version: 0.12.2(jotai@3.0.0(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
       jotai-tanstack-query:
         specifier: 'catalog:'
-        version: 0.11.0(@tanstack/query-core@5.102.8)(@tanstack/react-query@5.102.8(react@19.2.8))(jotai@2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
+        version: 0.11.0(@tanstack/query-core@5.102.8)(@tanstack/react-query@5.102.8(react@19.2.8))(jotai@3.0.0(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
       js-cookie:
         specifier: 'catalog:'
         version: 3.0.8
@@ -2346,6 +2352,15 @@ packages:
     peerDependencies:
       eslint: '*'
       typescript: '*'
+
+  '@eslint/compat@2.1.1':
+    resolution: {integrity: sha512-rMcy8GSrwNzcISX/BlTDY/GLB4eCopEuy9woIls3To+15OLxykZrxxq+WUcylCPCQ6F4MujjBM1DX5V1aqI3Vw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+    peerDependencies:
+      eslint: ^8.40 || 9 || 10
+    peerDependenciesMeta:
+      eslint:
+        optional: true
 
   '@eslint/config-array@0.23.5':
     resolution: {integrity: sha512-Y3kKLvC1dvTOT+oGlqNQ1XLqK6D1HU2YXPc52NmAlJZbMMWDzGYXMiPRJ8TYD39muD/OTjlZmNJ4ib7dvSrMBA==}
@@ -6256,6 +6271,11 @@ packages:
     peerDependencies:
       eslint: '>=6.0.0'
 
+  eslint-config-flat-gitignore@2.4.0:
+    resolution: {integrity: sha512-JhYC+V7qEDiCDsbJcVP8fxNc62fk4+i91YLP/YvmVHlkaQ8Xo99olYN8MO5COdxl7onGlsrfZVONe5NYsZP1UA==}
+    peerDependencies:
+      eslint: ^9.5.0 || ^10.0.0
+
   eslint-json-compat-utils@0.2.3:
     resolution: {integrity: sha512-RbBmDFyu7FqnjE8F0ZxPNzx5UaptdeS9Uu50r7A+D7s/+FCX+ybiyViYEgFUaFIFqSWJgZRTpL5d8Kanxxl2lQ==}
     engines: {node: '>=12'}
@@ -6977,11 +6997,11 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jotai-scope@0.11.0:
-    resolution: {integrity: sha512-ofiW0Z0i3lTw509Gx0+T6fqsDPMDxMn+AHmNs9iF9OA8CmK1/0xRprPxuZ89UZdBzt6jcrTYdunNZSF2255zJQ==}
+  jotai-scope@0.12.2:
+    resolution: {integrity: sha512-E8iVkHS6Ox3kF+eBqq6zM32mj3Fxm6Ks2OlrTG/F2G6vOn4qpW/jJHq81/O72r7NwQ14K80wJTa16icuR7ppFg==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
-      jotai: '>=2.20.0'
+      jotai: '>=2.20.0 || >=3.0.0-alpha.0'
       react: '>=16.0.0'
 
   jotai-tanstack-query@0.11.0:
@@ -6997,19 +7017,13 @@ packages:
       react:
         optional: true
 
-  jotai@2.20.3:
-    resolution: {integrity: sha512-N8L9FUbeGDP+0qNJw1FebOxt+5hk+jTOwUA2LlRE4C081jUcY6F1T/FSETp4DT2/INMtiSRZyNm2D+yZdzrSgA==}
-    engines: {node: '>=12.20.0'}
+  jotai@3.0.0:
+    resolution: {integrity: sha512-KxhbmsJUp/tmrv6aZgO+nzB3H9K8C0xmk5i3aGkwy/EANg73DVBkggv3zVHaAi5PlNlQgTgP4uiVepo+JC+wSA==}
+    engines: {node: '>=22.12.0'}
     peerDependencies:
-      '@babel/core': ^7.29.1
-      '@babel/template': '>=7.0.0'
-      '@types/react': '>=17.0.0'
-      react: '>=17.0.0'
+      '@types/react': '>=18.0.0'
+      react: '>=18.0.0'
     peerDependenciesMeta:
-      '@babel/core':
-        optional: true
-      '@babel/template':
-        optional: true
       '@types/react':
         optional: true
       react:
@@ -10131,6 +10145,12 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
+
+  '@eslint/compat@2.1.1(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))':
+    dependencies:
+      '@eslint/core': 1.2.1
+    optionalDependencies:
+      eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
 
   '@eslint/config-array@0.23.5(supports-color@11.0.0)':
     dependencies:
@@ -13631,6 +13651,11 @@ snapshots:
       eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
       semver: 7.8.5
 
+  eslint-config-flat-gitignore@2.4.0(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0)):
+    dependencies:
+      '@eslint/compat': 2.1.1(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))
+      eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
+
   eslint-json-compat-utils@0.2.3(eslint@10.9.1(jiti@2.7.0)(supports-color@11.0.0))(jsonc-eslint-parser@3.3.0):
     dependencies:
       eslint: 10.9.1(jiti@2.7.0)(supports-color@11.0.0)
@@ -14517,23 +14542,21 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jotai-scope@0.11.0(jotai@2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8):
+  jotai-scope@0.12.2(jotai@3.0.0(@types/react@19.2.18)(react@19.2.8))(react@19.2.8):
     dependencies:
-      jotai: 2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
+      jotai: 3.0.0(@types/react@19.2.18)(react@19.2.8)
       react: 19.2.8
 
-  jotai-tanstack-query@0.11.0(@tanstack/query-core@5.102.8)(@tanstack/react-query@5.102.8(react@19.2.8))(jotai@2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8):
+  jotai-tanstack-query@0.11.0(@tanstack/query-core@5.102.8)(@tanstack/react-query@5.102.8(react@19.2.8))(jotai@3.0.0(@types/react@19.2.18)(react@19.2.8))(react@19.2.8):
     dependencies:
       '@tanstack/query-core': 5.102.8
-      jotai: 2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
+      jotai: 3.0.0(@types/react@19.2.18)(react@19.2.8)
     optionalDependencies:
       '@tanstack/react-query': 5.102.8(react@19.2.8)
       react: 19.2.8
 
-  jotai@2.20.3(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8):
+  jotai@3.0.0(@types/react@19.2.18)(react@19.2.8):
     optionalDependencies:
-      '@babel/core': 7.29.7(supports-color@11.0.0)
-      '@babel/template': 7.29.7
       '@types/react': 19.2.18
       react: 19.2.8
 
@@ -17501,6 +17524,7 @@ time:
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
   emoji-mart@5.6.0: '2024-04-25T14:22:21.440Z'
   es-toolkit@1.52.0: '2026-08-28T07:22:17.687Z'
+  eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
   eslint-markdown@0.12.1: '2026-07-10T23:35:26.055Z'
   eslint-plugin-antfu@3.2.3: '2026-05-11T02:24:38.348Z'
   eslint-plugin-better-tailwindcss@4.7.0: '2026-07-19T13:26:01.366Z'
@@ -17532,9 +17556,9 @@ time:
   i18next@26.4.0: '2026-08-20T09:25:14.621Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.18: '2026-08-19T07:25:22.934Z'
-  jotai-scope@0.11.0: '2026-05-13T18:43:15.331Z'
+  jotai-scope@0.12.2: '2026-08-13T23:49:51.764Z'
   jotai-tanstack-query@0.11.0: '2025-08-01T02:55:49.826Z'
-  jotai@2.20.3: '2026-08-24T07:26:18.202Z'
+  jotai@3.0.0: '2026-09-08T13:51:57.446Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'
   js-yaml@5.4.1: '2026-08-26T19:31:37.034Z'
   jsonschema@1.5.0: '2025-01-07T15:09:11.287Z'

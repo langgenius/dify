@@ -9,7 +9,6 @@ import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
@@ -18,9 +17,10 @@ import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/Sidebar
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { getAgentSectionAccess } from '@/features/agent-v2/acl'
+import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 import { AgentDetailSidebarActions } from './sidebar-actions'
 
@@ -55,6 +55,7 @@ const fileListLineIcon = createAgentNavIcon('i-ri-file-list-3-line')
 const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
 const dashboardLineIcon = createAgentNavIcon('i-ri-dashboard-2-line')
 const dashboardFillIcon = createAgentNavIcon('i-ri-dashboard-2-fill')
+const accessConfigIcon = createAgentNavIcon('i-ri-shield-user-line')
 
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
@@ -80,6 +81,12 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
     href: getAgentDetailPath(agentId, 'monitoring'),
     icon: dashboardLineIcon,
     activeIcon: dashboardFillIcon,
+  },
+  {
+    labelKey: 'agentDetail.sections.access-config',
+    href: getAgentDetailPath(agentId, 'access-config'),
+    icon: accessConfigIcon,
+    activeIcon: accessConfigIcon,
   },
 ]
 
@@ -166,22 +173,16 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const { t } = useTranslation('agentV2')
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
-  const agentQuery = useQuery(
-    consoleQuery.agent.byAgentId.get.queryOptions({
-      input: agentId
-        ? {
-            params: {
-              agent_id: agentId,
-            },
-          }
-        : skipToken,
-    }),
-  )
+  const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
 
   if (!agentId) return null
 
-  const navigation = getAgentDetailNavigation(agentId)
   const agent = agentQuery.data
+  const sectionAccess = getAgentSectionAccess(capabilities)
+  const navigation = getAgentDetailNavigation(agentId).filter(
+    (item) =>
+      sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
+  )
   const imageUrl =
     agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined

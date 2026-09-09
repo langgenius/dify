@@ -49,7 +49,7 @@ export type AgentAppDetailWithSite = {
   mode: string
   model_config?: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   role?: string | null
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
@@ -459,7 +459,7 @@ export type AgentAppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   reference_count?: number | null
@@ -1829,7 +1829,7 @@ export type AgentAppDetailWithSiteWritable = {
   mode: string
   model_config?: AppModelConfigResponse | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   role?: string | null
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
@@ -1864,7 +1864,7 @@ export type AgentAppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  permission_keys?: Array<string>
+  permission_keys: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   reference_count?: number | null
