@@ -131,12 +131,14 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       receive({ url: adapter.read() })
       return () => {
         unsubscribe()
-        // StrictMode reconnects before this microtask. A detached provider
-        // does not, and must not leave delayed writes behind.
+        // StrictMode reconnects before this microtask. Hidden Suspense/Activity
+        // trees do not, so discard their queued work. Keep writes valid for
+        // descendant layout effects during reveal, before connect runs again.
+        // Only insertion-effect disposal marks the provider truly unmounted.
         queueMicrotask(() => {
           if (connection !== version) return
-          active = false
           cancel()
+          publish(adapter.read())
         })
       }
     },

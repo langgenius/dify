@@ -1,10 +1,10 @@
 import type { UrlUpdateEvent } from './testing'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtom, useSetAtom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { debounce, parseAsInteger } from 'nuqs'
-import { StrictMode, useLayoutEffect, useState } from 'react'
+import { Activity, StrictMode, Suspense, useLayoutEffect, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test'
 import { createBrowserQueryAdapter } from './browser'
@@ -460,3 +460,68 @@ it('retains a callback draft when the preceding adapter write throws', async () 
     vi.useRealTimers()
   }
 })
+
+it.each(['Suspense', 'Activity'] as const)(
+  'accepts descendant layout writes when %s reveals its provider',
+  async (boundary) => {
+    vi.useFakeTimers()
+    try {
+      const adapter = createMemoryQueryAdapter('http://localhost/?page=1')
+      let scopedStore!: ReturnType<typeof createStore>
+      const suspended = new Promise<never>(() => {})
+      function Page({ hidden }: { hidden: boolean }) {
+        scopedStore = useStore()
+        const setPage = useSetAtom(pageAtom)
+        useLayoutEffect(() => {
+          void setPage((page) => page + 1)
+        }, [setPage])
+        if (boundary === 'Suspense' && hidden) throw suspended
+        return <p>Page ready</p>
+      }
+      function App({ hidden }: { hidden: boolean }) {
+        const content = (
+          <QueryStateProvider adapter={adapter}>
+            <Page hidden={hidden} />
+          </QueryStateProvider>
+        )
+        return boundary === 'Activity' ? (
+          <Activity mode={hidden ? 'hidden' : 'visible'}>{content}</Activity>
+        ) : (
+          <Suspense fallback={<p>Loading</p>}>{content}</Suspense>
+        )
+      }
+      const rendered = render(<App hidden={false} />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(adapter.read().searchParams.get('page')).toBe('2')
+      rendered.rerender(<App hidden />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      adapter.navigate('/?page=7')
+      rendered.rerender(<App hidden={false} />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(screen.getByText('Page ready')).toBeDefined()
+      expect(adapter.read().searchParams.get('page')).toBe('8')
+      let cancelled!: Promise<URLSearchParams>
+      act(() => {
+        cancelled = scopedStore.set(pageAtom, 99, { limitUrlUpdates: debounce(300) })
+      })
+      rendered.rerender(<App hidden />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect((await cancelled).get('page')).toBe('8')
+      rendered.rerender(<App hidden={false} />)
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      expect(adapter.read().searchParams.get('page')).toBe('9')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
