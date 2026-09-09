@@ -46,8 +46,11 @@ describe('page URL transactions', () => {
     const { store, runtime, write, adapter, onUpdate } = setup()
     const result = write({ query: 'jotai' })
     expect(
-      parseValues(parsers, { filter: 'status' }, new URL(store.get(runtime.stateAtom)).searchParams)
-        .query,
+      parseValues(
+        parsers,
+        { filter: 'status' },
+        new URL(store.get(runtime.stateAtom).href).searchParams,
+      ).query,
     ).toBe('jotai')
     await vi.advanceTimersByTimeAsync(299)
     expect(onUpdate).not.toHaveBeenCalled()
@@ -57,45 +60,40 @@ describe('page URL transactions', () => {
     expect(adapter.read().searchParams.get('other')).toBe('keep')
   })
 
-  it('pushes a pending search and filter as one history entry', async () => {
-    const { write, adapter, store, runtime, onUpdate } = setup()
+  it('pushes a filter without flushing a different key debounce', async () => {
+    const { write, adapter, onUpdate } = setup()
     const search = write({ query: 'jotai' })
     await vi.advanceTimersByTimeAsync(100)
     const filter = write({ filter: 'ready' })
     await vi.advanceTimersByTimeAsync(0)
-    await Promise.all([search, filter])
+    await filter
     expect(onUpdate).toHaveBeenCalledOnce()
+    expect(adapter.read().searchParams.get('query')).toBeNull()
+    expect(adapter.read().searchParams.get('status')).toBe('ready')
+    await vi.advanceTimersByTimeAsync(200)
+    await search
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(adapter.read().searchParams.get('query')).toBe('jotai')
+    adapter.back()
+    expect(adapter.read().searchParams.get('query')).toBeNull()
+    expect(adapter.read().searchParams.get('status')).toBeNull()
+    adapter.forward()
     expect(adapter.read().searchParams.get('query')).toBe('jotai')
     expect(adapter.read().searchParams.get('status')).toBe('ready')
-    adapter.back()
-    expect(
-      parseValues(
-        parsers,
-        { filter: 'status' },
-        new URL(store.get(runtime.stateAtom)).searchParams,
-      ),
-    ).toMatchObject({ query: '', filter: 'all' })
-    await vi.advanceTimersByTimeAsync(500)
-    expect(onUpdate).toHaveBeenCalledOnce()
-    adapter.forward()
-    expect(
-      parseValues(
-        parsers,
-        { filter: 'status' },
-        new URL(store.get(runtime.stateAtom)).searchParams,
-      ),
-    ).toMatchObject({ query: 'jotai', filter: 'ready' })
   })
 
-  it('commits an overlay together with the current search', async () => {
+  it('commits an overlay while search is still debounced', async () => {
     const { write, adapter, onUpdate } = setup()
     const search = write({ query: 'jotai' })
     const overlay = write({ upload: '1' })
-    await vi.runAllTimersAsync()
-    await Promise.all([search, overlay])
-    expect(adapter.read().searchParams.get('query')).toBe('jotai')
+    await vi.advanceTimersByTimeAsync(0)
+    await overlay
+    expect(adapter.read().searchParams.get('query')).toBeNull()
     expect(adapter.read().searchParams.get('upload')).toBe('1')
-    expect(onUpdate).toHaveBeenCalledOnce()
+    await vi.runAllTimersAsync()
+    await search
+    expect(adapter.read().searchParams.get('query')).toBe('jotai')
+    expect(onUpdate).toHaveBeenCalledTimes(2)
   })
 
   it('cancels pending search on back, including a traversal to the same URL', async () => {
@@ -106,8 +104,11 @@ describe('page URL transactions', () => {
     await vi.runAllTimersAsync()
     expect((await pending).get('query')).toBeNull()
     expect(
-      parseValues(parsers, { filter: 'status' }, new URL(store.get(runtime.stateAtom)).searchParams)
-        .query,
+      parseValues(
+        parsers,
+        { filter: 'status' },
+        new URL(store.get(runtime.stateAtom).href).searchParams,
+      ).query,
     ).toBe('')
     expect(onUpdate).not.toHaveBeenCalled()
   })
@@ -146,8 +147,11 @@ describe('page URL transactions', () => {
     await vi.runAllTimersAsync()
     await rejected
     expect(
-      parseValues(parsers, { filter: 'status' }, new URL(store.get(runtime.stateAtom)).searchParams)
-        .page,
+      parseValues(
+        parsers,
+        { filter: 'status' },
+        new URL(store.get(runtime.stateAtom).href).searchParams,
+      ).page,
     ).toBe(1)
     expect(store.get(runtime.errorAtom)).toBe(failure)
   })
@@ -160,7 +164,7 @@ describe('page URL transactions', () => {
       parseValues(
         parsers,
         { filter: 'status' },
-        new URL(store.get(runtime.stateAtom)).searchParams,
+        new URL(store.get(runtime.stateAtom).href).searchParams,
       ),
     ).toMatchObject({ filter: 'all', page: 1 })
     expect(onUpdate).not.toHaveBeenCalled()
@@ -186,7 +190,7 @@ describe('page URL transactions', () => {
         store,
       ),
     ).toThrow(failure)
-    expect(new URL(store.get(runtime.stateAtom)).searchParams.get('query')).toBe('draft')
+    expect(new URL(store.get(runtime.stateAtom).href).searchParams.get('query')).toBe('draft')
     await vi.runAllTimersAsync()
     expect((await pending).get('query')).toBe('draft')
     expect(adapter.read().searchParams.get('query')).toBe('draft')
@@ -198,8 +202,8 @@ describe('page URL transactions', () => {
     const pending = write({ query: 'record', page: 2 }, { history: 'push', shallow: false })
     await vi.runAllTimersAsync()
     await pending
-    expect(onUpdate).toHaveBeenCalledOnce()
-    expect(onUpdate.mock.calls[0]![0].options).toEqual({
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(onUpdate.mock.calls[1]![0].options).toEqual({
       history: 'push',
       shallow: false,
       scroll: false,
@@ -225,14 +229,15 @@ describe('URL rate limiting', () => {
     async (history) => {
       const { write, onUpdate } = setup()
       const pending: Promise<URLSearchParams>[] = []
-      for (let page = 1; page <= 6; page++) {
+      for (let page = 2; page <= 7; page++) {
         pending.push(write({ page }, { history, limitUrlUpdates: throttle(100) }))
         await vi.advanceTimersByTimeAsync(50)
       }
       expect(onUpdate.mock.calls.map(([event]) => event.searchParams.get('page'))).toEqual([
         '2',
-        '4',
-        '6',
+        '3',
+        '5',
+        '7',
       ])
       await Promise.all(pending)
     },
@@ -251,18 +256,26 @@ describe('URL rate limiting', () => {
     expect(onUpdate.mock.calls[0]![0].searchParams.get('query')).toBe('ab')
   })
 
-  it('does not let a later debounced update postpone a pending throttle', async () => {
+  it('does not let a later debounced key join an earlier throttle batch', async () => {
     const { write, onUpdate } = setup()
-    const page = write({ page: 2 }, { limitUrlUpdates: throttle(100) })
+    const initial = write({ page: 2 })
+    await vi.advanceTimersByTimeAsync(0)
+    await initial
+    onUpdate.mockClear()
+    const page = write({ page: 3 }, { limitUrlUpdates: throttle(100) })
     await vi.advanceTimersByTimeAsync(50)
     const search = write({ query: 'jotai' })
     await vi.advanceTimersByTimeAsync(50)
+    await page
     expect(onUpdate).toHaveBeenCalledOnce()
-    await Promise.all([page, search])
-    expect(onUpdate.mock.calls[0]![0].searchParams.get('query')).toBe('jotai')
+    expect(onUpdate.mock.calls[0]![0].searchParams.get('query')).toBeNull()
+    await vi.advanceTimersByTimeAsync(250)
+    await search
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(onUpdate.mock.calls[1]![0].searchParams.get('query')).toBe('jotai')
   })
 
-  it('advances a debounce for an immediate action while respecting the browser interval', async () => {
+  it('respects the browser interval independently of debounce deadlines', async () => {
     const { write, adapter, onUpdate } = setup()
     Object.assign(adapter, { minimumInterval: 400 })
     const initial = write({ page: 2 })
@@ -275,10 +288,16 @@ describe('URL rate limiting', () => {
     await vi.advanceTimersByTimeAsync(199)
     expect(onUpdate).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(1)
-    await Promise.all([search, nextSearch, filter])
+    await filter
     expect(onUpdate).toHaveBeenCalledTimes(2)
-    expect(onUpdate.mock.calls[1]![0].searchParams.get('query')).toBe('latest')
+    expect(onUpdate.mock.calls[1]![0].searchParams.get('query')).toBeNull()
     expect(onUpdate.mock.calls[1]![0].options.history).toBe('push')
+    await vi.advanceTimersByTimeAsync(399)
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    await Promise.all([search, nextSearch])
+    expect(onUpdate).toHaveBeenCalledTimes(3)
+    expect(onUpdate.mock.calls[2]![0].searchParams.get('query')).toBe('latest')
   })
 })
 
@@ -356,8 +375,10 @@ it.each([
     expect(onUpdate).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
     expect(onUpdate).toHaveBeenCalledOnce()
-    expect((await pending).get('query')).toBe('draft')
     expect(adapter.read().searchParams.get('page')).toBe('3')
+    if (delay < 300) expect(adapter.read().searchParams.get('query')).toBeNull()
+    await vi.runAllTimersAsync()
+    expect((await pending).get('query')).toBe('draft')
   },
 )
 
@@ -378,7 +399,7 @@ it.each(['traversal', 'replace'] as const)(
     })
     const initial = write({ page: 2 })
     await vi.advanceTimersByTimeAsync(0)
-    expect(new URL(store.get(runtime.stateAtom)).searchParams.get('page')).toBe('9')
+    expect(new URL(store.get(runtime.stateAtom).href).searchParams.get('page')).toBe('9')
     await vi.runAllTimersAsync()
     await initial
     expect((await draft)?.get('page')).toBe('9')
@@ -404,4 +425,52 @@ it('enforces the browser interval for writes queued inside a commit callback', a
   expect(timestamps).toHaveLength(2)
   expect(timestamps[1]! - timestamps[0]!).toBe(400)
   expect((await draft)?.get('page')).toBe('3')
+})
+
+it('settles all keys after a partially committed composite is cancelled', async () => {
+  const { write, adapter, onUpdate } = setup()
+  const settled = vi.fn()
+  const result = write({ page: 2, query: 'draft' }).then(settled)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(onUpdate).toHaveBeenCalledOnce()
+  expect(adapter.read().searchParams.get('page')).toBe('2')
+  expect(settled).not.toHaveBeenCalled()
+  adapter.navigate('/documents?page=9')
+  await vi.runAllTimersAsync()
+  await result
+  expect(settled).toHaveBeenCalledOnce()
+  expect(settled.mock.calls[0]![0].get('page')).toBe('9')
+  expect(onUpdate).toHaveBeenCalledOnce()
+})
+
+it('rejects a composite if a later debounced commit fails', async () => {
+  const { write, adapter, store, runtime } = setup()
+  const result = write({ page: 2, query: 'draft' })
+  await vi.advanceTimersByTimeAsync(0)
+  const failure = new Error('second commit failed')
+  vi.spyOn(adapter, 'write').mockImplementation(() => {
+    throw failure
+  })
+  const rejected = expect(result).rejects.toBe(failure)
+  await vi.runAllTimersAsync()
+  await rejected
+  expect(adapter.read().searchParams.get('page')).toBe('2')
+  expect(adapter.read().searchParams.has('query')).toBe(false)
+  expect(store.get(runtime.errorAtom)).toBe(failure)
+  expect(new URL(store.get(runtime.stateAtom).href).searchParams.has('query')).toBe(false)
+})
+
+it('resumes an infinite throttle batch when another key requests a finite write', async () => {
+  const { write, adapter, onUpdate } = setup()
+  const local = write({ page: 2 }, { limitUrlUpdates: throttle(Infinity), shallow: false })
+  await vi.advanceTimersByTimeAsync(1000)
+  expect((await local).get('page')).toBeNull()
+  expect(onUpdate).not.toHaveBeenCalled()
+  const resumed = write({ filter: 'ready' }, { limitUrlUpdates: throttle(100) })
+  await vi.runAllTimersAsync()
+  await resumed
+  expect(onUpdate).toHaveBeenCalledOnce()
+  expect(onUpdate.mock.calls[0]![0].options.shallow).toBe(false)
+  expect(adapter.read().searchParams.get('page')).toBe('2')
+  expect(adapter.read().searchParams.get('status')).toBe('ready')
 })

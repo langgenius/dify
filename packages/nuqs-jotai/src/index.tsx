@@ -4,6 +4,7 @@ import type { Atom, WritableAtom } from 'jotai'
 import type { Options, SetValues, UseQueryStatesKeysMap, UseQueryStatesOptions, Values } from 'nuqs'
 import type { ReactNode } from 'react'
 import type { QueryAdapter } from './adapter'
+import type { ParseCache } from './query'
 import { atom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useEffect, useInsertionEffect, useLayoutEffect, useState } from 'react'
@@ -44,7 +45,7 @@ export function atomWithSearchParams<P extends UseQueryStatesKeysMap>(
   { urlKeys, debugLabel = 'query', ...defaults }: SearchParamsOptions<P> = {},
 ): SearchParamsAtom<P> {
   const initial = parseValues(parsers, urlKeys, new URLSearchParams())
-  const cache = new WeakMap<Runtime, { href: string; values: Values<P> }>()
+  const cache = new WeakMap<Runtime, ParseCache<P>>()
   const queryAtom: SearchParamsAtom<P> = atom<
     Values<P>,
     Parameters<SetValues<P>>,
@@ -53,11 +54,11 @@ export function atomWithSearchParams<P extends UseQueryStatesKeysMap>(
     (get) => {
       const binding = get(runtimeAtom)
       if (!binding) return initial
-      const href = get(binding.runtime.stateAtom)
+      const snapshot = get(binding.runtime.stateAtom)
       const previous = cache.get(binding.runtime)
-      if (previous?.href === href) return previous.values
-      const values = parseValues(parsers, urlKeys, new URL(href).searchParams, previous?.values)
-      cache.set(binding.runtime, { href, values })
+      const search = new URL(snapshot.href).searchParams
+      const values = parseValues(parsers, urlKeys, search, previous, snapshot.values)
+      cache.set(binding.runtime, { search, optimistic: snapshot.values, values })
       return values
     },
     (get, set, update, options) => {
@@ -66,10 +67,7 @@ export function atomWithSearchParams<P extends UseQueryStatesKeysMap>(
       return binding.runtime.write(
         () => {
           const patch = typeof update === 'function' ? update(get(queryAtom)) : update
-          return prepareUpdate(parsers, urlKeys, patch, binding.defaults, {
-            ...defaults,
-            ...options,
-          })
+          return prepareUpdate(parsers, urlKeys, patch, binding.defaults, options, defaults)
         },
         { set },
       )
