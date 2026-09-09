@@ -52,6 +52,7 @@ jobs:
           uv run --project api pytest \
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
+            --maxfail=1 \
             -n auto \
             api/tests/unit_tests \
             api/providers/vdb/*/tests/unit_tests \
