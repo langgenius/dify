@@ -77,7 +77,7 @@ page-local workflows.
 - Commits merge changed keys into the latest browser URL. Unknown parameters and
   the hash survive. Unrelated history writes retain pending drafts.
 - Back/forward, changes to a pending configuration's URL keys, or a different
-  pathname cancel pending work. Router integrations can call `notifyNavigation()`
+  pathname cancel pending work. Router integrations can call `notifyUrlChange(true)`
   to cancel when a new pathname is exposed before history commits. A cancelled promise resolves with
   the current URL. Provider disposal prevents subsequent writes.
 - The provider survives page changes. Page-owned async work must cancel on page
@@ -94,7 +94,11 @@ The browser observer defers history notifications to a microtask because routers
 can update history from insertion effects. Popstate cancels synchronously. A
 shared observer watches other history owners, including nuqs; provider disposal
 removes its subscriptions. Routers that bypass wrapped history methods must call
-`notifyUrlChange()` after their URL commit. Publish route notifications after
+`notifyUrlChange()` after their URL commit. Use `notifyUrlChange(true)` when
+the router announces a pathname change before history commits: it cancels queued
+writes against the current address. Notify again after the destination URL has
+committed to read the new address; ordinary commit notifications must not force
+traversal, since they can reflect the provider's own writes. Publish route notifications after
 child passive subscriptions have mounted so newly mounted Jotai consumers do not
 miss the updated snapshot.
 

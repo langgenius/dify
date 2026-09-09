@@ -96,12 +96,14 @@ export function createQueryRuntime(adapter: QueryAdapter) {
         lastWrite = Date.now()
       }
       confirmed = adapter.read()
-      publish(confirmed)
+      // Adapter callbacks may have queued a new draft during this commit.
+      publish(applyPending(confirmed))
       store.set(errorAtom, null)
       settled.forEach(({ resolve }) => resolve(new URLSearchParams(confirmed.searchParams)))
     } catch (error) {
       confirmed = adapter.read()
-      publish(confirmed)
+      // Adapter callbacks may have queued a new draft during this commit.
+      publish(applyPending(confirmed))
       store.set(errorAtom, error)
       settled.forEach(({ reject }) => reject(error))
     } finally {

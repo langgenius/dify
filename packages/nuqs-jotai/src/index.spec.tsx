@@ -391,3 +391,72 @@ it('cancels a field draft when external history changes another key in its group
     vi.useRealTimers()
   }
 })
+
+it.each([false, true])(
+  'preserves callback drafts after a commit (functional update: %s)',
+  async (increment) => {
+    vi.useFakeTimers()
+    try {
+      let store!: ReturnType<typeof createStore>
+      let callbackWrite: Promise<URLSearchParams> | undefined
+      const adapter = createMemoryQueryAdapter('http://localhost/?page=1', ({ searchParams }) => {
+        if (searchParams.get('page') === '2') {
+          callbackWrite = store.set(pageAtom, 3, { limitUrlUpdates: debounce(300) })
+        }
+      })
+      function Capture() {
+        store = useStore()
+        return null
+      }
+      render(
+        <QueryStateProvider adapter={adapter}>
+          <Capture />
+        </QueryStateProvider>,
+      )
+      const initial = store.set(pageAtom, 2)
+      await vi.advanceTimersByTimeAsync(0)
+      expect((await initial).get('page')).toBe('2')
+      if (!increment) expect(store.get(pageAtom)).toBe(3)
+      const functionalWrite = increment ? store.set(pageAtom, (page) => page + 1) : undefined
+      await vi.runAllTimersAsync()
+      await Promise.all([callbackWrite, functionalWrite])
+      expect(store.get(pageAtom)).toBe(increment ? 4 : 3)
+      expect(adapter.read().searchParams.get('page')).toBe(increment ? '4' : '3')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+
+it('retains a callback draft when the preceding adapter write throws', async () => {
+  vi.useFakeTimers()
+  try {
+    let store!: ReturnType<typeof createStore>
+    let callbackWrite: Promise<URLSearchParams> | undefined
+    const failure = new Error('refresh failed')
+    const adapter = createMemoryQueryAdapter('http://localhost/?page=1', ({ searchParams }) => {
+      if (searchParams.get('page') === '2') {
+        callbackWrite = store.set(pageAtom, 3, { limitUrlUpdates: debounce(300) })
+        throw failure
+      }
+    })
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    const initial = store.set(pageAtom, 2)
+    await vi.advanceTimersByTimeAsync(0)
+    await expect(initial).rejects.toBe(failure)
+    expect(store.get(pageAtom)).toBe(3)
+    await vi.runAllTimersAsync()
+    expect((await callbackWrite)?.get('page')).toBe('3')
+    expect(store.get(queryStateErrorAtom)).toBe(null)
+  } finally {
+    vi.useRealTimers()
+  }
+})
