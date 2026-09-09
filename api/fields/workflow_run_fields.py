@@ -7,6 +7,7 @@ Pydantic models in this module.
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any
 
 from pydantic import AliasChoices, Field, field_validator
@@ -55,7 +56,7 @@ class WorkflowRunForArchivedLogResponse(ResponseModel):
     def _normalize_status(cls, value: Any) -> str | None:
         if value is None or isinstance(value, str):
             return value
-        return str(getattr(value, "value", value))
+        return str(value.value if isinstance(value, Enum) else value)
 
 
 class WorkflowRunForListResponse(ResponseModel):
