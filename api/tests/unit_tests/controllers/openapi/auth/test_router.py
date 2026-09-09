@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
@@ -99,6 +99,23 @@ def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterpr
 
     with app.test_request_context("/openapi/v1/account"):
         with pytest.raises(Forbidden, match="license_invalid"):
+            view()
+
+
+def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Off means no authenticator is bound, so the router answers the same 503
+    the device endpoints do instead of a 500 from the unbound authenticator.
+    """
+    config_overrides(ENABLE_OAUTH_BEARER=False)
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    view = _guard(_nothing)
+
+    with app.test_request_context("/openapi/v1/account"):
+        with pytest.raises(ServiceUnavailable, match="bearer_auth_disabled"):
             view()
 
 

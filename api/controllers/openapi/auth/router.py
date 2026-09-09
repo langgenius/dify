@@ -15,7 +15,7 @@ from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
-from libs.oauth_bearer import InvalidBearerError, extract_bearer, get_authenticator
+from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
 
 
 class AuthRouter:
@@ -34,12 +34,14 @@ class AuthRouter:
         answers 404 before anything reveals whether the bearer was valid, and
         an enterprise deployment's licence answers 403 before the missing-bearer
         401. The licence is a fact about the deployment, not the route or the
-        caller, so this is the one place it is checked.
+        caller, so this is the one place it is checked. The bearer feature flag
+        is the same kind of fact and answers 503 next.
         """
         if spec.edition is not None and dify_config.DEPLOYMENT_EDITION not in spec.edition:
             raise NotFound()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             assert_license_valid()
+        assert_bearer_feature_enabled()
 
         token = extract_bearer(request)
         if not token:
