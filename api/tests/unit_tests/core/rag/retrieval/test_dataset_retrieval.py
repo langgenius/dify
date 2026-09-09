@@ -7,7 +7,10 @@ from uuid import uuid4
 import pytest
 from flask import Flask, current_app
 from sqlalchemy import column
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import DBAPIError
 
+import core.rag.retrieval.dataset_retrieval as dataset_retrieval_module
 from core.app.app_config.entities import (
     Condition as AppCondition,
 )
@@ -4818,6 +4821,7 @@ class TestInternalHooksCoverage:
             _scalars(child_chunks),
             _scalars(segments),
             _scalars(bindings),
+            _scalars(["seg-a", "seg-b", "seg-c", "seg-d"]),
         ]
         query = Mock()
         query.where.return_value = query
@@ -4835,7 +4839,114 @@ class TestInternalHooksCoverage:
 
         query.update.assert_called_once()
         session.commit.assert_called_once()
+        lock_statement = session.scalars.call_args_list[-1].args[0]
+        assert "ORDER BY document_segments.id FOR UPDATE" in str(lock_statement.compile(dialect=postgresql.dialect()))
         mock_trace.assert_called_once()
+
+    def test_on_retrieval_end_retries_postgres_deadlock(self, retrieval: DatasetRetrieval) -> None:
+        app = Flask(__name__)
+        deadlock = DBAPIError(
+            "UPDATE document_segments",
+            {},
+            SimpleNamespace(sqlstate="40P01"),
+            connection_invalidated=False,
+        )
+        doc = _doc(provider="dify")
+        retry_session = MagicMock()
+        retry_session.__enter__.return_value.scalars.return_value.all.return_value = []
+        retry_session.__exit__.return_value = False
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
+            patch("core.rag.retrieval.dataset_retrieval.Session") as mock_session,
+            patch.object(retrieval, "_send_trace_task") as mock_trace,
+        ):
+            mock_session.side_effect = [deadlock, retry_session]
+            retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer={"cost": 1})
+
+        assert mock_session.call_count == 2
+        mock_trace.assert_called_once_with("m1", [doc], {"cost": 1})
+
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (RuntimeError("not a database error"), False),
+            (DBAPIError("SELECT 1", {}, None, connection_invalidated=False), False),
+            (
+                DBAPIError(
+                    "UPDATE document_segments",
+                    {},
+                    SimpleNamespace(pgcode="40P01"),
+                    connection_invalidated=False,
+                ),
+                True,
+            ),
+            (
+                DBAPIError(
+                    "UPDATE document_segments",
+                    {},
+                    SimpleNamespace(sqlstate="40001", pgcode="40P01"),
+                    connection_invalidated=False,
+                ),
+                True,
+            ),
+            (
+                DBAPIError(
+                    "UPDATE document_segments",
+                    {},
+                    SimpleNamespace(sqlstate="40001", pgcode="40001"),
+                    connection_invalidated=False,
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_is_postgres_deadlock_error(self, error: BaseException, expected: bool) -> None:
+        assert dataset_retrieval_module._is_postgres_deadlock_error(error) is expected
+
+    def test_on_retrieval_end_reraises_non_deadlock(self, retrieval: DatasetRetrieval) -> None:
+        app = Flask(__name__)
+        error = DBAPIError(
+            "UPDATE document_segments",
+            {},
+            SimpleNamespace(sqlstate="40001"),
+            connection_invalidated=False,
+        )
+        doc = _doc(provider="dify")
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
+            patch("core.rag.retrieval.dataset_retrieval.Session") as mock_session,
+            patch.object(retrieval, "_send_trace_task") as mock_trace,
+        ):
+            mock_session.side_effect = error
+            with pytest.raises(DBAPIError):
+                retrieval._on_retrieval_end(flask_app=app, documents=[doc])
+
+        assert mock_session.call_count == 1
+        mock_trace.assert_not_called()
+
+    def test_on_retrieval_end_reraises_after_deadlock_retries_are_exhausted(self, retrieval: DatasetRetrieval) -> None:
+        app = Flask(__name__)
+        deadlock = DBAPIError(
+            "UPDATE document_segments",
+            {},
+            SimpleNamespace(sqlstate="40P01"),
+            connection_invalidated=False,
+        )
+        doc = _doc(provider="dify")
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
+            patch("core.rag.retrieval.dataset_retrieval.Session") as mock_session,
+            patch.object(retrieval, "_send_trace_task") as mock_trace,
+        ):
+            mock_session.side_effect = deadlock
+            with pytest.raises(DBAPIError):
+                retrieval._on_retrieval_end(flask_app=app, documents=[doc])
+
+        assert mock_session.call_count == 3
+        mock_trace.assert_not_called()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
         flask_app = SimpleNamespace(app_context=lambda: nullcontext())
