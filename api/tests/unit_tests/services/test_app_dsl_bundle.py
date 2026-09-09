@@ -20,7 +20,15 @@ from models.agent import Agent, AgentConfigDraft, AgentConfigSnapshot
 from models.model import AppModelConfig
 from models.tools import ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowContentDict
-from services.app_dsl_bundle import AppDslBundle, AppDslBundleService, _tool_references
+from services.app_dsl_bundle import (
+    AppDslBundle,
+    AppDslBundleService,
+    BundleApp,
+    BundleManifest,
+    BundleWorkflow,
+    _rewrite_reference,
+    _tool_references,
+)
 from services.app_dsl_service import AppDslService
 from services.errors.account import NoPermissionError
 from services.workflow_service import WorkflowService
@@ -189,6 +197,27 @@ def _archive(
     return output.getvalue()
 
 
+def _single_app_bundle(mode: AppMode = AppMode.WORKFLOW) -> AppDslBundle:
+    document = _app_document(mode, {})
+    cast(dict[str, object], document["app"])["mode"] = mode.value
+    document["bundle_id"] = "app_1"
+    return AppDslBundle(
+        manifest=BundleManifest(
+            entrypoint="app_1",
+            resources={
+                "app_1": BundleApp(
+                    file="apps/app_1.yaml",
+                    workflow=BundleWorkflow() if mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT} else None,
+                    enable_api=mode != AppMode.AGENT,
+                    enable_site=mode != AppMode.AGENT,
+                )
+            },
+            relationships=[],
+        ),
+        documents={"app_1": document},
+    )
+
+
 def test_nested_shared_cyclic_tools_round_trip_with_independent_files(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -205,11 +234,17 @@ def test_nested_shared_cyclic_tools_round_trip_with_independent_files(
         assert len(archive.namelist()) == 4
     destination = _account()
     signal = Mock()
+    update_access = Mock()
     monkeypatch.setattr("services.app_dsl_bundle.app_published_workflow_was_updated", signal)
+    monkeypatch.setattr("services.app_dsl_bundle.SystemFeatureService.is_webapp_auth_enabled", lambda: True)
+    monkeypatch.setattr("services.app_dsl_bundle.EnterpriseService.WebAppAuth.update_app_access_mode", update_access)
     imported = bundle_service.import_bundle(bundle, account=destination, dsl_service=AppDslService(sqlite_session))
     signal.send.assert_not_called()
+    update_access.assert_not_called()
     sqlite_session.commit()
     assert signal.send.call_count == 2
+    imported_ids = set(sqlite_session.scalars(select(App.id).where(App.tenant_id == destination.current_tenant_id)))
+    assert {call.args for call in update_access.call_args_list} == {(app_id, "private") for app_id in imported_ids}
     providers = list(
         sqlite_session.scalars(
             select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == destination.current_tenant_id)
@@ -611,3 +646,220 @@ def test_single_app_bundle_keeps_yaml_import_permissions(
     sqlite_session.commit()
     assert imported.mode == AppMode.CHAT
     check.assert_not_called()
+
+
+def test_non_workflow_bundle_rejects_workflow_deployment() -> None:
+    bundle = _single_app_bundle(AppMode.CHAT)
+    bundle.manifest.apps["app_1"].workflow = BundleWorkflow(published=True)
+
+    with pytest.raises(ValueError, match="Only workflow and chatflow apps"):
+        AppDslBundleService.parse_bundle(_archive(bundle))
+
+
+@pytest.mark.parametrize("enabled_field", ["enable_api", "enable_site"])
+def test_agent_bundle_rejects_published_access_flags(enabled_field: str) -> None:
+    bundle = _single_app_bundle(AppMode.AGENT)
+    setattr(bundle.manifest.apps["app_1"], enabled_field, True)
+
+    with pytest.raises(ValueError, match="import unpublished drafts"):
+        AppDslBundleService.parse_bundle(_archive(bundle))
+
+
+def test_agent_bundle_requires_referenced_package() -> None:
+    bundle = _single_app_bundle(AppMode.AGENT)
+    bundle.documents["app_1"]["agent"]["package_ref"] = "missing"
+
+    with pytest.raises(ValueError, match="missing its package"):
+        AppDslBundleService.parse_bundle(_archive(bundle))
+
+
+@pytest.mark.parametrize("corruption", ["entrypoint", "unreachable"])
+def test_parse_rejects_inconsistent_app_resources(corruption: str) -> None:
+    bundle = _single_app_bundle()
+    if corruption == "entrypoint":
+        bundle.manifest.entrypoint = "missing"
+    else:
+        bundle.manifest.resources["app_2"] = BundleApp(file="apps/app_2.yaml", workflow=BundleWorkflow())
+        bundle.documents["app_2"] = {**_document("Unreachable", {}), "bundle_id": "app_2"}
+
+    with pytest.raises(ValueError, match="entrypoint|unreachable"):
+        AppDslBundleService.parse_bundle(_archive(bundle))
+
+
+@pytest.mark.parametrize(
+    ("members", "message"),
+    [
+        ([("other.yaml", "{}")], "missing manifest.yaml"),
+        ([("manifest.yaml", "[]")], "manifest must be a mapping"),
+        ([("manifest.yaml", "[unterminated")], "Invalid app bundle archive"),
+        ([("manifest.yaml", "{}"), ("apps/", "")], "Invalid or oversized"),
+    ],
+)
+def test_parse_rejects_malformed_archive_members(members: list[tuple[str, str]], message: str) -> None:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        for name, content in members:
+            archive.writestr(name, content)
+
+    with pytest.raises(ValueError, match=message):
+        AppDslBundleService.parse_bundle(output.getvalue())
+
+
+def test_parse_limits_both_compressed_and_expanded_archive_size(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = _archive(_single_app_bundle())
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        expanded_size = sum(entry.file_size for entry in archive.infolist())
+    assert expanded_size > len(content)
+    monkeypatch.setattr("services.app_dsl_bundle.DSL_MAX_SIZE", len(content) - 1)
+    with pytest.raises(ValueError, match="10MB size limit"):
+        AppDslBundleService.parse_bundle(content)
+    monkeypatch.setattr("services.app_dsl_bundle.DSL_MAX_SIZE", expanded_size - 1)
+    with pytest.raises(ValueError, match="Invalid or oversized"):
+        AppDslBundleService.parse_bundle(content)
+
+
+@pytest.mark.parametrize("corruption", ["duplicate_app", "unpublished", "name"])
+def test_parse_rejects_invalid_workflow_tool_deployment(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, corruption: str
+) -> None:
+    _, _, content = _seed_bundle(sqlite_session, monkeypatch)
+    bundle = AppDslBundleService.parse_bundle(content)
+    tool = bundle.manifest.tools["tool_1"]
+    if corruption == "duplicate_app":
+        bundle.manifest.tools["tool_2"].app = tool.app
+    elif corruption == "unpublished":
+        deployment = bundle.manifest.apps[tool.app].workflow
+        assert deployment is not None
+        deployment.published = False
+    else:
+        tool.name = "different_name"
+
+    with pytest.raises(ValueError, match="unique bundled workflow|published workflow|names do not match"):
+        AppDslBundleService.parse_bundle(_archive(bundle))
+
+
+def test_legacy_workflow_bundle_rejects_mismatched_relationship_sources() -> None:
+    manifest: dict[str, object] = {
+        "kind": "workflow_bundle",
+        "version": "1",
+        "entrypoint": "app_1",
+        "workflows": {"app_1": {"file": "workflows/app_1.yaml"}},
+        "tools": {},
+        "relationships": {},
+    }
+
+    with pytest.raises(ValueError, match="Invalid legacy workflow bundle"):
+        AppDslBundleService.parse_bundle(_archive(_single_app_bundle(), manifest=manifest))
+
+
+@pytest.mark.parametrize("provider_id", [None, 17])
+def test_workflow_tool_reference_requires_nonempty_string_provider(provider_id: object) -> None:
+    document = _app_document(AppMode.CHAT, {})
+    cast(dict[str, object], document["model_config"])["agent_mode"] = {
+        "tools": [{"provider_type": "workflow", "provider_id": provider_id, "tool_name": "invalid"}]
+    }
+
+    with pytest.raises(ValueError, match="missing its provider identifier"):
+        list(_tool_references(document))
+
+
+def test_legacy_provider_reference_remapping_preserves_custom_display_name() -> None:
+    reference: dict[str, object] = {"provider": "legacy-id", "tool_name": "old_name", "name": "Custom label"}
+
+    _rewrite_reference(reference, "imported-id", "new_name")
+
+    assert reference == {"provider": "imported-id", "tool_name": "new_name", "name": "Custom label"}
+
+
+@pytest.mark.parametrize(
+    ("invalid_source", "message"),
+    [
+        ("unsupported_mode", "App mode does not support"),
+        ("other_workspace", "not in the current workspace"),
+        ("missing_workflow", "Workflow not found"),
+        ("non_workflow_version", "Only workflow and chatflow apps"),
+    ],
+)
+def test_export_rejects_invalid_source_or_workflow_version(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, invalid_source: str, message: str
+) -> None:
+    account, app, _ = _seed_bundle(sqlite_session, monkeypatch)
+    workflow_id = None
+    if invalid_source == "unsupported_mode":
+        app.mode = AppMode.CHANNEL
+    elif invalid_source == "other_workspace":
+        account = _account()
+    elif invalid_source == "missing_workflow":
+        workflow_id = str(uuid4())
+    else:
+        app.mode = AppMode.CHAT
+        workflow_id = str(uuid4())
+
+    with pytest.raises(ValueError if invalid_source != "other_workspace" else NoPermissionError, match=message):
+        AppDslBundleService(sqlite_session).export_bundle(app, account=account, workflow_id=workflow_id)
+
+
+@pytest.mark.parametrize("denial", ["other_workspace", "rbac", "member"])
+def test_import_rejects_unauthorized_workspace_deployments_before_writes(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, denial: str
+) -> None:
+    _, source, content = _seed_bundle(sqlite_session, monkeypatch)
+    caller = _account()
+    caller.role = TenantAccountRole.NORMAL
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=denial == "rbac")
+    monkeypatch.setattr("services.app_dsl_bundle.RBACService.CheckAccess.check", Mock(return_value=False))
+    before = sqlite_session.scalar(select(func.count()).select_from(App))
+
+    with pytest.raises(NoPermissionError):
+        AppDslBundleService(sqlite_session).import_bundle(
+            AppDslBundleService.parse_bundle(content),
+            account=caller,
+            app=source if denial == "other_workspace" else None,
+            dsl_service=AppDslService(sqlite_session),
+        )
+
+    assert not sqlite_session.new
+    assert sqlite_session.scalar(select(func.count()).select_from(App)) == before
+
+
+def test_overwriting_cyclic_entrypoint_preserves_provider_identity_and_replaces_labels(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account, _, _ = _seed_bundle(sqlite_session, monkeypatch)
+    existing_provider = sqlite_session.scalar(select(WorkflowToolProvider).where(WorkflowToolProvider.name == "nested"))
+    assert existing_provider is not None
+    app = sqlite_session.get(App, existing_provider.app_id)
+    assert app is not None
+    old_provider_id, old_workflow_id = existing_provider.id, app.workflow_id
+    service = AppDslBundleService(sqlite_session)
+    bundle = service.parse_bundle(service.export_bundle(app, account=account, workflow_id=app.workflow_id))
+    entrypoint_tool = next(tool for tool in bundle.manifest.tools.values() if tool.app == bundle.manifest.entrypoint)
+    entrypoint_tool.labels = ["image"]
+
+    imported = service.import_bundle(bundle, account=account, app=app, dsl_service=AppDslService(sqlite_session))
+    sqlite_session.commit()
+
+    assert imported.id == app.id
+    assert imported.workflow_id != old_workflow_id
+    providers = list(sqlite_session.scalars(select(WorkflowToolProvider).where(WorkflowToolProvider.app_id == app.id)))
+    assert len(providers) == 1
+    assert providers[0].id == old_provider_id
+    assert providers[0].name == "nested"
+    assert list(
+        sqlite_session.scalars(select(ToolLabelBinding.label_name).where(ToolLabelBinding.tool_id == old_provider_id))
+    ) == ["image"]
+    published = sqlite_session.get(Workflow, imported.workflow_id)
+    assert published is not None
+    shared_reference = next(node["data"] for node in published.graph_dict["nodes"] if node["data"]["type"] == "tool")
+    assert shared_reference["tool_name"] == "shared_2"
+    shared_provider = sqlite_session.get(WorkflowToolProvider, shared_reference["provider_id"])
+    assert shared_provider is not None
+    shared_workflow = sqlite_session.scalar(
+        select(Workflow).where(Workflow.app_id == shared_provider.app_id, Workflow.version == shared_provider.version)
+    )
+    assert shared_workflow is not None
+    back_reference = next(
+        node["data"] for node in shared_workflow.graph_dict["nodes"] if node["data"]["type"] == "tool"
+    )
+    assert back_reference["provider_id"] == old_provider_id
+    assert back_reference["tool_name"] == "nested"
