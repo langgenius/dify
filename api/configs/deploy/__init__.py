@@ -40,6 +40,7 @@ class DeploymentConfig(BaseSettings):
     )
 
     HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE: IMEventTransportMode = Field(
+        IMEventTransportMode.WEBHOOK,
         description="Required deployment-wide transport for Human Input IM provider events."
     )
 

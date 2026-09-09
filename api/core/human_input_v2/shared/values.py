@@ -7,6 +7,7 @@ from typing import NewType, override
 
 AccountId = NewType("AccountId", str)
 ContactId = NewType("ContactId", str)
+RecipientId = NewType("RecipientId", str)
 PlatformEntryId = NewType("PlatformEntryId", str)
 TenantId = NewType("TenantId", str)
 EmailProviderId = NewType("EmailProviderId", str)
