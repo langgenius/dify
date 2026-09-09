@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-07-09T10:55:53.618Z
+// Generated at: 2026-08-27T05:58:11.503Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -13,9 +13,13 @@ type CloudPath =
   | '/cloud/use-dify/build/additional-features'
   | '/cloud/use-dify/build/agent'
   | '/cloud/use-dify/build/chatbot'
+  | '/cloud/use-dify/build/goto-anything'
+  | '/cloud/use-dify/build/new-agent/build'
+  | '/cloud/use-dify/build/new-agent/overview'
   | '/cloud/use-dify/build/orchestrate-node'
   | '/cloud/use-dify/build/predefined-error-handling-logic'
   | '/cloud/use-dify/build/shortcut-key'
+  | '/cloud/use-dify/build/snippet'
   | '/cloud/use-dify/build/text-generator'
   | '/cloud/use-dify/build/version-control'
   | '/cloud/use-dify/build/workflow-chatflow'
@@ -41,6 +45,7 @@ type CloudPath =
   | '/cloud/use-dify/knowledge/knowledge-pipeline/readme'
   | '/cloud/use-dify/knowledge/knowledge-pipeline/upload-files'
   | '/cloud/use-dify/knowledge/knowledge-request-rate-limit'
+  | '/cloud/use-dify/knowledge/knowledge-storage-limit'
   | '/cloud/use-dify/knowledge/manage-knowledge/introduction'
   | '/cloud/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
   | '/cloud/use-dify/knowledge/metadata'
@@ -106,11 +111,14 @@ type UseDifyPath =
   | '/use-dify/build/additional-features'
   | '/use-dify/build/agent'
   | '/use-dify/build/chatbot'
+  | '/use-dify/build/goto-anything'
   | '/use-dify/build/new-agent/build'
   | '/use-dify/build/new-agent/overview'
   | '/use-dify/build/orchestrate-node'
   | '/use-dify/build/predefined-error-handling-logic'
   | '/use-dify/build/shortcut-key'
+  | '/use-dify/build/skills'
+  | '/use-dify/build/snippet'
   | '/use-dify/build/text-generator'
   | '/use-dify/build/version-control'
   | '/use-dify/build/workflow-chatflow'
@@ -137,6 +145,7 @@ type UseDifyPath =
   | '/use-dify/knowledge/knowledge-pipeline/readme'
   | '/use-dify/knowledge/knowledge-pipeline/upload-files'
   | '/use-dify/knowledge/knowledge-request-rate-limit'
+  | '/use-dify/knowledge/knowledge-storage-limit'
   | '/use-dify/knowledge/manage-knowledge/introduction'
   | '/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
   | '/use-dify/knowledge/metadata'
@@ -324,11 +333,14 @@ type SelfHostPath =
   | '/self-host/use-dify/build/additional-features'
   | '/self-host/use-dify/build/agent'
   | '/self-host/use-dify/build/chatbot'
+  | '/self-host/use-dify/build/goto-anything'
   | '/self-host/use-dify/build/new-agent/build'
   | '/self-host/use-dify/build/new-agent/overview'
   | '/self-host/use-dify/build/orchestrate-node'
   | '/self-host/use-dify/build/predefined-error-handling-logic'
   | '/self-host/use-dify/build/shortcut-key'
+  | '/self-host/use-dify/build/skills'
+  | '/self-host/use-dify/build/snippet'
   | '/self-host/use-dify/build/text-generator'
   | '/self-host/use-dify/build/version-control'
   | '/self-host/use-dify/build/workflow-chatflow'
@@ -532,7 +544,7 @@ type DocPathWithoutLangBase =
 export type DocPathWithoutLang = DocPathWithoutLangBase | `${DocPathWithoutLangBase}#${string}`
 
 // Product availability for productless docs paths
-export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {
+export const docPathProductAvailability = {
   '/deploy/advanced-deployments/local-source-code': ['self-host'],
   '/deploy/advanced-deployments/start-the-frontend-docker-container': ['self-host'],
   '/deploy/configuration/environments': ['self-host'],
@@ -549,11 +561,14 @@ export const docPathProductAvailability: Record<string, readonly DocsProduct[]> 
   '/use-dify/build/additional-features': ['cloud', 'self-host'],
   '/use-dify/build/agent': ['cloud', 'self-host'],
   '/use-dify/build/chatbot': ['cloud', 'self-host'],
-  '/use-dify/build/new-agent/build': ['self-host'],
-  '/use-dify/build/new-agent/overview': ['self-host'],
+  '/use-dify/build/goto-anything': ['cloud', 'self-host'],
+  '/use-dify/build/new-agent/build': ['cloud', 'self-host'],
+  '/use-dify/build/new-agent/overview': ['cloud', 'self-host'],
   '/use-dify/build/orchestrate-node': ['cloud', 'self-host'],
   '/use-dify/build/predefined-error-handling-logic': ['cloud', 'self-host'],
   '/use-dify/build/shortcut-key': ['cloud', 'self-host'],
+  '/use-dify/build/skills': ['self-host'],
+  '/use-dify/build/snippet': ['cloud', 'self-host'],
   '/use-dify/build/text-generator': ['cloud', 'self-host'],
   '/use-dify/build/version-control': ['cloud', 'self-host'],
   '/use-dify/build/workflow-chatflow': ['cloud', 'self-host'],
@@ -580,6 +595,7 @@ export const docPathProductAvailability: Record<string, readonly DocsProduct[]> 
   '/use-dify/knowledge/knowledge-pipeline/readme': ['cloud', 'self-host'],
   '/use-dify/knowledge/knowledge-pipeline/upload-files': ['cloud', 'self-host'],
   '/use-dify/knowledge/knowledge-request-rate-limit': ['cloud'],
+  '/use-dify/knowledge/knowledge-storage-limit': ['cloud'],
   '/use-dify/knowledge/manage-knowledge/introduction': ['cloud', 'self-host'],
   '/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents': ['cloud', 'self-host'],
   '/use-dify/knowledge/metadata': ['cloud', 'self-host'],
@@ -639,4 +655,17 @@ export const docPathProductAvailability: Record<string, readonly DocsProduct[]> 
   '/use-dify/workspace/subscription-management': ['cloud'],
   '/use-dify/workspace/team-members-management': ['cloud', 'self-host'],
   '/use-dify/workspace/tools': ['cloud', 'self-host'],
+} as const satisfies Record<string, readonly DocsProduct[]>
+
+export type ProductlessDocPath = keyof typeof docPathProductAvailability
+export type ProductlessDocPathWithAnchor = ProductlessDocPath | `${ProductlessDocPath}#${string}`
+
+export const isProductlessDocPath = (path: string): path is ProductlessDocPath =>
+  Object.hasOwn(docPathProductAvailability, path)
+
+export const isProductlessDocPathWithAnchor = (
+  path: string,
+): path is ProductlessDocPathWithAnchor => {
+  const pathname = path.split('#', 1)[0]
+  return Boolean(pathname && isProductlessDocPath(pathname))
 }

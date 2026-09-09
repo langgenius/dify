@@ -13,12 +13,12 @@ from services.workspace_member_query_service import (
 )
 
 
-def make_context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+def make_context() -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
         account_id="actor-1",
-        active_workspace_id=workspace_id,
+        active_workspace_id="workspace-1",
     )
 
 
@@ -128,18 +128,6 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
             ),
         )
     ]
-
-
-def test_list_current_rejects_missing_workspace_before_calling_ports() -> None:
-    members = RecordingMemberQuery([])
-    roles = RecordingRoleResolver({})
-    service = WorkspaceMemberQueryService(members=members, roles=roles)
-
-    with pytest.raises(RuntimeError, match="Console account admission did not resolve an active workspace"):
-        service.list_current(make_context(workspace_id=None))
-
-    assert members.workspace_ids == []
-    assert roles.calls == []
 
 
 def test_list_current_propagates_role_resolution_failure() -> None:

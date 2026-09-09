@@ -94,7 +94,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             onClick={handleRunWithSyncDraft}
             variant="primary"
             loading={isPending}
-            disabled={isPending || startRunBtnDisabled}
+            disabled={startRunBtnDisabled}
           >
             {t(($) => $['singleRun.startRun'], { ns: 'workflow' })}
           </Button>

@@ -4,9 +4,9 @@ The run request carries model/provider selection in the layer graph. This helper
 keeps Agent construction details out of ``AgentRunRunner`` while accepting an
 already resolved Pydantic AI model from the configured model layer. Tool values
 arriving here are already transformed by Agenton's
-``PYDANTIC_AI_TRANSFORMERS`` preset, while Dify system prompts are rendered into
-temporary ``message_history`` before the call reaches this helper. The caller
-also passes the already resolved ``output_type`` so legacy text output and the
+``PYDANTIC_AI_TRANSFORMERS`` preset. The runner passes Dify system prompts as
+run-level instructions and the context compaction capability directly to
+``Agent.run``. The caller also passes the already resolved ``output_type`` so legacy text output and the
 optional JSON Schema output layer share the same ``Agent`` construction path.
 """
 

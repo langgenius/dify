@@ -69,7 +69,7 @@ describe('MenuBar', () => {
 
   it('should call onInputChange when input changes', () => {
     renderMenuBar()
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
     fireEvent.change(input, { target: { value: 'test search' } })
     expect(defaultProps.onInputChange).toHaveBeenCalledWith('test search')
   })

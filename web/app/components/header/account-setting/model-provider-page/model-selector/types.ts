@@ -35,10 +35,3 @@ export type ModelSelectorModelPredicate = (
   provider: ModelSelectorProvider,
   modelItem: ModelSelectorModel,
 ) => boolean
-
-export const isSameModelSelectorValue = (
-  itemValue: ModelSelectorValue,
-  value: ModelSelectorValue,
-) => itemValue.provider === value.provider && itemValue.model === value.model
-
-export const getModelSelectorValueLabel = (value: ModelSelectorValue) => value.model

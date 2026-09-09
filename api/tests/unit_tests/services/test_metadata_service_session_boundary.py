@@ -1,10 +1,9 @@
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models import Account
@@ -120,10 +119,22 @@ def test_update_documents_metadata_uses_caller_session_for_uploader(sqlite_sessi
     assert document.doc_metadata[BuiltInField.uploader] == "User"
 
 
-def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> None:
-    session = MagicMock()
-    session.scalars.return_value.all.return_value = []
-    dataset = MagicMock(id="dataset-1", tenant_id="tenant-1")
+def test_update_documents_metadata_rejects_foreign_metadata_before_writes(sqlite_session: Session) -> None:
+    dataset = _dataset(built_in_field_enabled=False)
+    document = _document()
+    foreign_metadata = DatasetMetadata(
+        tenant_id="tenant-2",
+        dataset_id="dataset-2",
+        type="string",
+        name="spoofed",
+        created_by="account-2",
+    )
+    foreign_metadata.id = FOREIGN_METADATA_ID
+    sqlite_session.add_all([_account(), dataset, document, foreign_metadata])
+    sqlite_session.commit()
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_flush", lambda _session, _context: transaction_events.append("flush"))
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
     metadata_args = MetadataOperationData(
         operation_data=[
             DocumentMetadataOperation(
@@ -138,19 +149,30 @@ def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> N
         pytest.raises(MetadataResourceNotFoundError, match="Metadata not found"),
         patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
     ):
-        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
+        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=sqlite_session)
 
     lock_check.assert_not_called()
-    session.add.assert_not_called()
-    session.execute.assert_not_called()
-    session.commit.assert_not_called()
+    assert transaction_events == []
+    assert sqlite_session.scalars(select(DatasetMetadataBinding)).all() == []
+    assert sqlite_session.get(Document, DOCUMENT_ID).doc_metadata == {}
 
 
-def test_update_documents_metadata_validates_all_documents_before_writes() -> None:
-    session = MagicMock()
-    metadata = SimpleNamespace(id=METADATA_ID, name="canonical")
-    session.scalars.return_value.all.side_effect = [[metadata], [DOCUMENT_ID]]
-    dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
+def test_update_documents_metadata_validates_all_documents_before_writes(sqlite_session: Session) -> None:
+    dataset = _dataset(built_in_field_enabled=False)
+    document = _document()
+    metadata = DatasetMetadata(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        type="string",
+        name="canonical",
+        created_by="account-1",
+    )
+    metadata.id = METADATA_ID
+    sqlite_session.add_all([_account(), dataset, document, metadata])
+    sqlite_session.commit()
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_flush", lambda _session, _context: transaction_events.append("flush"))
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
     metadata_detail = MetadataDetail(id=metadata.id, name="spoofed", value="value")
     metadata_args = MetadataOperationData(
         operation_data=[
@@ -166,21 +188,29 @@ def test_update_documents_metadata_validates_all_documents_before_writes() -> No
         patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
         patch("services.metadata_service.redis_client.delete"),
     ):
-        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
+        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=sqlite_session)
 
     lock_check.assert_not_called()
-    session.add.assert_not_called()
-    session.execute.assert_not_called()
-    session.commit.assert_not_called()
+    assert transaction_events == []
+    assert sqlite_session.scalars(select(DatasetMetadataBinding)).all() == []
+    assert sqlite_session.get(Document, DOCUMENT_ID).doc_metadata == {}
 
 
-def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
-    session = MagicMock()
-    metadata = SimpleNamespace(id=METADATA_ID, name="canonical")
-    session.scalars.return_value.all.side_effect = [[metadata], [DOCUMENT_ID]]
-    dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
+def test_update_documents_metadata_uses_canonical_metadata_name(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    dataset = _dataset(built_in_field_enabled=False)
     document = _document()
-    session.scalar.return_value = document
+    metadata = DatasetMetadata(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        type="string",
+        name="canonical",
+        created_by="account-1",
+    )
+    metadata.id = METADATA_ID
+    sqlite_session.add_all([_account(), dataset, document, metadata])
+    sqlite_session.commit()
     metadata_args = MetadataOperationData(
         operation_data=[
             DocumentMetadataOperation(
@@ -195,9 +225,15 @@ def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
         patch.object(MetadataService, "knowledge_base_metadata_lock_check"),
         patch("services.metadata_service.redis_client.delete"),
     ):
-        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
+        MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=sqlite_session)
 
-    assert document.doc_metadata == {"canonical": "value"}
+    with sqlite_session_factory() as observer:
+        persisted_document = observer.get(Document, document.id)
+        assert persisted_document is not None
+        assert persisted_document.doc_metadata == {"canonical": "value"}
+        binding = observer.scalar(select(DatasetMetadataBinding))
+        assert binding is not None
+        assert binding.metadata_id == metadata.id
 
 
 def test_metadata_operation_normalizes_uuid_ids() -> None:
@@ -210,25 +246,32 @@ def test_metadata_operation_normalizes_uuid_ids() -> None:
     assert operation.metadata_list[0].id == METADATA_ID
 
 
-def test_document_metadata_details_scopes_binding_to_document_owner() -> None:
-    session = MagicMock()
-    session.scalars.return_value.all.return_value = []
-    document = MagicMock(
-        id="document-1",
-        tenant_id="tenant-1",
-        dataset_id="dataset-1",
-        doc_metadata={"canonical": "value"},
+def test_document_metadata_details_scopes_binding_to_document_owner(sqlite_session: Session) -> None:
+    dataset = _dataset(built_in_field_enabled=False)
+    document = _document()
+    document.doc_metadata = {"canonical": "value"}
+    foreign_metadata = DatasetMetadata(
+        tenant_id="tenant-2",
+        dataset_id="dataset-2",
+        type="string",
+        name="canonical",
+        created_by="account-2",
     )
-    document.get_built_in_fields.return_value = []
+    foreign_metadata.id = FOREIGN_METADATA_ID
+    foreign_binding = DatasetMetadataBinding(
+        tenant_id="tenant-2",
+        dataset_id="dataset-2",
+        document_id=document.id,
+        metadata_id=foreign_metadata.id,
+        created_by="account-2",
+    )
+    sqlite_session.add_all([_account(), dataset, document, foreign_metadata, foreign_binding])
+    sqlite_session.commit()
 
-    assert Document.get_doc_metadata_details(document, session=session) == []
+    details = document.get_doc_metadata_details(session=sqlite_session)
 
-    statement = str(session.scalars.call_args.args[0])
-    assert "dataset_metadatas.tenant_id" in statement
-    assert "dataset_metadatas.dataset_id" in statement
-    assert "dataset_metadata_bindings.tenant_id" in statement
-    assert "dataset_metadata_bindings.dataset_id" in statement
-    assert "dataset_metadata_bindings.document_id" in statement
+    assert details is not None
+    assert [detail for detail in details if detail["id"] != "built-in"] == []
 
 
 def test_get_dataset_metadatas_uses_caller_session(monkeypatch, sqlite_session: Session) -> None:

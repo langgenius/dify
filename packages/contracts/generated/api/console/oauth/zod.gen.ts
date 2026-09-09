@@ -62,9 +62,9 @@ export const zOAuthProviderAccountResponse = z.object({
   avatar: z.string().nullish(),
   email: z.string(),
   id: z.string(),
-  interface_language: z.string(),
+  interface_language: z.string().nullable(),
   name: z.string(),
-  timezone: z.string(),
+  timezone: z.string().nullable(),
 })
 
 /**
@@ -134,6 +134,7 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath = z.ob
 
 export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.object({
   credential_id: z.string().optional(),
+  visibility: z.string().optional(),
 })
 
 /**
@@ -144,6 +145,10 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse =
 
 export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
   provider: z.string(),
+})
+
+export const zGetOauthPluginByProviderToolAuthorizationUrlQuery = z.object({
+  visibility: z.enum(['all_team_members', 'only_me']).optional(),
 })
 
 /**

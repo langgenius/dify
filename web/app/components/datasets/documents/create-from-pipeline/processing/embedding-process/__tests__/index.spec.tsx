@@ -1,21 +1,17 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
-
-const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
 
 // Mock next/link
 vi.mock('@/next/link', () => ({
@@ -36,14 +32,8 @@ vi.mock('@/next/link', () => ({
 }))
 
 // Mock provider context
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: CloudPlan = 'sandbox'
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling: mockEnableBilling,
-    plan: { type: mockPlanType },
-  }),
-}))
 
 vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
   default: ({
@@ -149,6 +139,20 @@ const createDefaultProps = (
   ...overrides,
 })
 
+function render(ui: ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -158,7 +162,7 @@ describe('EmbeddingProcess', () => {
     documentIdCounter = 0
 
     // Reset mock states
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
     mockIndexingStatusData = []
 
@@ -199,7 +203,7 @@ describe('EmbeddingProcess', () => {
   describe('Billing and Upgrade Banner', () => {
     // Tests for billing-related UI
     it('should not show upgrade banner when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -210,7 +214,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner when billing is enabled and plan is not team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const props = createDefaultProps()
 
@@ -222,7 +226,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show upgrade banner when plan is team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const props = createDefaultProps()
 
@@ -234,7 +238,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner for professional plan', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'professional'
       const props = createDefaultProps()
 
@@ -386,7 +390,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not suggest an upgrade to team users', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -650,29 +654,15 @@ describe('EmbeddingProcess', () => {
   })
 
   describe('User Interactions', () => {
-    // Tests for button clicks and navigation
-    it('should navigate to document list when nav button is clicked', async () => {
+    it('should link to the document list and invalidate its cache on activation', () => {
       const props = createDefaultProps({ datasetId: 'my-dataset-123' })
 
       render(<EmbeddingProcess {...props} />)
-      const navButton = screen.getByText('datasetCreation.stepThree.navTo')
-      fireEvent.click(navButton)
+      const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
+      expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
+      fireEvent.click(link)
 
       expect(mockInvalidDocumentList).toHaveBeenCalled()
-      expect(mockPush).toHaveBeenCalledWith('/datasets/my-dataset-123/documents')
-    })
-
-    it('should call invalidDocumentList before navigation', () => {
-      const props = createDefaultProps()
-      const callOrder: string[] = []
-      mockInvalidDocumentList.mockImplementation(() => callOrder.push('invalidate'))
-      mockPush.mockImplementation(() => callOrder.push('push'))
-
-      render(<EmbeddingProcess {...props} />)
-      const navButton = screen.getByText('datasetCreation.stepThree.navTo')
-      fireEvent.click(navButton)
-
-      expect(callOrder).toEqual(['invalidate', 'push'])
     })
   })
 
@@ -1073,7 +1063,7 @@ describe('EmbeddingProcess', () => {
   describe('Priority Label', () => {
     // Tests for priority label display
     it('should show priority label when billing is enabled', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -1092,7 +1082,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show priority label when billing is disabled', async () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
         createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),

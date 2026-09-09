@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from dify_agent.client import Client
 from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.factory import create_agent_backend_client
@@ -102,6 +102,39 @@ class AgentWorkspaceService:
                 AgentWorkspace.owner_scope_key == expected_owner_scope.owner_scope_key,
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
+        )
+
+    @classmethod
+    def resolve_active_binding_for_scope(
+        cls,
+        *,
+        session: Session,
+        scope: WorkspaceOwnerScope,
+        agent_id: str,
+    ) -> AgentWorkspaceBinding | None:
+        """Return the ACTIVE participant for a stable Workspace owner scope."""
+
+        return session.scalar(
+            select(AgentWorkspaceBinding)
+            .join(
+                AgentWorkspace,
+                (AgentWorkspace.tenant_id == AgentWorkspaceBinding.tenant_id)
+                & (AgentWorkspace.id == AgentWorkspaceBinding.workspace_id),
+            )
+            .where(
+                AgentWorkspaceBinding.tenant_id == scope.tenant_id,
+                AgentWorkspaceBinding.app_id == scope.app_id,
+                AgentWorkspaceBinding.agent_id == agent_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspace.tenant_id == scope.tenant_id,
+                AgentWorkspace.app_id == scope.app_id,
+                AgentWorkspace.owner_type == scope.owner_type,
+                AgentWorkspace.owner_id == scope.owner_id,
+                AgentWorkspace.owner_scope_key == scope.owner_scope_key,
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+            .order_by(AgentWorkspaceBinding.created_at.desc())
+            .limit(1)
         )
 
     @classmethod
@@ -298,6 +331,37 @@ class AgentWorkspaceService:
         return retired
 
     @classmethod
+    def retire_all_for_conversation(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+    ) -> list[str]:
+        """Retire all ACTIVE conversation-owned Workspaces for one Chatflow conversation."""
+
+        workspaces = session.scalars(
+            select(AgentWorkspace).where(
+                AgentWorkspace.tenant_id == tenant_id,
+                AgentWorkspace.app_id == app_id,
+                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.CONVERSATION,
+                AgentWorkspace.owner_id == conversation_id,
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        ).all()
+        retired: list[str] = []
+        for workspace in workspaces:
+            workspace_id = cls.retire_workspace(
+                session=session,
+                tenant_id=tenant_id,
+                workspace_id=workspace.id,
+            )
+            if workspace_id is not None:
+                retired.append(workspace_id)
+        return retired
+
+    @classmethod
     def collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
         with session_factory.create_session() as session:
             binding = session.scalar(
@@ -364,46 +428,68 @@ class AgentWorkspaceService:
                 .order_by(AgentWorkspaceBinding.created_at)
             ).all()
             if not bindings:
-                logger.error(
-                    "RETIRED Workspace has no Binding available for physical collection",
-                    extra={"tenant_id": tenant_id, "workspace_id": workspace_id},
+                raise AgentWorkspaceError(
+                    f"RETIRED Workspace has no RETIRED Binding: tenant_id={tenant_id}, workspace_id={workspace_id}"
                 )
-                return
             anchor = bindings[0]
-            remaining_ids = [binding.id for binding in bindings[1:]]
+            remaining = [(binding.id, binding.backend_binding_ref) for binding in bindings[1:]]
             workspace_ref = workspace.backend_workspace_ref
             binding_ref = anchor.backend_binding_ref
             anchor_id = anchor.id
+
+        failures: list[str] = []
+        first_error: Exception | None = None
         with cls._client() as client:
-            client.destroy_execution_binding_sync(
-                DestroyExecutionBindingRequest(
-                    binding_ref=binding_ref,
-                    workspace_ref=workspace_ref,
-                    destroy_workspace=True,
+            targets = [(anchor_id, binding_ref, workspace_ref, True)] + [
+                (binding_id, backend_binding_ref, None, False) for binding_id, backend_binding_ref in remaining
+            ]
+            for binding_id, backend_binding_ref, target_workspace_ref, destroy_workspace in targets:
+                try:
+                    client.destroy_execution_binding_sync(
+                        DestroyExecutionBindingRequest(
+                            binding_ref=backend_binding_ref,
+                            workspace_ref=target_workspace_ref,
+                            destroy_workspace=destroy_workspace,
+                        )
+                    )
+                except Exception as exc:
+                    failures.append(binding_id)
+                    if first_error is None:
+                        first_error = exc
+                    logger.exception(
+                        "Failed to destroy retired Agent Workspace Binding",
+                        extra={
+                            "tenant_id": tenant_id,
+                            "workspace_id": workspace_id,
+                            "binding_id": binding_id,
+                            "destroy_workspace": destroy_workspace,
+                        },
+                    )
+        if failures:
+            if len(failures) == 1 and first_error is not None:
+                raise first_error
+            raise AgentWorkspaceError(
+                f"Failed to destroy {len(failures)} RETIRED Workspace Binding(s): {', '.join(failures)}"
+            ) from first_error
+
+        binding_ids = [anchor_id, *(binding_id for binding_id, _binding_ref in remaining)]
+        with session_factory.create_session() as session:
+            session.execute(
+                delete(AgentWorkspaceBinding).where(
+                    AgentWorkspaceBinding.id.in_(binding_ids),
+                    AgentWorkspaceBinding.tenant_id == tenant_id,
+                    AgentWorkspaceBinding.workspace_id == workspace_id,
+                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.RETIRED,
                 )
             )
-        with session_factory.create_session() as session:
-            stored_workspace = session.scalar(
-                select(AgentWorkspace).where(
+            session.execute(
+                delete(AgentWorkspace).where(
                     AgentWorkspace.id == workspace_id,
                     AgentWorkspace.tenant_id == tenant_id,
                     AgentWorkspace.status == AgentWorkingResourceStatus.RETIRED,
                 )
             )
-            stored_anchor = session.scalar(
-                select(AgentWorkspaceBinding).where(
-                    AgentWorkspaceBinding.id == anchor_id,
-                    AgentWorkspaceBinding.tenant_id == tenant_id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.RETIRED,
-                )
-            )
-            if stored_workspace is not None:
-                session.delete(stored_workspace)
-            if stored_anchor is not None:
-                session.delete(stored_anchor)
             session.commit()
-        for remaining_id in remaining_ids:
-            cls.collect_retired_binding(tenant_id=tenant_id, binding_id=remaining_id)
 
     @staticmethod
     def validate_binding_generation(
@@ -430,6 +516,7 @@ class AgentWorkspaceService:
         return create_agent_backend_client(
             base_url=base_url,
             api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+            timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
         )
 
 

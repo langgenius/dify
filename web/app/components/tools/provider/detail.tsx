@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   Collection,
   CustomCollectionBackend,
@@ -16,7 +17,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -29,7 +30,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,9 +46,9 @@ import ConfigCredential from '@/app/components/tools/setting/build-in/config-cre
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getLanguage } from '@/i18n-config/language'
+import { consoleQuery } from '@/service/console'
 import {
   deleteWorkflowTool,
   fetchBuiltInToolList,
@@ -92,17 +93,23 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
-  const { modelProviders: providers } = useProviderContext()
+  const { data: modelProvider } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data.find((provider) => provider.provider === collection?.id),
+    }),
+  )
   const queryClient = useQueryClient()
   const showSettingAuthModal = async () => {
     if (!canOpenCredentialSettings) return
 
     if (isModel) {
-      const summary = providers.find((item) => item.provider === collection?.id)
-      if (!summary) return
+      if (!modelProvider) return
       try {
-        const response = await queryClient.ensureQueryData(modelProviderDetailsQueryOptions())
-        const provider = response.data.find((item) => item.provider === summary.provider)
+        const response = await queryClient.query({
+          ...modelProviderDetailsQueryOptions(),
+          staleTime: 'static',
+        })
+        const provider = response.data.find((item) => item.provider === modelProvider.provider)
         if (!provider) return
         setShowModelModal({
           payload: {
@@ -336,24 +343,20 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     !isDetailLoading &&
                     customCollection && (
                       <>
-                        <Button
-                          nativeButton={false}
-                          variant="primary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
-                          render={
-                            <a
-                              href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
-                              rel="noreferrer"
-                              target="_blank"
-                              aria-label={t(($) => $.openInStudio, { ns: 'tools' })}
-                            />
-                          }
+                        <a
+                          href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
+                          rel="noreferrer"
+                          target="_blank"
+                          className={cn(
+                            buttonVariants({ variant: 'primary' }),
+                            'my-3 h-8 min-w-0 flex-1 rounded-lg py-2',
+                          )}
                         >
                           <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
                           <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
-                        </Button>
+                        </a>
                         <Button
                           variant="secondary"
                           className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}

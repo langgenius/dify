@@ -63,7 +63,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
-    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'Jane')
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'Jane')
 
     const items = getMemberButtons()
     expect(items).toHaveLength(1)
@@ -81,7 +81,7 @@ describe('MemberSelector', () => {
     expect(mockOnSelect).toHaveBeenCalledWith('2')
     await waitFor(() => {
       expect(
-        screen.queryByRole('textbox', { name: 'common.operation.search' }),
+        screen.queryByRole('searchbox', { name: 'common.operation.search' }),
       ).not.toBeInTheDocument()
     })
   })
@@ -91,7 +91,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
-    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'john@')
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'john@')
 
     const items = getMemberButtons()
     expect(items).toHaveLength(1)
@@ -126,7 +126,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
-    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'noname@')
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'noname@')
 
     const items = getMemberButtons()
     expect(items).toHaveLength(1)
@@ -149,7 +149,7 @@ describe('MemberSelector', () => {
 
     await user.click(getTrigger())
     await user.type(
-      screen.getByRole('textbox', { name: 'common.operation.search' }),
+      screen.getByRole('searchbox', { name: 'common.operation.search' }),
       'xyz-no-match-xyz',
     )
 
@@ -168,7 +168,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
-    await user.type(screen.getByRole('textbox', { name: 'common.operation.search' }), 'john')
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'john')
 
     expect(screen.getByRole('button', { name: /John/ })).toBeInTheDocument()
   })
@@ -202,7 +202,7 @@ describe('MemberSelector', () => {
 
     expect(mockOnSelect).toHaveBeenCalledWith('2')
     expect(
-      screen.queryByRole('textbox', { name: 'common.operation.search' }),
+      screen.queryByRole('searchbox', { name: 'common.operation.search' }),
     ).not.toBeInTheDocument()
   })
 })

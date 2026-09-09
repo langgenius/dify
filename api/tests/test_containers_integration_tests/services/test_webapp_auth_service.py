@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from libs.password import hash_password
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, Site
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
-from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
+from services.webapp_auth_service import WebAppAuthService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -67,7 +68,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -76,7 +77,7 @@ class TestWebAppAuthService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -120,7 +121,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         # Hash password
@@ -139,7 +140,7 @@ class TestWebAppAuthService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -200,8 +201,8 @@ class TestWebAppAuthService:
             code=fake.unique.lexify(text="??????"),
             description=fake.text(max_nb_chars=100),
             default_language="en-US",
-            status="normal",
-            customize_token_strategy="not_allow",
+            status=AppStatus.NORMAL,
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         )
         db_session_with_containers.add(site)
         db_session_with_containers.commit()
@@ -342,7 +343,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -497,7 +498,7 @@ class TestWebAppAuthService:
 
         # Verify token generation parameters
         token_call_args = mock_external_service_dependencies["token_manager"].generate_token.call_args
-        assert token_call_args[1]["account"] == account
+        assert token_call_args[1]["account_id"] == account.id
         assert token_call_args[1]["email"] == account.email
         assert token_call_args[1]["token_type"] == "email_code_login"
         assert "code" in token_call_args[1]["additional_data"]
@@ -537,7 +538,7 @@ class TestWebAppAuthService:
 
         # Verify token generation parameters
         token_call_args = mock_external_service_dependencies["token_manager"].generate_token.call_args
-        assert token_call_args[1]["account"] is None
+        assert token_call_args[1]["account_id"] is None
         assert token_call_args[1]["email"] == test_email
         assert token_call_args[1]["token_type"] == "email_code_login"
         assert "code" in token_call_args[1]["additional_data"]
@@ -724,8 +725,8 @@ class TestWebAppAuthService:
             code=fake.unique.lexify(text="??????"),
             description=fake.text(max_nb_chars=100),
             default_language="en-US",
-            status="normal",
-            customize_token_strategy="not_allow",
+            status=AppStatus.NORMAL,
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         )
         db_session_with_containers.add(site)
         db_session_with_containers.commit()
@@ -825,90 +826,3 @@ class TestWebAppAuthService:
             WebAppAuthService.is_app_require_permission_check(session=db_session_with_containers)
 
         assert "Either app_code or app_id must be provided." in str(exc_info.value)
-
-    def test_get_app_auth_type_with_access_mode_public(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test app authentication type for public access mode.
-
-        This test verifies:
-        - Proper authentication type determination for public mode
-        - Correct return value
-        - Mock service integration
-        """
-        # Arrange: Setup test with public access mode
-
-        # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(access_mode="public", session=db_session_with_containers)
-
-        # Assert: Verify correct result
-        assert result == WebAppAuthType.PUBLIC
-
-    def test_get_app_auth_type_with_access_mode_private(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test app authentication type for private access mode.
-
-        This test verifies:
-        - Proper authentication type determination for private mode
-        - Correct return value
-        - Mock service integration
-        """
-        # Arrange: Setup test with private access mode
-
-        # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(access_mode="private", session=db_session_with_containers)
-
-        # Assert: Verify correct result
-        assert result == WebAppAuthType.INTERNAL
-
-    def test_get_app_auth_type_with_app_code(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test app authentication type using app code.
-
-        This test verifies:
-        - Proper authentication type determination using app code
-        - Correct return value
-        - Mock service integration
-        """
-        # Arrange: Setup mock for enterprise service
-        mock_external_service_dependencies["app_service"].get_app_id_by_code.return_value = "mock_app_id"
-        setting = type("MockWebAppAuth", (), {"access_mode": "sso_verified"})()
-        mock_external_service_dependencies[
-            "enterprise_service"
-        ].WebAppAuth.get_app_access_mode_by_id.return_value = setting
-
-        # Act: Execute authentication type determination
-        result: WebAppAuthType = WebAppAuthService.get_app_auth_type(
-            app_code="mock_app_code", session=db_session_with_containers
-        )
-
-        # Assert: Verify correct result
-        assert result == WebAppAuthType.EXTERNAL
-
-        # Verify mock service was called correctly
-        mock_external_service_dependencies[
-            "enterprise_service"
-        ].WebAppAuth.get_app_access_mode_by_id.assert_called_once_with(app_id="mock_app_id")
-
-    def test_get_app_auth_type_no_parameters(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test app authentication type with no parameters.
-
-        This test verifies:
-        - Proper error handling when no parameters provided
-        - Correct exception type and message
-        """
-        # Arrange: No parameters provided
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.get_app_auth_type(session=db_session_with_containers)
-
-        assert "Either app_code or access_mode must be provided." in str(exc_info.value)

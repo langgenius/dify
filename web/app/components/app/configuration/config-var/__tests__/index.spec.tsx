@@ -3,6 +3,7 @@ import type { IConfigVarProps } from '../index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { vi } from 'vite-plus/test'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -150,6 +151,29 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
+    })
+
+    it('commits variable keyboard sorting only after confirmation', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange = vi.fn()
+      const first = createPromptVariable({ key: 'first', name: 'First' })
+      const second = createPromptVariable({ key: 'second', name: 'Second' })
+      renderConfigVar({ promptVariables: [first, second], onPromptVariablesChange })
+      const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+      handle.focus()
+      await user.keyboard('{Enter}{ArrowDown}')
+      expect(handle).toHaveFocus()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+      await user.keyboard('{Enter}')
+      expect(onPromptVariablesChange).toHaveBeenCalledExactlyOnceWith([second, first])
+    })
+
+    it('does not expose keyboard sorting in readonly mode', () => {
+      renderConfigVar({
+        readonly: true,
+        promptVariables: [createPromptVariable(), createPromptVariable()],
+      })
+      expect(screen.queryByRole('button', { name: /sort.handle/ })).not.toBeInTheDocument()
     })
 
     it('should ignore sortable updates when the variable order is unchanged', () => {

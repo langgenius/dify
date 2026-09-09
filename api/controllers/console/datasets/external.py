@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import UsageCountResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
@@ -22,7 +23,6 @@ from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -219,6 +219,16 @@ class ExternalApiTemplateListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
+        # if dify_config.RBAC_ENABLED:
+        #     enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+        #         current_tenant_id,
+        #         current_user.id,
+        #         external_knowledge_api.id,
+        #         enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        #     )
+        #     initialize_created_app_rbac_access_task.delay(
+        #         current_tenant_id, current_user.id, dataset_id=external_knowledge_api.id)
+
         return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 201
 
 
@@ -340,9 +350,7 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT, resource_required=False
-    )
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EXTERNAL_CONNECT, Workspace()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -401,7 +409,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
     @model_validate(ExternalHitTestingPayload)
     def post(self, req_data: ExternalHitTestingPayload, session: Session, current_user: Account, dataset_id: UUID):

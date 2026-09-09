@@ -277,7 +277,7 @@ def test_dify_prepared_llm_requires_model_schema() -> None:
 
 def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytest.MonkeyPatch) -> None:
     model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
-    prepared = DifyPreparedLLM(model_instance)
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"created_by": "workflow"})
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
 
@@ -299,6 +299,7 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
         model_parameters={"temperature": 0.2},
         stop=["done"],
         stream=True,
+        request_metadata={"created_by": "workflow"},
     )
 
 

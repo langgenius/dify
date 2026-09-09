@@ -3,6 +3,8 @@ from typing import override
 
 from sqlalchemy.orm import Session
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -24,6 +26,7 @@ class RerankModelRunner(BaseRerankRunner):
 
     @override
     @trace_span()
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def run(
         self,
         query: str,

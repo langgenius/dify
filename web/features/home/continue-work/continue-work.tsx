@@ -3,6 +3,7 @@
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import Link from '@/next/link'
 import { ContinueWorkItem } from './item'
 
@@ -33,7 +34,7 @@ export function ContinueWork({ apps, className }: ContinueWorkProps) {
           <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
         </Link>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5 pt-2">
+      <div className={cn('gap-2.5 pt-2', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
         {apps.map((app) => (
           <ContinueWorkItem key={app.id} app={app} />
         ))}

@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, call
 import pytest
 from celery.exceptions import Retry
 
+from tests.unit_tests.config_override import apply_config_overrides
+
 
 def test_install_default_plugins_task_uses_plugin_queue() -> None:
     from tasks.install_default_plugins_task import install_default_plugins_task
@@ -71,7 +73,7 @@ def test_install_default_plugins_task_queues_model_configuration_after_daemon_in
 
     plugin_id = "langgenius/openai"
     plugin_identifier = "langgenius/openai:1.0.0@aaa"
-    monkeypatch.setattr(task_module.dify_config, "NEW_USER_DEFAULT_MODELS", "llm:provider:model")
+    apply_config_overrides(monkeypatch, NEW_USER_DEFAULT_MODELS="llm:provider:model")
     monkeypatch.setattr(
         task_module.marketplace,
         "batch_fetch_plugin_manifests",
@@ -96,7 +98,7 @@ def test_configure_default_models_task_retries_while_plugins_are_installing(
     import tasks.install_default_plugins_task as task_module
     from tasks.install_default_plugins_task import configure_default_models_task
 
-    monkeypatch.setattr(task_module.dify_config, "NEW_USER_DEFAULT_MODELS", "llm:provider:model")
+    apply_config_overrides(monkeypatch, NEW_USER_DEFAULT_MODELS="llm:provider:model")
     monkeypatch.setattr(
         task_module.PluginService,
         "fetch_install_task",
@@ -115,10 +117,11 @@ def test_configure_default_models_task_sets_each_explicit_model(monkeypatch: pyt
     import tasks.install_default_plugins_task as task_module
     from tasks.install_default_plugins_task import configure_default_models_task
 
-    monkeypatch.setattr(
-        task_module.dify_config,
-        "NEW_USER_DEFAULT_MODELS",
-        ("llm:langgenius/openai/openai:gpt-4o-mini,text-embedding:langgenius/openai/openai:text-embedding-3-small"),
+    apply_config_overrides(
+        monkeypatch,
+        NEW_USER_DEFAULT_MODELS=(
+            "llm:langgenius/openai/openai:gpt-4o-mini,text-embedding:langgenius/openai/openai:text-embedding-3-small"
+        ),
     )
     fetch_install_task = MagicMock(
         return_value=SimpleNamespace(

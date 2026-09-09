@@ -29,6 +29,7 @@ const getErrorMessage = (error: unknown) => {
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
+  const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -174,10 +175,17 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               </div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+              <label
+                htmlFor={verificationCodeInputId}
+                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+              >
                 {t(($) => $['members.transferModal.codeLabel'], { ns: 'common' })}
-              </div>
+              </label>
               <Input
+                id={verificationCodeInputId}
+                name="verification-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 className="w-full!"
                 placeholder={t(($) => $['members.transferModal.codePlaceholder'], { ns: 'common' })}
                 value={code}

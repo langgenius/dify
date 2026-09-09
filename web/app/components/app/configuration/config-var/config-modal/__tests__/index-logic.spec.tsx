@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -175,5 +174,27 @@ describe('ConfigModal logic', () => {
     })
 
     expect(latestFormProps?.modelId).toBe('model-1')
+  })
+
+  it('should pass object json_schema to the editor as JSON text', () => {
+    const jsonSchema = {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+      },
+      required: ['id', 'name'],
+    }
+
+    renderConfigModal(
+      createPayload({
+        type: InputVarType.jsonObject,
+        label: 'dsmworksheet',
+        variable: 'dsmworksheet',
+        json_schema: jsonSchema as InputVar['json_schema'],
+      }),
+    )
+
+    expect(latestFormProps?.jsonSchemaStr).toBe(JSON.stringify(jsonSchema, null, 2))
   })
 })

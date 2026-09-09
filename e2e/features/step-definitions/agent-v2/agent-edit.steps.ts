@@ -86,7 +86,7 @@ When(
     const copyName = createE2EResourceName('Agent', 'copy')
 
     await page.goto('/agents')
-    const card = page.getByRole('article', { name: agentName, exact: true })
+    const card = page.getByRole('listitem', { name: agentName, exact: true })
 
     await expect(card).toBeVisible({ timeout: 30_000 })
     await card.hover()

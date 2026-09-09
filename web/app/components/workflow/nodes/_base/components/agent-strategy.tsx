@@ -17,7 +17,14 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -165,8 +172,15 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   className="w-full"
                   min={def.min}
                   max={def.max}
-                  aria-label={label}
-                />
+                >
+                  <SliderLabel className="sr-only">{label}</SliderLabel>
+                  <SliderControl>
+                    <SliderTrack>
+                      <SliderIndicator />
+                      <SliderThumb />
+                    </SliderTrack>
+                  </SliderControl>
+                </Slider>
                 <NumberField
                   value={value}
                   min={def.min}

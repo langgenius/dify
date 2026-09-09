@@ -18,6 +18,21 @@ class WorkflowIdFormatError(Exception):
     pass
 
 
+TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE = "trigger_workflow_service_mode_unavailable"
+TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE = (
+    "This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP."
+)
+
+
+class TriggerWorkflowServiceModeUnavailableError(Exception):
+    """Raised when a trigger-entry Workflow is invoked through a manual service surface."""
+
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+
+    def __init__(self) -> None:
+        super().__init__(TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE)
+
+
 class QuotaExceededError(ValueError):
     """Raised when billing quota is exceeded for a feature."""
 

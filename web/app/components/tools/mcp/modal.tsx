@@ -12,6 +12,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
@@ -63,6 +64,10 @@ type MCPModalContentProps = {
 
 const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) => {
   const { t } = useTranslation()
+  const serverUrlInputId = useId()
+  const nameInputId = useId()
+  const serverIdentifierInputId = useId()
+  const serverIdentifierDescriptionId = useId()
 
   const { isCreate, originalServerUrl, originalServerID, appIconRef, state, actions } =
     useMCPModalForm(data)
@@ -158,11 +163,12 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         {/* Server URL */}
         <div>
           <div className="mb-1 flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">
+            <label htmlFor={serverUrlInputId} className="system-sm-medium text-text-secondary">
               {t(($) => $['mcp.modal.serverUrl'], { ns: 'tools' })}
-            </span>
+            </label>
           </div>
           <Input
+            id={serverUrlInputId}
             value={state.url}
             onChange={(e) => actions.setUrl(e.target.value)}
             onBlur={(e) => actions.handleUrlBlur(e.target.value.trim())}
@@ -181,11 +187,12 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         <div className="flex space-x-3">
           <div className="grow pb-1">
             <div className="mb-1 flex h-6 items-center">
-              <span className="system-sm-medium text-text-secondary">
+              <label htmlFor={nameInputId} className="system-sm-medium text-text-secondary">
                 {t(($) => $['mcp.modal.name'], { ns: 'tools' })}
-              </span>
+              </label>
             </div>
             <Input
+              id={nameInputId}
               value={state.name}
               onChange={(e) => actions.setName(e.target.value)}
               placeholder={t(($) => $['mcp.modal.namePlaceholder'], { ns: 'tools' })}
@@ -228,14 +235,22 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         {/* Server Identifier */}
         <div>
           <div className="flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">
+            <label
+              htmlFor={serverIdentifierInputId}
+              className="system-sm-medium text-text-secondary"
+            >
               {t(($) => $['mcp.modal.serverIdentifier'], { ns: 'tools' })}
-            </span>
+            </label>
           </div>
-          <div className="mb-1 body-xs-regular text-text-tertiary">
+          <div
+            id={serverIdentifierDescriptionId}
+            className="mb-1 body-xs-regular text-text-tertiary"
+          >
             {t(($) => $['mcp.modal.serverIdentifierTip'], { ns: 'tools' })}
           </div>
           <Input
+            id={serverIdentifierInputId}
+            aria-describedby={serverIdentifierDescriptionId}
             value={state.serverIdentifier}
             onChange={(e) => actions.setServerIdentifier(e.target.value)}
             placeholder={t(($) => $['mcp.modal.serverIdentifierPlaceholder'], { ns: 'tools' })}

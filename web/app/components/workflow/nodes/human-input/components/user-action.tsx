@@ -74,7 +74,10 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
     <div className="flex items-center gap-1">
       <div className="shrink-0">
         <Input
-          className="w-[120px]"
+          aria-label={t(($) => $[`${i18nPrefix}.userActions.actionNamePlaceholder`], {
+            ns: 'workflow',
+          })}
+          className="w-30"
           value={data.id}
           placeholder={t(($) => $[`${i18nPrefix}.userActions.actionNamePlaceholder`], {
             ns: 'workflow',
@@ -85,6 +88,9 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
       </div>
       <div className="grow">
         <Input
+          aria-label={t(($) => $[`${i18nPrefix}.userActions.buttonTextPlaceholder`], {
+            ns: 'workflow',
+          })}
           value={data.title}
           placeholder={t(($) => $[`${i18nPrefix}.userActions.buttonTextPlaceholder`], {
             ns: 'workflow',

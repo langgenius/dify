@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 from fields.agent_fields import AgentComposerCandidatesResponse
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, DeclaredOutputType
 from models.dataset import Dataset
@@ -22,8 +24,24 @@ _GRAPH = {
             },
         },
         {"id": "llm-1", "data": {"type": "llm", "title": "LLM"}},
-        {"id": "agent-up", "data": {"type": "agent", "version": "2", "title": "Upstream Agent"}},
-        {"id": "agent-target", "data": {"type": "agent", "version": "2", "title": "Target Agent"}},
+        {
+            "id": "agent-up",
+            "data": {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "title": "Upstream Agent",
+            },
+        },
+        {
+            "id": "agent-target",
+            "data": {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "title": "Target Agent",
+            },
+        },
         {"id": "end", "data": {"type": "end", "title": "END"}},
     ],
     "edges": [
@@ -95,6 +113,31 @@ def test_results_differ_per_node_id():
 
     assert {e["node_id"] for e in entries_target} == {"start-1", "llm-1", "agent-up"}
     assert {e["node_id"] for e in entries_llm} == {"start-1"}
+
+
+def test_historical_agent_version_two_uses_inferred_outputs() -> None:
+    graph = {
+        "nodes": [
+            {"id": "legacy", "data": {"type": "agent", "version": "2", "title": "Legacy"}},
+            {
+                "id": "target",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            },
+        ],
+        "edges": [{"source": "legacy", "target": "target"}],
+    }
+    declared_loader = Mock(return_value=[DeclaredOutputConfig(name="declared", type=DeclaredOutputType.STRING)])
+
+    entries, _ = previous_node_output_candidates(
+        graph=graph,
+        node_id="target",
+        declared_outputs_loader=declared_loader,
+        draft_variables_loader=lambda node_id: [("legacy_output", "string")] if node_id == "legacy" else [],
+        system_variables_loader=lambda: [],
+    )
+
+    assert [entry["output"] for entry in entries] == ["legacy_output"]
+    declared_loader.assert_not_called()
 
 
 def test_previous_outputs_capped_and_flagged():

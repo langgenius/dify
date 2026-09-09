@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -79,6 +81,61 @@ describe('CommentIcon', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUserId = 'user-1'
+  })
+
+  it('opens with the keyboard and moves an authored comment in canvas coordinates', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    const onPositionUpdate = vi.fn()
+    function Comment() {
+      const [comment, setComment] = useState(() => createComment())
+      return (
+        <CommentIcon
+          comment={comment}
+          onClick={onClick}
+          onPositionUpdate={(position) => {
+            onPositionUpdate(position)
+            setComment((current) => ({
+              ...current,
+              position_x: position.x,
+              position_y: position.y,
+            }))
+          }}
+        />
+      )
+    }
+    render(<Comment />)
+    await user.tab()
+    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
+    expect(marker).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onClick).toHaveBeenCalledTimes(1)
+    await user.keyboard('{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
+    expect(onPositionUpdate).toHaveBeenLastCalledWith({ x: 5, y: 20 })
+    expect(marker).toHaveFocus()
+    onPositionUpdate.mockClear()
+    await user.keyboard('{ArrowRight>3}')
+    expect(onPositionUpdate).not.toHaveBeenCalled()
+    await user.keyboard('{/ArrowRight}')
+    expect(onPositionUpdate).toHaveBeenCalledExactlyOnceWith({ x: 20, y: 20 })
+  })
+
+  it("allows opening another author's comment but does not move it with arrow keys", async () => {
+    const user = userEvent.setup()
+    mockUserId = 'user-2'
+    const onClick = vi.fn()
+    const onPositionUpdate = vi.fn()
+    render(
+      <CommentIcon
+        comment={createComment()}
+        onClick={onClick}
+        onPositionUpdate={onPositionUpdate}
+      />,
+    )
+    await user.tab()
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(onPositionUpdate).not.toHaveBeenCalled()
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 
   it('toggles preview on hover when inactive', () => {

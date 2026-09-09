@@ -1,5 +1,5 @@
 import type { Role } from '@/models/access-control'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import RowMenu from '../row-menu'
@@ -274,30 +274,6 @@ describe('RowMenu', () => {
           onSuccess: expect.any(Function),
         }),
       )
-    })
-
-    it('should close the copy member assignments dialog when clicking the backdrop', async () => {
-      render(
-        <RowMenu
-          roleCategory="global_system_default"
-          role={createRole({ id: 'role-default-editor', name: 'Editor' })}
-        />,
-      )
-
-      const { user, menu } = await openMenu()
-      await user.click(
-        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
-      )
-
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-
-      const backdrop = document.body.querySelector('.bg-background-overlay')
-      expect(backdrop).toBeInTheDocument()
-      fireEvent.click(backdrop!)
-
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
     })
 
     it('should ignore role management actions without manage permission', async () => {

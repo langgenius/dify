@@ -11,7 +11,9 @@ from typing import Any, Union, cast
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
+from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -19,13 +21,20 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import (
+    CreditUsageCreatedBy,
+    EasyUIBasedAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    get_credit_usage_app_type,
+)
 from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -100,11 +109,33 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 
 logger = logging.getLogger(__name__)
 
+_POSTGRES_DEADLOCK_SQLSTATE = "40P01"
+_HIT_COUNT_UPDATE_MAX_ATTEMPTS = 3
+
+
+def _is_postgres_deadlock_error(exc: BaseException) -> bool:
+    if not isinstance(exc, DBAPIError) or exc.orig is None:
+        return False
+    orig = cast(Any, exc.orig)
+    return (hasattr(orig, "sqlstate") and orig.sqlstate == _POSTGRES_DEADLOCK_SQLSTATE) or (
+        hasattr(orig, "pgcode") and orig.pgcode == _POSTGRES_DEADLOCK_SQLSTATE
+    )
+
 
 class DatasetRetrieval:
-    def __init__(self, application_generate_entity=None):
+    def __init__(self, application_generate_entity: EasyUIBasedAppGenerateEntity | None = None):
         self.application_generate_entity = application_generate_entity
         self._llm_usage = LLMUsage.empty_usage()
+        self._request_metadata: dict[str, object] | None = None
+        if application_generate_entity is not None:
+            app_config = application_generate_entity.app_config
+            self._request_metadata = {
+                "app_type": get_credit_usage_app_type(app_config.app_mode),
+                "app_id": app_config.app_id,
+            }
+
+    def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None:
+        self._request_metadata = dict(request_metadata) if request_metadata else None
 
     @property
     def llm_usage(self) -> LLMUsage:
@@ -119,6 +150,8 @@ class DatasetRetrieval:
             self._llm_usage = self._llm_usage.plus(usage)
 
     @trace_span()
+    @with_credit_usage_metadata
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def knowledge_retrieval(self, session: Session, request: KnowledgeRetrievalRequest) -> list[Source]:
         self._check_knowledge_rate_limit(request.tenant_id)
         available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
@@ -354,6 +387,8 @@ class DatasetRetrieval:
                 item.metadata.position = position  # type: ignore[index]
         return retrieval_resource_list
 
+    @with_credit_usage_metadata
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def retrieve(
         self,
         session: Session,
@@ -894,6 +929,13 @@ class DatasetRetrieval:
                 retrieval_resource_list.append(document)
         return retrieval_resource_list
 
+    @retry(
+        retry=retry_if_exception(_is_postgres_deadlock_error),
+        stop=stop_after_attempt(_HIT_COUNT_UPDATE_MAX_ATTEMPTS),
+        wait=wait_exponential(multiplier=0.05, min=0.05, max=0.1),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     def _on_retrieval_end(
         self,
         flask_app: Flask,
@@ -995,6 +1037,14 @@ class DatasetRetrieval:
 
                 # Batch update hit_count for all segments
                 if segment_ids_to_update:
+                    # PostgreSQL does not guarantee that an IN predicate is visited in parameter order.
+                    # Lock every target row explicitly and consistently before the multi-row update.
+                    session.scalars(
+                        select(DocumentSegment.id)
+                        .where(DocumentSegment.id.in_(segment_ids_to_update))
+                        .order_by(DocumentSegment.id)
+                        .with_for_update()
+                    ).all()
                     session.execute(
                         update(DocumentSegment)
                         .where(DocumentSegment.id.in_(segment_ids_to_update))
@@ -1447,6 +1497,7 @@ class DatasetRetrieval:
         )
         return filter_documents[:top_k] if top_k else filter_documents
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def get_metadata_filter_condition(
         self,
         session: Session,

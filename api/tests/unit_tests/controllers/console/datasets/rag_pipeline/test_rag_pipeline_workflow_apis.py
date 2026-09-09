@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
@@ -44,6 +45,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowListQuery,
     WorkflowUpdatePayload,
 )
+from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
@@ -671,13 +673,33 @@ class TestRagPipelineByIdApi:
             result, status = method(api, WorkflowUpdatePayload(), user, pipeline, "w1")
             assert status == 400
 
-    def test_delete_success(self, app: Flask) -> None:
+    @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
+    def test_delete_retires_candidates_only_after_transaction_exit(
+        self,
+        app: Flask,
+        transaction_fails: bool,
+    ) -> None:
         api = RagPipelineByIdApi()
         method = unwrap(api.delete)
 
         pipeline = make_pipeline(tenant_id="t1", workflow_id="active-workflow")
+        user = make_account()
 
+        events: list[str] = []
+        error = RuntimeError("commit failed")
         workflow_service = MagicMock()
+        workflow_service.delete_workflow.side_effect = lambda **_kwargs: events.append("delete") or ["inline-agent"]
+        transaction_factory = MagicMock()
+
+        @contextmanager
+        def transaction() -> Generator[Session]:
+            events.append("transaction-enter")
+            yield MagicMock(spec=Session)
+            events.append("transaction-exit")
+            if transaction_fails:
+                raise error
+
+        transaction_factory.begin.side_effect = transaction
 
         with (
             app.test_request_context("/", method="DELETE"),
@@ -685,21 +707,45 @@ class TestRagPipelineByIdApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.WorkflowService",
                 return_value=workflow_service,
             ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.sessionmaker",
+                return_value=transaction_factory,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow."
+                "WorkflowAgentRetirementService.retire_unowned"
+            ) as retire_unowned,
         ):
-            result = method(api, pipeline, "old-workflow")
+            retire_unowned.side_effect = lambda **_kwargs: events.append("retire")
+            if transaction_fails:
+                with pytest.raises(RuntimeError) as exc_info:
+                    method(api, user, pipeline, "old-workflow")
+                assert exc_info.value is error
+            else:
+                result = method(api, user, pipeline, "old-workflow")
+                assert result == (None, 204)
 
         workflow_service.delete_workflow.assert_called_once()
-        assert result == (None, 204)
+        assert events == ["transaction-enter", "delete", "transaction-exit"] + ([] if transaction_fails else ["retire"])
+        if transaction_fails:
+            retire_unowned.assert_not_called()
+        else:
+            retire_unowned.assert_called_once_with(
+                tenant_id=pipeline.tenant_id,
+                agent_ids=["inline-agent"],
+                account_id=user.id,
+            )
 
     def test_delete_active_workflow_rejected(self, app: Flask) -> None:
         api = RagPipelineByIdApi()
         method = unwrap(api.delete)
 
         pipeline = make_pipeline(tenant_id="t1", workflow_id="active-workflow")
+        user = make_account()
 
         with app.test_request_context("/", method="DELETE"):
             with pytest.raises(BadRequest, match="currently in use by pipeline"):
-                method(api, pipeline, "active-workflow")
+                method(api, user, pipeline, "active-workflow")
 
 
 class TestRagPipelineWorkflowLastRunApi:
@@ -757,8 +803,12 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
         run_id = uuid4()
         node_exec = make_node_execution(workflow_run_id=str(run_id))
 
+        session_stub = MagicMock()
+        session_stub.scalar.return_value = None
         service = MagicMock()
-        service.get_rag_pipeline_workflow_run_node_executions.return_value = [node_exec]
+        service.get_rag_pipeline_workflow_run_node_executions.return_value = [
+            node_execution_response_source(node_exec, session=session_stub)
+        ]
 
         with (
             app.test_request_context("/"),

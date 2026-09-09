@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
@@ -19,26 +20,24 @@ import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/con
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueries, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import {
   createAgentToolProviderCatalog,
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import { useStrategyProviders } from '@/service/use-strategy'
 import {
@@ -55,6 +54,7 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
+import AgentDefault from '../nodes/agent/default'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import {
   getLLMModelIssue,
@@ -73,11 +73,14 @@ import {
 import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
+import { normalizeWorkflowOutputName } from '../utils/variable'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useGetToolIcon } from './use-tool-icon'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryResponse[] = []
 
 export type ChecklistItem = {
   id: string
@@ -94,6 +97,9 @@ export type ChecklistItem = {
 }
 
 type CheckValidExtraData = Record<string, unknown> | undefined
+type NodeValidator = NonNullable<
+  ReturnType<typeof useNodesMetaData>['nodesMap']
+>[BlockEnum]['checkValid']
 
 const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
@@ -104,6 +110,17 @@ const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: Flo
     ...(moreDataForCheckValid ?? {}),
     flowType,
   }
+}
+
+const resolveNodeValidator = (
+  data: CommonNodeType,
+  nodesExtraData: ReturnType<typeof useNodesMetaData>['nodesMap'],
+): NodeValidator | undefined => {
+  const validator = nodesExtraData?.[getNodeCatalogType(data)]?.checkValid
+  if (validator) return validator
+
+  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data))
+    return AgentDefault.checkValid as NodeValidator
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -124,7 +141,7 @@ const getDuplicateEndOutputMessages = (
 
     const outputs = (node.data as { outputs?: Array<{ variable?: string }> }).outputs || []
     outputs.forEach((output) => {
-      const variable = output.variable?.trim()
+      const variable = normalizeWorkflowOutputName(output.variable)
       if (!variable) return
 
       const occurrences = variableOccurrences.get(variable) || []
@@ -169,7 +186,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const modelProviders = useProviderContextSelector((s) => s.modelProviders)
+  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data,
+    }),
+  )
   const workflowStore = useWorkflowStore()
   const configsMap = useHooksStore((s) => s.configsMap)
 
@@ -216,6 +237,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
       const issuesByNodeId: Record<
         string,
         {
+          hasMissingModel: boolean
           hasMissingFiles: boolean
           hasMissingSkills: boolean
           toolIssues: AgentToolPublishIssue[]
@@ -227,15 +249,19 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         const agentSoul = result.data?.agent_soul
         if (!nodeId || !agentSoul) return
 
+        const agentSoulFormState = agentSoulConfigToFormState(agentSoul)
+        const hasMissingModel = !agentSoulFormState.model
         const hasMissingFiles = agentSoul.config_files?.some((file) => file.is_missing === true)
         const hasMissingSkills = agentSoul.config_skills?.some((skill) => skill.is_missing === true)
         const toolIssues = getAgentToolPublishIssues(
-          agentSoulConfigToFormState(agentSoul).tools,
+          agentSoulFormState.tools,
           inlineAgentToolProviderCatalog,
         )
-        if (!hasMissingFiles && !hasMissingSkills && toolIssues.length === 0) return
+        if (!hasMissingModel && !hasMissingFiles && !hasMissingSkills && toolIssues.length === 0)
+          return
 
         issuesByNodeId[nodeId] = {
+          hasMissingModel,
           hasMissingFiles: !!hasMissingFiles,
           hasMissingSkills: !!hasMissingSkills,
           toolIssues,
@@ -256,8 +282,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     inlineAgentIssueTools,
     inlineAgentToolProviderCatalog,
   )
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const knowledgeBaseEmbeddingProviders = useMemo(() => {
     const providers = new Set<string>()
 
@@ -386,7 +422,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
+        const validator = resolveNodeValidator(node!.data, nodesExtraData)
         const isPluginMissing = isNodePluginMissing(node!.data, {
           builtInTools: buildInTools,
           customTools,
@@ -429,6 +465,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             if (validationError) errorMessages.push(validationError)
           }
 
+          if (inlineAgentIssues?.hasMissingModel)
+            errorMessages.push(t(($) => $['nodes.agent.modelNotSelected'], { ns: 'workflow' }))
           if (inlineAgentIssues?.hasMissingFiles)
             errorMessages.push(
               t(($) => $['agentDetail.configure.files.missing'], { ns: 'agentV2' }),
@@ -586,13 +624,27 @@ export const useChecklistBeforePublish = () => {
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
-  const modelProviders = useProviderContextSelector((s) => s.modelProviders)
+  const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data,
+    }),
+  )
   const updateDatasetsDetail = useDatasetsDetailStore((s) => s.updateDatasetsDetail)
   const updateTimeRef = useRef(0)
   const workflowStore = useWorkflowStore()
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -668,7 +720,7 @@ export const useChecklistBeforePublish = () => {
       await Promise.all(
         knowledgeBaseEmbeddingProviders.map(async (provider) => {
           try {
-            const modelList = await queryClient.fetchQuery(
+            const modelList = await queryClient.query(
               consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
                 input: { params: { provider } },
               }),
@@ -778,15 +830,18 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![getNodeCatalogType(node!.data)].checkValid(
-        checkData,
-        t,
-        withFlowType(moreDataForCheckValid, flowType),
-      )
+      const validator = resolveNodeValidator(node!.data, nodesExtraData)
+      if (validator) {
+        const { errorMessage } = validator(
+          checkData,
+          t,
+          withFlowType(moreDataForCheckValid, flowType),
+        )
 
-      if (errorMessage) {
-        toast.error(`[${node!.data.title}] ${errorMessage}`)
-        return false
+        if (errorMessage) {
+          toast.error(`[${node!.data.title}] ${errorMessage}`)
+          return false
+        }
       }
 
       const duplicateOutputMessages = duplicateEndOutputMessages.get(node!.id) || []

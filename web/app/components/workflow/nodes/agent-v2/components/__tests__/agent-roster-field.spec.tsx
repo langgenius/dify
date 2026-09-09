@@ -1,19 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentRosterField } from '../agent-roster-field'
 
-const permission = vi.hoisted(() => ({ canManageAgents: true }))
-
 vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => permission.canManageAgents,
+  useCanCreateAgents: () => true,
 }))
 
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
   AgentSelectorContent: () => null,
 }))
 
-function renderDetailRosterField() {
+function renderDetailRosterField(permissionKeys = ['agent.acl.edit']) {
   function Harness() {
     const portalContainerRef = useRef<HTMLDivElement>(null)
 
@@ -23,6 +22,7 @@ function renderDetailRosterField() {
           agent={{
             id: 'roster-agent-1',
             name: 'Roster Agent',
+            permission_keys: permissionKeys,
             role: 'Shared roster agent',
           }}
           portalContainerRef={portalContainerRef}
@@ -61,10 +61,6 @@ function renderInlineRosterField() {
 }
 
 describe('AgentRosterField', () => {
-  beforeEach(() => {
-    permission.canManageAgents = true
-  })
-
   it('shows Make Copy in the roster detail panel', async () => {
     const user = userEvent.setup()
     renderDetailRosterField()
@@ -78,18 +74,17 @@ describe('AgentRosterField', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps Make Copy available when the user cannot manage agents', async () => {
-    permission.canManageAgents = false
+  it('does not offer editing for a preview-only Agent', async () => {
     const user = userEvent.setup()
-    renderDetailRosterField()
+    renderDetailRosterField(['agent.acl.preview'])
 
     await user.click(
       screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
     )
 
     expect(
-      await screen.findByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' }),
+    ).not.toBeInTheDocument()
   })
 
   it('returns focus to the inline setup trigger when the dialog closes with Escape', async () => {

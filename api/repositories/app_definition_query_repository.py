@@ -9,17 +9,40 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from models.account import Tenant, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, load_annotation_reply_config
+from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.app_definition_query_service import (
     AppDefinitionQuery,
     AppDefinitionSummary,
     AppParameterConfig,
+    AppSiteConfiguration,
     AppToolIconSource,
 )
+from services.web_app_runtime_query_service import WebAppRuntimeRecord
+
+
+def _map_site_configuration(site: Site) -> AppSiteConfiguration:
+    return AppSiteConfiguration(
+        title=site.title,
+        chat_color_theme=site.chat_color_theme,
+        chat_color_theme_inverted=site.chat_color_theme_inverted,
+        icon_type=site.icon_type.value if site.icon_type is not None else None,
+        icon=site.icon,
+        icon_background=site.icon_background,
+        description=site.description,
+        copyright=site.copyright,
+        privacy_policy=site.privacy_policy,
+        input_placeholder=site.input_placeholder,
+        custom_disclaimer=site.custom_disclaimer,
+        default_language=site.default_language,
+        prompt_public=site.prompt_public,
+        show_workflow_steps=site.show_workflow_steps,
+        use_icon_as_answer_icon=site.use_icon_as_answer_icon,
+    )
 
 
 def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppParameterConfig:
@@ -143,6 +166,50 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 tags=tuple(tag.name for tag in app.tags_with_session(session=session)),
                 mode=app.mode.value,
                 author_name=app.author_name_with_session(session=session),
+            )
+
+    @override
+    def get_site_configuration(self, app_id: str) -> AppSiteConfiguration | None:
+        with self._session_factory() as session:
+            site = session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+            if site is None:
+                return None
+
+            return _map_site_configuration(site)
+
+    def get_runtime_record(self, app_id: str) -> WebAppRuntimeRecord | None:
+        with self._session_factory() as session:
+            app = session.get(App, app_id)
+            if app is None:
+                return None
+
+            site = session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+            if site is None:
+                return None
+
+            tenant = session.get(Tenant, app.tenant_id)
+            if tenant is None:
+                return None
+
+            app_id = app.id
+            tenant_id = app.tenant_id
+            enable_site = app.enable_site
+            site_configuration = _map_site_configuration(site)
+            plan = tenant.plan
+            tenant_status = tenant.status.value
+            tenant_custom_config_json = tenant.custom_config
+            mode = AppMode.value_of(app.mode).value
+            if tenant.status != TenantStatus.ARCHIVE:
+                mode = AppMode.value_of(app.mode_compatible_with_agent_with_session(session=session)).value
+            return WebAppRuntimeRecord(
+                app_id=app_id,
+                tenant_id=tenant_id,
+                mode=mode,
+                enable_site=enable_site,
+                site=site_configuration,
+                plan=plan,
+                tenant_status=tenant_status,
+                tenant_custom_config_json=tenant_custom_config_json,
             )
 
     @staticmethod
