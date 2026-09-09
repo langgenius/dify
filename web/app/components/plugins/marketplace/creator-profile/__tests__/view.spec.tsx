@@ -1,7 +1,7 @@
 import type { CreatorProfileViewModel } from '../model'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import CreatorProfileView from '../view'
 
 vi.mock('#i18n', async () => {

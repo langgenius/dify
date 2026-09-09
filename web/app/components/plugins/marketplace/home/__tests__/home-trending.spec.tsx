@@ -1,7 +1,7 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import HomeTrending from '../home-trending'
