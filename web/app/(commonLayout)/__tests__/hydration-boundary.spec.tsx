@@ -1,6 +1,6 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
@@ -182,6 +182,25 @@ describe('CommonLayoutHydrationBoundary', () => {
       retry: false,
     })
     expect(mocks.featuresQueryFn).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([true, false])('hydrates the initial skill flag as %s', async (enableSkill) => {
+    mocks.featuresQueryFn.mockResolvedValue({ enable_skill: enableSkill })
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+    const client = new QueryClient()
+    function SkillFlag() {
+      const { data } = useQuery<{ enable_skill: boolean }>({
+        queryKey: ['console', 'features', 'get'],
+        queryFn: mocks.featuresQueryFn,
+        staleTime: Infinity,
+      })
+      return <output aria-label="Skills enabled">{String(data?.enable_skill)}</output>
+    }
+    const element = await CommonLayoutHydrationBoundary({ children: <SkillFlag /> })
+    render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
+    expect(screen.getByLabelText('Skills enabled')).toHaveTextContent(String(enableSkill))
+    expect(mocks.featuresQueryFn).toHaveBeenCalledTimes(1)
+    client.clear()
   })
 
   it('should dehydrate only Common-owned queries', async () => {
