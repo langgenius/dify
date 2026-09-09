@@ -3,7 +3,7 @@
 set -x
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/../api"
+cd "$SCRIPT_DIR/../api" || exit 1
 
 uv run flask db upgrade heads
 

@@ -49,6 +49,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.knowledge_runtime_config import build_knowledge_fs_layer_config
 from core.app.llm.model_access import resolve_model_context_window
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
@@ -69,7 +70,6 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.provider_ids import ModelProviderID
-from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,

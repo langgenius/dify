@@ -2095,7 +2095,7 @@ describe('CreateKnowledgePage', () => {
     const folderButton = await screen.findByRole('button', { name: 'Plans' })
     expect(folderButton).toHaveAttribute('aria-expanded', 'false')
     await user.click(folderButton)
-    expect(folderButton).toHaveAttribute('aria-expanded', 'true')
+    await waitFor(() => expect(folderButton).toHaveAttribute('aria-expanded', 'true'))
     expect(await screen.findByRole('checkbox', { name: 'Folder child.pdf' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))

@@ -180,6 +180,7 @@ class TestAgentChatAppGenerateResponseConverterStream:
         assert metadata["retriever_resources"] == [
             {
                 "dataset_id": "dataset-1",
+                "knowledge_fs_citation": None,
                 "dataset_name": "Dataset 1",
                 "document_id": "document-1",
                 "document_asset_id": None,

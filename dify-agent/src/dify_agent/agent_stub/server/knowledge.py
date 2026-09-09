@@ -17,6 +17,8 @@ from uuid import uuid4
 import httpx
 from redis.exceptions import RedisError
 from PIL import Image, UnidentifiedImageError
+from PIL.PngImagePlugin import PngImageFile
+from PIL.WebPImagePlugin import WebPImageFile
 
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.knowledge_fs.session import KnowledgeFsDelivery, KnowledgeFsSession, KnowledgeFsSessionStore
@@ -273,7 +275,7 @@ def _validate_thumbnail(data: bytes, content_type: str) -> tuple[bytes, str]:
                 or max(image.size) > 4096
             ):
                 raise ValueError("unsafe dimensions or encoding")
-            if getattr(image, "n_frames", 1) != 1:
+            if isinstance(image, (PngImageFile, WebPImageFile)) and image.n_frames != 1:
                 raise ValueError("animated image")
             media_type = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}[image.format]
             if content_type != media_type:

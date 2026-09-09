@@ -36,6 +36,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.knowledge_runtime_config import build_knowledge_fs_layer_config
 from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
@@ -57,7 +58,6 @@ from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
-from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
 
 from .errors import AgentSessionSnapshotIncompatibleError

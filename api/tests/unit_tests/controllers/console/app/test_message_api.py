@@ -366,6 +366,7 @@ def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, mo
         "agent_thoughts": [],
         "message_files": [],
         "metadata": {"token_usage": 3},
+        "retriever_resources": [],
         "status": "normal",
         "error": None,
         "parent_message_id": None,

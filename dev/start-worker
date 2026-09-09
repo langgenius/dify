@@ -85,7 +85,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/../api"
+cd "$SCRIPT_DIR/../api" || exit 1
 
 if [[ -n "${ENV_FILE}" ]]; then
   if [[ ! -f "${ENV_FILE}" ]]; then
@@ -96,6 +96,8 @@ if [[ -n "${ENV_FILE}" ]]; then
   echo "Loading environment variables from ${ENV_FILE}"
   # Export everything sourced from the env file
   set -a
+  # The env file is selected at runtime via --env-file.
+  # shellcheck source=/dev/null
   source "${ENV_FILE}"
   set +a
 fi

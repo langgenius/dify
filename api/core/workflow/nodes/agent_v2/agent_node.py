@@ -24,6 +24,7 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.knowledge_citations import knowledge_sources_from_stream_event
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
@@ -34,7 +35,6 @@ from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import NodeEventBase, NodeRunResult, RunRetrieverResourceEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 

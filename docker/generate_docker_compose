@@ -105,7 +105,7 @@ def create_env_files_from_example(env_example_path):
                     dst.write(src.read())
                 created_files.append(env_file)
                 print(f"Created {env_file}")
-    
+
     return created_files
 
 

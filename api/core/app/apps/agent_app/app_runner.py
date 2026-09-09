@@ -52,6 +52,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.app.knowledge_citations import knowledge_sources_from_tool_part
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -76,7 +77,6 @@ from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
 from models.model import Message, MessageAgentThought
-from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 
 logger = logging.getLogger(__name__)
 

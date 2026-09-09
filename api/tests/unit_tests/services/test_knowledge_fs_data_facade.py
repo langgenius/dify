@@ -1493,6 +1493,7 @@ def test_active_settings_revision_conflict_is_actionable_without_remote_mutation
             ),
         )
     assert error.value.status_code == 409
+    assert error.value.failure is not None
     assert error.value.failure.code == "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"
     assert "Reload" in error.value.failure.message
     assert [request.operation_id for request in remote.requests] == ["getSettings"]

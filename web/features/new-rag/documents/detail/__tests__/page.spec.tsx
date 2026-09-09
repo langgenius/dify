@@ -843,6 +843,12 @@ const missingReindexResult = (): BulkDocumentReindexResult => ({
 })
 
 describe('DocumentDetailPage', () => {
+  beforeAll(async () => {
+    // Load the real renderer before assertions start; next/dynamic otherwise loads it
+    // during the first Markdown query, which can outlast the DOM query timeout.
+    await import('@/app/components/base/markdown/streamdown-wrapper')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     knowledgeSpacePermissionState.keys = ['knowledge_space_document_write']
@@ -1059,7 +1065,7 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText(/\[Learn more\]\(/)).not.toBeInTheDocument()
   })
 
-  it('uses structured chapter paths and keeps the first source line in the chunk body', () => {
+  it('uses structured chapter paths and keeps the first source line in the chunk body', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -1080,8 +1086,10 @@ describe('DocumentDetailPage', () => {
     expect(within(tree).getByRole('treeitem', { name: 'Tax breakdown' })).toBeInTheDocument()
     expect(within(tree).queryByRole('treeitem', { name: /This first line/ })).toBeNull()
     expect(screen.getByRole('heading', { name: 'Tax breakdown' })).toBeInTheDocument()
-    expect(screen.getByRole('article')).toHaveTextContent(
-      'This first line is source content, not a title.',
+    await waitFor(() =>
+      expect(screen.getByRole('article')).toHaveTextContent(
+        'This first line is source content, not a title.',
+      ),
     )
     expect(screen.getByRole('article').querySelector('br')).toBeNull()
   })
@@ -1177,8 +1185,8 @@ describe('DocumentDetailPage', () => {
     expect(summaryButtons[0]).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('Generated guide summary.')).not.toBeInTheDocument()
     expect(screen.getByText('Generated setup summary.')).toBeInTheDocument()
-    expect(screen.getByText('Guide body')).toBeInTheDocument()
-    expect(screen.getByText('Setup body')).toBeInTheDocument()
+    expect(await screen.findByText('Guide body')).toBeInTheDocument()
+    expect(await screen.findByText('Setup body')).toBeInTheDocument()
     const article = screen.getByRole('article')
     expect(
       within(article).getByRole('heading', { level: 2, name: 'Guide Operating safely' }),
@@ -1186,7 +1194,7 @@ describe('DocumentDetailPage', () => {
     expect(within(article).getByRole('heading', { level: 3, name: 'Setup' })).toBeInTheDocument()
   })
 
-  it('renders structural headings once before the chunks in their sections', () => {
+  it('renders structural headings once before the chunks in their sections', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -1255,7 +1263,9 @@ describe('DocumentDetailPage', () => {
     expect(
       within(article).getAllByRole('heading', { level: 3, name: 'Document upload' }),
     ).toHaveLength(1)
-    expect(within(article).getByText('Files are parsed in the background.')).toBeInTheDocument()
+    expect(
+      await within(article).findByText('Files are parsed in the background.'),
+    ).toBeInTheDocument()
     expect(within(article).getByText('C-1')).toBeInTheDocument()
     const chunkCountRow = screen.getByText('knowledgeSpace.chunkCount').closest('div')
     expect(chunkCountRow).not.toBeNull()

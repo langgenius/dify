@@ -225,10 +225,18 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 vi.mock('jotai-tanstack-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai-tanstack-query')>()
-  const { atom, getDefaultStore } = await import('jotai/vanilla')
+  const { atom } = await import('jotai/vanilla')
   const revisionAtom = atom(0)
-  jotaiQueryMocks.bump = () =>
-    getDefaultStore().set(revisionAtom, (revision: number) => revision + 1)
+  const subscribers = new Set<() => void>()
+  revisionAtom.onMount = (setRevision) => {
+    const notify = () => setRevision((revision) => revision + 1)
+    subscribers.add(notify)
+    return () => {
+      subscribers.delete(notify)
+    }
+  }
+  // Console fixtures render in an isolated store, so notify the mounted query stores.
+  jotaiQueryMocks.bump = () => subscribers.forEach((notify) => notify())
 
   return {
     ...original,
@@ -332,8 +340,10 @@ function render(...args: Parameters<typeof renderWithNuqs>) {
   return {
     ...rendered,
     rerender: (ui: Parameters<typeof rerender>[0]) => {
-      jotaiQueryMocks.bump?.()
-      rerender(ui)
+      act(() => {
+        jotaiQueryMocks.bump?.()
+        rerender(ui)
+      })
     },
   }
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from types import SimpleNamespace
+from typing import TypedDict, Unpack
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -11,19 +12,22 @@ from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsBinding,
     KnowledgeFsCitation,
     KnowledgeFsCommand,
+    KnowledgeFsCommandName,
     KnowledgeFsError,
     KnowledgeFsPrepareRequest,
 )
 from sqlalchemy.orm import Session
 
+from core.app.knowledge_citations import knowledge_sources_from_tool_part
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode
+from models.workflow import Workflow
 from services.agent import knowledge_gateway as gateway
-from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
+from services.knowledge_fs.runtime import KnowledgeFSRuntime
 from tests.unit_tests.config_override import apply_config_overrides
 
 SPACE = "00000000-0000-4000-8000-000000000001"
@@ -55,9 +59,27 @@ CITATION = KnowledgeFsCitation(
 )
 
 
-def request(name="spaces", context=CONTEXT, **args):
-    cmd = KnowledgeFsCommand(
-        command_id=uuid4(), command=name, **({"space": "docs"} if name != "spaces" else {}), **args
+class CommandArgs(TypedDict, total=False):
+    query: str
+    path: str
+    old_path: str
+    new_path: str
+    cursor: str
+    limit: int
+    depth: int
+    node_id: str
+    receipt_id: str
+    item_id: str
+    image_file_ids: list[str]
+
+
+def request(
+    name: KnowledgeFsCommandName = "spaces",
+    context: DifyExecutionContextLayerConfig = CONTEXT,
+    **args: Unpack[CommandArgs],
+) -> KnowledgeFsPrepareRequest:
+    cmd = KnowledgeFsCommand.model_validate(
+        {"command_id": uuid4(), "command": name, **({"space": "docs"} if name != "spaces" else {}), **args}
     )
     return KnowledgeFsPrepareRequest(
         execution_context=context,
@@ -69,14 +91,13 @@ def request(name="spaces", context=CONTEXT, **args):
 
 
 @pytest.fixture
-def authorized_gateway(monkeypatch):
+def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKnowledgeGateway, Mock]:
     monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: SOUL))
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL="http://kfs:8000")
     issued = SimpleNamespace(token="private-token", knowledge_space_id=SPACE, trace_id="trace")
-    runtime = SimpleNamespace(
-        broker=SimpleNamespace(issue_interactive=Mock(return_value=issued)),
-        app_capabilities=SimpleNamespace(issue=Mock(return_value=issued)),
-    )
+    runtime = Mock(spec=KnowledgeFSRuntime)
+    runtime.broker.issue_interactive.return_value = issued
+    runtime.app_capabilities.issue.return_value = issued
     return gateway.AgentKnowledgeGateway(runtime), runtime
 
 
@@ -122,22 +143,32 @@ def authorized_gateway(monkeypatch):
         ),
     ],
 )
-def test_every_command_maps_to_exact_current_product_contract(authorized_gateway, name, args, operation, query):
+def test_every_command_maps_to_exact_current_product_contract(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock],
+    name: KnowledgeFsCommandName,
+    args: CommandArgs,
+    operation: str,
+    query: dict[str, str],
+) -> None:
     service, runtime = authorized_gateway
     result = service.prepare(request(name, **args))
     assert result.operation == operation
     assert result.query == query
+    assert result.url is not None
     assert result.url.startswith(f"http://kfs:8000/knowledge-spaces/{SPACE}/")
     assert runtime.app_capabilities.issue.call_args.kwargs["caller_kind"] is KnowledgeFSAppSpaceJoinType.AGENT
     assert "private-token" not in repr(result)
     if name == "search":
+        assert result.payload is not None
         assert result.payload["mode"] == "fast"
         assert result.payload["includeText"] is True
         assert "plan" not in result.payload
         assert "answer" not in result.payload
 
 
-def test_space_subset_changed_config_and_receipt_scope_fail_closed(authorized_gateway):
+def test_space_subset_changed_config_and_receipt_scope_fail_closed(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock],
+) -> None:
     service, runtime = authorized_gateway
     value = request("search", query="x")
     value.command.space = "another-space"
@@ -158,7 +189,9 @@ def test_space_subset_changed_config_and_receipt_scope_fail_closed(authorized_ga
     runtime.app_capabilities.issue.assert_not_called()
 
 
-def test_preview_never_issues_app_grants_and_revocation_is_rechecked(authorized_gateway):
+def test_preview_never_issues_app_grants_and_revocation_is_rechecked(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock],
+) -> None:
     service, runtime = authorized_gateway
     preview = CONTEXT.model_copy(update={"agent_config_version_kind": "draft", "invoke_from": "debugger"})
     service.prepare(request("search", context=preview, query="x"))
@@ -170,7 +203,9 @@ def test_preview_never_issues_app_grants_and_revocation_is_rechecked(authorized_
     assert service.prepare(request()).data == {"spaces": [{"id": "docs", "name": "产品说明", "available": False}]}
 
 
-def test_preview_query_images_use_current_account_authorization_without_app_grants(authorized_gateway, monkeypatch):
+def test_preview_query_images_use_current_account_authorization_without_app_grants(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock], monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, runtime = authorized_gateway
     image_id = str(uuid4())
     validate = Mock(return_value=[SimpleNamespace(upload_file_id=image_id)])
@@ -180,6 +215,7 @@ def test_preview_query_images_use_current_account_authorization_without_app_gran
     validate.assert_called_once_with(
         tenant_id="tenant", account_id="account", upload_file_ids=[image_id], mark_used=False
     )
+    assert result.payload is not None
     assert result.payload["queryImages"] == [{"uploadFileId": image_id}]
     assert result.payload["query"] == ""
     runtime.app_capabilities.issue.assert_not_called()
@@ -188,7 +224,9 @@ def test_preview_query_images_use_current_account_authorization_without_app_gran
         service.prepare(request("search", context=preview, image_file_ids=[image_id]))
 
 
-def test_published_query_images_use_file_scope_and_keep_grants_out_of_public_payload(authorized_gateway, monkeypatch):
+def test_published_query_images_use_file_scope_and_keep_grants_out_of_public_payload(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock], monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.knowledge_fs.product_remote import KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER
 
     service, _ = authorized_gateway
@@ -211,6 +249,7 @@ def test_published_query_images_use_file_scope_and_keep_grants_out_of_public_pay
     }
     assert scope.call_args.args[0].user_id == "account"
     grant.assert_called_once_with(app_id="app", tenant_id="tenant", file=file)
+    assert result.payload is not None
     assert result.payload["queryImages"] == [{"uploadFileId": image_id}]
     assert result.headers[KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER]
     assert "private-image-grant" not in repr(result)
@@ -218,8 +257,8 @@ def test_published_query_images_use_file_scope_and_keep_grants_out_of_public_pay
 
 @pytest.mark.parametrize("sqlite_session", [(App, Agent, WorkflowAgentNodeBinding)], indirect=True)
 def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workflow(
-    sqlite_session: Session, monkeypatch
-):
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sqlite_session.add_all(
         [
             App(
@@ -261,13 +300,14 @@ def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workf
         gateway.AgentKnowledgeGateway._authorize_context(request())
     monkeypatch.setattr(gateway.TenantService, "account_belongs_to_tenant", lambda *_args, **_kwargs: True)
     agent = sqlite_session.get(Agent, "agent")
+    assert agent is not None
     agent.status = AgentStatus.ARCHIVED
     sqlite_session.flush()
     with pytest.raises(KnowledgeFsError, match="unavailable"):
         gateway.AgentKnowledgeGateway._authorize_context(request())
 
 
-def test_only_trusted_tool_metadata_produces_sources():
+def test_only_trusted_tool_metadata_produces_sources() -> None:
     content = {"knowledge_results": [{"data": {"items": [{"receipt_id": CITATION.id, "text": "evidence"}]}}]}
     assert knowledge_sources_from_tool_part({"part_kind": "tool-return", "content": content}) == []
     part = {
@@ -282,13 +322,13 @@ def test_only_trusted_tool_metadata_produces_sources():
     assert sources[0].score is None
 
 
-def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul():
+def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul() -> None:
     session = Mock()
     session.scalars.return_value = [
         AgentConfigSnapshot(config_snapshot=SOUL),
         AgentConfigSnapshot(config_snapshot=SOUL),
     ]
-    workflow = SimpleNamespace(tenant_id="tenant", app_id="app", id="workflow", version="published")
+    workflow = Workflow(tenant_id="tenant", app_id="app", id="workflow", version="published")
     assert collect_workflow_agent_knowledge_space_ids(session=session, workflow=workflow) == (SPACE,)
     sql = str(session.scalars.call_args.args[0])
     assert "workflow_agent_node_bindings.current_snapshot_id" in sql

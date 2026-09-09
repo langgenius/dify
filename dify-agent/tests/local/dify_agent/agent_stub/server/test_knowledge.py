@@ -304,6 +304,32 @@ def test_cancellation_closes_upstream_and_delivers_no_late_evidence():
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize(
+    ("image_format", "media_type"), [("JPEG", "image/jpeg"), ("PNG", "image/png"), ("WEBP", "image/webp")]
+)
+def test_thumbnail_accepts_static_images(image_format, media_type):
+    buffer = io.BytesIO()
+    Image.new("RGB", (2, 2)).save(buffer, format=image_format)
+    pixels = buffer.getvalue()
+    assert _validate_thumbnail(pixels, media_type) == (pixels, media_type)
+
+
+@pytest.mark.parametrize(("image_format", "media_type"), [("PNG", "image/png"), ("WEBP", "image/webp")])
+def test_thumbnail_rejects_animated_images(image_format, media_type):
+    buffer = io.BytesIO()
+    Image.new("RGB", (2, 2), "red").save(
+        buffer,
+        format=image_format,
+        save_all=True,
+        append_images=[Image.new("RGB", (2, 2), "blue")],
+        duration=100,
+        loop=0,
+    )
+    with pytest.raises(KnowledgeFsError) as exc:
+        _validate_thumbnail(buffer.getvalue(), media_type)
+    assert exc.value.code == "KNOWLEDGE_IMAGE_UNSAFE"
+
+
 def test_thumbnail_limits_and_history_preserve_user_images_not_old_evidence():
     buffer = io.BytesIO()
     Image.new("RGB", (2, 2)).save(buffer, format="PNG")

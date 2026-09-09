@@ -375,7 +375,7 @@ class TestAgentAppRuntimeRequestBuilder:
         model_factory.return_value.init_model_instance.return_value.get_model_schema.return_value = SimpleNamespace(
             features=[ModelFeature.VISION] if vision else []
         )
-        monkeypatch.setattr("services.agent.knowledge_runtime_config.DifyModelFactory", model_factory)
+        monkeypatch.setattr("core.app.knowledge_runtime_config.DifyModelFactory", model_factory)
 
         def image_content(file: File, **_kwargs: object) -> ImagePromptMessageContent:
             return ImagePromptMessageContent(

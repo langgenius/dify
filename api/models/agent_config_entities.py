@@ -771,8 +771,11 @@ class AgentSoulKnowledgeConfig(BaseModel):
     def validate_unique_sets(self) -> Self:
         if self.spaces and self.sets:
             raise ValueError("Agent Knowledge Base bindings cannot be mixed with Classic Knowledge Base bindings")
-        for attribute in ("id", "control_space_id", "name"):
-            values = [getattr(space, attribute).casefold() for space in self.spaces]
+        for attribute, values in (
+            ("id", [space.id.casefold() for space in self.spaces]),
+            ("control_space_id", [space.control_space_id.casefold() for space in self.spaces]),
+            ("name", [space.name.casefold() for space in self.spaces]),
+        ):
             if len(values) != len(set(values)):
                 raise ValueError(f"Agent Knowledge Base {attribute} values must be unique")
         # An alias must not shadow a different binding's stable ID.

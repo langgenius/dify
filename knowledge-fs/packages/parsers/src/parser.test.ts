@@ -4089,10 +4089,14 @@ describe("parser adapters", () => {
   });
 
   it("uses the PDF-specific deadline only for normalized PDF MIME types", async () => {
+    // Retain mock requests until their signal follower subscriptions settle.
+    const requests: Request[] = [];
     const parser = createUnstructuredParserClient({
       endpoint: "https://unstructured.example.test",
       fetch: async (input) => {
         const request = input instanceof Request ? input : new Request(input);
+        requests.push(request);
+        request.signal.throwIfAborted();
         return await new Promise<Response>((_resolve, reject) => {
           request.signal.addEventListener("abort", () => reject(request.signal.reason), {
             once: true,
@@ -4121,6 +4125,7 @@ describe("parser adapters", () => {
         version: 1,
       }),
     ).rejects.toThrow(/^Unstructured parser request timed out after requestTimeoutMs=10$/u);
+    expect(requests).toHaveLength(2);
   });
 
   it("uses the heavy deadline for every PDF and keeps ordinary Office on the standard deadline", async () => {

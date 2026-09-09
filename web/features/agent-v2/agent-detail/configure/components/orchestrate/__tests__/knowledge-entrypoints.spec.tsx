@@ -29,10 +29,6 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
     />
   ),
 }))
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
-    selector({ enableSkill: false }),
-}))
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: [] }),
   useAllCustomTools: () => ({ data: [] }),
@@ -108,7 +104,11 @@ function setup({ enabled = true, workflow = false, readOnly = false, configured 
         readOnly={readOnly}
       />
     </AgentComposerProvider>,
-    { queryClient, systemFeatures: { agent_knowledge_fs_enabled: enabled } },
+    {
+      queryClient,
+      features: { enable_skill: false },
+      systemFeatures: { agent_knowledge_fs_enabled: enabled },
+    },
   )
 }
 
