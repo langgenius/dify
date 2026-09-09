@@ -16,7 +16,7 @@ export function createQueryRuntime(adapter: QueryAdapter) {
   const errorAtom = atom<unknown>(null)
   let store: Pick<Store, 'set'> | undefined
   let active = true
-  let writing = false
+  let writingHref: string | undefined
   let connection = 0
   let timer: ReturnType<typeof setTimeout> | undefined
   let scheduledAt = Infinity
@@ -63,7 +63,9 @@ export function createQueryRuntime(adapter: QueryAdapter) {
   function receive({ url, traversal }: UrlChange) {
     const previous = confirmed
     confirmed = new URL(url)
-    if (writing) return
+    // Suppress only the current write's echo. Reentrant traversal or another
+    // address remains authoritative and must reconcile/cancel new drafts.
+    if (!traversal && url.href === writingHref) return
     const relevantChange = [...ownedKeys].some(
       (key) =>
         JSON.stringify(previous.searchParams.getAll(key)) !==
@@ -86,14 +88,21 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       receive({ url: latest, traversal: true })
       return
     }
+    const minimum = Math.max(0, (adapter.minimumInterval ?? 0) - (Date.now() - lastWrite))
+    if (minimum > 0) {
+      scheduledAt = Date.now() + minimum
+      timer = setTimeout(flush, minimum)
+      return
+    }
     const next = applyPending(latest)
     const options = commitOptions
     const settled = reset()
-    writing = true
+    writingHref = next.href
     try {
       if (next.href !== latest.href) {
-        adapter.write(next, options)
+        // Reserve the interval before adapter callbacks can enqueue another write.
         lastWrite = Date.now()
+        adapter.write(next, options)
       }
       confirmed = adapter.read()
       // Adapter callbacks may have queued a new draft during this commit.
@@ -107,7 +116,7 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       store.set(errorAtom, error)
       settled.forEach(({ reject }) => reject(error))
     } finally {
-      writing = false
+      writingHref = undefined
     }
   }
 

@@ -360,3 +360,48 @@ it.each([
     expect(adapter.read().searchParams.get('page')).toBe('3')
   },
 )
+
+it.each(['traversal', 'replace'] as const)(
+  'cancels a callback draft on external %s during a commit',
+  async (navigation) => {
+    const { write, adapter, runtime, store, onUpdate } = setup()
+    let draft: Promise<URLSearchParams> | undefined
+    onUpdate.mockImplementationOnce(() => {
+      draft = write({ page: 3 })
+      if (navigation === 'traversal') adapter.navigate('/documents?page=9')
+      else
+        adapter.write(new URL('http://localhost/documents?page=9'), {
+          history: 'replace',
+          shallow: true,
+          scroll: false,
+        })
+    })
+    const initial = write({ page: 2 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(new URL(store.get(runtime.stateAtom)).searchParams.get('page')).toBe('9')
+    await vi.runAllTimersAsync()
+    await initial
+    expect((await draft)?.get('page')).toBe('9')
+    expect(adapter.read().searchParams.get('page')).toBe('9')
+  },
+)
+
+it('enforces the browser interval for writes queued inside a commit callback', async () => {
+  const { write, adapter, onUpdate } = setup()
+  Object.assign(adapter, { minimumInterval: 400 })
+  const timestamps: number[] = []
+  let draft: Promise<URLSearchParams> | undefined
+  onUpdate.mockImplementation(() => {
+    timestamps.push(Date.now())
+    if (timestamps.length === 1) draft = write({ page: 3 })
+  })
+  const initial = write({ page: 2 })
+  await vi.advanceTimersByTimeAsync(0)
+  await initial
+  await vi.advanceTimersByTimeAsync(399)
+  expect(timestamps).toHaveLength(1)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(timestamps).toHaveLength(2)
+  expect(timestamps[1]! - timestamps[0]!).toBe(400)
+  expect((await draft)?.get('page')).toBe('3')
+})
