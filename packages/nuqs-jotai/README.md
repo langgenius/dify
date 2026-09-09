@@ -71,6 +71,9 @@ page-local workflows.
 - URL writes batch within a task, with optional debounce. An immediate action
   includes the current pending draft, even across different query definitions.
   A filter push commits the current search too and creates one history entry.
+- `throttle(Infinity)` keeps optimistic state but disables URL writes and server
+  refreshes, including an already scheduled batch. Its promise resolves with the
+  current URL. A later finite-rate write can commit the retained draft.
 - In a batch, `push`, `shallow: false`, and `scroll: true` take precedence. The
   browser adapter leaves a conservative 400ms interval between provider writes.
   Atom state updates immediately while the URL commit waits.

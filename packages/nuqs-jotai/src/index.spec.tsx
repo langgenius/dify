@@ -1,9 +1,9 @@
 import type { UrlUpdateEvent } from './testing'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider, useAtom, useSetAtom, useStore } from 'jotai'
+import { createStore, Provider, useAtom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { debounce, parseAsInteger } from 'nuqs'
+import { debounce, parseAsInteger, throttle } from 'nuqs'
 import { Activity, StrictMode, Suspense, useLayoutEffect, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vite-plus/test'
@@ -570,3 +570,77 @@ it.each([
     }
   },
 )
+
+it.each(['Activity', 'Suspense'] as const)(
+  'refreshes a read-only consumer after %s reveals',
+  async (boundary) => {
+    const adapter = createMemoryQueryAdapter('http://localhost/?page=1')
+    const suspended = new Promise<never>(() => {})
+    function ReadPage({ hidden }: { hidden: boolean }) {
+      const page = useAtomValue(pageAtom)
+      if (boundary === 'Suspense' && hidden) throw suspended
+      return <p>Page {page}</p>
+    }
+    function App({ hidden }: { hidden: boolean }) {
+      const children = (
+        <QueryStateProvider adapter={adapter}>
+          <ReadPage hidden={hidden} />
+        </QueryStateProvider>
+      )
+      return boundary === 'Activity' ? (
+        <Activity mode={hidden ? 'hidden' : 'visible'}>{children}</Activity>
+      ) : (
+        <Suspense fallback={<p>Loading</p>}>{children}</Suspense>
+      )
+    }
+    const rendered = render(<App hidden={false} />)
+    expect(screen.getByText('Page 1')).toBeDefined()
+    rendered.rerender(<App hidden />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    act(() => {
+      adapter.navigate('/?page=7')
+    })
+    rendered.rerender(<App hidden={false} />)
+    expect(screen.getByText('Page 7')).toBeDefined()
+  },
+)
+
+it.each([false, true])('keeps throttle(Infinity) local (existing timer: %s)', async (queued) => {
+  vi.useFakeTimers()
+  try {
+    window.history.replaceState(null, '', '/documents?page=1')
+    await Promise.resolve()
+    const refresh = vi.fn()
+    const adapter = createBrowserQueryAdapter({
+      initialUrl: new URL(window.location.href),
+      refresh,
+    })
+    let store!: ReturnType<typeof createStore>
+    function Capture() {
+      store = useStore()
+      return null
+    }
+    render(
+      <QueryStateProvider adapter={adapter}>
+        <Capture />
+      </QueryStateProvider>,
+    )
+    const previous = queued ? store.set(pageAtom, 5, { limitUrlUpdates: debounce(300) }) : undefined
+    const pending = store.set(pageAtom, 2, { limitUrlUpdates: throttle(Infinity), shallow: false })
+    expect(store.get(pageAtom)).toBe(2)
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(window.location.search).toBe('?page=1')
+    expect(refresh).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+    expect((await pending).get('page')).toBe('1')
+    await previous
+    const resumed = store.set(pageAtom, (page) => page + 1, { limitUrlUpdates: throttle(100) })
+    await vi.advanceTimersByTimeAsync(100)
+    expect((await resumed).get('page')).toBe('3')
+    expect(refresh).toHaveBeenCalledOnce()
+  } finally {
+    vi.useRealTimers()
+  }
+})

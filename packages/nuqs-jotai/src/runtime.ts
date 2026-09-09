@@ -146,6 +146,10 @@ export function createQueryRuntime(adapter: QueryAdapter) {
         })
       }
     },
+    pause() {
+      cancel()
+      publish(adapter.read())
+    },
     dispose() {
       active = false
       cancel()
@@ -179,7 +183,18 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       // Once an immediate/throttled action joins the batch, subsequent updates
       // may advance its deadline but must never postpone it, including typing.
       if (!debounced) scheduledDebounce = false
-      if (reschedule) {
+      if (delay === Infinity) {
+        // An infinite throttle disables URL/server writes, not optimistic state.
+        // Keep the draft for a later finite update, but never give Infinity to
+        // setTimeout or leave callers waiting for a commit we will not perform.
+        clearTimeout(timer)
+        timer = undefined
+        scheduledAt = Infinity
+        scheduledDebounce = false
+        const skipped = waiters
+        waiters = []
+        skipped.forEach(({ resolve }) => resolve(new URLSearchParams(adapter.read().searchParams)))
+      } else if (reschedule) {
         clearTimeout(timer)
         scheduledAt = deadline
         scheduledDebounce = debounced

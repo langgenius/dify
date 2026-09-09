@@ -149,6 +149,8 @@ function RuntimeConnection({ runtime, children }: { runtime: Runtime; children: 
   const store = useStore()
   // Insertion cleanup marks actual removal; layout replay only reconnects.
   useInsertionEffect(() => () => runtime.dispose(), [runtime])
-  useBrowserLayoutEffect(() => runtime.connect(store), [runtime, store])
+  useBrowserLayoutEffect(() => () => runtime.pause(), [runtime])
+  // Reconcile after child Jotai passive subscriptions, including Activity reveal.
+  useEffect(() => runtime.connect(store), [runtime, store])
   return children
 }
