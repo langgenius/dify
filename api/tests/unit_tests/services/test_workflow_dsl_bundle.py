@@ -125,6 +125,7 @@ def test_nested_shared_cyclic_tools_round_trip_with_independent_files(
     bundle_service = WorkflowDslBundleService(sqlite_session)
     bundle = bundle_service.parse_bundle(content)
     assert len(bundle.documents) == 3
+    assert all(document["version"] == CURRENT_APP_DSL_VERSION for document in bundle.documents.values())
     assert len(bundle.manifest.tools) == 2
     assert sorted(len(references) for references in bundle.manifest.relationships.values()) == [1, 1, 2]
     with zipfile.ZipFile(io.BytesIO(content)) as archive:
