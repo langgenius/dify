@@ -383,6 +383,8 @@ describe("profile migration candidate builder", () => {
       expect.objectContaining({
         createdAt: now,
         publicationGenerationId: fixture.expectedGenerationId,
+        tenantId,
+        embeddingProfile: expect.objectContaining({ vectorSpaceId: fixture.baseVectorSpaceId }),
       }),
     );
     expect(fixture.heartbeat.mock.calls.length).toBeGreaterThanOrEqual(5);
@@ -452,6 +454,8 @@ describe("profile migration candidate builder", () => {
       expect.objectContaining({
         createdAt: now,
         publicationGenerationId: fixture.expectedGenerationId,
+        tenantId,
+        embeddingProfile: expect.objectContaining({ vectorSpaceId: fixture.targetVectorSpaceId }),
       }),
     );
     expect(fixture.candidateMembers()).toEqual(
@@ -1244,6 +1248,7 @@ function builderFixture(
   return {
     baseDenseId,
     baseVectorSpaceId: oldVectorSpaceId,
+    targetVectorSpaceId: newVectorSpaceId,
     buildOutline,
     builder,
     candidateMembers: () => candidateMembers,

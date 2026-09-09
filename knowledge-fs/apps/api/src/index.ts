@@ -9,6 +9,7 @@ import {
   RETRIEVAL_MAX_TOP_K,
   createBackgroundRuntimeController,
   createDatabaseDeletionObjectWriteAdmission,
+  createDatabaseGraphQueryRepository,
   createDatabaseHybridRetrievalRepository,
   createDatabasePublishedGraphIndexRepository,
   createDatabasePublishedKnowledgeSpaceRuntimeSnapshotResolver,
@@ -17,6 +18,8 @@ import {
   createDeletionLifecycleFenceGuard,
   createDocumentMultimodalCandidateResolver,
   createGoldenQuestionEvidenceMatcher,
+  createGraphQueryPlanner,
+  createGraphSemanticQueryService,
   createHybridQueryGenerator,
   createInMemoryKnowledgeSpaceManifestRepository,
   createJointCasSourceLogicalRevisionPublisher,
@@ -752,6 +755,18 @@ const retriever = retrievalRepository
             graph: repositoryOptions.graphIndex,
             graphExpansion: graphExpansionOptions,
             ...(publishedGraph ? { publishedGraph } : {}),
+            ...(publishedGraph && embeddingResolver
+              ? {
+                  graphSemanticQuery: createGraphSemanticQueryService({
+                    repository: createDatabaseGraphQueryRepository(adapter.database),
+                    planner: createGraphQueryPlanner({
+                      providerFactory: profileReasoningCapability.providerFactory,
+                      maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 2048),
+                      modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
+                    }),
+                  }),
+                }
+              : {}),
           }
         : {}),
       ...(publishedPageIndex

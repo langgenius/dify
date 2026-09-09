@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { GRAPH_RELATION_TYPES } from "../../../packages/api/src/graph-relation-catalog";
 import {
   createAdminApiClient,
   getAdminApiBase,
@@ -1153,148 +1154,151 @@ describe("createAdminApiClient", () => {
     ]);
   });
 
-  it("browses an entity graph and linked KnowledgeFS documents through bounded APIs", async () => {
-    const requests: Request[] = [];
-    const client = createAdminApiClient({
-      baseUrl: "http://api.test/",
-      fetch: async (input) => {
-        const request = input instanceof Request ? input : new Request(input);
-        requests.push(request.clone());
+  it.each(GRAPH_RELATION_TYPES)(
+    "browses an entity graph with %s relations through bounded APIs",
+    async (relationType) => {
+      const requests: Request[] = [];
+      const client = createAdminApiClient({
+        baseUrl: "http://api.test/",
+        fetch: async (input) => {
+          const request = input instanceof Request ? input : new Request(input);
+          requests.push(request.clone());
 
-        if (
-          request.url ===
-          "http://api.test/knowledge-spaces/space-1/graph/traverse?entityId=018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&depth=2&fanout=8&maxNodes=20&timeoutMs=250"
-        ) {
-          expect(request.headers.get("authorization")).toBe("Bearer read-token");
-          return Response.json({
-            entities: [
-              {
-                aliases: ["Acme"],
-                canonicalKey: "organization:acme",
-                confidence: 0.94,
-                createdAt: "2026-05-12T00:00:00.000Z",
-                depth: 0,
-                extractionVersion: 1,
-                id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-                knowledgeSpaceId: "space-1",
-                metadata: { documentCount: 3 },
-                name: "Acme Payments",
-                permissionScope: ["tenant:tenant-1"],
-                sourceNodeIds: ["node-1"],
-                type: "organization",
-                updatedAt: "2026-05-12T00:00:00.000Z",
+          if (
+            request.url ===
+            "http://api.test/knowledge-spaces/space-1/graph/traverse?entityId=018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&depth=2&fanout=8&maxNodes=20&timeoutMs=250"
+          ) {
+            expect(request.headers.get("authorization")).toBe("Bearer read-token");
+            return Response.json({
+              entities: [
+                {
+                  aliases: ["Acme"],
+                  canonicalKey: "organization:acme",
+                  confidence: 0.94,
+                  createdAt: "2026-05-12T00:00:00.000Z",
+                  depth: 0,
+                  extractionVersion: 1,
+                  id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+                  knowledgeSpaceId: "space-1",
+                  metadata: { documentCount: 3 },
+                  name: "Acme Payments",
+                  permissionScope: ["tenant:tenant-1"],
+                  sourceNodeIds: ["node-1"],
+                  type: "organization",
+                  updatedAt: "2026-05-12T00:00:00.000Z",
+                },
+              ],
+              metrics: {
+                depthReached: 1,
+                elapsedMs: 12,
+                exploredRelations: 2,
+                fanout: 8,
+                maxDepth: 2,
+                maxNodes: 20,
+                timedOut: false,
               },
-            ],
-            metrics: {
-              depthReached: 1,
-              elapsedMs: 12,
-              exploredRelations: 2,
-              fanout: 8,
-              maxDepth: 2,
-              maxNodes: 20,
-              timedOut: false,
-            },
-            relations: [
-              {
-                confidence: 0.9,
-                createdAt: "2026-05-12T00:00:00.000Z",
-                depth: 1,
-                extractionVersion: 1,
-                id: "rel-1",
-                knowledgeSpaceId: "space-1",
-                metadata: {},
-                objectEntityId: "entity-policy",
-                permissionScope: ["tenant:tenant-1"],
-                sourceNodeIds: ["node-1"],
-                subjectEntityId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-                type: "references",
-                updatedAt: "2026-05-12T00:00:00.000Z",
-              },
-            ],
-            truncated: false,
-          });
-        }
+              relations: [
+                {
+                  confidence: 0.9,
+                  createdAt: "2026-05-12T00:00:00.000Z",
+                  depth: 1,
+                  extractionVersion: 1,
+                  id: "rel-1",
+                  knowledgeSpaceId: "space-1",
+                  metadata: {},
+                  objectEntityId: "entity-policy",
+                  permissionScope: ["tenant:tenant-1"],
+                  sourceNodeIds: ["node-1"],
+                  subjectEntityId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+                  type: relationType,
+                  updatedAt: "2026-05-12T00:00:00.000Z",
+                },
+              ],
+              truncated: false,
+            });
+          }
 
-        if (
-          request.url ===
-          "http://api.test/knowledge-spaces/space-1/fs/ls?path=%2Fknowledge%2Fby-entity%2F018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&limit=5"
-        ) {
-          return Response.json({
-            items: [
-              {
-                kind: "resource",
-                metadata: { parserStatus: "parsed" },
-                name: "roadmap.md",
-                path: "/knowledge/by-entity/018f0d60-7a49-7cc2-9c1b-5b36f18f2c81/roadmap.md",
-                resourceType: "document",
-                targetId: "asset-1",
-                version: 1,
-              },
-            ],
-            path: "/knowledge/by-entity/018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-            truncated: false,
-          });
-        }
+          if (
+            request.url ===
+            "http://api.test/knowledge-spaces/space-1/fs/ls?path=%2Fknowledge%2Fby-entity%2F018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&limit=5"
+          ) {
+            return Response.json({
+              items: [
+                {
+                  kind: "resource",
+                  metadata: { parserStatus: "parsed" },
+                  name: "roadmap.md",
+                  path: "/knowledge/by-entity/018f0d60-7a49-7cc2-9c1b-5b36f18f2c81/roadmap.md",
+                  resourceType: "document",
+                  targetId: "asset-1",
+                  version: 1,
+                },
+              ],
+              path: "/knowledge/by-entity/018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+              truncated: false,
+            });
+          }
 
-        throw new Error(`Unexpected request ${request.method} ${request.url}`);
-      },
-      maxGraphFanout: 10,
-      maxGraphNodes: 25,
-    });
+          throw new Error(`Unexpected request ${request.method} ${request.url}`);
+        },
+        maxGraphFanout: 10,
+        maxGraphNodes: 25,
+      });
 
-    await expect(
-      client.traverseGraph({
-        depth: 2,
-        entityId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-        fanout: 8,
-        knowledgeSpaceId: "space-1",
-        maxNodes: 20,
-        timeoutMs: 250,
-        token: "read-token",
-      }),
-    ).resolves.toMatchObject({
-      entities: [{ name: "Acme Payments", type: "organization" }],
-      relations: [{ type: "references" }],
-      truncated: false,
-    });
-    await expect(
-      client.listKnowledgeFs({
-        knowledgeSpaceId: "space-1",
-        limit: 5,
-        path: "/knowledge/by-entity/018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
-        token: "read-token",
-      }),
-    ).resolves.toMatchObject({
-      items: [{ name: "roadmap.md", resourceType: "document" }],
-      truncated: false,
-    });
-    await expect(
-      client.traverseGraph({
-        entityId: "entity-1",
-        fanout: 11,
-        knowledgeSpaceId: "space-1",
-        token: "read-token",
-      }),
-    ).rejects.toThrow("Admin API graph fanout must be between 1 and 10");
-    await expect(
-      client.listKnowledgeFs({
-        knowledgeSpaceId: "space-1",
-        limit: 101,
-        path: "/knowledge/by-entity",
-        token: "read-token",
-      }),
-    ).rejects.toThrow("Admin API KnowledgeFS list limit must be between 1 and 100");
-    expect(requests.map((request) => [request.method, request.url])).toEqual([
-      [
-        "GET",
-        "http://api.test/knowledge-spaces/space-1/graph/traverse?entityId=018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&depth=2&fanout=8&maxNodes=20&timeoutMs=250",
-      ],
-      [
-        "GET",
-        "http://api.test/knowledge-spaces/space-1/fs/ls?path=%2Fknowledge%2Fby-entity%2F018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&limit=5",
-      ],
-    ]);
-  });
+      await expect(
+        client.traverseGraph({
+          depth: 2,
+          entityId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+          fanout: 8,
+          knowledgeSpaceId: "space-1",
+          maxNodes: 20,
+          timeoutMs: 250,
+          token: "read-token",
+        }),
+      ).resolves.toMatchObject({
+        entities: [{ name: "Acme Payments", type: "organization" }],
+        relations: [{ type: relationType }],
+        truncated: false,
+      });
+      await expect(
+        client.listKnowledgeFs({
+          knowledgeSpaceId: "space-1",
+          limit: 5,
+          path: "/knowledge/by-entity/018f0d60-7a49-7cc2-9c1b-5b36f18f2c81",
+          token: "read-token",
+        }),
+      ).resolves.toMatchObject({
+        items: [{ name: "roadmap.md", resourceType: "document" }],
+        truncated: false,
+      });
+      await expect(
+        client.traverseGraph({
+          entityId: "entity-1",
+          fanout: 11,
+          knowledgeSpaceId: "space-1",
+          token: "read-token",
+        }),
+      ).rejects.toThrow("Admin API graph fanout must be between 1 and 10");
+      await expect(
+        client.listKnowledgeFs({
+          knowledgeSpaceId: "space-1",
+          limit: 101,
+          path: "/knowledge/by-entity",
+          token: "read-token",
+        }),
+      ).rejects.toThrow("Admin API KnowledgeFS list limit must be between 1 and 100");
+      expect(requests.map((request) => [request.method, request.url])).toEqual([
+        [
+          "GET",
+          "http://api.test/knowledge-spaces/space-1/graph/traverse?entityId=018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&depth=2&fanout=8&maxNodes=20&timeoutMs=250",
+        ],
+        [
+          "GET",
+          "http://api.test/knowledge-spaces/space-1/fs/ls?path=%2Fknowledge%2Fby-entity%2F018f0d60-7a49-7cc2-9c1b-5b36f18f2c81&limit=5",
+        ],
+      ]);
+    },
+  );
 
   it("lists semantic topic/entity/community views through a safe KnowledgeFS path helper", async () => {
     const requests: Request[] = [];

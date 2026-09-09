@@ -25,6 +25,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-pgvector": "0.0.9",
     "@knowledge/adapters": "workspace:*",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",

@@ -17,6 +17,10 @@ import {
   graphemeSegments,
 } from "unicode-segmenter/grapheme";
 import { z } from "zod";
+import {
+  GRAPH_RELATION_EXTRACTION_INSTRUCTIONS,
+  GRAPH_RELATION_TYPES,
+} from "./graph-relation-catalog";
 
 import { deterministicChildId } from "./api-shared-utils";
 import { type ConcurrencyGate, mapWithConcurrency } from "./bounded-concurrency";
@@ -70,7 +74,8 @@ const DEFAULT_MAX_ENTITIES_PER_CHUNK = 100;
 const DEFAULT_MAX_RELATIONS_PER_CHUNK = 100;
 const DEFAULT_MAX_OUTPUT_TOKENS = 6_000;
 const DEFAULT_MAX_RESPONSE_CHARS = 1_000_000;
-const DEFAULT_PROMPT_VERSION = "semantic-chunking-v6";
+const DEFAULT_PROMPT_VERSION = "semantic-chunking-v7";
+const SEMANTIC_CHUNKING_V6_PROMPT_VERSION = "semantic-chunking-v6";
 const SEMANTIC_CHUNKING_V2_PROMPT_VERSION = "semantic-chunking-v2";
 const SEMANTIC_CHUNKING_V3_PROMPT_VERSION = "semantic-chunking-v3";
 const SEMANTIC_CHUNKING_V4_PROMPT_VERSION = "semantic-chunking-v4";
@@ -2525,7 +2530,11 @@ function resolveSemanticWindowPlanningPolicy({
 }
 
 function semanticWindowPlanningVersion(promptVersion: string): SemanticWindowPlanningVersion {
-  if (promptVersion === DEFAULT_PROMPT_VERSION) return "v6";
+  if (
+    promptVersion === DEFAULT_PROMPT_VERSION ||
+    promptVersion === SEMANTIC_CHUNKING_V6_PROMPT_VERSION
+  )
+    return "v6";
   if (promptVersion === SEMANTIC_CHUNKING_V5_PROMPT_VERSION) return "v5";
   if (promptVersion === SEMANTIC_CHUNKING_V4_PROMPT_VERSION) return "v4";
   if (promptVersion === SEMANTIC_CHUNKING_V3_PROMPT_VERSION) return "v3";
@@ -2946,7 +2955,7 @@ function semanticChunkingMessages({
         `Every range must contain at most ${maxChunkChars} Unicode graphemes including separators.`,
         `Return at most ${maxEntitiesPerChunk} entities and ${maxRelationsPerChunk} relations per chunk.`,
         "Allowed entity types: date, metric, organization, person, policy, product, term.",
-        "Allowed relation types: mentions, defines, references, depends_on, supersedes, contradicts.",
+        GRAPH_RELATION_EXTRACTION_INSTRUCTIONS,
         "Entity text must be an exact source substring. Give every entity a response-local unique id.",
         "Relations must reference entity ids from that same chunk through subjectEntityId/objectEntityId; never use names as relation endpoints.",
         ...(carriesParserProvenance
@@ -3945,14 +3954,7 @@ const EntityTypeSchema = z.enum([
   "term",
 ]);
 
-const RelationTypeSchema = z.enum([
-  "contradicts",
-  "defines",
-  "depends_on",
-  "mentions",
-  "references",
-  "supersedes",
-]);
+const RelationTypeSchema = z.enum(GRAPH_RELATION_TYPES);
 
 const LlmSemanticEntitySchema = z
   .object({

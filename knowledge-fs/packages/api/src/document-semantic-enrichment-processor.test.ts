@@ -4,7 +4,7 @@ import {
   type KnowledgeSpaceRetrievalProfile,
   ParseArtifactSchema,
 } from "@knowledge/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createDocumentSemanticEnrichmentProcessor,
@@ -15,6 +15,7 @@ import {
   createInMemoryDocumentSemanticExtractionCheckpointRepository,
 } from "./document-semantic-enrichment-repository";
 import { createInMemoryGraphIndexRepository } from "./graph-index-repository";
+import { graphEmbeddingProfile } from "./graph-query.fixtures";
 import { createInMemoryKnowledgeNodeRepository } from "./knowledge-node-repository";
 import { createLlmSemanticChunker } from "./llm-semantic-chunker";
 
@@ -526,6 +527,7 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
     });
     await nodes.createMany(semanticNodes);
     let enrichmentFactoryCalls = 0;
+    const semanticIndex = { index: vi.fn(async () => ({ indexed: 3, reused: 0 })) };
     const graph = createInMemoryGraphIndexRepository({
       maxBatchSize: 10,
       maxEntities: 10,
@@ -534,6 +536,8 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
     const processor = createDocumentSemanticEnrichmentProcessor({
       checkpoints: createInMemoryDocumentSemanticExtractionCheckpointRepository(),
       graph,
+      semanticIndex,
+      resolveEmbeddingProfile: async () => graphEmbeddingProfile,
       maxConcurrentBatches: 1,
       maxEntitiesPerNode: 8,
       maxNodesPerArtifact: 10,
@@ -566,18 +570,34 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
         maxRelationsPerNode: 8,
         nodes,
         now: () => createdAt,
+        semanticIndex,
       }).materialize({
         createdAt,
         knowledgeSpaceId,
         parseArtifactId,
         publicationGenerationId,
         retrievalProfile: (await semanticJob()).retrievalProfile,
+        embeddingProfile: graphEmbeddingProfile,
+        tenantId,
       }),
     ).resolves.toMatchObject({
       graphEntityIds: [expect.any(String), expect.any(String)],
       graphRelationIds: [expect.any(String)],
       semanticProviderCalls: 0,
     });
+    expect(semanticIndex.index).toHaveBeenCalledTimes(2);
+    expect(semanticIndex.index).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId,
+        knowledgeSpaceId,
+        publicationGenerationId,
+        embeddingProfile: graphEmbeddingProfile,
+        entities: expect.arrayContaining([
+          expect.objectContaining({ knowledgeSpaceId, publicationGenerationId }),
+        ]),
+        relations: expect.arrayContaining([expect.objectContaining({ type: "references" })]),
+      }),
+    );
   });
 });
 

@@ -1043,6 +1043,8 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
           );
           if (semanticGraph) {
             const graph = await semanticGraph.materialize({
+              embeddingProfile,
+              tenantId: input.tenantId,
               createdAt: candidate.createdAt,
               knowledgeSpaceId: input.knowledgeSpaceId,
               parseArtifactId: document.artifact.id,
@@ -1188,6 +1190,8 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
           );
           if (semanticGraph) {
             const graph = await semanticGraph.materialize({
+              embeddingProfile,
+              tenantId: input.tenantId,
               createdAt: candidate.createdAt,
               knowledgeSpaceId: input.knowledgeSpaceId,
               parseArtifactId: document.artifact.id,

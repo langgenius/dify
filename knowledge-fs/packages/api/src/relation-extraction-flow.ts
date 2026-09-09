@@ -3,6 +3,7 @@ import { type KnowledgeNode, PublicationGenerationIdSchema } from "@knowledge/co
 import { mapWithConcurrency } from "./bounded-concurrency";
 import { type ExtractedEntity, extractedEntitiesFromNodeMetadata } from "./entity-extraction-flow";
 import { RELATION_EXTRACTION_TYPES, type RelationExtractionType } from "./extraction-types";
+import { GRAPH_RELATION_EXTRACTION_INSTRUCTIONS } from "./graph-relation-catalog";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import { type KnowledgeNodeRepository, cloneKnowledgeNode } from "./knowledge-node-repository";
 
@@ -76,7 +77,7 @@ export function createRelationExtractionFlow({
   model,
   nodes,
   now = () => new Date().toISOString(),
-  promptVersion = "relation-extraction-v1",
+  promptVersion = "relation-extraction-v2",
   provider,
   providerBatchSize = 8,
 }: RelationExtractionFlowOptions): RelationExtractionFlow {
@@ -413,7 +414,7 @@ function relationExtractionPrompt(
       : entities.map((entity) => `${entity.type}:${entity.text}`).join(", ");
 
   return [
-    "Extract typed relations: mentions, defines, references, depends_on, supersedes, and contradicts.",
+    GRAPH_RELATION_EXTRACTION_INSTRUCTIONS,
     "Use the existing entity context when possible and return confidence scores.",
     `Kind: ${node.kind}`,
     `Section: ${sectionPath}`,

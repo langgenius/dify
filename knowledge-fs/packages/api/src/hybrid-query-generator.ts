@@ -62,6 +62,8 @@ export interface HybridQueryGeneratorOptions {
 }
 
 export interface MultimodalAnswerProviderInput {
+  /** Complete, citation-grounded graph paths, formatted with the same E1/E2 evidence labels. */
+  readonly graphPathEvidence?: string | undefined;
   readonly evidence: readonly MultimodalAnswerEvidenceItem[];
   readonly multimodalEvidence: readonly MultimodalEvidenceAttachment[];
   readonly query: string;

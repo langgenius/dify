@@ -144,7 +144,18 @@ export function createGraphIndexWriter({
 
           entityAccumulator.set(canonicalKey, {
             ...next,
-            aliases: uniqueStrings([...next.aliases, entity.text]),
+            aliases: uniqueStrings([
+              ...next.aliases,
+              entity.text,
+              ...(Array.isArray(entity.metadata?.aliases)
+                ? entity.metadata.aliases.filter(
+                    (alias): alias is string =>
+                      typeof alias === "string" &&
+                      alias.trim().length > 0 &&
+                      alias.length <= maxGraphEntityNameLength,
+                  )
+                : []),
+            ]),
             confidence: Math.max(next.confidence, entity.confidence),
             metadata: {
               ...cloneJsonObject(next.metadata),

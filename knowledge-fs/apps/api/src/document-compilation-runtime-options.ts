@@ -24,6 +24,7 @@ import {
   type DurableTaskOperationalMetrics,
   type GoldenQuestionRepository,
   type GraphIndexRepository,
+  type GraphSemanticIndexer,
   type IndexProjectionRepository,
   type IngestionModelCallOperationalMetrics,
   type KnowledgeGatewayOptions,
@@ -61,6 +62,7 @@ import {
   createDatabaseDocumentRevisionPublicationFenceResolver,
   createDatabaseDocumentSemanticEnrichmentRepository,
   createDatabaseDocumentSemanticExtractionCheckpointRepository,
+  createDatabaseGraphSemanticProjectionRepository,
   createDatabaseKnowledgeSpaceProfileMigrationCandidateSnapshotRepository,
   createDatabasePublishedPageIndexBuildRepository,
   createDenseVectorProjectionBuilder,
@@ -79,6 +81,7 @@ import {
   createDocumentSettingsChangeCoordinator,
   createDurableDocumentCompilationJobStateMachine,
   createFtsProjectionBuilder,
+  createGraphSemanticIndexer,
   createIncrementalReindexer,
   createJointSemanticGraphMaterializer,
   createKnowledgeSpaceProfileMigrationRuntime,
@@ -96,6 +99,7 @@ import {
   createRetainedParseArtifactAdmission,
   createSourceCompilationPublicationExecutor,
   createVisualEmbeddingProjectionBuilder,
+  loadDocumentCompilationFrozenProfiles,
 } from "@knowledge/api";
 import type { ComputeRuntime } from "@knowledge/compute";
 import { KnowledgeSpaceRetrievalProfileSchema } from "@knowledge/core";
@@ -535,10 +539,19 @@ export function createApiDocumentCompilationRuntime({
     maxNodes: maxDocumentNodes,
     maxSummaryChars: 2_000,
   });
+  const graphSemanticIndex = repositories.graph
+    ? createGraphSemanticIndexer({
+        embeddings: embeddingResolver,
+        repository: createDatabaseGraphSemanticProjectionRepository(adapter.database),
+        batchSize: Math.min(embeddingBatchSize, 128),
+        metrics: modelCallMetrics,
+      })
+    : undefined;
   const jointSemanticGraph =
     semanticChunker && repositories.graph
       ? createJointSemanticGraphMaterializer({
           graph: repositories.graph,
+          semanticIndex: graphSemanticIndex,
           maxEntitiesPerNode: semantic?.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
           maxNodesPerArtifact: maxDocumentNodes,
           maxRelationsPerNode: semantic?.semanticRelationExtractionMaxRelationsPerNode ?? 50,
@@ -610,6 +623,8 @@ export function createApiDocumentCompilationRuntime({
     adapter,
     attempts: repositories.attempts,
     graph: repositories.graph,
+    semanticIndex: graphSemanticIndex,
+    profiles: repositories.profiles,
     members: repositories.members,
     nodes: repositories.nodes,
     outlines: repositories.outlines,
@@ -972,6 +987,8 @@ function createCandidateSemanticEnrichment({
   adapter,
   attempts,
   graph,
+  semanticIndex,
+  profiles,
   members,
   nodes,
   outlines,
@@ -983,6 +1000,8 @@ function createCandidateSemanticEnrichment({
   readonly adapter: CreateApiDocumentCompilationRuntimeOptions["adapter"];
   readonly attempts: DocumentCompilationAttemptRepository;
   readonly graph?: GraphIndexRepository | undefined;
+  readonly semanticIndex?: GraphSemanticIndexer | undefined;
+  readonly profiles: KnowledgeSpaceProfileRepository;
   readonly members: ProjectionSetPublicationMemberRepository;
   readonly nodes: KnowledgeNodeRepository;
   readonly outlines: DocumentOutlineRepository;
@@ -1010,6 +1029,18 @@ function createCandidateSemanticEnrichment({
   const processor = createDocumentSemanticEnrichmentProcessor({
     checkpoints,
     graph,
+    semanticIndex,
+    resolveEmbeddingProfile: async (job) => {
+      const attempt = await attempts.get(job.compilationAttemptId);
+      if (
+        !attempt ||
+        attempt.tenantId !== job.tenantId ||
+        attempt.knowledgeSpaceId !== job.knowledgeSpaceId ||
+        attempt.publicationGenerationId !== job.publicationGenerationId
+      )
+        throw new Error("Graph embedding attempt scope mismatch");
+      return (await loadDocumentCompilationFrozenProfiles(profiles, attempt)).embeddingProfile;
+    },
     maxConcurrentBatches: semantic.semanticExtractionMaxConcurrency ?? 4,
     maxEntitiesPerNode: semantic.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
     maxNodesPerArtifact: maxNodes,

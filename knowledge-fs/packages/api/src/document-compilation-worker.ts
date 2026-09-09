@@ -1110,6 +1110,10 @@ export function createDocumentCompilationWorker({
           ) {
             await assertWritable();
             const semanticResult = await jointSemanticGraph.materialize({
+              signal,
+              modelBudget,
+              embeddingProfile: frozenEmbeddingProfile,
+              tenantId: input.tenantId,
               createdAt: activeAsset.updatedAt ?? activeAsset.createdAt,
               knowledgeSpaceId: input.knowledgeSpaceId,
               parseArtifactId: canonicalArtifact.id,

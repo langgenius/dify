@@ -4558,6 +4558,44 @@ const tables = [
     ],
   },
   {
+    name: "graph_entity_semantic_projections",
+    primaryKey: ["owner_id", "vector_space_id"],
+    foreignKeys: [
+      {
+        columns: ["owner_id"],
+        referencedTable: "graph_entities",
+        referencedColumns: ["id"],
+        onDelete: "CASCADE",
+      },
+      {
+        columns: ["knowledge_space_id"],
+        referencedTable: "knowledge_spaces",
+        referencedColumns: ["id"],
+        onDelete: "CASCADE",
+      },
+    ],
+    columns: graphSemanticProjectionColumns(),
+  },
+  {
+    name: "graph_relation_semantic_projections",
+    primaryKey: ["owner_id", "vector_space_id"],
+    foreignKeys: [
+      {
+        columns: ["owner_id"],
+        referencedTable: "graph_relations",
+        referencedColumns: ["id"],
+        onDelete: "CASCADE",
+      },
+      {
+        columns: ["knowledge_space_id"],
+        referencedTable: "knowledge_spaces",
+        referencedColumns: ["id"],
+        onDelete: "CASCADE",
+      },
+    ],
+    columns: graphSemanticProjectionColumns(),
+  },
+  {
     name: "failed_queries",
     checkConstraints: [
       {
@@ -6442,7 +6480,34 @@ const tables = [
   },
 ] as const satisfies readonly TableDefinition[];
 
+function graphSemanticProjectionColumns(): readonly ColumnDefinition[] {
+  return [
+    idColumn("owner_id"),
+    idColumn("knowledge_space_id"),
+    idColumn("publication_generation_id"),
+    varcharColumn("vector_space_id", 87),
+    integerColumn("dimension"),
+    varcharColumn("representation_version", 64),
+    { name: "content_hash", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
+    textColumn("search_text"),
+    vectorColumn("vector"),
+    timestampColumn("created_at"),
+  ];
+}
+
 const indexes = [
+  {
+    name: "graph_entity_semantic_scope_idx",
+    tableName: "graph_entity_semantic_projections",
+    columns: ["knowledge_space_id", "vector_space_id", "publication_generation_id", "owner_id"],
+    purpose: "Scope graph entity embeddings to a frozen model and graph generation",
+  },
+  {
+    name: "graph_relation_semantic_scope_idx",
+    tableName: "graph_relation_semantic_projections",
+    columns: ["knowledge_space_id", "vector_space_id", "publication_generation_id", "owner_id"],
+    purpose: "Scope relationship embeddings to a frozen model and graph generation",
+  },
   {
     columns: ["tenant_id", "id"],
     name: "knowledge_spaces_tenant_id_uq",

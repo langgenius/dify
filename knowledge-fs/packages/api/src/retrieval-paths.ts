@@ -11,6 +11,7 @@ import {
   compareGraphTraversalEntities,
   validateGraphTraversalInput,
 } from "./graph-index-repository";
+import type { GraphSemanticQueryService } from "./graph-semantic-query";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import type { PublishedGraphIndexRepository } from "./published-graph-index-repository";
 import {
@@ -44,6 +45,7 @@ export interface DocumentOutlineRetrievalPathOptions {
 }
 
 export interface GraphExpandedRetrievalPathOptions {
+  readonly semanticQuery?: GraphSemanticQueryService | undefined;
   readonly fanout: number;
   readonly graph: GraphIndexRepository;
   readonly graphBoost: number;
@@ -474,6 +476,7 @@ export function createImageOcrRetrievalPath({
 }
 
 export function createGraphExpandedRetrievalPath({
+  semanticQuery,
   fanout,
   graph,
   graphBoost,
@@ -501,7 +504,9 @@ export function createGraphExpandedRetrievalPath({
       const baseResult = await runWithAbortSignal(() => retriever.retrieve(input), input.signal);
       if (
         !shouldRunModeExtension(input.mode, "graph-expansion") ||
-        (input.mode === "research" && input.researchGraphEnabled !== true)
+        (input.mode === "research" &&
+          input.researchGraphEnabled !== true &&
+          !(semanticQuery && input.researchGraphSemanticEnabled === true))
       ) {
         return baseResult;
       }
@@ -520,6 +525,98 @@ export function createGraphExpandedRetrievalPath({
       }
 
       const expansionStartedAt = Date.now();
+      if (
+        semanticQuery &&
+        snapshot &&
+        input.embeddingProfile &&
+        input.retrievalProfile?.reasoningModel
+      ) {
+        const queried = await semanticQuery.query(input);
+        const flags = [...queried.flags];
+        const sourceIds = uniqueStrings(queried.paths.flatMap((path) => path.sourceNodeIds));
+        if (sourceIds.length > 512) flags.push("graph-path-source-budget-truncated");
+        const nodeIds = intersectPublishedGraphSourceNodeIds(
+          input.filters?.nodeIds,
+          sourceIds.slice(0, 512),
+        );
+        const graphResult = nodeIds.length
+          ? await runWithAbortSignal(
+              () =>
+                retriever.retrieve({
+                  ...input,
+                  filters: publishedGraphExpandedRetrievalFilters(input.filters, nodeIds),
+                  topK: Math.min(100, graphTopK * 6),
+                  limit: Math.min(100, graphTopK * 6),
+                }),
+              input.signal,
+            )
+          : undefined;
+        const graphItems = graphResult?.items ?? [];
+        const evidenceIds = new Set(graphItems.map((item) => item.nodeId));
+        const supportedPaths = queried.paths.filter((path) =>
+          path.edges.every((edge) => edge.relation.sourceNodeIds.some((id) => evidenceIds.has(id))),
+        );
+        if (supportedPaths.length < queried.paths.length)
+          flags.push("graph-path-evidence-incomplete");
+        const decorated = graphItems.map((item) => ({
+          ...item,
+          metadata: {
+            ...item.metadata,
+            graphQuery: { version: queried.version, status: queried.status, flags },
+            graphPaths: supportedPaths
+              .filter((path) => path.sourceNodeIds.includes(item.nodeId))
+              .slice(0, 8)
+              .map((path) => ({
+                entityIds: path.entityIds,
+                entityNames: path.entityNames,
+                edges: path.edges.map((edge) => ({
+                  relationId: edge.relation.id,
+                  type: edge.relation.type,
+                  fromEntityId: edge.fromEntityId,
+                  toEntityId: edge.toEntityId,
+                  subjectEntityId: edge.relation.subjectEntityId,
+                  objectEntityId: edge.relation.objectEntityId,
+                  // Return only recalled citations; a common relation can have thousands of
+                  // provenance nodes, which must not be duplicated into every result item.
+                  sourceNodeIds: edge.relation.sourceNodeIds.filter((id) => evidenceIds.has(id)),
+                })),
+              })),
+          },
+        }));
+        const expansionMs = Math.max(0, Date.now() - expansionStartedAt);
+        return {
+          ...baseResult,
+          items: mergeGraphExpandedRetrievalItems({
+            baseItems: baseResult.items,
+            graphItems: decorated,
+            graphBoost,
+            limit: input.limit,
+            seedEntityIds: queried.plan?.startEntityIds ?? [],
+            traversedEntityIds: uniqueStrings(queried.paths.flatMap((path) => path.entityIds)),
+          }),
+          ...(baseResult.metrics
+            ? {
+                metrics: {
+                  ...baseResult.metrics,
+                  degradationFlags: uniqueStrings([
+                    ...(baseResult.metrics.degradationFlags ?? []),
+                    ...flags,
+                  ]),
+                  graphExpansionCandidates: graphItems.length,
+                  graphExpansionMs: expansionMs,
+                  graphExpansionSeeds: queried.plan?.startEntityIds.length ?? 0,
+                  graphExpansionRelations: queried.examinedEdges,
+                  graphExpansionTraversedEntities: uniqueStrings(
+                    queried.paths.flatMap((path) => path.entityIds),
+                  ).length,
+                  graphExpansionTimedOut: flags.includes("graph-query-timeout"),
+                  totalMs: baseResult.metrics.totalMs + expansionMs,
+                },
+              }
+            : {}),
+        };
+      }
+      if (input.mode === "research" && input.researchGraphEnabled !== true) return baseResult;
       const metadataSeedEntityIds = graphSeedEntityIdsFromItems(baseResult.items, maxSeedEntities);
       const seedEntityIds = snapshot
         ? uniqueStrings(
@@ -1387,6 +1484,12 @@ function mergeGraphExpandedRetrievalItems({
         ...existing,
         metadata: {
           ...cloneJsonObject(existing.metadata),
+          ...(item.metadata.graphPaths
+            ? { graphPaths: cloneJsonObject(item.metadata).graphPaths }
+            : {}),
+          ...(item.metadata.graphQuery
+            ? { graphQuery: cloneJsonObject(item.metadata).graphQuery }
+            : {}),
           graphExpansion,
         },
         projectionIds: uniqueStrings([...existing.projectionIds, ...item.projectionIds]),

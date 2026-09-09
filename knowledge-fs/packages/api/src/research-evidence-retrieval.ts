@@ -330,6 +330,7 @@ export function createResearchEvidenceRetrieval({
                   researchBudget: budget,
                   // Graph is a single knowledge-space-wide recall leg, not one traversal per rewrite.
                   researchGraphEnabled: queryPlan.useGraph && index === 0,
+                  researchGraphSemanticEnabled: index === 0,
                   researchOpenGate,
                   topK: candidateLimit,
                 }),
@@ -457,6 +458,7 @@ export function createResearchEvidenceRetrieval({
               researchExecutionPolicy: policy,
               researchBudget: budget,
               researchGraphEnabled: false,
+              researchGraphSemanticEnabled: false,
               researchOpenGate,
               topK: candidateLimit,
             }),

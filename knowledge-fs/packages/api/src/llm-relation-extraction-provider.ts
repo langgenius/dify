@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  GRAPH_RELATION_EXTRACTION_INSTRUCTIONS,
+  GRAPH_RELATION_TYPES,
+} from "./graph-relation-catalog";
 
 import type { ConcurrencyGate } from "./bounded-concurrency";
 import {
@@ -19,6 +23,7 @@ export interface LlmRelationExtractionMessage {
 }
 
 export interface GenerateRelationExtractionTextInput {
+  readonly signal?: AbortSignal | undefined;
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly LlmRelationExtractionMessage[];
   readonly model: string;
@@ -218,7 +223,7 @@ function relationExtractionBatchMessages(
         "Return strict JSON only with this shape:",
         '{"nodes":[{"nodeId":"node-id","relations":[{"subject":"Acme Corp","type":"references","object":"Renewal Policy","confidence":0.91}]}]}',
         "Return exactly one node object for every supplied nodeId and do not invent ids.",
-        "Allowed relation types: mentions, defines, references, depends_on, supersedes, contradicts.",
+        GRAPH_RELATION_EXTRACTION_INSTRUCTIONS,
       ].join("\n"),
       role: "system",
     },
@@ -245,7 +250,7 @@ function relationExtractionMessages(
         "You extract high-signal knowledge graph relations from document chunks.",
         "Return strict JSON only, with this shape:",
         '{"relations":[{"subject":"Acme Corp","type":"references","object":"Renewal Policy","confidence":0.91}]}',
-        "Allowed relation types: mentions, defines, references, depends_on, supersedes, contradicts.",
+        GRAPH_RELATION_EXTRACTION_INSTRUCTIONS,
         "Only relate entities that are explicitly supported by the text.",
         "Do not create relations for bare numbers, dates, list ordinals, code identifiers, environment variables, or generic words.",
         "Use the exact entity names from the provided entity list whenever possible.",
@@ -309,14 +314,7 @@ function tryParseJsonObject(text: string): unknown {
   }
 }
 
-const RelationTypeSchema = z.enum([
-  "contradicts",
-  "defines",
-  "depends_on",
-  "mentions",
-  "references",
-  "supersedes",
-]);
+const RelationTypeSchema = z.enum(GRAPH_RELATION_TYPES);
 
 const ExtractedRelationSchema = z
   .object({

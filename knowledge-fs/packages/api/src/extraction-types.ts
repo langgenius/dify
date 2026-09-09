@@ -1,3 +1,5 @@
+import { GRAPH_RELATION_TYPES, type GraphRelationType } from "./graph-relation-catalog";
+
 export type EntityExtractionType =
   | "date"
   | "metric"
@@ -17,19 +19,6 @@ export const ENTITY_EXTRACTION_TYPES = new Set<EntityExtractionType>([
   "term",
 ]);
 
-export type RelationExtractionType =
-  | "contradicts"
-  | "defines"
-  | "depends_on"
-  | "mentions"
-  | "references"
-  | "supersedes";
+export type RelationExtractionType = GraphRelationType;
 
-export const RELATION_EXTRACTION_TYPES = new Set<RelationExtractionType>([
-  "contradicts",
-  "defines",
-  "depends_on",
-  "mentions",
-  "references",
-  "supersedes",
-]);
+export const RELATION_EXTRACTION_TYPES = new Set<RelationExtractionType>(GRAPH_RELATION_TYPES);

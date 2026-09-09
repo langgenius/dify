@@ -5,6 +5,7 @@ export const IngestionModelStages = [
   "outline-summary",
   "graph-entity",
   "graph-relation",
+  "graph-embedding",
   "graph-community-summary",
   "findability",
   "text-embedding",

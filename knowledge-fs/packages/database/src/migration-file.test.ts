@@ -166,6 +166,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0052_namespace_source_previews.tidb.sql",
       "packages/database/migrations/0053_answer_trace_source.postgres.sql",
       "packages/database/migrations/0053_answer_trace_source.tidb.sql",
+      "packages/database/migrations/0054_graph_semantic_projections.postgres.sql",
+      "packages/database/migrations/0054_graph_semantic_projections.tidb.sql",
     ]);
     const workflowCapturePostgres = artifacts.find(
       (artifact) =>
@@ -949,6 +951,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0051_failed_query_trace_outcome_index.postgres.sql",
       "packages/database/migrations/0052_namespace_source_previews.postgres.sql",
       "packages/database/migrations/0053_answer_trace_source.postgres.sql",
+      "packages/database/migrations/0054_graph_semantic_projections.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -1006,6 +1009,7 @@ describe("migration file rendering", () => {
           "0051_failed_query_trace_outcome_index",
           "0052_namespace_source_previews",
           "0053_answer_trace_source",
+          "0054_graph_semantic_projections",
         ],
         dialect: "postgres",
       }),

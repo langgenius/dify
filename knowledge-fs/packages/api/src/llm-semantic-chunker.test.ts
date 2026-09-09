@@ -309,7 +309,7 @@ describe("LLM semantic chunker", () => {
         completed: true,
         entityCount: 2,
         model: "reasoner-model",
-        promptVersion: "semantic-chunking-v6",
+        promptVersion: "semantic-chunking-v7",
       },
       relationExtraction: { completed: true, relationCount: 1 },
       semanticChunking: {

@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
 
+export * from "./graph-relation-catalog";
+export * from "./graph-query-contracts";
+export * from "./graph-query-executor";
+export * from "./graph-query-database-repository";
+export * from "./graph-query-planner";
+export * from "./graph-semantic-index";
+export * from "./graph-semantic-query";
+
 export * from "./a2a-adapter";
 export * from "./agent-workspace-snapshot";
 export * from "./agent-workspace-snapshot-handlers";

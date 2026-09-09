@@ -2,6 +2,7 @@ import {
   type BasicHybridRetriever,
   type DocumentOutlineRepository,
   type GraphIndexRepository,
+  type GraphSemanticQueryService,
   type HybridRetrievalItem,
   type HybridRetrievalRepository,
   type ImageBytesVisualEmbeddingProvider,
@@ -49,6 +50,7 @@ import {
 import type { ApiRerankerOptions } from "./reranker-options";
 
 export interface ApiRetrieverOptions {
+  readonly graphSemanticQuery?: GraphSemanticQueryService | undefined;
   /** Whether a dense embedding provider is configured; gates the dense leg. */
   readonly embeddingEnabled: boolean;
   /** Fail-closed latch for TiDB lexical postings used by every online retrieval mode. */
@@ -156,6 +158,7 @@ export class HybridEmbeddingCapabilityUnavailableError extends Error {
  * request), collapsing fast/deep/research into one behaviour.
  */
 export function createApiRetriever({
+  graphSemanticQuery,
   embeddingEnabled,
   ftsReadiness,
   graph,
@@ -267,6 +270,7 @@ export function createApiRetriever({
   const extendedStack =
     graph && (!strictPublishedReads || publishedGraph)
       ? createGraphExpandedRetrievalPath({
+          ...(graphSemanticQuery ? { semanticQuery: graphSemanticQuery } : {}),
           ...(graphExpansion ?? DEFAULT_GRAPH_EXPANSION_OPTIONS),
           graph,
           ...(publishedGraph ? { publishedGraph } : {}),

@@ -20,6 +20,7 @@ export interface LlmEntityExtractionMessage {
 }
 
 export interface GenerateEntityExtractionTextInput {
+  readonly signal?: AbortSignal | undefined;
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly LlmEntityExtractionMessage[];
   readonly model: string;
