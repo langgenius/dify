@@ -54,8 +54,11 @@ export function IpPolicyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent backdropProps={{ forceRender: true }} className="flex w-120 flex-col gap-6">
-        <div className="flex items-start gap-4">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="flex max-h-[80dvh] w-120 flex-col gap-6 overflow-hidden"
+      >
+        <div className="flex shrink-0 items-start gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {mode === 'edit'
@@ -80,7 +83,7 @@ export function IpPolicyDialog({
         </div>
 
         <form
-          className="flex flex-col gap-6"
+          className="flex min-h-0 flex-1 flex-col gap-6"
           onSubmit={(event) => {
             event.preventDefault()
             if (!canSubmit) return
@@ -90,7 +93,7 @@ export function IpPolicyDialog({
             })
           }}
         >
-          <Field className="flex flex-col gap-3">
+          <Field className="flex shrink-0 flex-col gap-3">
             <FieldLabel>{t(($) => $['settings.ipPolicyName'], { ns: 'common' })}</FieldLabel>
             <Input
               value={name}
@@ -101,7 +104,7 @@ export function IpPolicyDialog({
 
           <AllowlistField entries={entries} currentIp={currentIp} onEntriesChange={setEntries} />
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex shrink-0 items-center justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>

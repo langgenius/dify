@@ -64,15 +64,15 @@ export function AllowlistField({ entries, currentIp, onEntriesChange }: Allowlis
   }
 
   return (
-    <Field className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
+    <Field className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex shrink-0 flex-col gap-1">
         <FieldLabel>{t(($) => $['settings.ipPolicyAllowlist'], { ns: 'common' })}</FieldLabel>
         <FieldDescription>
           {t(($) => $['settings.ipPolicyAllowlistHelp'], { ns: 'common' })}
         </FieldDescription>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {entries.map((entry) => {
           const result = validateIpEntry(entry.value)
           const invalid = result.kind === 'invalid'
@@ -118,7 +118,7 @@ export function AllowlistField({ entries, currentIp, onEntriesChange }: Allowlis
         type="button"
         variant="secondary"
         size="small"
-        className="self-start"
+        className="shrink-0 self-start"
         onClick={() => onEntriesChange([...entries, createAllowlistRow()])}
       >
         <span aria-hidden className="i-ri-add-line size-4" />
@@ -126,7 +126,7 @@ export function AllowlistField({ entries, currentIp, onEntriesChange }: Allowlis
       </Button>
 
       {currentIp && (
-        <p className="flex flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
+        <p className="flex shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
           <span>{t(($) => $['settings.ipPolicyCurrentIp'], { ns: 'common', ip: currentIp })}</span>
           <button
             type="button"
