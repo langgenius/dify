@@ -9,9 +9,11 @@ from collections.abc import Generator
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models import Account
+from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -30,6 +32,7 @@ from models.tools import ToolFile
 from services.agent.errors import (
     AgentNameConflictError,
     InvalidRosterAgentPackageError,
+    RosterAgentPackageDependenciesMissingError,
     RosterAgentPackageImportFailedError,
     RosterAgentPackageResourceUnavailableError,
 )
@@ -273,6 +276,23 @@ def test_import_clears_source_credentials(monkeypatch, sqlite_session_factory):
         assert "source-id" not in json.dumps(data)
 
 
+@pytest.mark.parametrize("allowed", [False, True])
+def test_missing_plugins_are_checked_before_writes(monkeypatch, config_overrides, allowed):
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", lambda **kwargs: kwargs["dependencies"])
+    monkeypatch.setattr(
+        "services.agent.roster_package_dependencies.RBACService.CheckAccess.check", lambda *_args, **_kwargs: allowed
+    )
+    storage = _MemoryStorage()
+    with pytest.raises(RosterAgentPackageDependenciesMissingError if allowed else Forbidden) as failure:
+        RosterAgentPackageImporter(storage_backend=storage).import_package(
+            source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account()
+        )
+    assert storage.save_count == 0
+    if allowed:
+        assert len(failure.value.data["leaked_dependencies"]) == 1
+
+
 def test_database_cleanup_failure_preserves_blobs_and_retries(monkeypatch, sqlite_session_factory):
     storage = _MemoryStorage()
     cache = _CleanupCache()
@@ -389,6 +409,26 @@ def test_periodic_cleanup_continues_after_one_failed_job(monkeypatch):
     monkeypatch.setattr(cleanup, "_remove_database", lambda _job: None)
     task.cleanup_roster_packages.run()
     assert cache.jobs == {}
+
+
+@pytest.mark.parametrize("policy", [TenantPluginInstallPermission.NOBODY, TenantPluginInstallPermission.ADMINS])
+def test_missing_plugins_respect_workspace_install_policy(
+    monkeypatch, config_overrides, sqlite_session_factory, policy
+):
+    config_overrides(RBAC_ENABLED=False)
+    with sqlite_session_factory() as session, session.begin():
+        session.add(
+            TenantPluginPermission(
+                tenant_id="tenant-1", install_permission=policy, debug_permission=TenantPluginDebugPermission.NOBODY
+            )
+        )
+    monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", lambda **kwargs: kwargs["dependencies"])
+    storage = _MemoryStorage()
+    with pytest.raises(Forbidden):
+        RosterAgentPackageImporter(storage_backend=storage).import_package(
+            source=io.BytesIO(_package()), tenant_id="tenant-1", account=_account()
+        )
+    assert storage.save_count == 0
 
 
 def test_import_materializes_agent_resources_and_unpublished_draft(
