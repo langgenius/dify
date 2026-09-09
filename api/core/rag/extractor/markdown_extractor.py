@@ -109,6 +109,8 @@ class MarkdownExtractor(BaseExtractor):
                         break
                     except UnicodeDecodeError:
                         continue
+                else:
+                    raise RuntimeError(f"Decode failed: {filepath}, all detected encodings failed. Original error: {e}")
             else:
                 raise RuntimeError(f"Error loading {filepath}") from e
         except Exception as e:

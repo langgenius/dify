@@ -99,7 +99,7 @@ class TestCSVExtractor:
         assert docs[0].page_content == "id: source-1;body: hello"
         assert attempted_encodings == [None, "bad", "utf-8"]
 
-    def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_autodetect_encoding_all_attempts_fail_raises(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
 
         def always_raise(*args, **kwargs):
@@ -108,7 +108,8 @@ class TestCSVExtractor:
         monkeypatch.setattr("builtins.open", always_raise)
         monkeypatch.setattr(csv_module, "detect_file_encodings", lambda _: [SimpleNamespace(encoding="bad")])
 
-        assert extractor.extract() == []
+        with pytest.raises(RuntimeError, match="Decode failed: dummy.csv, all detected encodings failed"):
+            extractor.extract()
 
     def test_read_from_file_re_raises_csv_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv")

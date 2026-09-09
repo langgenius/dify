@@ -47,6 +47,18 @@ after
         assert tups[1][0] == "Header"
         assert "# this is not a heading" in tups[1][1]
 
+    def test_parse_tups_raises_when_all_detected_encodings_fail(self, monkeypatch: pytest.MonkeyPatch):
+        extractor = MarkdownExtractor(file_path="dummy.md", autodetect_encoding=True)
+
+        def always_raise(*args, **kwargs):
+            raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
+
+        monkeypatch.setattr(Path, "read_text", always_raise)
+        monkeypatch.setattr(markdown_module, "detect_file_encodings", lambda _: [SimpleNamespace(encoding="bad")])
+
+        with pytest.raises(RuntimeError, match="Decode failed: dummy.md, all detected encodings failed"):
+            extractor.parse_tups("dummy.md")
+
     def test_remove_images_and_hyperlinks(self):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
