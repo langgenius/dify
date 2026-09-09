@@ -251,9 +251,8 @@ export const zParserPreferredProviderType = z.object({
  * NetworkAccessGroupCreatePayload
  */
 export const zNetworkAccessGroupCreatePayload = z.object({
-  allowed_cidrs: z.array(z.string()).max(100),
+  allowed_cidrs: z.array(z.string()).min(1).max(100),
   description: z.string().max(500).optional().default(''),
-  mode: z.enum(['disabled', 'enforce', 'shadow']),
   name: z.string().min(1).max(100),
 })
 
@@ -268,10 +267,9 @@ export const zNetworkAccessGroupDeleteResponse = z.object({
  * NetworkAccessGroupUpdatePayload
  */
 export const zNetworkAccessGroupUpdatePayload = z.object({
-  allowed_cidrs: z.array(z.string()).max(100),
+  allowed_cidrs: z.array(z.string()).min(1).max(100),
   description: z.string().max(500).optional().default(''),
   expected_version: z.int().gte(1),
-  mode: z.enum(['disabled', 'enforce', 'shadow']),
   name: z.string().min(1).max(100),
 })
 
@@ -1011,38 +1009,6 @@ export const zParserPostModels = z.object({
 export const zCredentialConfiguration = z.object({
   credential_id: z.string(),
   credential_name: z.string(),
-})
-
-/**
- * NetworkAccessGroupResponse
- */
-export const zNetworkAccessGroupResponse = z.object({
-  allowed_cidrs: z.array(z.string()).optional(),
-  created_at: z.iso.datetime(),
-  description: z.string().optional().default(''),
-  id: z.string(),
-  mode: z.enum(['disabled', 'enforce', 'shadow']),
-  name: z.string(),
-  tenant_id: z.string(),
-  updated_at: z.iso.datetime(),
-  updated_by_account_id: z.string().nullish(),
-  version: z.int().gte(1),
-})
-
-/**
- * NetworkAccessGroupListResponse
- */
-export const zNetworkAccessGroupListResponse = z.object({
-  entitled: z.boolean(),
-  groups: z.array(zNetworkAccessGroupResponse),
-  tenant_id: z.string(),
-})
-
-/**
- * NetworkAccessGroupMutationResponse
- */
-export const zNetworkAccessGroupMutationResponse = z.object({
-  group: zNetworkAccessGroupResponse,
 })
 
 /**
@@ -1973,6 +1939,51 @@ export const zModelProviderSummaryResponse = z.object({
 export const zModelProviderSummaryListResponse = z.object({
   data: z.array(zModelProviderSummaryResponse),
   plugins: z.record(z.string(), zModelProviderPluginSummaryResponse),
+})
+
+/**
+ * NetworkAccessGroupAppResponse
+ */
+export const zNetworkAccessGroupAppResponse = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * NetworkAccessGroupResponse
+ */
+export const zNetworkAccessGroupResponse = z.object({
+  allowed_cidrs: z.array(z.string()).min(1).max(100),
+  app_ids: z.array(z.string()),
+  apps: z.array(zNetworkAccessGroupAppResponse),
+  created_at: z.iso.datetime(),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  name: z.string(),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  updated_by_account_id: z.string().nullish(),
+  used_by_count: z.int().gte(0),
+  version: z.int().gte(1),
+})
+
+/**
+ * NetworkAccessGroupListResponse
+ */
+export const zNetworkAccessGroupListResponse = z.object({
+  entitled: z.boolean(),
+  groups: z.array(zNetworkAccessGroupResponse),
+  tenant_id: z.string(),
+})
+
+/**
+ * NetworkAccessGroupMutationResponse
+ */
+export const zNetworkAccessGroupMutationResponse = z.object({
+  group: zNetworkAccessGroupResponse,
 })
 
 /**

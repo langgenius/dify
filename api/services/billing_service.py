@@ -450,7 +450,6 @@ class BillingService:
         *,
         name: str,
         description: str,
-        mode: str,
         allowed_cidrs: list[str],
         actor_account_id: str,
     ) -> dict[str, Any]:
@@ -462,7 +461,6 @@ class BillingService:
             payload_json={
                 "name": name,
                 "description": description,
-                "mode": mode,
                 "allowed_cidrs": allowed_cidrs,
                 "actor_account_id": actor_account_id,
             },
@@ -491,7 +489,6 @@ class BillingService:
         *,
         name: str,
         description: str,
-        mode: str,
         allowed_cidrs: list[str],
         expected_version: int,
         actor_account_id: str,
@@ -504,7 +501,6 @@ class BillingService:
             payload_json={
                 "name": name,
                 "description": description,
-                "mode": mode,
                 "allowed_cidrs": allowed_cidrs,
                 "expected_version": expected_version,
                 "actor_account_id": actor_account_id,
@@ -520,7 +516,7 @@ class BillingService:
         expected_version: int,
         actor_account_id: str,
     ) -> dict[str, Any]:
-        """Delete an unbound reusable group using optimistic concurrency control."""
+        """Delete a reusable group using optimistic concurrency control."""
 
         return cls._send_network_access_group_request(
             "DELETE",
@@ -552,17 +548,21 @@ class BillingService:
         tenant_id: str,
         app_id: str,
         *,
+        enabled: bool,
         group_id: str | None,
+        access_points: list[str],
         expected_version: int,
         actor_account_id: str,
     ) -> dict[str, Any]:
-        """Assign or unassign one reusable group from a tenant-scoped app."""
+        """Atomically replace one tenant-scoped App's complete network access configuration."""
 
         return cls._send_network_access_group_request(
             "PUT",
             f"/tenants/{tenant_id}/apps/{app_id}/network-access-group",
             payload_json={
+                "enabled": enabled,
                 "group_id": group_id,
+                "access_points": access_points,
                 "expected_version": expected_version,
                 "actor_account_id": actor_account_id,
             },

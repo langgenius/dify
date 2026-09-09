@@ -159,15 +159,26 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
+    """Return whether a Cloud workspace has a paid subscription.
+
+    Keep this predicate shared with the mutation decorator so read endpoints can
+    expose an entitlement flag without rejecting Sandbox workspaces that need to
+    render an upgrade state.
+    """
+
+    billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+    return billing_info["enabled"] and billing_info["subscription"]["plan"] in (
+        CloudPlan.PROFESSIONAL,
+        CloudPlan.TEAM,
+    )
+
+
 def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
-        billing_info = BillingService.get_info(current_tenant_id, exclude_vector_space=True)
-        if not billing_info["enabled"] or billing_info["subscription"]["plan"] not in (
-            CloudPlan.PROFESSIONAL,
-            CloudPlan.TEAM,
-        ):
+        if not is_cloud_edition_billing_paid_plan(current_tenant_id):
             abort(403, "This feature requires a paid plan.")
         return view(*args, **kwargs)
 

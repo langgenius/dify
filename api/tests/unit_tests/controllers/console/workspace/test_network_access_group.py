@@ -1,7 +1,9 @@
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -16,10 +18,13 @@ from controllers.console.workspace.network_access_group import (
     NetworkAccessGroupCreatePayload,
     NetworkAccessGroupDeleteQuery,
     NetworkAccessGroupUpdatePayload,
+    _available_access_points,
+    _effective_entitlement,
     _translate_upstream_error,
 )
-from models import TenantAccountRole
+from models import App, AppMode, TenantAccountRole
 from services.billing_service import BillingService, NetworkAccessGroupUpstreamError
+from services.network_access_group_service import NetworkAccessGroupService
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
 ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
@@ -32,14 +37,25 @@ def _current_user(role: TenantAccountRole = TenantAccountRole.OWNER) -> SimpleNa
     return SimpleNamespace(id=ACCOUNT_ID, current_role=role)
 
 
-def _group_payload() -> dict[str, object]:
+@pytest.fixture(autouse=True)
+def paid_entitlement() -> Iterator[None]:
+    with patch(
+        "controllers.console.workspace.network_access_group._effective_entitlement",
+        side_effect=lambda _tenant_id, upstream: bool(upstream),
+    ):
+        yield
+
+
+def _group_payload(*, app_ids: list[str] | None = None) -> dict[str, object]:
+    app_ids = app_ids or []
     return {
         "id": GROUP_ID,
         "tenantId": TENANT_ID,
         "name": "Office network",
         "description": "Reusable office egress addresses",
-        "mode": "enforce",
         "allowedCidrs": ["203.0.113.7/32"],
+        "usedByCount": len(app_ids),
+        "usedByAppIds": app_ids,
         # ProtoJSON represents int64 values as strings and timestamps as RFC 3339.
         "version": "2",
         "updatedByAccountId": ACCOUNT_ID,
@@ -48,12 +64,19 @@ def _group_payload() -> dict[str, object]:
     }
 
 
-def _binding_payload(*, group_id: str | None = GROUP_ID) -> dict[str, object]:
+def _binding_payload(
+    *,
+    enabled: bool = True,
+    group_id: str | None = GROUP_ID,
+    access_points: list[str] | None = None,
+) -> dict[str, object]:
     return {
         "id": BINDING_ID,
         "tenantId": TENANT_ID,
         "appId": APP_ID,
+        "enabled": enabled,
         "groupId": group_id,
+        "accessPoints": ["webapp", "service_api"] if access_points is None else access_points,
         "version": "3",
         "updatedByAccountId": ACCOUNT_ID,
         "createdAt": datetime(2026, 8, 21, tzinfo=UTC).isoformat(),
@@ -76,6 +99,9 @@ def test_list_authorizes_and_forwards_tenant_and_actor() -> None:
     assert result["tenant_id"] == TENANT_ID
     assert result["groups"][0]["name"] == "Office network"
     assert result["groups"][0]["version"] == 2
+    assert result["groups"][0]["used_by_count"] == 0
+    assert result["groups"][0]["app_ids"] == []
+    assert result["groups"][0]["apps"] == []
     assert result["groups"][0]["updated_at"] == "2026-08-21T00:00:00Z"
 
 
@@ -86,7 +112,6 @@ def test_create_injects_actor_and_returns_created_contract() -> None:
     request_payload = NetworkAccessGroupCreatePayload(
         name="Office network",
         description="Reusable office egress addresses",
-        mode="enforce",
         allowed_cidrs=["203.0.113.7/32"],
     )
 
@@ -108,7 +133,6 @@ def test_create_injects_actor_and_returns_created_contract() -> None:
         TENANT_ID,
         name="Office network",
         description="Reusable office egress addresses",
-        mode="enforce",
         allowed_cidrs=["203.0.113.7/32"],
         actor_account_id=ACCOUNT_ID,
     )
@@ -123,7 +147,6 @@ def test_update_group_forwards_path_id_and_expected_version() -> None:
     request_payload = NetworkAccessGroupUpdatePayload(
         name="Office network",
         description="Updated",
-        mode="shadow",
         allowed_cidrs=["203.0.113.0/24"],
         expected_version=1,
     )
@@ -148,7 +171,6 @@ def test_update_group_forwards_path_id_and_expected_version() -> None:
         GROUP_ID,
         name="Office network",
         description="Updated",
-        mode="shadow",
         allowed_cidrs=["203.0.113.0/24"],
         expected_version=1,
         actor_account_id=ACCOUNT_ID,
@@ -189,8 +211,8 @@ def test_app_get_forwards_tenant_scoped_app_and_supports_unbound_response() -> N
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.get)
     current_user = _current_user()
-    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID)
-    upstream_payload = {"tenantId": TENANT_ID, "appId": APP_ID, "entitled": True, "binding": None}
+    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.CHAT)
+    upstream_payload = {"tenantId": TENANT_ID, "appId": APP_ID, "entitled": True}
 
     with (
         patch.object(
@@ -208,21 +230,27 @@ def test_app_get_forwards_tenant_scoped_app_and_supports_unbound_response() -> N
 
     get_binding.assert_called_once_with(TENANT_ID, APP_ID, ACCOUNT_ID)
     assert result["binding"] is None
+    assert result["available_access_points"] == ["webapp", "service_api", "mcp"]
 
 
-@pytest.mark.parametrize("group_id", [GROUP_ID, None])
-def test_app_put_assigns_or_unassigns_group(group_id: str | None) -> None:
+@pytest.mark.parametrize("enabled", [True, False])
+def test_app_put_atomically_saves_enabled_group_and_access_points(enabled: bool) -> None:
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.put)
     current_user = _current_user()
-    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID)
-    request_payload = AppNetworkAccessGroupUpdatePayload(group_id=group_id, expected_version=2)
+    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.CHAT)
+    request_payload = AppNetworkAccessGroupUpdatePayload(
+        enabled=enabled,
+        group_id=GROUP_ID,
+        access_points=["webapp", "service_api"],
+        expected_version=2,
+    )
 
     with (
         patch.object(
             BillingService,
             "update_app_network_access_group",
-            return_value={"binding": _binding_payload(group_id=group_id)},
+            return_value={"binding": _binding_payload(enabled=enabled)},
         ) as update_binding,
     ):
         result = method(
@@ -236,12 +264,17 @@ def test_app_put_assigns_or_unassigns_group(group_id: str | None) -> None:
     update_binding.assert_called_once_with(
         TENANT_ID,
         APP_ID,
-        group_id=group_id,
+        enabled=enabled,
+        group_id=GROUP_ID,
+        access_points=["webapp", "service_api"],
         expected_version=2,
         actor_account_id=ACCOUNT_ID,
     )
-    assert result["binding"]["group_id"] == group_id
+    assert result["binding"]["enabled"] is enabled
+    assert result["binding"]["group_id"] == GROUP_ID
+    assert result["binding"]["access_points"] == ["webapp", "service_api"]
     assert result["binding"]["version"] == 3
+    assert result["available_access_points"] == ["webapp", "service_api", "mcp"]
 
 
 def test_list_rejects_non_privileged_workspace_member_before_upstream_call() -> None:
@@ -280,7 +313,6 @@ def test_upstream_error_mapping(status_code: int, expected_exception: type[HTTPE
         ("NETWORK_ACCESS_VERSION_CONFLICT", "changed"),
         ("NETWORK_ACCESS_GROUP_NAME_CONFLICT", "already exists"),
         ("NETWORK_ACCESS_GROUP_LIMIT", "reached"),
-        ("NETWORK_ACCESS_GROUP_BOUND", "Unassign"),
     ],
 )
 def test_conflict_error_mapping_preserves_safe_actionable_reason(reason: str, expected_message: str) -> None:
@@ -304,20 +336,21 @@ def test_list_maps_invalid_upstream_contract_to_bad_gateway() -> None:
         patch.object(
             BillingService,
             "list_network_access_groups",
-            return_value={"tenant_id": TENANT_ID, "entitled": True, "groups": [{"mode": "disabled"}]},
+            return_value={"tenant_id": TENANT_ID, "entitled": True, "groups": [{"allowed_cidrs": []}]},
         ),
         pytest.raises(BadGateway),
     ):
         method(api, current_tenant_id=TENANT_ID, current_user=current_user)
 
 
-def test_response_contract_accepts_protojson_omitted_empty_group_fields() -> None:
+def test_response_contract_accepts_protojson_omitted_optional_group_fields() -> None:
     api = CurrentWorkspaceNetworkAccessGroupsApi()
     method = unwrap(api.get)
     current_user = _current_user()
     group = _group_payload()
     group.pop("description")
-    group.pop("allowedCidrs")
+    group.pop("usedByAppIds")
+    group.pop("usedByCount")
 
     with (
         patch.object(
@@ -329,17 +362,26 @@ def test_response_contract_accepts_protojson_omitted_empty_group_fields() -> Non
         result = method(api, current_tenant_id=TENANT_ID, current_user=current_user)
 
     assert result["groups"][0]["description"] == ""
-    assert result["groups"][0]["allowed_cidrs"] == []
+    assert result["groups"][0]["allowed_cidrs"] == ["203.0.113.7/32"]
+    assert result["groups"][0]["app_ids"] == []
+    assert result["groups"][0]["used_by_count"] == 0
 
 
-def test_binding_response_accepts_protojson_omitted_null_group_id() -> None:
+def test_binding_response_materializes_protojson_omitted_disabled_defaults() -> None:
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.put)
     current_user = _current_user()
-    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID)
-    request_payload = AppNetworkAccessGroupUpdatePayload(group_id=None, expected_version=2)
-    binding = _binding_payload(group_id=None)
+    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.CHAT)
+    request_payload = AppNetworkAccessGroupUpdatePayload(
+        enabled=False,
+        group_id=None,
+        access_points=[],
+        expected_version=2,
+    )
+    binding = _binding_payload(enabled=False, group_id=None, access_points=[])
     binding.pop("groupId")
+    binding.pop("enabled")
+    binding.pop("accessPoints")
 
     with (
         patch.object(
@@ -357,14 +399,41 @@ def test_binding_response_accepts_protojson_omitted_null_group_id() -> None:
         )
 
     assert result["binding"]["group_id"] is None
+    assert result["binding"]["enabled"] is False
+    assert result["binding"]["access_points"] == []
+
+
+def test_binding_response_accepts_policy_id_alias() -> None:
+    api = AppNetworkAccessGroupApi()
+    method = unwrap(api.put)
+    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.CHAT)
+    request_payload = AppNetworkAccessGroupUpdatePayload(
+        enabled=True,
+        group_id=GROUP_ID,
+        access_points=["webapp"],
+        expected_version=2,
+    )
+    binding = _binding_payload(access_points=["webapp"])
+    binding["policyId"] = binding.pop("groupId")
+
+    with patch.object(BillingService, "update_app_network_access_group", return_value={"binding": binding}):
+        result = method(
+            api,
+            req_data=request_payload,
+            current_tenant_id=TENANT_ID,
+            current_user=_current_user(),
+            app_model=app_model,
+        )
+
+    assert result["binding"]["group_id"] == GROUP_ID
 
 
 @pytest.mark.parametrize(
     "payload",
     [
-        {"name": "", "description": "", "mode": "disabled", "allowed_cidrs": []},
-        {"name": "group", "description": "", "mode": "unknown", "allowed_cidrs": []},
-        {"name": "group", "description": "", "mode": "disabled", "allowed_cidrs": ["127.0.0.1"] * 101},
+        {"name": "", "description": "", "allowed_cidrs": []},
+        {"name": "group", "description": "", "allowed_cidrs": []},
+        {"name": "group", "description": "", "allowed_cidrs": ["127.0.0.1"] * 101},
     ],
 )
 def test_create_payload_contract_rejects_invalid_shapes(payload: dict[str, object]) -> None:
@@ -374,4 +443,159 @@ def test_create_payload_contract_rejects_invalid_shapes(payload: dict[str, objec
 
 def test_binding_payload_rejects_invalid_group_id_and_version() -> None:
     with pytest.raises(ValidationError):
-        AppNetworkAccessGroupUpdatePayload.model_validate({"group_id": "not-a-uuid", "expected_version": -1})
+        AppNetworkAccessGroupUpdatePayload.model_validate(
+            {
+                "enabled": True,
+                "group_id": "not-a-uuid",
+                "access_points": ["webapp"],
+                "expected_version": -1,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "expected"),
+    [
+        (AppMode.WORKFLOW, ["webapp", "service_api", "mcp", "trigger"]),
+        (AppMode.ADVANCED_CHAT, ["webapp", "service_api", "mcp"]),
+        (AppMode.CHAT, ["webapp", "service_api", "mcp"]),
+        (AppMode.COMPLETION, ["webapp", "service_api", "mcp"]),
+        (AppMode.AGENT_CHAT, ["webapp", "service_api"]),
+    ],
+)
+def test_available_access_points_are_derived_from_app_mode(app_mode: AppMode, expected: list[str]) -> None:
+    app_model = SimpleNamespace(mode=app_mode)
+
+    assert _available_access_points(cast(App, app_model)) == expected
+
+
+@pytest.mark.parametrize("app_mode", [AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE])
+def test_unsupported_app_modes_are_rejected(app_mode: AppMode) -> None:
+    with pytest.raises(BadRequest, match="not supported"):
+        _available_access_points(cast(App, SimpleNamespace(mode=app_mode)))
+
+
+def test_app_put_rejects_access_point_not_available_for_mode_before_upstream_call() -> None:
+    api = AppNetworkAccessGroupApi()
+    method = unwrap(api.put)
+    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.AGENT_CHAT)
+    request_payload = AppNetworkAccessGroupUpdatePayload(
+        enabled=True,
+        group_id=GROUP_ID,
+        access_points=["webapp", "mcp"],
+        expected_version=1,
+    )
+
+    with (
+        patch.object(BillingService, "update_app_network_access_group") as update_binding,
+        pytest.raises(BadRequest, match="mcp"),
+    ):
+        method(
+            api,
+            req_data=request_payload,
+            current_tenant_id=TENANT_ID,
+            current_user=_current_user(),
+            app_model=app_model,
+        )
+
+    update_binding.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"enabled": True, "group_id": None, "access_points": ["webapp"], "expected_version": 0},
+        {"enabled": True, "group_id": GROUP_ID, "access_points": [], "expected_version": 0},
+        {
+            "enabled": True,
+            "group_id": GROUP_ID,
+            "access_points": ["webapp", "webapp"],
+            "expected_version": 0,
+        },
+        {"enabled": True, "group_id": GROUP_ID, "access_points": ["unknown"], "expected_version": 0},
+    ],
+)
+def test_enabled_app_config_rejects_incomplete_or_invalid_access_points(payload: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        AppNetworkAccessGroupUpdatePayload.model_validate(payload)
+
+
+def test_app_config_accepts_policy_id_alias_and_disabled_draft() -> None:
+    payload = AppNetworkAccessGroupUpdatePayload.model_validate(
+        {
+            "enabled": False,
+            "policy_id": GROUP_ID,
+            "accessPoints": ["webapp", "service_api"],
+            "expected_version": 3,
+        }
+    )
+
+    assert str(payload.group_id) == GROUP_ID
+    assert payload.access_points == ["webapp", "service_api"]
+
+
+def test_group_responses_are_enriched_with_tenant_scoped_app_metadata() -> None:
+    app_id_2 = "66666666-6666-4666-8666-666666666666"
+    payload = {
+        "group": _group_payload(app_ids=[APP_ID, app_id_2]),
+    }
+    payload["group"].pop("usedByCount")
+    app = SimpleNamespace(
+        id=APP_ID,
+        name="Customer support",
+        icon="robot",
+        icon_type=SimpleNamespace(value="emoji"),
+        icon_background="#FFFFFF",
+    )
+    db_mock = MagicMock()
+    db_mock.session.scalars.return_value.all.return_value = [app]
+
+    with patch("services.network_access_group_service.db", db_mock):
+        result = NetworkAccessGroupService.enrich_app_references(payload, TENANT_ID)
+
+    assert result["group"]["apps"] == [
+        {
+            "id": APP_ID,
+            "name": "Customer support",
+            "icon": "robot",
+            "icon_type": "emoji",
+            "icon_background": "#FFFFFF",
+        }
+    ]
+    assert result["group"]["app_ids"] == [APP_ID, app_id_2]
+    assert result["group"]["used_by_count"] == 2
+    db_mock.session.scalars.assert_called_once()
+
+
+def test_sandbox_read_returns_not_entitled_for_upgrade_state() -> None:
+    api = CurrentWorkspaceNetworkAccessGroupsApi()
+    method = unwrap(api.get)
+    upstream_payload: dict[str, object] = {
+        "tenantId": TENANT_ID,
+        "entitled": True,
+        "groups": list[object](),
+    }
+
+    with (
+        patch.object(BillingService, "list_network_access_groups", return_value=upstream_payload),
+        patch("controllers.console.workspace.network_access_group._effective_entitlement", return_value=False),
+    ):
+        result = method(api, current_tenant_id=TENANT_ID, current_user=_current_user())
+
+    assert result["entitled"] is False
+
+
+@pytest.mark.parametrize(
+    ("upstream_entitled", "paid_plan", "expected"),
+    [(True, True, True), (False, True, False), (True, False, False)],
+)
+def test_effective_entitlement_requires_rollout_and_paid_plan(
+    upstream_entitled: bool,
+    paid_plan: bool,
+    expected: bool,
+) -> None:
+    with patch(
+        "controllers.console.workspace.network_access_group.is_cloud_edition_billing_paid_plan",
+        return_value=paid_plan,
+    ):
+        assert _effective_entitlement(TENANT_ID, upstream_entitled) is expected

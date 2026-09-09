@@ -15329,8 +15329,10 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
 | app_id | string |  | Yes |
 | created_at | dateTime |  | Yes |
+| enabled | boolean |  | Yes |
 | group_id | string |  | No |
 | id | string |  | Yes |
 | tenant_id | string |  | Yes |
@@ -15342,6 +15344,7 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| available_access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
 | binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
 
 #### AppNetworkAccessGroupResponse
@@ -15349,6 +15352,7 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
+| available_access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
 | binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
 | entitled | boolean |  | Yes |
 | tenant_id | string |  | Yes |
@@ -15357,6 +15361,8 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
+| enabled | boolean |  | Yes |
 | expected_version | integer |  | Yes |
 | group_id | string |  | Yes |
 
@@ -19254,13 +19260,22 @@ Model with provider entity.
 | dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
 
+#### NetworkAccessGroupAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### NetworkAccessGroupCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | allowed_cidrs | [ string ] |  | Yes |
 | description | string |  | No |
-| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
 | name | string |  | Yes |
 
 #### NetworkAccessGroupDeleteResponse
@@ -19287,15 +19302,17 @@ Model with provider entity.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allowed_cidrs | [ string ] |  | No |
+| allowed_cidrs | [ string ] |  | Yes |
+| app_ids | [ string ] |  | Yes |
+| apps | [ [NetworkAccessGroupAppResponse](#networkaccessgroupappresponse) ] |  | Yes |
 | created_at | dateTime |  | Yes |
 | description | string |  | No |
 | id | string |  | Yes |
-| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
 | name | string |  | Yes |
 | tenant_id | string |  | Yes |
 | updated_at | dateTime |  | Yes |
 | updated_by_account_id | string |  | No |
+| used_by_count | integer |  | Yes |
 | version | integer |  | Yes |
 
 #### NetworkAccessGroupUpdatePayload
@@ -19305,7 +19322,6 @@ Model with provider entity.
 | allowed_cidrs | [ string ] |  | Yes |
 | description | string |  | No |
 | expected_version | integer |  | Yes |
-| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
 | name | string |  | Yes |
 
 #### NewAppResponse

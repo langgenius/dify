@@ -373,7 +373,6 @@ export type NetworkAccessGroupListResponse = {
 export type NetworkAccessGroupCreatePayload = {
   allowed_cidrs: Array<string>
   description?: string
-  mode: 'disabled' | 'enforce' | 'shadow'
   name: string
 }
 
@@ -389,7 +388,6 @@ export type NetworkAccessGroupUpdatePayload = {
   allowed_cidrs: Array<string>
   description?: string
   expected_version: number
-  mode: 'disabled' | 'enforce' | 'shadow'
   name: string
 }
 
@@ -1319,15 +1317,17 @@ export type ProviderWithModelsResponse = {
 }
 
 export type NetworkAccessGroupResponse = {
-  allowed_cidrs?: Array<string>
+  allowed_cidrs: Array<string>
+  app_ids: Array<string>
+  apps: Array<NetworkAccessGroupAppResponse>
   created_at: string
   description?: string
   id: string
-  mode: 'disabled' | 'enforce' | 'shadow'
   name: string
   tenant_id: string
   updated_at: string
   updated_by_account_id?: string | null
+  used_by_count: number
   version: number
 }
 
@@ -1915,6 +1915,14 @@ export type ProviderModelWithStatusEntity = {
 }
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
+
+export type NetworkAccessGroupAppResponse = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  name: string
+}
 
 export type TenantPluginAutoUpgradeStrategySetting = 'disabled' | 'fix_only' | 'latest'
 

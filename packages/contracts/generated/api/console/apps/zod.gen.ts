@@ -350,6 +350,8 @@ export const zAppNamePayload = z.object({
  * AppNetworkAccessGroupUpdatePayload
  */
 export const zAppNetworkAccessGroupUpdatePayload = z.object({
+  access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])).max(4),
+  enabled: z.boolean(),
   expected_version: z.int().gte(0),
   group_id: z.uuid().nullable(),
 })
@@ -1338,8 +1340,10 @@ export const zMessageFile = z.object({
  * AppNetworkAccessGroupBindingResponse
  */
 export const zAppNetworkAccessGroupBindingResponse = z.object({
+  access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])).max(4),
   app_id: z.string(),
   created_at: z.iso.datetime(),
+  enabled: z.boolean(),
   group_id: z.string().nullish(),
   id: z.string(),
   tenant_id: z.string(),
@@ -1353,6 +1357,7 @@ export const zAppNetworkAccessGroupBindingResponse = z.object({
  */
 export const zAppNetworkAccessGroupResponse = z.object({
   app_id: z.string(),
+  available_access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])),
   binding: zAppNetworkAccessGroupBindingResponse.nullable(),
   entitled: z.boolean(),
   tenant_id: z.string(),
@@ -1362,6 +1367,7 @@ export const zAppNetworkAccessGroupResponse = z.object({
  * AppNetworkAccessGroupMutationResponse
  */
 export const zAppNetworkAccessGroupMutationResponse = z.object({
+  available_access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])),
   binding: zAppNetworkAccessGroupBindingResponse,
 })
 

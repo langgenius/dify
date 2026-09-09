@@ -574,17 +574,21 @@ export type AppNamePayload = {
 
 export type AppNetworkAccessGroupResponse = {
   app_id: string
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   binding: AppNetworkAccessGroupBindingResponse | null
   entitled: boolean
   tenant_id: string
 }
 
 export type AppNetworkAccessGroupUpdatePayload = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  enabled: boolean
   expected_version: number
   group_id: string | null
 }
 
 export type AppNetworkAccessGroupMutationResponse = {
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   binding: AppNetworkAccessGroupBindingResponse
 }
 
@@ -1648,8 +1652,10 @@ export type MessageFile = {
 }
 
 export type AppNetworkAccessGroupBindingResponse = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
   app_id: string
   created_at: string
+  enabled: boolean
   group_id?: string | null
   id: string
   tenant_id: string

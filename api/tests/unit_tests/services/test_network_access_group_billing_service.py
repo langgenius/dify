@@ -70,7 +70,6 @@ def test_group_mutations_inject_actor_and_use_expected_version() -> None:
             TENANT_ID,
             name="Office",
             description="Office egress",
-            mode="enforce",
             allowed_cidrs=["203.0.113.7/32"],
             actor_account_id=ACCOUNT_ID,
         )
@@ -79,7 +78,6 @@ def test_group_mutations_inject_actor_and_use_expected_version() -> None:
             GROUP_ID,
             name="Office",
             description="Updated office egress",
-            mode="shadow",
             allowed_cidrs=["203.0.113.0/24"],
             expected_version=1,
             actor_account_id=ACCOUNT_ID,
@@ -98,7 +96,6 @@ def test_group_mutations_inject_actor_and_use_expected_version() -> None:
             json={
                 "name": "Office",
                 "description": "Office egress",
-                "mode": "enforce",
                 "allowed_cidrs": ["203.0.113.7/32"],
                 "actor_account_id": ACCOUNT_ID,
             },
@@ -112,7 +109,6 @@ def test_group_mutations_inject_actor_and_use_expected_version() -> None:
             json={
                 "name": "Office",
                 "description": "Updated office egress",
-                "mode": "shadow",
                 "allowed_cidrs": ["203.0.113.0/24"],
                 "expected_version": 1,
                 "actor_account_id": ACCOUNT_ID,
@@ -133,12 +129,28 @@ def test_group_mutations_inject_actor_and_use_expected_version() -> None:
 
 
 @pytest.mark.usefixtures("billing_config")
-def test_app_binding_read_and_write_use_tenant_and_app_path() -> None:
+def test_app_config_read_and_atomic_write_use_tenant_and_app_path() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
     response.json.side_effect = [
         {"tenant_id": TENANT_ID, "app_id": APP_ID, "entitled": True, "binding": None},
-        {"binding": {"app_id": APP_ID, "group_id": GROUP_ID, "version": "1"}},
-        {"binding": {"app_id": APP_ID, "group_id": None, "version": "2"}},
+        {
+            "binding": {
+                "app_id": APP_ID,
+                "enabled": True,
+                "group_id": GROUP_ID,
+                "access_points": ["webapp", "service_api"],
+                "version": "1",
+            }
+        },
+        {
+            "binding": {
+                "app_id": APP_ID,
+                "enabled": False,
+                "group_id": GROUP_ID,
+                "access_points": ["webapp", "service_api"],
+                "version": "2",
+            }
+        },
     ]
 
     with patch("services.billing_service._http_client.request", return_value=response) as request:
@@ -146,14 +158,18 @@ def test_app_binding_read_and_write_use_tenant_and_app_path() -> None:
         BillingService.update_app_network_access_group(
             TENANT_ID,
             APP_ID,
+            enabled=True,
             group_id=GROUP_ID,
+            access_points=["webapp", "service_api"],
             expected_version=0,
             actor_account_id=ACCOUNT_ID,
         )
         BillingService.update_app_network_access_group(
             TENANT_ID,
             APP_ID,
-            group_id=None,
+            enabled=False,
+            group_id=GROUP_ID,
+            access_points=["webapp", "service_api"],
             expected_version=1,
             actor_account_id=ACCOUNT_ID,
         )
@@ -171,7 +187,13 @@ def test_app_binding_read_and_write_use_tenant_and_app_path() -> None:
         call(
             "PUT",
             endpoint,
-            json={"group_id": GROUP_ID, "expected_version": 0, "actor_account_id": ACCOUNT_ID},
+            json={
+                "enabled": True,
+                "group_id": GROUP_ID,
+                "access_points": ["webapp", "service_api"],
+                "expected_version": 0,
+                "actor_account_id": ACCOUNT_ID,
+            },
             params=None,
             headers=HEADERS,
             follow_redirects=True,
@@ -179,7 +201,13 @@ def test_app_binding_read_and_write_use_tenant_and_app_path() -> None:
         call(
             "PUT",
             endpoint,
-            json={"group_id": None, "expected_version": 1, "actor_account_id": ACCOUNT_ID},
+            json={
+                "enabled": False,
+                "group_id": GROUP_ID,
+                "access_points": ["webapp", "service_api"],
+                "expected_version": 1,
+                "actor_account_id": ACCOUNT_ID,
+            },
             params=None,
             headers=HEADERS,
             follow_redirects=True,
@@ -220,7 +248,7 @@ def test_network_access_group_request_preserves_upstream_status(status_code: int
 
 def test_network_access_group_request_preserves_whitelisted_upstream_reason() -> None:
     response = MagicMock(status_code=httpx.codes.CONFLICT)
-    response.json.return_value = {"code": 409, "reason": "NETWORK_ACCESS_GROUP_BOUND", "message": "internal"}
+    response.json.return_value = {"code": 409, "reason": "NETWORK_ACCESS_VERSION_CONFLICT", "message": "internal"}
     with (
         patch.object(BillingService, "_send_network_access_group_http_request", return_value=response),
         pytest.raises(NetworkAccessGroupUpstreamError) as exc_info,
@@ -228,7 +256,7 @@ def test_network_access_group_request_preserves_whitelisted_upstream_reason() ->
         BillingService._send_network_access_group_request("DELETE", "/groups/id")
 
     assert exc_info.value.status_code == httpx.codes.CONFLICT
-    assert exc_info.value.reason == "NETWORK_ACCESS_GROUP_BOUND"
+    assert exc_info.value.reason == "NETWORK_ACCESS_VERSION_CONFLICT"
 
 
 def test_network_access_group_request_maps_transport_failure_to_service_unavailable() -> None:
