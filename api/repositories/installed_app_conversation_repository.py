@@ -1,5 +1,6 @@
 """Persist an account's conversations within its admitted installation."""
 
+from dataclasses import replace
 from datetime import datetime
 from typing import cast, override
 
@@ -117,11 +118,13 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
             conversation = self._get_conversation(
                 session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
             )
+            record = self._to_record(conversation=conversation, session=session)
             conversation.name = name
             if updated_at is not None:
                 conversation.updated_at = updated_at
             session.flush()
-            return self._to_record(conversation=conversation, session=session)
+            renamed = replace(record, name=conversation.name, updated_at=conversation.updated_at)
+        return renamed
 
     @override
     def delete(self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str) -> ConversationDeletion:

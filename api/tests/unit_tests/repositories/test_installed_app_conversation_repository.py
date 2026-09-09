@@ -352,6 +352,32 @@ def test_rename_commits_and_materializes_automatic_or_explicit_updated_at(
     assert result.inputs["flag"] is False
 
 
+def test_rename_materializes_inputs_before_mutation(
+    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        conversation = _conversation(session, installation)
+    materialization_state: list[tuple[str, bool]] = []
+    original_inputs_with_session = Conversation.inputs_with_session
+
+    def track_materialization(self: Conversation, *, session: Session) -> dict[str, object]:
+        materialization_state.append((self.name, self in session.dirty))
+        return original_inputs_with_session(self, session=session)
+
+    monkeypatch.setattr(Conversation, "inputs_with_session", track_materialization)
+    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+
+    repository.rename(
+        installed_app=installation,
+        account_id=_ACCOUNT_ID,
+        conversation_id=conversation.id,
+        name="Renamed",
+        updated_at=_TIME + timedelta(hours=1),
+    )
+
+    assert materialization_state == [("Original name", False)]
+
+
 def test_pin_and_unpin_are_idempotent_and_preserve_other_owners(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
