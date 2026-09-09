@@ -13,7 +13,13 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
@@ -253,25 +259,30 @@ export function DatasetScopeDialog({
                         ns: 'appApi',
                       })}
                     />
-                    <ScrollArea className="mt-2 max-h-60">
-                      <div className="flex flex-col">
-                        {knowledgeFsEnabled && (
-                          <div className="px-2 pt-1 pb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                            {t(($) => $['apiKeyModal.pickerKnowledgeSpaces'], { ns: 'appApi' })}
-                          </div>
-                        )}
-                        {knowledgeSpaces.map((space) =>
-                          renderPickerOption({ ...space, kind: 'knowledge_space' }),
-                        )}
-                        {knowledgeFsEnabled && (
-                          <div className="px-2 pt-2 pb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                            {t(($) => $['apiKeyModal.pickerLegacyDatasets'], { ns: 'appApi' })}
-                          </div>
-                        )}
-                        {datasets.map((ds) =>
-                          renderPickerOption({ id: ds.id, name: ds.name, kind: 'dataset' }),
-                        )}
-                      </div>
+                    <ScrollArea className="mt-2">
+                      <ScrollAreaViewport className="max-h-60" style={{ overflowX: 'hidden' }}>
+                        <ScrollAreaContent className="flex flex-col" style={{ minWidth: 0 }}>
+                          {knowledgeFsEnabled && (
+                            <div className="px-2 pt-1 pb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                              {t(($) => $['apiKeyModal.pickerKnowledgeSpaces'], { ns: 'appApi' })}
+                            </div>
+                          )}
+                          {knowledgeSpaces.map((space) =>
+                            renderPickerOption({ ...space, kind: 'knowledge_space' }),
+                          )}
+                          {knowledgeFsEnabled && (
+                            <div className="px-2 pt-2 pb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                              {t(($) => $['apiKeyModal.pickerLegacyDatasets'], { ns: 'appApi' })}
+                            </div>
+                          )}
+                          {datasets.map((ds) =>
+                            renderPickerOption({ id: ds.id, name: ds.name, kind: 'dataset' }),
+                          )}
+                        </ScrollAreaContent>
+                      </ScrollAreaViewport>
+                      <ScrollAreaScrollbar orientation="vertical">
+                        <ScrollAreaThumb />
+                      </ScrollAreaScrollbar>
                     </ScrollArea>
                   </PopoverContent>
                 </Popover>
