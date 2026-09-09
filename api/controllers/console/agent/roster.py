@@ -1,7 +1,7 @@
-from typing import Literal
+from typing import BinaryIO, Literal, cast
 from uuid import UUID
 
-from flask import abort, request
+from flask import abort, request, send_file
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
@@ -64,6 +64,7 @@ from fields.agent_fields import (
 )
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -72,20 +73,31 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
-from services.agent.errors import AgentNotFoundError
+from services.agent.errors import AgentNotFoundError, InvalidRosterAgentPackageError
 from services.agent.observability_service import (
     AgentLogQueryParams,
     AgentObservabilityService,
     AgentStatisticsQueryParams,
 )
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
+from services.entities.dsl_entities import DslImportWarning
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
+_ROSTER_AGENT_PACKAGE_UPLOAD_PARAMS = {
+    "file": {
+        "description": "Roster Agent .ifpkg archive",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
 
 
 class AgentInviteOptionsQuery(RosterListQuery):
@@ -325,6 +337,13 @@ class AgentPublicationCountsResponse(ResponseModel):
     )
 
 
+class RosterAgentPackageImportResponse(ResponseModel):
+    status: Literal["completed"] = "completed"
+    app_id: str
+    agent_id: str
+    warnings: list[DslImportWarning] = Field(default_factory=list)
+
+
 class AgentAppPagination(GenericAppPagination):
     publication_counts: AgentPublicationCountsResponse
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
@@ -362,6 +381,7 @@ register_response_schema_models(
     AgentBuildDraftResponse,
     AgentBuildDraftApplyResponse,
     AgentSimpleResultResponse,
+    RosterAgentPackageImportResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -716,6 +736,77 @@ class AgentAppListApi(Resource):
 
         app = AppService().create_app(current_tenant_id, params, current_user, session=session)
         return _serialize_agent_app_detail(session, app, current_user=current_user), 201
+
+
+@console_ns.route("/agent/import")
+class RosterAgentPackageImportApi(Resource):
+    @console_ns.doc(consumes=["multipart/form-data"], params=_ROSTER_AGENT_PACKAGE_UPLOAD_PARAMS)
+    @console_ns.response(
+        201,
+        "Roster Agent package imported successfully",
+        console_ns.models[RosterAgentPackageImportResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid Roster Agent package")
+    @console_ns.response(409, "Agent name already exists")
+    @console_ns.response(413, "Roster Agent package exceeds the size limit")
+    @console_ns.response(500, "Roster Agent package import failed")
+    @console_ns.response(503, "Roster Agent package resource storage unavailable")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, Workspace()))
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account):
+        uploaded = request.files.get("file")
+        if uploaded is None or not uploaded.filename:
+            raise InvalidRosterAgentPackageError("Roster Agent package file is required")
+        if not uploaded.filename.lower().endswith(".ifpkg"):
+            raise InvalidRosterAgentPackageError("Roster Agent package file must use the .ifpkg extension")
+        result = RosterAgentPackageImporter().import_package(
+            source=cast(BinaryIO, uploaded.stream),
+            tenant_id=tenant_id,
+            account=current_user,
+        )
+        return dump_response(
+            RosterAgentPackageImportResponse,
+            {
+                "app_id": result.app_id,
+                "agent_id": result.agent_id,
+                "warnings": result.warnings,
+            },
+        ), 201
+
+
+@console_ns.route("/agent/<uuid:agent_id>/export")
+class RosterAgentPackageExportApi(Resource):
+    @console_ns.doc(
+        produces=["application/zip"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
+    )
+    @console_ns.response(200, "Roster Agent package exported successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "Agent not found")
+    @console_ns.response(413, "Roster Agent package exceeds the size limit")
+    @console_ns.response(500, "Roster Agent package export failed")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentId()))
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        exported = RosterAgentPackageExporter().export(tenant_id=tenant_id, agent_id=str(agent_id))
+        response = send_file(
+            exported.archive,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=exported.filename,
+        )
+        response.call_on_close(exported.close)
+        return response
 
 
 @console_ns.route("/agent/<uuid:agent_id>")

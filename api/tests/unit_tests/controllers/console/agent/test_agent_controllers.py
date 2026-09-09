@@ -1,3 +1,4 @@
+import io
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -51,6 +52,8 @@ from controllers.console.agent.roster import (
     AgentRosterVersionsApi,
     AgentStatisticsQuery,
     AgentStatisticsSummaryApi,
+    RosterAgentPackageExportApi,
+    RosterAgentPackageImportApi,
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
@@ -67,6 +70,8 @@ from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
 from models.enums import ApiTokenType, ConversationFromSource
 from models.model import ApiToken, App, AppMode, Conversation, IconType, Message
+from services.agent.errors import InvalidRosterAgentPackageError
+from services.agent.roster_package_importer import RosterAgentPackageImportResult
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -163,6 +168,69 @@ def test_query_values_accepts_repeated_and_indexed_arrays() -> None:
         assert roster_controller._query_values("sources", "source") == ["workflow:app-3"]
 
 
+def test_roster_package_import_controller_accepts_multipart_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeImporter:
+        def import_package(self, **kwargs):
+            captured.update(kwargs)
+            captured["content"] = kwargs["source"].read()
+            return RosterAgentPackageImportResult(app_id="app-1", agent_id="agent-1", warnings=[])
+
+    monkeypatch.setattr(roster_controller, "RosterAgentPackageImporter", FakeImporter)
+    account = _account(account_id="account-1")
+    with app.test_request_context(
+        "/console/api/agent/import",
+        method="POST",
+        data={"file": (io.BytesIO(b"package"), "agent.ifpkg")},
+        content_type="multipart/form-data",
+    ):
+        response, status = unwrap(RosterAgentPackageImportApi.post)(RosterAgentPackageImportApi(), "tenant-1", account)
+
+    assert status == 201
+    assert response == {
+        "status": "completed",
+        "app_id": "app-1",
+        "agent_id": "agent-1",
+        "warnings": [],
+    }
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["account"] is account
+    assert captured["content"] == b"package"
+
+
+def test_roster_package_import_controller_requires_ifpkg_extension(app: Flask) -> None:
+    with app.test_request_context(
+        "/console/api/agent/import",
+        method="POST",
+        data={"file": (io.BytesIO(b"package"), "agent.zip")},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(InvalidRosterAgentPackageError, match=".ifpkg extension"):
+            unwrap(RosterAgentPackageImportApi.post)(RosterAgentPackageImportApi(), "tenant-1", _account())
+
+
+def test_roster_package_export_controller_streams_archive(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    close = Mock()
+    archive = io.BytesIO(b"package")
+
+    class FakeExporter:
+        def export(self, **kwargs):
+            assert kwargs == {"tenant_id": "tenant-1", "agent_id": "agent-1"}
+            return SimpleNamespace(archive=archive, filename="agent.ifpkg", close=close)
+
+    monkeypatch.setattr(roster_controller, "RosterAgentPackageExporter", FakeExporter)
+    with app.test_request_context("/console/api/agent/agent-1/export"):
+        response = unwrap(RosterAgentPackageExportApi.get)(RosterAgentPackageExportApi(), "tenant-1", "agent-1")
+        assert response.mimetype == "application/zip"
+        assert "agent.ifpkg" in response.headers["Content-Disposition"]
+        response.direct_passthrough = False
+        assert response.get_data() == b"package"
+        response.close()
+
+    close.assert_called_once_with()
+
+
 def _workflow_composer_response(**overrides) -> dict:
     response = {
         "variant": "workflow",
@@ -249,7 +317,9 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
     paths = {route for item in console_ns.resources for route in item.urls}
     for route in (
         "/agent",
+        "/agent/import",
         "/agent/<uuid:agent_id>",
+        "/agent/<uuid:agent_id>/export",
         "/agent/<uuid:agent_id>/composer",
         "/agent/<uuid:agent_id>/composer/validate",
         "/agent/<uuid:agent_id>/composer/candidates",

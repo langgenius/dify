@@ -641,6 +641,21 @@ class AgentDslService:
                 )
         return AgentSoulConfig.model_validate(soul_data), warnings
 
+    def resolve_package_soul(
+        self,
+        *,
+        tenant_id: str,
+        package: AgentPackage,
+        package_path: str,
+    ) -> tuple[AgentSoulConfig, list[DslImportWarning]]:
+        """Resolve target-workspace references for any portable Agent package."""
+
+        return self._resolve_package_soul(
+            tenant_id=tenant_id,
+            package=package,
+            package_path=package_path,
+        )
+
     def _create_snapshot(
         self,
         *,

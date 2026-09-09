@@ -32,6 +32,8 @@ from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageM
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
+    RosterAgentPackageImportFailedError,
+    RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
 from services.agent.roster_package_entities import (
@@ -322,10 +324,22 @@ def test_package_files_reuse_existing_dsl_file_kinds(file_kind: str) -> None:
         (InvalidRosterAgentPackageError(), "invalid_roster_agent_package", 400),
         (RosterAgentPackageTooLargeError(), "roster_agent_package_too_large", 413),
         (RosterAgentPackageExportFailedError(), "roster_agent_package_export_failed", 500),
+        (RosterAgentPackageImportFailedError(), "roster_agent_package_import_failed", 500),
+        (
+            RosterAgentPackageResourceUnavailableError(),
+            "roster_agent_package_resource_unavailable",
+            503,
+        ),
     ],
 )
 def test_roster_package_errors_use_standard_http_payload(
-    error: InvalidRosterAgentPackageError | RosterAgentPackageTooLargeError | RosterAgentPackageExportFailedError,
+    error: (
+        InvalidRosterAgentPackageError
+        | RosterAgentPackageTooLargeError
+        | RosterAgentPackageExportFailedError
+        | RosterAgentPackageImportFailedError
+        | RosterAgentPackageResourceUnavailableError
+    ),
     error_code: str,
     status: int,
 ) -> None:
