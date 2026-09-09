@@ -2,7 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 
-Then('a YAML file named after the app should be downloaded', async function (this: DifyWorld) {
+Then('a ZIP bundle named after the app should be downloaded', async function (this: DifyWorld) {
   const appName = this.lastCreatedAppName
   if (!appName) {
     throw new Error(
@@ -15,5 +15,6 @@ Then('a YAML file named after the app should be downloaded', async function (thi
   await expect.poll(() => this.capturedDownloads.length, { timeout: 10_000 }).toBeGreaterThan(0)
 
   const download = this.capturedDownloads.at(-1)!
-  expect(download.suggestedFilename()).toBe(`${appName}.yml`)
+  expect(download.suggestedFilename()).toBe(`${appName}.zip`)
+  expect(await download.failure()).toBeNull()
 })

@@ -6,4 +6,4 @@ Feature: Export app DSL
     When I open the apps console
     And I open the options menu for the last created E2E app
     And I click "Export DSL" in the app options menu
-    Then a YAML file named after the app should be downloaded
+    Then a ZIP bundle named after the app should be downloaded
