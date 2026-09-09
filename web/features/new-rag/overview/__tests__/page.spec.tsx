@@ -2,7 +2,7 @@ import type { Getter } from 'jotai'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { renderWithQueryState } from '@/test/query-state-testing'
 import { formatMetricChange } from '../overview-format'
 import { MetricCard } from '../overview-metrics'
 import { KnowledgeOverviewPage } from '../page'
@@ -364,11 +364,11 @@ vi.mock('@/service/console', () => {
 })
 
 function renderOverviewWithNuqs(
-  ui: Parameters<typeof renderWithNuqs>[0],
-  options?: Parameters<typeof renderWithNuqs>[1],
+  ui: Parameters<typeof renderWithQueryState>[0],
+  options?: Parameters<typeof renderWithQueryState>[1],
 ) {
   jotaiQueryMocks.bump?.()
-  const rendered = renderWithNuqs(ui, options)
+  const rendered = renderWithQueryState(ui, options)
   return {
     ...rendered,
     rerender: (nextUi: Parameters<typeof rendered.rerender>[0]) => {

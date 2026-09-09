@@ -4,7 +4,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { NuqsJotaiBridge } from 'nuqs-jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { OverviewActivity } from './overview-activity'
@@ -18,7 +17,6 @@ import {
   overviewEmptyAtom,
   overviewFirstLoadFailedAtom,
   overviewKnowledgeSpaceIdAtom,
-  overviewLocationQuery,
   overviewPageLoadingAtom,
   overviewShowEmptyModulesAtom,
   overviewShowIndexingAtom,
@@ -29,11 +27,9 @@ import { OverviewStateBoundary } from './state-boundary'
 
 export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   return (
-    <NuqsJotaiBridge key={`overview:${knowledgeSpaceId}`} config={overviewLocationQuery}>
-      <OverviewStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
-        <KnowledgeOverviewContent />
-      </OverviewStateBoundary>
-    </NuqsJotaiBridge>
+    <OverviewStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
+      <KnowledgeOverviewContent />
+    </OverviewStateBoundary>
   )
 }
 

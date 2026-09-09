@@ -3,10 +3,10 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { QueryTestingAdapter } from 'nuqs-jotai/testing'
 import { useState } from 'react'
 import { render } from '@/test/console/render'
-import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { createQueryTestWrapper } from '@/test/query-state-testing'
 import { RetrievalTestPage } from '../page'
 
 const apiMock = vi.hoisted(() => ({
@@ -372,10 +372,10 @@ function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
       queries: { retry: false },
     },
   })
-  const { onUrlUpdate, wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
+  const { onUrlUpdate, wrapper: QueryWrapper } = createQueryTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <NuqsWrapper>{children}</NuqsWrapper>
+      <QueryWrapper>{children}</QueryWrapper>
     </QueryClientProvider>
   )
   return {
@@ -618,6 +618,35 @@ describe('RetrievalTestPage', () => {
     await waitFor(() => expect(apiMock.queryAdmission).not.toHaveBeenCalled())
     expect(apiMock.planResearch).not.toHaveBeenCalled()
     expect(apiMock.createResearch).not.toHaveBeenCalled()
+  })
+
+  it('does not change the shared URL when an old page finishes creating research', async () => {
+    const task = { id: 'late-research', stage: 'queued' }
+    let resolveTask: ((value: typeof task) => void) | undefined
+    const pendingTask = new Promise<typeof task>((resolve) => {
+      resolveTask = resolve
+    })
+    apiMock.createResearch.mockReturnValueOnce(pendingTask)
+    const user = userEvent.setup()
+    const rendered = renderPage()
+    await user.type(
+      screen.getByLabelText('knowledgeSpace.retrievalTest.queryPlaceholder'),
+      'Research before leaving',
+    )
+    await user.click(
+      screen.getByRole('radio', { name: 'knowledgeSpace.settings.retrievalMode.research' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retrievalTest.run' }))
+    await waitFor(() => expect(apiMock.createResearch).toHaveBeenCalledOnce())
+    // Keep the layout/provider alive while the old page goes away.
+    rendered.rerender(<p>Another page</p>)
+    await act(async () => {
+      resolveTask?.(task)
+      await pendingTask
+    })
+    expect(rendered.onUrlUpdate).not.toHaveBeenCalled()
+    expect(apiMock.refetchTasks).not.toHaveBeenCalled()
+    expect(screen.getByText('Another page')).toBeInTheDocument()
   })
 
   it('admits only one research task while the first Run request is pending', async () => {
@@ -1679,12 +1708,12 @@ describe('RetrievalTestPage', () => {
     function NavigationHarness() {
       const [searchParams, setSearchParams] = useState('?trace=trace-1')
       return (
-        <NuqsTestingAdapter hasMemory searchParams={searchParams}>
+        <QueryTestingAdapter searchParams={searchParams}>
           <button type="button" onClick={() => setSearchParams('?trace=trace-2')}>
             Navigate to trace 2
           </button>
           <RetrievalTestPage knowledgeSpaceId="space-1" />
-        </NuqsTestingAdapter>
+        </QueryTestingAdapter>
       )
     }
 

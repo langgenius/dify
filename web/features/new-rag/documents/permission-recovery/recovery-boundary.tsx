@@ -2,11 +2,10 @@
 
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { documentMetadataParser } from '../query-state'
+import { documentMetadataAtom } from '../state/inputs'
 import { retryDocumentReadAtom } from '../state/runtime'
 import { documentPermissionRecoveryFocusRequestAtom, documentTasksOpenAtom } from '../state/scoped'
 import { documentPermissionBoundaryFactsAtom, documentReadRecoveryFactsAtom } from './state'
@@ -26,7 +25,7 @@ export function DocumentPermissionRecoveryBoundary({ children }: { children: Rea
   } = useAtomValue(documentPermissionBoundaryFactsAtom)
   const setTasksOpen = useSetAtom(documentTasksOpenAtom)
   const setPendingReadRecoveryFocus = useSetAtom(documentPermissionRecoveryFocusRequestAtom)
-  const [metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
+  const [metadataRequest, setMetadataRequest] = useAtom(documentMetadataAtom)
   const readSurfaceOpen = tasksOpen || metadataRequest === '1'
   const closeReadSurfaces = useCallback(() => {
     setTasksOpen(false)

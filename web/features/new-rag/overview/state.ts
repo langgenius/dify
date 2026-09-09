@@ -20,7 +20,7 @@ const ACTIVITY_PREVIEW_PAGE_SIZE = 20
 export const overviewKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing overview knowledge space id')
 })
-export const overviewLocationQuery = createQueryAtoms(
+const overviewLocationQuery = createQueryAtoms(
   {
     window: parseAsStringLiteral(OVERVIEW_WINDOWS)
       .withDefault('24h')

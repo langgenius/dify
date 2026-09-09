@@ -1,7 +1,6 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { NuqsJotaiBridge } from 'nuqs-jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { useKnowledgeSpacePermission } from '../space/context'
@@ -11,11 +10,7 @@ import { RetrievalResultPanel } from './result-panel'
 import { RetrievalRuntimeController } from './runtime-controller'
 import { RetrievalStateBoundary } from './state/boundary'
 import { retrievalComposerModeAtom } from './state/graph'
-import {
-  retrievalCanQueryAtom,
-  retrievalKnowledgeSpaceIdAtom,
-  retrievalLocationQuery,
-} from './state/inputs'
+import { retrievalCanQueryAtom, retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
 function RetrievalTestSurface() {
   const { t } = useTranslation('knowledgeSpace')
@@ -65,11 +60,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const canQuery = useKnowledgeSpacePermission('knowledge_space_query')
 
   return (
-    <NuqsJotaiBridge key={`retrieval:${knowledgeSpaceId}`} config={retrievalLocationQuery}>
-      <RetrievalStateBoundary canQuery={canQuery} knowledgeSpaceId={knowledgeSpaceId}>
-        <RetrievalRuntimeController />
-        <RetrievalTestSurface />
-      </RetrievalStateBoundary>
-    </NuqsJotaiBridge>
+    <RetrievalStateBoundary canQuery={canQuery} knowledgeSpaceId={knowledgeSpaceId}>
+      <RetrievalRuntimeController />
+      <RetrievalTestSurface />
+    </RetrievalStateBoundary>
   )
 }

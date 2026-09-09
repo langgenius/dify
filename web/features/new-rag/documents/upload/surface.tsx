@@ -6,8 +6,7 @@ import type { UploadExclusionReasonKey } from './model'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
@@ -16,9 +15,8 @@ import { DocumentUploadForm } from '../../upload/form'
 import { documentUploadIssue } from '../../upload/policy'
 import { useKnowledgeFileSizeLimit } from '../../upload/use-file-size-limit'
 import { DocumentDropOverlay } from '../list'
-import { documentUploadParser } from '../query-state'
 import { responseStatus } from '../request-error'
-import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { documentsKnowledgeSpaceIdAtom, documentUploadAtom } from '../state/inputs'
 import {
   denyDocumentWriteAtom,
   documentCanReadAtom,
@@ -36,7 +34,7 @@ function DocumentUploadHeader() {
   const canRead = useAtomValue(documentCanReadAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const [uploadRequest] = useQueryState('upload', documentUploadParser)
+  const uploadRequest = useAtomValue(documentUploadAtom)
   const formOpen =
     documentUploadAvailability(canWrite, uploadAvailable).canUpload && uploadRequest === '1'
 
@@ -76,7 +74,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const fileSizeLimitMb = useKnowledgeFileSizeLimit()
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const [uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
+  const [uploadRequest, setUploadRequest] = useAtom(documentUploadAtom)
   const [formInitialFiles, setFormInitialFiles] = useState<File[]>([])
   const [fileDragActive, setFileDragActive] = useState(false)
   const formRef = useRef<DocumentUploadFormHandle>(null)

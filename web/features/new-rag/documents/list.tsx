@@ -22,7 +22,6 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useQueryState } from 'nuqs'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -34,11 +33,12 @@ import { newKnowledgeDocumentDetailPath } from '../routes'
 import { DocumentActionsDropdown } from './actions-dropdown'
 import { DocumentBulkActionsToolbar } from './bulk/toolbar'
 import { DocumentPermissionRecoveryBulkRegion } from './permission-recovery/recovery-boundary'
-import { documentMetadataParser, documentUploadParser } from './query-state'
 import {
   documentFilterAtom,
+  documentMetadataAtom,
   documentSearchAtom,
   documentsKnowledgeSpaceIdAtom,
+  documentUploadAtom,
 } from './state/inputs'
 import { documentsQueryFetchNextPageAtom, sourcesQueryFetchNextPageAtom } from './state/queries'
 import {
@@ -325,8 +325,8 @@ const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
 
 export function DocumentsEmpty() {
   const { t } = useTranslation('knowledgeSpace')
-  const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
-  const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
+  const setMetadataRequest = useSetAtom(documentMetadataAtom)
+  const setUploadRequest = useSetAtom(documentUploadAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const uploading = useAtomValue(documentUploadingAtom)
@@ -374,8 +374,8 @@ function DocumentsToolbar() {
   const { t } = useTranslation('knowledgeSpace')
   const [filter, setFilter] = useAtom(documentFilterAtom)
   const [search, setSearch] = useAtom(documentSearchAtom)
-  const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
-  const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
+  const setMetadataRequest = useSetAtom(documentMetadataAtom)
+  const setUploadRequest = useSetAtom(documentUploadAtom)
   const { showTasks, statusPending } = useAtomValue(documentsToolbarFactsAtom)
   const canWrite = useAtomValue(documentCanWriteAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)

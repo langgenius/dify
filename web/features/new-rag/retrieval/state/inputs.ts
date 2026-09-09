@@ -8,7 +8,7 @@ export const retrievalKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
 
 export const retrievalCanQueryAtom = atomWithLazy<boolean>(() => false)
 
-export const retrievalLocationQuery = createQueryAtoms(
+const retrievalLocationQuery = createQueryAtoms(
   {
     research: parseAsString,
     retest: parseAsString,

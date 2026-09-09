@@ -126,6 +126,7 @@ export function RetrievalRuntimeController() {
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
+  const sessionControllerRef = useRef<AbortController>(undefined)
   const queryAbortControllerRef = useRef<AbortController>(undefined)
   const consumedRetestTraceIdRef = useRef<string | undefined>(undefined)
   const runInFlightRef = useRef(false)
@@ -135,6 +136,13 @@ export function RetrievalRuntimeController() {
     undefined,
   )
   const retainedPreviewUrlsRef = useRef(new Set<string>())
+
+  // The URL provider survives page navigation; asynchronous commands do not.
+  useLayoutEffect(() => {
+    const controller = new AbortController()
+    sessionControllerRef.current = controller
+    return () => controller.abort()
+  }, [])
 
   const isSelectedResearchActive = useEffectEvent(() => selectedResearchActive)
 
@@ -255,6 +263,8 @@ export function RetrievalRuntimeController() {
       mode: RetrievalTestMode
       query: string
     }) => {
+      const session = sessionControllerRef.current
+      if (!session || session.signal.aborted) return
       const cleanQuery = (input?.query ?? query).trim()
       const activeImages = input ? (input.images ?? []) : queryImages
       if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
@@ -270,6 +280,10 @@ export function RetrievalRuntimeController() {
           })
         ).status !== 'ready'
       ) {
+        runInFlightRef.current = false
+        return
+      }
+      if (session.signal.aborted) {
         runInFlightRef.current = false
         return
       }
@@ -383,6 +397,8 @@ export function RetrievalRuntimeController() {
 
   const startResearch = useCallback(
     async (input?: { images?: RetrievalComposerImage[]; query: string }) => {
+      const session = sessionControllerRef.current
+      if (!session || session.signal.aborted) return
       const cleanQuery = (input?.query ?? query).trim()
       const activeImages = input ? (input.images ?? []) : queryImages
       if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
@@ -394,6 +410,7 @@ export function RetrievalRuntimeController() {
           'ready'
         )
           return
+        if (session.signal.aborted) return
         const plan =
           await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
             body: {
@@ -403,6 +420,7 @@ export function RetrievalRuntimeController() {
             },
             params: { control_space_id: knowledgeSpaceId },
           })
+        if (session.signal.aborted) return
         const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post({
           body: {
             budgetUsd: plan.budget.budget_usd,
@@ -413,6 +431,7 @@ export function RetrievalRuntimeController() {
           },
           params: { control_space_id: knowledgeSpaceId },
         })
+        if (session.signal.aborted) return
         setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
         setResearchPlans((current) => ({ ...current, [task.id]: plan }))
         if (activeImages.length > 0)
@@ -429,6 +448,7 @@ export function RetrievalRuntimeController() {
         )
         await refetchResearchTasks()
       } catch {
+        if (session.signal.aborted) return
         toast.error(t(($) => $['retrievalTest.failedDescription']))
       } finally {
         runInFlightRef.current = false

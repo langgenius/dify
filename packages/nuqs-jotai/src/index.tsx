@@ -1,30 +1,19 @@
 'use client'
 
-import type { WritableAtom } from 'jotai'
+import type { Atom, WritableAtom } from 'jotai'
 import type { Options, SetValues, UseQueryStatesKeysMap, UseQueryStatesOptions, Values } from 'nuqs'
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import type { QueryAdapter } from './adapter'
 import { atom, useStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useQueryStates } from 'nuqs'
-import { useEffect, useLayoutEffect, useMemo } from 'react'
+import { useEffect, useInsertionEffect, useLayoutEffect, useState } from 'react'
+import { parseValues, prepareUpdate } from './query'
+import { createQueryRuntime } from './runtime'
 
-const queryAtomsInternals: unique symbol = Symbol('nuqs-jotai.internals')
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
-
-type QueryAtomsBinding<Parsers extends UseQueryStatesKeysMap> = {
-  values: Values<Parsers>
-  setValues: SetValues<Parsers> | null
-}
-
-type QueryAtomsPatch<Parsers extends UseQueryStatesKeysMap> = Partial<{
-  [Key in keyof Values<Parsers>]: Values<Parsers>[Key] | null
-}> | null
-
-type QueryAtomsInternals<Parsers extends UseQueryStatesKeysMap> = {
-  bindingAtom: WritableAtom<QueryAtomsBinding<Parsers>, [QueryAtomsBinding<Parsers>], void>
-  parsers: Parsers
-  urlKeys: UseQueryStatesOptions<Parsers>['urlKeys'] | undefined
-}
+type Runtime = ReturnType<typeof createQueryRuntime>
+const runtimeAtom = atom<{ runtime: Runtime; defaults: Options } | null>(null)
+runtimeAtom.debugLabel = 'url.runtime'
 
 export type QueryAtom<Value> = WritableAtom<
   Value,
@@ -32,182 +21,117 @@ export type QueryAtom<Value> = WritableAtom<
   Promise<URLSearchParams>
 >
 
-export type QueryAtoms<Parsers extends UseQueryStatesKeysMap> = {
-  readonly atom: WritableAtom<
-    Values<Parsers>,
-    Parameters<SetValues<Parsers>>,
-    Promise<URLSearchParams>
-  >
-  readonly atoms: {
-    readonly [Key in keyof Parsers]: QueryAtom<Values<Parsers>[Key]>
-  }
-  readonly [queryAtomsInternals]: QueryAtomsInternals<Parsers>
+export type QueryAtoms<P extends UseQueryStatesKeysMap> = {
+  readonly atom: WritableAtom<Values<P>, Parameters<SetValues<P>>, Promise<URLSearchParams>>
+  readonly atoms: { readonly [K in keyof P]: QueryAtom<Values<P>[K]> }
+  readonly errorAtom: Atom<unknown>
 }
 
-export type CreateQueryAtomsOptions<Parsers extends UseQueryStatesKeysMap> = {
-  urlKeys?: UseQueryStatesOptions<Parsers>['urlKeys']
+export type CreateQueryAtomsOptions<P extends UseQueryStatesKeysMap> = {
+  urlKeys?: UseQueryStatesOptions<P>['urlKeys']
   debugLabel?: string
 }
 
-export type NuqsJotaiBridgeProps<Parsers extends UseQueryStatesKeysMap> = {
-  config: QueryAtoms<Parsers>
-  options?: Omit<Partial<UseQueryStatesOptions<Parsers>>, 'urlKeys'>
-  children: ReactNode
-}
-
-/**
- * Creates a composite query atom and one focused atom per parser key.
- *
- * nuqs remains the owner of URL parsing and writes. The atoms expose that
- * state to a Jotai graph and remain inert until NuqsJotaiBridge is mounted.
- */
-export function createQueryAtoms<Parsers extends UseQueryStatesKeysMap>(
-  parsers: Parsers,
-  { urlKeys, debugLabel = 'nuqs' }: CreateQueryAtomsOptions<Parsers> = {},
-): QueryAtoms<Parsers> {
-  const bindingAtom = atom<QueryAtomsBinding<Parsers>>({
-    values: getInitialValues(parsers),
-    setValues: null,
-  })
-  bindingAtom.debugLabel = `${debugLabel}.binding`
-
-  const queryAtom = atom<Values<Parsers>, Parameters<SetValues<Parsers>>, Promise<URLSearchParams>>(
-    (get) => get(bindingAtom).values,
+/** Definitions need no registration: every atom uses its nearest URL provider. */
+export function createQueryAtoms<P extends UseQueryStatesKeysMap>(
+  parsers: P,
+  { urlKeys, debugLabel = 'query' }: CreateQueryAtomsOptions<P> = {},
+): QueryAtoms<P> {
+  const initial = parseValues(parsers, urlKeys, new URLSearchParams())
+  const cache = new WeakMap<Runtime, { href: string; values: Values<P> }>()
+  const queryAtom: QueryAtoms<P>['atom'] = atom<
+    Values<P>,
+    Parameters<SetValues<P>>,
+    Promise<URLSearchParams>
+  >(
+    (get) => {
+      const binding = get(runtimeAtom)
+      if (!binding) return initial
+      const href = get(binding.runtime.stateAtom)
+      const previous = cache.get(binding.runtime)
+      if (previous?.href === href) return previous.values
+      const values = parseValues(parsers, urlKeys, new URL(href).searchParams, previous?.values)
+      cache.set(binding.runtime, { href, values })
+      return values
+    },
     (get, set, update, options) => {
-      const binding = get(bindingAtom)
-      if (binding.setValues === null) {
-        throw new Error(
-          '[nuqs-jotai] Cannot update query atoms before mounting their NuqsJotaiBridge',
-        )
-      }
-      const requested = typeof update === 'function' ? update(binding.values) : update
-      const values = applyUpdate(parsers, binding.values, requested)
-      set(bindingAtom, { ...binding, values })
-      return binding.setValues(requested, options)
+      const binding = get(runtimeAtom)
+      if (!binding) throw new Error('[nuqs-jotai] Missing QueryStateProvider')
+      return binding.runtime.write(
+        () => {
+          const patch = typeof update === 'function' ? update(get(queryAtom)) : update
+          return prepareUpdate(parsers, urlKeys, patch, binding.defaults, options)
+        },
+        { set },
+      )
     },
   )
   queryAtom.debugLabel = debugLabel
-
-  function createQueryAtomForKey<Key extends keyof Parsers>(
-    key: Key,
-  ): QueryAtom<Values<Parsers>[Key]> {
-    const queryAtomForKey = atom<
-      Values<Parsers>[Key],
-      [
-        update:
-          | Values<Parsers>[Key]
-          | null
-          | ((previous: Values<Parsers>[Key]) => Values<Parsers>[Key] | null),
-        options?: Options,
-      ],
+  function forKey<K extends keyof P>(key: K): QueryAtom<Values<P>[K]> {
+    const focused = atom<
+      Values<P>[K],
+      [ValueUpdate<Values<P>[K]>, Options?],
       Promise<URLSearchParams>
     >(
-      (get) => get(queryAtom)[key] as Values<Parsers>[Key],
-      (get, set, update, options) => {
-        const previous = get(queryAtom)[key] as Values<Parsers>[Key]
-        const value =
-          typeof update === 'function'
-            ? (update as (previous: Values<Parsers>[Key]) => Values<Parsers>[Key] | null)(previous)
-            : update
-        return set(queryAtom, { [key]: value } as QueryAtomsPatch<Parsers>, options)
-      },
+      (get) => get(queryAtom)[key],
+      (_get, set, update, options) =>
+        set(
+          queryAtom,
+          (current) => {
+            const value =
+              typeof update === 'function'
+                ? (update as (previous: Values<P>[K]) => Values<P>[K] | null)(current[key])
+                : update
+            return { [key]: value } as Partial<Values<P>>
+          },
+          options,
+        ),
     )
-    queryAtomForKey.debugLabel = `${debugLabel}.${String(key)}`
-    return queryAtomForKey
+    focused.debugLabel = `${debugLabel}.${String(key)}`
+    return focused
   }
-
-  const queryAtoms = Object.fromEntries(
-    (Object.keys(parsers) as Array<keyof Parsers>).map((key) => [key, createQueryAtomForKey(key)]),
-  ) as QueryAtoms<Parsers>['atoms']
-
+  const errorAtom = atom((get) => {
+    const binding = get(runtimeAtom)
+    return binding ? get(binding.runtime.errorAtom) : null
+  })
+  errorAtom.debugLabel = `${debugLabel}.error`
   return {
     atom: queryAtom,
-    atoms: queryAtoms,
-    [queryAtomsInternals]: {
-      bindingAtom,
-      parsers,
-      urlKeys,
-    },
+    atoms: Object.fromEntries(
+      Object.keys(parsers).map((key) => [key, forKey(key)]),
+    ) as QueryAtoms<P>['atoms'],
+    errorAtom,
   }
 }
 
-/**
- * Bridges authoritative nuqs values into an isolated Jotai binding scope.
- */
-export function NuqsJotaiBridge<Parsers extends UseQueryStatesKeysMap>({
-  config,
-  options,
-  children,
-}: NuqsJotaiBridgeProps<Parsers>): ReactElement {
-  const { bindingAtom, parsers, urlKeys } = config[queryAtomsInternals]
-  const [values, setValues] = useQueryStates(parsers, {
-    ...options,
-    urlKeys,
-  })
-  const binding = useMemo(() => ({ values, setValues }), [setValues, values])
+type ValueUpdate<T> = T | null | ((previous: T) => T | null)
 
+/** One provider per URL: preserve parent application atoms and share one queue. */
+export function QueryStateProvider({
+  adapter,
+  options = {},
+  children,
+}: {
+  adapter: QueryAdapter
+  options?: Options
+  children: ReactNode
+}) {
+  const [binding] = useState(() => ({ runtime: createQueryRuntime(adapter), defaults: options }))
+  const { runtime } = binding
   return (
-    <ScopeProvider atoms={[[bindingAtom, binding]]} name="NuqsJotaiBridge">
-      <QueryBindingSync binding={binding} bindingAtom={bindingAtom}>
-        {children}
-      </QueryBindingSync>
+    <ScopeProvider
+      atoms={[[runtimeAtom, binding], runtime.stateAtom, runtime.errorAtom]}
+      name="QueryState"
+    >
+      <RuntimeConnection runtime={runtime}>{children}</RuntimeConnection>
     </ScopeProvider>
   )
 }
 
-function QueryBindingSync<Parsers extends UseQueryStatesKeysMap>({
-  binding,
-  bindingAtom,
-  children,
-}: {
-  binding: QueryAtomsBinding<Parsers>
-  bindingAtom: QueryAtomsInternals<Parsers>['bindingAtom']
-  children: ReactNode
-}) {
+function RuntimeConnection({ runtime, children }: { runtime: Runtime; children: ReactNode }) {
   const store = useStore()
-
-  useBrowserLayoutEffect(() => {
-    return () => {
-      const current = store.get(bindingAtom)
-      store.set(bindingAtom, { ...current, setValues: null })
-    }
-  }, [bindingAtom, store])
-
-  useBrowserLayoutEffect(() => {
-    store.set(bindingAtom, binding)
-  }, [binding, bindingAtom, store])
-
+  // Insertion cleanup marks actual removal; layout replay only reconnects.
+  useInsertionEffect(() => () => runtime.dispose(), [runtime])
+  useBrowserLayoutEffect(() => runtime.connect(store), [runtime, store])
   return children
-}
-
-function getInitialValues<Parsers extends UseQueryStatesKeysMap>(
-  parsers: Parsers,
-): Values<Parsers> {
-  return Object.fromEntries(
-    Object.entries(parsers).map(([key, parser]) => [key, parser.defaultValue ?? null]),
-  ) as Values<Parsers>
-}
-
-function applyUpdate<Parsers extends UseQueryStatesKeysMap>(
-  parsers: Parsers,
-  current: Values<Parsers>,
-  requested: QueryAtomsPatch<Parsers>,
-): Values<Parsers> {
-  const patch = requested ?? Object.fromEntries(Object.keys(parsers).map((key) => [key, null]))
-  const patchRecord = patch as Partial<Record<keyof Parsers, unknown>>
-  let hasChanged = false
-  const next = { ...current }
-  const nextRecord = next as Record<keyof Parsers, unknown>
-  for (const key of Object.keys(parsers) as Array<keyof Parsers>) {
-    const parser = parsers[key]
-    if (!parser) continue
-    const value = patchRecord[key]
-    if (value === undefined) continue
-    const resolved = value ?? parser.defaultValue ?? null
-    if (!Object.is(nextRecord[key], resolved)) {
-      nextRecord[key] = resolved
-      hasChanged = true
-    }
-  }
-  return hasChanged ? next : current
 }

@@ -1,13 +1,11 @@
 'use client'
 
 import { useAtomValue, useSetAtom } from 'jotai'
-import { NuqsJotaiBridge } from 'nuqs-jotai'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentErrorState } from './error-state'
 import { responseStatus } from './model'
 import { DocumentDetailStateBoundary } from './state/boundary'
-import { documentDetailLocationQuery } from './state/location'
 import {
   documentDetailQueryDataAtom,
   documentDetailQueryErrorAtom,
@@ -64,13 +62,8 @@ export function DocumentDetailPage({
   knowledgeSpaceId: string
 }) {
   return (
-    <NuqsJotaiBridge
-      key={`document:${knowledgeSpaceId}:${documentId}`}
-      config={documentDetailLocationQuery}
-    >
-      <DocumentDetailStateBoundary documentId={documentId} knowledgeSpaceId={knowledgeSpaceId}>
-        <DocumentDetailContent />
-      </DocumentDetailStateBoundary>
-    </NuqsJotaiBridge>
+    <DocumentDetailStateBoundary documentId={documentId} knowledgeSpaceId={knowledgeSpaceId}>
+      <DocumentDetailContent />
+    </DocumentDetailStateBoundary>
   )
 }
