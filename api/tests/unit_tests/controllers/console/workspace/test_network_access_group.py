@@ -8,6 +8,7 @@ from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
 
 from controllers.console.workspace.network_access_group import (
@@ -460,7 +461,8 @@ def test_binding_payload_rejects_invalid_group_id_and_version() -> None:
         (AppMode.ADVANCED_CHAT, ["webapp", "service_api", "mcp"]),
         (AppMode.CHAT, ["webapp", "service_api", "mcp"]),
         (AppMode.COMPLETION, ["webapp", "service_api", "mcp"]),
-        (AppMode.AGENT_CHAT, ["webapp", "service_api"]),
+        (AppMode.AGENT_CHAT, ["webapp", "service_api", "mcp"]),
+        (AppMode.AGENT, ["webapp", "service_api"]),
     ],
 )
 def test_available_access_points_are_derived_from_app_mode(app_mode: AppMode, expected: list[str]) -> None:
@@ -469,7 +471,7 @@ def test_available_access_points_are_derived_from_app_mode(app_mode: AppMode, ex
     assert _available_access_points(cast(App, app_model)) == expected
 
 
-@pytest.mark.parametrize("app_mode", [AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE])
+@pytest.mark.parametrize("app_mode", [AppMode.CHANNEL, AppMode.RAG_PIPELINE])
 def test_unsupported_app_modes_are_rejected(app_mode: AppMode) -> None:
     with pytest.raises(BadRequest, match="not supported"):
         _available_access_points(cast(App, SimpleNamespace(mode=app_mode)))
@@ -478,7 +480,7 @@ def test_unsupported_app_modes_are_rejected(app_mode: AppMode) -> None:
 def test_app_put_rejects_access_point_not_available_for_mode_before_upstream_call() -> None:
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.put)
-    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.AGENT_CHAT)
+    app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID, mode=AppMode.AGENT)
     request_payload = AppNetworkAccessGroupUpdatePayload(
         enabled=True,
         group_id=GROUP_ID,
@@ -565,6 +567,19 @@ def test_group_responses_are_enriched_with_tenant_scoped_app_metadata() -> None:
     assert result["group"]["app_ids"] == [APP_ID, app_id_2]
     assert result["group"]["used_by_count"] == 2
     db_mock.session.scalars.assert_called_once()
+
+
+def test_group_app_enrichment_degrades_to_ids_when_core_database_is_unavailable() -> None:
+    payload = {"group": _group_payload(app_ids=[APP_ID])}
+    db_mock = MagicMock()
+    db_mock.session.scalars.side_effect = SQLAlchemyError("database unavailable")
+
+    with patch("services.network_access_group_service.db", db_mock):
+        result = NetworkAccessGroupService.enrich_app_references(payload, TENANT_ID)
+
+    assert result["group"]["app_ids"] == [APP_ID]
+    assert result["group"]["used_by_count"] == 1
+    assert result["group"]["apps"] == []
 
 
 def test_sandbox_read_returns_not_entitled_for_upgrade_state() -> None:

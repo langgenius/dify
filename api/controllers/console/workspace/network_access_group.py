@@ -33,7 +33,8 @@ _ACCESS_POINTS_BY_APP_MODE: dict[AppMode, tuple[NetworkAccessPoint, ...]] = {
     AppMode.ADVANCED_CHAT: ("webapp", "service_api", "mcp"),
     AppMode.CHAT: ("webapp", "service_api", "mcp"),
     AppMode.COMPLETION: ("webapp", "service_api", "mcp"),
-    AppMode.AGENT_CHAT: ("webapp", "service_api"),
+    AppMode.AGENT_CHAT: ("webapp", "service_api", "mcp"),
+    AppMode.AGENT: ("webapp", "service_api"),
 }
 
 

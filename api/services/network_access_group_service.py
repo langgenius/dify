@@ -1,9 +1,13 @@
+import logging
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions.ext_database import db
 from models import App
+
+logger = logging.getLogger(__name__)
 
 
 class NetworkAccessGroupService:
@@ -51,13 +55,19 @@ class NetworkAccessGroupService:
                 group["apps"] = []
             return payload
 
-        app_models = db.session.scalars(
-            select(App).where(
-                App.tenant_id == tenant_id,
-                App.id.in_(app_ids),
-                App.status == "normal",
-            )
-        ).all()
+        try:
+            app_models = db.session.scalars(
+                select(App).where(
+                    App.tenant_id == tenant_id,
+                    App.id.in_(app_ids),
+                    App.status == "normal",
+                )
+            ).all()
+        except SQLAlchemyError:
+            logger.exception("Failed to enrich network access Policy App references", extra={"tenant_id": tenant_id})
+            for group in groups:
+                group["apps"] = []
+            return payload
         apps_by_id = {
             str(app.id): {
                 "id": str(app.id),

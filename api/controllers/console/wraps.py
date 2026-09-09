@@ -5,10 +5,11 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate, Protocol, cast, overload
 
+import httpx
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from werkzeug.exceptions import Forbidden, UnprocessableEntity
+from werkzeug.exceptions import Forbidden, ServiceUnavailable, UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.wraps import (
@@ -27,7 +28,7 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.billing_service import BillingService
+from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.entities.feature_entities import LicenseStatus
 from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
@@ -167,7 +168,16 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
     render an upgrade state.
     """
 
-    billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+    try:
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+    except (
+        _BillingHTTPStatusError,
+        httpx.RequestError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+        ValidationError,
+    ) as exc:
+        raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
     return billing_info["enabled"] and billing_info["subscription"]["plan"] in (
         CloudPlan.PROFESSIONAL,
         CloudPlan.TEAM,
