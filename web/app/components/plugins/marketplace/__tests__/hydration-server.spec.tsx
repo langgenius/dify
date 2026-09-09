@@ -112,7 +112,7 @@ describe('HydrateQueryClient', () => {
     expect(state.queries[0]?.queryKey).toEqual([
       'marketplace',
       'collections',
-      { input: { query: { limit: 20 } } },
+      { input: { query: {} } },
     ])
   })
 
