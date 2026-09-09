@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -50,6 +50,20 @@ class MessageMetadata(BaseModel):
     retriever_resources: list[dict[str, Any]] = []
 
 
+class PaginationEnvelope[T](BaseModel):
+    """The one shape every paginated list on this surface answers with."""
+
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[T]
+
+    @classmethod
+    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
+        return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
+
+
 class AppListRow(BaseModel):
     id: str
     name: str
@@ -60,20 +74,12 @@ class AppListRow(BaseModel):
     workspace_name: str | None = None
 
 
-class AppListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class AppListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
-class PermittedExternalAppsListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AppListRow]
+class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
+    pass
 
 
 class AppInfo(BaseModel):
@@ -151,12 +157,8 @@ class SessionRow(BaseModel):
     expires_at: str | None = None
 
 
-class SessionListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[SessionRow]
+class SessionListResponse(PaginationEnvelope[SessionRow]):
+    pass
 
 
 class SessionListQuery(BaseModel):
@@ -354,12 +356,8 @@ class MemberResponse(BaseModel):
     avatar: str | None = None
 
 
-class MemberListResponse(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[MemberResponse]
+class MemberListResponse(PaginationEnvelope[MemberResponse]):
+    pass
 
 
 class MemberListQuery(BaseModel):
