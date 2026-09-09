@@ -1,5 +1,5 @@
 import type { Options, SetValues, UseQueryStatesKeysMap, UseQueryStatesOptions, Values } from 'nuqs'
-import type { UrlUpdateEvent } from './testing'
+import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
 import { act, cleanup, render } from '@testing-library/react'
 import { useStore } from 'jotai'
 import {
@@ -14,7 +14,6 @@ import {
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import { atomWithSearchParams, QueryStateProvider } from './index'
-import { createMemoryQueryAdapter } from './testing'
 
 // nuqs retains its last-flush timestamp in a module singleton, so keep the
 // fake monotonic clock running across cases just as the browser clock does.
@@ -34,47 +33,40 @@ describe.each(['nuqs', 'atoms'] as const)('%s compatibility', (implementation) =
     const onUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
     let read!: () => Values<P>
     let write!: SetValues<P>
-    let navigate!: (query: string) => void
-    if (implementation === 'atoms') {
-      const adapter = createMemoryQueryAdapter(`http://localhost/?${search}`, onUpdate)
-      const queryAtom = atomWithSearchParams(parsers, options)
-      function Capture() {
-        const store = useStore()
-        read = () => store.get(queryAtom)
-        write = (...args) => store.set(queryAtom, ...args)
-        return null
-      }
-      render(
-        <QueryStateProvider adapter={adapter} options={defaults}>
-          <Capture />
-        </QueryStateProvider>,
-      )
-      navigate = (query) => {
-        act(() => adapter.navigate(`?${query}`))
-      }
-    } else {
-      function Capture() {
-        const [value, setter] = useQueryStates(parsers, options)
-        read = () => value
-        write = setter
-        return null
-      }
-      function Wrapper({ query }: { query: string }) {
-        return (
-          <NuqsTestingAdapter
-            hasMemory
-            rateLimitFactor={1}
-            searchParams={query}
-            defaultOptions={defaults}
-            onUrlUpdate={onUpdate}
-          >
-            <Capture />
-          </NuqsTestingAdapter>
-        )
-      }
-      const view = render(<Wrapper query={search} />)
-      navigate = (query) => view.rerender(<Wrapper query={query} />)
+    const queryAtom = atomWithSearchParams(parsers, options)
+    function AtomCapture() {
+      const store = useStore()
+      read = () => store.get(queryAtom)
+      write = (...args) => store.set(queryAtom, ...args)
+      return null
     }
+    function NuqsCapture() {
+      const [value, setter] = useQueryStates(parsers, options)
+      read = () => value
+      write = setter
+      return null
+    }
+    function Wrapper({ query }: { query: string }) {
+      return (
+        <NuqsTestingAdapter
+          hasMemory
+          rateLimitFactor={1}
+          searchParams={query}
+          defaultOptions={defaults}
+          onUrlUpdate={onUpdate}
+        >
+          {implementation === 'atoms' ? (
+            <QueryStateProvider atoms={[queryAtom]}>
+              <AtomCapture />
+            </QueryStateProvider>
+          ) : (
+            <NuqsCapture />
+          )}
+        </NuqsTestingAdapter>
+      )
+    }
+    const view = render(<Wrapper query={search} />)
+    const navigate = (query: string) => view.rerender(<Wrapper query={query} />)
     return {
       read: () => read(),
       write: (...args: Parameters<SetValues<P>>) => {

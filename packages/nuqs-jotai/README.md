@@ -1,126 +1,130 @@
 # nuqs-jotai
 
-URL search parameters as Jotai atoms, using nuqs parsers with an independent
-commit queue. Mount one `QueryStateProvider` beneath the application Jotai
-provider and supply a stable adapter. Atom definitions need no registration.
+A Jotai projection of **nuqs-owned URL state**. Nuqs owns parsing, typed optimistic
+values, URL serialization, throttling/debouncing, history, transitions, and router
+integration. This package owns only scoped snapshots and atom commands. It has no
+URL scheduler, browser history patch, or independent navigation policy.
 
-## Atoms
-
-Use a single atom for one parameter:
+## Register atoms beneath your framework adapter
 
 ```tsx
+import { useSetAtom } from 'jotai'
+import { parseAsString, debounce } from 'nuqs'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { atomWithSearchParam, QueryStateProvider, useQueryAtomValue } from 'nuqs-jotai'
+
 const searchAtom = atomWithSearchParam('query', parseAsString.withDefault(''), {
   limitUrlUpdates: debounce(300),
 })
+const urlAtoms = [searchAtom]
 
 function Search() {
-  const [value, setValue] = useAtom(searchAtom)
-  return <input value={value} onChange={(event) => void setValue(event.target.value)} />
+  const search = useQueryAtomValue(searchAtom)
+  const setSearch = useSetAtom(searchAtom)
+  return <input value={search} onChange={(event) => void setSearch(event.target.value)} />
+}
+
+function App() {
+  return (
+    <NuqsAdapter>
+      <QueryStateProvider atoms={urlAtoms}>
+        <Search />
+      </QueryStateProvider>
+    </NuqsAdapter>
+  )
 }
 ```
 
-Use a composite atom to update related parameters together:
+Keep atom definitions and registration stable for the boundary's lifetime. Register
+at the route or application boundary that owns their lifetime. This boundary must
+be inside the appropriate **native NuqsAdapter**, not a second browser adapter.
+An existing application Jotai Provider may remain above it. Only the bridge's
+snapshot and command primitives are scoped; parent application atoms remain live.
+Do not explicitly scope query atoms in descendant feature scopes.
 
-```ts
+Native `useQueryState` / `useQueryStates` consumers can coexist with these atoms.
+They share nuqs's typed updates and URL queues, including updates to different
+keys in the same event. Use compatible parsers for readers of the same URL key,
+as required by nuqs. Separate Jotai scopes do not create independent URL queues.
+
+## React reads and atom commands
+
+Use `useQueryAtomValue` for URL atoms **and derived atoms depending on them**. It
+uses Jotai 3's public `useAtomValueRawSync` API so reads check the current snapshot
+on render and subscription, including the first render after Activity reveal.
+Jotai 3's default `useAtomValue` / `useAtom` subscription does not provide this
+check; use `useQueryAtom(atom)` for the combined value/setter form instead.
+
+Use ordinary `useSetAtom`, `store.set`, and write atoms for commands. Writes are
+forwarded to nuqs; the atom snapshot reflects nuqs's next React render. Do not
+expect a `get` immediately following `set` in the same command to read a new
+snapshot. Functional updates are passed directly to nuqs and follow its batching
+semantics. A write promise is nuqs's URL-commit promise, not a React-render or
+server-render completion signal.
+
+The bridge holds mount/reveal commands until nuqs's subscriptions are attached,
+then forwards them unchanged. It does not parse, normalize or schedule those URL
+updates itself. Saved writers throw after the bridge unmounts. Commands already
+forwarded to nuqs follow nuqs's lifetime and cancellation behavior.
+
+## Composite groups and field atoms
+
+```tsx
 const selectionAtom = atomWithSearchParams(
   { research: parseAsString, retest: parseAsString, trace: parseAsString },
   { history: 'push' },
 )
 
-store.set(selectionAtom, { research: taskId, retest: null, trace: null })
-```
-
-Use a map of field atoms when separate controls share the same parameter group:
-
-```ts
-const { search: searchAtom, filter: filterAtom } = atomsWithSearchParams(
-  { search: parseAsString.withDefault(''), filter: parseAsString.withDefault('all') },
-  { urlKeys: { search: 'query', filter: 'status' } },
+const filters = atomsWithSearchParams(
+  { search: parseAsString.withDefault(''), page: parseAsInteger.withDefault(1) },
+  { urlKeys: { search: 'query' } },
 )
+
+const urlAtoms = [selectionAtom, filters.search, filters.page]
 ```
 
-All three support functional updates and per-write options. Field writes retain
-ownership of the whole group's URL keys for navigation conflict detection.
-`null` removes a parameter (or the whole composite group), restoring parser
-defaults. Defaults are omitted unless `clearOnDefault: false`. As in nuqs,
-option precedence is provider defaults, factory options, parser settings, then
-write options. Undefined options fall through to the next level.
+Registering multiple fields from one factory creates only one nuqs hook for that
+group. Register every independently created group you read or write. Unregistered
+reads and writes throw rather than returning a misleading default.
 
-Atoms addressing the same URL key share typed optimistic values and must use
-compatible parsers (the same value type and encoding). Defaults may differ:
-clearing a key restores each reader's own default. Local writes retain their
-typed value even when serialization is lossy, such as an ISO date without a
-time component. A fresh provider parses the committed URL. Unrelated URL
-changes reuse each key's cached parsed value without invoking its parser again.
+Composite atoms accept partial updates or `null` to clear the group. All factories
+accept functional updates, parser options, URL aliases, and per-write options.
+Field atoms select individual values so unrelated fields retain their identity and
+do not notify their subscribers.
 
-## Provider and routing
+Provider defaults and `processUrlSearchParams` belong on the native NuqsAdapter.
+Defaults, option precedence, native-array encoding, typed value retention, pending
+promises, and navigation cancellation all follow the installed nuqs version. For
+example, `parseAsNativeArrayOf(parseAsString)` cannot distinguish an empty array
+from an empty string in the committed URL; nuqs may normalize `[]` to `['']` after
+committing `?key=`. The bridge does not override that behavior.
 
-`QueryStateProvider` owns the URL snapshot, pending edits, and commit errors. It
-scopes only these primitives; parent application atoms remain visible. Each
-provider has an independent runtime. Its adapter and default options are fixed
-for its lifetime. SSR reads use the adapter's initial URL.
+## Testing and migration
 
-The browser adapter is exported from `nuqs-jotai/browser`. Supply `initialUrl` and
-a `refresh(url)` callback. Non-shallow writes call `refresh`, even when the URL
-is unchanged; unchanged addresses do not add history entries. The browser
-adapter observes native history methods and popstate. Routers that bypass those
-methods must call `adapter.notifyUrlChange()` after committing their URL.
+`QueryTestingAdapter` from `nuqs-jotai/testing` wraps the real NuqsTestingAdapter
+and accepts its props plus `atoms`. Use `hasMemory` when checking committed URL
+state. Wrap React-driven writes in Testing Library `act`.
 
-Call `adapter.notifyUrlChange(true)` to cancel drafts when a router announces a
-pathname change before history commits, then notify normally after the commit.
-Publish router notifications after child passive subscriptions have mounted.
-The provider subscribes in a passive effect for the same reason: Jotai's default
-React subscription can miss updates between render and subscription.
+```tsx
+<QueryTestingAdapter atoms={urlAtoms} searchParams="query=hello" hasMemory>
+  <Search />
+</QueryTestingAdapter>
+```
 
-Hiding a provider cancels queued drafts; revealing it reconciles the current
-URL. Unmounting rejects subsequent writes. Page-owned async commands must guard
-against writing after their page unmounts, since an app provider can outlive it.
+From the previous unmerged API:
 
-## Commits
+- Replace `QueryStateProvider adapter={...}` with `atoms={[...]}` beneath the
+  application's native NuqsAdapter. Remove `createBrowserQueryAdapter`, custom
+  refresh callbacks and `notifyUrlChange` wiring.
+- Move provider options to NuqsAdapter's `defaultOptions`.
+- Replace URL `useAtomValue` / `useAtom` reads with `useQueryAtomValue` /
+  `useQueryAtom`; keep `useSetAtom` and derived/write atom definitions.
+- Replace custom memory adapters with QueryTestingAdapter or NuqsTestingAdapter.
+- Handle write rejections at the command owner. The provider-local
+  `queryStateErrorAtom` and custom rollback/cancellation policy were removed.
 
-- Atom values update optimistically, independently of URL serialization. URL
-  writes ready in the same tick batch together. Debounce deadlines belong to
-  individual URL keys; editing another key or using `history: 'push'` does not
-  flush a pending debounce. A finite throttled write to the same key replaces
-  its debounce and settles the superseded writes with that commit.
-- Throttle uses the largest requested interval in the ready batch, measured
-  from the preceding URL commit. A write after an idle interval can commit on
-  the next tick. `push`, `shallow: false`, and `scroll: true` take precedence
-  within a throttle batch; a restarted debounce uses its latest options.
-- Composite patches publish all typed values together after successful
-  serialization, but keys with different debounce deadlines may commit
-  separately. Their write promise waits for all affected keys to settle. Use
-  the same per-write rate limit for keys that should commit together.
-- The browser adapter enforces a 400ms minimum interval between commits.
-  `throttle(Infinity)` keeps the draft without writing or refreshing, resolves
-  promises with the current URL, and lets a later finite-rate write resume it.
-- Commits preserve unknown parameters and hashes. Traversal, pathname changes,
-  or changes to a pending group's keys cancel drafts. Unrelated changes retain
-  them. Cancelled promises resolve with the current URL.
-- Parsing failures use defaults without rewriting the URL. Serialization
-  completes before state changes. Write failures reconcile state, reject the
-  promise, and update the provider-scoped `queryStateErrorAtom`.
-- `startTransition` callbacks wrap the adapter commit, including non-shallow
-  refreshes. A resolved write promise does not imply server data has finished
-  loading.
-
-## Scope and verification
-
-Supports nuqs parsers, URL aliases, defaults, history, scroll, shallow routing,
-transitions, and debounce/throttle. `processUrlSearchParams` and dynamic provider
-options are not implemented. The scheduler is provider-local and uses the
-adapter's minimum interval (400ms in the browser, zero in memory tests), rather
-than nuqs's browser-detected global rate limit. Navigation conflict cancellation
-is also owned by this package. Native arrays use `?key=` as the empty marker;
-fresh string-array readers interpret that marker as `['']`, while a local write
-of `[]` retains its typed value. This package does not introduce a different URL
-encoding to resolve that ambiguity.
-
-Memory and React adapters are exported from `nuqs-jotai/testing`. Run
-`pnpm --filter nuqs-jotai test run` and `pnpm --filter nuqs-jotai type-check` from
-the repository root. Tests cover runtime commits, browser callbacks, parser
-round trips, provider isolation, SSR, StrictMode, Suspense, and Activity.
-Shared consumer tests run against both nuqs and the atom bridge to verify typed
-values, per-key caching, option precedence, scheduling, and transition callbacks.
-Running-app Next/Vinext navigation and server refresh require integration
-validation in the consuming application.
+Run `pnpm --filter nuqs-jotai test run` and
+`pnpm --filter nuqs-jotai type-check`. Tests cover native nuqs interoperability,
+mount/reveal subscriptions, typed snapshots, scope interoperability, SSR, and
+shared behavior tests against native nuqs. Framework-specific behavior is delegated
+to the installed adapter rather than emulated by the package.

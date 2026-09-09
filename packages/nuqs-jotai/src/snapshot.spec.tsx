@@ -1,26 +1,26 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { useAtomValue, useStore } from 'jotai'
+import { useStore } from 'jotai'
 import { parseAsIsoDate, parseAsNativeArrayOf, parseAsString } from 'nuqs'
 import { afterEach, expect, it } from 'vite-plus/test'
-import { atomWithSearchParam, atomWithSearchParams, QueryStateProvider } from './index'
-import { createMemoryQueryAdapter } from './testing'
+import { atomWithSearchParam, atomWithSearchParams, useQueryAtomValue } from './index'
+import { QueryTestingAdapter } from './testing'
 
 afterEach(cleanup)
 
 it('notifies aliased readers of typed updates even when the encoded URL stays unchanged', async () => {
   const dateAtom = atomWithSearchParam('day', parseAsIsoDate)
   const aliasAtom = atomWithSearchParams({ date: parseAsIsoDate }, { urlKeys: { date: 'day' } })
-  const adapter = createMemoryQueryAdapter('http://localhost/?day=2026-09-09')
+
   let store!: ReturnType<typeof useStore>
   function Reader() {
     store = useStore()
-    const { date } = useAtomValue(aliasAtom)
+    const { date } = useQueryAtomValue(aliasAtom)
     return <p>{date?.toISOString()}</p>
   }
   const view = render(
-    <QueryStateProvider adapter={adapter}>
+    <QueryTestingAdapter atoms={[dateAtom, aliasAtom]} searchParams="day=2026-09-09" hasMemory>
       <Reader />
-    </QueryStateProvider>,
+    </QueryTestingAdapter>,
   )
   const date = new Date('2026-09-09T12:34:56.000Z')
   await act(async () => {
@@ -28,7 +28,7 @@ it('notifies aliased readers of typed updates even when the encoded URL stays un
   })
   expect(screen.getByText(date.toISOString())).toBeDefined()
   expect(store.get(aliasAtom).date).toBe(date)
-  expect(adapter.read().search).toBe('?day=2026-09-09')
+
   const later = new Date('2026-09-09T15:00:00.000Z')
   await act(async () => {
     await store.set(dateAtom, later)
@@ -36,9 +36,9 @@ it('notifies aliased readers of typed updates even when the encoded URL stays un
   expect(screen.getByText(later.toISOString())).toBeDefined()
   view.unmount()
   render(
-    <QueryStateProvider adapter={adapter}>
+    <QueryTestingAdapter atoms={[dateAtom, aliasAtom]} searchParams="day=2026-09-09" hasMemory>
       <Reader />
-    </QueryStateProvider>,
+    </QueryTestingAdapter>,
   )
   expect(screen.getByText('2026-09-09T00:00:00.000Z')).toBeDefined()
 })
@@ -51,21 +51,23 @@ it('shares cleared values while retaining each reader default', async () => {
     store = useStore()
     return null
   }
-  const adapter = createMemoryQueryAdapter()
   render(
-    <QueryStateProvider adapter={adapter}>
+    <QueryTestingAdapter atoms={[first, second]} hasMemory>
       <Capture />
-    </QueryStateProvider>,
+    </QueryTestingAdapter>,
   )
-  await store.set(first, 'shared')
+  await act(async () => {
+    await store.set(first, 'shared')
+  })
   expect(store.get(second)).toBe('shared')
-  await store.set(second, null)
+  await act(async () => {
+    await store.set(second, null)
+  })
   expect(store.get(first)).toBe('first')
   expect(store.get(second)).toBe('second')
-  expect(adapter.read().searchParams.has('q')).toBe(false)
 })
 
-it('keeps an empty string array in memory without changing the native URL encoding', async () => {
+it('inherits nuqs native-array normalization after the URL commits', async () => {
   const items = atomWithSearchParam('items', parseAsNativeArrayOf(parseAsString), {
     clearOnDefault: false,
   })
@@ -74,20 +76,26 @@ it('keeps an empty string array in memory without changing the native URL encodi
     store = useStore()
     return null
   }
-  const adapter = createMemoryQueryAdapter()
   const view = render(
-    <QueryStateProvider adapter={adapter}>
+    <QueryTestingAdapter atoms={[items]} hasMemory>
       <Capture />
-    </QueryStateProvider>,
+    </QueryTestingAdapter>,
   )
-  await store.set(items, [])
+  let commit!: Promise<URLSearchParams>
+  act(() => {
+    commit = store.set(items, [])
+  })
   expect(store.get(items)).toEqual([])
-  expect(adapter.read().searchParams.getAll('items')).toEqual([''])
+  await act(async () => {
+    await commit
+  })
+  expect(store.get(items)).toEqual([''])
+
   view.unmount()
   render(
-    <QueryStateProvider adapter={adapter}>
+    <QueryTestingAdapter atoms={[items]} searchParams="items=" hasMemory>
       <Capture />
-    </QueryStateProvider>,
+    </QueryTestingAdapter>,
   )
   expect(store.get(items)).toEqual([''])
 })

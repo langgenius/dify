@@ -1,89 +1,17 @@
-import type { ReactNode } from 'react'
-import type { QueryAdapter, UrlChange, UrlOptions } from './adapter'
-import { useEffect, useState } from 'react'
+import type { ComponentProps } from 'react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { QueryStateProvider } from './index'
 
-export type UrlUpdateEvent = {
-  searchParams: URLSearchParams
-  queryString: string
-  options: UrlOptions
-}
-
-export function createMemoryQueryAdapter(
-  initialUrl = 'http://localhost/',
-  onUrlUpdate?: (event: UrlUpdateEvent) => void,
-) {
-  const entries = [new URL(initialUrl)]
-  let index = 0
-  const listeners = new Set<(change: UrlChange) => void>()
-  const read = () => new URL(entries[index]!)
-  const notify = (traversal = false) =>
-    listeners.forEach((listener) => listener({ url: read(), traversal }))
-  const adapter: QueryAdapter = {
-    read,
-    subscribe(listener) {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    },
-    write(url, options) {
-      if (url.href !== read().href && options.history === 'push') {
-        entries.splice(index + 1)
-        entries.push(new URL(url))
-        index++
-      } else entries[index] = new URL(url)
-      notify()
-      onUrlUpdate?.({
-        searchParams: new URLSearchParams(url.searchParams),
-        queryString: url.search,
-        options,
-      })
-    },
-  }
-  return {
-    ...adapter,
-    navigate(url: string) {
-      entries.splice(index + 1)
-      entries.push(new URL(url, read()))
-      index++
-      notify(true)
-    },
-    back() {
-      if (index > 0) {
-        index--
-        notify(true)
-      }
-    },
-    forward() {
-      if (index < entries.length - 1) {
-        index++
-        notify(true)
-      }
-    },
-  }
-}
-
+/** The real nuqs test adapter, with the same atom registration as production. */
 export function QueryTestingAdapter({
-  searchParams = '',
-  onUrlUpdate,
+  atoms,
   children,
-}: {
-  searchParams?: string | Record<string, string> | URLSearchParams
-  onUrlUpdate?: (event: UrlUpdateEvent) => void
-  children: ReactNode
-}) {
-  const query = new URLSearchParams(searchParams).toString()
-  const [session] = useState(() => ({
-    query,
-    adapter: createMemoryQueryAdapter(`http://localhost/?${query}`, onUrlUpdate),
-  }))
-  // New consumers subscribe in passive effects before navigation is published.
-  useEffect(() => {
-    if (session.query !== query) {
-      session.query = query
-      session.adapter.navigate(`?${query}`)
-    }
-  }, [query, session])
-  return <QueryStateProvider adapter={session.adapter}>{children}</QueryStateProvider>
+  ...options
+}: ComponentProps<typeof NuqsTestingAdapter> &
+  Pick<ComponentProps<typeof QueryStateProvider>, 'atoms'>) {
+  return (
+    <NuqsTestingAdapter {...options}>
+      <QueryStateProvider atoms={atoms}>{children}</QueryStateProvider>
+    </NuqsTestingAdapter>
+  )
 }

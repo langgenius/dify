@@ -8,14 +8,6 @@
       "types": "./src/index.tsx",
       "import": "./src/index.tsx"
     },
-    "./adapter": {
-      "types": "./src/adapter.ts",
-      "import": "./src/adapter.ts"
-    },
-    "./browser": {
-      "types": "./src/browser.ts",
-      "import": "./src/browser.ts"
-    },
     "./testing": {
       "types": "./src/testing.tsx",
       "import": "./src/testing.tsx"
@@ -28,7 +20,6 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@typescript/native": "catalog:",
