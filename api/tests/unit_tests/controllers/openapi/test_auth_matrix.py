@@ -68,6 +68,7 @@ from werkzeug.test import TestResponse
 
 import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
+from app_factory import create_flask_app_with_configs
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.spec import EndpointSpec
 from enums import DeploymentEdition, WebAppAccessMode
@@ -943,8 +944,8 @@ def token_rows() -> dict[str, ResolvedRow]:
 
 @pytest.fixture
 def matrix_app(monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
-    """The openapi blueprint on a bare app with a login manager and the admission probe."""
-    app = Flask(__name__)
+    """The openapi blueprint on the real factory app with a login manager and the admission probe."""
+    app = create_flask_app_with_configs()
     app.config["TESTING"] = True
     app.secret_key = "openapi-auth-matrix"
     LoginManager(app)
