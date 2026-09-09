@@ -15,6 +15,7 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
@@ -23,7 +24,9 @@ from flask import Flask
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank
+from controllers.openapi.auth.subjects import Subject
 from controllers.openapi.human_input_form import (
     CheckFormSurface,
     OpenApiWorkflowHumanInputFormApi,
@@ -37,8 +40,14 @@ from models.model import App, AppMode, EndUser
 _MODULE = "controllers.openapi.human_input_form"
 
 
-def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> SimpleNamespace:
-    app_model = App(
+def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> Context:
+    """A store already filled the way the route's requirements would have filled it."""
+    ctx = Context(
+        cast(Subject, SimpleNamespace(caller_role=caller_role)),
+        Mock(),
+        {"app_id": "app-1", "form_token": "tok-1"},
+    )
+    ctx._app = App(
         id="app-1",
         tenant_id="tenant-1",
         name="Human input app",
@@ -46,12 +55,8 @@ def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> SimpleN
         enable_site=True,
         enable_api=True,
     )
-    return SimpleNamespace(
-        app=app_model,
-        caller=caller,
-        subject=SimpleNamespace(caller_role=caller_role),
-        view_args={"app_id": "app-1", "form_token": "tok-1"},
-    )
+    ctx._caller = caller
+    return ctx
 
 
 def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:

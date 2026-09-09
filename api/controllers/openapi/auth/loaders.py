@@ -34,21 +34,21 @@ def load_app(ctx: Context) -> App:
     """The boundary where an unset field becomes a value: fetched once per
     request, and non-optional from here on, so nothing downstream re-checks.
     """
-    if ctx.app is None:
-        ctx.app = _fetch_app(ctx)
-    return ctx.app
+    if ctx._app is None:
+        ctx._app = _fetch_app(ctx)
+    return ctx._app
 
 
 def load_workspace(ctx: Context) -> Tenant:
-    if ctx.workspace is None:
-        ctx.workspace = _fetch_workspace(ctx)
-    return ctx.workspace
+    if ctx._workspace is None:
+        ctx._workspace = _fetch_workspace(ctx)
+    return ctx._workspace
 
 
 def load_caller(ctx: Context) -> Caller:
-    if ctx.caller is None:
-        ctx.caller = ctx.subject.resolve_caller(ctx, ctx.session)
-    return ctx.caller
+    if ctx._caller is None:
+        ctx._caller = ctx.subject.resolve_caller(ctx, ctx.session)
+    return ctx._caller
 
 
 def load_account(ctx: Context) -> Account:
@@ -67,9 +67,9 @@ def _load_caller_as[C: Caller](ctx: Context, expected: type[C]) -> C:
 
 
 def load_workspace_role(ctx: Context) -> TenantAccountRole:
-    if ctx.workspace_role is None:
-        ctx.workspace_role = _fetch_workspace_role(ctx)
-    return ctx.workspace_role
+    if ctx._workspace_role is None:
+        ctx._workspace_role = _fetch_workspace_role(ctx)
+    return ctx._workspace_role
 
 
 def _path_param(ctx: Context, name: str) -> str:
