@@ -281,3 +281,82 @@ describe('URL rate limiting', () => {
     expect(onUpdate.mock.calls[1]![0].options.history).toBe('push')
   })
 })
+
+it.each(['navigate', 'dispose'] as const)(
+  'settles a write cancelled synchronously by a %s subscriber',
+  async (action) => {
+    const { runtime, store, adapter, write, onUpdate } = setup()
+    const settled = vi.fn()
+    let cancelled = false
+    const stop = store.sub(runtime.stateAtom, () => {
+      if (cancelled) return
+      cancelled = true
+      if (action === 'navigate') adapter.navigate('/next?query=destination')
+      else runtime.dispose()
+    })
+    const pending = write({ query: 'draft' }).then(settled)
+    await vi.runAllTimersAsync()
+    expect(settled).toHaveBeenCalledOnce()
+    expect(settled.mock.calls[0]![0].toString()).toBe(
+      action === 'navigate' ? 'query=destination' : 'other=keep',
+    )
+    expect(onUpdate).not.toHaveBeenCalled()
+    await pending
+    stop()
+  },
+)
+
+it('preserves a new write issued by a subscriber after cancelling the old batch', async () => {
+  const { runtime, store, adapter, write, onUpdate } = setup()
+  let navigated = false
+  let next: Promise<URLSearchParams> | undefined
+  const stop = store.sub(runtime.stateAtom, () => {
+    if (navigated) return
+    navigated = true
+    adapter.navigate('/next')
+    next = write({ query: 'next draft' })
+  })
+  const settled = vi.fn()
+  const previous = write({ page: 2 }).then(settled)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(settled).toHaveBeenCalledOnce()
+  expect(onUpdate).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(300)
+  await previous
+  expect((await next)?.get('query')).toBe('next draft')
+  expect(onUpdate).toHaveBeenCalledOnce()
+  stop()
+})
+
+it.each([
+  { delay: 100, minimum: 0, history: 'replace' as const },
+  { delay: 100, minimum: 0, history: 'push' as const },
+  { delay: 800, minimum: 400, history: 'replace' as const },
+  { delay: 800, minimum: 400, history: 'push' as const },
+])(
+  'retains throttle($delay) in a mixed patch ($history, browser interval $minimum)',
+  async ({ delay, minimum, history }) => {
+    const { runtime, store, adapter, write, onUpdate } = setup()
+    Object.assign(adapter, { minimumInterval: minimum })
+    const initial = write({ page: 2 })
+    await vi.advanceTimersByTimeAsync(0)
+    await initial
+    onUpdate.mockClear()
+    const mixed = {
+      query: parseAsString.withOptions({ limitUrlUpdates: debounce(300) }),
+      page: parseAsInteger.withOptions({ limitUrlUpdates: throttle(delay) }),
+    }
+    const pending = runtime.write(
+      () => prepareUpdate(mixed, undefined, { query: 'draft', page: 3 }, {}, { history }),
+      store,
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onUpdate).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(delay - 1)
+    expect(onUpdate).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(onUpdate).toHaveBeenCalledOnce()
+    expect((await pending).get('query')).toBe('draft')
+    expect(adapter.read().searchParams.get('page')).toBe('3')
+  },
+)

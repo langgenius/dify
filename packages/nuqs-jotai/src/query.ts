@@ -5,7 +5,8 @@ export type PreparedUpdate = {
   edits: Map<string, string[] | null>
   keys: string[]
   options: UrlOptions
-  delay: number
+  debounceDelay: number
+  throttleDelay: number
   debounce: boolean
   immediate: boolean
 }
@@ -54,7 +55,8 @@ export function prepareUpdate<P extends UseQueryStatesKeysMap>(
     edits: new Map(),
     keys: keys.map(keyOf),
     options: { history: 'replace', shallow: true, scroll: false },
-    delay: 0,
+    debounceDelay: 0,
+    throttleDelay: 0,
     debounce: false,
     immediate: false,
   }
@@ -80,11 +82,11 @@ export function prepareUpdate<P extends UseQueryStatesKeysMap>(
     if (settings.scroll) update.options.scroll = true
     if (settings.limitUrlUpdates?.method === 'debounce') {
       update.debounce = true
-      update.delay = Math.max(update.delay, settings.limitUrlUpdates.timeMs)
+      update.debounceDelay = Math.max(update.debounceDelay, settings.limitUrlUpdates.timeMs)
     } else {
       update.immediate = true
-      update.delay = Math.max(
-        update.delay,
+      update.throttleDelay = Math.max(
+        update.throttleDelay,
         settings.limitUrlUpdates?.timeMs ?? settings.throttleMs ?? 0,
       )
     }

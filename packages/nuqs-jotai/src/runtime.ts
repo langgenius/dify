@@ -148,8 +148,6 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       if (update.options.history === 'push') commitOptions.history = 'push'
       if (!update.options.shallow) commitOptions.shallow = false
       if (update.options.scroll) commitOptions.scroll = true
-      publish(applyPending(latest))
-      store.set(errorAtom, null)
       const promise = new Promise<URLSearchParams>((resolve, reject) =>
         waiters.push({ resolve, reject }),
       )
@@ -157,7 +155,7 @@ export function createQueryRuntime(adapter: QueryAdapter) {
       void promise.catch(() => {})
       const minimum = Math.max(0, (adapter.minimumInterval ?? 0) - (Date.now() - lastWrite))
       const debounced = update.debounce && !update.immediate && commitOptions.history !== 'push'
-      const delay = Math.max(minimum, !debounced && update.debounce ? 0 : update.delay)
+      const delay = Math.max(minimum, update.throttleDelay, debounced ? update.debounceDelay : 0)
       const deadline = Date.now() + delay
       const reschedule =
         timer === undefined || (debounced ? scheduledDebounce : deadline < scheduledAt)
@@ -170,6 +168,10 @@ export function createQueryRuntime(adapter: QueryAdapter) {
         scheduledDebounce = debounced
         timer = setTimeout(flush, delay)
       }
+      // Register and schedule before publishing: synchronous subscribers may
+      // cancel this batch or start a new one. No old scheduling may follow them.
+      publish(applyPending(latest))
+      store.set(errorAtom, null)
       return promise
     },
   }
