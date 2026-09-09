@@ -232,8 +232,8 @@ export function DocumentChunkTreePanel() {
   }
 
   return (
-    <aside className="min-h-52 overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
-      <h2 id={treeHeadingId} className="px-2 pb-2 system-xs-regular text-text-tertiary">
+    <aside className="flex max-h-80 min-h-52 flex-col overflow-hidden xl:max-h-none xl:min-h-0">
+      <h2 id={treeHeadingId} className="shrink-0 px-2 pb-2 system-xs-regular text-text-tertiary">
         {t(($) => $.documentContents)}
       </h2>
       {error && !isFetchNextPageError && chunkCount > 0 && (
@@ -270,7 +270,7 @@ export function DocumentChunkTreePanel() {
             currentFocusedNodeId ? `document-chunk-treeitem-${currentFocusedNodeId}` : undefined
           }
           aria-labelledby={treeHeadingId}
-          className="max-h-[70vh] space-y-0.5 overflow-auto py-1 pr-5 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"
+          className="min-h-0 flex-1 space-y-0.5 overflow-auto py-1 pr-5 outline-hidden"
           role="tree"
           tabIndex={0}
           onBlur={() => setTreeHasFocus(false)}
@@ -294,7 +294,7 @@ export function DocumentChunkTreePanel() {
         </div>
       )}
       {isFetchNextPageError ? (
-        <div className="border-t border-divider-subtle p-3 text-center">
+        <div className="shrink-0 border-t border-divider-subtle p-3 text-center">
           <p className="mb-2 system-xs-regular text-text-destructive" role="alert">
             {t(($) => $.documentChunksLoadMoreError)}
           </p>
@@ -308,7 +308,7 @@ export function DocumentChunkTreePanel() {
         </div>
       ) : (
         (hasNextPage || isFetchingNextPage) && (
-          <div className="border-t border-divider-subtle p-3">
+          <div className="shrink-0 border-t border-divider-subtle p-3">
             {isFetchingNextPage ? (
               <div aria-hidden>
                 <Loading />

@@ -33,7 +33,7 @@ export function QualityPage() {
 
   if (selectedEvaluationRunId)
     return (
-      <div className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-y-auto px-6 pt-3 pb-20">
         <EvaluationReport
           key={selectedEvaluationRunId}
           runId={selectedEvaluationRunId}
@@ -44,7 +44,7 @@ export function QualityPage() {
     )
 
   return (
-    <div className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
+    <div className="relative min-h-0 min-w-0 flex-1 overflow-y-auto px-6 pt-3 pb-20">
       <header>
         <h1 className="system-xl-semibold text-text-primary">{t(($) => $['qualityPage.title'])}</h1>
         <p className="mt-1 system-xs-regular text-text-tertiary">

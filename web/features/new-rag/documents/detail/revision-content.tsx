@@ -49,7 +49,7 @@ export function DocumentRevisionData() {
   if (!revisionSessionKey) return null
 
   return (
-    <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
+    <div className="mt-4 grid min-h-0 flex-none gap-4 xl:flex-1 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
       <RequestedChunkPageLoader />
       <DocumentChunkTreePanel key={`tree:${revisionSessionKey}`} />
       <DocumentReadingPane key={`content:${revisionSessionKey}`} />
