@@ -174,7 +174,7 @@ class ExternalApiTemplateListApi(Resource):
         )
         return ExternalKnowledgeApiListResponse(
             data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
-            has_more=req_data.page * effective_limit < total,
+            has_more=total is not None and req_data.page * effective_limit < total,
             limit=effective_limit,
             total=total,
             page=req_data.page,
