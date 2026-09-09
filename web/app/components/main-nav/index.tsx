@@ -13,7 +13,6 @@ import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
@@ -39,7 +38,6 @@ export function MainNav({ className }: MainNavProps) {
     select: (data) => data.meta.currentEnv,
   })
   const agentV2Enabled = isAgentV2Enabled()
-  const canManageAgents = useCanManageAgents()
   const canViewSkills = useCanViewSkills()
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -54,7 +52,6 @@ export function MainNav({ className }: MainNavProps) {
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
-          canManageAgents,
           canViewSkills,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
@@ -69,7 +66,6 @@ export function MainNav({ className }: MainNavProps) {
       })),
     [
       agentV2Enabled,
-      canManageAgents,
       canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,

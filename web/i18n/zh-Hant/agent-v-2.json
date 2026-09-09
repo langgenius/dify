@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Agent 導覽",
   "agentDetail.publish": "發佈",
   "agentDetail.sections.access": "存取點",
+  "agentDetail.sections.access-config": "訪問權限",
   "agentDetail.sections.configure": "配置",
   "agentDetail.sections.logs": "日誌",
   "agentDetail.sections.monitoring": "監控",

@@ -343,6 +343,7 @@
   "agentDetail.navigationLabel": "Agent 导航",
   "agentDetail.publish": "发布",
   "agentDetail.sections.access": "访问点",
+  "agentDetail.sections.access-config": "访问权限",
   "agentDetail.sections.configure": "配置",
   "agentDetail.sections.logs": "日志",
   "agentDetail.sections.monitoring": "监控",

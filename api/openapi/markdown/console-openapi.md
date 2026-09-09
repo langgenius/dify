@@ -11148,11 +11148,17 @@ Returns permission flags that control workspace features like member invitations
 | 200 | Success |
 
 ### [POST] /workspaces/current/rbac/access-policies
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_AccessPolicyCreateRequest](#_accesspolicycreaterequest)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Policy created | **application/json**: [AccessPolicy](#accesspolicy)<br> |
 
 ### [DELETE] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11187,11 +11193,17 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | policy_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_AccessPolicyUpdateRequest](#_accesspolicyupdaterequest)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
 
 ### [POST] /workspaces/current/rbac/access-policies/{policy_id}/copy
 #### Parameters
@@ -13690,7 +13702,7 @@ Model class for AI model.
 | mode | string |  | Yes |
 | model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
+| permission_keys | [ string ] |  | Yes |
 | role | string |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -13770,7 +13782,7 @@ default (the config form sends the full desired feature state on save).
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
+| permission_keys | [ string ] |  | Yes |
 | published_reference_count | integer |  | No |
 | published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
 | reference_count | integer |  | No |
@@ -21365,6 +21377,14 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | QuotaUnit | string |  |  |
 
+#### RBACResourceType
+
+Resource types understood by access policies.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RBACResourceType | string | Resource types understood by access policies. |  |
+
 #### RBACRole
 
 | Name | Type | Description | Required |
@@ -25143,12 +25163,29 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | language | string, <br>**Available values:** "en", "ja", "zh" | Localized policy label language | No |
 
+#### _AccessPolicyCreateRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ], <br>**Default:**  |  | No |
+| resource_type | [RBACResourceType](#rbacresourcetype) |  | Yes |
+
 #### _AccessPolicyList
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### _AccessPolicyUpdateRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ], <br>**Default:**  |  | No |
 
 #### _DeleteMemberBindingsRequest
 
