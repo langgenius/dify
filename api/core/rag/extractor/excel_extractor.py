@@ -143,6 +143,7 @@ class ExcelExtractor(BaseExtractor):
                     page_content = []
                     for k, v in series_row.items():
                         if pd.notna(v):
+                            v = str(v).replace('"', '\\"')
                             page_content.append(f'"{k}":"{v}"')
                     documents.append(
                         Document(page_content=";".join(page_content), metadata={"source": self._file_path})
