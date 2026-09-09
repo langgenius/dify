@@ -6,6 +6,7 @@ import type {
   BannerEvent,
   BannerRecommend,
   BannerRecommendCard,
+  MarketplaceTemplate,
   PluginBanner,
 } from '@dify/contracts/marketplace'
 import type { MarketplaceBannerPage } from './banners'
@@ -20,13 +21,15 @@ import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import {
   rememberMarketplaceSiteReferrer,
   trackMarketplaceSiteEvent,
 } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
-import { getPluginLinkInMarketplace } from '../utils'
+import TemplateDetailDialog from '../templates/template-detail-dialog'
+import { getPluginLinkInMarketplace, getTemplateLinkInMarketplace } from '../utils'
 import background from './assets/background.webp'
 import difyUpdatesArt from './assets/dify-updates-art.png'
 import {
@@ -53,21 +56,49 @@ const getMarketplaceAssetURL = (path?: string) => {
 }
 
 const getPluginIdentity = (itemId: string) => {
-  const [org, name] = itemId.split('/')
+  const [org, name, ...rest] = itemId.split('/')
+  if (!org || !name || rest.length > 0) return null
+  return { org, name }
+}
+
+const pathFromHref = (href: string) => {
+  if (href.startsWith('/') && !href.startsWith('//')) return href
+  try {
+    return new URL(href).pathname
+  } catch {
+    return href
+  }
+}
+
+const pluginIdentityFromHref = (href: string) => {
+  const parts = pathFromHref(href).split('/').filter(Boolean)
+  const index = parts.findIndex((part) => part === 'plugin' || part === 'plugins')
+  if (index < 0 || index + 2 >= parts.length) return null
+  const org = decodeURIComponent(parts[index + 1] ?? '')
+  const name = decodeURIComponent(parts[index + 2] ?? '')
   if (!org || !name) return null
   return { org, name }
 }
 
+const templateIdFromHref = (href: string) => {
+  const path = pathFromHref(href)
+  const tid = new URL(path, 'https://marketplace.local').searchParams.get('tid')
+  if (tid) return tid
+  const parts = path.split('/').filter(Boolean)
+  if (parts[0] === 'templates' && parts[1]) return decodeURIComponent(parts[1])
+  return null
+}
+
 const pluginFromRecommendCard = (card: BannerRecommendCard): Plugin | null => {
   if (card.item_type !== 'plugin') return null
-  const identity = getPluginIdentity(card.item_id)
+  const identity = getPluginIdentity(card.item_id) ?? pluginIdentityFromHref(card.link)
   if (!identity) return null
 
   return {
     type: 'plugin',
     org: identity.org,
     name: identity.name,
-    plugin_id: card.item_id,
+    plugin_id: `${identity.org}/${identity.name}`,
     version: '',
     latest_version: '',
     latest_package_identifier: '',
@@ -87,6 +118,25 @@ const pluginFromRecommendCard = (card: BannerRecommendCard): Plugin | null => {
       authorized_category: card.badges?.includes('partner') ? 'partner' : 'community',
     },
     from: 'marketplace',
+  }
+}
+
+const templateFromRecommendCard = (card: BannerRecommendCard): MarketplaceTemplate | null => {
+  if (card.item_type !== 'template') return null
+  const id = card.item_id || templateIdFromHref(card.link)
+  if (!id) return null
+
+  return {
+    id,
+    template_name: card.display_name,
+    overview: '',
+    icon: card.icon ?? '',
+    icon_background: card.icon_background ?? '',
+    icon_file_key: '',
+    publisher_unique_handle: card.creator,
+    usage_count: 0,
+    categories: [],
+    badges: card.badges,
   }
 }
 
@@ -332,6 +382,47 @@ function EmbeddedRecommendPluginCard({
   )
 }
 
+function EmbeddedRecommendTemplateCard({
+  banner,
+  card,
+  template,
+  page,
+}: {
+  banner: BannerRecommend
+  card: BannerRecommendCard
+  template: MarketplaceTemplate
+  page: MarketplaceBannerPage
+}) {
+  const [open, setOpen] = useState(false)
+  const router = useRouter()
+  const href = getTemplateLinkInMarketplace(template)
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={card.display_name}
+        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
+        onClick={() => {
+          trackRecommendCardClick(banner, card, page, href)
+          setOpen(true)
+        }}
+      >
+        <RecommendCardFace card={card} />
+      </button>
+      <TemplateDetailDialog
+        open={open}
+        template={template}
+        onInstall={() => {
+          setOpen(false)
+          router.push(`/apps?template-id=${encodeURIComponent(template.id)}`)
+        }}
+        onOpenChange={setOpen}
+      />
+    </>
+  )
+}
+
 function TrendingCard({
   banner,
   card,
@@ -343,16 +434,34 @@ function TrendingCard({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
-  const embeddedPlugin = isMarketplacePlatform ? null : pluginFromRecommendCard(card)
-  if (embeddedPlugin) {
-    return (
-      <EmbeddedRecommendPluginCard
-        banner={banner}
-        card={card}
-        initialPlugin={embeddedPlugin}
-        page={page}
-      />
-    )
+  if (!isMarketplacePlatform) {
+    if (card.item_type === 'plugin') {
+      const embeddedPlugin = pluginFromRecommendCard(card)
+      if (embeddedPlugin) {
+        return (
+          <EmbeddedRecommendPluginCard
+            banner={banner}
+            card={card}
+            initialPlugin={embeddedPlugin}
+            page={page}
+          />
+        )
+      }
+    }
+
+    if (card.item_type === 'template') {
+      const embeddedTemplate = templateFromRecommendCard(card)
+      if (embeddedTemplate) {
+        return (
+          <EmbeddedRecommendTemplateCard
+            banner={banner}
+            card={card}
+            template={embeddedTemplate}
+            page={page}
+          />
+        )
+      }
+    }
   }
 
   const href = getCardHref(card, isMarketplacePlatform)

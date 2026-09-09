@@ -52,7 +52,7 @@ describe('marketplace template discovery', () => {
       1,
       {
         params: { collectionName: 'featured' },
-        body: { limit: 20 },
+        body: {},
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
