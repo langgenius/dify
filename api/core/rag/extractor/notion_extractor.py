@@ -135,10 +135,9 @@ class NotionExtractor(BaseExtractor):
                         for multi_select in multi_select_list:
                             value.append(multi_select["name"])
                     elif type in {"rich_text", "title"}:
-                        if len(property_value[type]) > 0:
-                            value = property_value[type][0]["plain_text"]
-                        else:
-                            value = ""
+                        # Notion splits formatted text into multiple segments;
+                        # join them all so no part of the value is dropped.
+                        value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
                         if property_value[type]:
                             value = property_value[type]["name"]

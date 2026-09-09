@@ -196,6 +196,49 @@ class TestNotionDatabase:
         assert "Row Page URL:https://notion.so/page-1" in content
         assert mock_post.call_count == 2
 
+    def test_get_notion_database_data_joins_all_rich_text_segments(self, mocker: MockerFixture):
+        """Formatted text arrives as multiple segments; all of them must be kept."""
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="database",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "properties": {
+                        "title_prop": {
+                            "type": "title",
+                            "title": [{"plain_text": "Hello "}, {"plain_text": "world"}],
+                        },
+                        "rich": {
+                            "type": "rich_text",
+                            "rich_text": [
+                                {"plain_text": "first "},
+                                {"plain_text": "second"},
+                                {"plain_text": " third"},
+                            ],
+                        },
+                    },
+                    "url": "https://notion.so/page-1",
+                }
+            ],
+            "has_more": False,
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.post", return_value=_mock_response(page))
+
+        docs = extractor._get_notion_database_data("db-1")
+
+        assert len(docs) == 1
+        content = docs[0].page_content
+        assert "rich:first second third" in content
+        assert "title_prop:Hello world" in content
+
     def test_get_notion_database_data_handles_missing_results_and_empty_content(self, mocker: MockerFixture):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
