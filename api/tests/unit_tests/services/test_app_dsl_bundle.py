@@ -2,6 +2,7 @@ import copy
 import io
 import json
 import zipfile
+from typing import cast
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -12,13 +13,13 @@ from sqlalchemy.orm import Session
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import ToolProviderType, WorkflowToolParameterConfiguration
 from models import Account, App, AppMode, Tenant
 from models.account import TenantAccountRole
 from models.agent import Agent, AgentConfigDraft, AgentConfigSnapshot
 from models.model import AppModelConfig
 from models.tools import ToolLabelBinding, WorkflowToolProvider
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowContentDict
 from services.app_dsl_bundle import AppDslBundle, AppDslBundleService, _tool_references
 from services.app_dsl_service import AppDslService
 from services.errors.account import NoPermissionError
@@ -36,8 +37,8 @@ def _account() -> Account:
     return account
 
 
-def _document(name: str, tools: dict[str, str]) -> dict:
-    nodes = [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}]
+def _document(name: str, tools: dict[str, str]) -> dict[str, object]:
+    nodes: list[dict[str, object]] = [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}]
     for provider_id, tool_name in tools.items():
         nodes.append(
             {
@@ -64,14 +65,15 @@ def _document(name: str, tools: dict[str, str]) -> dict:
     }
 
 
-def _app_document(mode: AppMode, tools: dict[str, str]) -> dict:
+def _app_document(mode: AppMode, tools: dict[str, str]) -> dict[str, object]:
     document = _document(f"Root {mode}", tools)
-    document["app"]["mode"] = mode
+    cast(dict[str, object], document["app"])["mode"] = mode
     if mode == AppMode.ADVANCED_CHAT:
-        document["workflow"]["graph"]["nodes"][-1]["data"] = {"type": "answer", "answer": "done"}
+        workflow = cast(WorkflowContentDict, document["workflow"])
+        workflow["graph"]["nodes"][-1]["data"] = {"type": "answer", "answer": "done"}
     elif mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
         del document["workflow"]
-        document["model_config"] = {
+        model_config: dict[str, object] = {
             "model": {},
             "pre_prompt": "Use the configured tools.",
             "agent_mode": {
@@ -89,6 +91,7 @@ def _app_document(mode: AppMode, tools: dict[str, str]) -> dict:
                 ],
             },
         }
+        document["model_config"] = model_config
     elif mode == AppMode.AGENT:
         del document["workflow"]
         document["agent"] = {"package_ref": "agent_1"}
@@ -123,6 +126,9 @@ def _app_document(mode: AppMode, tools: dict[str, str]) -> dict:
 def _seed_bundle(session: Session, monkeypatch: pytest.MonkeyPatch) -> tuple[Account, App, bytes]:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False, DEPLOYMENT_EDITION="SELF_HOSTED")
     monkeypatch.setattr("services.app_dsl_service.app_was_created", Mock())
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+    )
     monkeypatch.setattr("services.app_dsl_bundle.app_published_workflow_was_updated", Mock())
     monkeypatch.setattr("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", lambda: False)
     monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
@@ -155,12 +161,12 @@ def _seed_bundle(session: Session, monkeypatch: pytest.MonkeyPatch) -> tuple[Acc
         )
         provider.id = provider_id
         session.add(provider)
-    session.add(ToolLabelBinding(tool_id=b_id, tool_type="workflow", label_name="search"))
+    session.add(ToolLabelBinding(tool_id=b_id, tool_type=ToolProviderType.WORKFLOW, label_name="search"))
     session.commit()
     # Published tool versions must be exported even when their drafts have since changed.
     draft = WorkflowService().get_draft_workflow(apps[1], session=session)
     assert draft is not None
-    draft.graph = json.dumps(_document("Changed draft", {})["workflow"]["graph"])
+    draft.graph = json.dumps(cast(WorkflowContentDict, _document("Changed draft", {})["workflow"])["graph"])
     session.commit()
     content = AppDslBundleService(session).export_bundle(apps[0], account=account)
     assert content is not None
@@ -469,7 +475,7 @@ def test_rejects_unsupported_manifest_extensions_before_import(
 def test_legacy_workflow_bundle_remains_importable(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     _, _, content = _seed_bundle(sqlite_session, monkeypatch)
     bundle = AppDslBundleService.parse_bundle(content)
-    workflows = {}
+    workflows: dict[str, dict[str, object]] = {}
     for marker, resource in bundle.manifest.apps.items():
         assert resource.workflow is not None
         workflows[marker] = {
@@ -496,7 +502,7 @@ def test_legacy_workflow_bundle_remains_importable(sqlite_session: Session, monk
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("manifest.yaml", yaml.safe_dump(legacy_manifest))
         for marker, document in bundle.documents.items():
-            archive.writestr(workflows[marker]["file"], yaml.safe_dump(document))
+            archive.writestr(cast(str, workflows[marker]["file"]), yaml.safe_dump(document))
     service = AppDslBundleService(sqlite_session)
     restored = service.parse_bundle(output.getvalue())
     assert restored.manifest.kind == "app_bundle"
@@ -512,10 +518,11 @@ def test_legacy_workflow_bundle_remains_importable(sqlite_session: Session, monk
 def test_workflow_reference_search_leaves_input_json_untouched() -> None:
     document = _document("Inputs", {})
     input_value = {"provider_type": "workflow", "provider_id": "not-a-tool", "tool_name": "text"}
-    document["workflow"]["environment_variables"] = [{"name": "json", "value": input_value}]
+    workflow = cast(WorkflowContentDict, document["workflow"])
+    workflow["environment_variables"] = [{"name": "json", "value": input_value}]
     assert list(_tool_references(document)) == []
     agent_tool = {"type": "workflow", "provider_name": "agent-tool", "tool_name": "agent"}
-    document["workflow"]["graph"]["nodes"].append(
+    workflow["graph"]["nodes"].append(
         {"data": {"type": "agent", "agent_parameters": {"tools": {"value": [agent_tool]}}}}
     )
     assert list(_tool_references(document)) == [agent_tool]
@@ -525,7 +532,8 @@ def test_workflow_reference_search_leaves_input_json_untouched() -> None:
 def test_agent_selectors_support_custom_parameter_names_and_legacy_slots() -> None:
     document = _document("Selectors", {})
     tool = {"provider_type": "workflow", "provider_id": "selected", "tool_name": "tool"}
-    document["workflow"]["graph"]["nodes"].append(
+    workflow = cast(WorkflowContentDict, document["workflow"])
+    workflow["graph"]["nodes"].append(
         {
             "data": {
                 "type": "agent",
