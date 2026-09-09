@@ -16,10 +16,6 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
-// Matches backend warmup homepageCollectionPluginsRequests Limit: 20 so the
-// public POST hits the Redis bucket the scheduler already writes.
-export const COLLECTION_PREVIEW_PLUGIN_LIMIT = 20
-
 type MarketplacePluginListExtras = {
   agent_strategy?: unknown
   data_sources?: unknown
@@ -160,7 +156,7 @@ export const getMarketplacePluginsByCollectionId = async (
       params: {
         collectionId,
       },
-      body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT, ...query },
+      body: query ?? {},
     },
     {
       signal: options?.signal,
@@ -301,12 +297,11 @@ export function getCollectionsParams(
   category: ActivePluginType,
 ): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
-    return { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT }
+    return {}
   }
   return {
     category,
     condition: getMarketplaceListCondition(category),
     type: getMarketplaceListFilterType(category),
-    limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
   }
 }
