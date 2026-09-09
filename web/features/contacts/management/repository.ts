@@ -6,6 +6,7 @@ import type {
   AvailablePlatformContactsQuery,
   ContactIMIdentity,
   ContactPage,
+  ContactsFeatureContextValue,
   ContactsListQuery,
   ContactView,
   CreateExternalContactCommand,
@@ -34,6 +35,7 @@ export type ContactsManagementRepository = {
   supportsIMBindings?: boolean
   supportsMemberManagement?: boolean
   supportsPlatformImport?: boolean
+  supportsExternalContactUpgrade?: boolean
   getContact: (contactId: string) => Promise<ContactView | null>
   listIMIdentities: (query: {
     search: string
@@ -114,15 +116,64 @@ async function requestContactIM<T>(request: () => Promise<T>): Promise<T> {
 
 export function createContactsApiRepository(
   client = consoleClient.workspaces.current.humanInput,
+  context?: ContactsFeatureContextValue,
 ): ContactsManagementRepository {
   const unsupported = async (): Promise<never> => {
     throw new Error('This contact operation is not connected yet')
   }
+  const canImportPlatformContacts = Boolean(
+    context?.workspaceId && context.deployment === 'ee' && context.permissions.canManageContacts,
+  )
 
   return {
     supportsIMBindings: true,
     supportsMemberManagement: false,
-    supportsPlatformImport: false,
+    supportsPlatformImport: canImportPlatformContacts,
+    supportsExternalContactUpgrade: false,
+    async listAvailablePlatformContacts(query) {
+      if (!canImportPlatformContacts) throw new Error('Platform contact import is not available')
+      const result = await client.organizationCandidates.get(
+        {
+          query: {
+            keyword: query.search.trim() || undefined,
+            page: query.page,
+            limit: query.limit,
+          },
+        },
+        { context: { silent: true } },
+      )
+      const existing = result.data.length
+        ? await client.contacts.batch.get(
+            { query: { contact_ids: result.data.map((candidate) => candidate.id) } },
+            { context: { silent: true } },
+          )
+        : { data: [] }
+      const existingIds = new Set(existing.data.map((contact) => contact.id))
+      return {
+        ...result,
+        data: result.data
+          .filter((candidate) => !existingIds.has(candidate.id))
+          .map((candidate) => ({ ...candidate, avatar_url: candidate.avatar_url ?? null })),
+        has_more: result.page * result.limit < result.total,
+      }
+    },
+    async addPlatformContacts(command) {
+      if (!canImportPlatformContacts) return { kind: 'forbidden' }
+      if (command.upgradeExternalContacts) return { kind: 'external_upgrade_unsupported' }
+      if (command.contactIds.length === 0) return { kind: 'failed' }
+      try {
+        const result = await client.contacts.platform.post(
+          { body: { candidate_ids: [...new Set(command.contactIds)] } },
+          { context: { silent: true } },
+        )
+        if (result.data.length === 0) return { kind: 'failed' }
+        return { kind: 'added', contactIds: result.data.map((contact) => contact.id) }
+      } catch (error) {
+        return {
+          kind: hasStatus(error, 403) ? 'forbidden' : hasStatus(error, 409) ? 'conflict' : 'failed',
+        }
+      }
+    },
     async listIMIdentities(query) {
       const result = await requestContactIM(() =>
         client.imIdentities.get(
@@ -235,9 +286,7 @@ export function createContactsApiRepository(
         return { kind: 'failed' }
       }
     },
-    addPlatformContacts: unsupported,
     findExternalContactsByEmails: unsupported,
-    listAvailablePlatformContacts: unsupported,
     removeMember: unsupported,
     upgradeExternalContactsToWorkspace: unsupported,
   }

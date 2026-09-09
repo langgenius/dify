@@ -1,4 +1,5 @@
 import type { ContactsManagementRepository } from '../repository'
+import type { ContactsFeatureContextValue } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { consoleClient } from '@/service/client'
 import { createContactsMockRepository } from '../mock/repository'
@@ -12,6 +13,8 @@ vi.mock('@/service/client', () => ({
         humanInput: {
           contacts: {
             get: vi.fn(),
+            batch: { get: vi.fn() },
+            platform: { post: vi.fn() },
             byContactId: {
               get: vi.fn(),
               imBindings: { put: vi.fn(), delete: vi.fn() },
@@ -21,6 +24,7 @@ vi.mock('@/service/client', () => ({
             remove: { post: vi.fn() },
           },
           imIdentities: { get: vi.fn() },
+          organizationCandidates: { get: vi.fn() },
         },
       },
     },
@@ -241,6 +245,163 @@ describe('contacts mock repository', () => {
       scenario: createContactsMockScenario(ContactsMockScenario.NextPageFailure),
     })
     await expect(listContacts(failingRepository, 2)).rejects.toThrow('contacts_next_page_failed')
+  })
+})
+
+describe('Enterprise Platform contact API repository', () => {
+  const client = consoleClient.workspaces.current.humanInput
+  const context: ContactsFeatureContextValue = {
+    deployment: 'ee',
+    workspaceId: 'workspace-ee',
+    permissions: { canViewContacts: true, canManageContacts: true, canManageMembers: true },
+  }
+  const candidate = { id: 'candidate-1', name: 'Platform Member', email: 'member@example.test' }
+  const query = { search: ' member ', page: 2, limit: 20 }
+  const command = { contactIds: [candidate.id], upgradeExternalContacts: false }
+
+  beforeEach(() => vi.resetAllMocks())
+
+  it('excludes existing contacts per server page without losing the next page when all candidates already exist', async () => {
+    vi.mocked(client.organizationCandidates.get).mockResolvedValue({
+      data: [candidate],
+      page: 2,
+      limit: 20,
+      total: 41,
+    })
+    vi.mocked(client.contacts.batch.get).mockResolvedValue({
+      data: [{ id: candidate.id, name: candidate.name, avatar_url: '', created_at: 1 }],
+    })
+    const repository = createContactsApiRepository(client, context)
+    expect(repository.supportsPlatformImport).toBe(true)
+    await expect(repository.listAvailablePlatformContacts(query)).resolves.toEqual({
+      data: [],
+      page: 2,
+      limit: 20,
+      total: 41,
+      has_more: true,
+    })
+    expect(client.organizationCandidates.get).toHaveBeenCalledWith(
+      { query: { keyword: 'member', page: 2, limit: 20 } },
+      { context: { silent: true } },
+    )
+    expect(client.contacts.batch.get).toHaveBeenCalledWith(
+      { query: { contact_ids: [candidate.id] } },
+      { context: { silent: true } },
+    )
+    vi.mocked(client.organizationCandidates.get).mockResolvedValue({
+      data: [candidate],
+      page: 3,
+      limit: 20,
+      total: 41,
+    })
+    vi.mocked(client.contacts.batch.get).mockResolvedValue({ data: [] })
+    await expect(
+      repository.listAvailablePlatformContacts({ ...query, search: ' ', page: 3 }),
+    ).resolves.toEqual({
+      data: [{ ...candidate, avatar_url: null }],
+      page: 3,
+      limit: 20,
+      total: 41,
+      has_more: false,
+    })
+    expect(client.organizationCandidates.get).toHaveBeenLastCalledWith(
+      { query: { keyword: undefined, page: 3, limit: 20 } },
+      { context: { silent: true } },
+    )
+  })
+
+  it('preserves candidate and membership lookup failures instead of showing unverified available contacts', async () => {
+    const failure = new Error('offline')
+    const repository = createContactsApiRepository(client, context)
+    vi.mocked(client.organizationCandidates.get).mockRejectedValueOnce(failure)
+    await expect(repository.listAvailablePlatformContacts(query)).rejects.toBe(failure)
+    expect(client.contacts.batch.get).not.toHaveBeenCalled()
+    vi.mocked(client.organizationCandidates.get).mockResolvedValue({
+      data: [candidate],
+      page: 1,
+      limit: 20,
+      total: 1,
+    })
+    vi.mocked(client.contacts.batch.get).mockRejectedValueOnce(failure)
+    await expect(repository.listAvailablePlatformContacts(query)).rejects.toBe(failure)
+    vi.mocked(client.organizationCandidates.get).mockResolvedValue({
+      data: [],
+      page: 1,
+      limit: 20,
+      total: 0,
+    })
+    await expect(repository.listAvailablePlatformContacts(query)).resolves.toMatchObject({
+      data: [],
+      has_more: false,
+    })
+    expect(client.contacts.batch.get).toHaveBeenCalledTimes(1)
+  })
+
+  it.each<ContactsFeatureContextValue | undefined>([
+    undefined,
+    { ...context, deployment: 'ce' },
+    { ...context, deployment: 'saas' },
+    { ...context, workspaceId: '' },
+    { ...context, permissions: { ...context.permissions, canManageContacts: false } },
+  ])(
+    'never requests Enterprise APIs without an authorized Enterprise workspace',
+    async (unavailableContext) => {
+      const repository = createContactsApiRepository(client, unavailableContext)
+      expect(repository.supportsPlatformImport).toBe(false)
+      await expect(repository.listAvailablePlatformContacts(query)).rejects.toThrow('not available')
+      await expect(repository.addPlatformContacts(command)).resolves.toEqual({ kind: 'forbidden' })
+      expect(client.organizationCandidates.get).not.toHaveBeenCalled()
+      expect(client.contacts.platform.post).not.toHaveBeenCalled()
+    },
+  )
+
+  it('imports only candidate IDs and returns the server-confirmed contacts without claiming an External upgrade', async () => {
+    vi.mocked(client.contacts.platform.post).mockResolvedValue({
+      data: [{ ...candidate, type: 'platform', avatar_url: '', created_at: 1 }],
+    })
+    const repository = createContactsApiRepository(client, context)
+    expect(repository.supportsExternalContactUpgrade).toBe(false)
+    await expect(
+      repository.addPlatformContacts({ ...command, contactIds: [candidate.id, candidate.id] }),
+    ).resolves.toEqual({
+      kind: 'added',
+      contactIds: [candidate.id],
+    })
+    expect(client.contacts.platform.post).toHaveBeenCalledWith(
+      { body: { candidate_ids: [candidate.id] } },
+      { context: { silent: true } },
+    )
+    await expect(
+      repository.addPlatformContacts({ ...command, upgradeExternalContacts: true }),
+    ).resolves.toEqual({ kind: 'external_upgrade_unsupported' })
+    await expect(repository.addPlatformContacts({ ...command, contactIds: [] })).resolves.toEqual({
+      kind: 'failed',
+    })
+    expect(client.contacts.platform.post).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    [403, 'forbidden'],
+    [409, 'conflict'],
+    [422, 'failed'],
+    [503, 'failed'],
+  ] as const)(
+    'keeps HTTP %s as a failed import without fabricated contacts or upgrade metadata',
+    async (status, kind) => {
+      vi.mocked(client.contacts.platform.post).mockRejectedValue(
+        Object.assign(new Error('server details'), { status }),
+      )
+      await expect(
+        createContactsApiRepository(client, context).addPlatformContacts(command),
+      ).resolves.toEqual({ kind })
+    },
+  )
+
+  it('does not report success when the response confirms no contacts', async () => {
+    vi.mocked(client.contacts.platform.post).mockResolvedValue({ data: [] })
+    await expect(
+      createContactsApiRepository(client, context).addPlatformContacts(command),
+    ).resolves.toEqual({ kind: 'failed' })
   })
 })
 

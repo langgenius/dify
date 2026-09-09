@@ -109,4 +109,34 @@ describe('Human Input v2 node card', () => {
     )
     expect(screen.getByText('workflow.nodes.humanInputV2.card.invalid')).toBeInTheDocument()
   })
+
+  it('summarizes all workspace contacts distinctly from the initiator and preserves mixed recipients', () => {
+    const { rerender } = render(
+      <HumanInputV2Node
+        id="human-input-v2"
+        data={createData({ recipients_spec: [{ type: 'all_workspace_contacts' }] })}
+      />,
+    )
+    expect(
+      screen.getByText('workflow.nodes.humanInputV2.recipients.allWorkspaceContacts'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.nodes.humanInputV2.card.initiatorOnly'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.humanInputV2.card.invalid')).not.toBeInTheDocument()
+    rerender(
+      <HumanInputV2Node
+        id="human-input-v2"
+        data={createData({
+          recipients_spec: [{ type: 'all_workspace_contacts' }, { type: 'initiator' }],
+        })}
+      />,
+    )
+    expect(
+      screen.getByText((text) => text.includes('workflow.nodes.humanInputV2.card.configured')),
+    ).toHaveTextContent('"count":2')
+    expect(
+      screen.queryByText('workflow.nodes.humanInputV2.card.initiatorOnly'),
+    ).not.toBeInTheDocument()
+  })
 })

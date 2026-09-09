@@ -125,7 +125,11 @@ export function useAvailablePlatformContacts(
   const result = useInfiniteQuery(
     infiniteQueryOptions({
       enabled:
-        enabled && context.deployment === 'ee' && repository.supportsPlatformImport !== false,
+        enabled &&
+        Boolean(context.workspaceId) &&
+        context.permissions.canManageContacts &&
+        context.deployment === 'ee' &&
+        repository.supportsPlatformImport !== false,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
         repository.listAvailablePlatformContacts({ ...query, page: pageParam }),
@@ -138,11 +142,19 @@ export function useAvailablePlatformContacts(
   )
 
   return {
-    contacts: result.data?.pages.flatMap((page) => page.data) ?? [],
+    contacts: [
+      ...new Map(
+        (result.data?.pages.flatMap((page) => page.data) ?? []).map((contact) => [
+          contact.id,
+          contact,
+        ]),
+      ).values(),
+    ],
     error: result.error,
     fetchNextPage: result.fetchNextPage,
     hasNextPage: result.hasNextPage,
     isError: result.isError,
+    isFetchNextPageError: result.isFetchNextPageError,
     isFetchingNextPage: result.isFetchingNextPage,
     isPending: result.isPending,
     refetch: result.refetch,
@@ -190,12 +202,19 @@ export function useAddPlatformContacts() {
 
   return useMutation(
     mutationOptions({
-      mutationFn: (command: AddPlatformContactsCommand) => repository.addPlatformContacts(command),
+      mutationFn: (command: AddPlatformContactsCommand) => {
+        if (
+          !context.workspaceId ||
+          context.deployment !== 'ee' ||
+          !context.permissions.canManageContacts ||
+          repository.supportsPlatformImport === false
+        )
+          return Promise.resolve({ kind: 'forbidden' as const })
+        return repository.addPlatformContacts(command)
+      },
       onSuccess: (result) => {
         if (result.kind !== 'added') return
-        void queryClient.invalidateQueries({
-          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
-        })
+        return invalidateHumanInputContactQueries(queryClient, context.workspaceId)
       },
     }),
   )

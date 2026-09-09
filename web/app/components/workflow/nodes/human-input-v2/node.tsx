@@ -56,7 +56,10 @@ const HumanInputV2NodeContent = ({
       return t(($) => $['nodes.humanInputV2.card.empty'], { ns: 'workflow' })
     if (summary.state === 'invalid')
       return t(($) => $['nodes.humanInputV2.card.invalid'], { ns: 'workflow' })
+    if (summary.hasAllWorkspaceContacts && data.recipients_spec.length === 1)
+      return t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], { ns: 'workflow' })
     if (
+      !summary.hasAllWorkspaceContacts &&
       summary.hasInitiator &&
       !summary.contactCount &&
       !summary.dynamicEmailCount &&
@@ -64,6 +67,7 @@ const HumanInputV2NodeContent = ({
     )
       return t(($) => $['nodes.humanInputV2.card.initiatorOnly'], { ns: 'workflow' })
     if (
+      !summary.hasAllWorkspaceContacts &&
       summary.contactCount &&
       !summary.hasInitiator &&
       !summary.dynamicEmailCount &&
@@ -74,6 +78,7 @@ const HumanInputV2NodeContent = ({
         count: summary.contactCount,
       })
     if (
+      !summary.hasAllWorkspaceContacts &&
       summary.contactCount &&
       summary.hasInitiator &&
       !summary.dynamicEmailCount &&

@@ -24,6 +24,6 @@ export const selectHumanInputV2FormTransport = ({
 const runtimeEnvironment = process.env.NODE_ENV
 
 export const defaultHumanInputV2FormTransport = selectHumanInputV2FormTransport({
-  adapter: runtimeEnvironment === 'production' ? 'real' : 'mock',
+  adapter: 'real',
   environment: runtimeEnvironment,
 })

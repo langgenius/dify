@@ -15,6 +15,7 @@ export function createRecipientDraft(type: HumanInputV2RecipientType): HumanInpu
     case 'onetime_email':
       return { type, email: '' }
     case 'initiator':
+    case 'all_workspace_contacts':
       return { type }
   }
 }
@@ -43,7 +44,8 @@ export function getRecipientCanonicalKey(recipient: HumanInputV2Recipient): stri
     case 'onetime_email':
       return `onetime_email:${recipient.email.trim().toLowerCase()}`
     case 'initiator':
-      return 'initiator'
+    case 'all_workspace_contacts':
+      return recipient.type
   }
 }
 
@@ -83,6 +85,7 @@ export type RecipientSummary = {
   dynamicEmailCount: number
   onetimeEmailCount: number
   hasInitiator: boolean
+  hasAllWorkspaceContacts: boolean
   visibleLabels: string[]
   overflowCount: number
 }
@@ -99,6 +102,7 @@ export function deriveRecipientSummary(
       dynamicEmailCount: 0,
       onetimeEmailCount: 0,
       hasInitiator: false,
+      hasAllWorkspaceContacts: false,
       visibleLabels: [],
       overflowCount: 0,
     }
@@ -109,6 +113,7 @@ export function deriveRecipientSummary(
   let dynamicEmailCount = 0
   let onetimeEmailCount = 0
   let hasInitiator = false
+  let hasAllWorkspaceContacts = false
   const labels = recipients.map((recipient) => {
     if (getRecipientValidationError(recipient)) invalid = true
     if (recipient.type === 'contact') {
@@ -125,6 +130,10 @@ export function deriveRecipientSummary(
       onetimeEmailCount += 1
       return recipient.email
     }
+    if (recipient.type === 'all_workspace_contacts') {
+      hasAllWorkspaceContacts = true
+      return 'all_workspace_contacts'
+    }
     hasInitiator = true
     return 'initiator'
   })
@@ -136,6 +145,7 @@ export function deriveRecipientSummary(
     dynamicEmailCount,
     onetimeEmailCount,
     hasInitiator,
+    hasAllWorkspaceContacts,
     visibleLabels: labels.slice(0, visibleLimit),
     overflowCount,
   }

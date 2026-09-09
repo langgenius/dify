@@ -109,4 +109,25 @@ describe('Human Input v2 recipient utilities', () => {
       deriveRecipientSummary([{ type: 'contact', contact_id: 'unresolved' }], labels).state,
     ).toBe('invalid')
   })
+
+  it('keeps the whole-workspace selector distinct from the initiator and detects repeated imports', () => {
+    const allContacts: HumanInputV2Recipient = { type: 'all_workspace_contacts' }
+    const selected: HumanInputV2Recipient[] = [allContacts, { type: 'initiator' }]
+    expect(getRecipientValidationError(allContacts)).toBeUndefined()
+    expect(createRecipientDraft('all_workspace_contacts')).toEqual(allContacts)
+    expect(addRecipient(selected, allContacts)).toBe(selected)
+    expect(hasDuplicateRecipients(selected)).toBe(false)
+    expect(hasDuplicateRecipients([allContacts, allContacts])).toBe(true)
+    expect(deriveRecipientSummary([allContacts])).toMatchObject({
+      state: 'configured',
+      hasAllWorkspaceContacts: true,
+      hasInitiator: false,
+    })
+    expect(deriveRecipientSummary(selected)).toMatchObject({
+      state: 'configured',
+      hasAllWorkspaceContacts: true,
+      hasInitiator: true,
+    })
+    expect(removeRecipient(selected, 0)).toEqual([{ type: 'initiator' }])
+  })
 })

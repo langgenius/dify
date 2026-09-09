@@ -2,6 +2,7 @@ import type { NodeProps } from 'reactflow'
 import type { Node } from '../types'
 import { memo, useMemo } from 'react'
 import { CUSTOM_NODE } from '../constants'
+import { getNodeCatalogType } from '../utils'
 import BasePanel from './_base/components/workflow-panel'
 import BaseNode from './_base/node'
 import { NodeComponentMap, PanelComponentMap } from './components'
@@ -35,7 +36,11 @@ export const Panel = memo((props: PanelProps) => {
 
   if (nodeClass === CUSTOM_NODE) {
     return (
-      <BasePanel key={`${props.id}-${nodeData.type}`} id={props.id} data={props.data}>
+      <BasePanel
+        key={`${props.id}-${getNodeCatalogType(nodeData)}`}
+        id={props.id}
+        data={props.data}
+      >
         <PanelComponent />
       </BasePanel>
     )

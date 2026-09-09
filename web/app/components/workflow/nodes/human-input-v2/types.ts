@@ -21,15 +21,21 @@ export type InitiatorRecipient = {
   type: 'initiator'
 }
 
+export type AllWorkspaceContactsRecipient = {
+  type: 'all_workspace_contacts'
+}
+
 export type HumanInputV2Recipient =
   | ContactRecipient
   | DynamicEmailRecipient
   | OnetimeEmailRecipient
   | InitiatorRecipient
+  | AllWorkspaceContactsRecipient
 
 export const HUMAN_INPUT_V2_DEBUG_CHANNELS = [
   'email',
   'feishu',
+  'lark',
   'slack',
   'ding_talk',
   'ms_teams',

@@ -48,6 +48,7 @@ type ErrorLike = {
   code?: unknown
   status?: unknown
   name?: unknown
+  data?: { code?: unknown; body?: { code?: unknown } }
 }
 
 export const createHumanInputV2Error = (
@@ -60,13 +61,16 @@ export const normalizeHumanInputV2Error = (error: unknown): HumanInputV2Transpor
   if (error instanceof HumanInputV2TransportError) return error
 
   const candidate = error as ErrorLike | null
-  const code = typeof candidate?.code === 'string' ? candidate.code : 'human_input_unknown'
+  const responseCode = candidate?.data?.body?.code ?? candidate?.data?.code ?? candidate?.code
+  const code = typeof responseCode === 'string' ? responseCode : 'human_input_unknown'
   const status = typeof candidate?.status === 'number' ? candidate.status : undefined
   const category =
     CATEGORY_BY_CODE[code] ??
     (candidate?.name === 'AbortError' ? 'network' : undefined) ??
     (status === 404 ? 'not-found' : undefined) ??
     (status === 429 ? 'form-rate-limit' : undefined) ??
+    (status === 501 ? 'unavailable' : undefined) ??
+    (candidate instanceof TypeError ? 'network' : undefined) ??
     'unknown'
 
   return new HumanInputV2TransportError(category, code, status)

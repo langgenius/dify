@@ -47,6 +47,7 @@ const recipientTypes: HumanInputV2RecipientType[] = [
   'dynamic_email',
   'onetime_email',
   'initiator',
+  'all_workspace_contacts',
 ]
 
 const contactSourceFilters: ContactSourceFilter[] = ['all', 'workspace', 'organization', 'external']
@@ -250,6 +251,8 @@ const RecipientsContent = ({
   }
 
   const getRecipientLabel = (recipient: HumanInputV2Recipient) => {
+    if (recipient.type === 'all_workspace_contacts')
+      return t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], { ns: 'workflow' })
     if (recipient.type === 'initiator')
       return t(($) => $['nodes.humanInputV2.recipients.initiator'], { ns: 'workflow' })
     if (recipient.type === 'contact')
@@ -569,6 +572,14 @@ const RecipientsContent = ({
             </div>
           )}
 
+          {editor.draft.type === 'all_workspace_contacts' && (
+            <div className="rounded-md bg-components-input-bg-normal px-2 py-1.5 system-xs-regular text-text-secondary">
+              {t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContactsDescription'], {
+                ns: 'workflow',
+              })}
+            </div>
+          )}
+
           {editor.draft.type === 'initiator' && (
             <div className="rounded-md bg-components-input-bg-normal px-2 py-1.5 system-xs-regular text-text-secondary">
               {t(($) => $['nodes.humanInputV2.recipients.initiatorDescription'], {
@@ -729,6 +740,19 @@ const RecipientsContent = ({
                   </Button>
                 )}
                 <div className="my-1 h-px bg-divider-subtle" />
+                <button
+                  type="button"
+                  disabled={selectedKeys.has('all_workspace_contacts')}
+                  className="flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-2 py-2 text-left hover:bg-state-base-hover disabled:opacity-50"
+                  onClick={() => add({ type: 'all_workspace_contacts' })}
+                >
+                  <span className="i-ri-group-line size-5 text-text-secondary" aria-hidden />
+                  <span className="system-xs-medium text-text-secondary">
+                    {t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], {
+                      ns: 'workflow',
+                    })}
+                  </span>
+                </button>
                 <button
                   type="button"
                   disabled={selectedKeys.has('initiator')}

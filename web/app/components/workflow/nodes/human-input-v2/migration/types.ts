@@ -1,3 +1,4 @@
+import type { NodeDataMigrationBlocker } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { HumanInputNodeType } from '../../human-input/types'
 import type { HumanInputV2NodeType } from '../types'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -47,13 +48,13 @@ export const HumanInputMigrationBlockerCode = {
   UnsupportedDeliveryMethod: 'unsupported-delivery-method',
   InvalidEmailConfiguration: 'invalid-email-configuration',
   InvalidEmail: 'invalid-email',
+  InvalidDefaultValue: 'invalid-default-value',
   UnresolvedMember: 'unresolved-member',
   ConflictingEmailTemplates: 'conflicting-email-templates',
   MissingRecipients: 'missing-recipients',
 } as const
 
-export type HumanInputMigrationBlockerCode =
-  (typeof HumanInputMigrationBlockerCode)[keyof typeof HumanInputMigrationBlockerCode]
+export type HumanInputMigrationBlockerCode = NodeDataMigrationBlocker['code']
 
 export type HumanInputMigrationBlocker = {
   nodeId: string

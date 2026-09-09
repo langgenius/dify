@@ -33,13 +33,14 @@ describe('Human Input v2 default', () => {
   it('preserves the recipients key and nested values through a JSON round trip', () => {
     const payload = createPayload({
       recipients_spec: [
+        { type: 'all_workspace_contacts' },
         { type: 'initiator' },
         { type: 'contact', contact_id: 'contact-1' },
         { type: 'dynamic_email', selector: ['start', 'email'] },
         { type: 'onetime_email', email: 'owner@example.com' },
       ],
       message_template: { subject: 'Review', body: 'Please review {{#start.email#}}' },
-      debug_mode: { enabled: true, channels: ['email', 'slack'] },
+      debug_mode: { enabled: true, channels: ['email', 'lark'] },
     })
 
     const roundTripped = JSON.parse(JSON.stringify(payload)) as HumanInputV2NodeType
@@ -102,5 +103,27 @@ describe('Human Input v2 default', () => {
         t,
       ).errorMessage,
     ).toBe('nodes.humanInputV2.error.debugChannelRequired')
+  })
+
+  it('validates migrated whole-workspace delivery with Lark and rejects duplicated whole-workspace recipients', () => {
+    const payload = createPayload({
+      recipients_spec: [{ type: 'all_workspace_contacts' }],
+      debug_mode: { enabled: true, channels: ['lark'] },
+      message_template: { subject: 'Review request', body: 'Please review' },
+      user_actions: [
+        { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+      ],
+    })
+    const t = withSelectorKey((key: string) => key, 'workflow')
+    expect(humanInputV2Default.checkValid(payload, t)).toEqual({ isValid: true, errorMessage: '' })
+    expect(
+      humanInputV2Default.checkValid(
+        {
+          ...payload,
+          recipients_spec: [{ type: 'all_workspace_contacts' }, { type: 'all_workspace_contacts' }],
+        },
+        t,
+      ).errorMessage,
+    ).toBe('nodes.humanInputV2.error.recipientDuplicate')
   })
 })

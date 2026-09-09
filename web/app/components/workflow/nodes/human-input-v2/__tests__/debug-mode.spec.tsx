@@ -7,7 +7,7 @@ import { HUMAN_INPUT_V2_DEBUG_CHANNELS } from '../types'
 const channelLabel = (channel: string) => `workflow.nodes.humanInputV2.debug.channel.${channel}`
 
 describe('Human Input v2 Debug Mode', () => {
-  it('edits all six channel values and only emits DSL changes', async () => {
+  it('edits supported channel values and only emits DSL changes', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     const value: HumanInputV2DebugMode = { enabled: false, channels: [] }
@@ -69,5 +69,36 @@ describe('Human Input v2 Debug Mode', () => {
       screen.getByRole('switch', { name: 'workflow.nodes.humanInputV2.debug.toggle' }),
     )
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('accepts an imported Lark selection and lets the user toggle it without losing Email', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <DebugMode
+        value={{ enabled: true, channels: ['lark', 'email'] }}
+        onChange={onChange}
+        readonly={false}
+      />,
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(`${channelLabel('lark')}, ${channelLabel('email')}`),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
+    )
+    expect(screen.getByRole('checkbox', { name: channelLabel('lark') })).toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: channelLabel('lark') }))
+    expect(onChange).toHaveBeenLastCalledWith({ enabled: true, channels: ['email'] })
+    rerender(
+      <DebugMode
+        value={{ enabled: true, channels: ['email'] }}
+        onChange={onChange}
+        readonly={false}
+      />,
+    )
+    await user.click(screen.getByRole('checkbox', { name: channelLabel('lark') }))
+    expect(onChange).toHaveBeenLastCalledWith({ enabled: true, channels: ['email', 'lark'] })
   })
 })

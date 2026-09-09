@@ -128,6 +128,7 @@ export type PlatformContactUpgradeConflict = {
 export type AddPlatformContactsResult =
   | { contactIds: string[]; kind: 'added' }
   | { conflicts: PlatformContactUpgradeConflict[]; kind: 'requires_external_contact_upgrade' }
+  | { kind: 'conflict' | 'external_upgrade_unsupported' | 'forbidden' }
   | { kind: 'failed' }
 
 export type RemoveContactsCommand = {

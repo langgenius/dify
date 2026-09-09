@@ -328,4 +328,105 @@ describe('Human Input v2 Recipients', () => {
       { type: 'onetime_email', email: 'owner@example.com' },
     ])
   })
+
+  it('renders a migrated whole-workspace recipient and preserves it while editing other recipients', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    const optionProvider = provider()
+    render(
+      <Harness
+        initial={[
+          { type: 'all_workspace_contacts' },
+          { type: 'onetime_email', email: 'before@example.com' },
+        ]}
+        optionProvider={optionProvider}
+        observe={observe}
+      />,
+    )
+
+    expect(
+      screen.getByText('workflow.nodes.humanInputV2.recipients.allWorkspaceContacts'),
+    ).toBeInTheDocument()
+    expect(optionProvider.resolve).not.toHaveBeenCalled()
+    expect(observe).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: /recipients\.edit:.*allWorkspaceContacts/ }),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.type.all_workspace_contacts',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByText('workflow.nodes.humanInputV2.recipients.allWorkspaceContactsDescription'),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
+    )
+    expect(observe).toHaveBeenLastCalledWith([
+      { type: 'all_workspace_contacts' },
+      { type: 'onetime_email', email: 'before@example.com' },
+    ])
+
+    await user.click(screen.getByRole('button', { name: /recipients\.edit:.*before@example.com/ }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.type.initiator' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
+    )
+    expect(observe).toHaveBeenLastCalledWith([
+      { type: 'all_workspace_contacts' },
+      { type: 'initiator' },
+    ])
+  })
+
+  it('adds all workspace contacts once, rejects duplicate edits, and removes only that recipient', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
+      }),
+    )
+    expect(observe).toHaveBeenLastCalledWith([
+      { type: 'initiator' },
+      { type: 'all_workspace_contacts' },
+    ])
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
+      }),
+    ).toBeDisabled()
+    await user.keyboard('{Escape}')
+    await user.click(
+      screen.getByRole('button', { name: /recipients\.edit:.*recipients\.initiator/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.type.all_workspace_contacts',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'workflow.nodes.humanInputV2.error.recipientDuplicate',
+    )
+    expect(observe).toHaveBeenCalledTimes(1)
+    await user.click(
+      screen.getAllByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.cancel' })[0]!,
+    )
+    await user.click(
+      screen.getByRole('button', { name: /recipients\.remove:.*allWorkspaceContacts/ }),
+    )
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'initiator' }])
+  })
 })

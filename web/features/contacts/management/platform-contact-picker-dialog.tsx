@@ -11,9 +11,10 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
+import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
 import { useAddPlatformContacts, useAvailablePlatformContacts } from './hooks'
 import { PlatformContactUpgradeDialog } from './platform-contact-upgrade-dialog'
 
@@ -25,23 +26,32 @@ export function PlatformContactPickerDialog({
   open: boolean
 }) {
   const { t } = useTranslation('contacts')
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [mutationError, setMutationError] = useState(false)
-  const [team, setTeam] = useState<'Backend Team' | 'Frontend Team' | null>(null)
+  const [mutationError, setMutationError] = useState<
+    | 'platformPicker.addFailed'
+    | 'platformPicker.addConflict'
+    | 'platformPicker.addForbidden'
+    | 'platformPicker.externalUpgradeUnsupported'
+    | null
+  >(null)
   const [upgradeConflictCount, setUpgradeConflictCount] = useState<number | null>(null)
   const availableContactsQuery = useAvailablePlatformContacts({ limit: 20, search }, open)
   const addPlatformContacts = useAddPlatformContacts()
   const resetMutation = addPlatformContacts.reset
-  const visibleContacts = team
-    ? availableContactsQuery.contacts.filter((contact) => contact.departmentPath?.includes(team))
-    : availableContactsQuery.contacts
+  const canImport = Boolean(
+    context.workspaceId &&
+    context.deployment === 'ee' &&
+    context.permissions.canManageContacts &&
+    repository.supportsPlatformImport !== false,
+  )
 
   function resetDialog() {
     setSearch('')
     setSelectedIds([])
-    setMutationError(false)
-    setTeam(null)
+    setMutationError(null)
     setUpgradeConflictCount(null)
     resetMutation()
   }
@@ -53,20 +63,30 @@ export function PlatformContactPickerDialog({
   }
 
   function toggleContact(contactId: string, checked: boolean) {
-    setMutationError(false)
+    setMutationError(null)
     setSelectedIds((current) =>
       checked ? [...new Set([...current, contactId])] : current.filter((id) => id !== contactId),
     )
   }
 
   async function handleAdd(upgradeExternalContacts: boolean) {
-    if (!selectedIds.length || addPlatformContacts.isPending) return
-    setMutationError(false)
-    const result = await addPlatformContacts.mutateAsync({
-      contactIds: selectedIds,
-      upgradeExternalContacts,
-    })
+    if (!canImport || !selectedIds.length || addPlatformContacts.isPending) return
+    setMutationError(null)
+    let result
+    try {
+      result = await addPlatformContacts.mutateAsync({
+        contactIds: selectedIds,
+        upgradeExternalContacts,
+      })
+    } catch {
+      setMutationError('platformPicker.addFailed')
+      return
+    }
     if (result.kind === 'requires_external_contact_upgrade') {
+      if (repository.supportsExternalContactUpgrade === false) {
+        setMutationError('platformPicker.externalUpgradeUnsupported')
+        return
+      }
       setUpgradeConflictCount(result.conflicts.length)
       return
     }
@@ -76,7 +96,15 @@ export function PlatformContactPickerDialog({
       return
     }
     setUpgradeConflictCount(null)
-    setMutationError(true)
+    setMutationError(
+      result.kind === 'forbidden'
+        ? 'platformPicker.addForbidden'
+        : result.kind === 'conflict'
+          ? 'platformPicker.addConflict'
+          : result.kind === 'external_upgrade_unsupported'
+            ? 'platformPicker.externalUpgradeUnsupported'
+            : 'platformPicker.addFailed',
+    )
   }
 
   function handleUpgradeDialogOpenChange(nextOpen: boolean) {
@@ -108,57 +136,32 @@ export function PlatformContactPickerDialog({
           <DialogDescription className="sr-only">
             {t(($) => $['platformPicker.description'])}
           </DialogDescription>
-          <div className="relative">
-            <span
-              aria-hidden
-              className="absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
-            />
-            <Input
+          <div>
+            <SearchInput
               aria-label={t(($) => $['platformPicker.search'])}
-              className="h-8 border-0 bg-background-default-subtle pl-8 shadow-none"
-              disabled={addPlatformContacts.isPending}
+              className="h-8 border-0 bg-background-default-subtle shadow-none"
+              disabled={addPlatformContacts.isPending || !canImport}
               placeholder={t(($) => $['platformPicker.search'])}
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onValueChange={setSearch}
             />
           </div>
-          <div className="flex h-8 items-center gap-1 px-1 system-xs-regular">
-            <button type="button" className="text-text-accent" onClick={() => setTeam(null)}>
-              {t(($) => $['platformPicker.allMembers'])}
-            </button>
-            <span aria-hidden className="text-text-quaternary">
-              /
-            </span>
-            <button type="button" className="text-text-accent" onClick={() => setTeam(null)}>
-              {t(($) => $['platformPicker.devTeam'])}
-            </button>
-            <span aria-hidden className="text-text-quaternary">
-              /
-            </span>
-            {team ? (
-              <>
-                <button type="button" className="text-text-accent" onClick={() => setTeam(null)}>
-                  {t(($) => $['platformPicker.mobileDev'])}
-                </button>
-                <span aria-hidden className="text-text-quaternary">
-                  /
-                </span>
-                <span className="text-text-tertiary">
-                  {t(
-                    ($) =>
-                      $[
-                        `platformPicker.${team === 'Frontend Team' ? 'frontendTeam' : 'backendTeam'}`
-                      ],
-                  )}
-                </span>
-              </>
-            ) : (
-              <span className="text-text-tertiary">{t(($) => $['platformPicker.mobileDev'])}</span>
-            )}
+          <div className="flex h-8 items-center px-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['platformPicker.allMembers'])}
           </div>
+          {repository.supportsExternalContactUpgrade === false && (
+            <p className="px-1 pb-2 system-xs-regular text-text-tertiary">
+              {t(($) => $['platformPicker.noExternalUpgrade'])}
+            </p>
+          )}
         </div>
-        <div className="min-h-48 flex-1 overflow-y-auto bg-components-panel-bg px-1 pb-1">
-          {availableContactsQuery.isPending && (
+        <div className="min-h-0 flex-1 overflow-y-auto bg-components-panel-bg px-1 pb-1">
+          {!canImport && (
+            <p role="alert" className="p-3 system-sm-regular">
+              {t(($) => $['platformPicker.addForbidden'])}
+            </p>
+          )}
+          {canImport && availableContactsQuery.isPending && (
             <div
               role="status"
               className="space-y-2 p-3"
@@ -172,7 +175,7 @@ export function PlatformContactPickerDialog({
               ))}
             </div>
           )}
-          {availableContactsQuery.isError && (
+          {availableContactsQuery.isError && !availableContactsQuery.isFetchNextPageError && (
             <div
               role="alert"
               className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
@@ -185,83 +188,73 @@ export function PlatformContactPickerDialog({
               </Button>
             </div>
           )}
-          {!availableContactsQuery.isPending &&
+          {canImport &&
+            !availableContactsQuery.isPending &&
             !availableContactsQuery.isError &&
+            !availableContactsQuery.hasNextPage &&
             !availableContactsQuery.contacts.length && (
               <div className="flex min-h-40 items-center justify-center system-sm-regular text-text-tertiary">
                 {t(($) => $['platformPicker.empty'])}
               </div>
             )}
-          {!team && !availableContactsQuery.isPending && !availableContactsQuery.isError && (
-            <div className="border-b border-divider-subtle pb-1">
-              {(
-                [
-                  { key: 'frontendTeam', pathSegment: 'Frontend Team' },
-                  { key: 'backendTeam', pathSegment: 'Backend Team' },
-                ] as const
-              ).map((team) => {
-                const teamName = t(($) => $[`platformPicker.${team.key}`])
-                const count = availableContactsQuery.contacts.filter((contact) =>
-                  contact.departmentPath?.includes(team.pathSegment),
-                ).length
-                return (
-                  <button
-                    key={team.key}
-                    type="button"
-                    className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    onClick={() => setTeam(team.pathSegment)}
-                  >
-                    <span className="flex size-6 items-center justify-center rounded-full bg-text-accent text-text-primary-on-surface">
-                      <span aria-hidden className="i-ri-organization-chart size-3.5" />
-                    </span>
-                    <span className="system-sm-regular text-text-secondary">{teamName}</span>
-                    <span className="system-xs-regular text-text-tertiary">{count}</span>
-                    <span
-                      aria-hidden
-                      className="ml-auto i-ri-arrow-right-s-line size-4 text-text-quaternary"
-                    />
-                  </button>
-                )
-              })}
+          {canImport &&
+            availableContactsQuery.contacts.map((contact) => {
+              const selected = selectedIds.includes(contact.id)
+              return (
+                <label
+                  key={contact.id}
+                  htmlFor={`platform-contact-${contact.id}`}
+                  className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
+                >
+                  <Checkbox
+                    id={`platform-contact-${contact.id}`}
+                    aria-label={t(($) => $['platformPicker.selectContact'], {
+                      name: contact.name,
+                    })}
+                    checked={selected}
+                    className="sr-only"
+                    disabled={addPlatformContacts.isPending}
+                    onCheckedChange={(checked) => toggleContact(contact.id, checked)}
+                  />
+                  <Avatar avatar={contact.avatar_url} name={contact.name} size="sm" />
+                  <span className="truncate system-sm-regular text-text-secondary">
+                    {contact.name}
+                  </span>
+                  <span className="ml-auto truncate system-xs-regular text-text-quaternary">
+                    {contact.email}
+                  </span>
+                  {selected && (
+                    <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
+                  )}
+                </label>
+              )
+            })}
+          {canImport && availableContactsQuery.hasNextPage && (
+            <div className="p-2">
+              {availableContactsQuery.isFetchNextPageError && (
+                <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
+                  {t(($) => $['platformPicker.error'])}
+                </p>
+              )}
+              <Button
+                disabled={addPlatformContacts.isPending}
+                loading={availableContactsQuery.isFetchingNextPage}
+                onClick={() => {
+                  void availableContactsQuery.fetchNextPage()
+                }}
+              >
+                {availableContactsQuery.isFetchNextPageError
+                  ? t(($) => $['action.retry'])
+                  : t(($) => $['action.loadMore'])}
+              </Button>
             </div>
           )}
-          {visibleContacts.map((contact) => {
-            const selected = selectedIds.includes(contact.id)
-            return (
-              <label
-                key={contact.id}
-                htmlFor={`platform-contact-${contact.id}`}
-                className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
-              >
-                <Checkbox
-                  id={`platform-contact-${contact.id}`}
-                  aria-label={t(($) => $['platformPicker.selectContact'], {
-                    name: contact.name,
-                  })}
-                  checked={selected}
-                  className="sr-only"
-                  disabled={addPlatformContacts.isPending}
-                  onCheckedChange={(checked) => toggleContact(contact.id, checked)}
-                />
-                <Avatar avatar={contact.avatar_url} name={contact.name} size="sm" />
-                <span className="truncate system-sm-regular text-text-secondary">
-                  {contact.name}
-                </span>
-                <span className="ml-auto truncate system-xs-regular text-text-quaternary">
-                  {contact.email}
-                </span>
-                {selected && (
-                  <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
-                )}
-              </label>
-            )
-          })}
         </div>
         {(selectedIds.length > 0 || mutationError) && (
           <div className="shrink-0 border-t border-divider-subtle px-3 py-2">
             {mutationError && (
               <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
-                {t(($) => $['platformPicker.addFailed'])}
+                {t(($) => $[mutationError])}
               </p>
             )}
             <div className="flex items-center justify-between gap-3">
@@ -274,7 +267,7 @@ export function PlatformContactPickerDialog({
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={!selectedIds.length}
+                  disabled={!canImport || !selectedIds.length}
                   loading={addPlatformContacts.isPending}
                   onClick={() => handleAdd(false)}
                 >
@@ -289,7 +282,7 @@ export function PlatformContactPickerDialog({
       </DialogContent>
       <PlatformContactUpgradeDialog
         conflictCount={upgradeConflictCount ?? 0}
-        open={upgradeConflictCount !== null}
+        open={repository.supportsExternalContactUpgrade !== false && upgradeConflictCount !== null}
         pending={addPlatformContacts.isPending}
         onOpenChange={handleUpgradeDialogOpenChange}
         onConfirm={() => handleAdd(true)}

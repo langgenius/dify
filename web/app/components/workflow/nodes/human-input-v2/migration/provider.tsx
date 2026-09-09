@@ -2,8 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { HumanInputMigrationBlocker } from './types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { cloneDeep } from 'es-toolkit/object'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes, useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
@@ -14,13 +13,10 @@ import {
   WorkflowHistoryEvent,
 } from '@/app/components/workflow/hooks/use-workflow-history'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useMembers } from '@/service/use-common'
-import { mockContactRecipientOptionProvider } from '../contact-provider'
 import { HumanInputMigrationContext } from './context'
-import { executeHumanInputV2Migration } from './executor'
+import { createHumanInputMigrationApi, executeHumanInputV2Migration } from './executor'
 import HumanInputMigrationBanner from './migration-banner'
 import HumanInputMigrationDialog from './migration-dialog'
-import { createMockHumanInputMigrationApi } from './mock-api'
 import { getHumanInputCreationPolicy, isLegacyHumanInputNodeData } from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
 
@@ -38,6 +34,8 @@ const getBlockerTranslationKey = (code: HumanInputMigrationBlocker['code']) => {
       return 'nodes.humanInputMigration.blocker.unsupportedDeliveryMethod' as const
     case HumanInputMigrationBlockerCode.InvalidEmailConfiguration:
       return 'nodes.humanInputMigration.blocker.invalidEmailConfiguration' as const
+    case HumanInputMigrationBlockerCode.InvalidDefaultValue:
+      return 'nodes.humanInputMigration.blocker.invalidDefaultValue' as const
     case HumanInputMigrationBlockerCode.InvalidEmail:
       return 'nodes.humanInputMigration.blocker.invalidEmail' as const
     case HumanInputMigrationBlockerCode.UnresolvedMember:
@@ -49,25 +47,23 @@ const getBlockerTranslationKey = (code: HumanInputMigrationBlocker['code']) => {
   }
 }
 
-const syncDraftOnce = (
+const syncDraftOnce = async (
   doSyncWorkflowDraft: ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft'],
-) =>
-  new Promise<void>((resolve, reject) => {
-    let settled = false
-    const finish = (callback: () => void) => {
-      if (settled) return
-      settled = true
-      callback()
-    }
-
-    void doSyncWorkflowDraft(true, {
-      onError: () => finish(() => reject(new Error('human-input-migration-sync-failed'))),
-      onSettled: () => finish(resolve),
-    }).then(
-      () => finish(resolve),
-      (error) => finish(() => reject(error)),
-    )
+) => {
+  let saved = false
+  let failed = false
+  const result = await doSyncWorkflowDraft(true, {
+    onSuccess: () => {
+      saved = true
+    },
+    onError: () => {
+      failed = true
+    },
   })
+  // Read-only, unloaded, and non-persisting collaboration paths can settle with
+  // no save. Completion alone must not turn an unsaved migration into success.
+  if (failed || (!saved && result == null)) throw new Error('human-input-migration-sync-failed')
+}
 
 const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationProviderProps) => {
   const { t } = useTranslation()
@@ -77,11 +73,17 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { nodesMap } = useNodesMetaData()
-  const { data: membersData } = useMembers()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
   const pendingRef = useRef(false)
+  const canApplyRef = useRef(canEdit)
+  useEffect(() => {
+    canApplyRef.current = canEdit
+    return () => {
+      canApplyRef.current = false
+    }
+  }, [canEdit])
   const policy = useMemo(() => getHumanInputCreationPolicy(nodes, canEdit), [canEdit, nodes])
   const legacyNodeCount = useMemo(
     () => nodes.filter((node) => isLegacyHumanInputNodeData(node.data)).length,
@@ -100,21 +102,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
     if (!open) setError(undefined)
   }, [])
 
-  const getResolverSnapshot = useCallback(async () => {
-    const members = cloneDeep(membersData?.accounts ?? []).map((member) => ({
-      id: member.id,
-      email: member.email,
-    }))
-    const contacts = (await mockContactRecipientOptionProvider.search('')).map((contact) => ({
-      id: contact.id,
-      email: contact.email,
-    }))
-    return { members, contacts }
-  }, [membersData?.accounts])
-  const migrationApi = useMemo(
-    () => createMockHumanInputMigrationApi(getResolverSnapshot),
-    [getResolverSnapshot],
-  )
+  const migrationApi = useMemo(() => createHumanInputMigrationApi(), [])
 
   const replaceGraph = useCallback(
     (graph: { nodes: Node[]; edges: Edge[] }, source: string) => {
@@ -135,6 +123,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
           const state = store.getState()
           return { nodes: state.getNodes() as Node[], edges: state.edges as Edge[] }
         },
+        canApply: () => canApplyRef.current,
         migrationApi,
         replaceGraph,
         syncDraft: () => syncDraftOnce(doSyncWorkflowDraft),
@@ -145,7 +134,8 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
       })
 
       if (result.status === 'blocked') {
-        const firstBlocker = result.blockers[0]!
+        const firstBlocker = result.blockers[0]
+        if (!firstBlocker) throw new Error('human-input-migration-invalid-response')
         const reason = t(($) => $[getBlockerTranslationKey(firstBlocker.code)], {
           ns: 'workflow',
         })
@@ -153,6 +143,15 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
           ns: 'workflow',
           nodeTitle: firstBlocker.nodeTitle,
           reason,
+        })
+        setError(message)
+        toast.error(message)
+        return
+      }
+
+      if (result.status === 'graph-changed') {
+        const message = t(($) => $['nodes.humanInputMigration.error.graphChanged'], {
+          ns: 'workflow',
         })
         setError(message)
         toast.error(message)

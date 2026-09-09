@@ -69,7 +69,6 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
       : deploymentEdition === 'CLOUD'
         ? 'saas'
         : ('ce' as const)
-  const repository = useMemo(() => createContactsApiRepository(), [])
   const context = useMemo<ContactsFeatureContextValue>(
     () => ({
       deployment,
@@ -82,6 +81,7 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
     }),
     [canManage, deployment, workspaceId],
   )
+  const repository = useMemo(() => createContactsApiRepository(undefined, context), [context])
 
   return (
     <ContactsManagementProvider key={workspaceId} context={context} repository={repository}>

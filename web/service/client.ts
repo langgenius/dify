@@ -20,11 +20,23 @@ import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
+import {
+  get2 as getHumanInputV2Form,
+  post13 as requestHumanInputV2Access,
+  post14 as requestHumanInputV2UploadToken,
+  post16 as submitHumanInputV2Form,
+} from '@dify/contracts/api/web/orpc.gen'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { API_PREFIX, APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
+import {
+  API_PREFIX,
+  APP_VERSION,
+  IS_MARKETPLACE,
+  MARKETPLACE_API_PREFIX,
+  PUBLIC_API_PREFIX,
+} from '@/config'
 import { isClient } from '@/utils/client'
 // oxlint-disable-next-line no-restricted-imports
 import { request, sseGeneratorPost } from './base'
@@ -122,6 +134,28 @@ export const marketplaceClient: JsonifiedClient<
 export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, {
   path: ['marketplace'],
 })
+
+// The generated aggregate merges human-input and human_input into the same key.
+// Select the generated v2 operations explicitly so public tokens never reach v1.
+const humanInputV2FormContract = {
+  getForm: getHumanInputV2Form,
+  requestAccess: requestHumanInputV2Access,
+  requestUploadToken: requestHumanInputV2UploadToken,
+  submit: submitHumanInputV2Form,
+}
+export const humanInputV2FormClient: JsonifiedClient<
+  ContractRouterClient<typeof humanInputV2FormContract>
+> = createORPCClient(
+  new OpenAPILink(humanInputV2FormContract, {
+    url: getBaseURL(PUBLIC_API_PREFIX),
+    fetch: (request, init) =>
+      globalThis.fetch(request, {
+        ...init,
+        credentials: 'omit',
+        cache: 'no-store',
+      }),
+  }),
+)
 
 const APP_DEPLOY_SOURCE_APPS_PAGE_SIZE = 100
 const APP_DEPLOY_READINESS_RETRY_DELAYS = [0, 300, 700, 1200]
@@ -583,6 +617,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         current: {
           humanInput: {
             contacts: {
+              platform: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _onMutateResult, context) =>
+                      invalidateHumanInputContactQueries(context.client),
+                  },
+                },
+              },
               byContactId: {
                 imBindings: {
                   put: {
@@ -1884,6 +1926,7 @@ export function invalidateHumanInputContactQueries(client: QueryClient, workspac
     consoleQuery.workspaces.current.humanInput.contacts.key(),
     consoleQuery.workspaces.current.humanInput.contactOptions.key(),
     consoleQuery.workspaces.current.humanInput.imIdentities.key(),
+    consoleQuery.workspaces.current.humanInput.organizationCandidates.key(),
   ])
 }
 

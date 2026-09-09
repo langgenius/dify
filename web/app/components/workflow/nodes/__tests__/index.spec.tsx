@@ -13,6 +13,7 @@ vi.mock('../components', () => ({
   PanelComponentMap: {
     [BlockEnum.Start]: () => <div>start-panel-component</div>,
     [BlockEnum.StartPlaceholder]: () => <div>start-placeholder-panel-component</div>,
+    [BlockEnum.HumanInput]: () => <div>human-input-panel-component</div>,
   },
 }))
 
@@ -43,15 +44,17 @@ vi.mock('../_base/components/workflow-panel', async () => {
     children,
   }: {
     id: string
-    data: { type: BlockEnum }
+    data: { type: BlockEnum; version?: string }
     children: ReactElement
   }) => {
     const [initialType] = React.useState(data.type)
+    const [initialVersion] = React.useState(data.version ?? '1')
 
     return (
       <div>
         <div>{`base-panel:${id}:${data.type}`}</div>
         <div>{`base-panel-initial:${initialType}`}</div>
+        <div>{`base-panel-initial-version:${initialVersion}`}</div>
         {children}
       </div>
     )
@@ -117,5 +120,18 @@ describe('workflow nodes index', () => {
     const { container } = render(<Panel type="default" id="node-1" data={createNodeData()} />)
 
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('remounts the open panel when HITL migration or undo changes only the version', () => {
+    const legacy = { ...createNodeData(), type: BlockEnum.HumanInput }
+    const migrated = { ...legacy, version: '2' }
+    const { rerender } = render(<Panel type={CUSTOM_NODE} id="hitl" data={legacy} />)
+    expect(screen.getByText('base-panel-initial-version:1')).toBeInTheDocument()
+
+    rerender(<Panel type={CUSTOM_NODE} id="hitl" data={migrated} />)
+    expect(screen.getByText('base-panel-initial-version:2')).toBeInTheDocument()
+
+    rerender(<Panel type={CUSTOM_NODE} id="hitl" data={legacy} />)
+    expect(screen.getByText('base-panel-initial-version:1')).toBeInTheDocument()
   })
 })
